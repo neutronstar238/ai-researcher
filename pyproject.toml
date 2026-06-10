@@ -1,0 +1,159 @@
+[tool.poetry]
+name = "autoresearch-system"
+version = "0.1.0"
+description = "Automated end-to-end research workflow platform with multi-agent collaboration"
+authors = ["AutoResearch Team"]
+readme = "README.md"
+packages = [{include = "autoresearch", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Agent framework
+langgraph = "^0.2.0"
+langchain = "^0.2.0"
+langchain-core = "^0.2.0"
+
+# Configuration management
+pyyaml = "^6.0"
+toml = "^0.10.2"
+pydantic = "^2.0"
+pydantic-settings = "^2.0"
+
+# Knowledge base (Obsidian integration)
+requests = "^2.31.0"
+aiohttp = "^3.9.0"
+
+# Literature APIs
+arxiv = "^2.1.0"
+semanticscholar = "^0.8.0"
+
+# Compute and SSH
+paramiko = "^3.4.0"
+fabric = "^3.2.0"
+
+# Utilities
+python-dotenv = "^1.0.0"
+rich = "^13.7.0"
+typer = "^0.12.0"
+
+[tool.poetry.group.dev.dependencies]
+# Code quality tools
+black = "^24.0.0"
+ruff = "^0.4.0"
+mypy = "^1.10.0"
+
+# Testing
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^5.0.0"
+hypothesis = "^6.100.0"
+
+# Type stubs
+types-pyyaml = "^6.0"
+types-toml = "^0.10"
+types-requests = "^2.31.0"
+
+[tool.poetry.scripts]
+autoresearch = "autoresearch.cli.main:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+    "langgraph.*",
+    "langchain.*",
+    "arxiv.*",
+    "semanticscholar.*",
+    "fabric.*",
+    "hypothesis.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src/autoresearch",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
