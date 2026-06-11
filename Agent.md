@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:30:50 +08:00 - Codex - Task 9.1 sandbox path restrictions
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.1`.
+- Files changed:
+  - `src/autoresearch/experiments/sandbox.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/property/experiments/test_sandbox.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `SandboxPathPolicy` for local sandbox filesystem access decisions.
+  - Allowed reads and writes only within the experiment directory plus explicitly configured cache and output directories.
+  - Resolved relative and absolute paths before checking allowlisted roots, so traversal attempts are blocked after normalization.
+  - Added explicit denials for project-root and user-home secret-like paths outside the allowed roots.
+  - Rejected unsafe allowed-root configuration such as using the user home or project root as an allowed root.
+  - Marked task `9.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/property/experiments/test_sandbox.py`: passed, 7 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 110 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 30 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `9.2` should add runtime limits and execution-run capture around local subprocess execution.
+
 ### 2026-06-11 19:25:32 +08:00 - Codex - Task 8.3 generated code review checks
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.3`.

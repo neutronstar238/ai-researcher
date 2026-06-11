@@ -8,11 +8,15 @@ from .review import (
     quarantine_unsafe_experiment,
     review_generated_code,
 )
+from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
 
 __all__ = [
     "CodeReviewFinding",
     "CodeReviewResult",
     "ExperimentPlanningConfig",
+    "SandboxAccessMode",
+    "SandboxPathDecision",
+    "SandboxPathPolicy",
     "generate_experiment_directory",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",

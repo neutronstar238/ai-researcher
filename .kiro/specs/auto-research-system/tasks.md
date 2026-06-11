@@ -331,7 +331,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests detect representative unsafe patterns._
 
 - [ ] 9. Build sandbox executor MVP
-  - [ ] 9.1 Implement local sandbox path restrictions
+  - [x] 9.1 Implement local sandbox path restrictions
     - Allow read/write only within the experiment directory and configured cache/output directories.
     - Deny access to project root secrets and user home secrets.
     - _References: EP 17.1, REQ 16_
