@@ -1,5 +1,12 @@
 """Research candidate and hypothesis workflow helpers."""
 
+from .approval import ApprovalRecord, ProjectAgentContext, create_project_from_approved_candidate
 from .candidates import CandidateGenerationConfig, generate_research_candidates
 
-__all__ = ["CandidateGenerationConfig", "generate_research_candidates"]
+__all__ = [
+    "ApprovalRecord",
+    "CandidateGenerationConfig",
+    "ProjectAgentContext",
+    "create_project_from_approved_candidate",
+    "generate_research_candidates",
+]

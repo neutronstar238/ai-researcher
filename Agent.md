@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:09:50 +08:00 - Codex - Task 7.2 human approval gate
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `7.2`.
+- Files changed:
+  - `src/autoresearch/research/approval.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_approval.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `ApprovalRecord` with user, timestamp, candidate ID, notes, approval ID, and approval state.
+  - Added `ProjectAgentContext` for the project context created after approval.
+  - Added `create_project_from_approved_candidate()` to reject missing, rejected, or mismatched approvals before creating a project directory.
+  - Reused the Obsidian vault layout creator so approved candidates create project knowledge/progress/issues/experience/experiments/results/evidence/paper directories.
+  - Added tests that reject project creation without approval, reject mismatched approval records, require approval metadata, and create a project only after approval.
+  - Marked task `7.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/research tests/smoke tests/unit`: passed, 83 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 24 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `7.3` should generate hypotheses from approved candidates with measurable metrics and evidence references.
+
 ### 2026-06-11 19:07:15 +08:00 - Codex - Task 7.1 research candidate generation
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `7.1`.

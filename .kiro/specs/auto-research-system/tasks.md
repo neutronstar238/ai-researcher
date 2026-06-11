@@ -298,7 +298,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 8, EP 6.3, REQ 12_
     - _Verify: unit test ranks sample candidates deterministically._
 
-  - [ ] 7.2 Add human approval gate for candidate selection
+  - [x] 7.2 Add human approval gate for candidate selection
     - Candidate must be approved before a project directory and Project Agent are created.
     - Approval record must include user, timestamp, candidate ID, and notes.
     - _References: RP 3.3, EP 17_
