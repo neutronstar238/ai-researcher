@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:20:47 +08:00 - Codex - Task 8.2 runnable experiment directories
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.2`.
+- Files changed:
+  - `src/autoresearch/experiments/generator.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_generator.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `generate_experiment_directory()` for deterministic MVP experiment directory creation.
+  - Generated `README.md`, `config.yaml`, `requirements.txt`, `run.py`, `logs/`, and `artifacts/` from an `ExperimentTask`.
+  - Made generated demo experiments write `metrics.json`, `logs/run.log`, and `artifacts/summary.md` on success.
+  - Made generated demo experiments write failed `metrics.json` and `logs/run.log` on graceful failure.
+  - Kept generated requirements aligned with the YAML-based runner by declaring `pyyaml>=6.0`.
+  - Marked task `8.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments tests/smoke tests/unit`: passed, 92 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 28 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `8.3` should add generated code review checks before execution.
+
 ### 2026-06-11 19:14:54 +08:00 - Codex - Task 8.1 experiment task planner
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.1`.

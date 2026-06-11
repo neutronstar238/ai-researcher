@@ -317,7 +317,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 4.3, REQ 15_
     - _Verify: unit tests confirm required fields and budget limits._
 
-  - [ ] 8.2 Generate minimal runnable experiment directories
+  - [x] 8.2 Generate minimal runnable experiment directories
     - Create an experiment directory with `README.md`, `config.yaml`, `requirements.txt`, `run.py`, `logs/`, and expected `metrics.json`.
     - Use small local demo tasks first.
     - Generated code must write logs and metrics even when the experiment fails gracefully.
