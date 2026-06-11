@@ -158,7 +158,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: `poetry run ruff check src tests`, `poetry run mypy src`, and focused `pytest` pass._
 
 - [ ] 2. Define core schemas and run identity
-  - [ ] 2.1 Implement research lifecycle schemas
+  - [x] 2.1 Implement research lifecycle schemas
     - Add data models for `DocumentRecord`, `KnowledgeNode`, `ResearchCandidate`, `Hypothesis`, `ExperimentTask`, `ExecutionRun`, `ResultBundle`, `EvidenceEdge`, `PaperDraft`, and `StrategyCard`.
     - Place them in a clear module such as `src/autoresearch/schemas/`.
     - Include stable IDs, timestamps, provenance fields, status fields, and validation status.

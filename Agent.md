@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:00:00 +08:00 - Codex - Task 2.1 research lifecycle schemas
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.1`.
+- Files changed:
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/schemas/models.py`
+  - `tests/unit/schemas/test_schema_models.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added the core Pydantic lifecycle schemas: `DocumentRecord`, `KnowledgeNode`, `ResearchCandidate`, `Hypothesis`, `ExperimentTask`, `ExecutionRun`, `ResultBundle`, `EvidenceEdge`, `PaperDraft`, and `StrategyCard`.
+  - Added shared record provenance fields, stable prefixed IDs, UTC timestamps, metadata, status enums, and validation status fields.
+  - Kept schema fields MVP-focused and aligned with the Kiro design and execution plan without introducing later helper objects from task `2.2`.
+  - Added unit tests that instantiate each core schema and serialize them to JSON.
+  - Marked task `2.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/schemas tests/smoke tests/unit`: passed, 23 tests with coverage enabled.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 8 source files; mypy emitted a non-failing note about currently unused override modules.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `2.2` should add deterministic run IDs, config/data hashes, and artifact reference helpers.
+
 ### 2026-06-11 18:45:00 +08:00 - Codex - Task 1.5 repository quality commands
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.5`.
