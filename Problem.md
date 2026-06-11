@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-010 - Literature client mypy check failed on requests stubs and Any return
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:56:25 +08:00
+- Source: `poetry run mypy src` while verifying task `6.2`.
+- Symptom: Mypy reported missing `requests` stubs, an `Any` return from the HTTP helper, and imprecise request parameter dict types.
+- Impact: Mocked client tests and ruff passed, but the type gate failed.
+- Evidence: Mypy reported errors in `src/autoresearch/literature/clients.py`.
+- Root cause: The initial client used `requests` directly and relied on inferred heterogeneous dict types.
+- Workaround: None needed after using the standard-library HTTP client and explicit parameter annotations.
+- Next action: Keep external API clients mockable and typed without requiring additional runtime stubs.
+- Linked tasks: `6.2`
+- Resolution: Replaced the default HTTP helper with `urllib.request`, added explicit `dict[str, str | int]` annotations, and cast response bytes before decoding.
+- Verification: `poetry run mypy src` passed with no issues in 19 source files.
+
 ### P-20260611-009 - Pytest test module basename collision in unit tests
 
 - Status: Resolved

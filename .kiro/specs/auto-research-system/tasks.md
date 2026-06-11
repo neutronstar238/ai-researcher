@@ -270,7 +270,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 5.2, EP 4.3, REQ 9_
     - _Verify: property test removes DOI duplicates and high-similarity title duplicates._
 
-  - [ ] 6.2 Implement ArXiv and Semantic Scholar clients
+  - [x] 6.2 Implement ArXiv and Semantic Scholar clients
     - Start with ArXiv and Semantic Scholar only.
     - Add rate limiting and retry backoff.
     - Keep CNKI, WanFang, DBLP, and PubMed as later extensions unless a task explicitly needs them.

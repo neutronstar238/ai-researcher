@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:56:25 +08:00 - Codex - Task 6.2 ArXiv and Semantic Scholar clients
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.2`.
+- Files changed:
+  - `src/autoresearch/literature/clients.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `tests/unit/literature/test_clients.py`
+  - `tests/smoke/test_literature_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added injectable `RateLimiter` and `RetryConfig` for literature API clients.
+  - Added `ArxivClient` with Atom parsing into `AcademicPaper`.
+  - Added `SemanticScholarClient` with Graph API JSON parsing into `AcademicPaper`.
+  - Kept CNKI, WanFang, DBLP, and PubMed out of scope as planned later extensions.
+  - Added mocked client tests for ArXiv retry/parsing and Semantic Scholar parsing.
+  - Added an optional live smoke test gated by `AUTORESEARCH_LIVE_LITERATURE=1`, skipped by default.
+  - Marked task `6.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/literature tests/smoke tests/unit`: passed, 74 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 19 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-010` added and resolved for the temporary mypy HTTP helper typing failure.
+- Follow-up:
+  - Task `6.3` should implement a 24-hour retrieval cache keyed by query, source, page/limit, and config.
+
 ### 2026-06-11 18:52:36 +08:00 - Codex - Task 6.1 academic paper model and deduplication
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.1`.
