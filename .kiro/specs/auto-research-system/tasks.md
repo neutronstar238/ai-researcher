@@ -220,7 +220,7 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 1: Minimal Trusted Research Loop (Weeks 3-8)
 
-- [ ] 5. Build Obsidian unified knowledge vault MVP
+- [x] 5. Build Obsidian unified knowledge vault MVP
   - [x] 5.1 Create Obsidian vault contract and directory layout
     - Implement the vault root at project-root `autoresearch-vault/`.
     - Create `autoresearch-vault/exploration/` for global cross-project knowledge.
@@ -255,7 +255,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 7, DES Access Control Matrix, DES Property 19, DES Property 20_
     - _Verify: property tests deny cross-project writes and confirm Main Agent universal access._
 
-  - [ ] 5.5 Add Obsidian-friendly version history, backups, and rollback
+  - [x] 5.5 Add Obsidian-friendly version history, backups, and rollback
     - Preserve previous versions of modified Markdown entries.
     - Support manual rollback to a previous version.
     - Create automatic vault backups at a configurable interval between 1 and 26 hours.

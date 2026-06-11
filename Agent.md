@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:50:03 +08:00 - Codex - Task 5.5 version history backups and rollback
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.5`.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `tests/unit/knowledge/test_versioning.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `VersionSnapshot` for inspectable Markdown version history.
+  - Updated `MarkdownKnowledgeStore.write_entry()` to preserve the previous Markdown file before overwriting an existing entry.
+  - Added `list_versions()` to retrieve saved snapshots plus the current entry as the latest version.
+  - Added `rollback()` to restore a selected prior version and rebuild link/topic indexes afterward.
+  - Added `backup_if_due()` with a validated 1-26 hour interval and filesystem backup snapshots under `.backups/`.
+  - Excluded internal `.versions/` and `.backups/` files from normal knowledge-entry indexing.
+  - Added tests for N+1 version retrieval, rollback, backup interval scheduling, and interval validation.
+  - Marked task `5.5` and parent task `5` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/knowledge tests/property/knowledge tests/smoke tests/unit`: passed, 71 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 16 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `6.1` should implement academic paper metadata and deduplication.
+
 ### 2026-06-11 18:46:08 +08:00 - Codex - Task 5.4 zone and project permissions
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.4`.

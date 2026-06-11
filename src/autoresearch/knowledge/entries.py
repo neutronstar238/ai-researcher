@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import shutil
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -10,7 +12,7 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 WIKI_LINK_PATTERN = re.compile(r"\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]")
 
@@ -32,6 +34,16 @@ class KnowledgeEntryType(str, Enum):
 class KnowledgeZone(str, Enum):
     EXPLORATION = "exploration"
     PROJECT = "project"
+
+
+@dataclass(frozen=True)
+class VersionSnapshot:
+    """Markdown snapshot for a knowledge entry version."""
+
+    version: int
+    path: Path
+    created_at: datetime
+    content: str
 
 
 def _utc_now() -> datetime:
@@ -106,10 +118,14 @@ class MarkdownKnowledgeStore:
 
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root)
+        self.version_root = self.root / ".versions"
+        self.backup_root = self.root / ".backups"
 
     def write_entry(self, relative_path: Path | str, entry: KnowledgeEntry) -> Path:
         path = self.root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            self._preserve_version(relative_path, path.read_text(encoding="utf-8"))
         entry.links = extract_wiki_links(entry.body)
         path.write_text(entry.to_markdown(), encoding="utf-8")
         self.rebuild_indexes()
@@ -158,9 +174,11 @@ class MarkdownKnowledgeStore:
             return entries
 
         for path in sorted(self.root.rglob("*.md")):
+            if self._is_internal_path(path):
+                continue
             try:
                 entries[path] = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
-            except ValueError:
+            except (ValueError, ValidationError):
                 continue
         return entries
 
@@ -180,3 +198,126 @@ class MarkdownKnowledgeStore:
             lines.append("")
 
         index_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+    def list_versions(self, relative_path: Path | str) -> list[VersionSnapshot]:
+        snapshots = self._saved_versions(relative_path)
+        current_path = self.root / relative_path
+        if current_path.exists():
+            snapshots.append(
+                VersionSnapshot(
+                    version=len(snapshots) + 1,
+                    path=current_path,
+                    created_at=datetime.fromtimestamp(current_path.stat().st_mtime, timezone.utc),
+                    content=current_path.read_text(encoding="utf-8"),
+                )
+            )
+        return snapshots
+
+    def rollback(self, relative_path: Path | str, version: int) -> Path:
+        snapshots = self.list_versions(relative_path)
+        selected = next((snapshot for snapshot in snapshots if snapshot.version == version), None)
+        if selected is None:
+            msg = f"version {version} does not exist for {Path(relative_path).as_posix()}"
+            raise ValueError(msg)
+
+        target = self.root / relative_path
+        if target.exists() and target != selected.path:
+            self._preserve_version(relative_path, target.read_text(encoding="utf-8"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(selected.content, encoding="utf-8")
+        self.rebuild_indexes()
+        return target
+
+    def backup_if_due(
+        self, interval_hours: int, *, now: datetime | None = None
+    ) -> Path | None:
+        if not 1 <= interval_hours <= 26:
+            msg = "backup interval must be between 1 and 26 hours"
+            raise ValueError(msg)
+
+        timestamp = now or _utc_now()
+        latest = self._latest_backup_time()
+        if latest is not None and (timestamp - latest).total_seconds() < interval_hours * 3600:
+            return None
+
+        backup_path = self.backup_root / timestamp.strftime("%Y%m%dT%H%M%SZ")
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(
+            self.root,
+            backup_path,
+            ignore=shutil.ignore_patterns(".backups"),
+            dirs_exist_ok=False,
+        )
+        return backup_path
+
+    def _preserve_version(self, relative_path: Path | str, content: str) -> Path:
+        version = len(self._saved_versions(relative_path)) + 1
+        path = self._version_dir(relative_path) / f"v{version:04d}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        metadata = yaml.safe_dump(
+            {
+                "source_path": Path(relative_path).as_posix(),
+                "version": version,
+                "created_at": _utc_now().isoformat(),
+            },
+            sort_keys=True,
+        )
+        path.write_text(f"---\n{metadata}---\n\n{content}", encoding="utf-8")
+        return path
+
+    def _saved_versions(self, relative_path: Path | str) -> list[VersionSnapshot]:
+        version_dir = self._version_dir(relative_path)
+        snapshots: list[VersionSnapshot] = []
+        if not version_dir.exists():
+            return snapshots
+
+        for path in sorted(version_dir.glob("v*.md")):
+            metadata, content = self._read_version_file(path)
+            snapshots.append(
+                VersionSnapshot(
+                    version=int(metadata["version"]),
+                    path=path,
+                    created_at=datetime.fromisoformat(str(metadata["created_at"])),
+                    content=content,
+                )
+            )
+        return snapshots
+
+    def _version_dir(self, relative_path: Path | str) -> Path:
+        source = Path(relative_path)
+        return self.version_root.joinpath(*source.with_suffix("").parts)
+
+    def _read_version_file(self, path: Path) -> tuple[dict[str, Any], str]:
+        text = path.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            msg = f"version file missing frontmatter: {path}"
+            raise ValueError(msg)
+        _, metadata_text, content = text.split("---\n", 2)
+        metadata = yaml.safe_load(metadata_text) or {}
+        if not isinstance(metadata, dict):
+            msg = f"version metadata must be a mapping: {path}"
+            raise ValueError(msg)
+        if content.startswith("\n"):
+            content = content[1:]
+        return metadata, content
+
+    def _latest_backup_time(self) -> datetime | None:
+        if not self.backup_root.exists():
+            return None
+
+        timestamps: list[datetime] = []
+        for path in self.backup_root.iterdir():
+            if path.is_dir():
+                try:
+                    timestamps.append(
+                        datetime.strptime(path.name, "%Y%m%dT%H%M%SZ").replace(
+                            tzinfo=timezone.utc
+                        )
+                    )
+                except ValueError:
+                    continue
+        return max(timestamps) if timestamps else None
+
+    def _is_internal_path(self, path: Path) -> bool:
+        relative = path.relative_to(self.root)
+        return any(part.startswith(".") for part in relative.parts)

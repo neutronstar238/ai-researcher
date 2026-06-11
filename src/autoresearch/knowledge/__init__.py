@@ -5,6 +5,7 @@ from .entries import (
     KnowledgeEntryType,
     KnowledgeZone,
     MarkdownKnowledgeStore,
+    VersionSnapshot,
     extract_wiki_links,
 )
 from .permissions import AccessMode, AgentRole, PermissionManager
@@ -26,6 +27,7 @@ __all__ = [
     "PROJECT_DIRECTORIES",
     "PermissionManager",
     "VaultLayout",
+    "VersionSnapshot",
     "create_vault_layout",
     "extract_wiki_links",
 ]
