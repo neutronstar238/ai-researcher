@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-025 - LangGraph workflow annotations failed lint and type gates
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 21:08:00 +08:00
+- Source: `poetry run ruff check src tests` and `poetry run mypy src` while verifying task `13.3`.
+- Symptom: Ruff reported `UP037` for a quoted return annotation in `workflow.py`; mypy rejected the LangGraph conditional-edge map because `dict[str, str]` is not compatible with LangGraph's `dict[Hashable, str]` expectation.
+- Impact: The new workflow integration test passed, but the code quality gates failed until annotations matched the current tool expectations.
+- Evidence: Ruff pointed at `ResearchWorkflowState.from_payload()` and mypy pointed at both `add_conditional_edges()` calls.
+- Root cause: The first implementation used a stale quoted annotation and let mypy infer a narrower route-target dictionary type than LangGraph's API accepts.
+- Workaround: None needed after the annotation update.
+- Next action: Keep dynamic LangGraph edge maps explicitly annotated when routing keys are passed through the framework API.
+- Linked tasks: `13.3`
+- Resolution: Removed the quoted return annotation and annotated the route-target map as `dict[Hashable, str]`, including the local `targets` variable.
+- Verification: `poetry run ruff check src tests` and `poetry run mypy src` passed after the update.
+
+### P-20260611-024 - LangGraph dependency was declared but missing from active verification paths
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-11 21:08:00 +08:00
+- Source: Dependency and test setup while starting task `13.3`.
+- Symptom: `poetry run python -c "import langgraph"` failed with `ModuleNotFoundError`; the initial dependency search also referenced a missing `poetry.lock`; `poetry run pip install "langgraph>=0.2,<0.3"` and `poetry run python -m pip install "langgraph>=0.2,<0.3"` both failed with `The system cannot find the file specified`; the first `poetry run pytest tests/integration/agents/test_workflow.py` used the global pytest script and could not import LangGraph.
+- Impact: Task `13.3` could not be implemented or verified until LangGraph was available on the same interpreter path used by the project test command.
+- Evidence: `poetry run where python` pointed at the Poetry virtualenv, while `poetry run where pytest` pointed at the global Python 3.13 scripts directory; `poetry run python -m pytest ...` failed because the Poetry virtualenv did not have pytest installed.
+- Root cause: The dependency was declared in `pyproject.toml` but not installed in the active environments; Poetry resolved `python` and `pytest` to different interpreter paths because the Poetry virtualenv lacked dev tool scripts.
+- Workaround: Use the virtualenv Python directly for environment installs, and keep using the repository's established `poetry run pytest` command once the global verification interpreter has the declared dependency.
+- Next action: In a later environment-hardening task, normalize Poetry dev dependency installation so `poetry run python -m pytest` and `poetry run pytest` use the same environment.
+- Linked tasks: `13.3`
+- Resolution: Installed `langgraph>=0.2,<0.3` into the Poetry virtualenv via the venv `python.exe -m pip install` and into the current global test interpreter via `python -m pip install`.
+- Verification: `poetry run python -c "from langgraph.graph import StateGraph, END; print('langgraph graph ok')"` passed; `poetry run pytest tests/integration/agents/test_workflow.py` passed after the dependency was available to the test interpreter.
+
 ### P-20260611-023 - AgentRegistry list method shadowed built-in list type for mypy
 
 - Status: Resolved

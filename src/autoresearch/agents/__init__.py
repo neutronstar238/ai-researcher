@@ -10,6 +10,12 @@ from .base import (
 )
 from .messages import AgentMessage, MessageRiskLevel
 from .registry import AgentRegistry, AgentRegistryError
+from .workflow import (
+    ResearchWorkflow,
+    ResearchWorkflowStage,
+    ResearchWorkflowState,
+    WorkflowCheckpointStore,
+)
 
 __all__ = [
     "AgentCapabilityError",
@@ -22,4 +28,8 @@ __all__ = [
     "AgentTask",
     "BaseAgent",
     "MessageRiskLevel",
+    "ResearchWorkflow",
+    "ResearchWorkflowStage",
+    "ResearchWorkflowState",
+    "WorkflowCheckpointStore",
 ]

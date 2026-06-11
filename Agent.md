@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:08:00 +08:00 - Codex - Task 13.3 LangGraph workflow
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.3`.
+- Files changed:
+  - `src/autoresearch/agents/workflow.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/integration/agents/test_workflow.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a LangGraph-backed `ResearchWorkflow` with typed stages for literature, hypothesis, experiment, report, and complete.
+  - Added `WorkflowCheckpointStore` for JSON checkpoints, plus `start()` and `resume()` paths that persist the latest state after pause or completion.
+  - Added an integration test that pauses after the literature stage, reloads the checkpoint, resumes from the hypothesis stage, and verifies completion.
+  - Exported the workflow primitives from `autoresearch.agents`.
+  - Marked task `13.3` and parent task `13` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/integration/agents/test_workflow.py`: passed, 1 test; emitted a non-failing LangGraph pending-deprecation warning.
+  - `poetry run pytest tests/integration/agents/test_workflow.py tests/unit/agents tests/property/agents`: passed, 10 tests; emitted the same non-failing LangGraph warning.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 158 tests passed and 1 optional live literature test skipped; emitted the same non-failing LangGraph warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 46 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-024` added and resolved.
+  - `P-20260611-025` added and resolved.
+- Follow-up:
+  - Task `14.1` should implement the claim-evidence-source graph.
+
 ### 2026-06-11 20:57:44 +08:00 - Codex - Task 13.2 structured message protocol
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.2`.

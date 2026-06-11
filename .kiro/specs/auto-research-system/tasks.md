@@ -416,7 +416,7 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 2: Automated Research Assistant (Weeks 9-16)
 
-- [ ] 13. Implement multi-agent runtime
+- [x] 13. Implement multi-agent runtime
   - [x] 13.1 Add base Agent class and registry
     - Define agent ID, role, capabilities, permissions, lifecycle state, and task execution contract.
     - Add registry operations for add, remove, get, list, and capability query.
@@ -429,7 +429,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 5.3_
     - _Verify: schema tests reject messages missing intent or expected output schema._
 
-  - [ ] 13.3 Integrate LangGraph for stateful workflows
+  - [x] 13.3 Integrate LangGraph for stateful workflows
     - Model the research pipeline as resumable workflow states.
     - Add checkpoint and resume support for long-running projects.
     - _References: EP 9, DES Technology Stack_
