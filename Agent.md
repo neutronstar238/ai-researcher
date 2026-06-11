@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:43:06 +08:00 - Codex - Task 5.3 wiki-links and topic index
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.3`.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `tests/unit/knowledge/test_links.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added Obsidian wiki-link extraction for `[[entry-id]]` and `[[path|label]]` syntax.
+  - Added `links` and `backlinks` frontmatter fields to `KnowledgeEntry`.
+  - Updated `MarkdownKnowledgeStore.write_entry()` to rebuild link metadata after writes.
+  - Added bidirectional backlink maintenance by resolving targets through entry IDs and Markdown paths.
+  - Added topic index generation at `exploration/index.md` and keyword lookup via `find_by_keyword()`.
+  - Added tests that link paper, experiment, and skill entries, then verify backlinks and topic-index retrieval.
+  - Marked task `5.3` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/knowledge tests/smoke tests/unit`: passed, 65 tests.
+  - `poetry run ruff check src tests`: passed after applying ruff's import-order fix.
+  - `poetry run mypy src`: passed with no issues in 15 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-007` added and resolved for the temporary ruff import-order failure.
+- Follow-up:
+  - Task `5.4` should enforce zone and project permissions and emit audit events for denied writes.
+
 ### 2026-06-11 18:40:32 +08:00 - Codex - Task 5.2 Markdown knowledge entry model
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.2`.

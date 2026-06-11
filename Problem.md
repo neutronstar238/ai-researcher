@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-007 - Ruff import-order check failed after adding wiki-link support
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:43:06 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `5.3`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/knowledge/entries.py`.
+- Impact: Tests and mypy passed, but the quality gate required import formatting.
+- Evidence: Ruff reported one fixable `I001` finding.
+- Root cause: The new `re` import was not placed according to ruff/isort ordering.
+- Workaround: None needed after applying ruff's automatic fix.
+- Next action: Continue to run `ruff` before marking code tasks complete.
+- Linked tasks: `5.3`
+- Resolution: Ran `poetry run ruff check src tests --fix`.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-006 - Ruff import-order check failed after adding vault helper
 
 - Status: Resolved

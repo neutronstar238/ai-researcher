@@ -5,6 +5,7 @@ from .entries import (
     KnowledgeEntryType,
     KnowledgeZone,
     MarkdownKnowledgeStore,
+    extract_wiki_links,
 )
 from .vault import (
     EXPLORATION_DIRECTORIES,
@@ -22,4 +23,5 @@ __all__ = [
     "PROJECT_DIRECTORIES",
     "VaultLayout",
     "create_vault_layout",
+    "extract_wiki_links",
 ]

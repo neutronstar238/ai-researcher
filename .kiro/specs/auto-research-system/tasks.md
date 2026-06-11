@@ -238,7 +238,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 6.3, REQ 6.4, DES Knowledge Base Interface_
     - _Verify: tests write and read each entry type while preserving frontmatter and body._
 
-  - [ ] 5.3 Add Obsidian wiki-links, backlinks, and topic index
+  - [x] 5.3 Add Obsidian wiki-links, backlinks, and topic index
     - Support `[[entry-id]]` or `[[path|label]]` wiki-link syntax.
     - Maintain bidirectional links between literature, hypotheses, experiments, evidence, failures, skills, and strategies.
     - Maintain a topic index mapping keywords to relevant entries.
