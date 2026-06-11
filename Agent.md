@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:15:00 +08:00 - Codex - Task 2.2 run ID and provenance helpers
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.2`.
+- Files changed:
+  - `src/autoresearch/schemas/provenance.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `tests/unit/schemas/test_provenance.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added provenance helpers for unique run IDs, stable config hashes, inline data hashes, file hashes, and normalized artifact URIs.
+  - Exported provenance helpers from `autoresearch.schemas`.
+  - Added tests for stable hash generation, unique run ID generation, file hashing, artifact URI construction, and storing provenance fields on `ExecutionRun`.
+  - Marked task `2.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/schemas tests/smoke tests/unit`: passed, 29 tests with coverage enabled.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 9 source files; mypy emitted a non-failing note about currently unused override modules.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `2.3` should add schema round-trip tests and missing-evidence validation expectations.
+
 ### 2026-06-11 19:00:00 +08:00 - Codex - Task 2.1 research lifecycle schemas
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.1`.

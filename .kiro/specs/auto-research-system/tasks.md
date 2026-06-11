@@ -166,7 +166,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 3.5, EP 12, RP 6_
     - _Verify: unit tests instantiate each schema and serialize to JSON._
 
-  - [ ] 2.2 Add run ID and provenance helpers
+  - [x] 2.2 Add run ID and provenance helpers
     - Implement deterministic helper functions for run IDs, config hashes, data hashes, and artifact references.
     - Ensure every `ExecutionRun` can store commit SHA, config hash, data hash, start/end time, status, metrics path, artifact URI, and cost JSON.
     - _References: EP 11.3, EP 12.2, RP 6.2_

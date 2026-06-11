@@ -17,6 +17,7 @@ from .models import (
     TaskStatus,
     ValidationStatus,
 )
+from .provenance import artifact_uri, config_hash, data_hash, file_hash, generate_run_id
 
 __all__ = [
     "BaseRecord",
@@ -34,4 +35,9 @@ __all__ = [
     "StrategyCard",
     "TaskStatus",
     "ValidationStatus",
+    "artifact_uri",
+    "config_hash",
+    "data_hash",
+    "file_hash",
+    "generate_run_id",
 ]
