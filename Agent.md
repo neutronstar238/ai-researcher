@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:27:08 +08:00 - Codex - Task 3.2 audit event schema
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.2`.
+- Files changed:
+  - `src/autoresearch/observability/audit.py`
+  - `src/autoresearch/observability/__init__.py`
+  - `tests/unit/observability/test_audit.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `AuditEventType` for permission checks, sandbox denials, config changes, approval gates, strategy changes, and publication gates.
+  - Added the `AuditEvent` Pydantic schema with actor/action/resource context, run/project/task links, approval state, and metadata.
+  - Added `AuditLog` append/read helpers that persist JSONL events under a local project audit directory.
+  - Exported audit helpers from `autoresearch.observability`.
+  - Added unit tests for event type coverage, append/reload losslessness, missing log handling, and default audit path.
+  - Marked task `3.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/observability tests/smoke tests/unit`: passed, 44 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 12 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-004` added and resolved for the PowerShell commit command separator issue.
+- Follow-up:
+  - Task `3.3` should add cost records and attach them to execution runs.
+
 ### 2026-06-11 19:40:00 +08:00 - Codex - Task 3.1 structured logging
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.1`.

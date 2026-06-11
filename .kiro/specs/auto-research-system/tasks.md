@@ -186,7 +186,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 3.3, EP 15_
     - _Verify: unit test confirms log records include run context._
 
-  - [ ] 3.2 Add audit event schema
+  - [x] 3.2 Add audit event schema
     - Define audit event types for permission checks, sandbox denials, config changes, approval gates, strategy changes, and publication gates.
     - Store audit events as append-only JSONL in a local project audit directory for MVP.
     - _References: RP 3.3, EP 17, DES Audit Logging_

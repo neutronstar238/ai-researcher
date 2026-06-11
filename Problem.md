@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-004 - PowerShell rejected Bash-style commit command separator
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:27:08 +08:00
+- Source: Local command execution while committing task `3.2`.
+- Symptom: `git add ... && git commit ...` failed with `The token '&&' is not a valid statement separator in this version.`
+- Impact: No source changes, staging changes, or verification results were affected.
+- Evidence: PowerShell returned `ParserError` before running the git commands.
+- Root cause: The command used a Bash-style `&&` separator in the active PowerShell environment.
+- Workaround: Run `git add` and `git commit` as separate PowerShell commands.
+- Next action: Prefer separate commands or PowerShell-compatible separators in this repository.
+- Linked tasks: `3.2`
+- Resolution: Recorded the failed command and retried with PowerShell-compatible git commands.
+- Verification: Retried using separate `git add` and `git commit` commands for task `3.2`.
+
 ### P-20260611-001 - Python scaffold references modules and CLI that do not exist yet
 
 - Status: Resolved
