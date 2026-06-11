@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:14:41 +08:00 - Codex - Task 14.1 claim-evidence-source graph
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.1`.
+- Files changed:
+  - `src/autoresearch/evidence/__init__.py`
+  - `src/autoresearch/evidence/graph.py`
+  - `tests/unit/evidence/test_graph.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a JSON-backed `EvidenceGraph` with `ClaimNode`, `EvidenceNode`, `SourceNode`, `EvidenceArtifact`, and `EvidenceTrace` models.
+  - Added graph operations to add claims, sources, artifacts, link evidence, persist/load deterministic JSON, and traverse from a claim to source artifact validation status.
+  - Added unit tests for JSON round-trip traversal and rejection of orphaned artifacts.
+  - Marked task `14.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/evidence/test_graph.py tests/unit/experiments/test_evidence.py tests/unit/schemas`: passed, 21 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 160 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 48 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-026` added and resolved.
+- Follow-up:
+  - Task `14.2` should enforce evidence coverage for core claims.
+
 ### 2026-06-11 21:08:00 +08:00 - Codex - Task 13.3 LangGraph workflow
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.3`.

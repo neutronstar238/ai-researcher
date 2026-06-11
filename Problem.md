@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-026 - Evidence graph uniqueness helper used invariant dict type
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 21:14:41 +08:00
+- Source: `poetry run mypy src` while verifying task `14.1`.
+- Symptom: Mypy rejected calls to `_ensure_unique()` because `dict[str, ClaimNode]`, `dict[str, SourceNode]`, `dict[str, EvidenceArtifact]`, and `dict[str, EvidenceNode]` are not compatible with `dict[str, object]`.
+- Impact: The evidence graph tests and ruff passed, but the type gate failed until the helper accepted a read-only covariant interface.
+- Evidence: Mypy reported four `arg-type` errors in `src/autoresearch/evidence/graph.py`.
+- Root cause: `_ensure_unique()` only checks key membership, but it was annotated as a mutable `dict[str, object]`; `dict` is invariant in its value type.
+- Workaround: None needed after changing the helper parameter to `Mapping[str, object]`.
+- Next action: Use `Mapping` for helper functions that only read from typed dictionaries.
+- Linked tasks: `14.1`
+- Resolution: Imported `Mapping` and changed `_ensure_unique()` to accept `Mapping[str, object]`.
+- Verification: `poetry run mypy src` passed after the annotation update.
+
 ### P-20260611-025 - LangGraph workflow annotations failed lint and type gates
 
 - Status: Resolved

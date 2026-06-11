@@ -436,7 +436,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: integration test pauses and resumes a mock workflow._
 
 - [ ] 14. Build evidence graph
-  - [ ] 14.1 Implement claim-evidence-source graph
+  - [x] 14.1 Implement claim-evidence-source graph
     - Model `Claim -> Evidence -> Source -> Artifact -> ValidationStatus`.
     - Store graph as JSON for MVP and keep database migration optional.
     - _References: RP 6.2, EP 5.3_
