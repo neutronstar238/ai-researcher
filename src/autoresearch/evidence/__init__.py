@@ -2,7 +2,9 @@
 
 from .graph import (
     ClaimNode,
+    ClaimStatus,
     EvidenceArtifact,
+    EvidenceCoverageError,
     EvidenceGraph,
     EvidenceGraphError,
     EvidenceNode,
@@ -12,7 +14,9 @@ from .graph import (
 
 __all__ = [
     "ClaimNode",
+    "ClaimStatus",
     "EvidenceArtifact",
+    "EvidenceCoverageError",
     "EvidenceGraph",
     "EvidenceGraphError",
     "EvidenceNode",

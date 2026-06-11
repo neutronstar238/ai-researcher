@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,6 +16,21 @@ class EvidenceGraphError(RuntimeError):
     """Raised when evidence graph references are missing or inconsistent."""
 
 
+class EvidenceCoverageError(EvidenceGraphError):
+    """Raised when core claims lack validated evidence coverage."""
+
+
+class ClaimStatus(str, Enum):
+    """Support status for claim coverage gates."""
+
+    DRAFT = "draft"
+    SUPPORTED = "supported"
+    BLOCKED = "blocked"
+
+
+VALID_CLAIM_EVIDENCE_STATUSES = {ValidationStatus.PASSED, ValidationStatus.WARNING}
+
+
 class ClaimNode(BaseModel):
     """A claim that must be traced to artifact-backed evidence."""
 
@@ -24,6 +40,7 @@ class ClaimNode(BaseModel):
     statement: str = Field(min_length=1)
     project_id: str | None = None
     evidence_ids: list[str] = Field(default_factory=list)
+    status: ClaimStatus = ClaimStatus.DRAFT
 
 
 class EvidenceNode(BaseModel):
@@ -149,6 +166,28 @@ class EvidenceGraph(BaseModel):
                 )
             )
         return traces
+
+    def require_core_claim_coverage(self, core_claim_ids: list[str]) -> None:
+        """Require every core claim to have at least one validated evidence trace."""
+
+        unsupported_claim_ids: list[str] = []
+        for claim_id in core_claim_ids:
+            claim = self._get_claim(claim_id)
+            traces = self.trace_claim(claim_id)
+            is_supported = any(
+                trace.evidence.supports_claim
+                and trace.validation_status in VALID_CLAIM_EVIDENCE_STATUSES
+                for trace in traces
+            )
+            claim.status = ClaimStatus.SUPPORTED if is_supported else ClaimStatus.BLOCKED
+            if not is_supported:
+                unsupported_claim_ids.append(claim_id)
+
+        if unsupported_claim_ids:
+            msg = "core claims lack validated evidence coverage: " + ", ".join(
+                sorted(unsupported_claim_ids)
+            )
+            raise EvidenceCoverageError(msg)
 
     def save_json(self, path: Path | str) -> Path:
         """Persist the graph as deterministic JSON."""

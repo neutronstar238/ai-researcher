@@ -6,6 +6,7 @@ import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from autoresearch.evidence import EvidenceCoverageError, EvidenceGraph
 from autoresearch.experiments.evidence import require_evidence_for_metrics
 from autoresearch.experiments.validation import ValidationReport
 from autoresearch.schemas import EvidenceEdge, ExecutionRun, ResultBundle
@@ -24,6 +25,8 @@ class ReportContext:
     results: ResultBundle
     validation: ValidationReport
     evidence_edges: list[EvidenceEdge]
+    evidence_graph: EvidenceGraph | None = None
+    core_claim_ids: list[str] = field(default_factory=list)
     reproduction_command: str = "not recorded"
     python_version: str = field(default_factory=platform.python_version)
     dependency_lock_status: str = "not recorded"
@@ -39,12 +42,22 @@ def generate_markdown_report(
     """Generate and optionally store an MVP Markdown research report."""
 
     require_evidence_for_metrics(context.results, context.evidence_edges)
+    _require_core_claim_coverage(context)
     markdown = _render_markdown(context)
     if output_path is not None:
         target = Path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(markdown, encoding="utf-8")
     return markdown
+
+
+def _require_core_claim_coverage(context: ReportContext) -> None:
+    if not context.core_claim_ids:
+        return
+    if context.evidence_graph is None:
+        msg = "core claims require an evidence graph: " + ", ".join(context.core_claim_ids)
+        raise EvidenceCoverageError(msg)
+    context.evidence_graph.require_core_claim_coverage(context.core_claim_ids)
 
 
 def _render_markdown(context: ReportContext) -> str:

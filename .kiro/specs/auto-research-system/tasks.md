@@ -442,7 +442,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 6.2, EP 5.3_
     - _Verify: tests traverse from claim to source artifact and validation state._
 
-  - [ ] 14.2 Enforce evidence coverage
+  - [x] 14.2 Enforce evidence coverage
     - Require every core claim to have at least one evidence edge.
     - Mark unsupported claims as draft or blocked.
     - _References: EP 5.4, RP 10_

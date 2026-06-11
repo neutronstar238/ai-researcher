@@ -1,8 +1,10 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+from autoresearch.evidence import ClaimNode, ClaimStatus, EvidenceCoverageError, EvidenceGraph
 from autoresearch.experiments import EvidenceBindingError, ValidationReport
 from autoresearch.reports import ReportContext, generate_markdown_report
 from autoresearch.schemas import (
@@ -68,6 +70,27 @@ def test_generate_markdown_report_blocks_unbound_quantitative_metrics() -> None:
 
     with pytest.raises(EvidenceBindingError, match="loss"):
         generate_markdown_report(context)
+
+
+def test_generate_markdown_report_blocks_core_claim_without_evidence() -> None:
+    context = _context()
+    graph = EvidenceGraph()
+    graph.add_claim(
+        ClaimNode(
+            id="claim_001",
+            statement="The demo method improves accuracy over baseline.",
+        )
+    )
+    context = replace(
+        context,
+        evidence_graph=graph,
+        core_claim_ids=["claim_001"],
+    )
+
+    with pytest.raises(EvidenceCoverageError, match="claim_001"):
+        generate_markdown_report(context)
+
+    assert graph.claims["claim_001"].status is ClaimStatus.BLOCKED
 
 
 def _context() -> ReportContext:

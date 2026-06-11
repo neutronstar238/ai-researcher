@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:20:13 +08:00 - Codex - Task 14.2 evidence coverage gate
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.2`.
+- Files changed:
+  - `src/autoresearch/evidence/__init__.py`
+  - `src/autoresearch/evidence/graph.py`
+  - `src/autoresearch/reports/generator.py`
+  - `tests/unit/evidence/test_graph.py`
+  - `tests/unit/reports/test_report_generator.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `ClaimStatus` and `EvidenceCoverageError` to the evidence graph.
+  - Added `EvidenceGraph.require_core_claim_coverage()` to mark supported core claims as `supported` and unsupported core claims as `blocked`.
+  - Added optional `evidence_graph` and `core_claim_ids` to report generation so reports fail when declared core claims lack validated evidence coverage.
+  - Added tests for supported and blocked claim coverage plus report generation failure for an uncovered core claim.
+  - Marked task `14.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/evidence/test_graph.py tests/unit/reports/test_report_generator.py tests/unit/experiments/test_evidence.py`: passed, 10 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 162 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 48 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-027` added and resolved.
+- Follow-up:
+  - Task `14.3` should add evidence consistency checks for table/text metric mismatches.
+
 ### 2026-06-11 21:14:41 +08:00 - Codex - Task 14.1 claim-evidence-source graph
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.1`.

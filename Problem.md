@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-027 - Report coverage test import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 21:20:13 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `14.2`.
+- Symptom: Ruff reported `I001` in `tests/unit/reports/test_report_generator.py`.
+- Impact: The coverage enforcement tests and mypy passed, but lint failed until the standard-library imports were sorted.
+- Evidence: Ruff suggested organizing imports at the top of `test_report_generator.py`.
+- Root cause: `datetime` was left above `dataclasses.replace` after adding the new report coverage test.
+- Workaround: None needed after sorting the imports.
+- Next action: Re-run ruff after adding imports to established test files.
+- Linked tasks: `14.2`
+- Resolution: Moved `from dataclasses import replace` above the datetime import.
+- Verification: `poetry run ruff check src tests` passed after the import-order update.
+
 ### P-20260611-026 - Evidence graph uniqueness helper used invariant dict type
 
 - Status: Resolved

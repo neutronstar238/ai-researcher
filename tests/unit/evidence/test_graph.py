@@ -2,7 +2,9 @@ import pytest
 
 from autoresearch.evidence import (
     ClaimNode,
+    ClaimStatus,
     EvidenceArtifact,
+    EvidenceCoverageError,
     EvidenceGraph,
     EvidenceGraphError,
     EvidenceNode,
@@ -57,6 +59,25 @@ def test_evidence_graph_round_trips_and_traces_claim_to_artifact_status(tmp_path
     assert traces[0].source.uri == "runs/run_001"
     assert traces[0].artifact.uri == "runs/run_001/metrics.json"
     assert traces[0].validation_status is ValidationStatus.PASSED
+
+    loaded.require_core_claim_coverage(["claim_macro_f1"])
+
+    assert loaded.claims["claim_macro_f1"].status is ClaimStatus.SUPPORTED
+
+
+def test_evidence_graph_marks_unsupported_core_claims_blocked():
+    graph = EvidenceGraph()
+    graph.add_claim(
+        ClaimNode(
+            id="claim_macro_f1",
+            statement="The candidate improves macro F1 on the benchmark.",
+        )
+    )
+
+    with pytest.raises(EvidenceCoverageError, match="claim_macro_f1"):
+        graph.require_core_claim_coverage(["claim_macro_f1"])
+
+    assert graph.claims["claim_macro_f1"].status is ClaimStatus.BLOCKED
 
 
 def test_evidence_graph_rejects_orphaned_artifacts():
