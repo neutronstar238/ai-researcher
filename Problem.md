@@ -66,16 +66,16 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260611-003 - Local verification environment lacks Poetry, ruff, and pytest-cov
 
-- Status: Open
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-11, while verifying task `1.1`.
 - Source: Local command execution in `E:\AIResearch`.
 - Symptom: `poetry --version` fails because Poetry is not on PATH. `python -m ruff check ...` fails because `ruff` is not installed in the active Python environment. `python -m pytest tests/unit/config/test_models.py` fails before collecting tests because pyproject addopts include `--cov=src/autoresearch`, but pytest-cov is not installed.
-- Impact: Broad Phase 0 verification commands from `tasks.md` cannot be treated as available in the current shell until the development environment is installed or commands are run through a proper Poetry environment.
+- Impact: Resolved for current Phase 0 test commands. Broad verification commands are now available in the current shell, though future agents should still prefer the project Poetry workflow once dependencies are fully locked.
 - Evidence: `poetry --version` returned CommandNotFoundException; `python -m ruff check src/autoresearch/config tests/unit/config/test_models.py` returned `No module named ruff`; `python -m pytest tests/unit/config/test_models.py` reported unrecognized `--cov` arguments.
 - Root cause: The active Python environment is not the project Poetry environment and is missing declared dev dependencies.
-- Workaround: For task `1.1`, run focused tests with `PYTHONPATH=src python -m pytest -o addopts='' tests/unit/config/test_models.py`.
-- Next action: During tasks `1.4` and `1.5`, install or document the Poetry/dev dependency environment and restore broad verification commands without disabling addopts.
+- Workaround: No longer needed for pytest coverage or Poetry availability in the current shell.
+- Next action: During task `1.5`, run and harden the full `ruff`, `mypy`, and pytest command set.
 - Linked tasks: `1.1`, `1.4`, `1.5`
-- Resolution: Pending.
-- Verification: Focused config tests pass with `-o addopts=''`; broad pytest, ruff, and Poetry checks remain unavailable in the active shell.
+- Resolution: Installed Poetry, pytest-cov, pytest-asyncio, and ruff into the active Python environment. Added `pythonpath = ["src"]` to pytest configuration so tests can import the package without manual `PYTHONPATH`.
+- Verification: `poetry --version` printed `Poetry (version 2.4.1)`; `poetry run pytest tests/smoke tests/unit/config` passed with 18 tests and coverage enabled; `poetry run pytest tests/smoke tests/unit` passed with 21 tests and coverage enabled.

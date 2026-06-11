@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:35:00 +08:00 - Codex - Task 1.4 test scaffold
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.4`.
+- Files changed:
+  - `tests/smoke/test_imports.py`
+  - `tests/smoke/test_cli.py`
+  - `tests/integration/.gitkeep`
+  - `tests/property/.gitkeep`
+  - `pyproject.toml`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added smoke tests for importing `autoresearch`, importing `autoresearch.config`, and running the local-only CLI doctor command.
+  - Added tracked placeholders for `tests/integration` and `tests/property`.
+  - Added `pythonpath = ["src"]` to pytest configuration so tests import the package without manual environment variables.
+  - Installed missing local verification tools into the active Python environment: Poetry, pytest-cov, pytest-asyncio, and ruff.
+  - Marked task `1.4` complete in `tasks.md`.
+- Verification:
+  - `poetry --version`: passed, printed `Poetry (version 2.4.1)`.
+  - `poetry run pytest tests/smoke tests/unit/config`: passed, 18 tests with coverage enabled.
+  - `python -m pytest tests/smoke tests/unit/config`: passed, 18 tests with coverage enabled.
+  - `poetry run pytest tests/smoke tests/unit`: passed, 21 tests with coverage enabled.
+- Problems:
+  - `P-20260611-003` resolved.
+- Follow-up:
+  - Task `1.5` should run and harden the broader `ruff`, `mypy`, and pytest checks.
+
 ### 2026-06-11 18:20:00 +08:00 - Codex - Task 1.3 minimal CLI skeleton
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.3`.

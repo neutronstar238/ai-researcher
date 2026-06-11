@@ -142,7 +142,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 3.3, DES CLI Interface_
     - _Verify: `poetry run autoresearch version` and `poetry run autoresearch doctor` run without import errors._
 
-  - [ ] 1.4 Add test scaffold
+  - [x] 1.4 Add test scaffold
     - Create `tests/unit`, `tests/integration`, `tests/property`, and `tests/smoke`.
     - Add a smoke test for importing `autoresearch`.
     - Add a smoke test for importing `autoresearch.config`.
