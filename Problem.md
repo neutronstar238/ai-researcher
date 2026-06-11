@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-009 - Pytest test module basename collision in unit tests
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:52:36 +08:00
+- Source: `poetry run pytest tests/unit/literature tests/property/literature tests/smoke tests/unit` while verifying task `6.1`.
+- Symptom: Pytest reported an import file mismatch because `tests/unit/config/test_models.py` and `tests/unit/literature/test_models.py` shared the same module basename.
+- Impact: Literature tests could not be collected until the new test file used a unique basename.
+- Evidence: Pytest reported imported module `test_models` came from `tests/unit/config/test_models.py` instead of `tests/unit/literature/test_models.py`.
+- Root cause: Test directories are not Python packages, so duplicate test basenames can collide in pytest import mode.
+- Workaround: Use unique test filenames across the repository.
+- Next action: Prefer domain-specific test filenames such as `test_literature_models.py`.
+- Linked tasks: `6.1`
+- Resolution: Renamed the literature unit test file to `tests/unit/literature/test_literature_models.py`.
+- Verification: `poetry run pytest tests/unit/literature tests/property/literature tests/smoke tests/unit` passed with 74 tests.
+
 ### P-20260611-008 - Hypothesis rejected function-scoped tmp_path in property tests
 
 - Status: Resolved

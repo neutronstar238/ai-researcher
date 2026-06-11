@@ -264,7 +264,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests modify an entry N times and confirm N+1 versions are retrievable and rollback restores prior content._
 
 - [ ] 6. Build literature retrieval MVP
-  - [ ] 6.1 Implement academic paper model and deduplication
+  - [x] 6.1 Implement academic paper model and deduplication
     - Define structured paper metadata with title, authors, abstract, date, venue, DOI, URL, citation count, and source.
     - Deduplicate by DOI first and title similarity second.
     - _References: RP 5.2, EP 4.3, REQ 9_

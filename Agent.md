@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:52:36 +08:00 - Codex - Task 6.1 academic paper model and deduplication
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.1`.
+- Files changed:
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/literature/models.py`
+  - `tests/unit/literature/test_literature_models.py`
+  - `tests/property/literature/test_deduplication.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AcademicPaper` metadata with title, authors, abstract, publication date, venue, DOI, URL, citation count, and source.
+  - Added DOI normalization for plain DOI, `doi:` prefix, and doi.org URLs.
+  - Added title normalization and high-similarity title comparison.
+  - Added `deduplicate_papers()` that removes duplicates by DOI first and title similarity second.
+  - Added unit tests for paper metadata validation and normalizers.
+  - Added property tests for DOI duplicate removal and high-similarity title duplicate removal.
+  - Marked task `6.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/literature tests/property/literature tests/smoke tests/unit`: passed, 74 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 18 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-009` added and resolved for the temporary pytest test module basename collision.
+- Follow-up:
+  - Task `6.2` should implement mocked ArXiv and Semantic Scholar clients plus a skipped optional live smoke test.
+
 ### 2026-06-11 18:50:03 +08:00 - Codex - Task 5.5 version history backups and rollback
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.5`.
