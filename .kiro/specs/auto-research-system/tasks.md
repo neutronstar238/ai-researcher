@@ -509,7 +509,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 28_
     - _Verify: generating a second draft preserves the first version._
 
-- [ ] 18. Add review simulator and quality gates
+- [x] 18. Add review simulator and quality gates
   - [x] 18.1 Implement review dimensions
     - Score novelty, technical soundness, experimental rigor, reproducibility, writing quality, and compliance.
     - Calibrate scores conservatively; never auto-score perfect results by default.
@@ -522,7 +522,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 25_
     - _Verify: tests load default and custom criteria._
 
-  - [ ] 18.3 Feed review findings into task backlog
+  - [x] 18.3 Feed review findings into task backlog
     - Convert actionable review comments into follow-up tasks or problem entries.
     - _References: RP 12, EP 5.3_
     - _Verify: demo review creates structured follow-up records._

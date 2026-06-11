@@ -1,5 +1,11 @@
 """Research report generation helpers."""
 
+from .backlog import (
+    ReviewBacklogArtifact,
+    ReviewBacklogRecord,
+    ReviewBacklogRecordType,
+    create_review_backlog,
+)
 from .citations import (
     BibtexArtifact,
     CitationGenerationError,
@@ -64,6 +70,9 @@ __all__ = [
     "MetricsTableInput",
     "PaperDraftVersion",
     "PaperDraftVersioningError",
+    "ReviewBacklogArtifact",
+    "ReviewBacklogRecord",
+    "ReviewBacklogRecordType",
     "ReviewCriteria",
     "ReviewCriteriaError",
     "PaperReviewContext",
@@ -77,6 +86,7 @@ __all__ = [
     "TableGenerationError",
     "assert_metric_consistency",
     "assert_report_readable",
+    "create_review_backlog",
     "generate_bibtex",
     "generate_ablation_table",
     "generate_metric_bar_figure",

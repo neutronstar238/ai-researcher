@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:53:04 +08:00 - Codex - Task 18.3 review findings backlog
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.3`.
+- Files changed:
+  - `src/autoresearch/reports/backlog.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_review_backlog.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added structured review backlog records that convert actionable review findings into follow-up tasks or problem-entry records.
+  - Added deterministic priority mapping, stable record IDs, source review metadata, optional project/task links, and problem-entry Markdown for high-severity findings.
+  - Added JSON and Markdown backlog artifact writing so later self-loop and Obsidian vault tasks can ingest review feedback without parsing prose.
+  - Exported review backlog helpers from `autoresearch.reports`.
+  - Marked task `18.3` and parent task `18` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_paper_review.py tests/unit/reports/test_review_criteria.py tests/unit/reports/test_review_backlog.py`: passed, 6 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 186 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 56 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `19.1` should package code, config, metrics, reports, and evidence maps with hashes and validation status.
+
 ### 2026-06-11 22:48:21 +08:00 - Codex - Task 18.2 venue criteria configuration
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.2`.
