@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.schemas import (
+    CostRecord,
     DocumentRecord,
     EvidenceEdge,
     ExecutionRun,
@@ -51,7 +52,12 @@ def test_core_schemas_round_trip_through_json() -> None:
             config_path="config.yaml",
             metrics=["macro_f1"],
         ),
-        ExecutionRun(project_id="project_1", task_id="task_1"),
+        CostRecord(model_name="qwen-plus", token_input=100, token_output=50),
+        ExecutionRun(
+            project_id="project_1",
+            task_id="task_1",
+            cost_record=CostRecord(model_name="qwen-plus", token_input=100),
+        ),
         ResultBundle(run_id="run_1", metrics={"macro_f1": 0.8}),
         EvidenceEdge(
             claim_id="claim_1",

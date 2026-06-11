@@ -3,6 +3,7 @@
 from .models import (
     BaseRecord,
     CandidateStatus,
+    CostRecord,
     DocumentRecord,
     EvidenceEdge,
     ExecutionRun,
@@ -22,6 +23,7 @@ from .provenance import artifact_uri, config_hash, data_hash, file_hash, generat
 __all__ = [
     "BaseRecord",
     "CandidateStatus",
+    "CostRecord",
     "DocumentRecord",
     "EvidenceEdge",
     "ExecutionRun",

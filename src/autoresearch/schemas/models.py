@@ -150,6 +150,20 @@ class ExperimentTask(BaseRecord):
     validation_status: ValidationStatus = ValidationStatus.PENDING
 
 
+class CostRecord(BaseRecord):
+    """Resource and approval cost summary for one execution run."""
+
+    id: str = Field(default_factory=lambda: _record_id("cost"))
+    model_name: str = Field(min_length=1)
+    token_input: int = Field(default=0, ge=0)
+    token_output: int = Field(default=0, ge=0)
+    cpu_time_seconds: float = Field(default=0.0, ge=0.0)
+    gpu_hours: float = Field(default=0.0, ge=0.0)
+    storage_artifact_bytes: int = Field(default=0, ge=0)
+    network_cost_usd_placeholder: float = Field(default=0.0, ge=0.0)
+    human_approval_count: int = Field(default=0, ge=0)
+
+
 class ExecutionRun(BaseRecord):
     """Concrete execution attempt for an experiment task."""
 
@@ -164,6 +178,7 @@ class ExecutionRun(BaseRecord):
     data_hash: str | None = None
     metrics_path: str | None = None
     artifact_uri: str | None = None
+    cost_record: CostRecord | None = None
     cost_json: dict[str, Any] = Field(default_factory=dict)
     error_type: str | None = None
     validator_status: ValidationStatus = ValidationStatus.PENDING

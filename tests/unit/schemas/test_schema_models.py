@@ -1,4 +1,8 @@
+import pytest
+from pydantic import ValidationError
+
 from autoresearch.schemas import (
+    CostRecord,
     DocumentRecord,
     EvidenceEdge,
     ExecutionRun,
@@ -48,7 +52,20 @@ def test_core_schemas_instantiate_and_serialize_to_json() -> None:
             config_path="config.yaml",
             metrics=["macro_f1"],
         ),
-        ExecutionRun(project_id="project_1", task_id="task_1"),
+        CostRecord(
+            model_name="qwen-plus",
+            token_input=100,
+            token_output=50,
+            cpu_time_seconds=2.5,
+            gpu_hours=0.0,
+            storage_artifact_bytes=1024,
+            human_approval_count=1,
+        ),
+        ExecutionRun(
+            project_id="project_1",
+            task_id="task_1",
+            cost_record=CostRecord(model_name="qwen-plus", token_input=100),
+        ),
         ResultBundle(run_id="run_1", metrics={"macro_f1": 0.8}),
         EvidenceEdge(
             claim_id="claim_1",
@@ -70,7 +87,7 @@ def test_core_schemas_instantiate_and_serialize_to_json() -> None:
         assert record.id
         assert record.created_at
         assert record.updated_at
-        assert "validation" in payload or isinstance(record, ExecutionRun)
+        assert "validation" in payload or isinstance(record, ExecutionRun | CostRecord)
 
 
 def test_strategy_card_bounds_evaluation_score() -> None:
@@ -83,3 +100,35 @@ def test_strategy_card_bounds_evaluation_score() -> None:
 
     assert strategy.evaluation_score == 1.0
     assert strategy.golden_test_status is ValidationStatus.PASSED
+
+
+def test_cost_record_validates_required_fields_and_bounds() -> None:
+    cost = CostRecord(
+        model_name="qwen-plus",
+        token_input=10,
+        token_output=20,
+        cpu_time_seconds=1.5,
+        gpu_hours=0.25,
+        storage_artifact_bytes=2048,
+        network_cost_usd_placeholder=0.0,
+        human_approval_count=2,
+    )
+    run = ExecutionRun(project_id="project_1", task_id="task_1", cost_record=cost)
+
+    assert run.cost_record == cost
+    assert cost.token_input == 10
+    assert cost.human_approval_count == 2
+
+    with pytest.raises(ValidationError):
+        CostRecord.model_validate(
+            {
+                "model_name": "",
+                "token_input": -1,
+                "token_output": -1,
+                "cpu_time_seconds": -0.1,
+                "gpu_hours": -0.1,
+                "storage_artifact_bytes": -1,
+                "network_cost_usd_placeholder": -0.1,
+                "human_approval_count": -1,
+            }
+        )

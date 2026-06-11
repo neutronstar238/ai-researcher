@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-005 - CostRecord broke generic schema validation-field assertion
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:29:59 +08:00
+- Source: `poetry run pytest tests/unit/schemas tests/smoke tests/unit` while verifying task `3.3`.
+- Symptom: `test_core_schemas_instantiate_and_serialize_to_json` failed because `CostRecord` does not contain a validation status field.
+- Impact: The new cost schema behavior was valid, but the generic test assertion needed to account for non-validation bookkeeping records.
+- Evidence: Pytest reported `assert "validation" in payload or isinstance(record, ExecutionRun)` failed for a serialized `CostRecord`.
+- Root cause: The test list was extended with `CostRecord` without updating the existing assertion exception.
+- Workaround: None needed after the assertion update.
+- Next action: Re-run schema tests, ruff, and mypy before marking task `3.3` complete.
+- Linked tasks: `3.3`
+- Resolution: Updated the assertion so both `ExecutionRun` and `CostRecord` are accepted as lifecycle bookkeeping records without validation status.
+- Verification: `poetry run pytest tests/unit/schemas tests/smoke tests/unit` passed with 45 tests after the assertion update.
+
 ### P-20260611-004 - PowerShell rejected Bash-style commit command separator
 
 - Status: Resolved

@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:30:33 +08:00 - Codex - Task 3.3 cost record schema
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.3`.
+- Files changed:
+  - `src/autoresearch/schemas/models.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `tests/unit/schemas/test_schema_models.py`
+  - `tests/unit/schemas/test_roundtrip.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `CostRecord` with required model name, input/output token counts, CPU time, GPU hours, storage artifact bytes, network cost placeholder, and human approval count.
+  - Added numeric bounds for cost fields and required non-empty model names.
+  - Attached cost records to `ExecutionRun` through an optional `cost_record` field while preserving the existing `cost_json` escape hatch.
+  - Exported `CostRecord` from `autoresearch.schemas`.
+  - Added round-trip and validation tests for cost records and execution-run attachment.
+  - Marked task `3.3` and parent task `3` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/schemas tests/smoke tests/unit`: passed, 45 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 12 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-005` added and resolved for the temporary schema test assertion failure.
+- Follow-up:
+  - Task `4.1` should add the GitHub Actions CI workflow.
+
 ### 2026-06-11 18:27:08 +08:00 - Codex - Task 3.2 audit event schema
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.2`.

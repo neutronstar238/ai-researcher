@@ -179,7 +179,7 @@ A task can be checked only when all applicable items are true:
     - _References: DES Correctness Properties_
     - _Verify: `poetry run pytest tests/unit/schemas tests/property/schemas` passes._
 
-- [ ] 3. Establish logging, audit, and cost foundations
+- [x] 3. Establish logging, audit, and cost foundations
   - [x] 3.1 Add structured logging
     - Implement a logger factory that includes `run_id`, component name, task ID, and project ID when available.
     - Keep output human-readable locally and JSON-compatible for future observability.
@@ -192,7 +192,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 3.3, EP 17, DES Audit Logging_
     - _Verify: unit tests append and reload audit events without loss._
 
-  - [ ] 3.3 Add cost record schema
+  - [x] 3.3 Add cost record schema
     - Define token input/output, model name, CPU time, GPU hours, storage artifact size, network cost placeholder, and human approval count.
     - Ensure cost records can attach to `ExecutionRun`.
     - _References: EP 11.3, RP 8.2_
