@@ -29,6 +29,7 @@ def test_core_schemas_instantiate_and_serialize_to_json() -> None:
             novelty_score=0.7,
             feasibility_score=0.8,
             impact_score=0.6,
+            evidence_refs=["doc_1"],
         ),
         Hypothesis(
             candidate_id="candidate_1",
@@ -36,6 +37,7 @@ def test_core_schemas_instantiate_and_serialize_to_json() -> None:
             prediction="Metric B increases.",
             metric="macro_f1",
             baseline="baseline_b",
+            evidence_refs=["candidate_evidence"],
         ),
         ExperimentTask(
             project_id="project_1",

@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:25:00 +08:00 - Codex - Task 2.3 schema round-trip tests
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.3`.
+- Files changed:
+  - `src/autoresearch/schemas/models.py`
+  - `tests/unit/schemas/test_schema_models.py`
+  - `tests/unit/schemas/test_roundtrip.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added JSON round-trip tests for every core lifecycle schema.
+  - Added schema validation tests that reject research candidates and hypotheses without evidence references.
+  - Added a strict extra-field policy on base lifecycle records while preserving `metadata` as the explicit extension point.
+  - Updated existing schema fixtures to include evidence references where now required.
+  - Marked task `2.3` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/schemas tests/smoke tests/unit`: passed, 33 tests with coverage enabled.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 9 source files; mypy emitted a non-failing note about currently unused override modules.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `3.1` should add structured logging with run context.
+
 ### 2026-06-11 19:15:00 +08:00 - Codex - Task 2.2 run ID and provenance helpers
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.2`.

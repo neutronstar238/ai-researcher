@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def _utc_now() -> datetime:
@@ -58,6 +58,8 @@ class ExecutionStatus(str, Enum):
 class BaseRecord(BaseModel):
     """Common provenance fields for persisted lifecycle records."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     created_at: datetime = Field(default_factory=_utc_now)
     updated_at: datetime = Field(default_factory=_utc_now)
@@ -107,7 +109,7 @@ class ResearchCandidate(BaseRecord):
     novelty_score: float = Field(ge=0.0, le=1.0)
     feasibility_score: float = Field(ge=0.0, le=1.0)
     impact_score: float = Field(ge=0.0, le=1.0)
-    evidence_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(min_length=1)
     related_document_ids: list[str] = Field(default_factory=list)
     status: CandidateStatus = CandidateStatus.DRAFT
     validation_status: ValidationStatus = ValidationStatus.PENDING
@@ -123,7 +125,7 @@ class Hypothesis(BaseRecord):
     metric: str
     baseline: str
     dataset_ref: str | None = None
-    evidence_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(min_length=1)
     status: TaskStatus = TaskStatus.DRAFT
     validation_status: ValidationStatus = ValidationStatus.PENDING
 

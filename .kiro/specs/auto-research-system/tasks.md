@@ -172,7 +172,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 11.3, EP 12.2, RP 6.2_
     - _Verify: unit tests cover stable hash generation and unique run ID generation._
 
-  - [ ] 2.3 Add schema round-trip tests
+  - [x] 2.3 Add schema round-trip tests
     - Add tests for JSON serialization and deserialization of each core schema.
     - Add tests that reject missing required evidence fields.
     - Add tests that preserve unknown optional metadata only if explicitly supported.
