@@ -180,7 +180,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: `poetry run pytest tests/unit/schemas tests/property/schemas` passes._
 
 - [ ] 3. Establish logging, audit, and cost foundations
-  - [ ] 3.1 Add structured logging
+  - [x] 3.1 Add structured logging
     - Implement a logger factory that includes `run_id`, component name, task ID, and project ID when available.
     - Keep output human-readable locally and JSON-compatible for future observability.
     - _References: EP 3.3, EP 15_

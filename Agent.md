@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:40:00 +08:00 - Codex - Task 3.1 structured logging
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.1`.
+- Files changed:
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/observability/logging.py`
+  - `tests/unit/observability/test_logging.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added an `observability` package with a structured logging helper.
+  - Added `get_logger()` returning a `LoggerAdapter` that attaches `run_id`, component, project ID, and task ID to each log record.
+  - Added `configure_logging()` with a human-readable format that still carries structured fields for future JSON logging.
+  - Added tests that confirm log records include run context and placeholder defaults.
+  - Marked task `3.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/observability tests/smoke tests/unit`: passed, 35 tests with coverage enabled.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 11 source files; mypy emitted a non-failing note about currently unused override modules.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `3.2` should define audit event schemas and append-only JSONL storage.
+
 ### 2026-06-11 19:25:00 +08:00 - Codex - Task 2.3 schema round-trip tests
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2.3`.
