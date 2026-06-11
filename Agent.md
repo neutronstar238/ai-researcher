@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:10:00 +08:00 - Codex - Task 1.2 config parser
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.2`.
+- Files changed:
+  - `src/autoresearch/config/parser.py`
+  - `src/autoresearch/config/__init__.py`
+  - `tests/unit/config/test_parser.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `ConfigFormat` and `ConfigParser` for JSON, YAML, and TOML parsing/formatting.
+  - Added file read/write helpers, extension-based format detection, schema validation, and descriptive syntax/schema errors.
+  - Restored `ConfigParser` and `ConfigFormat` exports from `autoresearch.config`.
+  - Used standard-library `tomllib` for TOML reads when available, with Python 3.10 fallback to the declared `toml` package; TOML output is deterministic for the current config model shape.
+  - Added parser tests for round-trip behavior, extension detection, syntax errors, schema errors, and file IO.
+  - Marked task `1.2` complete in `tasks.md`.
+- Verification:
+  - `PYTHONPATH=src python -m pytest -o addopts='' tests/unit/config/test_models.py tests/unit/config/test_parser.py`: passed, 15 tests.
+  - `PYTHONPATH=src python -c "from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig; parser=ConfigParser(); text=parser.format(SystemConfig(), ConfigFormat.JSON); parser.parse_text(text, config_format=ConfigFormat.JSON); print('config parser ok')"`: passed.
+  - `PYTHONPATH=src python -c "from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig; p=ConfigParser(); text=p.format(SystemConfig(), ConfigFormat.TOML); parsed=p.parse_text(text, config_format=ConfigFormat.TOML); assert parsed == SystemConfig(); print(text.splitlines()[0])"`: passed.
+  - Broad pytest without `-o addopts=''`, ruff, and Poetry checks remain blocked by `P-20260611-003`.
+- Problems:
+  - `P-20260611-001` updated; parser portion is resolved and CLI remains pending.
+  - `P-20260611-003` remains open.
+- Follow-up:
+  - Task `1.3` should add the Typer CLI skeleton and finish the remaining CLI part of `P-20260611-001`.
+
 ### 2026-06-11 18:00:00 +08:00 - Codex - Task 1.1 config data models
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, starting with task `1.1`.

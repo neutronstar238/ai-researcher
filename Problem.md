@@ -38,15 +38,15 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Severity: Medium
 - Discovered: 2026-06-11 17:36:49 +08:00
 - Source: Repository inspection while preparing project planning documents.
-- Symptom: `src/autoresearch/config/__init__.py` imports `.models` and `.parser`, but those files are not present. `pyproject.toml` registers `autoresearch = "autoresearch.cli.main:app"`, but `src/autoresearch/cli/main.py` is not present.
+- Symptom: `pyproject.toml` registers `autoresearch = "autoresearch.cli.main:app"`, but `src/autoresearch/cli/main.py` is not present.
 - Impact: Import smoke tests, package installation checks, and CLI execution cannot be treated as passing until the missing modules and tests are implemented.
-- Evidence: `rg -n "models|parser|cli|main" -S .` found references in `pyproject.toml` and `src/autoresearch/config/__init__.py`; `rg --files` did not list the referenced modules.
+- Evidence: `rg -n "cli|main" -S pyproject.toml src` finds the CLI entry point reference; `rg --files src` does not list `src/autoresearch/cli/main.py`.
 - Root cause: The repository is still in planning/scaffold stage and the previous task plan marked some setup work ahead of implementation reality.
 - Workaround: Keep README and tasks explicit that the CLI and broad verification gates are planned Phase 0 work.
-- Next action: Implement Phase 0 tasks for config parser, CLI skeleton, import smoke tests, and project test harness.
+- Next action: Implement Phase 0 tasks for CLI skeleton, import smoke tests, and project test harness.
 - Linked tasks: `0.5`, `1.1`, `1.2`, `1.5`, `1.6`
-- Resolution: Partially resolved by task `1.1`; `src/autoresearch/config/models.py` now exists and config model imports work. Parser and CLI entry point remain pending.
-- Verification: `PYTHONPATH=src python -c "from autoresearch.config import SystemConfig; print(SystemConfig().knowledge_base.vault_path)"` prints `autoresearch-vault`.
+- Resolution: Partially resolved by tasks `1.1` and `1.2`; `src/autoresearch/config/models.py` and `src/autoresearch/config/parser.py` now exist. CLI entry point remains pending.
+- Verification: `PYTHONPATH=src python -c "from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig; parser=ConfigParser(); text=parser.format(SystemConfig(), ConfigFormat.JSON); parser.parse_text(text, config_format=ConfigFormat.JSON); print('config parser ok')"` passed.
 
 ### P-20260611-002 - Planning docs underweighted Obsidian as the self-loop and self-evolution substrate
 
@@ -78,4 +78,4 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Next action: During tasks `1.4` and `1.5`, install or document the Poetry/dev dependency environment and restore broad verification commands without disabling addopts.
 - Linked tasks: `1.1`, `1.4`, `1.5`
 - Resolution: Pending.
-- Verification: Pending.
+- Verification: Focused config tests pass with `-o addopts=''`; broad pytest, ruff, and Poetry checks remain unavailable in the active shell.

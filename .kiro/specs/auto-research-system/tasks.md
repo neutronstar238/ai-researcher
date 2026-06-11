@@ -124,7 +124,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 3.5, EP 13, REQ 30_
     - _Verify: `python -c "from autoresearch.config import SystemConfig"` succeeds._
 
-  - [ ] 1.2 Add config parser
+  - [x] 1.2 Add config parser
     - Create `src/autoresearch/config/parser.py`.
     - Support YAML, TOML, and JSON.
     - Return descriptive errors for malformed files and missing required fields.
