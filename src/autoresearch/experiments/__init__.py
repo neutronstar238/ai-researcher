@@ -22,7 +22,14 @@ from .network import (
     default_network_policy,
     network_enforcement_note,
 )
-from .planner import ExperimentPlanningConfig, plan_experiment_tasks
+from .planner import (
+    AblationPlanningConfig,
+    AblationPlanningError,
+    AblationVariable,
+    ExperimentPlanningConfig,
+    plan_ablation_matrix,
+    plan_experiment_tasks,
+)
 from .results import ResultCollectionError, collect_result_bundle
 from .review import (
     CodeReviewFinding,
@@ -35,6 +42,9 @@ from .validation import ValidationIssue, ValidationReport, validate_result_bundl
 
 __all__ = [
     "AcceptanceRunResult",
+    "AblationPlanningConfig",
+    "AblationPlanningError",
+    "AblationVariable",
     "BaselineReproductionResult",
     "CodeReviewFinding",
     "CodeReviewResult",
@@ -59,6 +69,7 @@ __all__ = [
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",
     "network_enforcement_note",
+    "plan_ablation_matrix",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",
     "require_evidence_for_metrics",

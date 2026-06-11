@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-030 - Initial ablation planner patch had a stale context anchor
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 21:40:22 +08:00
+- Source: `apply_patch` while implementing task `15.2`.
+- Symptom: The first combined patch failed with `Failed to find expected lines in E:\AIResearch\src\autoresearch\experiments\planner.py`.
+- Impact: No files were changed by the failed patch; implementation was delayed until the patch was split into smaller chunks with current file anchors.
+- Evidence: The patch expected a whitespace variant near the end of `_task_from_hypothesis()` that did not exist in the current file.
+- Root cause: The patch was composed against an imprecise local context anchor.
+- Workaround: Re-read the current file and apply smaller patches around stable anchors.
+- Next action: For larger patches in active files, inspect exact nearby lines before applying multi-hunk edits.
+- Linked tasks: `15.2`
+- Resolution: Reapplied the planner, export, and test updates in separate `apply_patch` calls.
+- Verification: `poetry run pytest tests/unit/experiments/test_planner.py`, `poetry run ruff check src tests`, and `poetry run mypy src` passed after the split patches.
+
 ### P-20260611-029 - Figure metric parser captured a truncated metric name
 
 - Status: Resolved

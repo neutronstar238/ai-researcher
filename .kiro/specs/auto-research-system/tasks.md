@@ -460,7 +460,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 5.3, RP 10.3_
     - _Verify: demo project has a validated baseline run._
 
-  - [ ] 15.2 Add ablation planner
+  - [x] 15.2 Add ablation planner
     - Generate a minimal ablation matrix based on hypothesis variables.
     - Avoid combinatorial explosion by requiring budget limits.
     - _References: EP 5.3_

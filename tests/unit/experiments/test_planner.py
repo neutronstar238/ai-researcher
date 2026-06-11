@@ -1,4 +1,10 @@
-from autoresearch.experiments import ExperimentPlanningConfig, plan_experiment_tasks
+from autoresearch.experiments import (
+    AblationPlanningConfig,
+    AblationVariable,
+    ExperimentPlanningConfig,
+    plan_ablation_matrix,
+    plan_experiment_tasks,
+)
 from autoresearch.schemas import Hypothesis, TaskStatus
 
 
@@ -54,3 +60,71 @@ def test_plan_experiment_tasks_respects_budget_limits() -> None:
     assert budget["storage_mb"] == 256
     assert tasks[0].timeout_seconds == 1200
     assert "metric direction is lower_is_better" in tasks[0].metadata["validation_checks"]
+
+
+def test_plan_ablation_matrix_creates_one_factor_tasks_from_variables() -> None:
+    tasks = plan_ablation_matrix(
+        project_id="project-001",
+        hypothesis=_hypothesis(),
+        variables=[
+            AblationVariable(
+                name="retrieval memory",
+                control_value=True,
+                ablated_value=False,
+            ),
+            AblationVariable(
+                name="reranker top_k",
+                control_value=8,
+                ablated_value=0,
+            ),
+        ],
+        config=AblationPlanningConfig(
+            max_experiments=3,
+            max_total_cpu_time_seconds=1200,
+            per_experiment_cpu_time_seconds=300,
+            timeout_seconds=300,
+        ),
+    )
+
+    assert [task.id for task in tasks] == [
+        "ablation_hypothesis-1_retrieval-memory",
+        "ablation_hypothesis-1_reranker-top-k",
+    ]
+    assert tasks[0].entrypoint == "experiments/hypothesis-1/ablations/retrieval-memory/run.py"
+    assert tasks[0].resource_budget["cpu_time_seconds"] == 300
+    assert tasks[0].metadata["ablation"] == {
+        "matrix_kind": "one_factor_at_a_time",
+        "variable": "retrieval memory",
+        "control_value": True,
+        "ablated_value": False,
+        "index": 1,
+    }
+    assert "baseline reproduction exists" in tasks[0].metadata["validation_checks"]
+    assert tasks[0].status is TaskStatus.DRAFT
+
+
+def test_plan_ablation_matrix_respects_max_experiment_and_cost_budget() -> None:
+    tasks = plan_ablation_matrix(
+        project_id="project-001",
+        hypothesis=_hypothesis("latency_seconds"),
+        variables=[
+            AblationVariable(name="memory", control_value=True, ablated_value=False),
+            AblationVariable(name="reranker", control_value=True, ablated_value=False),
+            AblationVariable(name="cache", control_value=True, ablated_value=False),
+            AblationVariable(name="prompt", control_value="full", ablated_value="short"),
+        ],
+        config=AblationPlanningConfig(
+            max_experiments=3,
+            max_total_cpu_time_seconds=500,
+            per_experiment_cpu_time_seconds=200,
+            timeout_seconds=200,
+        ),
+    )
+
+    assert len(tasks) == 2
+    assert sum(task.resource_budget["cpu_time_seconds"] for task in tasks) <= 500
+    assert all(task.resource_budget["gpu_hours"] == 0.0 for task in tasks)
+    assert [task.metadata["ablation"]["variable"] for task in tasks] == [
+        "memory",
+        "reranker",
+    ]

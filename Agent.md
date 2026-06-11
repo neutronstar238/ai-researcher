@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:40:22 +08:00 - Codex - Task 15.2 ablation planner
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.2`.
+- Files changed:
+  - `src/autoresearch/experiments/planner.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_planner.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AblationVariable`, `AblationPlanningConfig`, `AblationPlanningError`, and `plan_ablation_matrix()`.
+  - Planned one-factor-at-a-time ablation tasks from hypothesis variables instead of generating full factorial combinations.
+  - Enforced `max_experiments`, total CPU budget, optional total GPU budget, and per-experiment resource budgets.
+  - Added tests for generated ablation task metadata and budget-limited truncation.
+  - Exported ablation planning helpers from `autoresearch.experiments`.
+  - Marked task `15.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_planner.py`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 166 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 49 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-030` added and resolved.
+- Follow-up:
+  - Task `15.3` should add statistical sanity checks.
+
 ### 2026-06-11 21:33:47 +08:00 - Codex - Task 15.1 baseline reproducer
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.1`.
