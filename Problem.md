@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-017 - Pytest report test basename collided with experiment generator test
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 19:59:00 +08:00
+- Source: `poetry run pytest tests/unit tests/property tests/smoke` while verifying task `11.1`.
+- Symptom: Pytest reported an import file mismatch between `tests/unit/experiments/test_generator.py` and `tests/unit/reports/test_generator.py`.
+- Impact: The report tests passed in isolation, but full test collection failed until the report test file had a unique basename.
+- Evidence: Pytest said imported module `test_generator` pointed to the experiment generator test while collecting the report generator test.
+- Root cause: Two test files in different directories shared the same basename, and pytest imported them as the same top-level module.
+- Workaround: None needed after renaming the report test file.
+- Next action: Keep future test filenames unique across the repository unless tests are packaged.
+- Linked tasks: `11.1`
+- Resolution: Renamed `tests/unit/reports/test_generator.py` to `tests/unit/reports/test_report_generator.py` and cleared test `__pycache__`.
+- Verification: `poetry run pytest tests/unit tests/property tests/smoke` passed after the rename.
+
 ### P-20260611-016 - Ruff import-order check failed after exporting result collector
 
 - Status: Resolved

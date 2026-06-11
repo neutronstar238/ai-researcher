@@ -371,7 +371,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: unit test blocks claim generation from unvalidated result bundles._
 
 - [ ] 11. Generate MVP research report
-  - [ ] 11.1 Generate Markdown report from evidence
+  - [x] 11.1 Generate Markdown report from evidence
     - Report sections: question, literature summary, hypothesis, experiment design, run metadata, results, validation, limitations, next steps.
     - Every quantitative claim must link to an evidence ID and artifact path.
     - _References: RP 10, EP 4.3, EP 21_

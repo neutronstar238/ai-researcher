@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:01:14 +08:00 - Codex - Task 11.1 Markdown report generation
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.1`.
+- Files changed:
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/generator.py`
+  - `tests/unit/reports/test_report_generator.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `ReportContext` and `generate_markdown_report()` for MVP Markdown research reports.
+  - Generated required sections: question, literature summary, hypothesis, experiment design, run metadata, results, validation, limitations, and next steps.
+  - Linked each generated quantitative metric claim to an `EvidenceEdge` ID and source artifact path.
+  - Reused the evidence binding gate so reports cannot use metrics without validated evidence edges.
+  - Marked task `11.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_report_generator.py`: passed, 2 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 137 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 37 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-017` added and resolved.
+- Follow-up:
+  - Task `11.2` should add deterministic report readability checks.
+
 ### 2026-06-11 19:56:47 +08:00 - Codex - Task 10.3 evidence binding
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.3`.
