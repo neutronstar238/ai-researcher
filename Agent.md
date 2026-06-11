@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:53:23 +08:00 - Codex - Task 13.1 base Agent and registry
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.1`.
+- Files changed:
+  - `src/autoresearch/agents/base.py`
+  - `src/autoresearch/agents/registry.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/property/agents/test_registry.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added base agent primitives: lifecycle state, task/result schemas, capability error, and `BaseAgent.run_task()` lifecycle/capability enforcement.
+  - Added `AgentRegistry` with add, remove, get, list, role filter, capability lookup, and combined query operations.
+  - Added property tests for registry add/get/list/remove consistency, duplicate ID rejection, capability query correctness, and base-agent lifecycle behavior.
+  - Marked task `13.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/property/agents/test_registry.py`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 152 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 44 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-023` added and resolved.
+- Follow-up:
+  - Task `13.2` should add the structured inter-agent message protocol.
+
 ### 2026-06-11 20:46:32 +08:00 - Codex - Task 12.4 MVP acceptance run
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.4`.

@@ -417,7 +417,7 @@ A task can be checked only when all applicable items are true:
 ### Phase 2: Automated Research Assistant (Weeks 9-16)
 
 - [ ] 13. Implement multi-agent runtime
-  - [ ] 13.1 Add base Agent class and registry
+  - [x] 13.1 Add base Agent class and registry
     - Define agent ID, role, capabilities, permissions, lifecycle state, and task execution contract.
     - Add registry operations for add, remove, get, list, and capability query.
     - _References: RP 5, REQ 1, DES Agent Architecture_

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-023 - AgentRegistry list method shadowed built-in list type for mypy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 20:53:23 +08:00
+- Source: `poetry run mypy src` while verifying task `13.1`.
+- Symptom: Mypy reported `Function "autoresearch.agents.registry.AgentRegistry.list" is not valid as a type` for annotations inside `AgentRegistry`.
+- Impact: Agent registry property tests and ruff passed, but the type gate failed until the annotations avoided the method-name shadowing.
+- Evidence: Mypy pointed to return annotations using `list[BaseAgent]` in the same class that defines a method named `list`.
+- Root cause: In class scope, the `list` method name shadowed the built-in `list` generic during mypy analysis.
+- Workaround: None needed after introducing a module-level type alias.
+- Next action: Use module-level aliases when a required method name shadows a built-in generic in annotations.
+- Linked tasks: `13.1`
+- Resolution: Added `AgentList: TypeAlias = list[BaseAgent]` outside the class and used it for registry list/query return annotations.
+- Verification: `poetry run mypy src` passed after the annotation update.
+
 ### P-20260611-022 - PowerShell rejected Select-Object range syntax
 
 - Status: Resolved
