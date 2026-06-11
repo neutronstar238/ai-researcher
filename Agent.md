@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:20:00 +08:00 - Codex - Task 1.3 minimal CLI skeleton
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.3`.
+- Files changed:
+  - `src/autoresearch/cli/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a minimal Typer CLI app matching the `pyproject.toml` entry point.
+  - Added `version`, `doctor`, and `init-demo` commands.
+  - Kept `doctor` local-only: it checks Python version, package import, config import, parser availability, project root, and `autoresearch-vault/`.
+  - Kept `init-demo` as a scaffold creator only; it does not run a research workflow.
+  - Added focused CLI tests using Typer's `CliRunner`.
+  - Marked task `1.3` complete in `tasks.md`.
+- Verification:
+  - `PYTHONPATH=src python -m pytest -o addopts='' tests/unit/cli/test_main.py tests/unit/config/test_models.py tests/unit/config/test_parser.py`: passed, 18 tests.
+  - `PYTHONPATH=src python -m autoresearch.cli.main version`: passed, printed `0.1.0`.
+  - `PYTHONPATH=src python -m autoresearch.cli.main doctor`: passed, all local scaffold checks reported OK.
+  - `poetry run autoresearch version` and `poetry run autoresearch doctor` remain blocked because Poetry is not on PATH; tracked in `P-20260611-003`.
+- Problems:
+  - `P-20260611-001` resolved.
+  - `P-20260611-003` remains open.
+- Follow-up:
+  - Task `1.4` should formalize smoke test structure, including imports and CLI smoke coverage already started here.
+
 ### 2026-06-11 18:10:00 +08:00 - Codex - Task 1.2 config parser
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.2`.

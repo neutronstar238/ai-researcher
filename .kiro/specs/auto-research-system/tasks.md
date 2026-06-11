@@ -133,7 +133,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 14.2, REQ 30, DES Property 13 and Property 36_
     - _Verify: unit tests cover valid YAML/TOML/JSON and one invalid file per format._
 
-  - [ ] 1.3 Add minimal CLI skeleton
+  - [x] 1.3 Add minimal CLI skeleton
     - Create `src/autoresearch/cli/main.py`.
     - Expose a Typer app matching `pyproject.toml`.
     - Add `autoresearch version`, `autoresearch doctor`, and `autoresearch init-demo` commands.

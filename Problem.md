@@ -34,19 +34,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260611-001 - Python scaffold references modules and CLI that do not exist yet
 
-- Status: Open
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-11 17:36:49 +08:00
 - Source: Repository inspection while preparing project planning documents.
 - Symptom: `pyproject.toml` registers `autoresearch = "autoresearch.cli.main:app"`, but `src/autoresearch/cli/main.py` is not present.
-- Impact: Import smoke tests, package installation checks, and CLI execution cannot be treated as passing until the missing modules and tests are implemented.
+- Impact: Resolved for scaffold imports and direct CLI execution. Broad package verification is tracked separately in `P-20260611-003`.
 - Evidence: `rg -n "cli|main" -S pyproject.toml src` finds the CLI entry point reference; `rg --files src` does not list `src/autoresearch/cli/main.py`.
 - Root cause: The repository is still in planning/scaffold stage and the previous task plan marked some setup work ahead of implementation reality.
-- Workaround: Keep README and tasks explicit that the CLI and broad verification gates are planned Phase 0 work.
-- Next action: Implement Phase 0 tasks for CLI skeleton, import smoke tests, and project test harness.
+- Workaround: None needed for scaffold imports or direct CLI execution after task `1.3`.
+- Next action: Continue Phase 0 tasks for broader smoke tests and project test harness.
 - Linked tasks: `0.5`, `1.1`, `1.2`, `1.5`, `1.6`
-- Resolution: Partially resolved by tasks `1.1` and `1.2`; `src/autoresearch/config/models.py` and `src/autoresearch/config/parser.py` now exist. CLI entry point remains pending.
-- Verification: `PYTHONPATH=src python -c "from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig; parser=ConfigParser(); text=parser.format(SystemConfig(), ConfigFormat.JSON); parser.parse_text(text, config_format=ConfigFormat.JSON); print('config parser ok')"` passed.
+- Resolution: Resolved by tasks `1.1`, `1.2`, and `1.3`; config models, config parser, and CLI entry point now exist.
+- Verification: `PYTHONPATH=src python -m autoresearch.cli.main version` printed `0.1.0`; `PYTHONPATH=src python -m autoresearch.cli.main doctor` reported OK for Python, package import, config import, parser, project root, and knowledge vault.
 
 ### P-20260611-002 - Planning docs underweighted Obsidian as the self-loop and self-evolution substrate
 
