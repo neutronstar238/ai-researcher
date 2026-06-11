@@ -389,7 +389,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: generated report includes reproducibility block._
 
 - [ ] 12. Create ScientistBench-Lite MVP checks
-  - [ ] 12.1 Add local demo task `tabular_baseline`
+  - [x] 12.1 Add local demo task `tabular_baseline`
     - Use a tiny public or synthetic dataset that can run quickly on CPU.
     - Include baseline metric and expected artifact list.
     - _References: EP 14.3_

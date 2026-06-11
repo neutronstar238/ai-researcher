@@ -1,5 +1,6 @@
 """Experiment planning and execution helpers."""
 
+from .demos import create_tabular_baseline_task, generate_tabular_baseline_demo
 from .evidence import (
     EvidenceBindingError,
     bind_metrics_to_evidence,
@@ -39,8 +40,10 @@ __all__ = [
     "ValidationReport",
     "bind_metrics_to_evidence",
     "collect_result_bundle",
+    "create_tabular_baseline_task",
     "default_network_policy",
     "execute_experiment_task",
+    "generate_tabular_baseline_demo",
     "generate_experiment_directory",
     "network_enforcement_note",
     "plan_experiment_tasks",

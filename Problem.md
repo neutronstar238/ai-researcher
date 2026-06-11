@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-019 - Ruff import-order check failed after exporting tabular demo
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 20:18:19 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `12.1`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/experiments/__init__.py`.
+- Impact: The new tabular demo tests and mypy passed, but the lint gate failed until the new export import matched ruff/isort ordering.
+- Evidence: Ruff showed a one-line diff moving the `.demos` import before `.evidence`.
+- Root cause: The new demo exports were inserted manually below `.evidence` imports instead of in sorted module order.
+- Workaround: None needed after the import-order fix.
+- Next action: Re-run full pytest, ruff, and mypy before marking future demo tasks complete.
+- Linked tasks: `12.1`
+- Resolution: Moved the `.demos` import above `.evidence` in `src/autoresearch/experiments/__init__.py`.
+- Verification: `poetry run ruff check src tests` passed after the fix; `poetry run pytest tests/unit tests/property tests/smoke` passed with 144 tests and 1 skipped.
+
 ### P-20260611-018 - Ruff import-order check failed after adding report lint
 
 - Status: Resolved

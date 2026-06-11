@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:18:19 +08:00 - Codex - Task 12.1 tabular_baseline demo
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.1`.
+- Files changed:
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `create_tabular_baseline_task()` for the ScientistBench-Lite `tabular_baseline` local demo contract.
+  - Added `generate_tabular_baseline_demo()` to create a tiny synthetic CSV classification fixture, config, standard-library runner, logs, metrics, summary, and predictions artifact.
+  - Added an execution test that generates the demo, runs it through the local executor, collects metrics, validates expected metrics/artifacts, and confirms it completes under the configured timeout.
+  - Marked task `12.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_demos.py`: passed, 2 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 144 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 39 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-019` added and resolved.
+- Follow-up:
+  - Task `12.2` should add the local `text_classifier_stub` demo task.
+
 ### 2026-06-11 20:11:50 +08:00 - Codex - Task 11.3 reproducibility notes
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.3`.
