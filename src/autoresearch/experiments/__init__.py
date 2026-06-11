@@ -9,6 +9,7 @@ from .network import (
     network_enforcement_note,
 )
 from .planner import ExperimentPlanningConfig, plan_experiment_tasks
+from .results import ResultCollectionError, collect_result_bundle
 from .review import (
     CodeReviewFinding,
     CodeReviewResult,
@@ -22,10 +23,12 @@ __all__ = [
     "CodeReviewResult",
     "ExperimentPlanningConfig",
     "NetworkDecision",
+    "ResultCollectionError",
     "RestrictedNetworkPolicy",
     "SandboxAccessMode",
     "SandboxPathDecision",
     "SandboxPathPolicy",
+    "collect_result_bundle",
     "default_network_policy",
     "execute_experiment_task",
     "generate_experiment_directory",

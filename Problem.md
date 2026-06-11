@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-016 - Ruff import-order check failed after exporting result collector
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 19:47:00 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `10.1`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/experiments/__init__.py`.
+- Impact: Result collector tests and mypy passed, but the lint gate failed until the package export imports were normalized.
+- Evidence: Ruff reported one fixable import-order error after adding result collector exports.
+- Root cause: The new `results` export was inserted manually without matching ruff/isort's expected import order.
+- Workaround: None needed after applying ruff's fix.
+- Next action: Re-run full pytest, ruff, and mypy before marking task `10.1` complete.
+- Linked tasks: `10.1`
+- Resolution: Ran `poetry run ruff check --fix src\autoresearch\experiments\__init__.py`.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-015 - Ruff import-order check failed after adding network policy
 
 - Status: Resolved

@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:48:10 +08:00 - Codex - Task 10.1 result collector
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.1`.
+- Files changed:
+  - `src/autoresearch/experiments/results.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_results.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `collect_result_bundle()` to parse `metrics.json`, configured CSV metric outputs, logs, and generated artifacts into `ResultBundle`.
+  - Supported generated runner payloads with nested `metrics` objects and top-level numeric metric JSON.
+  - Rejected successful runs with missing or invalid metric files while allowing explicitly failed, timed-out, or cancelled runs to produce failed result bundles without metrics.
+  - Read `artifacts/summary.md` into the bundle summary and recorded logs/artifacts as experiment-relative paths.
+  - Enforced sandbox path checks for configured metric and CSV output paths.
+  - Marked task `10.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_results.py`: passed, 5 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 128 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed after import-order fix.
+  - `poetry run mypy src`: passed with no issues in 33 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-016` added and resolved.
+- Follow-up:
+  - Task `10.2` should add validation reports for run completion, metrics, artifacts, hashes, and cost records.
+
 ### 2026-06-11 19:43:01 +08:00 - Codex - Task 9.3 restricted network policy placeholder
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.3`.

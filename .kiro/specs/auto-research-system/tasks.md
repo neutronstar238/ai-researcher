@@ -351,7 +351,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests confirm policy data structure and audit logging for blocked requests where enforceable._
 
 - [ ] 10. Collect and validate results
-  - [ ] 10.1 Implement result collector
+  - [x] 10.1 Implement result collector
     - Parse `metrics.json`, configured CSV outputs, logs, and generated artifacts.
     - Produce `ResultBundle`.
     - Reject missing metric files unless the experiment explicitly failed.
