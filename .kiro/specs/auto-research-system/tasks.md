@@ -290,7 +290,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 6.3, REQ 11_
     - _Verify: integration test retrieves mocked papers and writes knowledge entries._
 
-- [ ] 7. Implement research candidate and hypothesis workflow
+- [x] 7. Implement research candidate and hypothesis workflow
   - [x] 7.1 Generate research candidates from retrieved literature
     - Build a simple candidate generator using recent paper clusters, repeated limitations, datasets, and methods.
     - Score novelty, feasibility, expected impact, evidence coverage, and estimated cost.
@@ -304,7 +304,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 3.3, EP 17_
     - _Verify: test rejects project creation without approval record._
 
-  - [ ] 7.3 Generate hypotheses
+  - [x] 7.3 Generate hypotheses
     - Convert an approved candidate into one or more `Hypothesis` records.
     - Each hypothesis must include measurable prediction, target dataset or benchmark, baseline, metric, and evidence references.
     - _References: RP 2.2, RP 5, EP 4.3_

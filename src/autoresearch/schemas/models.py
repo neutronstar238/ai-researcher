@@ -120,10 +120,10 @@ class Hypothesis(BaseRecord):
 
     id: str = Field(default_factory=lambda: _record_id("hypothesis"))
     candidate_id: str
-    statement: str
-    prediction: str
-    metric: str
-    baseline: str
+    statement: str = Field(min_length=1)
+    prediction: str = Field(min_length=1)
+    metric: str = Field(min_length=1)
+    baseline: str = Field(min_length=1)
     dataset_ref: str | None = None
     evidence_refs: list[str] = Field(min_length=1)
     status: TaskStatus = TaskStatus.DRAFT

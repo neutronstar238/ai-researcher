@@ -134,3 +134,15 @@ def test_schemas_reject_unknown_fields_but_preserve_metadata() -> None:
     )
 
     assert node.metadata == {"unknown": "allowed here"}
+
+
+def test_hypothesis_validation_rejects_missing_metric_and_evidence_refs() -> None:
+    with pytest.raises(ValidationError):
+        Hypothesis(
+            candidate_id="candidate_1",
+            statement="Method A improves metric B.",
+            prediction="Metric B increases.",
+            metric="",
+            baseline="baseline_b",
+            evidence_refs=[],
+        )
