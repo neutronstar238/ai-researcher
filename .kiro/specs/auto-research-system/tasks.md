@@ -337,7 +337,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 17.1, REQ 16_
     - _Verify: property tests block attempts to access paths outside the sandbox._
 
-  - [ ] 9.2 Implement runtime limits
+  - [x] 9.2 Implement runtime limits
     - Enforce timeout, memory limit, and process cleanup for local subprocess execution.
     - Store exit code, stdout, stderr, start/end time, and limit violations in `ExecutionRun`.
     - _References: REQ 16, DES Experiment Execution Workflow_

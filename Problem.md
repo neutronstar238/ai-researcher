@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-013 - Mypy rejected Unix-only runtime limit APIs on Windows
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 19:34:00 +08:00
+- Source: `poetry run mypy src` while verifying task `9.2`.
+- Symptom: Mypy reported missing attributes for `resource.setrlimit`, `resource.RLIMIT_CPU`, `resource.RLIMIT_AS`, `os.killpg`, and `signal.SIGKILL` in `src/autoresearch/experiments/executor.py`.
+- Impact: Runtime tests passed, but the cross-platform type gate failed on Windows before task `9.2` could be marked complete.
+- Evidence: Mypy returned 7 attr-defined errors for Unix-only process and resource-limit APIs.
+- Root cause: The executor used Unix APIs inside runtime platform branches, but mypy still checked those attributes in the Windows environment.
+- Workaround: None needed after the platform-safe attribute lookup change.
+- Next action: Re-run full pytest, ruff, and mypy before marking task `9.2` complete.
+- Linked tasks: `9.2`
+- Resolution: Replaced direct Unix-only attribute access with `getattr`-based platform branches for resource limits, process groups, and kill signals.
+- Verification: `poetry run mypy src` passed with no issues in 31 source files after the fix; executor tests also passed.
+
 ### P-20260611-012 - Candidate generator split equivalent dataset phrases
 
 - Status: Resolved

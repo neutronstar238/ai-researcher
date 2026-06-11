@@ -180,6 +180,10 @@ class ExecutionRun(BaseRecord):
     artifact_uri: str | None = None
     cost_record: CostRecord | None = None
     cost_json: dict[str, Any] = Field(default_factory=dict)
+    exit_code: int | None = None
+    stdout: str = ""
+    stderr: str = ""
+    limit_violations: list[str] = Field(default_factory=list)
     error_type: str | None = None
     validator_status: ValidationStatus = ValidationStatus.PENDING
 

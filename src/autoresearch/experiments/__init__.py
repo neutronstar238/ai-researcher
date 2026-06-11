@@ -1,5 +1,6 @@
 """Experiment planning and execution helpers."""
 
+from .executor import execute_experiment_task
 from .generator import generate_experiment_directory
 from .planner import ExperimentPlanningConfig, plan_experiment_tasks
 from .review import (
@@ -17,6 +18,7 @@ __all__ = [
     "SandboxAccessMode",
     "SandboxPathDecision",
     "SandboxPathPolicy",
+    "execute_experiment_task",
     "generate_experiment_directory",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",

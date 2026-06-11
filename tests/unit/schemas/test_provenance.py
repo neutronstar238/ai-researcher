@@ -56,6 +56,10 @@ def test_execution_run_stores_provenance_fields() -> None:
         metrics_path="metrics.json",
         artifact_uri=artifact_uri(run_id, "metrics.json"),
         cost_json={"tokens": 10},
+        exit_code=0,
+        stdout="ok",
+        stderr="",
+        limit_violations=[],
     )
 
     assert run.commit_sha == "abc123"
@@ -63,3 +67,6 @@ def test_execution_run_stores_provenance_fields() -> None:
     assert run.data_hash
     assert run.artifact_uri == f"runs/{run_id}/artifacts/metrics.json"
     assert run.cost_json == {"tokens": 10}
+    assert run.exit_code == 0
+    assert run.stdout == "ok"
+    assert run.limit_violations == []

@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:38:10 +08:00 - Codex - Task 9.2 sandbox executor runtime limits
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.2`.
+- Files changed:
+  - `src/autoresearch/experiments/executor.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/schemas/models.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `tests/unit/schemas/test_provenance.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `execute_experiment_task()` for local sandbox subprocess execution.
+  - Enforced wall-clock timeout with process cleanup and captured memory-limit violations when process RSS can be observed.
+  - Added Unix resource-limit setup for CPU and memory through platform-safe runtime branches.
+  - Stored status, exit code, stdout, stderr, start/end time, metrics path, artifact URI, config hash, and limit violations on `ExecutionRun`.
+  - Added tests for successful execution, nonzero exit capture, timeout cleanup, and sandbox entrypoint denial.
+  - Marked task `9.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_executor.py tests/unit/schemas/test_provenance.py`: passed, 10 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 114 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 31 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-013` added and resolved.
+- Follow-up:
+  - Task `9.3` should add the restricted network policy placeholder and audit logging for blocked network requests where enforceable.
+
 ### 2026-06-11 19:30:50 +08:00 - Codex - Task 9.1 sandbox path restrictions
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.1`.
