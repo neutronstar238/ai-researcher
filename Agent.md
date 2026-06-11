@@ -59,6 +59,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:38:14 +08:00 - Codex - Task 5.1 Obsidian vault layout
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.1`.
+- Files changed:
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/vault.py`
+  - `tests/unit/knowledge/test_vault.py`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/exploration/*/.gitkeep`
+  - `autoresearch-vault/projects/autoresearch-system/index.md`
+  - `autoresearch-vault/projects/autoresearch-system/*/.gitkeep`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `create_vault_layout()` for Obsidian-compatible vault creation in any project root.
+  - Defined required exploration directories for topics, skills, methodologies, datasets, failure patterns, and strategy cards.
+  - Defined required project directories for knowledge, progress, issues, experience, experiments, results, evidence, and paper drafts.
+  - Added path-safe project ID validation and default Markdown index creation for exploration and project zones.
+  - Added the actual repository vault skeleton under `autoresearch-vault/`, including the current `projects/autoresearch-system/` layout.
+  - Added unit tests that create the full layout in a temp directory and reject unsafe project IDs.
+  - Marked task `5.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/knowledge tests/smoke tests/unit`: passed, 50 tests.
+  - `poetry run ruff check src tests`: passed after applying ruff's import-order fix.
+  - `poetry run mypy src`: passed with no issues in 14 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-006` added and resolved for the temporary ruff import-order failure.
+- Follow-up:
+  - Task `5.2` should implement Markdown knowledge entries with YAML frontmatter.
+
 ### 2026-06-11 18:35:42 +08:00 - Codex - Task 4.3 release gate checklist
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.3`.

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-006 - Ruff import-order check failed after adding vault helper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:38:14 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `5.1`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/knowledge/vault.py`.
+- Impact: Tests and mypy passed, but the quality gate could not pass until import formatting was normalized.
+- Evidence: Ruff reported one fixable `I001` finding.
+- Root cause: The new file import block did not match ruff/isort formatting expectations.
+- Workaround: None needed after applying ruff's automatic fix.
+- Next action: Continue to run `ruff` before marking code tasks complete.
+- Linked tasks: `5.1`
+- Resolution: Ran `poetry run ruff check src tests --fix`.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-005 - CostRecord broke generic schema validation-field assertion
 
 - Status: Resolved

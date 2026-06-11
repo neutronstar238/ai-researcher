@@ -221,7 +221,7 @@ A task can be checked only when all applicable items are true:
 ### Phase 1: Minimal Trusted Research Loop (Weeks 3-8)
 
 - [ ] 5. Build Obsidian unified knowledge vault MVP
-  - [ ] 5.1 Create Obsidian vault contract and directory layout
+  - [x] 5.1 Create Obsidian vault contract and directory layout
     - Implement the vault root at project-root `autoresearch-vault/`.
     - Create `autoresearch-vault/exploration/` for global cross-project knowledge.
     - Create `autoresearch-vault/exploration/topics/`, `autoresearch-vault/exploration/skills/`, `autoresearch-vault/exploration/methodologies/`, `autoresearch-vault/exploration/datasets/`, `autoresearch-vault/exploration/failure_patterns/`, `autoresearch-vault/exploration/strategy_cards/`, and `autoresearch-vault/exploration/index.md`.
