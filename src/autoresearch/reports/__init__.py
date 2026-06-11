@@ -36,6 +36,15 @@ from .lint import (
     lint_markdown_report,
     lint_metric_consistency,
 )
+from .reproducibility import (
+    ExcludedReproducibilityArtifact,
+    ReproducibilityArtifactInput,
+    ReproducibilityArtifactRole,
+    ReproducibilityPackage,
+    ReproducibilityPackageArtifact,
+    ReproducibilityPackageError,
+    create_reproducibility_package,
+)
 from .review import (
     PaperReviewContext,
     PaperReviewReport,
@@ -80,6 +89,12 @@ __all__ = [
     "ReportContext",
     "ReportLintError",
     "ReportLintIssue",
+    "ExcludedReproducibilityArtifact",
+    "ReproducibilityArtifactInput",
+    "ReproducibilityArtifactRole",
+    "ReproducibilityPackage",
+    "ReproducibilityPackageArtifact",
+    "ReproducibilityPackageError",
     "ReviewDimension",
     "ReviewDimensionScore",
     "ReviewFinding",
@@ -87,6 +102,7 @@ __all__ = [
     "assert_metric_consistency",
     "assert_report_readable",
     "create_review_backlog",
+    "create_reproducibility_package",
     "generate_bibtex",
     "generate_ablation_table",
     "generate_metric_bar_figure",

@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 23:00:14 +08:00 - Codex - Task 19.1 reproducibility package
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `19.1`.
+- Files changed:
+  - `src/autoresearch/reports/reproducibility.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_reproducibility_package.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a reproducibility package builder that copies code, config, metrics, reports, evidence maps, validation artifacts, and other declared files into a package directory.
+  - Added `manifest.json` generation with artifact role, source path, package path, byte size, and sha256 hash for every included artifact.
+  - Added `environment.md` with Python/platform notes, validation status, run commands, and extra environment notes.
+  - Added default exclusion for secret-like filenames and large raw data unless explicitly included.
+  - Exported reproducibility package helpers from `autoresearch.reports`.
+  - Marked task `19.1` complete in `tasks.md`; parent task `19` remains open until `19.2` is complete.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_reproducibility_package.py`: passed, 1 test.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 187 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed after fixing import order.
+  - `poetry run mypy src`: passed with no issues in 57 source files after the enum return type fix; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-034` resolved.
+- Follow-up:
+  - Task `19.2` should validate that package commands and paths are self-contained.
+
 ### 2026-06-11 22:53:04 +08:00 - Codex - Task 18.3 review findings backlog
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.3`.

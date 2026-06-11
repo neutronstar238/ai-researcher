@@ -528,7 +528,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: demo review creates structured follow-up records._
 
 - [ ] 19. Build reproducibility package
-  - [ ] 19.1 Package code, config, metrics, reports, and evidence map
+  - [x] 19.1 Package code, config, metrics, reports, and evidence map
     - Include environment notes, run commands, artifact manifest, and validation status.
     - Exclude secrets and large raw data unless explicitly configured.
     - _References: EP 5.3, EP 18.2_

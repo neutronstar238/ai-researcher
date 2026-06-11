@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-034 - Reproducibility package verification exposed import and enum typing issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 22:58:00 +08:00
+- Source: `poetry run ruff check src tests` and `poetry run mypy src` while verifying task `19.1`.
+- Symptom: Ruff reported unsorted imports in report modules, and mypy reported an `Any` return from `_role_dir()`.
+- Impact: The focused reproducibility package test passed, but lint and type gates failed until imports and enum value typing were fixed.
+- Evidence: Ruff reported `I001`; mypy reported `Returning Any from function declared to return "str"`.
+- Root cause: New report exports were appended before import organization, and `Enum.value` needed an explicit `str()` cast for mypy.
+- Workaround: None needed after the fix.
+- Next action: Re-run ruff and mypy after adding new aggregate exports and enum-return helpers.
+- Linked tasks: `19.1`
+- Resolution: Ran ruff `--fix` on the affected modules and changed `_role_dir()` to return `str(role.value)`.
+- Verification: `poetry run ruff check src tests` and `poetry run mypy src` passed after the fix.
+
 ### P-20260611-033 - Review test module name collided with an existing test
 
 - Status: Resolved
