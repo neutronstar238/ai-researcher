@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import NormalDist
 from typing import Any
 
 from autoresearch.schemas import (
@@ -16,6 +17,39 @@ from autoresearch.schemas import (
 )
 
 MetricBounds = dict[str, tuple[float | None, float | None]]
+StatisticalDetails = dict[str, float | int | str]
+
+
+@dataclass(frozen=True)
+class StatisticalCheck:
+    """Statistical sanity inputs for one reported metric."""
+
+    metric_name: str
+    sample_size: int
+    mean: float | None = None
+    standard_error: float | None = None
+    baseline_mean: float | None = None
+    comparison_mean: float | None = None
+    min_sample_size: int = 30
+    confidence_level: float = 0.95
+
+
+@dataclass(frozen=True)
+class StatisticalNote:
+    """One non-blocking statistical note included in a validation report."""
+
+    metric_name: str
+    check: str
+    message: str
+    details: StatisticalDetails
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "metric_name": self.metric_name,
+            "check": self.check,
+            "message": self.message,
+            "details": self.details,
+        }
 
 
 @dataclass(frozen=True)
@@ -43,6 +77,7 @@ class ValidationReport:
     issues: tuple[ValidationIssue, ...]
     json_path: str
     markdown_path: str
+    statistical_notes: tuple[StatisticalNote, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +86,7 @@ class ValidationReport:
             "issues": [issue.to_dict() for issue in self.issues],
             "json_path": self.json_path,
             "markdown_path": self.markdown_path,
+            "statistical_notes": [note.to_dict() for note in self.statistical_notes],
         }
 
 
@@ -62,6 +98,7 @@ def validate_result_bundle(
     expected_metrics: list[str] | None = None,
     metric_bounds: MetricBounds | None = None,
     expected_artifacts: list[Path | str] | None = None,
+    statistical_checks: list[StatisticalCheck] | None = None,
     output_dir: Path | str | None = None,
 ) -> ValidationReport:
     """Validate an execution run and persist JSON and Markdown reports."""
@@ -78,6 +115,10 @@ def validate_result_bundle(
     issues.extend(_validate_config_hash(root, run))
     issues.extend(_validate_data_hash(run))
     issues.extend(_validate_cost_record(run))
+    statistical_issues, statistical_notes = _validate_statistical_checks(
+        statistical_checks or []
+    )
+    issues.extend(statistical_issues)
 
     status = _overall_status(issues)
     json_path = validation_dir / "validation-report.json"
@@ -88,6 +129,7 @@ def validate_result_bundle(
         issues=tuple(issues),
         json_path=json_path.as_posix(),
         markdown_path=markdown_path.as_posix(),
+        statistical_notes=tuple(statistical_notes),
     )
     _write_report_files(report, bundle, json_path, markdown_path)
     return report
@@ -230,6 +272,142 @@ def _validate_cost_record(run: ExecutionRun) -> list[ValidationIssue]:
     ]
 
 
+def _validate_statistical_checks(
+    checks: list[StatisticalCheck],
+) -> tuple[list[ValidationIssue], list[StatisticalNote]]:
+    issues: list[ValidationIssue] = []
+    notes: list[StatisticalNote] = []
+    for check in checks:
+        input_issues = _validate_statistical_check_input(check)
+        if input_issues:
+            issues.extend(input_issues)
+            continue
+
+        if check.sample_size < check.min_sample_size:
+            issues.append(
+                ValidationIssue(
+                    ValidationStatus.WARNING,
+                    "statistical_power",
+                    (
+                        f"metric {check.metric_name} comparison is underpowered: "
+                        f"sample size {check.sample_size} below minimum "
+                        f"{check.min_sample_size}; do not overstate significance"
+                    ),
+                )
+            )
+            notes.append(
+                StatisticalNote(
+                    metric_name=check.metric_name,
+                    check="statistical_power",
+                    message=(
+                        f"underpowered comparison; n={check.sample_size}, "
+                        f"minimum={check.min_sample_size}"
+                    ),
+                    details={
+                        "sample_size": check.sample_size,
+                        "min_sample_size": check.min_sample_size,
+                    },
+                )
+            )
+
+        if check.mean is not None and check.standard_error is not None:
+            lower, upper = _confidence_interval(
+                check.mean,
+                check.standard_error,
+                check.confidence_level,
+            )
+            percent = round(check.confidence_level * 100, 2)
+            notes.append(
+                StatisticalNote(
+                    metric_name=check.metric_name,
+                    check="confidence_interval",
+                    message=(
+                        f"{percent:g}% CI for {check.metric_name} mean: "
+                        f"[{lower:.6g}, {upper:.6g}]"
+                    ),
+                    details={
+                        "sample_size": check.sample_size,
+                        "confidence_level": check.confidence_level,
+                        "mean": check.mean,
+                        "standard_error": check.standard_error,
+                        "lower": lower,
+                        "upper": upper,
+                    },
+                )
+            )
+
+        if check.baseline_mean is not None and check.comparison_mean is not None:
+            delta = round(check.comparison_mean - check.baseline_mean, 6)
+            notes.append(
+                StatisticalNote(
+                    metric_name=check.metric_name,
+                    check="repeated_run_delta",
+                    message=(
+                        f"repeated-run comparison delta for {check.metric_name}: "
+                        f"{delta:.6g}"
+                    ),
+                    details={
+                        "sample_size": check.sample_size,
+                        "baseline_mean": check.baseline_mean,
+                        "comparison_mean": check.comparison_mean,
+                        "delta": delta,
+                    },
+                )
+            )
+    return issues, notes
+
+
+def _validate_statistical_check_input(
+    check: StatisticalCheck,
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    if not check.metric_name:
+        issues.append(_statistical_input_issue("metric name is missing"))
+    if check.sample_size <= 0:
+        issues.append(
+            _statistical_input_issue(
+                f"metric {check.metric_name} sample_size must be positive"
+            )
+        )
+    if check.min_sample_size <= 0:
+        issues.append(
+            _statistical_input_issue(
+                f"metric {check.metric_name} min_sample_size must be positive"
+            )
+        )
+    if not 0.0 < check.confidence_level < 1.0:
+        issues.append(
+            _statistical_input_issue(
+                f"metric {check.metric_name} confidence_level must be between 0 and 1"
+            )
+        )
+    if check.standard_error is not None and check.standard_error < 0.0:
+        issues.append(
+            _statistical_input_issue(
+                f"metric {check.metric_name} standard_error must be non-negative"
+            )
+        )
+    return issues
+
+
+def _statistical_input_issue(message: str) -> ValidationIssue:
+    return ValidationIssue(
+        ValidationStatus.FAILED,
+        "statistical_input",
+        message,
+    )
+
+
+def _confidence_interval(
+    mean: float,
+    standard_error: float,
+    confidence_level: float,
+) -> tuple[float, float]:
+    z_value = NormalDist().inv_cdf(0.5 + confidence_level / 2.0)
+    margin = z_value * standard_error
+    return round(mean - margin, 6), round(mean + margin, 6)
+
+
 def _overall_status(issues: list[ValidationIssue]) -> ValidationStatus:
     if any(issue.severity is ValidationStatus.FAILED for issue in issues):
         return ValidationStatus.FAILED
@@ -263,6 +441,10 @@ def _markdown_report(report: ValidationReport, bundle: ResultBundle) -> str:
         for name, value in sorted(bundle.metrics.items())
     ] or ["- None"]
     artifact_lines = [f"- `{path}`" for path in bundle.artifacts] or ["- None"]
+    statistical_lines = [
+        f"- `{note.metric_name}` `{note.check}`: {note.message}"
+        for note in report.statistical_notes
+    ] or ["- None"]
     return "\n".join(
         [
             "# Validation Report",
@@ -279,6 +461,10 @@ def _markdown_report(report: ValidationReport, bundle: ResultBundle) -> str:
             "## Metrics",
             "",
             *metric_lines,
+            "",
+            "## Statistical Sanity",
+            "",
+            *statistical_lines,
             "",
             "## Artifacts",
             "",

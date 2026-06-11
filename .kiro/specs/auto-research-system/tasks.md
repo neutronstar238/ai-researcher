@@ -453,7 +453,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 5.4, REQ 22_
     - _Verify: tests catch a deliberate table/text mismatch._
 
-- [ ] 15. Add baseline, ablation, and statistics support
+- [x] 15. Add baseline, ablation, and statistics support
   - [x] 15.1 Implement baseline reproducer
     - Reproduce at least one baseline before running a proposed method.
     - Store baseline config, run ID, metrics, and validation state.
@@ -466,7 +466,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 5.3_
     - _Verify: planner output respects max experiment count and cost budget._
 
-  - [ ] 15.3 Add statistical sanity checks
+  - [x] 15.3 Add statistical sanity checks
     - Provide simple confidence interval or repeated-run comparison where appropriate.
     - Do not overstate significance when sample size is too small.
     - _References: RP 7, EP 14_

@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from autoresearch.experiments import validate_result_bundle
+from autoresearch.experiments import StatisticalCheck, validate_result_bundle
 from autoresearch.schemas import (
     CostRecord,
     ExecutionRun,
@@ -107,6 +107,53 @@ def test_validate_result_bundle_fails_for_incomplete_or_invalid_results(
         "config_hash",
     }.issubset({issue.check for issue in report.issues})
     assert "failed" in Path(report.markdown_path).read_text(encoding="utf-8")
+
+
+def test_validate_result_bundle_labels_underpowered_comparison(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("lr: 0.1\n", encoding="utf-8")
+    run = _run(
+        config_hash=file_hash(config_path),
+        data_hash=data_hash("dataset"),
+        cost_record=CostRecord(model_name="local-runner", cpu_time_seconds=1.0),
+    )
+    bundle = ResultBundle(run_id=run.id, metrics={"accuracy": 0.9})
+
+    report = validate_result_bundle(
+        tmp_path,
+        run,
+        bundle,
+        expected_metrics=["accuracy"],
+        statistical_checks=[
+            StatisticalCheck(
+                metric_name="accuracy",
+                sample_size=4,
+                mean=0.9,
+                standard_error=0.05,
+                baseline_mean=0.8,
+                comparison_mean=0.9,
+                min_sample_size=10,
+            )
+        ],
+    )
+
+    payload = json.loads(Path(report.json_path).read_text(encoding="utf-8"))
+    markdown = Path(report.markdown_path).read_text(encoding="utf-8")
+    assert report.status is ValidationStatus.WARNING
+    assert any(
+        issue.check == "statistical_power" and "underpowered" in issue.message
+        for issue in report.issues
+    )
+    assert "do not overstate significance" in markdown
+    assert "95% CI" in markdown
+    assert "repeated-run comparison delta" in markdown
+    assert {note["check"] for note in payload["statistical_notes"]} == {
+        "statistical_power",
+        "confidence_interval",
+        "repeated_run_delta",
+    }
 
 
 def _run(

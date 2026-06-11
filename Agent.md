@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:48:32 +08:00 - Codex - Task 15.3 statistical sanity checks
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.3`.
+- Files changed:
+  - `src/autoresearch/experiments/validation.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_validation.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `StatisticalCheck` inputs and `StatisticalNote` report entries for validation-time statistical sanity checks.
+  - Stored simple confidence intervals and repeated-run deltas in JSON and Markdown validation reports without treating those notes as failures.
+  - Marked comparisons with sample sizes below their configured minimum as warning-level `statistical_power` issues with explicit "do not overstate significance" wording.
+  - Exported statistical validation helpers from `autoresearch.experiments`.
+  - Marked task `15.3` and parent task `15` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_validation.py`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 167 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 49 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `16.1` should generate publication-quality figure artifacts from source result files.
+
 ### 2026-06-11 21:40:22 +08:00 - Codex - Task 15.2 ablation planner
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.2`.

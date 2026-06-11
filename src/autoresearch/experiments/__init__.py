@@ -38,7 +38,13 @@ from .review import (
     review_generated_code,
 )
 from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
-from .validation import ValidationIssue, ValidationReport, validate_result_bundle
+from .validation import (
+    StatisticalCheck,
+    StatisticalNote,
+    ValidationIssue,
+    ValidationReport,
+    validate_result_bundle,
+)
 
 __all__ = [
     "AcceptanceRunResult",
@@ -57,6 +63,8 @@ __all__ = [
     "SandboxAccessMode",
     "SandboxPathDecision",
     "SandboxPathPolicy",
+    "StatisticalCheck",
+    "StatisticalNote",
     "ValidationIssue",
     "ValidationReport",
     "bind_metrics_to_evidence",
