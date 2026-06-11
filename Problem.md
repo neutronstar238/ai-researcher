@@ -42,11 +42,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Impact: Import smoke tests, package installation checks, and CLI execution cannot be treated as passing until the missing modules and tests are implemented.
 - Evidence: `rg -n "models|parser|cli|main" -S .` found references in `pyproject.toml` and `src/autoresearch/config/__init__.py`; `rg --files` did not list the referenced modules.
 - Root cause: The repository is still in planning/scaffold stage and the previous task plan marked some setup work ahead of implementation reality.
-- Workaround: Keep README and tasks explicit that the CLI and verification gates are planned Phase 0 work.
-- Next action: Implement Phase 0 tasks for config models, config parser, CLI skeleton, import smoke tests, and project test harness.
+- Workaround: Keep README and tasks explicit that the CLI and broad verification gates are planned Phase 0 work.
+- Next action: Implement Phase 0 tasks for config parser, CLI skeleton, import smoke tests, and project test harness.
 - Linked tasks: `0.5`, `1.1`, `1.2`, `1.5`, `1.6`
-- Resolution: Pending.
-- Verification: Pending.
+- Resolution: Partially resolved by task `1.1`; `src/autoresearch/config/models.py` now exists and config model imports work. Parser and CLI entry point remain pending.
+- Verification: `PYTHONPATH=src python -c "from autoresearch.config import SystemConfig; print(SystemConfig().knowledge_base.vault_path)"` prints `autoresearch-vault`.
 
 ### P-20260611-002 - Planning docs underweighted Obsidian as the self-loop and self-evolution substrate
 
@@ -63,3 +63,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Linked tasks: `0.7`, `5.1`, `5.2`, `5.3`, `5.4`, `5.5`, `20.1`, `22.1`, `23.1`, `26.1`
 - Resolution: README, `AGENTS.md`, `tasks.md`, and `autoresearch-vault/README.md` were revised to make Obsidian the unified knowledge substrate for self-looping and self-evolution.
 - Verification: `rg` confirmed `autoresearch-vault/` is the documented Obsidian vault path, self-loop/self-evolution language is present, and the temporary alternate vault path is no longer referenced.
+
+### P-20260611-003 - Local verification environment lacks Poetry, ruff, and pytest-cov
+
+- Status: Open
+- Severity: Medium
+- Discovered: 2026-06-11, while verifying task `1.1`.
+- Source: Local command execution in `E:\AIResearch`.
+- Symptom: `poetry --version` fails because Poetry is not on PATH. `python -m ruff check ...` fails because `ruff` is not installed in the active Python environment. `python -m pytest tests/unit/config/test_models.py` fails before collecting tests because pyproject addopts include `--cov=src/autoresearch`, but pytest-cov is not installed.
+- Impact: Broad Phase 0 verification commands from `tasks.md` cannot be treated as available in the current shell until the development environment is installed or commands are run through a proper Poetry environment.
+- Evidence: `poetry --version` returned CommandNotFoundException; `python -m ruff check src/autoresearch/config tests/unit/config/test_models.py` returned `No module named ruff`; `python -m pytest tests/unit/config/test_models.py` reported unrecognized `--cov` arguments.
+- Root cause: The active Python environment is not the project Poetry environment and is missing declared dev dependencies.
+- Workaround: For task `1.1`, run focused tests with `PYTHONPATH=src python -m pytest -o addopts='' tests/unit/config/test_models.py`.
+- Next action: During tasks `1.4` and `1.5`, install or document the Poetry/dev dependency environment and restore broad verification commands without disabling addopts.
+- Linked tasks: `1.1`, `1.4`, `1.5`
+- Resolution: Pending.
+- Verification: Pending.

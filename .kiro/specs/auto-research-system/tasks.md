@@ -116,7 +116,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: docs mention Obsidian as the unified knowledge substrate and `Problem.md` records `P-20260611-002` as resolved._
 
 - [ ] 1. Repair Python package scaffold so basic imports are honest
-  - [ ] 1.1 Add config data models
+  - [x] 1.1 Add config data models
     - Create `src/autoresearch/config/models.py`.
     - Define minimal Pydantic models: `SystemConfig`, `AgentConfig`, `ComputeConfig`, `KnowledgeBaseConfig`, `LiteratureConfig`.
     - Keep defaults small and local-first.

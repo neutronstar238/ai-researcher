@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:00:00 +08:00 - Codex - Task 1.1 config data models
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, starting with task `1.1`.
+- Files changed:
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/config/__init__.py`
+  - `tests/unit/config/test_models.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added minimal Pydantic configuration models for system, agent, compute, knowledge base, and literature settings.
+  - Kept defaults local-first, sandbox-enabled, and aligned with the canonical `autoresearch-vault/` Obsidian vault path.
+  - Temporarily narrowed `autoresearch.config` exports to existing model APIs so `SystemConfig` imports honestly before task `1.2` adds the parser.
+  - Added focused tests for default values and basic Pydantic bounds.
+  - Marked task `1.1` complete in `tasks.md`.
+- Verification:
+  - `PYTHONPATH=src python -c "from autoresearch.config import SystemConfig; print(SystemConfig().knowledge_base.vault_path)"`: passed, printed `autoresearch-vault`.
+  - `PYTHONPATH=src python -c "from autoresearch.config import AgentConfig, ComputeConfig, KnowledgeBaseConfig, LiteratureConfig, SystemConfig; c=SystemConfig(); assert str(c.knowledge_base.vault_path) == 'autoresearch-vault'; assert c.compute.sandbox_enabled; assert c.literature.databases == ['arxiv', 'semantic_scholar']; print('config models ok')"`: passed.
+  - `PYTHONPATH=src python -m pytest -o addopts='' tests/unit/config/test_models.py`: passed, 2 tests.
+  - `python -m pytest tests/unit/config/test_models.py`: blocked by missing pytest-cov in the active environment.
+  - `python -m ruff check src/autoresearch/config tests/unit/config/test_models.py`: blocked because ruff is not installed in the active environment.
+  - `poetry --version`: blocked because Poetry is not on PATH.
+- Problems:
+  - `P-20260611-001` partially resolved.
+  - `P-20260611-003` added.
+- Follow-up:
+  - Task `1.2` should add `ConfigParser` and `ConfigFormat`, then restore parser exports from `autoresearch.config`.
+
 ### 2026-06-11 17:36:49 +08:00 - Codex - Documentation planning bootstrap
 
 - Request: Create project planning conventions, a detailed executable task plan, problem logging, and bilingual open-source README pages.
