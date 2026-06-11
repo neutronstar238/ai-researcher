@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:07:36 +08:00 - Codex - Task 16.3 figure/table consistency validator
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.3`.
+- Files changed:
+  - `src/autoresearch/reports/lint.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_lint.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Promoted metric consistency checking into explicit public validators: `lint_metric_consistency()` and `assert_metric_consistency()`.
+  - Kept report lint using the same consistency path for text, Markdown tables, and figure alt/caption metric values.
+  - Added a regression test that injects mismatched text, table, and figure metric values and confirms the validator fails.
+  - Exported the consistency validator helpers from `autoresearch.reports`.
+  - Marked task `16.3` and parent task `16` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_lint.py`: passed, 7 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 173 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: initially failed on import sorting, then passed after ruff import fix.
+  - `poetry run mypy src`: passed with no issues in 51 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-031` added and resolved.
+- Follow-up:
+  - Task `17.1` should generate a LaTeX skeleton from validated evidence without fabricating missing content.
+
 ### 2026-06-11 22:01:47 +08:00 - Codex - Task 16.2 comparison tables
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.2`.

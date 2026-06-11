@@ -56,8 +56,35 @@ def lint_markdown_report(
     issues.extend(_check_tables(lines))
     issues.extend(_check_links(markdown, Path(base_dir) if base_dir is not None else None))
     issues.extend(_check_evidence_references(lines))
-    issues.extend(_check_metric_consistency(lines, Path(base_dir) if base_dir is not None else None))
+    issues.extend(
+        lint_metric_consistency(markdown, base_dir=base_dir)
+        if base_dir is not None
+        else []
+    )
     return issues
+
+
+def lint_metric_consistency(
+    markdown: str,
+    *,
+    base_dir: Path | str,
+) -> list[ReportLintIssue]:
+    """Check metric values in report text, tables, and figures against sources."""
+
+    return _check_metric_consistency(markdown.splitlines(), Path(base_dir))
+
+
+def assert_metric_consistency(
+    markdown: str,
+    *,
+    base_dir: Path | str,
+) -> None:
+    """Raise if report text, table, or figure metric values disagree with sources."""
+
+    issues = lint_metric_consistency(markdown, base_dir=base_dir)
+    if issues:
+        details = "; ".join(f"{issue.check}: {issue.message}" for issue in issues)
+        raise ReportLintError(details)
 
 
 def assert_report_readable(

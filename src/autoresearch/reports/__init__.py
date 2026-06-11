@@ -5,8 +5,10 @@ from .generator import ReportContext, generate_markdown_report
 from .lint import (
     ReportLintError,
     ReportLintIssue,
+    assert_metric_consistency,
     assert_report_readable,
     lint_markdown_report,
+    lint_metric_consistency,
 )
 from .tables import (
     MetricsTableArtifact,
@@ -25,10 +27,12 @@ __all__ = [
     "ReportLintError",
     "ReportLintIssue",
     "TableGenerationError",
+    "assert_metric_consistency",
     "assert_report_readable",
     "generate_ablation_table",
     "generate_metric_bar_figure",
     "generate_method_comparison_table",
+    "lint_metric_consistency",
     "generate_markdown_report",
     "lint_markdown_report",
 ]

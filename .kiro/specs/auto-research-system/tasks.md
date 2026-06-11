@@ -472,7 +472,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 7, EP 14_
     - _Verify: validation report labels underpowered comparisons clearly._
 
-- [ ] 16. Build scientific figures and tables
+- [x] 16. Build scientific figures and tables
   - [x] 16.1 Generate publication-quality figure artifacts
     - Use source result files only.
     - Generate vector PDF where possible and PNG preview where useful.
@@ -486,7 +486,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 10, EP 5.4_
     - _Verify: table values match metrics file values._
 
-  - [ ] 16.3 Add figure/table consistency validator
+  - [x] 16.3 Add figure/table consistency validator
     - Validate that figures, tables, and report text do not disagree.
     - _References: EP 5.4_
     - _Verify: validator fails on injected mismatch._

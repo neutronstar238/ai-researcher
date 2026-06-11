@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from autoresearch.reports import ReportLintError, assert_report_readable, lint_markdown_report
+from autoresearch.reports import (
+    ReportLintError,
+    assert_metric_consistency,
+    assert_report_readable,
+    lint_markdown_report,
+    lint_metric_consistency,
+)
 
 
 def test_report_lint_accepts_valid_generated_shape(tmp_path: Path) -> None:
@@ -76,6 +82,39 @@ def test_report_lint_catches_metric_value_mismatches_against_source_file(
     metric_issues = [issue for issue in issues if issue.check == "metric_consistency"]
     assert len(metric_issues) == 3
     assert all("accuracy" in issue.message for issue in metric_issues)
+
+
+def test_metric_consistency_validator_fails_on_text_table_and_figure_mismatch(
+    tmp_path: Path,
+) -> None:
+    _write_metrics(tmp_path)
+    figures_dir = tmp_path / "figures"
+    figures_dir.mkdir()
+    (figures_dir / "accuracy.png").write_bytes(b"png")
+    markdown = _valid_report().replace(
+        "- `accuracy` = `0.9` ([evidence `evidence_accuracy`](metrics.json))",
+        "- `accuracy` = `0.8` ([evidence `evidence_accuracy`](metrics.json))",
+    )
+    markdown += "\n".join(
+        [
+            "",
+            "| Metric | Value | Evidence |",
+            "| --- | ---: | --- |",
+            "| accuracy | 0.7 | [evidence `evidence_accuracy`](metrics.json) |",
+            "![accuracy=0.6](figures/accuracy.png) "
+            "([evidence `evidence_accuracy`](metrics.json))",
+        ]
+    )
+
+    issues = lint_metric_consistency(markdown, base_dir=tmp_path)
+
+    assert [issue.check for issue in issues] == [
+        "metric_consistency",
+        "metric_consistency",
+        "metric_consistency",
+    ]
+    with pytest.raises(ReportLintError, match="metric_consistency"):
+        assert_metric_consistency(markdown, base_dir=tmp_path)
 
 
 def _write_metrics(base_dir: Path) -> None:

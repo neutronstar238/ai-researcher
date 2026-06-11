@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-031 - Metric consistency validator imports were unsorted
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 22:05:00 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `16.3`.
+- Symptom: Ruff reported `I001` in `src/autoresearch/reports/__init__.py` and `tests/unit/reports/test_lint.py`.
+- Impact: The new validator code and tests passed, but the lint gate failed until imports were organized.
+- Evidence: Ruff suggested organizing the import blocks after adding `assert_metric_consistency` and `lint_metric_consistency` exports.
+- Root cause: New imports were appended in a non-isort order.
+- Workaround: None needed after applying ruff's import organizer.
+- Next action: Re-run ruff after touching aggregate exports and test imports.
+- Linked tasks: `16.3`
+- Resolution: Ran `poetry run ruff check src/autoresearch/reports/__init__.py tests/unit/reports/test_lint.py --fix`.
+- Verification: `poetry run ruff check src tests` passed after the import fix.
+
 ### P-20260611-030 - Initial ablation planner patch had a stale context anchor
 
 - Status: Resolved
