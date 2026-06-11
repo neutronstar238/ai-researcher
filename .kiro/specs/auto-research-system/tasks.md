@@ -480,7 +480,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 22, EP 5.3_
     - _Verify: tests confirm figure files exist and data source paths are recorded._
 
-  - [ ] 16.2 Generate comparison tables
+  - [x] 16.2 Generate comparison tables
     - Create method comparison and ablation tables from validated metrics.
     - Include run IDs or evidence IDs in machine-readable table metadata.
     - _References: RP 10, EP 5.4_

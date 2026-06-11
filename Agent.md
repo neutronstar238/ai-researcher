@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:01:47 +08:00 - Codex - Task 16.2 comparison tables
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.2`.
+- Files changed:
+  - `src/autoresearch/reports/tables.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_tables.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added source-backed method comparison and ablation table generation from metrics JSON files.
+  - Wrote Markdown tables plus metadata JSON containing run IDs, metric names, source paths, metric values, and evidence IDs.
+  - Exported table generation helpers from `autoresearch.reports`.
+  - Marked task `16.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_tables.py`: passed, 3 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 172 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 51 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `16.3` should validate consistency across figures, tables, and report text.
+
 ### 2026-06-11 21:56:03 +08:00 - Codex - Task 16.1 figure artifacts
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.1`.
