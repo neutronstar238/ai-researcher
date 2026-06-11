@@ -17,6 +17,7 @@ from .review import (
     review_generated_code,
 )
 from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
+from .validation import ValidationIssue, ValidationReport, validate_result_bundle
 
 __all__ = [
     "CodeReviewFinding",
@@ -28,6 +29,8 @@ __all__ = [
     "SandboxAccessMode",
     "SandboxPathDecision",
     "SandboxPathPolicy",
+    "ValidationIssue",
+    "ValidationReport",
     "collect_result_bundle",
     "default_network_policy",
     "execute_experiment_task",
@@ -36,4 +39,5 @@ __all__ = [
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",
     "review_generated_code",
+    "validate_result_bundle",
 ]

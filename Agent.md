@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:52:54 +08:00 - Codex - Task 10.2 validation report
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.2`.
+- Files changed:
+  - `src/autoresearch/experiments/validation.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_validation.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `validate_result_bundle()` plus `ValidationReport` and `ValidationIssue` types.
+  - Validated run completion, expected metric presence, metric bounds, artifact existence, config hash match, data hash presence, and cost record presence.
+  - Produced deterministic JSON and Markdown reports under `validation/`.
+  - Implemented pass, warning, and fail status aggregation.
+  - Marked task `10.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_validation.py`: passed, 3 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 131 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 34 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `10.3` should bind validated metrics to `EvidenceEdge` records and block claim generation from unvalidated results.
+
 ### 2026-06-11 19:48:10 +08:00 - Codex - Task 10.1 result collector
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.1`.

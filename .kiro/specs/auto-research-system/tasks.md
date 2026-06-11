@@ -358,7 +358,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 4.3, REQ 19_
     - _Verify: unit tests parse valid results and reject incomplete result directories._
 
-  - [ ] 10.2 Implement validation report
+  - [x] 10.2 Implement validation report
     - Validate run completion, metric presence, metric bounds, artifact existence, config hash, data hash, and cost record.
     - Store validation output as Markdown and JSON.
     - _References: RP 7, EP 14_
