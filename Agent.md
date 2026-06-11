@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:43:01 +08:00 - Codex - Task 9.3 restricted network policy placeholder
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.3`.
+- Files changed:
+  - `src/autoresearch/experiments/network.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_network.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `RestrictedNetworkPolicy` and default allowed domains for academic APIs, package sources, and repository sources.
+  - Added preflight allow/deny decisions for URLs and domains, including subdomain matching.
+  - Added blocked-request audit logging with `AuditEventType.SANDBOX_DENIAL`.
+  - Documented the MVP boundary with `network_enforcement_note()`: network policy is preflight/audit only and does not install OS-level firewall or proxy enforcement.
+  - Marked task `9.3` and parent task `9` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_network.py tests/unit/observability/test_audit.py`: passed, 18 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 123 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed after import-order fix.
+  - `poetry run mypy src`: passed with no issues in 32 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-014` added as mitigated.
+  - `P-20260611-015` added and resolved.
+- Follow-up:
+  - Task `10.1` should collect and validate experiment outputs into `ResultBundle` records.
+
 ### 2026-06-11 19:38:10 +08:00 - Codex - Task 9.2 sandbox executor runtime limits
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `9.2`.

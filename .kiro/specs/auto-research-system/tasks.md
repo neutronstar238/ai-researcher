@@ -330,7 +330,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 17, REQ 16, DES Security Considerations_
     - _Verify: tests detect representative unsafe patterns._
 
-- [ ] 9. Build sandbox executor MVP
+- [x] 9. Build sandbox executor MVP
   - [x] 9.1 Implement local sandbox path restrictions
     - Allow read/write only within the experiment directory and configured cache/output directories.
     - Deny access to project root secrets and user home secrets.
@@ -343,7 +343,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 16, DES Experiment Execution Workflow_
     - _Verify: tests cover timeout and nonzero exit code handling._
 
-  - [ ] 9.3 Add restricted network policy placeholder
+  - [x] 9.3 Add restricted network policy placeholder
     - Define allowed domains for academic APIs and package sources.
     - For MVP, document unsupported enforcement clearly if OS-level network sandboxing is not implemented yet.
     - Record any unsupported enforcement in `Problem.md`.
