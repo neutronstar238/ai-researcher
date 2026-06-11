@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:46:32 +08:00 - Codex - Task 12.4 MVP acceptance run
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.4`.
+- Files changed:
+  - `src/autoresearch/experiments/acceptance.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_acceptance.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `run_mvp_acceptance()` to run all currently available ScientistBench-Lite demos, rerun successful demos, compute full-loop and rerun success rates, and persist JSON plus Markdown acceptance reports.
+  - Added failure-note writing under the configured Obsidian-compatible vault failure-patterns directory for failed initial runs or reruns.
+  - Added an acceptance test confirming the report includes available demo count, run IDs, rerun IDs, success status, and rerun outcomes.
+  - Marked task `12.4` and parent task `12` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_acceptance.py tests/unit/experiments/test_demos.py tests/unit/cli/test_main.py`: passed, 9 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 148 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 41 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-021` added and resolved.
+  - `P-20260611-022` added and resolved.
+- Follow-up:
+  - Task `13.1` should begin the multi-agent runtime with a base Agent class and registry.
+
 ### 2026-06-11 20:36:51 +08:00 - Codex - Task 12.3 MVP end-to-end command
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.3`.

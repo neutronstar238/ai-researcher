@@ -388,7 +388,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 18.1, RP 15_
     - _Verify: generated report includes reproducibility block._
 
-- [ ] 12. Create ScientistBench-Lite MVP checks
+- [x] 12. Create ScientistBench-Lite MVP checks
   - [x] 12.1 Add local demo task `tabular_baseline`
     - Use a tiny public or synthetic dataset that can run quickly on CPU.
     - Include baseline metric and expected artifact list.
@@ -407,7 +407,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 21_
     - _Verify: command creates code, logs, metrics, validation report, evidence map, and Markdown report._
 
-  - [ ] 12.4 Establish MVP acceptance run
+  - [x] 12.4 Establish MVP acceptance run
     - Run 5 to 10 small tasks when available.
     - Target at least 60 percent full-loop success and 80 percent rerun success for successful tasks.
     - Record failures in `Problem.md` and failure library.

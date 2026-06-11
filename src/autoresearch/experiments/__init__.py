@@ -1,5 +1,6 @@
 """Experiment planning and execution helpers."""
 
+from .acceptance import AcceptanceRunResult, run_mvp_acceptance
 from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     create_tabular_baseline_task,
@@ -32,6 +33,7 @@ from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
 from .validation import ValidationIssue, ValidationReport, validate_result_bundle
 
 __all__ = [
+    "AcceptanceRunResult",
     "CodeReviewFinding",
     "CodeReviewResult",
     "DemoWorkflowResult",
@@ -59,6 +61,7 @@ __all__ = [
     "quarantine_unsafe_experiment",
     "require_evidence_for_metrics",
     "review_generated_code",
+    "run_mvp_acceptance",
     "run_scientistbench_demo",
     "validate_result_bundle",
 ]

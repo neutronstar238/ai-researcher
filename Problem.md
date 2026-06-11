@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-022 - PowerShell rejected Select-Object range syntax
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 20:46:32 +08:00
+- Source: Local command execution while inspecting `src/autoresearch/experiments/acceptance.py` during task `12.4`.
+- Symptom: `Get-Content ... | Select-Object -Index 180..230` failed because PowerShell could not convert the string `180..230` to `System.Int32`.
+- Impact: No source files or verification results were affected; the command was only for inspection.
+- Evidence: PowerShell returned `Cannot bind parameter 'Index'. Cannot convert value "180..230" to type "System.Int32"`.
+- Root cause: The active PowerShell syntax requires expanding the range before indexing, such as `$lines[180..230]`.
+- Workaround: Use `$lines = Get-Content ...; $lines[180..230]`.
+- Next action: Keep using PowerShell-native range syntax for file snippet inspection.
+- Linked tasks: `12.4`
+- Resolution: Re-ran the inspection with `$lines = Get-Content ...; $lines[180..230]`.
+- Verification: The corrected PowerShell command printed the intended file snippet.
+
+### P-20260611-021 - Acceptance payload annotations failed mypy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 20:46:32 +08:00
+- Source: `poetry run mypy src` while verifying task `12.4`.
+- Symptom: Mypy reported `No overload variant of "list" matches argument type "object"` and said `object` was not iterable in `src/autoresearch/experiments/acceptance.py`.
+- Impact: Acceptance tests and ruff passed, but the type gate failed until nested report payload annotations were made explicit.
+- Evidence: Mypy pointed to `_rate(values: object)` and iteration over `payload["results"]`.
+- Root cause: The acceptance helper used `dict[str, object]` and `object` annotations around nested payload data that the code then iterated.
+- Workaround: None needed after tightening the annotations.
+- Next action: Prefer `Iterable[...]` and `dict[str, Any]` for intentionally heterogeneous report payloads.
+- Linked tasks: `12.4`
+- Resolution: Changed `_rate()` to accept `Iterable[object]` and changed report payload/Markdown helper annotations to `dict[str, Any]`.
+- Verification: `poetry run mypy src` passed after the annotation update.
+
 ### P-20260611-020 - Demo workflow introduced circular import and type-check issues
 
 - Status: Resolved
