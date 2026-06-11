@@ -395,7 +395,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 14.3_
     - _Verify: full loop completes under the configured local timeout._
 
-  - [ ] 12.2 Add local demo task `text_classifier_stub`
+  - [x] 12.2 Add local demo task `text_classifier_stub`
     - Use a tiny fixture dataset or mocked vectorizer.
     - Focus on loop correctness, not model quality.
     - _References: EP 14.3_

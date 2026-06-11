@@ -1,6 +1,11 @@
 """Experiment planning and execution helpers."""
 
-from .demos import create_tabular_baseline_task, generate_tabular_baseline_demo
+from .demos import (
+    create_tabular_baseline_task,
+    create_text_classifier_stub_task,
+    generate_tabular_baseline_demo,
+    generate_text_classifier_stub_demo,
+)
 from .evidence import (
     EvidenceBindingError,
     bind_metrics_to_evidence,
@@ -41,9 +46,11 @@ __all__ = [
     "bind_metrics_to_evidence",
     "collect_result_bundle",
     "create_tabular_baseline_task",
+    "create_text_classifier_stub_task",
     "default_network_policy",
     "execute_experiment_task",
     "generate_tabular_baseline_demo",
+    "generate_text_classifier_stub_demo",
     "generate_experiment_directory",
     "network_enforcement_note",
     "plan_experiment_tasks",

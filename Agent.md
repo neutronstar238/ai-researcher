@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:24:27 +08:00 - Codex - Task 12.2 text_classifier_stub demo
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.2`.
+- Files changed:
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `create_text_classifier_stub_task()` for the ScientistBench-Lite `text_classifier_stub` local demo contract.
+  - Added `generate_text_classifier_stub_demo()` to create a tiny text CSV fixture, config, standard-library keyword stub runner, logs, metrics, summary, predictions, and vocabulary artifact.
+  - Added a full-loop test that generates the demo, executes it locally, collects metrics, validates expected metrics/artifacts, and confirms validation report success.
+  - Marked task `12.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_demos.py`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 146 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 39 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `12.3` should add the MVP end-to-end command that creates code, logs, metrics, validation report, evidence map, and Markdown report.
+
 ### 2026-06-11 20:18:19 +08:00 - Codex - Task 12.1 tabular_baseline demo
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.1`.
