@@ -230,7 +230,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 6, DES Knowledge Base Structure, DES Obsidian rationale_
     - _Verify: unit test creates the full vault layout in a temp directory and confirms all required folders and index files exist._
 
-  - [ ] 5.2 Implement Markdown knowledge entry model
+  - [x] 5.2 Implement Markdown knowledge entry model
     - Store all knowledge entries as Markdown files with YAML frontmatter.
     - Include stable entry ID, entry type, zone, project ID, tags, keywords, source refs, created/updated timestamps, and related task/run IDs.
     - Support entry types: Paper Note, Dataset Card, Method Card, Experiment Record, Failure Case, Skill Card, Strategy Card, Evidence Note, Project Progress, Issue Note, and Review Note.

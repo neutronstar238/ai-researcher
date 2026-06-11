@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:40:32 +08:00 - Codex - Task 5.2 Markdown knowledge entry model
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.2`.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `tests/unit/knowledge/test_entries.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `KnowledgeEntryType` for paper notes, dataset cards, method cards, experiment records, failure cases, skill cards, strategy cards, evidence notes, project progress, issue notes, and review notes.
+  - Added `KnowledgeZone` and `KnowledgeEntry` with stable entry ID, type, zone, project ID, tags, keywords, source refs, created/updated timestamps, related task IDs, related run IDs, and Markdown body.
+  - Added YAML frontmatter serialization and parsing while keeping the body as plain Obsidian-readable Markdown.
+  - Added `MarkdownKnowledgeStore` for filesystem-based read/write of entries.
+  - Added tests that write and read every required entry type while preserving frontmatter and body.
+  - Marked task `5.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/knowledge tests/smoke tests/unit`: passed, 63 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 15 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `5.3` should add Obsidian wiki-links, backlinks, and topic index maintenance.
+
 ### 2026-06-11 18:38:14 +08:00 - Codex - Task 5.1 Obsidian vault layout
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.1`.
