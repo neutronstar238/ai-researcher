@@ -491,7 +491,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 5.4_
     - _Verify: validator fails on injected mismatch._
 
-- [ ] 17. Build paper draft pipeline
+- [x] 17. Build paper draft pipeline
   - [x] 17.1 Generate LaTeX skeleton from evidence
     - Sections: abstract, introduction, related work, method, experiments, results, limitations, conclusion.
     - Insert placeholders only when evidence is missing; do not fabricate.
@@ -504,7 +504,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 20, RP 11_
     - _Verify: citation validator reports DOI/URL status._
 
-  - [ ] 17.3 Add paper draft versioning
+  - [x] 17.3 Add paper draft versioning
     - Store draft versions with timestamps and source evidence graph version.
     - _References: REQ 28_
     - _Verify: generating a second draft preserves the first version._

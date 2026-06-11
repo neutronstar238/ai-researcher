@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:25:20 +08:00 - Codex - Task 17.3 paper draft versioning
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.3`.
+- Files changed:
+  - `src/autoresearch/reports/drafts.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_drafts.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added immutable paper draft version storage under `versions/v0001`, `versions/v0002`, and so on.
+  - Copied source LaTeX drafts into versioned directories without overwriting prior versions.
+  - Wrote per-version `manifest.json` and a `latest.json` pointer containing draft metadata and source evidence graph schema version.
+  - Exported paper draft versioning helpers from `autoresearch.reports`.
+  - Marked task `17.3` and parent task `17` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_drafts.py`: passed, 2 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 180 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 54 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `18.1` should add conservative review dimensions without auto-scoring perfect results.
+
 ### 2026-06-11 22:19:51 +08:00 - Codex - Task 17.2 BibTeX citations
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.2`.

@@ -8,6 +8,11 @@ from .citations import (
     generate_bibtex,
     validate_citations,
 )
+from .drafts import (
+    PaperDraftVersion,
+    PaperDraftVersioningError,
+    store_paper_draft_version,
+)
 from .figures import FigureArtifact, FigureGenerationError, generate_metric_bar_figure
 from .generator import ReportContext, generate_markdown_report
 from .latex import (
@@ -46,6 +51,8 @@ __all__ = [
     "LatexGenerationError",
     "MetricsTableArtifact",
     "MetricsTableInput",
+    "PaperDraftVersion",
+    "PaperDraftVersioningError",
     "ReportContext",
     "ReportLintError",
     "ReportLintIssue",
@@ -60,5 +67,6 @@ __all__ = [
     "lint_metric_consistency",
     "generate_markdown_report",
     "lint_markdown_report",
+    "store_paper_draft_version",
     "validate_citations",
 ]
