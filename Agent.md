@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:19:51 +08:00 - Codex - Task 17.2 BibTeX citations
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.2`.
+- Files changed:
+  - `src/autoresearch/reports/citations.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_citations.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added citation validation for `DocumentRecord` inputs with DOI-first verification, URL fallback, and blocked status for unverifiable citations.
+  - Added BibTeX generation for verified DOI/URL citations and blocked comments plus metadata for unverifiable records.
+  - Exported citation status, validation, artifact, and generation helpers from `autoresearch.reports`.
+  - Marked task `17.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_citations.py`: passed, 3 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 178 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 53 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `17.3` should version paper drafts with timestamps and source evidence graph version.
+
 ### 2026-06-11 22:14:04 +08:00 - Codex - Task 17.1 LaTeX skeleton
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.1`.

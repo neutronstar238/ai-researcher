@@ -498,7 +498,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 10, REQ 20_
     - _Verify: LaTeX skeleton compiles for a demo project._
 
-  - [ ] 17.2 Generate BibTeX from verified citations
+  - [x] 17.2 Generate BibTeX from verified citations
     - Use DOI/URL when available.
     - Mark unverifiable citations as blocked.
     - _References: REQ 20, RP 11_
