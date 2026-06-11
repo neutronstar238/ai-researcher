@@ -28,6 +28,7 @@ def test_generate_markdown_report_contains_required_sections_and_evidence_links(
         "## Hypothesis",
         "## Experiment Design",
         "## Run Metadata",
+        "## Reproducibility",
         "## Results",
         "## Validation",
         "## Limitations",
@@ -37,6 +38,12 @@ def test_generate_markdown_report_contains_required_sections_and_evidence_links(
     assert "`accuracy` = `0.9` ([evidence `evidence_accuracy`](metrics.json))" in markdown
     assert "`loss` = `0.1` ([evidence `evidence_loss`](metrics.json))" in markdown
     assert "- Run ID: `run_001`" in markdown
+    assert "- Command: `python experiment.py --config config.yaml`" in markdown
+    assert "- Python version: `3.13.13`" in markdown
+    assert "- Dependency lock: `poetry.lock present`" in markdown
+    assert "- Commit SHA: `abc123`" in markdown
+    assert "- Config hash: `config-hash`" in markdown
+    assert "- Data hash: `data-hash`" in markdown
     assert output_path.read_text(encoding="utf-8") == markdown
 
 
@@ -52,6 +59,9 @@ def test_generate_markdown_report_blocks_unbound_quantitative_metrics() -> None:
         results=context.results,
         validation=context.validation,
         evidence_edges=context.evidence_edges[:1],
+        reproduction_command=context.reproduction_command,
+        python_version=context.python_version,
+        dependency_lock_status=context.dependency_lock_status,
         limitations=context.limitations,
         next_steps=context.next_steps,
     )
@@ -115,6 +125,9 @@ def _context() -> ReportContext:
         results=results,
         validation=validation,
         evidence_edges=evidence_edges,
+        reproduction_command="python experiment.py --config config.yaml",
+        python_version="3.13.13",
+        dependency_lock_status="poetry.lock present",
         limitations=["Synthetic demo only."],
         next_steps=["Run on a real benchmark."],
     )

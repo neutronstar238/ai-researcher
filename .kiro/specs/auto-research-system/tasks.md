@@ -370,7 +370,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 6.2, RP 10_
     - _Verify: unit test blocks claim generation from unvalidated result bundles._
 
-- [ ] 11. Generate MVP research report
+- [x] 11. Generate MVP research report
   - [x] 11.1 Generate Markdown report from evidence
     - Report sections: question, literature summary, hypothesis, experiment design, run metadata, results, validation, limitations, next steps.
     - Every quantitative claim must link to an evidence ID and artifact path.
@@ -383,7 +383,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 14.1, RP 10.3_
     - _Verify: report lint test fails on broken evidence links._
 
-  - [ ] 11.3 Build reproducibility notes
+  - [x] 11.3 Build reproducibility notes
     - Include command, Python version, dependency lock status, run ID, commit SHA, config hash, and data hash.
     - _References: EP 18.1, RP 15_
     - _Verify: generated report includes reproducibility block._

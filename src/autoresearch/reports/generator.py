@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,6 +23,9 @@ class ReportContext:
     results: ResultBundle
     validation: ValidationReport
     evidence_edges: list[EvidenceEdge]
+    reproduction_command: str = "not recorded"
+    python_version: str = field(default_factory=platform.python_version)
+    dependency_lock_status: str = "not recorded"
     limitations: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
 
@@ -66,6 +70,10 @@ def _render_markdown(context: ReportContext) -> str:
         "",
         *_run_metadata_lines(context.run),
         "",
+        "## Reproducibility",
+        "",
+        *_reproducibility_lines(context),
+        "",
         "## Results",
         "",
         *_result_lines(context),
@@ -91,6 +99,16 @@ def _run_metadata_lines(run: ExecutionRun) -> list[str]:
         f"- Run ID: `{run.id}`",
         f"- Task ID: `{run.task_id}`",
         f"- Status: `{run.status.value}`",
+    ]
+
+
+def _reproducibility_lines(context: ReportContext) -> list[str]:
+    run = context.run
+    return [
+        f"- Command: `{context.reproduction_command}`",
+        f"- Python version: `{context.python_version}`",
+        f"- Dependency lock: `{context.dependency_lock_status}`",
+        f"- Run ID: `{run.id}`",
         f"- Commit SHA: `{run.commit_sha or 'unknown'}`",
         f"- Config hash: `{run.config_hash or 'missing'}`",
         f"- Data hash: `{run.data_hash or 'missing'}`",

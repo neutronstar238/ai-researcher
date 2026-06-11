@@ -13,6 +13,7 @@ REQUIRED_HEADING_ORDER = (
     "## Hypothesis",
     "## Experiment Design",
     "## Run Metadata",
+    "## Reproducibility",
     "## Results",
     "## Validation",
     "## Limitations",

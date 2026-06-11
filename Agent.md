@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:11:50 +08:00 - Codex - Task 11.3 reproducibility notes
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.3`.
+- Files changed:
+  - `src/autoresearch/reports/generator.py`
+  - `src/autoresearch/reports/lint.py`
+  - `tests/unit/reports/test_report_generator.py`
+  - `tests/unit/reports/test_lint.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added report context fields for reproduction command, Python version, and dependency lock status.
+  - Added a `## Reproducibility` report section containing command, Python version, dependency lock status, run ID, commit SHA, config hash, and data hash.
+  - Updated report readability heading checks so the reproducibility section is part of the required generated report order.
+  - Marked task `11.3` and parent task `11` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports`: passed, 7 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 142 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 38 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `12.1` should add the local `tabular_baseline` demo task for ScientistBench-Lite MVP checks.
+
 ### 2026-06-11 20:07:36 +08:00 - Codex - Task 11.2 report readability checks
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.2`.
