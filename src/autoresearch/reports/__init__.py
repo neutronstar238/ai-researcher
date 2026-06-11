@@ -33,9 +33,12 @@ from .lint import (
 from .review import (
     PaperReviewContext,
     PaperReviewReport,
+    ReviewCriteria,
+    ReviewCriteriaError,
     ReviewDimension,
     ReviewDimensionScore,
     ReviewFinding,
+    load_review_criteria,
     simulate_paper_review,
 )
 from .tables import (
@@ -61,6 +64,8 @@ __all__ = [
     "MetricsTableInput",
     "PaperDraftVersion",
     "PaperDraftVersioningError",
+    "ReviewCriteria",
+    "ReviewCriteriaError",
     "PaperReviewContext",
     "PaperReviewReport",
     "ReportContext",
@@ -78,6 +83,7 @@ __all__ = [
     "generate_method_comparison_table",
     "generate_latex_skeleton",
     "lint_metric_consistency",
+    "load_review_criteria",
     "generate_markdown_report",
     "lint_markdown_report",
     "simulate_paper_review",

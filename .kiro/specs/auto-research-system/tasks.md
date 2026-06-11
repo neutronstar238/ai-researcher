@@ -516,7 +516,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 10.3, REQ 24, REQ 29_
     - _Verify: tests confirm missing evidence lowers technical soundness and reproducibility._
 
-  - [ ] 18.2 Add venue criteria configuration
+  - [x] 18.2 Add venue criteria configuration
     - Support generic and venue-specific review criteria.
     - Fall back to generic criteria when venue rules are absent.
     - _References: REQ 25_

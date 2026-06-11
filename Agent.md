@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:48:21 +08:00 - Codex - Task 18.2 venue criteria configuration
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.2`.
+- Files changed:
+  - `src/autoresearch/reports/review.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_review_criteria.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added review criteria models, built-in generic and CCF-B criteria, and a `load_review_criteria()` helper.
+  - Added JSON/YAML/TOML-backed custom venue criteria loading through the existing configuration parser.
+  - Added generic fallback when requested venue criteria are missing, while recording fallback status in the review report.
+  - Wired criteria thresholds, dimension weights, formatting requirements, and content policies into `simulate_paper_review()`.
+  - Marked task `18.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_paper_review.py tests/unit/reports/test_review_criteria.py`: passed, 5 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 185 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 55 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `18.3` should convert actionable review findings into backlog records for the self-loop.
+
 ### 2026-06-11 22:42:18 +08:00 - Codex - Task 18.1 review dimensions
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.1`.
