@@ -92,15 +92,13 @@ Install dependencies:
 poetry install
 ```
 
-Planned verification commands:
+Run the local quality gate:
 
 ```bash
-poetry run pytest
-poetry run ruff check src tests
-poetry run mypy src
+python scripts/check.py
 ```
 
-These commands become hard gates after Phase 0 creates the missing package modules, CLI entry point, and tests.
+This mirrors the default CI gates: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit`.
 
 ## Documentation
 

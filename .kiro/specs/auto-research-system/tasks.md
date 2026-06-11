@@ -206,7 +206,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 3.3, EP 16.2_
     - _Verify: workflow file exists and local commands match CI commands._
 
-  - [ ] 4.2 Add local developer check command
+  - [x] 4.2 Add local developer check command
     - Add a documented command or script for `ruff`, `mypy`, and `pytest`.
     - Prefer a small script only if it reduces repeated command drift.
     - _References: AGENTS.md Verification Expectations_

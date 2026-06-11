@@ -59,6 +59,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:33:44 +08:00 - Codex - Task 4.2 local developer check command
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.2`.
+- Files changed:
+  - `scripts/check.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `python scripts/check.py` as the local quality gate command.
+  - The script runs the same default gates as CI: `ruff`, `mypy`, and smoke/unit pytest.
+  - Updated English and Chinese README setup sections to point contributors to the script.
+  - Marked task `4.2` complete in `tasks.md`.
+- Verification:
+  - `python scripts/check.py`: passed; it ran `ruff`, `mypy`, and 45 smoke/unit tests successfully.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `4.3` should add and link the release gate checklist.
+
 ### 2026-06-11 18:32:06 +08:00 - Codex - Task 4.1 GitHub Actions workflow
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.1`.

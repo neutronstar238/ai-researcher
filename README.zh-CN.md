@@ -92,15 +92,15 @@ flowchart LR
 poetry install
 ```
 
-计划中的验证命令：
+运行本地质量门禁：
 
 ```bash
-poetry run pytest
-poetry run ruff check src tests
-poetry run mypy src
+python scripts/check.py
 ```
 
-这些命令会在 Phase 0 补齐缺失包模块、CLI 入口和测试之后成为硬性验收门槛。
+该命令与默认 CI 检查保持一致：`poetry run ruff check src tests`、`poetry run mypy src` 和 `poetry run pytest tests/smoke tests/unit`。
+
+该命令是当前本地开发和默认 CI 的硬性检查入口。
 
 ## 文档
 
