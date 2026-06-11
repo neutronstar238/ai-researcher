@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:35:42 +08:00 - Codex - Task 4.3 release gate checklist
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.3`.
+- Files changed:
+  - `docs/release-gate.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added a release gate checklist for release tags, demos, and production-ready claims.
+  - Covered unit/smoke tests, golden-test regression, security checks, docs updates, reversible migrations, changelog/release notes, git tags, and `autoresearch-vault/` provenance continuity.
+  - Included Chinese checklist content in the same release-gate document.
+  - Linked the release gate from both English and Chinese README files.
+  - Marked task `4.3` and parent task `4` complete in `tasks.md`.
+- Verification:
+  - `Test-Path docs/release-gate.md`: passed.
+  - `rg` confirmed release requirements for tests, golden tests, security, docs, reversible migrations, changelog/release notes, git tag, and `autoresearch-vault/`.
+  - `rg` confirmed both README files link to `docs/release-gate.md`.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `5.1` should implement the Obsidian vault contract and directory layout under `autoresearch-vault/`.
+
 ### 2026-06-11 18:33:44 +08:00 - Codex - Task 4.2 local developer check command
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.2`.

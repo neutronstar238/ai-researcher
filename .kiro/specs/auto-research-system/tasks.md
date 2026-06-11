@@ -198,7 +198,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 11.3, RP 8.2_
     - _Verify: schema test validates required cost fields and numeric bounds._
 
-- [ ] 4. Add continuous integration baseline
+- [x] 4. Add continuous integration baseline
   - [x] 4.1 Add GitHub Actions workflow
     - Add a workflow for Python 3.10.
     - Run install, ruff, mypy, and pytest.
@@ -212,7 +212,7 @@ A task can be checked only when all applicable items are true:
     - _References: AGENTS.md Verification Expectations_
     - _Verify: command runs locally or the blocker is recorded in `Problem.md`._
 
-  - [ ] 4.3 Add release gate checklist
+  - [x] 4.3 Add release gate checklist
     - Document release requirements: unit tests pass, golden tests do not regress, security tests pass, docs updated, migrations reversible, changelog/tag complete.
     - Put release details in README or a dedicated docs file only if needed.
     - _References: EP 16.2_
