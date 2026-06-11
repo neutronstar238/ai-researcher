@@ -310,7 +310,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 2.2, RP 5, EP 4.3_
     - _Verify: schema validation fails hypotheses without metric or evidence references._
 
-- [ ] 8. Implement experiment task design and code generation MVP
+- [x] 8. Implement experiment task design and code generation MVP
   - [x] 8.1 Convert hypotheses into experiment tasks
     - Implement a deterministic planner that creates `ExperimentTask` records.
     - Include code entry point, dataset assumptions, metrics, resource budget, timeout, expected outputs, and validation checks.
@@ -324,7 +324,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 21, REQ 15_
     - _Verify: generated demo experiment runs locally and writes `metrics.json`._
 
-  - [ ] 8.3 Add generated code review checks
+  - [x] 8.3 Add generated code review checks
     - Check for dangerous commands, path traversal, secret reads, unrestricted network access, and missing metric writes before execution.
     - Reject or quarantine unsafe generated code.
     - _References: EP 17, REQ 16, DES Security Considerations_

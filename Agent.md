@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:25:32 +08:00 - Codex - Task 8.3 generated code review checks
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.3`.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added static generated-code review results and findings for experiment runners.
+  - Blocked representative dangerous command execution, path traversal, secret reads, unrestricted network imports, and missing `metrics.json` writes before execution.
+  - Added quarantine support that writes `QUARANTINED` plus `quarantine/review-findings.json` for unsafe generated code.
+  - Exported review helpers from `autoresearch.experiments`.
+  - Marked task `8.3` and parent task `8` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments`: passed, 12 tests.
+  - `poetry run pytest tests/unit/experiments tests/smoke tests/unit`: passed, 99 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 29 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `9.1` should implement local sandbox path restrictions for experiment execution.
+
 ### 2026-06-11 19:20:47 +08:00 - Codex - Task 8.2 runnable experiment directories
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.2`.
