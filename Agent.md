@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:56:03 +08:00 - Codex - Task 16.1 figure artifacts
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.1`.
+- Files changed:
+  - `src/autoresearch/reports/figures.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_figures.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added source-backed metric bar figure generation from a metrics JSON file.
+  - Generated vector PDF artifacts, PNG previews, and metadata JSON without adding external plotting dependencies.
+  - Recorded the source metrics path, output artifact paths, metric names, metric values, and consistent style metadata.
+  - Exported figure generation helpers from `autoresearch.reports`.
+  - Marked task `16.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_figures.py`: passed, 2 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 169 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 50 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `16.2` should generate source-backed comparison and ablation tables with run IDs or evidence IDs in metadata.
+
 ### 2026-06-11 21:48:32 +08:00 - Codex - Task 15.3 statistical sanity checks
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.3`.

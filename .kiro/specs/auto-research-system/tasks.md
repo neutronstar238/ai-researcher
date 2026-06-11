@@ -473,7 +473,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: validation report labels underpowered comparisons clearly._
 
 - [ ] 16. Build scientific figures and tables
-  - [ ] 16.1 Generate publication-quality figure artifacts
+  - [x] 16.1 Generate publication-quality figure artifacts
     - Use source result files only.
     - Generate vector PDF where possible and PNG preview where useful.
     - Use consistent style across figures.
