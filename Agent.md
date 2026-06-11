@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:45:00 +08:00 - Codex - Task 1.5 repository quality commands
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.5`.
+- Files changed:
+  - `pyproject.toml`
+  - `src/autoresearch/config/parser.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed the repository quality gates for ruff, mypy, and pytest against the current `src` package layout and tests.
+  - Added `pythonpath = ["src"]` in task `1.4`, then verified it works with coverage-enabled pytest commands in this task.
+  - Migrated ruff settings from deprecated top-level lint keys into `[tool.ruff.lint]` without relaxing any selected rules.
+  - Simplified TOML parsing/formatting to use the declared `toml` dependency, which made the parser friendlier to Python 3.10 mypy settings.
+  - Marked task `1.5` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 6 source files; mypy emitted a non-failing note about currently unused override modules.
+  - `poetry run pytest tests/smoke tests/unit`: passed, 21 tests with coverage enabled.
+- Problems:
+  - None.
+- Follow-up:
+  - The mypy override note can be revisited after modules start importing optional external integrations, but it does not block the current quality gate.
+
 ### 2026-06-11 18:35:00 +08:00 - Codex - Task 1.4 test scaffold
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1.4`.

@@ -150,7 +150,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 14, DES Testing Strategy_
     - _Verify: `poetry run pytest tests/smoke tests/unit/config` passes._
 
-  - [ ] 1.5 Add repository quality commands
+  - [x] 1.5 Add repository quality commands
     - Confirm `ruff`, `black`, `mypy`, and `pytest` settings match actual package layout.
     - Adjust config only if commands fail because of stale paths or missing test directories.
     - Do not relax quality rules unless a specific rule blocks legitimate Phase 0 code.
