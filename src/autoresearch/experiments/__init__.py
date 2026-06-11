@@ -1,5 +1,10 @@
 """Experiment planning and execution helpers."""
 
+from .evidence import (
+    EvidenceBindingError,
+    bind_metrics_to_evidence,
+    require_evidence_for_metrics,
+)
 from .executor import execute_experiment_task
 from .generator import generate_experiment_directory
 from .network import (
@@ -22,6 +27,7 @@ from .validation import ValidationIssue, ValidationReport, validate_result_bundl
 __all__ = [
     "CodeReviewFinding",
     "CodeReviewResult",
+    "EvidenceBindingError",
     "ExperimentPlanningConfig",
     "NetworkDecision",
     "ResultCollectionError",
@@ -31,6 +37,7 @@ __all__ = [
     "SandboxPathPolicy",
     "ValidationIssue",
     "ValidationReport",
+    "bind_metrics_to_evidence",
     "collect_result_bundle",
     "default_network_policy",
     "execute_experiment_task",
@@ -38,6 +45,7 @@ __all__ = [
     "network_enforcement_note",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",
+    "require_evidence_for_metrics",
     "review_generated_code",
     "validate_result_bundle",
 ]

@@ -350,7 +350,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 17.2, REQ 16.3_
     - _Verify: tests confirm policy data structure and audit logging for blocked requests where enforceable._
 
-- [ ] 10. Collect and validate results
+- [x] 10. Collect and validate results
   - [x] 10.1 Implement result collector
     - Parse `metrics.json`, configured CSV outputs, logs, and generated artifacts.
     - Produce `ResultBundle`.
@@ -364,7 +364,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 7, EP 14_
     - _Verify: tests cover pass, warning, and fail validation states._
 
-  - [ ] 10.3 Add evidence binding
+  - [x] 10.3 Add evidence binding
     - Convert validated metrics into `EvidenceEdge` records.
     - Prevent report generation from using metrics without evidence binding.
     - _References: RP 6.2, RP 10_

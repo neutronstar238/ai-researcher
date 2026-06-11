@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:56:47 +08:00 - Codex - Task 10.3 evidence binding
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.3`.
+- Files changed:
+  - `src/autoresearch/experiments/evidence.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_evidence.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `bind_metrics_to_evidence()` to convert validated result metrics into `EvidenceEdge` records.
+  - Added `require_evidence_for_metrics()` to block claim/report generation when metrics lack validated evidence edges.
+  - Allowed passed and warning validation reports as evidence-bearing statuses while rejecting failed validation reports.
+  - Marked task `10.3` and parent task `10` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_evidence.py`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 135 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 35 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `11.1` should generate the MVP Markdown research report from evidence.
+
 ### 2026-06-11 19:52:54 +08:00 - Codex - Task 10.2 validation report
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `10.2`.
