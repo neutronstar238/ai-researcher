@@ -311,7 +311,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: schema validation fails hypotheses without metric or evidence references._
 
 - [ ] 8. Implement experiment task design and code generation MVP
-  - [ ] 8.1 Convert hypotheses into experiment tasks
+  - [x] 8.1 Convert hypotheses into experiment tasks
     - Implement a deterministic planner that creates `ExperimentTask` records.
     - Include code entry point, dataset assumptions, metrics, resource budget, timeout, expected outputs, and validation checks.
     - _References: EP 4.3, REQ 15_

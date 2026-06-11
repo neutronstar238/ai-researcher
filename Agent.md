@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:14:54 +08:00 - Codex - Task 8.1 experiment task planner
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `8.1`.
+- Files changed:
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/planner.py`
+  - `src/autoresearch/schemas/models.py`
+  - `tests/unit/experiments/test_planner.py`
+  - `tests/unit/schemas/test_roundtrip.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added deterministic experiment task planning from `Hypothesis` records.
+  - Added `ExperimentPlanningConfig` for CPU, memory, GPU, storage, and timeout limits.
+  - Generated `ExperimentTask` records with entry point, config path, metrics, resource budget, timeout, expected outputs, dependencies, dataset assumptions, and validation checks.
+  - Added schema constraints so experiment task name, description, entry point, config path, and metrics cannot be empty.
+  - Added tests for required fields, validation checks, and budget-limit behavior.
+  - Marked task `8.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments tests/unit/schemas tests/smoke tests/unit`: passed, 89 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 27 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `8.2` should generate minimal runnable experiment directories.
+
 ### 2026-06-11 19:12:24 +08:00 - Codex - Task 7.3 hypothesis generation
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `7.3`.

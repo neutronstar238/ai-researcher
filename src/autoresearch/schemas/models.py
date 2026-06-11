@@ -136,11 +136,11 @@ class ExperimentTask(BaseRecord):
     id: str = Field(default_factory=lambda: _record_id("task"))
     project_id: str
     hypothesis_id: str
-    name: str
-    description: str
-    entrypoint: str
-    config_path: str
-    metrics: list[str]
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    entrypoint: str = Field(min_length=1)
+    config_path: str = Field(min_length=1)
+    metrics: list[str] = Field(min_length=1)
     resource_budget: dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: int = Field(default=3600, ge=1)
     expected_outputs: list[str] = Field(default_factory=list)

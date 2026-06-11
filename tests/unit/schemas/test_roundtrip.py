@@ -146,3 +146,16 @@ def test_hypothesis_validation_rejects_missing_metric_and_evidence_refs() -> Non
             baseline="baseline_b",
             evidence_refs=[],
         )
+
+
+def test_experiment_task_validation_rejects_missing_required_execution_fields() -> None:
+    with pytest.raises(ValidationError):
+        ExperimentTask(
+            project_id="project_1",
+            hypothesis_id="hypothesis_1",
+            name="",
+            description="Run experiment.",
+            entrypoint="",
+            config_path="",
+            metrics=[],
+        )
