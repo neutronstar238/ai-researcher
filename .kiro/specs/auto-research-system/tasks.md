@@ -423,7 +423,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 5, REQ 1, DES Agent Architecture_
     - _Verify: property tests cover registry consistency and unique IDs._
 
-  - [ ] 13.2 Add structured message protocol
+  - [x] 13.2 Add structured message protocol
     - Define message fields: message ID, from agent, to agent, task ID, intent, input refs, expected output schema, deadline, budget, and risk level.
     - Reject unstructured free-text-only messages for inter-agent task execution.
     - _References: RP 5.3_

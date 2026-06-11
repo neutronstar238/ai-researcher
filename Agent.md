@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:57:44 +08:00 - Codex - Task 13.2 structured message protocol
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.2`.
+- Files changed:
+  - `src/autoresearch/agents/messages.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/unit/agents/test_messages.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added strict `AgentMessage` schema with message ID, sender, recipient, task ID, intent, input refs, expected output schema, deadline, budget, risk level, created timestamp, and metadata.
+  - Added `MessageRiskLevel` and exported message protocol primitives from `autoresearch.agents`.
+  - Added schema tests for valid round-trip messages and rejection of missing intent, missing or empty expected output schema, and free-text-only payloads.
+  - Marked task `13.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/agents/test_messages.py tests/property/agents/test_registry.py`: passed, 9 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 157 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 45 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `13.3` should integrate LangGraph for a resumable mock workflow.
+
 ### 2026-06-11 20:53:23 +08:00 - Codex - Task 13.1 base Agent and registry
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `13.1`.
