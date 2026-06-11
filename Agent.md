@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:46:08 +08:00 - Codex - Task 5.4 zone and project permissions
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.4`.
+- Files changed:
+  - `src/autoresearch/knowledge/permissions.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `tests/property/knowledge/test_permissions.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AgentRole`, `AccessMode`, and `PermissionManager` for local Obsidian vault permissions.
+  - Allowed Main and Fixed Agents to read/write inside the vault.
+  - Allowed Project Agents to read exploration and read/write only their own project directory.
+  - Added Validator Agent read-only behavior for future validation workflows.
+  - Added guarded `write_text()` and `read_text()` helpers with path traversal protection.
+  - Added audit events for denied writes, preserving target file contents.
+  - Added property tests for cross-project denial and Main Agent universal write access.
+  - Marked task `5.4` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/property/knowledge tests/unit/knowledge tests/smoke tests/unit`: passed, 67 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 16 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-008` added and resolved for the temporary Hypothesis fixture health-check failure.
+- Follow-up:
+  - Task `5.5` should add Obsidian-friendly version history, backups, and rollback.
+
 ### 2026-06-11 18:43:06 +08:00 - Codex - Task 5.3 wiki-links and topic index
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `5.3`.

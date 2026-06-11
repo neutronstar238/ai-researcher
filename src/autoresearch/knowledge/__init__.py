@@ -7,6 +7,7 @@ from .entries import (
     MarkdownKnowledgeStore,
     extract_wiki_links,
 )
+from .permissions import AccessMode, AgentRole, PermissionManager
 from .vault import (
     EXPLORATION_DIRECTORIES,
     PROJECT_DIRECTORIES,
@@ -15,12 +16,15 @@ from .vault import (
 )
 
 __all__ = [
+    "AccessMode",
+    "AgentRole",
     "EXPLORATION_DIRECTORIES",
     "KnowledgeEntry",
     "KnowledgeEntryType",
     "KnowledgeZone",
     "MarkdownKnowledgeStore",
     "PROJECT_DIRECTORIES",
+    "PermissionManager",
     "VaultLayout",
     "create_vault_layout",
     "extract_wiki_links",

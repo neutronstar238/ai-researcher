@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-008 - Hypothesis rejected function-scoped tmp_path in property tests
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 18:46:08 +08:00
+- Source: `poetry run pytest tests/property/knowledge tests/unit/knowledge tests/smoke tests/unit` while verifying task `5.4`.
+- Symptom: Hypothesis failed health checks because property tests used the function-scoped `tmp_path` fixture.
+- Impact: Permission behavior was not evaluated until the test isolation issue was fixed.
+- Evidence: Hypothesis reported `FailedHealthCheck` for function-scoped fixture reuse across generated inputs.
+- Root cause: Property tests used a pytest fixture that is not reset for every Hypothesis example.
+- Workaround: None needed after replacing the fixture with per-example `TemporaryDirectory`.
+- Next action: Use per-example context managers for filesystem property tests unless a fixture is explicitly safe to share.
+- Linked tasks: `5.4`
+- Resolution: Replaced `tmp_path` fixture usage with `TemporaryDirectory()` inside each property test body.
+- Verification: `poetry run pytest tests/property/knowledge tests/unit/knowledge tests/smoke tests/unit` passed with 67 tests.
+
 ### P-20260611-007 - Ruff import-order check failed after adding wiki-link support
 
 - Status: Resolved

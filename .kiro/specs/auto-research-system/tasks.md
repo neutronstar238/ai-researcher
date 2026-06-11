@@ -246,7 +246,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 6.5, REQ 6.6, DES Knowledge Base Interface, DES Property 18, DES Property 21_
     - _Verify: tests create linked literature, experiment, and skill entries and confirm backlinks plus topic index retrieval._
 
-  - [ ] 5.4 Enforce zone and project permissions
+  - [x] 5.4 Enforce zone and project permissions
     - Implement `PermissionManager` for Main Agent, Fixed Agents, Project Agents, and future Validator Agents.
     - Main and Fixed Agents may read/write authorized global and project areas.
     - Project Agents may read Exploration Zone and write only their own Project Zone directory.
