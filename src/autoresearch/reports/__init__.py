@@ -30,6 +30,14 @@ from .lint import (
     lint_markdown_report,
     lint_metric_consistency,
 )
+from .review import (
+    PaperReviewContext,
+    PaperReviewReport,
+    ReviewDimension,
+    ReviewDimensionScore,
+    ReviewFinding,
+    simulate_paper_review,
+)
 from .tables import (
     MetricsTableArtifact,
     MetricsTableInput,
@@ -53,9 +61,14 @@ __all__ = [
     "MetricsTableInput",
     "PaperDraftVersion",
     "PaperDraftVersioningError",
+    "PaperReviewContext",
+    "PaperReviewReport",
     "ReportContext",
     "ReportLintError",
     "ReportLintIssue",
+    "ReviewDimension",
+    "ReviewDimensionScore",
+    "ReviewFinding",
     "TableGenerationError",
     "assert_metric_consistency",
     "assert_report_readable",
@@ -67,6 +80,7 @@ __all__ = [
     "lint_metric_consistency",
     "generate_markdown_report",
     "lint_markdown_report",
+    "simulate_paper_review",
     "store_paper_draft_version",
     "validate_citations",
 ]

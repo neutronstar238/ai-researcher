@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-033 - Review test module name collided with an existing test
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 22:42:00 +08:00
+- Source: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` while verifying task `18.1`.
+- Symptom: Pytest reported an import file mismatch for `tests/unit/reports/test_review.py`.
+- Impact: The focused review tests passed, but the broader test suite could not collect all tests until the new report test filename was made unique.
+- Evidence: Pytest had already imported `tests/unit/experiments/test_review.py` as module `test_review`.
+- Root cause: Two test files in different folders shared the same basename under the current pytest import mode.
+- Workaround: None needed after renaming the new file.
+- Next action: Use domain-specific test module names when adding tests under folders that may share common labels.
+- Linked tasks: `18.1`
+- Resolution: Renamed the new report review tests to `tests/unit/reports/test_paper_review.py` and cleared test bytecode caches.
+- Verification: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after the rename.
+
+### P-20260611-032 - Review simulator tests used avoidable dict comprehensions
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 22:33:00 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `18.1`.
+- Symptom: Ruff reported `C420` in `tests/unit/reports/test_review.py`.
+- Impact: Review simulator tests passed and mypy passed, but the lint gate failed until the duplicate dict comprehensions were simplified.
+- Evidence: Ruff suggested replacing `{section: "content" for section in _sections()}` with `dict.fromkeys(...)`.
+- Root cause: Test fixture setup used a verbose dict comprehension for constant values.
+- Workaround: None needed after applying ruff's fix.
+- Next action: Use `dict.fromkeys()` when every generated key has the same value.
+- Linked tasks: `18.1`
+- Resolution: Ran `poetry run ruff check tests/unit/reports/test_review.py --fix`.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-031 - Metric consistency validator imports were unsorted
 
 - Status: Resolved

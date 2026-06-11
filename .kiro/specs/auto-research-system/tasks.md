@@ -510,7 +510,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: generating a second draft preserves the first version._
 
 - [ ] 18. Add review simulator and quality gates
-  - [ ] 18.1 Implement review dimensions
+  - [x] 18.1 Implement review dimensions
     - Score novelty, technical soundness, experimental rigor, reproducibility, writing quality, and compliance.
     - Calibrate scores conservatively; never auto-score perfect results by default.
     - _References: RP 10.3, REQ 24, REQ 29_

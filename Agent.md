@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:42:18 +08:00 - Codex - Task 18.1 review dimensions
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `18.1`.
+- Files changed:
+  - `src/autoresearch/reports/review.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_paper_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a deterministic conservative paper review simulator across novelty, technical soundness, experimental rigor, reproducibility, writing quality, and compliance.
+  - Grounded technical soundness and reproducibility in validated evidence coverage, with missing claim evidence producing actionable findings and lower scores.
+  - Added conservative score caps so generated review reports do not default to perfect scores.
+  - Exported review helpers from `autoresearch.reports`.
+  - Marked task `18.1` complete in `tasks.md`; parent task `18` remains open until `18.2` and `18.3` are complete.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_paper_review.py`: passed, 2 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 182 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 55 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-032` resolved.
+  - `P-20260611-033` resolved.
+- Follow-up:
+  - Task `18.2` should add default and venue-specific review criteria configuration.
+
 ### 2026-06-11 22:25:20 +08:00 - Codex - Task 17.3 paper draft versioning
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.3`.
