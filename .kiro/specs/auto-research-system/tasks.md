@@ -492,7 +492,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: validator fails on injected mismatch._
 
 - [ ] 17. Build paper draft pipeline
-  - [ ] 17.1 Generate LaTeX skeleton from evidence
+  - [x] 17.1 Generate LaTeX skeleton from evidence
     - Sections: abstract, introduction, related work, method, experiments, results, limitations, conclusion.
     - Insert placeholders only when evidence is missing; do not fabricate.
     - _References: RP 10, REQ 20_

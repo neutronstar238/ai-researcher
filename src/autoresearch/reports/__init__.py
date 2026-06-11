@@ -2,6 +2,13 @@
 
 from .figures import FigureArtifact, FigureGenerationError, generate_metric_bar_figure
 from .generator import ReportContext, generate_markdown_report
+from .latex import (
+    LatexCompilationError,
+    LatexDraftArtifact,
+    LatexDraftContext,
+    LatexGenerationError,
+    generate_latex_skeleton,
+)
 from .lint import (
     ReportLintError,
     ReportLintIssue,
@@ -21,6 +28,10 @@ from .tables import (
 __all__ = [
     "FigureArtifact",
     "FigureGenerationError",
+    "LatexCompilationError",
+    "LatexDraftArtifact",
+    "LatexDraftContext",
+    "LatexGenerationError",
     "MetricsTableArtifact",
     "MetricsTableInput",
     "ReportContext",
@@ -32,6 +43,7 @@ __all__ = [
     "generate_ablation_table",
     "generate_metric_bar_figure",
     "generate_method_comparison_table",
+    "generate_latex_skeleton",
     "lint_metric_consistency",
     "generate_markdown_report",
     "lint_markdown_report",

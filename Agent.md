@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 22:14:04 +08:00 - Codex - Task 17.1 LaTeX skeleton
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `17.1`.
+- Files changed:
+  - `src/autoresearch/reports/latex.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_latex.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `LatexDraftContext`, `LatexDraftArtifact`, and `generate_latex_skeleton()` for evidence-backed LaTeX paper skeleton generation.
+  - Rendered the required abstract, introduction, related work, method, experiments, results, limitations, and conclusion sections.
+  - Used only claim statements and validated evidence traces from `EvidenceGraph`; missing sections or unsupported claims receive explicit TODO placeholders.
+  - Added optional `pdflatex` compilation and exported LaTeX helpers from `autoresearch.reports`.
+  - Marked task `17.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_latex.py`: passed, 2 tests; the demo skeleton compiled with local TeX Live `pdflatex`.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 175 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 52 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `17.2` should generate BibTeX from verified citations and mark unverifiable citations as blocked.
+
 ### 2026-06-11 22:07:36 +08:00 - Codex - Task 16.3 figure/table consistency validator
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `16.3`.
