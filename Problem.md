@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-020 - Demo workflow introduced circular import and type-check issues
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-11 20:36:51 +08:00
+- Source: `poetry run pytest tests/unit/cli/test_main.py tests/unit/experiments/test_demos.py`, `poetry run ruff check src tests`, and `poetry run mypy src` while verifying task `12.3`.
+- Symptom: Pytest collection failed with a circular import between `autoresearch.experiments` and `autoresearch.reports`; ruff reported import ordering in `src/autoresearch/experiments/__init__.py`; mypy rejected passing `list[str]` to `expected_artifacts: list[Path | str]`.
+- Impact: The new end-to-end demo command could not be accepted until import layering, formatting, and type checks were fixed.
+- Evidence: Pytest reported `ImportError: cannot import name 'ValidationReport' from partially initialized module 'autoresearch.experiments'`; ruff reported `I001`; mypy reported `Argument "expected_artifacts" ... incompatible type "list[str]"`.
+- Root cause: `reports/generator.py` imported validation helpers from the aggregate `autoresearch.experiments` package while `demo_workflow` imported reports and was exported from that same aggregate package; the new export also needed sorted import order, and the helper return type was too narrow for mypy.
+- Workaround: None needed after the direct submodule imports and type annotation update.
+- Next action: Keep workflow modules importing direct submodules when aggregate package exports would create cycles.
+- Linked tasks: `12.3`
+- Resolution: Changed `reports/generator.py` to import `ValidationReport` and `require_evidence_for_metrics` from direct submodules, sorted `experiments/__init__.py`, and changed `_expected_artifacts()` to return `list[Path | str]`.
+- Verification: `poetry run pytest tests/unit/cli/test_main.py tests/unit/experiments/test_demos.py`, `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/unit tests/property tests/smoke` all passed after the fix.
+
 ### P-20260611-019 - Ruff import-order check failed after exporting tabular demo
 
 - Status: Resolved

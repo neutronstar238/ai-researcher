@@ -401,7 +401,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 14.3_
     - _Verify: full loop produces metrics and validation report._
 
-  - [ ] 12.3 Add MVP end-to-end command
+  - [x] 12.3 Add MVP end-to-end command
     - Provide a CLI command or script that runs one demo from direction to report.
     - Persist outputs under a project demo directory.
     - _References: EP 21_

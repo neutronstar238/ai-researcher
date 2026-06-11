@@ -1,5 +1,6 @@
 """Experiment planning and execution helpers."""
 
+from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     create_tabular_baseline_task,
     create_text_classifier_stub_task,
@@ -33,6 +34,7 @@ from .validation import ValidationIssue, ValidationReport, validate_result_bundl
 __all__ = [
     "CodeReviewFinding",
     "CodeReviewResult",
+    "DemoWorkflowResult",
     "EvidenceBindingError",
     "ExperimentPlanningConfig",
     "NetworkDecision",
@@ -57,5 +59,6 @@ __all__ = [
     "quarantine_unsafe_experiment",
     "require_evidence_for_metrics",
     "review_generated_code",
+    "run_scientistbench_demo",
     "validate_result_bundle",
 ]

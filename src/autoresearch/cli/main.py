@@ -10,6 +10,7 @@ import typer
 
 from autoresearch import __version__
 from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig
+from autoresearch.experiments import run_scientistbench_demo
 
 app = typer.Typer(
     help="AutoResearch System command line interface.",
@@ -101,6 +102,48 @@ def init_demo(
         parser.write_file(config, config_path, ConfigFormat.YAML)
 
     typer.echo(f"Demo scaffold ready at {path}")
+
+
+@app.command("run-demo")
+def run_demo(
+    demo: str = typer.Option(
+        "tabular_baseline",
+        "--demo",
+        "-d",
+        help="ScientistBench-Lite demo task to run.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("runs/demo"),
+        "--output-dir",
+        "-o",
+        help="Directory where demo outputs should be persisted.",
+    ),
+    timeout_seconds: int = typer.Option(
+        30,
+        "--timeout-seconds",
+        help="Local execution timeout for the generated demo runner.",
+    ),
+) -> None:
+    """Run one local MVP demo from generated code to evidence-backed report."""
+
+    try:
+        result = run_scientistbench_demo(
+            demo,
+            output_dir=output_dir,
+            timeout_seconds=timeout_seconds,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    except Exception as exc:
+        typer.echo(f"[FAIL] demo run failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] demo: {result.demo}")
+    typer.echo(f"[OK] experiment_dir: {result.experiment_dir}")
+    typer.echo(f"[OK] run_id: {result.run_id}")
+    typer.echo(f"[OK] validation: {result.validation_json_path}")
+    typer.echo(f"[OK] evidence_map: {result.evidence_map_path}")
+    typer.echo(f"[OK] report: {result.report_path}")
 
 
 def _can_import(module_name: str) -> bool:

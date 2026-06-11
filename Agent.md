@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:36:51 +08:00 - Codex - Task 12.3 MVP end-to-end command
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.3`.
+- Files changed:
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/generator.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `run_scientistbench_demo()` to run a local demo through code generation, sandbox execution, result collection, validation, evidence binding, evidence-map persistence, and Markdown report generation.
+  - Added `autoresearch run-demo` CLI command with demo name, output directory, and timeout options.
+  - Added CLI test proving the command creates generated code, logs, metrics, validation JSON/Markdown, evidence map JSON, and an evidence-backed Markdown report.
+  - Fixed report generator imports to avoid aggregate package cycles.
+  - Marked task `12.3` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py tests/unit/experiments/test_demos.py`: passed, 8 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 147 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 40 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-020` added and resolved.
+- Follow-up:
+  - Task `12.4` should establish the MVP acceptance run and record run IDs plus rerun outcomes.
+
 ### 2026-06-11 20:24:27 +08:00 - Codex - Task 12.2 text_classifier_stub demo
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `12.2`.

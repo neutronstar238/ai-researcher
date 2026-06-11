@@ -6,7 +6,8 @@ import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from autoresearch.experiments import ValidationReport, require_evidence_for_metrics
+from autoresearch.experiments.evidence import require_evidence_for_metrics
+from autoresearch.experiments.validation import ValidationReport
 from autoresearch.schemas import EvidenceEdge, ExecutionRun, ResultBundle
 
 
