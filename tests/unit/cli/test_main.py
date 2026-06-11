@@ -69,3 +69,31 @@ def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:
     assert evidence_map["evidence_edges"]
     assert "## Reproducibility" in report
     assert "## Results" in report
+
+
+def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "package_path": "code/run.py",
+                        "sha256": "missing-hash",
+                    }
+                ],
+                "run_commands": ["python code/run.py"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["validate-package", "--manifest", str(manifest_path)],
+    )
+
+    assert result.exit_code == 1
+    assert "[FAIL] package validation failed" in result.stdout
+    assert "artifact_exists" in result.stdout
+    assert "code/run.py" in result.stdout

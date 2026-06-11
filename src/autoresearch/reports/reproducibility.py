@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import platform
+import shlex
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -113,6 +114,44 @@ class ReproducibilityPackage:
         }
 
 
+@dataclass(frozen=True)
+class ReproducibilityPackageIssue:
+    """One package validation issue."""
+
+    check: str
+    message: str
+    severity: ValidationStatus = ValidationStatus.FAILED
+    package_path: str | None = None
+
+    def to_dict(self) -> dict[str, str | None]:
+        return {
+            "check": self.check,
+            "message": self.message,
+            "severity": self.severity.value,
+            "package_path": self.package_path,
+        }
+
+
+@dataclass(frozen=True)
+class ReproducibilityPackageValidation:
+    """Validation report for one reproducibility package."""
+
+    manifest_path: str
+    package_dir: str
+    status: ValidationStatus
+    checked_artifacts: int
+    issues: tuple[ReproducibilityPackageIssue, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "manifest_path": self.manifest_path,
+            "package_dir": self.package_dir,
+            "status": self.status.value,
+            "checked_artifacts": self.checked_artifacts,
+            "issues": [issue.to_dict() for issue in self.issues],
+        }
+
+
 def create_reproducibility_package(
     *,
     package_dir: Path | str,
@@ -198,6 +237,95 @@ def create_reproducibility_package(
         environment_notes_path=environment_notes_path.as_posix(),
         artifacts=tuple(included),
         excluded_artifacts=tuple(excluded),
+    )
+
+
+def validate_reproducibility_package(
+    manifest_path: Path | str,
+) -> ReproducibilityPackageValidation:
+    """Validate package artifact presence, hashes, and self-contained paths."""
+
+    path = Path(manifest_path)
+    package_dir = path.parent
+    if not path.is_file():
+        issue = ReproducibilityPackageIssue(
+            "manifest_exists",
+            f"manifest is missing: {path}",
+            package_path=path.as_posix(),
+        )
+        return ReproducibilityPackageValidation(
+            manifest_path=path.as_posix(),
+            package_dir=package_dir.as_posix(),
+            status=ValidationStatus.FAILED,
+            checked_artifacts=0,
+            issues=(issue,),
+        )
+
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        issue = ReproducibilityPackageIssue(
+            "manifest_json",
+            f"manifest is not valid JSON: line {exc.lineno}, column {exc.colno}",
+            package_path=path.as_posix(),
+        )
+        return ReproducibilityPackageValidation(
+            manifest_path=path.as_posix(),
+            package_dir=package_dir.as_posix(),
+            status=ValidationStatus.FAILED,
+            checked_artifacts=0,
+            issues=(issue,),
+        )
+
+    issues: list[ReproducibilityPackageIssue] = []
+    artifacts = manifest.get("artifacts", [])
+    if not isinstance(artifacts, list):
+        issues.append(
+            ReproducibilityPackageIssue(
+                "manifest_artifacts",
+                "manifest artifacts must be a list",
+            )
+        )
+        artifacts = []
+
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            issues.append(
+                ReproducibilityPackageIssue(
+                    "manifest_artifact_shape",
+                    "artifact entry must be an object",
+                )
+            )
+            continue
+        issues.extend(_validate_manifest_artifact(package_dir, artifact))
+
+    run_commands = manifest.get("run_commands", [])
+    if isinstance(run_commands, list):
+        for command in run_commands:
+            if isinstance(command, str):
+                issues.extend(_validate_command(command))
+            else:
+                issues.append(
+                    ReproducibilityPackageIssue(
+                        "run_command_shape",
+                        "run command entries must be strings",
+                    )
+                )
+    else:
+        issues.append(
+            ReproducibilityPackageIssue(
+                "run_commands_shape",
+                "manifest run_commands must be a list",
+            )
+        )
+
+    status = ValidationStatus.FAILED if issues else ValidationStatus.PASSED
+    return ReproducibilityPackageValidation(
+        manifest_path=path.as_posix(),
+        package_dir=package_dir.as_posix(),
+        status=status,
+        checked_artifacts=len(artifacts),
+        issues=tuple(issues),
     )
 
 
@@ -318,3 +446,98 @@ def _environment_markdown(
 
 def _validation_status_value(status: ValidationStatus | str) -> str:
     return status.value if isinstance(status, ValidationStatus) else str(status)
+
+
+def _validate_manifest_artifact(
+    package_dir: Path,
+    artifact: dict[str, Any],
+) -> list[ReproducibilityPackageIssue]:
+    issues: list[ReproducibilityPackageIssue] = []
+    package_path_value = artifact.get("package_path")
+    expected_hash = artifact.get("sha256")
+    if not isinstance(package_path_value, str) or not package_path_value:
+        return [
+            ReproducibilityPackageIssue(
+                "artifact_package_path",
+                "artifact package_path must be a non-empty string",
+            )
+        ]
+    if not isinstance(expected_hash, str) or not expected_hash:
+        issues.append(
+            ReproducibilityPackageIssue(
+                "artifact_hash",
+                "artifact sha256 must be a non-empty string",
+                package_path=package_path_value,
+            )
+        )
+        expected_hash = ""
+
+    package_path = Path(package_path_value)
+    if package_path.is_absolute() or ".." in package_path.parts:
+        issues.append(
+            ReproducibilityPackageIssue(
+                "artifact_path_self_contained",
+                "artifact package_path must stay inside the package",
+                package_path=package_path_value,
+            )
+        )
+        return issues
+
+    resolved_path = package_dir / package_path
+    if not resolved_path.is_file():
+        issues.append(
+            ReproducibilityPackageIssue(
+                "artifact_exists",
+                f"packaged artifact is missing: {package_path_value}",
+                package_path=package_path_value,
+            )
+        )
+        return issues
+    actual_hash = file_hash(resolved_path)
+    if expected_hash and actual_hash != expected_hash:
+        issues.append(
+            ReproducibilityPackageIssue(
+                "artifact_hash_match",
+                "packaged artifact hash does not match manifest sha256",
+                package_path=package_path_value,
+            )
+        )
+    return issues
+
+
+def _validate_command(command: str) -> list[ReproducibilityPackageIssue]:
+    issues: list[ReproducibilityPackageIssue] = []
+    try:
+        tokens = shlex.split(command)
+    except ValueError as exc:
+        return [
+            ReproducibilityPackageIssue(
+                "run_command_parse",
+                f"run command cannot be parsed: {exc}",
+            )
+        ]
+    for token in tokens:
+        clean_token = token.strip("\"'")
+        if not _looks_like_path(clean_token):
+            continue
+        token_path = Path(clean_token)
+        if token_path.is_absolute() or ".." in token_path.parts:
+            issues.append(
+                ReproducibilityPackageIssue(
+                    "run_command_self_contained",
+                    f"run command references a package-external path: {clean_token}",
+                    package_path=clean_token,
+                )
+            )
+    return issues
+
+
+def _looks_like_path(token: str) -> bool:
+    if token.startswith("-") or "://" in token:
+        return False
+    return (
+        "/" in token
+        or "\\" in token
+        or token.startswith(".")
+        or Path(token).suffix != ""
+    )

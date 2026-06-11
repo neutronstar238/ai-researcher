@@ -11,6 +11,8 @@ import typer
 from autoresearch import __version__
 from autoresearch.config import ConfigFormat, ConfigParser, SystemConfig
 from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.reports import validate_reproducibility_package
+from autoresearch.schemas import ValidationStatus
 
 app = typer.Typer(
     help="AutoResearch System command line interface.",
@@ -144,6 +146,29 @@ def run_demo(
     typer.echo(f"[OK] validation: {result.validation_json_path}")
     typer.echo(f"[OK] evidence_map: {result.evidence_map_path}")
     typer.echo(f"[OK] report: {result.report_path}")
+
+
+@app.command("validate-package")
+def validate_package(
+    manifest: Path = typer.Option(
+        Path("manifest.json"),
+        "--manifest",
+        "-m",
+        help="Path to a reproducibility package manifest.json file.",
+    ),
+) -> None:
+    """Validate a reproducibility package manifest and included artifacts."""
+
+    report = validate_reproducibility_package(manifest)
+    if report.status is ValidationStatus.PASSED:
+        typer.echo(f"[OK] package validation passed: {report.checked_artifacts} artifacts")
+        return
+
+    typer.echo(f"[FAIL] package validation failed: {report.checked_artifacts} artifacts")
+    for issue in report.issues:
+        target = f" ({issue.package_path})" if issue.package_path else ""
+        typer.echo(f"[{issue.severity.value.upper()}] {issue.check}{target}: {issue.message}")
+    raise typer.Exit(code=1)
 
 
 def _can_import(module_name: str) -> bool:

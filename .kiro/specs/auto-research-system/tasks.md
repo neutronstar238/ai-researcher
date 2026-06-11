@@ -527,14 +527,14 @@ A task can be checked only when all applicable items are true:
     - _References: RP 12, EP 5.3_
     - _Verify: demo review creates structured follow-up records._
 
-- [ ] 19. Build reproducibility package
+- [x] 19. Build reproducibility package
   - [x] 19.1 Package code, config, metrics, reports, and evidence map
     - Include environment notes, run commands, artifact manifest, and validation status.
     - Exclude secrets and large raw data unless explicitly configured.
     - _References: EP 5.3, EP 18.2_
     - _Verify: package manifest lists every included artifact with hash._
 
-  - [ ] 19.2 Add package validation
+  - [x] 19.2 Add package validation
     - Validate that package commands and paths are self-contained.
     - _References: RP 15_
     - _Verify: validation command reports pass/fail and missing artifacts._

@@ -5,6 +5,7 @@ from autoresearch.reports import (
     ReproducibilityArtifactInput,
     ReproducibilityArtifactRole,
     create_reproducibility_package,
+    validate_reproducibility_package,
 )
 from autoresearch.schemas import ValidationStatus, file_hash
 
@@ -100,3 +101,36 @@ def test_create_reproducibility_package_manifest_hashes_included_artifacts(
     assert "poetry run autoresearch run-demo" in Path(
         package.environment_notes_path
     ).read_text(encoding="utf-8")
+
+
+def test_validate_reproducibility_package_reports_missing_artifacts(
+    tmp_path: Path,
+) -> None:
+    source_path = tmp_path / "run.py"
+    source_path.write_text("print('ok')\n", encoding="utf-8")
+    package = create_reproducibility_package(
+        package_dir=tmp_path / "package",
+        artifacts=[
+            ReproducibilityArtifactInput(
+                source_path,
+                ReproducibilityArtifactRole.CODE,
+            )
+        ],
+        project_id="project-001",
+        run_id="run-001",
+        run_commands=["python code/run.py"],
+        validation_status=ValidationStatus.PASSED,
+    )
+
+    passing_report = validate_reproducibility_package(package.manifest_path)
+    (Path(package.package_dir) / "code" / "run.py").unlink()
+    failing_report = validate_reproducibility_package(package.manifest_path)
+
+    assert passing_report.status is ValidationStatus.PASSED
+    assert failing_report.status is ValidationStatus.FAILED
+    assert failing_report.checked_artifacts == 1
+    assert any(
+        issue.check == "artifact_exists"
+        and issue.package_path == "code/run.py"
+        for issue in failing_report.issues
+    )

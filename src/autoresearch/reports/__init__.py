@@ -43,7 +43,10 @@ from .reproducibility import (
     ReproducibilityPackage,
     ReproducibilityPackageArtifact,
     ReproducibilityPackageError,
+    ReproducibilityPackageIssue,
+    ReproducibilityPackageValidation,
     create_reproducibility_package,
+    validate_reproducibility_package,
 )
 from .review import (
     PaperReviewContext,
@@ -95,6 +98,8 @@ __all__ = [
     "ReproducibilityPackage",
     "ReproducibilityPackageArtifact",
     "ReproducibilityPackageError",
+    "ReproducibilityPackageIssue",
+    "ReproducibilityPackageValidation",
     "ReviewDimension",
     "ReviewDimensionScore",
     "ReviewFinding",
@@ -114,5 +119,6 @@ __all__ = [
     "lint_markdown_report",
     "simulate_paper_review",
     "store_paper_draft_version",
+    "validate_reproducibility_package",
     "validate_citations",
 ]
