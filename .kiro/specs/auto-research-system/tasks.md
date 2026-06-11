@@ -454,7 +454,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests catch a deliberate table/text mismatch._
 
 - [ ] 15. Add baseline, ablation, and statistics support
-  - [ ] 15.1 Implement baseline reproducer
+  - [x] 15.1 Implement baseline reproducer
     - Reproduce at least one baseline before running a proposed method.
     - Store baseline config, run ID, metrics, and validation state.
     - _References: EP 5.3, RP 10.3_

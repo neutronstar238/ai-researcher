@@ -1,6 +1,7 @@
 """Experiment planning and execution helpers."""
 
 from .acceptance import AcceptanceRunResult, run_mvp_acceptance
+from .baselines import BaselineReproductionResult, reproduce_tabular_baseline
 from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     create_tabular_baseline_task,
@@ -34,6 +35,7 @@ from .validation import ValidationIssue, ValidationReport, validate_result_bundl
 
 __all__ = [
     "AcceptanceRunResult",
+    "BaselineReproductionResult",
     "CodeReviewFinding",
     "CodeReviewResult",
     "DemoWorkflowResult",
@@ -61,6 +63,7 @@ __all__ = [
     "quarantine_unsafe_experiment",
     "require_evidence_for_metrics",
     "review_generated_code",
+    "reproduce_tabular_baseline",
     "run_mvp_acceptance",
     "run_scientistbench_demo",
     "validate_result_bundle",

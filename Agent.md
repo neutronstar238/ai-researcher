@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:33:47 +08:00 - Codex - Task 15.1 baseline reproducer
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `15.1`.
+- Files changed:
+  - `src/autoresearch/experiments/baselines.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_baselines.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `reproduce_tabular_baseline()` to generate, execute, collect, validate, and record the deterministic tabular baseline before proposed-method workflows.
+  - Added `BaselineReproductionResult` with experiment directory, task, run, result bundle, validation report, and baseline record path.
+  - Persisted a JSON baseline record containing baseline config, config hash, run ID, run status, metrics, and validation state.
+  - Exported baseline reproduction helpers from `autoresearch.experiments`.
+  - Added a demo baseline test that confirms the baseline run is validated and its record is written.
+  - Marked task `15.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_baselines.py tests/unit/experiments/test_demos.py tests/unit/experiments/test_validation.py`: passed, 8 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 164 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 49 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `15.2` should add an ablation planner with budget limits.
+
 ### 2026-06-11 21:28:46 +08:00 - Codex - Task 14.3 evidence consistency checks
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.3`.
