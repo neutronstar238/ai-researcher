@@ -2,519 +2,862 @@
 
 ## Overview
 
-This implementation plan details the complete development roadmap for the AutoResearch System - a full-stack automated research platform with multi-agent architecture, intelligent resource management, and end-to-end research workflow automation. The system will be implemented in **Python 3.10+** across 6 phases over 24 weeks.
+This task plan turns the two root planning documents into executable engineering work:
+
+- `AutoResearch_System_Research_Plan.md`
+- `AutoResearch_System_Execution_Plan.md`
+
+The project must be built in the order described by those plans: first a minimal trusted research loop, then automation, then self-looping research, then controlled self-evolution, and only later productization.
+
+The MVP is not "an AI that writes papers." The MVP is a reproducible computational research loop:
+
+```text
+research direction
+  -> literature search
+  -> knowledge records
+  -> hypothesis
+  -> experiment task
+  -> generated runnable code
+  -> sandbox execution
+  -> result collection
+  -> validation
+  -> Markdown report with evidence links
+```
+
+Core innovation: the Obsidian-compatible knowledge vault is the system's shared memory and evolution substrate. Its canonical project-root path is `autoresearch-vault/`. It is not a replaceable storage detail. The vault must connect global exploration, per-project knowledge, experiment records, issues, failures, skills, evidence, strategy versions, topic indexes, wiki-links, and rollback history so the system can self-loop and self-evolve while staying human-readable and auditable.
+
+## Source References
+
+- `RP`: `AutoResearch_System_Research_Plan.md`
+- `EP`: `AutoResearch_System_Execution_Plan.md`
+- `REQ`: `.kiro/specs/auto-research-system/requirements.md`
+- `DES`: `.kiro/specs/auto-research-system/design.md`
+
+## Global Execution Rules
+
+- [ ] Work on one task or subtask at a time.
+- [ ] Before implementing a non-trivial task, state the assumptions and success criteria.
+- [ ] Keep changes surgical and tied to the active task.
+- [ ] Update `Agent.md` after every file-changing task.
+- [ ] Update `Problem.md` when a blocker, defect, failed command, unclear requirement, or skipped verification appears.
+- [ ] After a task or subtask is completed and verified, create one focused git commit for that completed task or subtask.
+- [ ] Do not mark a task complete if verification is blocked.
+- [ ] Do not claim planned capabilities as implemented capabilities in README or docs.
+- [ ] Treat `autoresearch-vault/` as the canonical Obsidian knowledge substrate unless a task explicitly says otherwise.
+
+## Definition of Done
+
+A task can be checked only when all applicable items are true:
+
+- [ ] Code or documentation changes are complete.
+- [ ] Acceptance checks in the task have passed.
+- [ ] New or changed behavior has focused tests, unless the task is documentation-only.
+- [ ] `Agent.md` records files changed, summary, verification, problems, and follow-up.
+- [ ] `Problem.md` is updated for any known issue.
+- [ ] A focused git commit exists for the completed task or subtask.
 
 ## Tasks
 
-### Phase 1: Core Infrastructure (Weeks 1-4)
+### Phase 0: Project Governance and Engineering Baseline (Weeks 0-2)
 
-- [ ] 1. Set up project structure and core framework
-  - [x] 1.1 Create Python project with modular directory structure
-    - Initialize project with `pyproject.toml` and dependency management (Poetry or pip-tools)
-    - Create modular package structure: `agents/`, `knowledge/`, `scheduler/`, `literature/`, `experiments/`, `paper/`, `config/`, `security/`, `cli/`
-    - Set up development tools: black, ruff, mypy for code quality
-    - Create initial configuration system with YAML/TOML support
-    - _Requirements: 30.5_
-  
-  - [ ] 1.2 Write property test for configuration round-trip (Property 13)
-    - **Property 13: Configuration Format Round-Trip**
-    - **Validates: Requirements 30.4**
-    - Test that JSON, YAML, and TOML configs serialize and deserialize correctly
-  
-  - [ ] 1.3 Write property test for invalid configuration error reporting (Property 36)
-    - **Property 36: Invalid Configuration Error Reporting**
-    - **Validates: Requirements 30.2, 30.6**
-    - Test that malformed configs generate descriptive error messages
+- [ ] 0. Establish repository governance and documentation baseline
+  - [x] 0.1 Create agent collaboration instructions
+    - Add `AGENTS.md` as repository-wide instructions for future coding agents.
+    - Require agents to read plans, tasks, problems, and prior change logs before non-trivial edits.
+    - Define MVP priority order: trusted loop, evidence graph, paper draft, multi-agent automation, self-loop, controlled self-evolution, productization.
+    - _References: RP 1-3, EP 1, EP 20_
+    - _Verify: `AGENTS.md` exists and mentions `Agent.md`, `Problem.md`, task-driven work, verification, and safety rules._
 
-- [ ] 2. Implement base agent architecture
-  - [ ] 2.1 Create base Agent class with state management
-    - Define `Agent` base class with `agent_id`, `capabilities`, and state management
-    - Implement message passing interface with typed schemas
-    - Create agent lifecycle methods: `initialize()`, `execute_task()`, `shutdown()`
-    - _Requirements: 1.1, 1.4_
-  
-  - [ ] 2.2 Implement AgentRegistry for tracking active agents
-    - Create `AgentRegistry` class with add/remove/get operations
-    - Implement thread-safe registry with locking for concurrent access
-    - Add agent capability querying and filtering
-    - _Requirements: 1.6_
-  
-  - [ ] 2.3 Write property tests for agent management (Properties 1, 3, 4)
-    - **Property 1: Project Agent Creation** (Requirements 1.3)
-    - **Property 3: Message Delivery** (Requirements 1.5)
-    - **Property 4: Agent Registry Consistency** (Requirements 1.6)
-    - Use hypothesis to generate random agent configurations and verify creation/messaging/registry
+  - [x] 0.2 Create agent development standard and change log
+    - Add `Agent.md`.
+    - Include development standards, task discipline, change scope, verification expectations, problem tracking, and git version management.
+    - Require one focused git commit after each completed and verified task or subtask.
+    - Include an entry template for future agents.
+    - Add the initial Codex documentation bootstrap entry.
+    - _References: User project convention request, EP 16.2_
+    - _Verify: `Agent.md` contains both "Development Standard" and "Git Version Management" sections._
 
-- [ ] 3. Implement Main Agent orchestration
-  - [ ] 3.1 Create MainAgent class with task delegation capabilities
-    - Implement Main Agent singleton pattern with user interaction handling
-    - Create task decomposition and delegation logic
-    - Implement decision-making framework based on agent outputs
-    - Add progress monitoring and error handling
-    - _Requirements: 1.1, 1.4, 1.5_
-  
-  - [ ] 3.2 Write property test for task routing correctness (Property 2)
-    - **Property 2: Task Routing Correctness**
-    - **Validates: Requirements 1.4**
-    - Verify tasks are assigned to agents with matching capabilities
+  - [x] 0.3 Create problem tracking document
+    - Add `Problem.md`.
+    - Define statuses, severity values, and a reusable problem entry template.
+    - Record the initial scaffold issue discovered during repository inspection.
+    - _References: EP 6, EP 20.2, DES Error Handling_
+    - _Verify: `Problem.md` exists and contains `P-20260611-001`._
 
-- [ ] 4. Implement LangGraph integration for stateful workflows
-  - [ ] 4.1 Set up LangGraph runtime with state persistence
-    - Integrate LangGraph for stateful multi-agent workflows
-    - Define state schemas for agent communication
-    - Implement checkpoint/resume capability for long-running workflows
-    - Create workflow graph definitions for research pipeline
-    - _Requirements: 1.5_
+  - [x] 0.4 Rewrite README as open-source landing pages
+    - Replace the root `README.md` with an English default project page.
+    - Add `README.zh-CN.md` as the Chinese page.
+    - Link English to Chinese and Chinese back to English.
+    - Describe status accurately as planning/scaffold, not completed runtime.
+    - Include architecture, roadmap, repository layout, setup notes, docs links, contribution rules, and license status.
+    - _References: User README request, RP 13, EP 18_
+    - _Verify: both README files exist; English README links to `README.zh-CN.md`; Chinese README links to `README.md`._
 
-- [ ] 5. Build Knowledge Base foundation
-  - [ ] 5.1 Implement KnowledgeBase interface and Obsidian integration
-    - Create `KnowledgeBase` class with CRUD operations for Markdown files
-    - Implement Exploration Zone and Project Zone directory structures
-    - Add file-based versioning with timestamp tracking
-    - Create wiki-link parsing and bidirectional link creation
-    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
-  
-  - [ ] 5.2 Implement permission system for zone-based access control
-    - Create `PermissionManager` with access control matrix (Main/Fixed/Project agents)
-    - Implement permission checks before all write operations
-    - Add access denial logging for security auditing
-    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-  
-  - [ ] 5.3 Write property tests for knowledge base operations (Properties 17-22)
-    - **Property 17: Project Directory Structure** (Requirements 6.3)
-    - **Property 18: Bidirectional Link Creation** (Requirements 6.5)
-    - **Property 19: Permission Enforcement for Project Agents** (Requirements 7.4, 7.5)
-    - **Property 20: Main Agent Universal Access** (Requirements 7.1)
-    - **Property 21: Knowledge Entry Retrieval** (Requirements 6.6)
-    - **Property 22: Version History Preservation** (Requirements 8.6, 28.2)
+  - [x] 0.5 Rewrite this executable task plan
+    - Replace the leftover task plan with a detailed executable plan based on `RP` and `EP`.
+    - Preserve the Kiro-style checkbox structure.
+    - Add verification notes and source references to each task group.
+    - Include git commit discipline as a global rule and completion requirement.
+    - _References: User tasks request, RP final judgment, EP full plan_
+    - _Verify: this file contains Phase 0 through Phase 5 and a task dependency graph._
 
-- [ ] 6. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [x] 0.6 Audit current scaffold against documented claims
+    - Inspect `pyproject.toml`, `src/autoresearch/__init__.py`, and `src/autoresearch/config/__init__.py`.
+    - Identify missing modules and CLI entry point before claiming tests can pass.
+    - Record the issue in `Problem.md`.
+    - _References: EP 3.3, DES Installation and Configuration_
+    - _Verify: `Problem.md` includes the missing config and CLI scaffold issue._
 
-### Phase 2: Resource Management (Weeks 5-8)
+  - [x] 0.7 Reconcile the plan with Kiro's core Obsidian and self-evolution design
+    - Read Kiro `requirements.md` and `design.md` sections for Agent evolution, Knowledge Base structure, permissions, knowledge auto-evolution, version history, and Obsidian rationale.
+    - Promote Obsidian-compatible Markdown vault from a storage detail to the central self-loop and self-evolution substrate.
+    - Update README, `AGENTS.md`, `Problem.md`, and this task plan so future agents preserve the original product idea.
+    - _References: REQ 2, REQ 6, REQ 7, REQ 8, REQ 28, DES Knowledge Base Component, DES Obsidian rationale_
+    - _Verify: docs mention Obsidian as the unified knowledge substrate and `Problem.md` records `P-20260611-002` as resolved._
 
-- [ ] 7. Implement SSH resource discovery
-  - [ ] 7.1 Create SSH config parser and connectivity tester
-    - Implement SSH config file parser (`~/.ssh/config`) to extract host entries
-    - Create connectivity probe with timeout and error handling
-    - Implement hardware specification query via SSH commands
-    - Parse CPU, memory, GPU information from remote servers
-    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
-  
-  - [ ] 7.2 Write property test for SSH config parsing (Properties 10, 11, 12)
-    - **Property 10: SSH Config Parsing Round-Trip** (Requirements 3.2, 30.4)
-    - **Property 11: SSH Entry Count Preservation** (Requirements 3.3)
-    - **Property 12: Registry Update Consistency** (Requirements 3.6)
+- [ ] 1. Repair Python package scaffold so basic imports are honest
+  - [ ] 1.1 Add config data models
+    - Create `src/autoresearch/config/models.py`.
+    - Define minimal Pydantic models: `SystemConfig`, `AgentConfig`, `ComputeConfig`, `KnowledgeBaseConfig`, `LiteratureConfig`.
+    - Keep defaults small and local-first.
+    - Include fields needed by Phase 1 only: project root, knowledge root, sandbox defaults, literature database list, logging level, cost limits.
+    - _References: EP 3.5, EP 13, REQ 30_
+    - _Verify: `python -c "from autoresearch.config import SystemConfig"` succeeds._
 
-- [ ] 8. Build Compute Scheduler core
-  - [ ] 8.1 Implement ComputeScheduler with resource registry
-    - Create `ComputeScheduler` class with resource discovery integration
-    - Implement resource registry with status tracking (available/busy/offline)
-    - Add resource requirement evaluation from experiment tasks
-    - Create resource matching algorithm based on specifications
-    - _Requirements: 5.1, 5.3_
-  
-  - [ ] 8.2 Implement task queue with priority-based scheduling
-    - Create priority queue for experiment tasks
-    - Implement task selection algorithm (highest priority first)
-    - Add GPU vs non-GPU task separation logic
-    - _Requirements: 5.4, 5.6_
-  
-  - [ ] 8.3 Write property tests for scheduling (Properties 14, 15, 16)
-    - **Property 14: Resource Requirement Evaluation** (Requirements 5.1)
-    - **Property 15: Priority-Based Task Ordering** (Requirements 5.6)
-    - **Property 16: Local Resource Preference** (Requirements 5.2)
+  - [ ] 1.2 Add config parser
+    - Create `src/autoresearch/config/parser.py`.
+    - Support YAML, TOML, and JSON.
+    - Return descriptive errors for malformed files and missing required fields.
+    - Add `ConfigFormat` enum or equivalent typed discriminator.
+    - Avoid custom string parsing when library parsers are available.
+    - _References: EP 14.2, REQ 30, DES Property 13 and Property 36_
+    - _Verify: unit tests cover valid YAML/TOML/JSON and one invalid file per format._
 
-- [ ] 9. Implement SSH execution manager
-  - [ ] 9.1 Create SSH connection pool and command executor
-    - Implement SSH connection pooling with paramiko/fabric (max 10 connections per server)
-    - Create remote command execution with stdout/stderr capture
-    - Add file transfer capabilities (SCP/SFTP) for code and results
-    - Implement execution monitoring and status tracking
-    - _Requirements: 5.3_
+  - [ ] 1.3 Add minimal CLI skeleton
+    - Create `src/autoresearch/cli/main.py`.
+    - Expose a Typer app matching `pyproject.toml`.
+    - Add `autoresearch version`, `autoresearch doctor`, and `autoresearch init-demo` commands.
+    - `doctor` should check Python version, import health, config parser availability, and planned directory roots.
+    - Do not add research workflow execution yet.
+    - _References: EP 3.3, DES CLI Interface_
+    - _Verify: `poetry run autoresearch version` and `poetry run autoresearch doctor` run without import errors._
 
-- [ ] 10. Build sandbox execution environment
-  - [ ] 10.1 Implement sandbox security restrictions
-    - Create `SandboxExecutor` with file system path validation
-    - Implement network access allowlist (academic databases only)
-    - Add resource limits using Python `resource` module (RLIMIT_CPU, RLIMIT_AS)
-    - Create blocked operation detection and prevention
-    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
-  
-  - [ ] 10.2 Implement full permission execution mode
-    - Create `FullPermissionExecutor` with extended access
-    - Add dangerous operation prevention (disk wiping, kernel mods)
-    - Implement comprehensive operation logging for audit
-    - Add user approval workflow for permission escalation
-    - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
-  
-  - [ ] 10.3 Write property tests for sandbox execution (Properties 25-28)
-    - **Property 25: File System Access Restriction** (Requirements 16.2)
-    - **Property 26: Network Access Restriction** (Requirements 16.3)
-    - **Property 27: Resource Limit Enforcement** (Requirements 16.5)
-    - **Property 28: Operation Logging in Full Permission Mode** (Requirements 17.4)
+  - [ ] 1.4 Add test scaffold
+    - Create `tests/unit`, `tests/integration`, `tests/property`, and `tests/smoke`.
+    - Add a smoke test for importing `autoresearch`.
+    - Add a smoke test for importing `autoresearch.config`.
+    - Add a CLI smoke test for the Typer app without invoking external services.
+    - _References: EP 14, DES Testing Strategy_
+    - _Verify: `poetry run pytest tests/smoke tests/unit/config` passes._
 
-- [ ] 11. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [ ] 1.5 Add repository quality commands
+    - Confirm `ruff`, `black`, `mypy`, and `pytest` settings match actual package layout.
+    - Adjust config only if commands fail because of stale paths or missing test directories.
+    - Do not relax quality rules unless a specific rule blocks legitimate Phase 0 code.
+    - _References: EP 16.2, DES Development Guidelines_
+    - _Verify: `poetry run ruff check src tests`, `poetry run mypy src`, and focused `pytest` pass._
 
-### Phase 3: Research Pipeline (Weeks 9-14)
+- [ ] 2. Define core schemas and run identity
+  - [ ] 2.1 Implement research lifecycle schemas
+    - Add data models for `DocumentRecord`, `KnowledgeNode`, `ResearchCandidate`, `Hypothesis`, `ExperimentTask`, `ExecutionRun`, `ResultBundle`, `EvidenceEdge`, `PaperDraft`, and `StrategyCard`.
+    - Place them in a clear module such as `src/autoresearch/schemas/`.
+    - Include stable IDs, timestamps, provenance fields, status fields, and validation status.
+    - Keep fields minimal for MVP and add extension points only where the plans require them.
+    - _References: EP 3.5, EP 12, RP 6_
+    - _Verify: unit tests instantiate each schema and serialize to JSON._
 
-- [ ] 12. Implement multi-source literature retrieval
-  - [ ] 12.1 Create API clients for academic databases
-    - Implement `ArxivClient` using arxiv.py library
-    - Implement `SemanticScholarClient` for Semantic Scholar API
-    - Implement `DBLPClient` and `PubMedClient` for respective databases
-    - Implement `CNKIClient` and `WanFangClient` with web scraping (requests + BeautifulSoup)
-    - Add rate limiting per database with configurable limits
-    - _Requirements: 9.1, 9.3_
-  
-  - [ ] 12.2 Implement LiteratureRetriever with parallel search
-    - Create `LiteratureRetriever` Fixed Agent class
-    - Implement parallel async search across all databases using asyncio.gather
-    - Add rate limiting with exponential backoff on errors
-    - Implement caching layer to avoid redundant API calls (24-hour cache)
-    - _Requirements: 9.2, 9.4_
-  
-  - [ ] 12.3 Implement deduplication and metadata extraction
-    - Create deduplication algorithm based on DOI and title similarity
-    - Implement metadata extraction into structured `Paper` dataclass
-    - Add missing field handling for incomplete metadata
-    - _Requirements: 9.5, 9.6_
-  
-  - [ ] 12.4 Write property tests for literature retrieval (Properties 23, 24)
-    - **Property 23: Deduplication Correctness** (Requirements 9.5)
-    - **Property 24: Metadata Completeness** (Requirements 9.6)
+  - [ ] 2.2 Add run ID and provenance helpers
+    - Implement deterministic helper functions for run IDs, config hashes, data hashes, and artifact references.
+    - Ensure every `ExecutionRun` can store commit SHA, config hash, data hash, start/end time, status, metrics path, artifact URI, and cost JSON.
+    - _References: EP 11.3, EP 12.2, RP 6.2_
+    - _Verify: unit tests cover stable hash generation and unique run ID generation._
 
-- [ ] 13. Implement web content retrieval
-  - [ ] 13.1 Add GitHub and web page scraping capabilities
-    - Implement GitHub repository content extraction (README, docs)
-    - Create web page HTML parser with main content extraction
-    - Add robots.txt compliance checking
-    - Implement web content caching
-    - Add error handling and fallback logic
-    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
+  - [ ] 2.3 Add schema round-trip tests
+    - Add tests for JSON serialization and deserialization of each core schema.
+    - Add tests that reject missing required evidence fields.
+    - Add tests that preserve unknown optional metadata only if explicitly supported.
+    - _References: DES Correctness Properties_
+    - _Verify: `poetry run pytest tests/unit/schemas tests/property/schemas` passes._
 
-- [ ] 14. Build Summarizer Fixed Agent
-  - [ ] 14.1 Implement paper summarization and classification
-    - Create `SummarizerAgent` Fixed Agent class
-    - Implement abstract summarization using LLM
-    - Add key innovation point extraction
-    - Create research category classification logic
-    - Implement method and dataset extraction from papers
-    - Store summaries in Knowledge Base with links to original papers
-    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
+- [ ] 3. Establish logging, audit, and cost foundations
+  - [ ] 3.1 Add structured logging
+    - Implement a logger factory that includes `run_id`, component name, task ID, and project ID when available.
+    - Keep output human-readable locally and JSON-compatible for future observability.
+    - _References: EP 3.3, EP 15_
+    - _Verify: unit test confirms log records include run context._
 
-- [ ] 15. Implement research direction generation
-  - [ ] 15.1 Create scheduled research direction discovery
-    - Implement daily scheduled task execution (configurable intervals)
-    - Create literature trend analysis from recent papers
-    - Implement research gap identification by comparing literature with Knowledge Base
-    - Generate `ResearchCandidate` items with novelty/feasibility/impact scores
-    - Rank candidates and present top options to user
-    - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
+  - [ ] 3.2 Add audit event schema
+    - Define audit event types for permission checks, sandbox denials, config changes, approval gates, strategy changes, and publication gates.
+    - Store audit events as append-only JSONL in a local project audit directory for MVP.
+    - _References: RP 3.3, EP 17, DES Audit Logging_
+    - _Verify: unit tests append and reload audit events without loss._
 
-- [ ] 16. Build Project Agent for preliminary investigation
-  - [ ] 16.1 Implement ProjectAgent with investigation capabilities
-    - Create `ProjectAgent` class with project-specific scope
-    - Implement comprehensive literature search for selected direction
-    - Add state-of-the-art method analysis
-    - Create dataset and benchmark identification
-    - Generate preliminary investigation report
-    - Add user approval workflow before proceeding
-    - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.6_
+  - [ ] 3.3 Add cost record schema
+    - Define token input/output, model name, CPU time, GPU hours, storage artifact size, network cost placeholder, and human approval count.
+    - Ensure cost records can attach to `ExecutionRun`.
+    - _References: EP 11.3, RP 8.2_
+    - _Verify: schema test validates required cost fields and numeric bounds._
 
-- [ ] 17. Implement research idea generation
-  - [ ] 17.1 Generate and evaluate research ideas
-    - Implement research idea generation based on identified gaps
-    - Add novelty assessment via literature comparison
-    - Create technical feasibility evaluation
-    - Implement resource and time estimation
-    - Rank ideas and present top options with justifications
-    - Initialize full project execution on user approval
-    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6_
+- [ ] 4. Add continuous integration baseline
+  - [ ] 4.1 Add GitHub Actions workflow
+    - Add a workflow for Python 3.10.
+    - Run install, ruff, mypy, and pytest.
+    - Keep external network/API tests excluded by default.
+    - _References: EP 3.3, EP 16.2_
+    - _Verify: workflow file exists and local commands match CI commands._
 
-- [ ] 18. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [ ] 4.2 Add local developer check command
+    - Add a documented command or script for `ruff`, `mypy`, and `pytest`.
+    - Prefer a small script only if it reduces repeated command drift.
+    - _References: AGENTS.md Verification Expectations_
+    - _Verify: command runs locally or the blocker is recorded in `Problem.md`._
 
-### Phase 4: Execution and Results (Weeks 15-18)
+  - [ ] 4.3 Add release gate checklist
+    - Document release requirements: unit tests pass, golden tests do not regress, security tests pass, docs updated, migrations reversible, changelog/tag complete.
+    - Put release details in README or a dedicated docs file only if needed.
+    - _References: EP 16.2_
+    - _Verify: release gate is linked from README or tasks._
 
-- [ ] 19. Implement experiment code generation
-  - [ ] 19.1 Create code generator for experiment tasks
-    - Implement task decomposition into executable `ExperimentTask` items
-    - Create Python code generator with structured project layout
-    - Add logging, checkpointing, and result saving to generated code
-    - Generate configuration files (YAML) for hyperparameters
-    - Create requirements.txt with dependencies
-    - Generate README documentation
-    - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
+### Phase 1: Minimal Trusted Research Loop (Weeks 3-8)
 
-- [ ] 20. Build experiment execution pipeline
-  - [ ] 20.1 Implement concurrent experiment execution
-    - Create experiment deployment to remote servers
-    - Implement concurrent execution across multiple SSH servers
-    - Add execution status monitoring for all tasks
-    - Create log collection and aggregation from concurrent runs
-    - Implement failure isolation (one failure doesn't stop others)
-    - Support up to 10 concurrent experiments
-    - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6_
+- [ ] 5. Build Obsidian unified knowledge vault MVP
+  - [ ] 5.1 Create Obsidian vault contract and directory layout
+    - Implement the vault root at project-root `autoresearch-vault/`.
+    - Create `autoresearch-vault/exploration/` for global cross-project knowledge.
+    - Create `autoresearch-vault/exploration/topics/`, `autoresearch-vault/exploration/skills/`, `autoresearch-vault/exploration/methodologies/`, `autoresearch-vault/exploration/datasets/`, `autoresearch-vault/exploration/failure_patterns/`, `autoresearch-vault/exploration/strategy_cards/`, and `autoresearch-vault/exploration/index.md`.
+    - Create `autoresearch-vault/projects/<project-id>/knowledge/`, `autoresearch-vault/projects/<project-id>/progress/`, `autoresearch-vault/projects/<project-id>/issues/`, `autoresearch-vault/projects/<project-id>/experience/`, `autoresearch-vault/projects/<project-id>/experiments/`, `autoresearch-vault/projects/<project-id>/results/`, `autoresearch-vault/projects/<project-id>/evidence/`, and `autoresearch-vault/projects/<project-id>/paper/`.
+    - Keep the layout compatible with plain filesystem access and Obsidian GUI use.
+    - _References: REQ 6, DES Knowledge Base Structure, DES Obsidian rationale_
+    - _Verify: unit test creates the full vault layout in a temp directory and confirms all required folders and index files exist._
 
-- [ ] 21. Implement result collection and analysis
-  - [ ] 21.1 Create automated result collector
-    - Implement output file collection (logs, metrics, checkpoints)
-    - Create metrics extraction from experiment logs
-    - Generate visualization charts (training curves, comparison tables)
-    - Implement baseline comparison against literature
-    - Store results in project directory in Knowledge Base
-    - Generate structured summary for paper generation
-    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6_
-  
-  - [ ] 21.2 Write property tests for result collection (Properties 29, 30)
-    - **Property 29: Output File Collection** (Requirements 19.1)
-    - **Property 30: Metrics Extraction** (Requirements 19.2)
+  - [ ] 5.2 Implement Markdown knowledge entry model
+    - Store all knowledge entries as Markdown files with YAML frontmatter.
+    - Include stable entry ID, entry type, zone, project ID, tags, keywords, source refs, created/updated timestamps, and related task/run IDs.
+    - Support entry types: Paper Note, Dataset Card, Method Card, Experiment Record, Failure Case, Skill Card, Strategy Card, Evidence Note, Project Progress, Issue Note, and Review Note.
+    - Keep entries readable in Obsidian without custom rendering.
+    - _References: RP 6.3, REQ 6.4, DES Knowledge Base Interface_
+    - _Verify: tests write and read each entry type while preserving frontmatter and body._
 
-- [ ] 22. Implement version control integration
-  - [ ] 22.1 Add Git repository management
-    - Initialize Git repositories for project code
-    - Create commits for generated code with descriptive messages
-    - Implement tagging for experiment runs with unique IDs
-    - Add branching support for parallel variations
-    - Generate .gitignore for large files and temporary outputs
-    - _Requirements: 27.1, 27.2, 27.3, 27.4, 27.5, 27.6_
-  
-  - [ ] 22.2 Implement document versioning
-    - Add file-based version history for Knowledge Base Markdown files
-    - Create version comparison and diff functionality
-    - Implement rollback to previous versions
-    - Add automatic backup system (configurable intervals)
-    - _Requirements: 28.1, 28.2, 28.3, 28.4, 28.5, 28.6_
-  
-  - [ ] 22.3 Write property tests for version control (Properties 31, 32)
-    - **Property 31: Git Tracking for Code Changes** (Requirements 27.3)
-    - **Property 32: Git Tag Association** (Requirements 27.4)
+  - [ ] 5.3 Add Obsidian wiki-links, backlinks, and topic index
+    - Support `[[entry-id]]` or `[[path|label]]` wiki-link syntax.
+    - Maintain bidirectional links between literature, hypotheses, experiments, evidence, failures, skills, and strategies.
+    - Maintain a topic index mapping keywords to relevant entries.
+    - Update links and index when entries are created or modified.
+    - _References: REQ 6.5, REQ 6.6, DES Knowledge Base Interface, DES Property 18, DES Property 21_
+    - _Verify: tests create linked literature, experiment, and skill entries and confirm backlinks plus topic index retrieval._
 
-- [ ] 23. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [ ] 5.4 Enforce zone and project permissions
+    - Implement `PermissionManager` for Main Agent, Fixed Agents, Project Agents, and future Validator Agents.
+    - Main and Fixed Agents may read/write authorized global and project areas.
+    - Project Agents may read Exploration Zone and write only their own Project Zone directory.
+    - Every write operation must call permission checks before touching the vault.
+    - Denied writes must produce audit events and leave target files unchanged.
+    - _References: REQ 7, DES Access Control Matrix, DES Property 19, DES Property 20_
+    - _Verify: property tests deny cross-project writes and confirm Main Agent universal access._
 
-### Phase 5: Paper Generation and Quality Control (Weeks 19-22)
+  - [ ] 5.5 Add Obsidian-friendly version history, backups, and rollback
+    - Preserve previous versions of modified Markdown entries.
+    - Support manual rollback to a previous version.
+    - Create automatic vault backups at a configurable interval between 1 and 26 hours.
+    - Store version metadata so users can inspect history in Obsidian and Git.
+    - _References: REQ 8.6, REQ 28, DES Property 22_
+    - _Verify: tests modify an entry N times and confirm N+1 versions are retrievable and rollback restores prior content._
 
-- [ ] 24. Build paper generation pipeline
-  - [ ] 24.1 Implement LaTeX paper generator
-    - Create `PaperGenerator` Fixed Agent class
-    - Implement section generation (abstract, intro, related work, methodology, experiments, results, conclusion)
-    - Add experiment results and figure insertion
-    - Generate BibTeX bibliography from cited papers
-    - Apply conference/journal LaTeX templates
-    - Validate LaTeX compilation and produce PDF
-    - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5, 20.6_
-  
-  - [ ] 24.2 Write property test for LaTeX compilation (Property 33)
-    - **Property 33: LaTeX Compilation Validation** (Requirements 20.6)
+- [ ] 6. Build literature retrieval MVP
+  - [ ] 6.1 Implement academic paper model and deduplication
+    - Define structured paper metadata with title, authors, abstract, date, venue, DOI, URL, citation count, and source.
+    - Deduplicate by DOI first and title similarity second.
+    - _References: RP 5.2, EP 4.3, REQ 9_
+    - _Verify: property test removes DOI duplicates and high-similarity title duplicates._
 
-- [ ] 25. Implement template management system
-  - [ ] 25.1 Create template repository and manager
-    - Build `TemplateManager` class with template storage
-    - Implement template download from conference websites and Overleaf
-    - Add custom template import and validation
-    - Extract required fields and formatting rules from templates
-    - Create template selection interface with metadata
-    - Handle missing template fields gracefully with warnings
-    - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5, 21.6_
-  
-  - [ ] 25.2 Write property test for template field handling (Property 34)
-    - **Property 34: Template Field Handling** (Requirements 21.4, 21.6)
+  - [ ] 6.2 Implement ArXiv and Semantic Scholar clients
+    - Start with ArXiv and Semantic Scholar only.
+    - Add rate limiting and retry backoff.
+    - Keep CNKI, WanFang, DBLP, and PubMed as later extensions unless a task explicitly needs them.
+    - _References: EP 4.3, REQ 9_
+    - _Verify: mocked client tests pass; one optional live smoke test is documented and skipped by default._
 
-- [ ] 26. Build figure generation system
-  - [ ] 26.1 Implement automated figure generator
-    - Create `FigureGenerator` class for scientific visualizations
-    - Implement training curve line charts with matplotlib
-    - Add bar charts and comparison tables
-    - Create confusion matrices and heatmaps
-    - Apply consistent color schemes and styling
-    - Generate vector format PDFs for publication quality
-    - Add journal-specific figure formatting
-    - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6_
-  
-  - [ ] 26.2 Write property test for figure format consistency (Property 35)
-    - **Property 35: Figure Format Consistency** (Requirements 22.4, 22.5)
+  - [ ] 6.3 Implement retrieval cache
+    - Cache successful search responses for 24 hours.
+    - Cache key must include query, source, page/limit, and relevant config.
+    - _References: DES Literature Retrieval Pipeline_
+    - _Verify: test confirms repeated identical query uses cache and different query misses cache._
 
-- [ ] 27. Implement presentation and poster generation
-  - [ ] 27.1 Create slide deck and poster generators
-    - Implement HTML-based slide generation from paper content
-    - Extract key points for slide content
-    - Include experiment visualizations in slides
-    - Generate LaTeX beamer posters with appropriate layout
-    - Create both digital PDF and print-ready versions
-    - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5, 23.6_
+  - [ ] 6.4 Store paper notes in knowledge base
+    - Convert retrieved paper metadata into `DocumentRecord` and Markdown note.
+    - Include source URL/DOI and retrieval timestamp.
+    - Do not summarize beyond available metadata until the summarizer exists.
+    - _References: RP 6.3, REQ 11_
+    - _Verify: integration test retrieves mocked papers and writes knowledge entries._
 
-- [ ] 28. Build Review Simulator Agent
-  - [ ] 28.1 Implement simulated peer review system
-    - Create `ReviewSimulatorAgent` Fixed Agent class
-    - Implement scientific soundness evaluation
-    - Add novelty and significance assessment
-    - Create technical feasibility checking
-    - Evaluate writing clarity and organization
-    - Check experimental completeness
-    - Generate review reports with scores and comments
-    - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5, 24.6_
-  
-  - [ ] 28.2 Add venue-specific review criteria
-    - Load venue-specific evaluation criteria
-    - Apply venue scoring rubrics and thresholds
-    - Check formatting requirement compliance
-    - Verify venue content policies (ethics, reproducibility)
-    - Use general standards as fallback for missing criteria
-    - Allow custom criteria definition
-    - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 25.6_
-  
-  - [ ] 28.3 Implement CCF-B quality assessment
-    - Apply CCF-B level quality criteria
-    - Compare against recently published CCF-B papers
-    - Evaluate experimental rigor
-    - Assess presentation quality
-    - Provide improvement recommendations when below threshold
-    - Suggest target venues when quality threshold met
-    - _Requirements: 29.1, 29.2, 29.3, 29.4, 29.5, 29.6_
+- [ ] 7. Implement research candidate and hypothesis workflow
+  - [ ] 7.1 Generate research candidates from retrieved literature
+    - Build a simple candidate generator using recent paper clusters, repeated limitations, datasets, and methods.
+    - Score novelty, feasibility, expected impact, evidence coverage, and estimated cost.
+    - Mark low-evidence candidates as draft, not ready.
+    - _References: RP 8, EP 6.3, REQ 12_
+    - _Verify: unit test ranks sample candidates deterministically._
 
-- [ ] 29. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [ ] 7.2 Add human approval gate for candidate selection
+    - Candidate must be approved before a project directory and Project Agent are created.
+    - Approval record must include user, timestamp, candidate ID, and notes.
+    - _References: RP 3.3, EP 17_
+    - _Verify: test rejects project creation without approval record._
 
-### Phase 6: Advanced Features and Integration (Weeks 23-24)
+  - [ ] 7.3 Generate hypotheses
+    - Convert an approved candidate into one or more `Hypothesis` records.
+    - Each hypothesis must include measurable prediction, target dataset or benchmark, baseline, metric, and evidence references.
+    - _References: RP 2.2, RP 5, EP 4.3_
+    - _Verify: schema validation fails hypotheses without metric or evidence references._
 
-- [ ] 30. Implement AutoDL cloud integration
-  - [ ] 30.1 Create AutoDL rental automation
-    - Integrate computer-use capability for AutoDL web interface
-    - Implement GPU instance availability checking
-    - Create automatic instance rental with specification matching
-    - Add SSH connection establishment to rented instances
-    - Implement automatic instance release after task completion
-    - Add failure notification and manual rental instructions
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
-  
-  - [ ] 30.2 Integrate AutoDL with compute scheduler
-    - Add cloud resource as fallback when local insufficient
-    - Implement GPU queue wait time monitoring
-    - Create automatic AutoDL rental trigger (wait time > threshold)
-    - Add cost tracking and optimization
-    - _Requirements: 5.5_
+- [ ] 8. Implement experiment task design and code generation MVP
+  - [ ] 8.1 Convert hypotheses into experiment tasks
+    - Implement a deterministic planner that creates `ExperimentTask` records.
+    - Include code entry point, dataset assumptions, metrics, resource budget, timeout, expected outputs, and validation checks.
+    - _References: EP 4.3, REQ 15_
+    - _Verify: unit tests confirm required fields and budget limits._
 
-- [ ] 31. Build mobile notification system
-  - [ ] 31.1 Implement Feishu and WeChat integration
-    - Create Feishu webhook notification client
-    - Implement WeChat API integration
-    - Send notifications for approvals, confirmations, and errors
-    - Add mobile response handling for approval requests
-    - Implement text-based command interface for mobile
-    - Gracefully skip when no platforms configured
-    - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5, 26.6_
+  - [ ] 8.2 Generate minimal runnable experiment directories
+    - Create an experiment directory with `README.md`, `config.yaml`, `requirements.txt`, `run.py`, `logs/`, and expected `metrics.json`.
+    - Use small local demo tasks first.
+    - Generated code must write logs and metrics even when the experiment fails gracefully.
+    - _References: EP 21, REQ 15_
+    - _Verify: generated demo experiment runs locally and writes `metrics.json`._
 
-- [ ] 32. Implement agent learning and evolution
-  - [ ] 32.1 Create execution recording and analysis system
-    - Implement execution outcome and feedback recording
-    - Create experience accumulation for Fixed Agents
-    - Add failure analysis with context capture
-    - Implement skill extraction from completed tasks
-    - Store learned skills in Knowledge Base
-    - Create skill retrieval for similar tasks
-    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
-  
-  - [ ] 32.2 Write property tests for agent learning (Properties 5-9)
-    - **Property 5: Execution Recording** (Requirements 2.1)
-    - **Property 6: Experience Accumulation** (Requirements 2.2)
-    - **Property 7: Failure Analysis Trigger** (Requirements 2.4)
-    - **Property 8: Skill Storage** (Requirements 2.5)
-    - **Property 9: Skill Retrieval for Similar Tasks** (Requirements 2.6)
+  - [ ] 8.3 Add generated code review checks
+    - Check for dangerous commands, path traversal, secret reads, unrestricted network access, and missing metric writes before execution.
+    - Reject or quarantine unsafe generated code.
+    - _References: EP 17, REQ 16, DES Security Considerations_
+    - _Verify: tests detect representative unsafe patterns._
 
-- [ ] 33. Implement knowledge base evolution
-  - [ ] 33.1 Add automatic knowledge organization
-    - Implement clustering analysis based on content similarity
-    - Create usage statistics tracking for knowledge entries
-    - Add consolidation and restructuring suggestions
-    - Extract reusable skills from completed tasks
-    - Create skill entries with usage examples
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+- [ ] 9. Build sandbox executor MVP
+  - [ ] 9.1 Implement local sandbox path restrictions
+    - Allow read/write only within the experiment directory and configured cache/output directories.
+    - Deny access to project root secrets and user home secrets.
+    - _References: EP 17.1, REQ 16_
+    - _Verify: property tests block attempts to access paths outside the sandbox._
 
-- [ ] 34. Build CLI interface and system integration
-  - [ ] 34.1 Create command-line interface
-    - Implement CLI using Click or argparse for all major operations
-    - Add progress reporting for long-running tasks
-    - Create clear error messages with resolution steps
-    - Add interactive mode for user decisions
-    - _Requirements: Non-functional: Usability 1, 2, 3_
-  
-  - [ ] 34.2 Implement security features
-    - Add credential encryption using cryptography library (Fernet)
-    - Implement input validation to prevent injection attacks
-    - Create security event audit logging
-    - Add comprehensive error handling with retry logic
-    - _Requirements: Non-functional: Security 1, 2, 3; Reliability 2_
+  - [ ] 9.2 Implement runtime limits
+    - Enforce timeout, memory limit, and process cleanup for local subprocess execution.
+    - Store exit code, stdout, stderr, start/end time, and limit violations in `ExecutionRun`.
+    - _References: REQ 16, DES Experiment Execution Workflow_
+    - _Verify: tests cover timeout and nonzero exit code handling._
 
-- [ ] 35. Final testing and optimization
-  - [ ] 35.1 Complete property-based test suite
-    - Ensure all 36 properties have comprehensive test coverage
-    - Run full test suite with 100+ iterations per property
-    - Verify 80% coverage of core logic
-    - _Requirements: All properties 1-36_
-  
-  - [ ] 35.2 Write integration tests for external services
-    - Test literature retrieval with real APIs
-    - Test SSH execution with test servers
-    - Test Knowledge Base file operations
-    - Test Git operations
-    - Test LaTeX compilation
-  
-  - [ ] 35.3 Performance optimization and monitoring
-    - Implement caching strategy (literature results, templates)
-    - Add connection pooling (SSH, database)
-    - Optimize parallelization (literature retrieval, experiments)
-    - Create health check system
-    - Add metrics and logging
-    - _Requirements: Non-functional: Performance 1, 2, 3; Reliability 1, 3_
+  - [ ] 9.3 Add restricted network policy placeholder
+    - Define allowed domains for academic APIs and package sources.
+    - For MVP, document unsupported enforcement clearly if OS-level network sandboxing is not implemented yet.
+    - Record any unsupported enforcement in `Problem.md`.
+    - _References: EP 17.2, REQ 16.3_
+    - _Verify: tests confirm policy data structure and audit logging for blocked requests where enforceable._
 
-- [ ] 36. Final checkpoint and documentation
-  - Ensure all tests pass, verify system meets all requirements, ask the user if questions arise.
+- [ ] 10. Collect and validate results
+  - [ ] 10.1 Implement result collector
+    - Parse `metrics.json`, configured CSV outputs, logs, and generated artifacts.
+    - Produce `ResultBundle`.
+    - Reject missing metric files unless the experiment explicitly failed.
+    - _References: EP 4.3, REQ 19_
+    - _Verify: unit tests parse valid results and reject incomplete result directories._
 
-## Notes
+  - [ ] 10.2 Implement validation report
+    - Validate run completion, metric presence, metric bounds, artifact existence, config hash, data hash, and cost record.
+    - Store validation output as Markdown and JSON.
+    - _References: RP 7, EP 14_
+    - _Verify: tests cover pass, warning, and fail validation states._
 
-- Tasks marked with `*` are optional property-based and integration tests that can be skipped for faster MVP
-- Each task references specific requirements for traceability via _Requirements: X.Y_ notation
-- Property tests validate universal correctness properties defined in the design document
-- Checkpoints ensure incremental validation at major phase boundaries
-- Implementation uses **Python 3.10+** with LangGraph, Obsidian, Hypothesis, and standard scientific Python libraries
-- The system requires external integrations: SSH servers, academic APIs, AutoDL (optional), mobile platforms (optional)
-- Security is built-in with sandbox execution, credential encryption, and audit logging
-- All property tests should run with minimum 100 iterations using Hypothesis
-- Core implementation tasks (non-test) must be completed; test tasks provide quality assurance
+  - [ ] 10.3 Add evidence binding
+    - Convert validated metrics into `EvidenceEdge` records.
+    - Prevent report generation from using metrics without evidence binding.
+    - _References: RP 6.2, RP 10_
+    - _Verify: unit test blocks claim generation from unvalidated result bundles._
+
+- [ ] 11. Generate MVP research report
+  - [ ] 11.1 Generate Markdown report from evidence
+    - Report sections: question, literature summary, hypothesis, experiment design, run metadata, results, validation, limitations, next steps.
+    - Every quantitative claim must link to an evidence ID and artifact path.
+    - _References: RP 10, EP 4.3, EP 21_
+    - _Verify: snapshot test confirms required sections and evidence links._
+
+  - [ ] 11.2 Add report readability checks
+    - Validate table formatting, link existence, heading order, and missing evidence references.
+    - Keep checks deterministic and local.
+    - _References: EP 14.1, RP 10.3_
+    - _Verify: report lint test fails on broken evidence links._
+
+  - [ ] 11.3 Build reproducibility notes
+    - Include command, Python version, dependency lock status, run ID, commit SHA, config hash, and data hash.
+    - _References: EP 18.1, RP 15_
+    - _Verify: generated report includes reproducibility block._
+
+- [ ] 12. Create ScientistBench-Lite MVP checks
+  - [ ] 12.1 Add local demo task `tabular_baseline`
+    - Use a tiny public or synthetic dataset that can run quickly on CPU.
+    - Include baseline metric and expected artifact list.
+    - _References: EP 14.3_
+    - _Verify: full loop completes under the configured local timeout._
+
+  - [ ] 12.2 Add local demo task `text_classifier_stub`
+    - Use a tiny fixture dataset or mocked vectorizer.
+    - Focus on loop correctness, not model quality.
+    - _References: EP 14.3_
+    - _Verify: full loop produces metrics and validation report._
+
+  - [ ] 12.3 Add MVP end-to-end command
+    - Provide a CLI command or script that runs one demo from direction to report.
+    - Persist outputs under a project demo directory.
+    - _References: EP 21_
+    - _Verify: command creates code, logs, metrics, validation report, evidence map, and Markdown report._
+
+  - [ ] 12.4 Establish MVP acceptance run
+    - Run 5 to 10 small tasks when available.
+    - Target at least 60 percent full-loop success and 80 percent rerun success for successful tasks.
+    - Record failures in `Problem.md` and failure library.
+    - _References: EP 4.4_
+    - _Verify: acceptance report exists with run IDs and rerun outcomes._
+
+### Phase 2: Automated Research Assistant (Weeks 9-16)
+
+- [ ] 13. Implement multi-agent runtime
+  - [ ] 13.1 Add base Agent class and registry
+    - Define agent ID, role, capabilities, permissions, lifecycle state, and task execution contract.
+    - Add registry operations for add, remove, get, list, and capability query.
+    - _References: RP 5, REQ 1, DES Agent Architecture_
+    - _Verify: property tests cover registry consistency and unique IDs._
+
+  - [ ] 13.2 Add structured message protocol
+    - Define message fields: message ID, from agent, to agent, task ID, intent, input refs, expected output schema, deadline, budget, and risk level.
+    - Reject unstructured free-text-only messages for inter-agent task execution.
+    - _References: RP 5.3_
+    - _Verify: schema tests reject messages missing intent or expected output schema._
+
+  - [ ] 13.3 Integrate LangGraph for stateful workflows
+    - Model the research pipeline as resumable workflow states.
+    - Add checkpoint and resume support for long-running projects.
+    - _References: EP 9, DES Technology Stack_
+    - _Verify: integration test pauses and resumes a mock workflow._
+
+- [ ] 14. Build evidence graph
+  - [ ] 14.1 Implement claim-evidence-source graph
+    - Model `Claim -> Evidence -> Source -> Artifact -> ValidationStatus`.
+    - Store graph as JSON for MVP and keep database migration optional.
+    - _References: RP 6.2, EP 5.3_
+    - _Verify: tests traverse from claim to source artifact and validation state._
+
+  - [ ] 14.2 Enforce evidence coverage
+    - Require every core claim to have at least one evidence edge.
+    - Mark unsupported claims as draft or blocked.
+    - _References: EP 5.4, RP 10_
+    - _Verify: paper/report generation fails when a core claim has no evidence._
+
+  - [ ] 14.3 Add evidence consistency checks
+    - Check that metric values in text, tables, and figures match source result files.
+    - _References: EP 5.4, REQ 22_
+    - _Verify: tests catch a deliberate table/text mismatch._
+
+- [ ] 15. Add baseline, ablation, and statistics support
+  - [ ] 15.1 Implement baseline reproducer
+    - Reproduce at least one baseline before running a proposed method.
+    - Store baseline config, run ID, metrics, and validation state.
+    - _References: EP 5.3, RP 10.3_
+    - _Verify: demo project has a validated baseline run._
+
+  - [ ] 15.2 Add ablation planner
+    - Generate a minimal ablation matrix based on hypothesis variables.
+    - Avoid combinatorial explosion by requiring budget limits.
+    - _References: EP 5.3_
+    - _Verify: planner output respects max experiment count and cost budget._
+
+  - [ ] 15.3 Add statistical sanity checks
+    - Provide simple confidence interval or repeated-run comparison where appropriate.
+    - Do not overstate significance when sample size is too small.
+    - _References: RP 7, EP 14_
+    - _Verify: validation report labels underpowered comparisons clearly._
+
+- [ ] 16. Build scientific figures and tables
+  - [ ] 16.1 Generate publication-quality figure artifacts
+    - Use source result files only.
+    - Generate vector PDF where possible and PNG preview where useful.
+    - Use consistent style across figures.
+    - _References: REQ 22, EP 5.3_
+    - _Verify: tests confirm figure files exist and data source paths are recorded._
+
+  - [ ] 16.2 Generate comparison tables
+    - Create method comparison and ablation tables from validated metrics.
+    - Include run IDs or evidence IDs in machine-readable table metadata.
+    - _References: RP 10, EP 5.4_
+    - _Verify: table values match metrics file values._
+
+  - [ ] 16.3 Add figure/table consistency validator
+    - Validate that figures, tables, and report text do not disagree.
+    - _References: EP 5.4_
+    - _Verify: validator fails on injected mismatch._
+
+- [ ] 17. Build paper draft pipeline
+  - [ ] 17.1 Generate LaTeX skeleton from evidence
+    - Sections: abstract, introduction, related work, method, experiments, results, limitations, conclusion.
+    - Insert placeholders only when evidence is missing; do not fabricate.
+    - _References: RP 10, REQ 20_
+    - _Verify: LaTeX skeleton compiles for a demo project._
+
+  - [ ] 17.2 Generate BibTeX from verified citations
+    - Use DOI/URL when available.
+    - Mark unverifiable citations as blocked.
+    - _References: REQ 20, RP 11_
+    - _Verify: citation validator reports DOI/URL status._
+
+  - [ ] 17.3 Add paper draft versioning
+    - Store draft versions with timestamps and source evidence graph version.
+    - _References: REQ 28_
+    - _Verify: generating a second draft preserves the first version._
+
+- [ ] 18. Add review simulator and quality gates
+  - [ ] 18.1 Implement review dimensions
+    - Score novelty, technical soundness, experimental rigor, reproducibility, writing quality, and compliance.
+    - Calibrate scores conservatively; never auto-score perfect results by default.
+    - _References: RP 10.3, REQ 24, REQ 29_
+    - _Verify: tests confirm missing evidence lowers technical soundness and reproducibility._
+
+  - [ ] 18.2 Add venue criteria configuration
+    - Support generic and venue-specific review criteria.
+    - Fall back to generic criteria when venue rules are absent.
+    - _References: REQ 25_
+    - _Verify: tests load default and custom criteria._
+
+  - [ ] 18.3 Feed review findings into task backlog
+    - Convert actionable review comments into follow-up tasks or problem entries.
+    - _References: RP 12, EP 5.3_
+    - _Verify: demo review creates structured follow-up records._
+
+- [ ] 19. Build reproducibility package
+  - [ ] 19.1 Package code, config, metrics, reports, and evidence map
+    - Include environment notes, run commands, artifact manifest, and validation status.
+    - Exclude secrets and large raw data unless explicitly configured.
+    - _References: EP 5.3, EP 18.2_
+    - _Verify: package manifest lists every included artifact with hash._
+
+  - [ ] 19.2 Add package validation
+    - Validate that package commands and paths are self-contained.
+    - _References: RP 15_
+    - _Verify: validation command reports pass/fail and missing artifacts._
+
+### Phase 3: Self-Loop Research Platform (Weeks 17-24)
+
+- [ ] 20. Build Obsidian-backed research candidate pool
+  - [ ] 20.1 Store candidate lifecycle
+    - Track candidate status: draft, ready_for_review, approved, active, completed, rejected, archived.
+    - Store candidates as Obsidian Markdown entries under `autoresearch-vault/exploration/topics/` or a dedicated candidate folder linked from `autoresearch-vault/exploration/index.md`.
+    - Link each candidate to source papers, topic index entries, prior failures, useful skills, and related strategy cards.
+    - _References: RP 8, EP 6.3_
+    - _Verify: unit tests cover legal status transitions and confirm candidate wiki-links are written._
+
+  - [ ] 20.2 Add trend and gap analyzer
+    - Generate candidate updates from recent literature and knowledge base gaps.
+    - Require source evidence for each gap.
+    - Compare recent literature against Obsidian topic indexes, method cards, dataset cards, and prior project experience.
+    - _References: REQ 12, REQ 6, EP 6.3_
+    - _Verify: analyzer output includes evidence references and vault paths._
+
+- [ ] 21. Add scheduler for recurring work
+  - [ ] 21.1 Implement local task scheduler
+    - Support daily/weekly candidate refresh and queued experiment checks.
+    - Keep external orchestrators optional.
+    - _References: EP 6.3, RP 8_
+    - _Verify: scheduler runs a mock recurring task and records audit logs._
+
+  - [ ] 21.2 Add budget-aware execution gates
+    - Pause or require approval when a task approaches 80 percent of budget.
+    - _References: EP 15.2, RP 3.3_
+    - _Verify: test triggers budget approval state._
+
+- [ ] 22. Build Obsidian failure library
+  - [ ] 22.1 Record failed runs as first-class knowledge
+    - Capture error type, logs, config, environment, hypothesis, experiment task, and suspected cause.
+    - Store failure cases as Markdown entries under `autoresearch-vault/exploration/failure_patterns/` and link project-local copies from `autoresearch-vault/projects/<project-id>/issues/`.
+    - Link each failure to the run, experiment, evidence status, and any strategy or skill that should change.
+    - _References: RP 6.3, RP 12, REQ 2.4, EP 6.3_
+    - _Verify: failed demo run creates a failure case entry with Obsidian wiki-links to run and project issue notes._
+
+  - [ ] 22.2 Classify recurring failure patterns
+    - Group failures by dependency, data, runtime, metric, citation, permission, cost, and validation causes.
+    - Update global failure pattern notes when similar failures repeat.
+    - Feed repeated failure patterns into skill extraction and strategy proposal tasks.
+    - _References: REQ 8.1, REQ 8.4, RP 12_
+    - _Verify: tests classify representative failure records and update a shared failure pattern note._
+
+- [ ] 23. Build Obsidian skill library
+  - [ ] 23.1 Extract reusable skill cards
+    - Convert repeated successful patterns into skill cards with trigger conditions, actions, success metrics, and examples.
+    - Store skills under `autoresearch-vault/exploration/skills/` with usage examples linked to project experience notes and failure patterns.
+    - Skills must be retrievable by ID, tags, keywords, and wiki-links.
+    - _References: REQ 2.3, REQ 2.5, REQ 8.5, RP 9.3, EP 6.3_
+    - _Verify: successful pattern examples generate a skill card in the vault._
+
+  - [ ] 23.2 Retrieve skills for similar tasks
+    - Match new tasks to skill cards based on trigger conditions and metadata.
+    - Search both structured frontmatter and Obsidian topic links.
+    - _References: REQ 2.6, DES Property 8, DES Property 9_
+    - _Verify: property tests retrieve the expected skill for generated similar tasks._
+
+- [ ] 24. Add monitoring and reporting
+  - [ ] 24.1 Track system metrics
+    - Metrics: task success rate, reproduction rate, validator rejection rate, cost per success, human interventions, agent loop depth, rollback count, citation error rate, evidence coverage.
+    - _References: EP 15.1_
+    - _Verify: metrics are computed from fixture run history._
+
+  - [ ] 24.2 Add local dashboard export
+    - Produce a static HTML or Markdown status report before building a full web dashboard.
+    - Include costs, failure rates, evidence coverage, and active project state.
+    - _References: EP 8, EP 15_
+    - _Verify: export renders from sample metrics without external services._
+
+- [ ] 25. Implement rollback foundations
+  - [ ] 25.1 Version strategy, config, and knowledge entries
+    - Track versions for prompts, workflow templates, configs, and knowledge records.
+    - Store strategy-related knowledge in Obsidian Markdown with version history and rollback metadata.
+    - _References: REQ 28, RP 9.4, EP 6.3_
+    - _Verify: tests roll back a fixture config, strategy card, and knowledge entry._
+
+  - [ ] 25.2 Add rollback audit trail
+    - Record who or what triggered rollback, reason, old version, new version, and verification result.
+    - _References: EP 7.4, DES Audit Logging_
+    - _Verify: rollback event appears in audit JSONL._
+
+### Phase 4: Controlled Self-Evolution (Weeks 25-36)
+
+- [ ] 26. Build strategy library
+  - [ ] 26.1 Define strategy card schema
+    - Cover prompt templates, workflow templates, tool routing policy, retrieval policy, experiment search policy, scheduling policy, and validation policy.
+    - Explicitly exclude safety policy, approval gates, license policy, and publication rules from automatic mutation.
+    - Store each strategy card as an Obsidian Markdown entry under `autoresearch-vault/exploration/strategy_cards/` with machine-readable frontmatter and human-readable rationale.
+    - Link strategies to failure patterns, skill cards, replay results, golden tests, shadow evaluations, and rollback targets.
+    - _References: REQ 2, REQ 8, RP 9.1, EP 7.3_
+    - _Verify: schema rejects prohibited strategy targets and writes a linkable strategy card._
+
+  - [ ] 26.2 Add strategy versioning
+    - Track parent strategy, candidate strategy, evaluation score, golden test status, shadow status, release status, and rollback target.
+    - _References: EP 12.2, RP 9.2_
+    - _Verify: tests preserve lineage from parent to candidate._
+
+- [ ] 27. Build offline replay and golden tests
+  - [ ] 27.1 Create replay dataset from historical tasks
+    - Store enough inputs, outputs, evidence, costs, and validation outcomes to replay strategy changes offline.
+    - _References: EP 7.3, RP 9.2_
+    - _Verify: replay fixture reproduces expected baseline score._
+
+  - [ ] 27.2 Create golden test set
+    - Fix a regression suite of known tasks covering literature retrieval, config parsing, sandbox denial, result validation, citation validation, and report generation.
+    - _References: EP 7.3_
+    - _Verify: current stable strategy passes all golden tests before comparison._
+
+- [ ] 28. Add shadow evaluation
+  - [ ] 28.1 Run candidate strategies in shadow mode
+    - Candidate strategy can observe and produce proposed outputs but cannot affect production results.
+    - _References: RP 9.2, EP 7.3_
+    - _Verify: shadow output is recorded separately and production output remains unchanged._
+
+  - [ ] 28.2 Compare strategy rewards
+    - Calculate reward from quality gain, reproducibility, evidence completeness, compute cost, human intervention, and risk penalty.
+    - _References: RP 8.2_
+    - _Verify: reward calculation test covers improvement, cost increase, and risk penalty cases._
+
+- [ ] 29. Add gray release and automatic rollback
+  - [ ] 29.1 Promote strategies through approval and gray release
+    - Require golden test pass, no safety regression, evidence coverage not reduced, and human approval before gray release.
+    - Start gray release at a small traffic share.
+    - _References: EP 7.4, RP 9.4_
+    - _Verify: promotion fails without approval or golden test pass._
+
+  - [ ] 29.2 Roll back negative strategies
+    - Automatically roll back after repeated negative reward or safety incident.
+    - Freeze the strategy family until reviewed.
+    - _References: RP 12 Scenario C_
+    - _Verify: simulated negative reward triggers rollback event._
+
+- [ ] 30. Generate evolution reports
+  - [ ] 30.1 Summarize strategy changes
+    - Report reason, evidence, evaluation, reward delta, risks, release history, rollback target, and final decision.
+    - _References: EP 7.3, RP 9.4_
+    - _Verify: report includes all required fields and links to strategy cards._
+
+  - [ ] 30.2 Add human-readable audit review
+    - Produce a compact review document for maintainers before strategy promotion.
+    - _References: RP 3.3_
+    - _Verify: promotion workflow links to audit review._
+
+### Phase 5: Productization and Open-Source Readiness (Future)
+
+- [ ] 31. Design product surface before building full dashboard
+  - [ ] 31.1 Define dashboard users and workflows
+    - Users: individual researcher, team lead, reviewer, system administrator.
+    - Workflows: candidate review, run monitoring, validation review, paper draft review, cost inspection, rollback approval.
+    - _References: RP 13, EP 8_
+    - _Verify: product brief exists before dashboard implementation._
+
+  - [ ] 31.2 Build dashboard MVP only after Phase 1 is stable
+    - Show project status, runs, metrics, failures, costs, evidence coverage, and approval queue.
+    - Avoid marketing-style landing pages inside the app.
+    - _References: EP 8, Build Web Apps plugin perspective_
+    - _Verify: browser-based UI test covers desktop and mobile layout._
+
+- [ ] 32. Add multi-user permissions
+  - [ ] 32.1 Define roles and project permissions
+    - Roles: owner, maintainer, researcher, reviewer, admin.
+    - Permissions: project read, project write, approve high-cost run, approve full-permission run, approve publication, manage strategies.
+    - _References: EP 8, RP 3.3_
+    - _Verify: authorization tests cover allowed and denied actions._
+
+- [ ] 33. Add plugin system
+  - [ ] 33.1 Define plugin interfaces
+    - Literature source plugins, experiment framework plugins, compute provider plugins, notification plugins, report export plugins.
+    - _References: EP 8, DES Plugin System_
+    - _Verify: sample plugin loads and can be disabled safely._
+
+- [ ] 34. Add deployment packages
+  - [ ] 34.1 Create Docker Compose deployment
+    - Include app runtime, optional database, artifact storage path, and environment template.
+    - _References: EP 8, DES Deployment Architecture_
+    - _Verify: container starts and `doctor` command passes._
+
+  - [ ] 34.2 Plan Kubernetes deployment
+    - Add Helm chart only after Docker Compose is stable.
+    - Include resource limits, secrets handling, persistent volumes, and health checks.
+    - _References: EP 8_
+    - _Verify: chart lint passes when chart exists._
+
+- [ ] 35. Add compliance, cost, and SLA controls
+  - [ ] 35.1 Add license scanner integration
+    - Check datasets, third-party code, and generated packages for license metadata.
+    - _References: RP 11, EP 17_
+    - _Verify: scanner reports missing license metadata as warning or failure according to policy._
+
+  - [ ] 35.2 Add cost management
+    - Track project budget, GPU hours, API token cost, storage cost, and alerts.
+    - _References: EP 11, EP 15_
+    - _Verify: cost alert triggers at 80 percent threshold._
+
+  - [ ] 35.3 Add service health and SLA metrics
+    - Track queue latency, run failure rate, validator latency, dashboard health, and scheduler health.
+    - _References: EP 8, EP 15_
+    - _Verify: health endpoint or report includes all metrics._
+
+- [ ] 36. Prepare public release
+  - [ ] 36.1 Choose and add license
+    - Select a license before public redistribution.
+    - Update README license section.
+    - _References: README License_
+    - _Verify: `LICENSE` exists and README links to it._
+
+  - [ ] 36.2 Add contribution guide
+    - Document development setup, task workflow, commit rule, testing gates, problem log, and code review expectations.
+    - _References: AGENTS.md, Agent.md_
+    - _Verify: `CONTRIBUTING.md` exists and links to `AGENTS.md`._
+
+  - [ ] 36.3 Add changelog and release notes
+    - Track user-visible changes by version.
+    - Include migration notes and known problems.
+    - _References: EP 16_
+    - _Verify: `CHANGELOG.md` has an unreleased section._
+
+## Checkpoints
+
+- [ ] Checkpoint A: Phase 0 baseline
+  - `poetry run autoresearch doctor` passes.
+  - `poetry run pytest tests/smoke tests/unit/config` passes.
+  - `poetry run ruff check src tests` passes.
+  - `poetry run mypy src` passes or typed-scope exceptions are documented.
+  - `Agent.md` and `Problem.md` are current.
+  - A focused commit exists for each completed Phase 0 task or subtask.
+
+- [ ] Checkpoint B: Phase 1 MVP loop
+  - At least one ScientistBench-Lite task completes from direction to Markdown report.
+  - Every run has run ID, commit SHA, config hash, data hash, logs, metrics, artifacts, validation report, and cost record.
+  - Every quantitative claim in the report links to evidence.
+  - At least 60 percent of 5 to 10 demo tasks complete the full loop when the demo suite exists.
+  - At least 80 percent of successful demo tasks rerun successfully.
+
+- [ ] Checkpoint C: Phase 2 research assistant
+  - Multi-agent workflow can pause and resume.
+  - Evidence graph blocks unsupported claims.
+  - Paper draft compiles for a validated demo project.
+  - Citation, figure/table, and review checks produce structured reports.
+  - Reproducibility package validates.
+
+- [ ] Checkpoint D: Phase 3 self-loop
+  - Candidate pool updates on schedule.
+  - Candidate pool, failures, and skills are stored as Obsidian Markdown entries with wiki-links and topic index entries.
+  - Failures are classified and searchable.
+  - Skill cards are generated from repeated success patterns and linked to project experience notes.
+  - Monitoring export shows cost, failure rate, reproduction rate, and evidence coverage.
+  - Rollback works for config or strategy fixtures.
+
+- [ ] Checkpoint E: Phase 4 controlled evolution
+  - Strategy candidates pass offline replay and golden tests before shadow mode.
+  - Strategy cards are stored in the Obsidian vault and linked to failure patterns, skills, evaluation reports, and rollback targets.
+  - Shadow evaluation cannot affect production outputs.
+  - Gray release requires human approval.
+  - Negative strategy reward triggers rollback.
+  - Evolution report documents benefit, risk, evidence, and decision.
 
 ## Task Dependency Graph
 
 ```json
 {
   "waves": [
-    { "id": 0, "tasks": ["1.1", "1.2", "1.3"] },
-    { "id": 1, "tasks": ["2.1", "5.1"] },
-    { "id": 2, "tasks": ["2.2", "2.3", "3.1", "5.2", "5.3"] },
-    { "id": 3, "tasks": ["3.2", "4.1"] },
-    { "id": 4, "tasks": ["7.1", "7.2"] },
-    { "id": 5, "tasks": ["8.1", "9.1"] },
-    { "id": 6, "tasks": ["8.2", "8.3", "10.1"] },
-    { "id": 7, "tasks": ["10.2", "10.3"] },
-    { "id": 8, "tasks": ["12.1"] },
-    { "id": 9, "tasks": ["12.2", "13.1"] },
-    { "id": 10, "tasks": ["12.3", "12.4", "14.1"] },
-    { "id": 11, "tasks": ["15.1", "16.1"] },
-    { "id": 12, "tasks": ["17.1"] },
-    { "id": 13, "tasks": ["19.1"] },
-    { "id": 14, "tasks": ["20.1"] },
-    { "id": 15, "tasks": ["21.1", "21.2", "22.1"] },
-    { "id": 16, "tasks": ["22.2", "22.3"] },
-    { "id": 17, "tasks": ["24.1", "24.2", "25.1"] },
-    { "id": 18, "tasks": ["25.2", "26.1", "26.2"] },
-    { "id": 19, "tasks": ["27.1", "28.1"] },
-    { "id": 20, "tasks": ["28.2"] },
-    { "id": 21, "tasks": ["28.3", "30.1"] },
-    { "id": 22, "tasks": ["30.2", "31.1", "32.1"] },
-    { "id": 23, "tasks": ["32.2", "33.1", "34.1"] },
-    { "id": 24, "tasks": ["34.2", "35.1", "35.2", "35.3"] }
+    {
+      "id": 0,
+      "tasks": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"]
+    },
+    {
+      "id": 1,
+      "tasks": ["1.1", "1.2", "1.3", "1.4"]
+    },
+    {
+      "id": 2,
+      "tasks": ["1.5", "2.1", "2.2", "2.3", "3.1", "3.2", "3.3", "4.1", "4.2", "4.3"]
+    },
+    {
+      "id": 3,
+      "tasks": ["5.1", "5.2", "5.3", "5.4", "5.5", "6.1", "6.2", "6.3", "6.4"]
+    },
+    {
+      "id": 4,
+      "tasks": ["7.1", "7.2", "7.3", "8.1", "8.2", "8.3"]
+    },
+    {
+      "id": 5,
+      "tasks": ["9.1", "9.2", "9.3", "10.1", "10.2", "10.3", "11.1", "11.2", "11.3", "12.1", "12.2", "12.3", "12.4"]
+    },
+    {
+      "id": 6,
+      "tasks": ["13.1", "13.2", "13.3", "14.1", "14.2", "14.3"]
+    },
+    {
+      "id": 7,
+      "tasks": ["15.1", "15.2", "15.3", "16.1", "16.2", "16.3", "17.1", "17.2", "17.3"]
+    },
+    {
+      "id": 8,
+      "tasks": ["18.1", "18.2", "18.3", "19.1", "19.2"]
+    },
+    {
+      "id": 9,
+      "tasks": ["20.1", "20.2", "21.1", "21.2", "22.1", "22.2", "23.1", "23.2", "24.1", "24.2", "25.1", "25.2"]
+    },
+    {
+      "id": 10,
+      "tasks": ["26.1", "26.2", "27.1", "27.2", "28.1", "28.2", "29.1", "29.2", "30.1", "30.2"]
+    },
+    {
+      "id": 11,
+      "tasks": ["31.1", "31.2", "32.1", "33.1", "34.1", "34.2", "35.1", "35.2", "35.3", "36.1", "36.2", "36.3"]
+    }
   ]
 }
 ```
+
+## Notes for Future Agents
+
+- The first code task should fix `P-20260611-001` before running broad test gates.
+- The first knowledge task should preserve Kiro's Obsidian-first design under project-root `autoresearch-vault/`: Exploration Zone, Project Zone, wiki-links, topic index, permissions, version history, and rollback.
+- If a task is checked in this file, verify there is a corresponding `Agent.md` entry and focused git commit.
+- If implementation reality diverges from this plan, update the smallest relevant part of this file and record why in `Agent.md`.
+- Keep `README.md` English-first and keep `README.zh-CN.md` in sync when user-facing project status changes.
