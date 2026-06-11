@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:59:09 +08:00 - Codex - Task 6.3 retrieval cache
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.3`.
+- Files changed:
+  - `src/autoresearch/literature/cache.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `tests/unit/literature/test_cache.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `RetrievalCacheRecord` for serialized literature cache payloads.
+  - Added stable `retrieval_cache_key()` using query, source, page, limit, and config.
+  - Added filesystem-backed `RetrievalCache` with a default 24-hour TTL.
+  - Added `get_or_fetch()` so repeated identical requests reuse cached successful responses.
+  - Added tests for key sensitivity, identical-query cache reuse, different-query miss, and 24-hour expiry.
+  - Marked task `6.3` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/literature tests/smoke tests/unit`: passed, 77 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 20 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `6.4` should store retrieved paper metadata as Obsidian Markdown paper notes without summarization.
+
 ### 2026-06-11 18:56:25 +08:00 - Codex - Task 6.2 ArXiv and Semantic Scholar clients
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.2`.

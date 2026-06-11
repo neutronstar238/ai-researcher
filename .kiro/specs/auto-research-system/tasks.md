@@ -277,7 +277,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 4.3, REQ 9_
     - _Verify: mocked client tests pass; one optional live smoke test is documented and skipped by default._
 
-  - [ ] 6.3 Implement retrieval cache
+  - [x] 6.3 Implement retrieval cache
     - Cache successful search responses for 24 hours.
     - Cache key must include query, source, page/limit, and relevant config.
     - _References: DES Literature Retrieval Pipeline_
