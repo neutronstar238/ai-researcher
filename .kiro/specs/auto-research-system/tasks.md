@@ -199,7 +199,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: schema test validates required cost fields and numeric bounds._
 
 - [ ] 4. Add continuous integration baseline
-  - [ ] 4.1 Add GitHub Actions workflow
+  - [x] 4.1 Add GitHub Actions workflow
     - Add a workflow for Python 3.10.
     - Run install, ruff, mypy, and pytest.
     - Keep external network/API tests excluded by default.

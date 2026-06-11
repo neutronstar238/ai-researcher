@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 18:32:06 +08:00 - Codex - Task 4.1 GitHub Actions workflow
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `4.1`.
+- Files changed:
+  - `.github/workflows/ci.yml`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added a Python 3.10 GitHub Actions workflow for pushes to `main` and pull requests.
+  - Added CI install steps using Poetry.
+  - Matched CI quality gates to the local green commands: `ruff`, `mypy`, and smoke/unit pytest.
+  - Kept external-network and future integration/property tests out of the default CI path.
+  - Marked task `4.1` complete in `tasks.md`.
+- Verification:
+  - `Test-Path .github/workflows/ci.yml`: passed.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 12 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+  - `poetry run pytest tests/smoke tests/unit`: passed, 45 tests.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `4.2` should add or document the local developer check command to prevent CI/local command drift.
+
 ### 2026-06-11 18:30:33 +08:00 - Codex - Task 3.3 cost record schema
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `3.3`.
