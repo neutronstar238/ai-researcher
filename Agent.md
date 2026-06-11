@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 21:28:46 +08:00 - Codex - Task 14.3 evidence consistency checks
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.3`.
+- Files changed:
+  - `src/autoresearch/reports/generator.py`
+  - `src/autoresearch/reports/lint.py`
+  - `tests/unit/reports/test_lint.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added report lint metric consistency checks that compare evidence-linked metric values in text, Markdown tables, and figure alt/caption text against the linked metrics JSON source file.
+  - Kept consistency checks file-backed and opt-in through `base_dir`, preserving existing structure-only lint behavior when no source directory is available.
+  - Added a regression test that catches deliberate text, table, and figure metric mismatches against `metrics.json`.
+  - Moved report generator experiment imports away from module import time to avoid aggregate package circular imports.
+  - Marked task `14.3` and parent task `14` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_lint.py tests/unit/reports/test_report_generator.py`: passed, 9 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 163 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 48 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-028` added and resolved.
+  - `P-20260611-029` added and resolved.
+- Follow-up:
+  - Task `15.1` should implement a baseline reproducer.
+
 ### 2026-06-11 21:20:13 +08:00 - Codex - Task 14.2 evidence coverage gate
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `14.2`.

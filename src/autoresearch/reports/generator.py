@@ -5,11 +5,13 @@ from __future__ import annotations
 import platform
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from autoresearch.evidence import EvidenceCoverageError, EvidenceGraph
-from autoresearch.experiments.evidence import require_evidence_for_metrics
-from autoresearch.experiments.validation import ValidationReport
 from autoresearch.schemas import EvidenceEdge, ExecutionRun, ResultBundle
+
+if TYPE_CHECKING:
+    from autoresearch.experiments.validation import ValidationReport
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,8 @@ def generate_markdown_report(
     output_path: Path | str | None = None,
 ) -> str:
     """Generate and optionally store an MVP Markdown research report."""
+
+    from autoresearch.experiments.evidence import require_evidence_for_metrics
 
     require_evidence_for_metrics(context.results, context.evidence_edges)
     _require_core_claim_coverage(context)

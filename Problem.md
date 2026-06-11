@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-029 - Figure metric parser captured a truncated metric name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 21:28:46 +08:00
+- Source: `poetry run pytest tests/unit/reports/test_lint.py tests/unit/reports/test_report_generator.py` while verifying task `14.3`.
+- Symptom: The deliberate figure metric mismatch test produced a metric consistency issue for metric `y` instead of `accuracy`.
+- Impact: The consistency checker still raised an issue, but the figure metric parser would have produced misleading diagnostics for figure captions or alt text.
+- Evidence: Printing lint issues for `![accuracy=0.6](...)` showed `metric 'y' is missing from source metrics.json`.
+- Root cause: The figure metric regex used a greedy prefix before the metric capture group, so it consumed most of `accuracy` and left only the final character.
+- Workaround: None needed after the regex update.
+- Next action: Keep figure metric parsing tests around any future caption syntax changes.
+- Linked tasks: `14.3`
+- Resolution: Changed the figure alt/caption prefix match to be non-greedy and added a test fixture figure file to avoid unrelated link noise.
+- Verification: `poetry run pytest tests/unit/reports/test_lint.py tests/unit/reports/test_report_generator.py` passed after the regex update.
+
+### P-20260611-028 - Report package aggregate import reintroduced an experiments circular import
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-11 21:28:46 +08:00
+- Source: `poetry run pytest tests/unit/reports/test_lint.py tests/unit/reports/test_report_generator.py` while verifying task `14.3`.
+- Symptom: Pytest collection failed with `ImportError: cannot import name 'ReportContext' from partially initialized module 'autoresearch.reports'`.
+- Impact: Report lint tests could not collect when the `autoresearch.reports` aggregate package was imported before the experiments package had finished initializing.
+- Evidence: Import chain was `reports.__init__ -> reports.generator -> experiments.validation -> experiments.__init__ -> demo_workflow -> reports`.
+- Root cause: Runtime-only report generation imports pulled in the experiments aggregate package at module import time, recreating the circular import pattern previously seen in report/demo wiring.
+- Workaround: None needed after moving runtime experiment imports out of module import time.
+- Next action: Keep report modules from importing the experiments aggregate path at top level; use direct lazy imports or `TYPE_CHECKING` imports for annotations.
+- Linked tasks: `14.3`
+- Resolution: Made `ValidationReport` a `TYPE_CHECKING`-only import and moved `require_evidence_for_metrics` into `generate_markdown_report()`.
+- Verification: Report tests collected and passed after the import-layer change.
+
 ### P-20260611-027 - Report coverage test import order failed ruff
 
 - Status: Resolved

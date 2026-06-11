@@ -435,7 +435,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 9, DES Technology Stack_
     - _Verify: integration test pauses and resumes a mock workflow._
 
-- [ ] 14. Build evidence graph
+- [x] 14. Build evidence graph
   - [x] 14.1 Implement claim-evidence-source graph
     - Model `Claim -> Evidence -> Source -> Artifact -> ValidationStatus`.
     - Store graph as JSON for MVP and keep database migration optional.
@@ -448,7 +448,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 5.4, RP 10_
     - _Verify: paper/report generation fails when a core claim has no evidence._
 
-  - [ ] 14.3 Add evidence consistency checks
+  - [x] 14.3 Add evidence consistency checks
     - Check that metric values in text, tables, and figures match source result files.
     - _References: EP 5.4, REQ 22_
     - _Verify: tests catch a deliberate table/text mismatch._
