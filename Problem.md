@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-012 - Candidate generator split equivalent dataset phrases
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 19:07:15 +08:00
+- Source: `poetry run pytest tests/unit/research tests/smoke tests/unit` and `poetry run ruff check src tests` while verifying task `7.1`.
+- Symptom: The deterministic candidate ranking test produced separate clusters for `autoresearch` and `the autoresearch`; ruff also required import ordering in the new candidate module.
+- Impact: Equivalent benchmark phrases could split evidence across multiple lower-confidence candidates.
+- Evidence: Pytest showed an unexpected cluster key `transformer|limited reproducibility|the autoresearch`; ruff reported one fixable import-order issue.
+- Root cause: Dataset phrase extraction did not strip nested preposition phrases and leading articles after matching `with ... benchmark` text.
+- Workaround: None needed after normalization fix.
+- Next action: Keep deterministic tests around sample candidate ranking as candidate generation evolves.
+- Linked tasks: `7.1`
+- Resolution: Normalized dataset phrases by taking the trailing `on ...` segment and removing leading `the `; ran ruff auto-fix for imports.
+- Verification: `poetry run pytest tests/unit/research tests/smoke tests/unit` passed with 79 tests and 1 skipped optional live smoke test; `poetry run ruff check src tests` passed.
+
 ### P-20260611-011 - Ruff import-order check failed after adding literature storage
 
 - Status: Resolved

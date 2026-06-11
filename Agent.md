@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:07:15 +08:00 - Codex - Task 7.1 research candidate generation
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `7.1`.
+- Files changed:
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/candidates.py`
+  - `tests/unit/research/test_candidates.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a deterministic research candidate generator from retrieved `DocumentRecord` metadata.
+  - Extracted simple method, limitation, and dataset/benchmark signals from paper titles and abstracts.
+  - Clustered papers by repeated method/limitation/dataset signals.
+  - Scored generated `ResearchCandidate` records for novelty, feasibility, impact, evidence coverage, and estimated cost.
+  - Stored evidence coverage, estimated cost, rank score, cluster key, method, dataset, and limitation in candidate metadata.
+  - Marked candidates with insufficient evidence as `draft` and evidence-backed candidates as `ready_for_review`.
+  - Added deterministic ranking tests and low-evidence draft tests.
+  - Marked task `7.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/research tests/smoke tests/unit`: passed, 79 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 23 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-012` added and resolved for dataset phrase normalization and import ordering during candidate generation verification.
+- Follow-up:
+  - Task `7.2` should add the human approval gate before project creation.
+
 ### 2026-06-11 19:02:06 +08:00 - Codex - Task 6.4 store paper notes in knowledge base
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.4`.

@@ -291,7 +291,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: integration test retrieves mocked papers and writes knowledge entries._
 
 - [ ] 7. Implement research candidate and hypothesis workflow
-  - [ ] 7.1 Generate research candidates from retrieved literature
+  - [x] 7.1 Generate research candidates from retrieved literature
     - Build a simple candidate generator using recent paper clusters, repeated limitations, datasets, and methods.
     - Score novelty, feasibility, expected impact, evidence coverage, and estimated cost.
     - Mark low-evidence candidates as draft, not ready.
