@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 19:02:06 +08:00 - Codex - Task 6.4 store paper notes in knowledge base
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.4`.
+- Files changed:
+  - `src/autoresearch/literature/storage.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `tests/integration/literature/test_store_papers.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added conversion from `AcademicPaper` metadata to `DocumentRecord`.
+  - Added conversion from paper metadata and document records to Obsidian-readable `KnowledgeEntry` paper notes.
+  - Added `store_paper_notes()` to write retrieved paper metadata into project or exploration knowledge paths.
+  - Included source URL/DOI, retrieval timestamp, authors, venue, publication date, and metadata abstract without generating summaries.
+  - Added an integration test that stores mocked retrieved papers and reloads the Markdown knowledge entry.
+  - Marked task `6.4` and parent task `6` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/integration/literature tests/unit/literature tests/smoke tests/unit`: passed, 78 tests and 1 skipped optional live smoke test.
+  - `poetry run ruff check src tests`: passed after applying ruff's import-order fix.
+  - `poetry run mypy src`: passed with no issues in 21 source files; mypy emitted the existing non-failing unused override note for optional integrations.
+- Problems:
+  - `P-20260611-011` added and resolved for the temporary ruff import-order failure.
+- Follow-up:
+  - Task `7.1` should generate and score research candidates from retrieved literature.
+
 ### 2026-06-11 18:59:09 +08:00 - Codex - Task 6.3 retrieval cache
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `6.3`.

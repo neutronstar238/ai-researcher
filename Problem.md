@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-011 - Ruff import-order check failed after adding literature storage
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 19:02:06 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `6.4`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/literature/storage.py`.
+- Impact: Integration tests and mypy passed, but the quality gate required import formatting.
+- Evidence: Ruff reported one fixable `I001` finding.
+- Root cause: The new storage module import block did not match ruff/isort ordering.
+- Workaround: None needed after applying ruff's automatic fix.
+- Next action: Continue to run `ruff` before marking code tasks complete.
+- Linked tasks: `6.4`
+- Resolution: Ran `poetry run ruff check src tests --fix`.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-010 - Literature client mypy check failed on requests stubs and Any return
 
 - Status: Resolved

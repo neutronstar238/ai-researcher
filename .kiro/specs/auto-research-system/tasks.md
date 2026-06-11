@@ -263,7 +263,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 8.6, REQ 28, DES Property 22_
     - _Verify: tests modify an entry N times and confirm N+1 versions are retrievable and rollback restores prior content._
 
-- [ ] 6. Build literature retrieval MVP
+- [x] 6. Build literature retrieval MVP
   - [x] 6.1 Implement academic paper model and deduplication
     - Define structured paper metadata with title, authors, abstract, date, venue, DOI, URL, citation count, and source.
     - Deduplicate by DOI first and title similarity second.
@@ -283,7 +283,7 @@ A task can be checked only when all applicable items are true:
     - _References: DES Literature Retrieval Pipeline_
     - _Verify: test confirms repeated identical query uses cache and different query misses cache._
 
-  - [ ] 6.4 Store paper notes in knowledge base
+  - [x] 6.4 Store paper notes in knowledge base
     - Convert retrieved paper metadata into `DocumentRecord` and Markdown note.
     - Include source URL/DOI and retrieval timestamp.
     - Do not summarize beyond available metadata until the summarizer exists.
