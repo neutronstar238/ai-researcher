@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260611-018 - Ruff import-order check failed after adding report lint
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-11 20:07:36 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `11.2`.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/reports/lint.py`.
+- Impact: Report lint tests, full pytest, and mypy passed, but the lint gate failed until formatting matched the repository import rules.
+- Evidence: Ruff reported one fixable import-format error and showed a diff deleting an extra blank line after the imports.
+- Root cause: The new lint module was manually written with one extra blank line between imports and the module constant.
+- Workaround: None needed after the formatting fix.
+- Next action: Continue using full ruff verification before marking future report tasks complete.
+- Linked tasks: `11.2`
+- Resolution: Removed the extra blank line after the import block in `src/autoresearch/reports/lint.py`.
+- Verification: `poetry run ruff check src tests` passed after the fix; `poetry run pytest tests/unit tests/property tests/smoke` also passed with 142 tests and 1 skipped.
+
 ### P-20260611-017 - Pytest report test basename collided with experiment generator test
 
 - Status: Resolved

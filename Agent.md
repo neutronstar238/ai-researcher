@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-11 20:07:36 +08:00 - Codex - Task 11.2 report readability checks
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.2`.
+- Files changed:
+  - `src/autoresearch/reports/lint.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `tests/unit/reports/test_lint.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added deterministic Markdown report lint checks for required heading order, Markdown table formatting, local relative link existence, and quantitative metric lines missing evidence references.
+  - Added `assert_report_readable()` and exported the report lint APIs from `autoresearch.reports`.
+  - Added focused tests proving valid reports pass and broken evidence links, heading order, table formatting, and missing metric evidence links fail.
+  - Marked task `11.2` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/reports`: passed, 7 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke`: passed, 142 tests passed and 1 optional live literature test skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 38 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260611-018` added and resolved.
+- Follow-up:
+  - Task `11.3` should add reproducibility notes to generated reports.
+
 ### 2026-06-11 20:01:14 +08:00 - Codex - Task 11.1 Markdown report generation
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `11.1`.

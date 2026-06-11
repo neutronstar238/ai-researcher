@@ -377,7 +377,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 10, EP 4.3, EP 21_
     - _Verify: snapshot test confirms required sections and evidence links._
 
-  - [ ] 11.2 Add report readability checks
+  - [x] 11.2 Add report readability checks
     - Validate table formatting, link existence, heading order, and missing evidence references.
     - Keep checks deterministic and local.
     - _References: EP 14.1, RP 10.3_
