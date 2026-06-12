@@ -1,6 +1,8 @@
 """Core lifecycle schemas for AutoResearch."""
 
 from .models import (
+    ALLOWED_STRATEGY_TARGETS,
+    PROHIBITED_STRATEGY_TARGETS,
     BaseRecord,
     CandidateStatus,
     CostRecord,
@@ -21,6 +23,7 @@ from .models import (
 from .provenance import artifact_uri, config_hash, data_hash, file_hash, generate_run_id
 
 __all__ = [
+    "ALLOWED_STRATEGY_TARGETS",
     "BaseRecord",
     "CandidateStatus",
     "CostRecord",
@@ -34,6 +37,7 @@ __all__ = [
     "PaperDraft",
     "ResearchCandidate",
     "ResultBundle",
+    "PROHIBITED_STRATEGY_TARGETS",
     "StrategyCard",
     "TaskStatus",
     "ValidationStatus",

@@ -310,6 +310,10 @@ def _strategy_body(
         f"- Parent strategy: `{strategy.parent_strategy_id or 'none'}`",
         f"- Rollback target: `{strategy.rollback_target or 'none'}`",
         "",
+        "## Rationale",
+        "",
+        rationale or "No rationale recorded.",
+        "",
         "## Content",
         "",
         "```text",
@@ -320,13 +324,11 @@ def _strategy_body(
         "",
         f"- Rollback target: `{strategy.rollback_target or 'none'}`",
         f"- Parent strategy: `{strategy.parent_strategy_id or 'none'}`",
-        "",
-        "## Linked Evidence",
-        "",
-        *_wiki_lines(linked_refs),
     ]
-    if rationale:
-        lines.extend(["", "## Rationale", "", rationale])
+    for heading, refs in _strategy_link_groups(strategy):
+        lines.extend(["", f"## {heading}", "", *_wiki_lines(refs)])
+    if linked_refs:
+        lines.extend(["", "## Additional References", "", *_wiki_lines(linked_refs)])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -345,11 +347,32 @@ def _strategy_keywords(strategy: StrategyCard) -> list[str]:
 
 
 def _strategy_source_refs(strategy: StrategyCard, linked_refs: tuple[str, ...]) -> list[str]:
-    refs = [
+    return sorted(dict.fromkeys(_all_strategy_refs(strategy, linked_refs)))
+
+
+def _strategy_link_groups(strategy: StrategyCard) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    rollback_targets = (strategy.rollback_target,) if strategy.rollback_target else ()
+    return (
+        ("Linked Failure Patterns", strategy.failure_pattern_refs),
+        ("Linked Skill Cards", strategy.skill_card_refs),
+        ("Linked Replay Results", strategy.replay_result_refs),
+        ("Linked Golden Tests", strategy.golden_test_refs),
+        ("Linked Shadow Evaluations", strategy.shadow_evaluation_refs),
+        ("Linked Rollback Targets", rollback_targets),
+    )
+
+
+def _all_strategy_refs(strategy: StrategyCard, linked_refs: tuple[str, ...]) -> tuple[str, ...]:
+    values: list[str] = [
         *linked_refs,
-        *(value for value in (strategy.parent_strategy_id, strategy.rollback_target) if value),
+        *strategy.failure_pattern_refs,
+        *strategy.skill_card_refs,
+        *strategy.replay_result_refs,
+        *strategy.golden_test_refs,
+        *strategy.shadow_evaluation_refs,
     ]
-    return sorted(dict.fromkeys(refs))
+    values.extend(value for value in (strategy.parent_strategy_id, strategy.rollback_target) if value)
+    return tuple(values)
 
 
 def _wiki_lines(items: tuple[str, ...]) -> list[str]:

@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _utc_now() -> datetime:
@@ -25,6 +25,34 @@ class ValidationStatus(str, Enum):
     PASSED = "passed"
     WARNING = "warning"
     FAILED = "failed"
+
+
+ALLOWED_STRATEGY_TARGETS = frozenset(
+    {
+        "prompt_template",
+        "workflow_template",
+        "tool_routing_policy",
+        "retrieval_policy",
+        "experiment_search_policy",
+        "scheduling_policy",
+        "validation_policy",
+    }
+)
+PROHIBITED_STRATEGY_TARGETS = frozenset(
+    {
+        "safety_policy",
+        "approval_gate",
+        "approval_gates",
+        "license_policy",
+        "publication_rule",
+        "publication_rules",
+        "publication_policy",
+    }
+)
+STRATEGY_TARGET_ALIASES = {
+    "prompt": "prompt_template",
+    "workflow": "workflow_template",
+}
 
 
 class CandidateStatus(str, Enum):
@@ -239,4 +267,23 @@ class StrategyCard(BaseRecord):
     shadow_status: ValidationStatus = ValidationStatus.PENDING
     release_status: str = "draft"
     rollback_target: str | None = None
+    failure_pattern_refs: tuple[str, ...] = ()
+    skill_card_refs: tuple[str, ...] = ()
+    replay_result_refs: tuple[str, ...] = ()
+    golden_test_refs: tuple[str, ...] = ()
+    shadow_evaluation_refs: tuple[str, ...] = ()
     validation_status: ValidationStatus = ValidationStatus.PENDING
+
+    @field_validator("strategy_type")
+    @classmethod
+    def _validate_strategy_type(cls, value: str) -> str:
+        normalized = value.strip().casefold().replace("-", "_")
+        normalized = STRATEGY_TARGET_ALIASES.get(normalized, normalized)
+        if normalized in PROHIBITED_STRATEGY_TARGETS:
+            msg = f"strategy_type {normalized!r} is prohibited from automatic mutation"
+            raise ValueError(msg)
+        if normalized not in ALLOWED_STRATEGY_TARGETS:
+            allowed = ", ".join(sorted(ALLOWED_STRATEGY_TARGETS))
+            msg = f"strategy_type must be one of: {allowed}"
+            raise ValueError(msg)
+        return normalized

@@ -59,6 +59,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:34:32 +08:00 - Codex - Task 26.1 strategy card schema
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `26.1`; define controlled self-evolution strategy card schema and write linkable Obsidian strategy cards.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/knowledge/versioning.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/schemas/models.py`
+  - `tests/unit/knowledge/test_strategy_cards.py`
+  - `tests/unit/schemas/test_schema_models.py`
+- Summary:
+  - Added allowed strategy targets for prompt templates, workflow templates, tool routing policy, retrieval policy, experiment search policy, scheduling policy, and validation policy.
+  - Rejected prohibited automatic mutation targets for safety policy, approval gates, license policy, and publication rules.
+  - Added strategy link fields for failure patterns, skill cards, replay results, golden tests, shadow evaluations, and rollback targets.
+  - Updated Obsidian strategy-card writing so frontmatter source references and Markdown wiki-links carry the strategy's linked evidence and evaluation context.
+  - Added tests for allowed/prohibited strategy targets and linkable strategy-card Markdown.
+  - Marked task `26.1` complete; parent task `26` remains open for strategy lineage/versioning in `26.2`.
+- Verification:
+  - Initial focused lint exposed `P-20260612-051`; repaired import ordering with ruff autofix.
+  - `poetry run ruff check src/autoresearch/schemas/models.py src/autoresearch/schemas/__init__.py src/autoresearch/knowledge/versioning.py tests/unit/schemas/test_schema_models.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/schemas/test_schema_models.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py -vv`: passed, 23 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 253 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-051` added and resolved.
+- Follow-up:
+  - Task `26.2` should preserve explicit lineage from parent strategy to candidate strategy.
+
 ### 2026-06-12 12:28:59 +08:00 - Codex - Task 25.2 rollback audit trail
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `25.2`; record rollback actor, reason, old version, new version, and verification result in audit JSONL.

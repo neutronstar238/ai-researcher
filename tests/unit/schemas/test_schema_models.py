@@ -2,6 +2,8 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.schemas import (
+    ALLOWED_STRATEGY_TARGETS,
+    PROHIBITED_STRATEGY_TARGETS,
     CostRecord,
     DocumentRecord,
     EvidenceEdge,
@@ -99,7 +101,26 @@ def test_strategy_card_bounds_evaluation_score() -> None:
     )
 
     assert strategy.evaluation_score == 1.0
+    assert strategy.strategy_type == "workflow_template"
     assert strategy.golden_test_status is ValidationStatus.PASSED
+
+
+@pytest.mark.parametrize("strategy_type", sorted(ALLOWED_STRATEGY_TARGETS))
+def test_strategy_card_accepts_allowed_strategy_targets(strategy_type: str) -> None:
+    strategy = StrategyCard(strategy_type=strategy_type, content="Candidate mutation.")
+
+    assert strategy.strategy_type == strategy_type
+
+
+@pytest.mark.parametrize("strategy_type", sorted(PROHIBITED_STRATEGY_TARGETS))
+def test_strategy_card_rejects_prohibited_strategy_targets(strategy_type: str) -> None:
+    with pytest.raises(ValidationError, match="prohibited"):
+        StrategyCard(strategy_type=strategy_type, content="Do not mutate this policy.")
+
+
+def test_strategy_card_rejects_unknown_strategy_target() -> None:
+    with pytest.raises(ValidationError, match="strategy_type must be one of"):
+        StrategyCard(strategy_type="deployment_policy", content="Unknown mutation target.")
 
 
 def test_cost_record_validates_required_fields_and_bounds() -> None:

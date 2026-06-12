@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-051 - Strategy schema import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:34:32 +08:00
+- Source: `poetry run ruff check src/autoresearch/schemas/models.py src/autoresearch/schemas/__init__.py src/autoresearch/knowledge/versioning.py tests/unit/schemas/test_schema_models.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py`.
+- Symptom: Ruff reported `I001` in `src/autoresearch/schemas/__init__.py` and `tests/unit/schemas/test_schema_models.py`.
+- Impact: Task `26.1` focused lint verification was blocked.
+- Evidence: Ruff reported both import blocks were unsorted or unformatted.
+- Root cause: New exported strategy constants were inserted without matching ruff/isort ordering.
+- Workaround: None needed after ruff autofix.
+- Next action: None.
+- Linked tasks: `26.1`
+- Resolution: Ran ruff autofix on the affected import blocks.
+- Verification: `poetry run ruff check src/autoresearch/schemas/models.py src/autoresearch/schemas/__init__.py src/autoresearch/knowledge/versioning.py tests/unit/schemas/test_schema_models.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py`, `poetry run mypy src`, `poetry run pytest tests/unit/schemas/test_schema_models.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after import sorting.
+
 ### P-20260612-050 - Rollback version metadata needed explicit type conversion
 
 - Status: Resolved

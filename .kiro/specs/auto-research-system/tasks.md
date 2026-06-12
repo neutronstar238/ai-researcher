@@ -647,7 +647,7 @@ A task can be checked only when all applicable items are true:
 ### Phase 4: Controlled Self-Evolution (Weeks 25-36)
 
 - [ ] 26. Build strategy library
-  - [ ] 26.1 Define strategy card schema
+  - [x] 26.1 Define strategy card schema
     - Cover prompt templates, workflow templates, tool routing policy, retrieval policy, experiment search policy, scheduling policy, and validation policy.
     - Explicitly exclude safety policy, approval gates, license policy, and publication rules from automatic mutation.
     - Store each strategy card as an Obsidian Markdown entry under `autoresearch-vault/exploration/strategy_cards/` with machine-readable frontmatter and human-readable rationale.
