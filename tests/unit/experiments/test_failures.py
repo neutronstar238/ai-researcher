@@ -3,8 +3,18 @@ from textwrap import dedent
 
 import pytest
 
-from autoresearch.experiments import execute_experiment_task, record_failed_run_as_knowledge
-from autoresearch.knowledge import KnowledgeEntryType, MarkdownKnowledgeStore
+from autoresearch.experiments import (
+    classify_failure_category,
+    execute_experiment_task,
+    record_failed_run_as_knowledge,
+    update_recurring_failure_patterns,
+)
+from autoresearch.knowledge import (
+    KnowledgeEntry,
+    KnowledgeEntryType,
+    KnowledgeZone,
+    MarkdownKnowledgeStore,
+)
 from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 
 
@@ -98,3 +108,82 @@ def test_record_failed_run_rejects_successful_runs() -> None:
 
     with pytest.raises(ValueError, match="failed"):
         record_failed_run_as_knowledge(run=run, task=task, vault_root="vault")
+
+
+@pytest.mark.parametrize(
+    ("text", "category"),
+    [
+        ("ModuleNotFoundError missing package", "dependency"),
+        ("dataset csv schema mismatch", "data"),
+        ("TimeoutExpired stderr exception", "runtime"),
+        ("metric_presence missing metrics.json", "metric"),
+        ("citation DOI reference mismatch", "citation"),
+        ("sandbox permission access denied", "permission"),
+        ("budget token GPU cost exceeded", "cost"),
+        ("validation artifact_existence failed", "validation"),
+        ("unlabeled issue", "unknown"),
+    ],
+)
+def test_classify_failure_category_covers_representative_causes(
+    text: str,
+    category: str,
+) -> None:
+    assert classify_failure_category(text) == category
+
+
+def test_update_recurring_failure_patterns_writes_shared_note(tmp_path: Path) -> None:
+    store = MarkdownKnowledgeStore(tmp_path)
+    _write_failure_entry(
+        store,
+        "exploration/failure_patterns/failure_run_1.md",
+        "failure_run_1",
+        "TimeoutExpired in task",
+        "Runtime timeout in stderr during experiment.",
+    )
+    _write_failure_entry(
+        store,
+        "exploration/failure_patterns/failure_run_2.md",
+        "failure_run_2",
+        "Runtime exception in task",
+        "NonZeroExit stderr exception while running experiment.",
+    )
+    _write_failure_entry(
+        store,
+        "exploration/failure_patterns/failure_run_3.md",
+        "failure_run_3",
+        "Dataset issue",
+        "CSV schema mismatch in dataset.",
+    )
+
+    patterns = update_recurring_failure_patterns(vault_root=tmp_path, min_occurrences=2)
+
+    assert len(patterns) == 1
+    pattern = patterns[0]
+    assert pattern.category == "runtime"
+    assert pattern.failure_entry_ids == ("failure_run_1", "failure_run_2")
+    markdown = pattern.note_path.read_text(encoding="utf-8")
+    assert "[[exploration/failure_patterns/failure_run_1]]" in markdown
+    assert "[[exploration/failure_patterns/failure_run_2]]" in markdown
+    assert "## Skill Extraction Feed" in markdown
+    assert "## Strategy Proposal Feed" in markdown
+
+
+def _write_failure_entry(
+    store: MarkdownKnowledgeStore,
+    relative_path: str,
+    entry_id: str,
+    title: str,
+    body: str,
+) -> None:
+    store.write_entry(
+        relative_path,
+        KnowledgeEntry(
+            entry_id=entry_id,
+            entry_type=KnowledgeEntryType.FAILURE_CASE,
+            zone=KnowledgeZone.EXPLORATION,
+            title=title,
+            tags=["failure-case"],
+            keywords=["failure"],
+            body=body,
+        ),
+    )

@@ -21,7 +21,13 @@ from .evidence import (
     require_evidence_for_metrics,
 )
 from .executor import execute_experiment_task
-from .failures import FailureKnowledgeRecord, record_failed_run_as_knowledge
+from .failures import (
+    FailureKnowledgeRecord,
+    RecurringFailurePattern,
+    classify_failure_category,
+    record_failed_run_as_knowledge,
+    update_recurring_failure_patterns,
+)
 from .generator import generate_experiment_directory
 from .network import (
     NetworkDecision,
@@ -69,6 +75,7 @@ __all__ = [
     "ExperimentPlanningConfig",
     "FailureKnowledgeRecord",
     "NetworkDecision",
+    "RecurringFailurePattern",
     "ResultCollectionError",
     "RestrictedNetworkPolicy",
     "SandboxAccessMode",
@@ -79,6 +86,7 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "bind_metrics_to_evidence",
+    "classify_failure_category",
     "collect_result_bundle",
     "create_tabular_baseline_task",
     "create_text_classifier_stub_task",
@@ -98,5 +106,6 @@ __all__ = [
     "reproduce_tabular_baseline",
     "run_mvp_acceptance",
     "run_scientistbench_demo",
+    "update_recurring_failure_patterns",
     "validate_result_bundle",
 ]

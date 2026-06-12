@@ -591,7 +591,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 15.2, RP 3.3_
     - _Verify: test triggers budget approval state._
 
-- [ ] 22. Build Obsidian failure library
+- [x] 22. Build Obsidian failure library
   - [x] 22.1 Record failed runs as first-class knowledge
     - Capture error type, logs, config, environment, hypothesis, experiment task, and suspected cause.
     - Store failure cases as Markdown entries under `autoresearch-vault/exploration/failure_patterns/` and link project-local copies from `autoresearch-vault/projects/<project-id>/issues/`.
@@ -599,7 +599,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 6.3, RP 12, REQ 2.4, EP 6.3_
     - _Verify: failed demo run creates a failure case entry with Obsidian wiki-links to run and project issue notes._
 
-  - [ ] 22.2 Classify recurring failure patterns
+  - [x] 22.2 Classify recurring failure patterns
     - Group failures by dependency, data, runtime, metric, citation, permission, cost, and validation causes.
     - Update global failure pattern notes when similar failures repeat.
     - Feed repeated failure patterns into skill extraction and strategy proposal tasks.

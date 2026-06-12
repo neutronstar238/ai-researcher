@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:53:22 +08:00 - Codex - Task 22.2 recurring failure classification
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `22.2`; classify recurring failure patterns and feed repeated failures into skill and strategy work.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/failures.py`
+  - `tests/unit/experiments/test_failures.py`
+- Summary:
+  - Added deterministic failure classification for dependency, data, runtime, metric, citation, permission, cost, validation, and unknown causes.
+  - Added recurring failure pattern note generation under `autoresearch-vault/exploration/failure_patterns/` when a category repeats.
+  - Included source failure links plus skill extraction and strategy proposal feed sections in recurring pattern notes.
+  - Exported the recurring failure APIs from `autoresearch.experiments`.
+  - Added focused tests for representative categories and shared recurring pattern note updates.
+  - Marked task `22.2` and parent task `22` complete.
+- Verification:
+  - Initial export patch caused `P-20260612-045`; repaired `src/autoresearch/experiments/__init__.py`.
+  - `poetry run ruff check src/autoresearch/experiments/failures.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_failures.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/experiments/test_failures.py -vv`: passed, 12 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 222 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-045` resolved.
+- Follow-up:
+  - Task `23.1` should extract reusable skill cards from repeated successful patterns and failure pattern feeds.
+
 ### 2026-06-12 11:46:51 +08:00 - Codex - Task 22.1 failed-run knowledge records
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `22.1`; record failed runs as first-class Obsidian knowledge.

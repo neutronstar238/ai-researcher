@@ -5,6 +5,7 @@ from __future__ import annotations
 import platform
 import re
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,75 @@ from autoresearch.knowledge import (
 )
 from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 
+FAILURE_CATEGORIES = (
+    "dependency",
+    "data",
+    "runtime",
+    "metric",
+    "citation",
+    "permission",
+    "cost",
+    "validation",
+    "unknown",
+)
+CATEGORY_TERMS = {
+    "dependency": (
+        "importerror",
+        "modulenotfounderror",
+        "dependency",
+        "package",
+        "pip",
+        "poetry",
+    ),
+    "data": (
+        "csv",
+        "data",
+        "dataset",
+        "file not found",
+        "filenotfounderror",
+        "schema",
+    ),
+    "runtime": (
+        "nonzeroexit",
+        "runtime",
+        "timeoutexpired",
+        "memorylimitexceeded",
+        "exception",
+        "stderr",
+        "timeout",
+    ),
+    "metric": (
+        "metric",
+        "metrics.json",
+        "metric_presence",
+        "metric_bounds",
+    ),
+    "citation": (
+        "bibtex",
+        "citation",
+        "doi",
+        "reference",
+    ),
+    "permission": (
+        "permission",
+        "sandbox",
+        "access denied",
+        "unauthorized",
+    ),
+    "cost": (
+        "budget",
+        "cost",
+        "gpu",
+        "token",
+    ),
+    "validation": (
+        "validation",
+        "validator",
+        "artifact_existence",
+        "config_hash",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class FailureKnowledgeRecord:
@@ -25,6 +95,17 @@ class FailureKnowledgeRecord:
     failure_id: str
     global_failure_path: Path
     project_issue_path: Path
+
+
+@dataclass(frozen=True)
+class RecurringFailurePattern:
+    """One repeated failure category persisted for skill and strategy extraction."""
+
+    pattern_id: str
+    category: str
+    failure_entry_ids: tuple[str, ...]
+    failure_paths: tuple[str, ...]
+    note_path: Path
 
 
 def record_failed_run_as_knowledge(
@@ -116,6 +197,71 @@ def record_failed_run_as_knowledge(
         global_failure_path=global_path,
         project_issue_path=issue_path,
     )
+
+
+def classify_failure_category(text: str) -> str:
+    """Classify a failure note into a coarse recurring-failure category."""
+
+    normalized = text.casefold()
+    for category in FAILURE_CATEGORIES:
+        if category == "unknown":
+            continue
+        if any(term in normalized for term in CATEGORY_TERMS[category]):
+            return category
+    return "unknown"
+
+
+def update_recurring_failure_patterns(
+    *,
+    vault_root: Path | str,
+    min_occurrences: int = 2,
+) -> list[RecurringFailurePattern]:
+    """Group failure cases and update shared recurring-pattern notes."""
+
+    if min_occurrences < 2:
+        msg = "min_occurrences must be at least 2"
+        raise ValueError(msg)
+
+    root = Path(vault_root)
+    store = MarkdownKnowledgeStore(root)
+    groups: dict[str, list[tuple[str, str, KnowledgeEntry]]] = defaultdict(list)
+    for relative_path, entry in _failure_entries(root):
+        category = classify_failure_category(_entry_text(entry))
+        groups[category].append((relative_path, category, entry))
+
+    patterns: list[RecurringFailurePattern] = []
+    for category, rows in sorted(groups.items()):
+        if category == "unknown" or len(rows) < min_occurrences:
+            continue
+        failure_paths = tuple(row[0] for row in rows)
+        failure_entry_ids = tuple(row[2].entry_id for row in rows)
+        pattern_id = f"recurring_failure_{category}"
+        note = KnowledgeEntry(
+            entry_id=pattern_id,
+            entry_type=KnowledgeEntryType.FAILURE_CASE,
+            zone=KnowledgeZone.EXPLORATION,
+            title=f"Recurring {category} failure pattern",
+            tags=["failure-pattern", "recurring", category],
+            keywords=["recurring-failure", category],
+            source_refs=list(failure_entry_ids),
+            body=_recurring_pattern_body(
+                category=category,
+                failure_paths=failure_paths,
+                failure_entry_ids=failure_entry_ids,
+            ),
+        )
+        relative_note = Path("exploration") / "failure_patterns" / f"{pattern_id}.md"
+        note_path = store.write_entry(relative_note, note)
+        patterns.append(
+            RecurringFailurePattern(
+                pattern_id=pattern_id,
+                category=category,
+                failure_entry_ids=failure_entry_ids,
+                failure_paths=failure_paths,
+                note_path=note_path,
+            )
+        )
+    return patterns
 
 
 def _global_failure_body(
@@ -214,6 +360,67 @@ def _project_issue_body(
         *_linked_refs("Strategies", strategy_refs),
     ]
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _recurring_pattern_body(
+    *,
+    category: str,
+    failure_paths: tuple[str, ...],
+    failure_entry_ids: tuple[str, ...],
+) -> str:
+    lines = [
+        f"# Recurring {category} failure pattern",
+        "",
+        f"- Category: `{category}`",
+        f"- Occurrences: `{len(failure_entry_ids)}`",
+        "",
+        "## Source Failures",
+        "",
+        *[f"- [[{path.removesuffix('.md')}]] (`{entry_id}`)" for path, entry_id in zip(failure_paths, failure_entry_ids, strict=True)],
+        "",
+        "## Skill Extraction Feed",
+        "",
+        f"- Candidate skill trigger: `{category} failure repeats across runs`",
+        "- Candidate skill action: `inspect linked runs, logs, configs, and suspected causes before retrying`",
+        "- Status: `pending extraction`",
+        "",
+        "## Strategy Proposal Feed",
+        "",
+        f"- Candidate strategy area: `{category}`",
+        "- Proposal status: `pending shadow evaluation`",
+        "- Safety note: strategy changes still require human review before release.",
+    ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _failure_entries(vault_root: Path) -> tuple[tuple[str, KnowledgeEntry], ...]:
+    root = vault_root / "exploration" / "failure_patterns"
+    if not root.exists():
+        return ()
+    entries: list[tuple[str, KnowledgeEntry]] = []
+    for path in sorted(root.rglob("*.md")):
+        relative = path.relative_to(vault_root).as_posix()
+        try:
+            entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        if entry.entry_type is KnowledgeEntryType.FAILURE_CASE and not entry.entry_id.startswith(
+            "recurring_failure_"
+        ):
+            entries.append((relative, entry))
+    return tuple(entries)
+
+
+def _entry_text(entry: KnowledgeEntry) -> str:
+    return " ".join(
+        [
+            entry.title,
+            *entry.tags,
+            *entry.keywords,
+            *entry.source_refs,
+            entry.body,
+        ]
+    )
 
 
 def _failure_id(run: ExecutionRun) -> str:

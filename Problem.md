@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-045 - Recurring failure exports caused syntax error
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 11:50:06 +08:00
+- Source: `poetry run ruff check src/autoresearch/experiments/failures.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_failures.py`; `poetry run mypy src`; `poetry run pytest tests/unit/experiments/test_failures.py -vv`.
+- Symptom: `src/autoresearch/experiments/__init__.py` had three `__all__` entries outside the list, causing `IndentationError`.
+- Impact: Task `22.2` could not be imported or tested until package exports were repaired.
+- Evidence: Ruff reported `E999 SyntaxError`; mypy reported `Unexpected indent`; pytest collection failed importing `autoresearch.experiments`.
+- Root cause: Manual export patch inserted `RecurringFailurePattern`, `classify_failure_category`, and `update_recurring_failure_patterns` after the closing list bracket.
+- Workaround: None needed after repairing the export list.
+- Next action: None.
+- Linked tasks: `22.2`
+- Resolution: Moved the recurring failure exports inside `__all__`.
+- Verification: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after export repair.
+
 ### P-20260612-044 - Failure knowledge module had unused import
 
 - Status: Resolved
