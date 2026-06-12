@@ -24,6 +24,9 @@ This file defines the project development standard for coding agents and records
 - Prefer narrow checks first, then broader checks when the task touches shared behavior.
 - For docs-only changes, verify file existence, links, and key required phrases.
 - For code changes, run the relevant unit, integration, lint, type, or smoke checks listed in the task.
+- For internet, literature API, or other external data features, verify against real network responses when the task reaches that surface; mocked responses prove parser behavior only, not live behavior.
+- For LLM integrations, keep providers configurable by base URL, API key, and model name. If a real LLM call needs credentials that are missing, stop and ask the user to populate `.env` instead of binding to one vendor or faking success.
+- If a task is local-only and no external live call is applicable, say that explicitly in the verification record.
 - Record all verification in this file.
 
 ### Problem Tracking
@@ -58,6 +61,38 @@ This file defines the project development standard for coding agents and records
 ```
 
 ## Entries
+
+### 2026-06-12 14:00:14 +08:00 - Codex - Task 35.2 cost management
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `35.2`, adding project budget, GPU hour, API token cost, storage cost, and alert management.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/costs.py`
+  - `tests/unit/experiments/test_costs.py`
+- Summary:
+  - Added project-level cost management under `autoresearch.experiments`.
+  - Added configurable unit prices for deriving token, GPU, and storage costs when explicit run costs are absent.
+  - Aggregated costs from both `ExecutionRun.cost_json` and `CostRecord`.
+  - Added budget alerts for total project cost, GPU hours, API token cost, and storage cost.
+  - Implemented 80 percent alert behavior and hard-limit blocking.
+  - Exported the new cost management API from `autoresearch.experiments`.
+  - Added the project standard that internet/API features must be verified against real network responses, and LLM calls must remain base-URL/API-key/model-name configurable.
+  - Marked task `35.2` complete in `tasks.md`; parent task `35` remains open because SLA controls are not complete.
+  - No external live call was applicable for this local cost aggregation task.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/costs.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_costs.py`: passed.
+  - `poetry run pytest tests/unit/experiments/test_costs.py -vv`: passed, 4 tests.
+  - `poetry run mypy src`: passed, 81 source files checked.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 293 passed and 3 skipped.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this task.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with task `35.3` service health and SLA metrics.
 
 ### 2026-06-12 13:53:27 +08:00 - Codex - Task 35.1 license scanner
 

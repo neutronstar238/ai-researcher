@@ -752,7 +752,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 11, EP 17_
     - _Verify: scanner reports missing license metadata as warning or failure according to policy._
 
-  - [ ] 35.2 Add cost management
+  - [x] 35.2 Add cost management
     - Track project budget, GPU hours, API token cost, storage cost, and alerts.
     - _References: EP 11, EP 15_
     - _Verify: cost alert triggers at 80 percent threshold._

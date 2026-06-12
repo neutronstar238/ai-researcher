@@ -8,6 +8,15 @@ from .budget import (
     BudgetGateStatus,
     evaluate_budget_gate,
 )
+from .costs import (
+    CostAlert,
+    CostAlertStatus,
+    CostUnitPrices,
+    ProjectBudget,
+    ProjectCostReport,
+    ProjectCostUsage,
+    evaluate_project_costs,
+)
 from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     create_tabular_baseline_task,
@@ -111,6 +120,9 @@ __all__ = [
     "BudgetGateConfig",
     "BudgetGateDecision",
     "BudgetGateStatus",
+    "CostAlert",
+    "CostAlertStatus",
+    "CostUnitPrices",
     "CodeReviewFinding",
     "CodeReviewResult",
     "DemoWorkflowResult",
@@ -124,6 +136,9 @@ __all__ = [
     "GoldenTestObservation",
     "GoldenTestResult",
     "NetworkDecision",
+    "ProjectBudget",
+    "ProjectCostReport",
+    "ProjectCostUsage",
     "REQUIRED_GOLDEN_DOMAINS",
     "RecurringFailurePattern",
     "ReplayCase",
@@ -160,6 +175,7 @@ __all__ = [
     "default_network_policy",
     "execute_experiment_task",
     "evaluate_budget_gate",
+    "evaluate_project_costs",
     "evaluate_golden_suite",
     "evaluate_strategy_rollback",
     "generate_tabular_baseline_demo",
