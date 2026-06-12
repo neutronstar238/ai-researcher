@@ -64,6 +64,15 @@ poetry run autoresearch slash-commands list
 
 默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo` 和 `/research:status`。
 
+联网发现命令：
+
+```bash
+poetry run autoresearch literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1
+poetry run autoresearch similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
+```
+
+这两个命令默认调用真实文献 API，保留每个来源的 fetch 错误，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。
+
 运行本地质量门：
 
 ```bash

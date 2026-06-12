@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
+import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.schemas import ResearchCandidate
 
 
 def test_version_command_prints_package_version() -> None:
@@ -130,6 +133,186 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert list_result.exit_code == 0, list_result.output
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
+
+
+def test_literature_refresh_command_reports_source_backed_documents(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    summary_path = tmp_path / "vault" / "exploration" / "topics" / "summary.md"
+    captured: dict[str, object] = {}
+
+    def fake_refresh(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            queries=(object(),),
+            fetches=(
+                SimpleNamespace(
+                    source="arxiv",
+                    query="machine learning benchmark",
+                    paper_count=1,
+                    cache_hit=False,
+                    error=None,
+                ),
+            ),
+            documents=(object(),),
+            summary_path=summary_path,
+        )
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_refresh)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "literature-refresh",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--max-queries",
+            "1",
+            "--max-results-per-source",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[FETCH] source=arxiv papers=1" in result.stdout
+    assert "[OK] documents: 1" in result.stdout
+    assert captured["vault_root"] == tmp_path / "vault"
+    assert captured["cache_root"] == tmp_path / "cache"
+
+
+def test_similarity_check_command_loads_candidate_and_links_project(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_similarity",
+        title="Machine Learning Benchmark Evidence",
+        description="Check adjacent work before project start.",
+        research_gap="Benchmark evidence needs source-backed checks.",
+        novelty_score=0.6,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["seed"],
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8")
+    summary_path = tmp_path / "vault" / "exploration" / "topics" / "similarity.md"
+    project_link = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
+    captured: dict[str, object] = {}
+
+    def fake_similarity(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            candidate_id=candidate.id,
+            queries=(object(),),
+            fetches=(
+                SimpleNamespace(
+                    source="semantic_scholar",
+                    query="benchmark evidence",
+                    paper_count=1,
+                    cache_hit=False,
+                    error=None,
+                ),
+            ),
+            findings=(object(),),
+            summary_path=summary_path,
+        )
+
+    def fake_link(**kwargs):
+        captured["link_kwargs"] = kwargs
+        return project_link
+
+    monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity)
+    monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "similarity-check",
+            "--candidate-file",
+            str(candidate_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--max-queries",
+            "1",
+            "--max-results-per-source",
+            "1",
+            "--project-id",
+            "project_1",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[FETCH] source=semantic_scholar papers=1" in result.stdout
+    assert "[OK] candidate: candidate_cli_similarity" in result.stdout
+    assert "[OK] project_link:" in result.stdout
+    assert captured["candidate"] == candidate
+    assert captured["vault_root"] == tmp_path / "vault"
+    assert captured["cache_root"] == tmp_path / "cache"
+    assert captured["link_kwargs"]["project_id"] == "project_1"
+
+
+def test_similarity_check_accepts_windows_utf8_bom_candidate_json(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_bom",
+        title="Machine Learning Benchmark Evidence",
+        description="Check adjacent work before project start.",
+        research_gap="Benchmark evidence needs source-backed checks.",
+        novelty_score=0.6,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["seed"],
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8-sig")
+
+    def fake_similarity(**kwargs):
+        assert kwargs["candidate"] == candidate
+        return SimpleNamespace(
+            candidate_id=candidate.id,
+            queries=(object(),),
+            fetches=(
+                SimpleNamespace(
+                    source="arxiv",
+                    query="benchmark evidence",
+                    paper_count=1,
+                    cache_hit=False,
+                    error=None,
+                ),
+            ),
+            findings=(object(),),
+            summary_path=tmp_path / "summary.md",
+        )
+
+    monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "similarity-check",
+            "--candidate-file",
+            str(candidate_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--max-queries",
+            "1",
+            "--max-results-per-source",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] candidate: candidate_cli_bom" in result.stdout
 
 
 def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:

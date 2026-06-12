@@ -1,6 +1,8 @@
 """Minimal Typer CLI for the AI-Researcher Phase 0 scaffold."""
 
+import json
 import sys
+from collections.abc import Iterable
 from importlib import import_module
 from pathlib import Path
 from typing import Annotated
@@ -17,8 +19,14 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
 from autoresearch.reports import validate_reproducibility_package
-from autoresearch.schemas import ValidationStatus
+from autoresearch.research import (
+    SimilarityCheckConfig,
+    link_similarity_report_to_project,
+    run_project_similarity_check,
+)
+from autoresearch.schemas import ResearchCandidate, ValidationStatus
 
 app = typer.Typer(
     help="AI-Researcher command line interface.",
@@ -327,6 +335,132 @@ def deploy_setup(
     typer.echo(f"[OK] feishu: {'enabled' if feishu_enabled else 'disabled'}")
 
 
+@app.command("literature-refresh")
+def literature_refresh(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to read and update."),
+    ] = Path("autoresearch-vault"),
+    cache: Annotated[
+        Path,
+        typer.Option("--cache", help="Retrieval cache directory."),
+    ] = Path(".cache/literature"),
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum optimized queries to run."),
+    ] = 5,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
+    ] = 20,
+    cache_ttl_hours: Annotated[
+        int,
+        typer.Option("--cache-ttl-hours", min=1, help="Cache TTL for source responses."),
+    ] = 24,
+) -> None:
+    """Run real online literature refresh and write an Obsidian summary."""
+
+    try:
+        report = run_daily_literature_refresh(
+            vault_root=vault,
+            cache_root=cache,
+            config=LiteratureRefreshConfig(
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+                cache_ttl_hours=cache_ttl_hours,
+            ),
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] literature refresh failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    _echo_fetches(report.fetches)
+    if not report.documents:
+        typer.echo("[FAIL] literature refresh returned no source-backed documents", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"[OK] queries: {len(report.queries)}")
+    typer.echo(f"[OK] documents: {len(report.documents)}")
+    if report.summary_path is not None:
+        typer.echo(f"[OK] summary: {report.summary_path}")
+
+
+@app.command("similarity-check")
+def similarity_check(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            "-f",
+            help="JSON file containing a ResearchCandidate payload.",
+        ),
+    ],
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to read and update."),
+    ] = Path("autoresearch-vault"),
+    cache: Annotated[
+        Path,
+        typer.Option("--cache", help="Retrieval cache directory."),
+    ] = Path(".cache/literature"),
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum optimized queries to run."),
+    ] = 6,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
+    ] = 10,
+    cache_ttl_hours: Annotated[
+        int,
+        typer.Option("--cache-ttl-hours", min=1, help="Cache TTL for source responses."),
+    ] = 24,
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Optional project ID to link the report into project knowledge."),
+    ] = None,
+) -> None:
+    """Run real online project-start similar-work checking for one candidate."""
+
+    try:
+        candidate = _load_candidate(candidate_file)
+        report = run_project_similarity_check(
+            candidate=candidate,
+            vault_root=vault,
+            cache_root=cache,
+            config=SimilarityCheckConfig(
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+                cache_ttl_hours=cache_ttl_hours,
+            ),
+        )
+        project_link = (
+            link_similarity_report_to_project(
+                report=report,
+                vault_root=vault,
+                project_id=project_id,
+            )
+            if project_id
+            else None
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] similarity check failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    _echo_fetches(report.fetches)
+    if not report.findings:
+        typer.echo("[FAIL] similarity check returned no source-backed findings", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"[OK] candidate: {candidate.id}")
+    typer.echo(f"[OK] queries: {len(report.queries)}")
+    typer.echo(f"[OK] findings: {len(report.findings)}")
+    if report.summary_path is not None:
+        typer.echo(f"[OK] summary: {report.summary_path}")
+    if project_link is not None:
+        typer.echo(f"[OK] project_link: {project_link}")
+
+
 @app.command("run-demo")
 def run_demo(
     demo: str = typer.Option(
@@ -464,6 +598,39 @@ def _load_or_default_config(config_path: Path) -> SystemConfig:
         msg = f"{config_path} did not parse as SystemConfig"
         raise typer.BadParameter(msg)
     return config
+
+
+def _load_candidate(candidate_file: Path) -> ResearchCandidate:
+    try:
+        text = candidate_file.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        msg = f"Could not read candidate file {candidate_file}: {exc}"
+        raise typer.BadParameter(msg) from exc
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        msg = f"Invalid candidate JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        raise typer.BadParameter(msg) from exc
+    try:
+        return ResearchCandidate.model_validate(data)
+    except Exception as exc:
+        msg = f"Invalid ResearchCandidate payload: {exc}"
+        raise typer.BadParameter(msg) from exc
+
+
+def _echo_fetches(fetches: Iterable[object]) -> None:
+    for fetch in fetches:
+        source = getattr(fetch, "source", "unknown")
+        query = getattr(fetch, "query", "unknown")
+        paper_count = getattr(fetch, "paper_count", 0)
+        cache_hit = getattr(fetch, "cache_hit", False)
+        error = getattr(fetch, "error", None)
+        cache_status = "hit" if cache_hit else "miss"
+        error_text = f", error={error}" if error else ""
+        typer.echo(
+            f"[FETCH] source={source} papers={paper_count} cache={cache_status} "
+            f"query={query}{error_text}"
+        )
 
 
 def _required_value(

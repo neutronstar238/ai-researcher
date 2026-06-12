@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 15:16:39 +08:00 - Codex - Task 38 online discovery CLI
+
+- Request: Continue from the first-deploy CLI work by making slash-command targets executable for real online literature refresh and project-start similarity checks.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added task `38` for operator-facing online discovery CLI.
+  - Added `autoresearch literature-refresh` to run real literature retrieval, show per-source fetch records, fail when no source-backed documents are found, and write guarded Obsidian summaries.
+  - Added `autoresearch similarity-check --candidate-file` to load a `ResearchCandidate`, run real online similar-work checks, show per-source fetch records, fail when no findings are found, and optionally link the report into a project vault.
+  - Added Windows UTF-8 BOM support for candidate JSON after real CLI verification exposed a BOM parsing failure.
+  - Added `.cache/` to `.gitignore` for local retrieval cache output.
+  - Updated README, Chinese README, and changelog with the new online discovery commands.
+  - Added and resolved `P-20260612-064`.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py -vv`: passed, 11 tests.
+  - `poetry run ruff check src/autoresearch/cli/main.py tests/unit/cli/test_main.py`: failed once on import ordering, then passed after `poetry run ruff check src/autoresearch/cli/main.py tests/unit/cli/test_main.py --fix`.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - Real CLI run `poetry run autoresearch literature-refresh --vault <tmp>/vault --cache <tmp>/cache --max-queries 1 --max-results-per-source 1`: passed, returned 1 ArXiv document, wrote an Obsidian literature refresh summary, and preserved the Semantic Scholar connection-reset error in fetch output.
+  - Initial real CLI run `poetry run autoresearch similarity-check --candidate-file <tmp>/candidate.json ...`: failed on Windows UTF-8 BOM candidate JSON and was recorded as `P-20260612-064`.
+  - Rerun `poetry run autoresearch similarity-check --candidate-file <tmp>/candidate.json --vault <tmp>/vault --cache <tmp>/cache --max-queries 1 --max-results-per-source 1 --project-id live_project`: passed after the BOM fix, returned 1 ArXiv-backed finding, wrote exploration and project Obsidian notes, and preserved the Semantic Scholar HTTP 429 in fetch output.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - Added and resolved `P-20260612-064`.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Add a provider-agnostic LLM smoke command once the user has supplied real `.env` model credentials.
+
 ### 2026-06-12 15:10:36 +08:00 - Codex - Task 37 first-deploy CLI setup
 
 - Request: Build the first-deploy CLI so users provide API model choice, API key, WeChat/Feishu channel parameters, and slash-command templates, referencing OpenClaw/Hermes-style onboarding and slash command patterns.

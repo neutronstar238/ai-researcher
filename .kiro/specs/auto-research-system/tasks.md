@@ -801,6 +801,19 @@ A task can be checked only when all applicable items are true:
     - _References: Gemini CLI project-scoped TOML slash command pattern_
     - _Verify: CLI tests confirm template files are written and listed._
 
+- [x] 38. Add operator CLI for real online discovery
+  - [x] 38.1 Add daily literature refresh CLI
+    - Add `autoresearch literature-refresh`.
+    - Read Obsidian vault context, call real literature APIs, preserve source fetch errors, and write guarded Obsidian summaries.
+    - _References: user real-network discovery requirement, tasks 21.2 and 37.3_
+    - _Verify: mocked CLI unit test passes and a real CLI run writes a source-backed literature refresh summary._
+
+  - [x] 38.2 Add project-start similarity check CLI
+    - Add `autoresearch similarity-check --candidate-file`.
+    - Accept Windows UTF-8 BOM candidate JSON, call real literature APIs, write source-backed similarity findings, and optionally link the report into a project vault.
+    - _References: user project-start cross-check requirement, tasks 21.3 and 37.3_
+    - _Verify: mocked CLI unit tests pass and a real CLI run writes exploration and project Obsidian notes._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -897,6 +910,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 12,
       "tasks": ["37.1", "37.2", "37.3"]
+    },
+    {
+      "id": 13,
+      "tasks": ["38.1", "38.2"]
     }
   ]
 }

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-064 - similarity-check CLI rejected Windows UTF-8 BOM candidate JSON
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 15:15:10 +08:00
+- Source: Real CLI live verification for `autoresearch similarity-check` using a temporary candidate JSON file written by PowerShell `Set-Content -Encoding UTF8`.
+- Symptom: `similarity-check` failed before network execution with `Invalid candidate JSON at line 1, column 1: Unexpected UTF-8 BOM`.
+- Impact: Windows users could create a valid-looking candidate JSON file that the CLI rejected during project-start similarity checks.
+- Evidence: `autoresearch literature-refresh` succeeded against live ArXiv data, then `autoresearch similarity-check --candidate-file <tmp>/candidate.json ...` failed on the candidate JSON BOM.
+- Root cause: The CLI read candidate JSON with `encoding="utf-8"` instead of accepting UTF-8 with BOM.
+- Workaround: None needed after the fix.
+- Next action: Keep CLI file readers tolerant of common Windows UTF-8 BOM output where the file format permits it.
+- Linked tasks: `38`
+- Resolution: Updated `_load_candidate` to read with `utf-8-sig`.
+- Verification: `poetry run pytest tests/unit/cli/test_main.py -vv` passed after the fix, and the real `autoresearch similarity-check --candidate-file <bom-json> ...` CLI run completed with a source-backed finding and project-link note.
+
 ### P-20260612-063 - Task 2 schema verification referenced missing property test path
 
 - Status: Resolved

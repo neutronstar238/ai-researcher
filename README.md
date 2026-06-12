@@ -125,6 +125,15 @@ poetry run autoresearch slash-commands list
 
 This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, and `/research:status`.
 
+Online discovery commands:
+
+```bash
+poetry run autoresearch literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1
+poetry run autoresearch similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
+```
+
+Both commands use real literature APIs by default, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`.
+
 Run the local quality gate:
 
 ```bash
