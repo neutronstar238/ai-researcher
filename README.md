@@ -110,6 +110,7 @@ This mirrors the default CI gates: `poetry run ruff check src tests`, `poetry ru
 - [Implementation Tasks](.kiro/specs/auto-research-system/tasks.md): detailed executable task list.
 - [Agent Change Log](Agent.md): required change log for every coding agent.
 - [Problem Log](Problem.md): issue, blocker, and risk register.
+- [Changelog](CHANGELOG.md): unreleased release notes, migration notes, and known problems.
 - [Release Gate Checklist](docs/release-gate.md): required checks before release tags, demos, or production-ready claims.
 
 ## Contributing

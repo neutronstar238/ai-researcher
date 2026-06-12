@@ -762,7 +762,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 8, EP 15_
     - _Verify: health endpoint or report includes all metrics._
 
-- [ ] 36. Prepare public release
+- [x] 36. Prepare public release
   - [x] 36.1 Choose and add license
     - Select a license before public redistribution.
     - Update README license section.
@@ -774,7 +774,7 @@ A task can be checked only when all applicable items are true:
     - _References: AGENTS.md, Agent.md_
     - _Verify: `CONTRIBUTING.md` exists and links to `AGENTS.md`._
 
-  - [ ] 36.3 Add changelog and release notes
+  - [x] 36.3 Add changelog and release notes
     - Track user-visible changes by version.
     - Include migration notes and known problems.
     - _References: EP 16_

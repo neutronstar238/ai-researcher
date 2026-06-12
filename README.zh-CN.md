@@ -112,6 +112,7 @@ python scripts/check.py
 - [实现任务](.kiro/specs/auto-research-system/tasks.md)：详细可执行任务清单。
 - [Agent 改动日志](Agent.md)：所有编码 Agent 必须更新的改动日志。
 - [问题台账](Problem.md)：问题、阻塞和风险记录。
+- [变更日志](CHANGELOG.md)：未发布版本说明、迁移说明和已知问题。
 - [发布门禁清单](docs/release-gate.md)：创建发布标签、演示或生产可用声明前必须完成的检查。
 
 ## 贡献方式

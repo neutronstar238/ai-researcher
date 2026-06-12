@@ -62,6 +62,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:18:58 +08:00 - Codex - Task 36.3 changelog and release notes
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.3`, adding changelog and release notes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+- Summary:
+  - Added `CHANGELOG.md` with an `Unreleased` section for the planned `0.1.0` baseline.
+  - Documented user-visible added and changed items already present in the repository.
+  - Added migration notes for vault path, Python package name, reproducibility package validation, Docker runtime, and Apache-2.0 redistribution.
+  - Added known problems, including the existing local `RequestsDependencyWarning`, Docker Desktop requirement, skipped live-test configuration, and Poetry metadata warnings.
+  - Linked the changelog from both English and Chinese README documentation sections.
+  - Marked task `36.3` and parent task `36` complete in `tasks.md`.
+  - No external live call was applicable for this documentation-only task.
+- Verification:
+  - `Test-Path -LiteralPath CHANGELOG.md`: passed, returned `True`.
+  - `rg -n "## \\[Unreleased\\]|Migration Notes|Known Problems|Verification Snapshot|CHANGELOG\\.md|36\\.3 Add changelog|36\\. Prepare public release" CHANGELOG.md README.md README.zh-CN.md .kiro/specs/auto-research-system/tasks.md`: passed.
+  - `git diff --check`: passed with only Windows LF-to-CRLF checkout warnings.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with Checkpoint A verification.
+
 ### 2026-06-12 14:15:27 +08:00 - Codex - Task 36.2 contribution guide
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.2`, adding a contribution guide.
