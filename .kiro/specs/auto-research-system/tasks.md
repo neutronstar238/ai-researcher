@@ -592,7 +592,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: test triggers budget approval state._
 
 - [ ] 22. Build Obsidian failure library
-  - [ ] 22.1 Record failed runs as first-class knowledge
+  - [x] 22.1 Record failed runs as first-class knowledge
     - Capture error type, logs, config, environment, hypothesis, experiment task, and suspected cause.
     - Store failure cases as Markdown entries under `autoresearch-vault/exploration/failure_patterns/` and link project-local copies from `autoresearch-vault/projects/<project-id>/issues/`.
     - Link each failure to the run, experiment, evidence status, and any strategy or skill that should change.

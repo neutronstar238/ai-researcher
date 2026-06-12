@@ -21,6 +21,7 @@ from .evidence import (
     require_evidence_for_metrics,
 )
 from .executor import execute_experiment_task
+from .failures import FailureKnowledgeRecord, record_failed_run_as_knowledge
 from .generator import generate_experiment_directory
 from .network import (
     NetworkDecision,
@@ -66,6 +67,7 @@ __all__ = [
     "DemoWorkflowResult",
     "EvidenceBindingError",
     "ExperimentPlanningConfig",
+    "FailureKnowledgeRecord",
     "NetworkDecision",
     "ResultCollectionError",
     "RestrictedNetworkPolicy",
@@ -90,6 +92,7 @@ __all__ = [
     "plan_ablation_matrix",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",
+    "record_failed_run_as_knowledge",
     "require_evidence_for_metrics",
     "review_generated_code",
     "reproduce_tabular_baseline",

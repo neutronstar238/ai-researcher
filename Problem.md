@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-044 - Failure knowledge module had unused import
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 11:44:02 +08:00
+- Source: `poetry run ruff check src/autoresearch/experiments/failures.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_failures.py`.
+- Symptom: Ruff reported unused `typing.Any` in `src/autoresearch/experiments/failures.py`.
+- Impact: Task `22.1` lint verification was blocked while mypy and focused unit tests passed.
+- Evidence: Ruff reported `F401` for `typing.Any`.
+- Root cause: The failure recorder implementation no longer needed `Any` after the function signatures were finalized.
+- Workaround: None needed after removing the import.
+- Next action: Re-run focused and full ruff checks.
+- Linked tasks: `22.1`
+- Resolution: Removed the unused import.
+- Verification: `poetry run ruff check src tests` passed after removing the unused import.
+
 ### P-20260612-043 - Similarity API export order failed ruff
 
 - Status: Resolved

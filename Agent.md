@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:46:51 +08:00 - Codex - Task 22.1 failed-run knowledge records
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `22.1`; record failed runs as first-class Obsidian knowledge.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/failures.py`
+  - `tests/unit/experiments/test_failures.py`
+- Summary:
+  - Added `record_failed_run_as_knowledge()` to persist failed, timed out, cancelled, or blocked runs as Obsidian `failure_case` entries.
+  - Wrote global failure pattern notes under `exploration/failure_patterns/` and project-local issue notes under `projects/<project-id>/issues/`.
+  - Captured run status, error type, stdout/stderr, log refs, config refs, environment, hypothesis ID, experiment task metadata, evidence status, suspected cause, skill refs, and strategy refs.
+  - Added wiki-links from the global failure note to the project issue, run, task, hypothesis, skills, and strategies.
+  - Marked task `22.1` complete; parent task `22` remains open for recurring failure classification.
+- Verification:
+  - Initial focused lint command failed with unused `typing.Any`; recorded as `P-20260612-044` and fixed.
+  - `poetry run ruff check src/autoresearch/experiments/failures.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_failures.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/experiments/test_failures.py -vv`: passed, 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 212 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - Added and resolved `P-20260612-044`.
+- Follow-up:
+  - Task `22.2` should classify recurring failure patterns and update shared failure pattern notes.
+
 ### 2026-06-12 11:41:38 +08:00 - Codex - Task 21.4 budget-aware execution gates
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.4`; pause or require approval when a task approaches 80 percent of budget.
