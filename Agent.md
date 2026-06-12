@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:42:57 +08:00 - Codex - Task 27.1 replay dataset
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `27.1`; create replay datasets from historical tasks with inputs, outputs, evidence, costs, and validation outcomes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/replay.py`
+  - `tests/unit/experiments/test_replay.py`
+- Summary:
+  - Added `ReplayCase` and `ReplayDataset` models for local offline strategy replay fixtures.
+  - Added `build_replay_case()` to capture historical task inputs, execution run data, result outputs, evidence edges, cost records, cost JSON, and validation report outcomes.
+  - Added deterministic JSON persistence via `write_replay_dataset()` and `load_replay_dataset()`.
+  - Added baseline score reproduction from replay cases that passed or warned validation.
+  - Added tests for replay fixture baseline reproduction and mismatch/missing-metric rejection.
+  - Marked task `27.1` complete; parent task `27` remains open for golden test set creation in `27.2`.
+- Verification:
+  - Initial focused lint exposed `P-20260612-052`; repaired import ordering with ruff autofix.
+  - `poetry run ruff check src/autoresearch/experiments/replay.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_replay.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_replay.py -vv`: passed, 3 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 257 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-052` added and resolved.
+- Follow-up:
+  - Task `27.2` should define a golden regression suite across literature retrieval, config parsing, sandbox denial, result validation, citation validation, and report generation.
+
 ### 2026-06-12 12:38:43 +08:00 - Codex - Task 26.2 strategy versioning
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `26.2`; preserve strategy lineage from parent strategy to candidate strategy.

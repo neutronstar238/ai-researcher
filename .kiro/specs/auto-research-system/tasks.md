@@ -661,7 +661,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests preserve lineage from parent to candidate._
 
 - [ ] 27. Build offline replay and golden tests
-  - [ ] 27.1 Create replay dataset from historical tasks
+  - [x] 27.1 Create replay dataset from historical tasks
     - Store enough inputs, outputs, evidence, costs, and validation outcomes to replay strategy changes offline.
     - _References: EP 7.3, RP 9.2_
     - _Verify: replay fixture reproduces expected baseline score._

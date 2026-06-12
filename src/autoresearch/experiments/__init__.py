@@ -43,6 +43,13 @@ from .planner import (
     plan_ablation_matrix,
     plan_experiment_tasks,
 )
+from .replay import (
+    ReplayCase,
+    ReplayDataset,
+    build_replay_case,
+    load_replay_dataset,
+    write_replay_dataset,
+)
 from .results import ResultCollectionError, collect_result_bundle
 from .review import (
     CodeReviewFinding,
@@ -76,6 +83,8 @@ __all__ = [
     "FailureKnowledgeRecord",
     "NetworkDecision",
     "RecurringFailurePattern",
+    "ReplayCase",
+    "ReplayDataset",
     "ResultCollectionError",
     "RestrictedNetworkPolicy",
     "SandboxAccessMode",
@@ -86,6 +95,7 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "bind_metrics_to_evidence",
+    "build_replay_case",
     "classify_failure_category",
     "collect_result_bundle",
     "create_tabular_baseline_task",
@@ -97,6 +107,7 @@ __all__ = [
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",
     "network_enforcement_note",
+    "load_replay_dataset",
     "plan_ablation_matrix",
     "plan_experiment_tasks",
     "quarantine_unsafe_experiment",
@@ -108,4 +119,5 @@ __all__ = [
     "run_scientistbench_demo",
     "update_recurring_failure_patterns",
     "validate_result_bundle",
+    "write_replay_dataset",
 ]

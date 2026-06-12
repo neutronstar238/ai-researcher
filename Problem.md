@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-052 - Replay export import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:42:57 +08:00
+- Source: `poetry run ruff check src/autoresearch/experiments/replay.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_replay.py`.
+- Symptom: Ruff reported `I001` in `src/autoresearch/experiments/__init__.py`.
+- Impact: Task `27.1` focused lint verification was blocked.
+- Evidence: Ruff reported the import block was unsorted or unformatted.
+- Root cause: New replay exports were inserted without matching ruff/isort ordering.
+- Workaround: None needed after ruff autofix.
+- Next action: None.
+- Linked tasks: `27.1`
+- Resolution: Ran ruff autofix on `src/autoresearch/experiments/__init__.py`.
+- Verification: `poetry run ruff check src/autoresearch/experiments/replay.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_replay.py`, `poetry run mypy src`, `poetry run pytest tests/unit/experiments/test_replay.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after import sorting.
+
 ### P-20260612-051 - Strategy schema import order failed ruff
 
 - Status: Resolved
