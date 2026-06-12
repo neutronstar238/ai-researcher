@@ -620,13 +620,13 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 2.6, DES Property 8, DES Property 9_
     - _Verify: property tests retrieve the expected skill for generated similar tasks._
 
-- [ ] 24. Add monitoring and reporting
+- [x] 24. Add monitoring and reporting
   - [x] 24.1 Track system metrics
     - Metrics: task success rate, reproduction rate, validator rejection rate, cost per success, human interventions, agent loop depth, rollback count, citation error rate, evidence coverage.
     - _References: EP 15.1_
     - _Verify: metrics are computed from fixture run history._
 
-  - [ ] 24.2 Add local dashboard export
+  - [x] 24.2 Add local dashboard export
     - Produce a static HTML or Markdown status report before building a full web dashboard.
     - Include costs, failure rates, evidence coverage, and active project state.
     - _References: EP 8, EP 15_

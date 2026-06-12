@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:17:14 +08:00 - Codex - Task 24.2 local dashboard export
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `24.2`; export a local status report from sample metrics without external services.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/observability/dashboard.py`
+  - `tests/unit/observability/test_dashboard.py`
+- Summary:
+  - Added `ProjectStatusSummary`, `LocalStatusReport`, and `export_local_status_report()`.
+  - Rendered a static Markdown report with system metrics, task failure rate, cost totals, average cost per success, human interventions, evidence coverage, rollback count, and active project state.
+  - Supported empty active-project states without requiring any web server or external service.
+  - Exported the local report API from `autoresearch.observability`.
+  - Added tests for rendered Markdown content and no-project output.
+  - Marked task `24.2` and parent task `24` complete.
+- Verification:
+  - `poetry run ruff check src/autoresearch/observability/dashboard.py src/autoresearch/observability/__init__.py tests/unit/observability/test_dashboard.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/observability/test_dashboard.py -vv`: passed, 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 232 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `25.1` should add rollback foundations for config, strategy, and knowledge entries.
+
 ### 2026-06-12 12:13:26 +08:00 - Codex - Task 24.1 system metrics
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `24.1`; compute monitoring metrics from fixture run history.
