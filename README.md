@@ -59,6 +59,18 @@ flowchart LR
 
 The executable task plan lives in [.kiro/specs/auto-research-system/tasks.md](.kiro/specs/auto-research-system/tasks.md).
 
+## References and Design Inspirations
+
+AI-Researcher is designed as an evidence-first system rather than a clone of any single project. Important references include:
+
+- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher) for the end-to-end scientific pipeline ambition: literature review, hypothesis generation, implementation, manuscript writing, and evaluation.
+- Long-horizon auto-research roadmaps and surveys such as [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) for evaluation pressure around hallucination, novelty checks, and reproducible artifacts.
+- Daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled paper discovery patterns.
+- [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.
+- [OpenClaw](https://github.com/openclaw/openclaw) for the operator experience of a self-hosted assistant that is configured once and then runs as an always-on local service.
+
+This repository's differentiator is the Obsidian-compatible vault as the shared evidence, issue, skill, and strategy substrate for self-looping research. Autonomy is added only where the loop can write auditable evidence and review artifacts.
+
 ## Repository Layout
 
 ```text
@@ -125,7 +137,15 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:issue-followups`, and `/research:status`.
+
+Autopilot one-command loop:
+
+```bash
+poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
+```
+
+After `deploy-setup`, this keeps the local loop running. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
 
 Online discovery commands:
 

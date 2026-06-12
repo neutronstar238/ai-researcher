@@ -18,6 +18,18 @@ AI-Researcher 是一个证据优先的自动化计算科研平台。目标不是
 - 每个 Agent 改动必须写入 [Agent.md](Agent.md)。
 - 每个发现的问题、阻塞或风险必须写入 [Problem.md](Problem.md)。
 
+## 参考与设计启发
+
+AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸收多个开源方向的经验：
+
+- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher)：端到端科研流水线目标，包括文献综述、假设生成、实现、论文写作和评估。
+- [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) 等长程自动科研路线图：强调幻觉、创新性检验、可复现产物和评估压力。
+- [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日论文更新项目：启发定时联网抓取和论文更新机制。
+- [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。
+- [OpenClaw](https://github.com/openclaw/openclaw)：启发“配置一次、本地常驻”的操作者体验。
+
+本项目的核心差异是把 Obsidian 兼容 vault 作为证据、问题、技能和策略的统一底座。自动化只在能写出可审计证据和评审产物时推进。
+
 ## 开发环境
 
 前置条件：
@@ -64,7 +76,15 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:issue-followups` 和 `/research:status`。
+
+Autopilot 一条命令常驻循环：
+
+```bash
+poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
+```
+
+完成 `deploy-setup` 后，该命令会让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；真正可发表论文仍需要更强领域实验和人工审阅。
 
 联网发现命令：
 

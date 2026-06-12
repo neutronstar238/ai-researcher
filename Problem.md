@@ -32,6 +32,54 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-077 - Autopilot helper type annotations failed mypy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 23:05:19 +08:00
+- Source: `poetry run mypy src` during task `54.1` verification.
+- Symptom: Mypy reported an invariant `list[Path]` argument where `list[Path | str]` was expected, plus an unsafe `Path(object)` conversion in `_path_text`.
+- Impact: The new autopilot CLI could not pass the repository type gate.
+- Evidence: `src\autoresearch\cli\main.py:1216` and `src\autoresearch\cli\main.py:1290` were reported by mypy.
+- Root cause: Helper annotations were narrower than the called LLM review API and did not narrow an `object` path value before converting it.
+- Workaround: None needed after the type fix.
+- Next action: Keep CLI helper arguments aligned with provider APIs that accept both `Path` and `str`.
+- Linked tasks: `54.1`
+- Resolution: Changed the review helper evidence list to `list[Path | str]` and narrowed `_path_text` for `Path`, `str`, and fallback objects.
+- Verification: `poetry run mypy src` passed with no issues found in 85 source files after the annotation and path-narrowing fix.
+
+### P-20260612-078 - Autopilot LLM review lacked metric-value evidence
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 23:09:10 +08:00
+- Source: Real `.env` single-cycle run of `poetry run autoresearch autopilot` during task `54.1`.
+- Symptom: The cycle completed, but the live DeepSeek evidence review returned `review_status: below_threshold` with quality score `0.5` and did not promote review issues into the Obsidian project memory.
+- Impact: The first autonomous loop could execute literature discovery, similarity checking, and a local experiment, but could not safely create self-loop follow-up tasks from the reviewer output.
+- Evidence: `runs/manual-live/autopilot/cycle-20260612T150910Z/llm-review.json` reported unsupported metric claims because the evidence pack lacked the run record containing metric values.
+- Root cause: The autopilot reviewer passed the validation report and evidence map, but not the ScientistBench-Lite run record that stores the concrete metrics referenced in the generated report.
+- Workaround: None needed after the evidence pack fix.
+- Next action: Fix the report generator evidence IDs and reproduction metadata issues that the passing live reviewer surfaced as blocking follow-ups.
+- Linked tasks: `54.1`
+- Resolution: Added the demo `run_record_path` to the autopilot LLM reviewer evidence bundle.
+- Verification: A second real `.env` run with DeepSeek `deepseek-v4-flash` returned `review_status: passed`, quality score `1.0`, and wrote four Obsidian review issue notes plus four scheduler follow-up tasks.
+
+### P-20260612-079 - Autopilot empty-literature CLI test asserted separate stderr capture
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 23:18:00 +08:00
+- Source: Focused task `54.1` test run for the new empty-literature CLI failure branch.
+- Symptom: `test_autopilot_command_reports_empty_literature_result` failed with `ValueError: stderr not separately captured`.
+- Impact: The new user-facing error branch could not be verified until the test matched the configured Click runner behavior.
+- Evidence: `poetry run pytest tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/cli/test_main.py::test_autopilot_command_reports_empty_literature_result tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` failed one test.
+- Root cause: `CliRunner` in this environment merges stderr into `result.output`; the assertion incorrectly read `result.stderr`.
+- Workaround: None needed after the assertion fix.
+- Next action: Prefer `result.output` for Typer CLI tests in this repository unless a test explicitly opts into separate stderr capture.
+- Linked tasks: `54.1`
+- Resolution: Updated the assertion to check the merged CLI output.
+- Verification: `poetry run pytest tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/cli/test_main.py::test_autopilot_command_reports_empty_literature_result tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 3 tests.
+
 ### P-20260612-076 - Focused test command used stale deploy-setup node name
 
 - Status: Resolved

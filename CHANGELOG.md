@@ -38,6 +38,8 @@ Target version: `0.1.0`.
 - Optional local scheduler state merge for issue follow-up discovery with duplicate-safe `task_id` updates.
 - `autoresearch scheduler-state list`, `complete`, and `remove` commands for inspecting and maintaining local follow-up task records without hand-editing JSON.
 - Optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` deployment settings for Semantic Scholar rate-limit tuning.
+- `autoresearch autopilot` one-command loop for live literature refresh, source-backed candidate generation, similarity checking, local experiment execution, optional live LLM evidence review, Obsidian issue writing, and follow-up state merging.
+- `/research:autopilot` slash command template for starting the local research loop.
 
 ### Changed
 
@@ -53,6 +55,7 @@ Target version: `0.1.0`.
 - Re-discovered issue follow-up tasks now preserve completed scheduler-state records instead of reopening them.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
+- README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 
 ### Fixed
 

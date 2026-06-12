@@ -2,11 +2,12 @@
 
 import json
 import sys
+import time
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from dotenv import load_dotenv
@@ -36,7 +37,7 @@ from autoresearch.research import (
     run_project_similarity_check,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
-from autoresearch.schemas import ResearchCandidate, ValidationStatus
+from autoresearch.schemas import CandidateStatus, ResearchCandidate, ValidationStatus
 
 app = typer.Typer(
     help="AI-Researcher command line interface.",
@@ -65,6 +66,13 @@ DEFAULT_SLASH_COMMANDS = {
         "Run a local ScientistBench-Lite demo and inspect evidence outputs.",
         "Run `autoresearch run-demo --demo {{args}}` or default to tabular_baseline. "
         "Review the validation report, evidence map, and Markdown report before making claims.",
+    ),
+    "research/autopilot.toml": (
+        "Start the local autonomous research loop with evidence and review gates.",
+        "Run `autoresearch autopilot --watch --cycles 0 --interval-seconds 86400` "
+        "after deploy-setup. The loop performs live literature refresh, similarity "
+        "checking, local experiment execution, evidence review, and Obsidian issue "
+        "follow-up discovery; inspect cycle-summary.json before claiming publication quality.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -751,6 +759,114 @@ def llm_review(
             typer.echo(f"[OK] vault_issues: {len(issue_notes)}")
 
 
+@app.command("autopilot")
+def autopilot(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by deploy-setup."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file with provider credentials."),
+    ] = Path(".env"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root for loop memory."),
+    ] = Path("autoresearch-vault"),
+    cache: Annotated[
+        Path,
+        typer.Option("--cache", help="Literature retrieval cache root."),
+    ] = Path(".cache/literature"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Autopilot run output directory."),
+    ] = Path("runs/autopilot"),
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local scheduler state JSON file."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for Obsidian review and issue notes."),
+    ] = "autopilot-demo",
+    demo: Annotated[
+        str,
+        typer.Option("--demo", help="ScientistBench-Lite demo to execute in each cycle."),
+    ] = "tabular_baseline",
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum generated literature/similarity queries."),
+    ] = 1,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
+    ] = 1,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),
+    ] = 30,
+    max_tokens: Annotated[
+        int,
+        typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
+    ] = 2400,
+    min_quality_score: Annotated[
+        float,
+        typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
+    ] = 0.85,
+    review: Annotated[
+        bool,
+        typer.Option("--review/--no-review", help="Run the live LLM evidence reviewer."),
+    ] = True,
+    watch: Annotated[
+        bool,
+        typer.Option("--watch", help="Keep running cycles after the first one."),
+    ] = False,
+    cycles: Annotated[
+        int,
+        typer.Option("--cycles", min=0, help="Cycle count; use 0 with --watch to run forever."),
+    ] = 1,
+    interval_seconds: Annotated[
+        int,
+        typer.Option("--interval-seconds", min=1, help="Delay between watch cycles."),
+    ] = 86400,
+) -> None:
+    """Run the trusted research loop from one operator command."""
+
+    _load_optional_env(env_path)
+    completed = 0
+    while True:
+        completed += 1
+        try:
+            summary = _run_autopilot_cycle(
+                config_path=config_path,
+                env_path=env_path,
+                vault=vault,
+                cache=cache,
+                output_dir=output_dir,
+                state=state,
+                project_id=project_id,
+                demo=demo,
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+                timeout_seconds=timeout_seconds,
+                max_tokens=max_tokens,
+                min_quality_score=min_quality_score,
+                review=review,
+            )
+        except RuntimeError as exc:
+            typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
+        typer.echo(f"[OK] summary: {summary['summary_path']}")
+        typer.echo(f"[OK] review_status: {summary['review']['status']}")
+        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+        if not watch:
+            break
+        if cycles > 0 and completed >= cycles:
+            break
+        time.sleep(interval_seconds)
+
+
 @app.command("issue-followups")
 def issue_followups(
     vault: Annotated[
@@ -920,6 +1036,274 @@ def list_slash_commands(
     for command in commands:
         name = command.relative_to(directory).with_suffix("").as_posix().replace("/", ":")
         typer.echo(f"/{name}")
+
+
+def _run_autopilot_cycle(
+    *,
+    config_path: Path,
+    env_path: Path,
+    vault: Path,
+    cache: Path,
+    output_dir: Path,
+    state: Path,
+    project_id: str,
+    demo: str,
+    max_queries: int,
+    max_results_per_source: int,
+    timeout_seconds: int,
+    max_tokens: int,
+    min_quality_score: float,
+    review: bool,
+) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
+    cycle_dir = output_dir / cycle_id
+    cycle_dir.mkdir(parents=True, exist_ok=True)
+
+    literature_report = run_daily_literature_refresh(
+        vault_root=vault,
+        cache_root=cache,
+        now=now,
+        config=LiteratureRefreshConfig(
+            max_queries=max_queries,
+            max_results_per_source=max_results_per_source,
+        ),
+    )
+    candidate = _autopilot_candidate_from_literature(
+        literature_report,
+        project_id=project_id,
+        now=now,
+    )
+    candidate_path = cycle_dir / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
+
+    similarity_report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=vault,
+        cache_root=cache,
+        now=now,
+        config=SimilarityCheckConfig(
+            max_queries=max_queries,
+            max_results_per_source=max_results_per_source,
+        ),
+    )
+    similarity_project_path = None
+    if getattr(similarity_report, "findings", ()):
+        similarity_project_path = link_similarity_report_to_project(
+            report=similarity_report,
+            vault_root=vault,
+            project_id=project_id,
+        )
+
+    demo_result = run_scientistbench_demo(
+        demo=demo,
+        output_dir=cycle_dir / "demo",
+        timeout_seconds=timeout_seconds,
+    )
+    review_result = _run_autopilot_review(
+        enabled=review,
+        config_path=config_path,
+        env_path=env_path,
+        vault=vault,
+        project_id=project_id,
+        source_task_id="autopilot",
+        cycle_dir=cycle_dir,
+        report_path=Path(demo_result.report_path),
+        evidence_paths=[
+            Path(demo_result.validation_json_path),
+            Path(demo_result.evidence_map_path),
+            Path(demo_result.run_record_path),
+        ],
+        max_tokens=max_tokens,
+        min_quality_score=min_quality_score,
+    )
+
+    followup_records = _issue_followup_records(vault, project_id)
+    _merge_scheduler_state(state, followup_records)
+
+    summary: dict[str, Any] = {
+        "cycle_id": cycle_id,
+        "started_at": now.isoformat(),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "project_id": project_id,
+        "vault": vault.as_posix(),
+        "cache": cache.as_posix(),
+        "candidate_path": candidate_path.as_posix(),
+        "literature": {
+            "query_count": len(getattr(literature_report, "queries", ())),
+            "fetches": _serialise_fetches(getattr(literature_report, "fetches", ())),
+            "document_count": len(getattr(literature_report, "documents", ())),
+            "summary_path": _path_text(getattr(literature_report, "summary_path", None)),
+        },
+        "candidate": candidate.model_dump(mode="json"),
+        "similarity": {
+            "fetches": _serialise_fetches(getattr(similarity_report, "fetches", ())),
+            "finding_count": len(getattr(similarity_report, "findings", ())),
+            "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
+            "project_path": _path_text(similarity_project_path),
+        },
+        "demo": {
+            "demo": demo_result.demo,
+            "run_id": demo_result.run_id,
+            "experiment_dir": Path(demo_result.experiment_dir).as_posix(),
+            "report_path": Path(demo_result.report_path).as_posix(),
+            "validation_json_path": Path(demo_result.validation_json_path).as_posix(),
+            "evidence_map_path": Path(demo_result.evidence_map_path).as_posix(),
+        },
+        "review": review_result,
+        "followups": {
+            "state_path": state.as_posix(),
+            "task_count": len(followup_records),
+            "tasks": followup_records,
+        },
+    }
+    summary_path = cycle_dir / "cycle-summary.json"
+    summary["summary_path"] = summary_path.as_posix()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    return summary
+
+
+def _autopilot_candidate_from_literature(
+    literature_report: object,
+    *,
+    project_id: str,
+    now: datetime,
+) -> ResearchCandidate:
+    documents = list(getattr(literature_report, "documents", ()))
+    if not documents:
+        msg = "autopilot requires at least one retrieved literature document"
+        raise RuntimeError(msg)
+    seed = documents[0]
+    seed_title = str(getattr(seed, "title", "retrieved literature")).strip()
+    seed_uri = str(getattr(seed, "source_uri", seed_title)).strip()
+    seed_id = str(getattr(seed, "id", seed_uri)).strip()
+    return ResearchCandidate(
+        id=f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}",
+        title=f"Evidence-bound self-evolving research loop from {seed_title[:80]}",
+        description=(
+            "Autopilot-generated candidate for improving evidence-bound automated "
+            "research loops by combining live literature discovery, local validation, "
+            "Obsidian memory, and review-driven follow-up tasks."
+        ),
+        research_gap=(
+            "Automated research agents often jump from retrieval to writing without a "
+            "durable evidence memory, validation-gated self-loop, or auditable skill "
+            "evolution path."
+        ),
+        novelty_score=0.55,
+        feasibility_score=0.75,
+        impact_score=0.65,
+        evidence_refs=[seed_id, seed_uri],
+        related_document_ids=[seed_id],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        validation_status=ValidationStatus.PENDING,
+        metadata={
+            "generated_by": "autoresearch autopilot",
+            "project_id": project_id,
+            "seed_document_title": seed_title,
+            "seed_source_uri": seed_uri,
+        },
+    )
+
+
+def _run_autopilot_review(
+    *,
+    enabled: bool,
+    config_path: Path,
+    env_path: Path,
+    vault: Path,
+    project_id: str,
+    source_task_id: str,
+    cycle_dir: Path,
+    report_path: Path,
+    evidence_paths: list[Path | str],
+    max_tokens: int,
+    min_quality_score: float,
+) -> dict[str, Any]:
+    if not enabled:
+        return {"status": "skipped"}
+    try:
+        result = run_llm_evidence_review(
+            subject_path=report_path,
+            evidence_paths=evidence_paths,
+            config_path=config_path,
+            env_path=env_path,
+            max_tokens=max_tokens,
+        )
+    except LLMClientError as exc:
+        return {"status": "failed", "error": str(exc)}
+
+    review_output = cycle_dir / "llm-review.json"
+    review_output.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    review_info: dict[str, Any] = {
+        "status": "passed" if result.quality.score >= min_quality_score else "below_threshold",
+        "output_path": review_output.as_posix(),
+        "provider": result.provider,
+        "model_name": result.model_name,
+        "quality_score": result.quality.score,
+        "verdict": (result.quality.parsed_output or {}).get("verdict"),
+    }
+    if result.quality.score < min_quality_score:
+        return review_info
+
+    review_note = write_llm_review_note(
+        result=result,
+        vault_root=vault,
+        project_id=project_id,
+        source_task_id=source_task_id,
+    )
+    issue_notes = write_llm_review_issue_notes(
+        result=result,
+        vault_root=vault,
+        project_id=project_id,
+        source_task_id=source_task_id,
+        review_note_path=review_note,
+    )
+    review_info["vault_review"] = review_note.as_posix()
+    review_info["vault_issues"] = [path.as_posix() for path in issue_notes]
+    return review_info
+
+
+def _issue_followup_records(vault: Path, project_id: str) -> list[dict[str, object]]:
+    tasks = queued_issue_followups_from_vault(
+        vault_root=vault,
+        project_id=project_id,
+        queued_at=datetime.now(timezone.utc),
+    )
+    return [
+        {
+            "task_id": task.task_id,
+            "name": task.name,
+            "queued_at": task.next_run_at.isoformat(),
+            "status": "open",
+            "metadata": task.action(),
+        }
+        for task in tasks
+    ]
+
+
+def _serialise_fetches(fetches: Iterable[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "source": getattr(fetch, "source", "unknown"),
+            "query": getattr(fetch, "query", "unknown"),
+            "paper_count": getattr(fetch, "paper_count", 0),
+            "cache_hit": getattr(fetch, "cache_hit", False),
+            "rate_limit_seconds": getattr(fetch, "rate_limit_seconds", 0.0),
+            "error": getattr(fetch, "error", None),
+        }
+        for fetch in fetches
+    ]
+
+
+def _path_text(path: object) -> str | None:
+    if path is None:
+        return None
+    if isinstance(path, Path):
+        return path.as_posix()
+    if isinstance(path, str):
+        return Path(path).as_posix()
+    return str(path)
 
 
 def _can_import(module_name: str) -> bool:

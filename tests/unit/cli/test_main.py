@@ -174,9 +174,11 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
+    assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
+    assert "/research:autopilot" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
@@ -404,6 +406,142 @@ def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:
     assert evidence_map["evidence_edges"]
     assert "## Reproducibility" in report
     assert "## Results" in report
+
+
+def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
+    literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
+    similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
+    for path in (literature_summary, similarity_summary, project_similarity):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("summary", encoding="utf-8")
+
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="Evidence Graphs for Autonomous Research",
+        source_uri="https://example.test/paper",
+    )
+    fetch = SimpleNamespace(
+        source="semantic_scholar",
+        query="evidence graph autonomous research",
+        paper_count=1,
+        cache_hit=False,
+        rate_limit_seconds=3.0,
+        error=None,
+    )
+
+    def fake_literature_refresh(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            queries=(SimpleNamespace(text="evidence graph autonomous research"),),
+            fetches=(fetch,),
+            documents=(seed_document,),
+            summary_path=literature_summary,
+        )
+
+    def fake_similarity_check(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            fetches=(fetch,),
+            findings=(SimpleNamespace(source_uri="https://example.test/paper"),),
+            summary_path=similarity_summary,
+        )
+
+    def fake_link_similarity_report_to_project(**_kwargs: object) -> Path:
+        return project_similarity
+
+    def fake_demo(**kwargs: object) -> SimpleNamespace:
+        output_dir = Path(kwargs["output_dir"])
+        experiment_dir = output_dir / "tabular-baseline"
+        report_path = experiment_dir / "report" / "report.md"
+        validation_path = experiment_dir / "validation" / "validation-report.json"
+        evidence_path = experiment_dir / "evidence" / "evidence-map.json"
+        run_record_path = experiment_dir / "run" / "run-record.json"
+        for path in (report_path, validation_path, evidence_path, run_record_path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}", encoding="utf-8")
+        return SimpleNamespace(
+            demo="tabular_baseline",
+            experiment_dir=experiment_dir,
+            report_path=report_path,
+            evidence_map_path=evidence_path,
+            run_record_path=run_record_path,
+            validation_json_path=validation_path,
+            validation_markdown_path=experiment_dir / "validation" / "validation-report.md",
+            run_id="run_autopilot_test",
+        )
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
+    monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
+    monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--state",
+            str(state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] autopilot_cycle:" in result.stdout
+    assert "[OK] review_status: skipped" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["candidate"]["related_document_ids"] == ["doc_seed"]
+    assert payload["literature"]["document_count"] == 1
+    assert payload["similarity"]["finding_count"] == 1
+    assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
+
+
+def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monkeypatch) -> None:
+    literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
+    literature_summary.parent.mkdir(parents=True, exist_ok=True)
+    literature_summary.write_text("summary", encoding="utf-8")
+
+    def fake_literature_refresh(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            queries=(SimpleNamespace(text="evidence graph autonomous research"),),
+            fetches=(),
+            documents=(),
+            summary_path=literature_summary,
+        )
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(tmp_path / "runs" / "autopilot"),
+            "--state",
+            str(tmp_path / ".autoresearch" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[FAIL] autopilot_cycle: autopilot requires at least one retrieved literature document" in result.output
 
 
 def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> None:

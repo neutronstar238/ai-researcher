@@ -981,6 +981,17 @@ A task can be checked only when all applicable items are true:
     - _References: GitHub Actions CI #21 warning, official checkout/setup-python Node 24 releases_
     - _Verify: workflow diff is limited to action major versions and pushed CI completes without the Node 20 deprecation warning._
 
+- [x] 54. Add one-command autonomous research loop CLI
+  - [x] 54.1 Add `autoresearch autopilot` orchestration command
+    - Run live literature refresh, generate a source-backed candidate, run project-start similarity checking, execute the local ScientistBench-Lite loop, and write a cycle summary from one command.
+    - Support `--watch --cycles 0 --interval-seconds <seconds>` for an always-on local loop after first deploy.
+    - Run the evidence-constrained live LLM reviewer by default when `.env` is configured, with `--no-review` for offline dry runs.
+    - Promote passing review outputs into Obsidian review/issue notes and merge issue follow-ups into local scheduler state.
+    - Add `/research:autopilot` to slash command templates.
+    - Document references to AI-Researcher, long-horizon auto-research roadmaps, daily literature refreshers, SkillOpt, and OpenClaw in the README.
+    - _References: user request for one-command always-on CLI, SkillOpt, OpenClaw/hemenus-style operator experience_
+    - _Verify: unit tests cover a non-review autopilot cycle and slash template creation; real `.env` single-cycle run calls live literature APIs and the configured live LLM reviewer._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1141,6 +1152,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 28,
       "tasks": ["53.1"]
+    },
+    {
+      "id": 29,
+      "tasks": ["54.1"]
     }
   ]
 }

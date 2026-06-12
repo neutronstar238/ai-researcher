@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 23:22:00 +08:00 - Codex - Task 54 one-command autopilot loop
+
+- Request: Continue until the system can run its own loop, use real online discovery and the configured `.env` model, document references such as AI-Researcher, Horizon-style/daily literature refresh patterns, OpenClaw, and SkillOpt, and expose a one-command always-on CLI.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `autoresearch autopilot`, a one-command trusted loop that performs live literature refresh, source-backed candidate generation, project-start similarity checking, local ScientistBench-Lite execution, optional live LLM evidence review, Obsidian review/issue writing, and scheduler-state follow-up merging.
+  - Added `--watch --cycles 0 --interval-seconds <seconds>` so a deployed user can keep the local loop running after first setup.
+  - Added `/research:autopilot` to generated slash command templates.
+  - Added a user-facing failure path for cycles that retrieve zero literature documents.
+  - Documented design inspirations in both README files: HKUDS AI-Researcher, long-horizon auto-research roadmaps, scheduled literature refreshers, Microsoft SkillOpt, and OpenClaw-style always-on operation.
+  - Ignored local runtime state and UI state directories: `.autoresearch/` and `autoresearch-vault/.obsidian/`.
+  - Marked task `54.1` complete in `tasks.md`.
+- Verification:
+  - Public reference check: confirmed SkillOpt is a Microsoft text-space skill optimizer, AI-Researcher is an end-to-end autonomous research system, and OpenClaw uses an onboard/configure-once operator pattern.
+  - `poetry run pytest tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/cli/test_main.py::test_autopilot_command_reports_empty_literature_result tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 3 tests.
+  - `poetry run ruff check src/autoresearch/cli/main.py tests/unit/cli/test_main.py`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 307 tests and 4 opt-in live smoke tests skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `git diff --check`: passed with line-ending warnings only.
+  - Real `.env` autopilot run before evidence-pack fix: `poetry run autoresearch autopilot --config config.yaml --env-path .env --vault autoresearch-vault --cache .cache/literature --output-dir runs/manual-live/autopilot --state .autoresearch/scheduler-state.json --project-id autopilot_live --max-queries 1 --max-results-per-source 1 --timeout-seconds 10 --max-tokens 2400` completed, but live DeepSeek review returned `review_status: below_threshold` and quality score `0.5`.
+  - Real `.env` autopilot run after adding the run record to reviewer evidence: same command with `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS=6` completed with `review_status: passed`, quality score `1.0`, and four generated review follow-up tasks. ArXiv returned one real paper; Semantic Scholar still returned a handled HTTP 429 circuit-open result.
+  - Secret check: real DeepSeek key prefix was not found in tracked files outside ignored runtime directories.
+- Problems:
+  - `P-20260612-077` added and resolved for mypy helper annotations.
+  - `P-20260612-078` added and resolved for missing metric-value evidence in the autopilot reviewer bundle.
+  - `P-20260612-079` added and resolved for the CLI runner stderr assertion.
+- Follow-up:
+  - Fix the report generator evidence IDs and reproduction metadata that the passing live reviewer surfaced as blocking follow-ups.
+  - Add an Obsidian vault structure/visual setup task with templates, dashboards, plugin recommendations, and safe CLI generation.
+  - Add a SkillOpt-inspired skill evolution loop that converts repeated issue/failure trajectories into bounded skill-card edits with held-out validation and rollback.
+
 ### 2026-06-12 18:08:26 +08:00 - Codex - Task 53 GitHub Actions Node 24 maintenance
 
 - Request: Remove the GitHub Actions Node 20 deprecation warning reported by CI after task `52.1`.
