@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-037 - Scheduler test imports were not sorted
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 10:52:25 +08:00
+- Source: `poetry run ruff check src/autoresearch/scheduler.py src/autoresearch/observability/audit.py tests/unit/test_scheduler.py` while verifying task `21.1`.
+- Symptom: Ruff reported `I001` in `tests/unit/test_scheduler.py`.
+- Impact: Scheduler functionality tests passed, but the lint gate failed until imports were organized.
+- Evidence: Ruff suggested organizing the import block in the new scheduler test module.
+- Root cause: The new test file import order did not match the configured formatter.
+- Workaround: None needed after applying ruff's import organizer.
+- Next action: Re-run ruff after scheduler exports and task-status updates.
+- Linked tasks: `21.1`
+- Resolution: Ran ruff `--fix` on `tests/unit/test_scheduler.py`.
+- Verification: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after the fix.
+
 ### P-20260612-036 - AI-Researcher rename left user-facing old-name references
 
 - Status: Resolved

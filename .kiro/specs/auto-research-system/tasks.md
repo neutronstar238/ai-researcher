@@ -557,7 +557,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: analyzer output includes evidence references and vault paths._
 
 - [ ] 21. Add scheduler for recurring work
-  - [ ] 21.1 Implement local task scheduler
+  - [x] 21.1 Implement local task scheduler
     - Support daily/weekly candidate refresh and queued experiment checks.
     - Keep external orchestrators optional.
     - The scheduled candidate refresh must call the literature retrieval layer before trend/gap analysis.

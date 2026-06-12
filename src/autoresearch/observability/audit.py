@@ -18,6 +18,7 @@ class AuditEventType(str, Enum):
     SANDBOX_DENIAL = "sandbox_denial"
     CONFIG_CHANGE = "config_change"
     APPROVAL_GATE = "approval_gate"
+    SCHEDULER_RUN = "scheduler_run"
     STRATEGY_CHANGE = "strategy_change"
     PUBLICATION_GATE = "publication_gate"
 

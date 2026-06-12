@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:54:30 +08:00 - Codex - Task 21.1 local scheduler
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.1`, while keeping online literature refresh as a separate upcoming task.
+- Files changed:
+  - `src/autoresearch/scheduler.py`
+  - `src/autoresearch/observability/audit.py`
+  - `tests/unit/test_scheduler.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a deterministic local scheduler with daily, weekly, and one-shot queued tasks.
+  - Added scheduler audit events so every scheduled run records task ID, status, resource, approval state, and metadata in JSONL.
+  - Added `candidate_refresh_action()` to enforce the intended order: literature retrieval first, trend/gap analysis second.
+  - Marked task `21.1` complete; parent task `21` remains open for online refresh and budget gates.
+- Verification:
+  - `poetry run pytest tests/unit/test_scheduler.py tests/unit/observability/test_audit.py`: passed, 14 tests.
+  - `poetry run ruff check src/autoresearch/scheduler.py src/autoresearch/observability/audit.py tests/unit/test_scheduler.py`: passed after import sorting fix.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+- Problems:
+  - Added and resolved `P-20260612-037`.
+- Follow-up:
+  - Add the online project-start similarity scan and daily literature refresh pipeline in the next planning/code tasks.
+
 ### 2026-06-12 10:48:37 +08:00 - Codex - Task 20.2 trend and gap analyzer
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `20.2`, and record the requirement that AI-Researcher must later fetch online literature daily with Horizon-style pipeline separation.
