@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:41:38 +08:00 - Codex - Task 21.4 budget-aware execution gates
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.4`; pause or require approval when a task approaches 80 percent of budget.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/budget.py`
+  - `tests/unit/experiments/test_budget.py`
+- Summary:
+  - Added `evaluate_budget_gate()` with `approved`, `approval_required`, and `blocked` decisions.
+  - Added configurable approval and hard-limit thresholds, defaulting to 80 percent and 100 percent of comparable task budget.
+  - Supported explicit usage input plus usage read from `ExecutionRun.cost_record` and `cost_json`, including storage bytes compared against `storage_mb`.
+  - Added optional `AuditLog` emission as an `approval_gate` event when the budget gate is evaluated.
+  - Marked task `21.4` and parent task `21` complete.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/budget.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_budget.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/experiments/test_budget.py -vv`: passed, 4 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 210 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `22.1` should record failed runs as first-class Obsidian knowledge entries.
+
 ### 2026-06-12 11:36:21 +08:00 - Codex - Task 21.3 project-start online similarity check
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.3`; add broad online similarity and novelty cross-checks before candidate approval/project creation, with Obsidian summaries and real live-source testing.

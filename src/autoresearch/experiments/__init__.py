@@ -2,6 +2,12 @@
 
 from .acceptance import AcceptanceRunResult, run_mvp_acceptance
 from .baselines import BaselineReproductionResult, reproduce_tabular_baseline
+from .budget import (
+    BudgetGateConfig,
+    BudgetGateDecision,
+    BudgetGateStatus,
+    evaluate_budget_gate,
+)
 from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     create_tabular_baseline_task,
@@ -52,6 +58,9 @@ __all__ = [
     "AblationPlanningError",
     "AblationVariable",
     "BaselineReproductionResult",
+    "BudgetGateConfig",
+    "BudgetGateDecision",
+    "BudgetGateStatus",
     "CodeReviewFinding",
     "CodeReviewResult",
     "DemoWorkflowResult",
@@ -73,6 +82,7 @@ __all__ = [
     "create_text_classifier_stub_task",
     "default_network_policy",
     "execute_experiment_task",
+    "evaluate_budget_gate",
     "generate_tabular_baseline_demo",
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",

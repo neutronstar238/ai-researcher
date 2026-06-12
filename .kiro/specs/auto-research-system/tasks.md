@@ -558,7 +558,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 12, REQ 6, EP 6.3_
     - _Verify: analyzer output includes evidence references and vault paths._
 
-- [ ] 21. Add scheduler for recurring work
+- [x] 21. Add scheduler for recurring work
   - [x] 21.1 Implement local task scheduler
     - Support daily/weekly candidate refresh and queued experiment checks.
     - Keep external orchestrators optional.
@@ -586,7 +586,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 12, REQ 6, RP 3.3, RP 8, Horizon-style source pipeline_
     - _Verify: mocked online search writes an Obsidian similarity summary with source-backed findings and rejects unsupported claims._
 
-  - [ ] 21.4 Add budget-aware execution gates
+  - [x] 21.4 Add budget-aware execution gates
     - Pause or require approval when a task approaches 80 percent of budget.
     - _References: EP 15.2, RP 3.3_
     - _Verify: test triggers budget approval state._
