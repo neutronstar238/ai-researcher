@@ -9,6 +9,7 @@ import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType, KnowledgeZone
 from autoresearch.llm import LLMReviewResult, LLMSmokeResult
 from autoresearch.schemas import ResearchCandidate
 
@@ -171,9 +172,11 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
+    assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
     assert "/research:refresh-literature" in list_result.stdout
+    assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
 
 
@@ -601,3 +604,56 @@ def test_llm_review_command_writes_local_evidence_report(tmp_path: Path, monkeyp
     assert captured_note["source_task_id"] == "44.1"
     assert captured_issues["result"] == review
     assert captured_issues["review_note_path"] == vault_note
+
+
+def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+    issue_dir = vault_root / "projects" / "project_1" / "issues"
+    issue_dir.mkdir(parents=True)
+    open_issue = KnowledgeEntry(
+        entry_id="llm_review_issue_project_1_abc",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        title="LLM review issue: missing evidence",
+        project_id="project_1",
+        related_task_ids=["48.1"],
+        body="\n".join(
+            [
+                "# LLM Review Follow-Up",
+                "",
+                "- Status: Open",
+                "- Issue fingerprint: `abc123def4567890`",
+            ]
+        ),
+    )
+    closed_issue = KnowledgeEntry(
+        entry_id="closed_issue",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        title="Closed issue",
+        project_id="project_1",
+        body="- Status: Closed\n",
+    )
+    (issue_dir / "open.md").write_text(open_issue.to_markdown(), encoding="utf-8")
+    (issue_dir / "closed.md").write_text(closed_issue.to_markdown(), encoding="utf-8")
+    output = tmp_path / "followups.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "issue-followups",
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project_1",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "[OK] issue_followups: 1" in result.stdout
+    assert "[TASK] task_id=issue-follow-up-project_1-abc123def4567890" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["tasks"][0]["metadata"]["issue_path"] == "projects/project_1/issues/open.md"
+    assert payload["tasks"][0]["metadata"]["related_task_ids"] == ["48.1"]

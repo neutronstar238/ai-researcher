@@ -62,6 +62,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:38:06 +08:00 - Codex - Task 49 issue follow-up CLI
+
+- Request: Continue the self-loop workflow by exposing Obsidian issue follow-up task discovery through the operator CLI and slash command templates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `autoresearch issue-followups` to list scheduler follow-up tasks derived from open project issue notes.
+  - Added `--vault`, `--project-id`, and optional JSON `--output` to support reviewable task discovery before execution.
+  - Printed deterministic task IDs and source issue paths without executing follow-up work.
+  - Added `/research:issue-followups` to default slash command templates and README template lists.
+  - Added and completed task `49.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 301 tests passed and 4 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Persist generated issue follow-up tasks into a local scheduler state file so operators can enqueue and replay them across sessions.
+
 ### 2026-06-12 17:32:29 +08:00 - Codex - Task 48 issue-note scheduler adapter
 
 - Request: Continue the Obsidian self-loop work by making project `issue_note` entries schedulable follow-up tasks.

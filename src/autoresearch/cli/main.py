@@ -3,6 +3,7 @@
 import json
 import sys
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
 from typing import Annotated
@@ -34,6 +35,7 @@ from autoresearch.research import (
     link_similarity_report_to_project,
     run_project_similarity_check,
 )
+from autoresearch.scheduler import queued_issue_followups_from_vault
 from autoresearch.schemas import ResearchCandidate, ValidationStatus
 
 app = typer.Typer(
@@ -64,6 +66,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Check local installation and release-readiness gates.",
         "Run `autoresearch doctor`, then inspect `Problem.md`, `Agent.md`, and the latest git status. "
         "Report blockers before proposing more automation.",
+    ),
+    "research/issue-followups.toml": (
+        "List self-loop follow-up tasks from open Obsidian project issue notes.",
+        "Run `autoresearch issue-followups --vault autoresearch-vault --project-id {{args}} "
+        "--output runs/issue-followups/latest.json`. Review the generated task IDs and issue paths before "
+        "scheduling or executing follow-up work.",
     ),
 }
 
@@ -735,6 +743,52 @@ def llm_review(
                 review_note_path=review_note,
             )
             typer.echo(f"[OK] vault_issues: {len(issue_notes)}")
+
+
+@app.command("issue-followups")
+def issue_followups(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root containing project issue notes."),
+    ] = Path("autoresearch-vault"),
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID under the vault `projects/` directory."),
+    ] = "current-project",
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional JSON file for the generated follow-up task list."),
+    ] = None,
+) -> None:
+    """List scheduler follow-up tasks derived from open project issue notes."""
+
+    tasks = queued_issue_followups_from_vault(
+        vault_root=vault,
+        project_id=project_id,
+        queued_at=datetime.now(timezone.utc),
+    )
+    records = [
+        {
+            "task_id": task.task_id,
+            "name": task.name,
+            "queued_at": task.next_run_at.isoformat(),
+            "metadata": task.action(),
+        }
+        for task in tasks
+    ]
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps({"tasks": records}, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] output: {output}")
+
+    typer.echo(f"[OK] issue_followups: {len(records)}")
+    for record in records:
+        metadata = record["metadata"]
+        issue_path = metadata.get("issue_path") if isinstance(metadata, dict) else "unknown"
+        typer.echo(f"[TASK] task_id={record['task_id']} issue_path={issue_path}")
 
 
 @slash_app.command("init")

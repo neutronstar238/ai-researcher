@@ -64,7 +64,7 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo` 和 `/research:status`。
+默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:issue-followups` 和 `/research:status`。
 
 联网发现命令：
 

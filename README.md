@@ -125,7 +125,7 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, and `/research:status`.
+This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:issue-followups`, and `/research:status`.
 
 Online discovery commands:
 

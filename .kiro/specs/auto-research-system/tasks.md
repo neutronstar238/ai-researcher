@@ -935,6 +935,15 @@ A task can be checked only when all applicable items are true:
     - _References: task 47.1 follow-up, RP Obsidian self-loop task pool_
     - _Verify: unit tests cover open issue notes, closed issue skips, stable task IDs, and action metadata._
 
+- [x] 49. Add operator CLI for issue follow-up task discovery
+  - [x] 49.1 Expose Obsidian issue follow-ups through CLI and slash commands
+    - Add `autoresearch issue-followups` to list scheduler follow-up tasks derived from open project issue notes.
+    - Support `--vault`, `--project-id`, and optional JSON `--output` for review before execution.
+    - Print deterministic task IDs and source issue paths without executing follow-up work.
+    - Add `/research:issue-followups` to default slash command templates.
+    - _References: task 48.1 follow-up, user request for CLI and slash-command style workflows_
+    - _Verify: CLI unit tests cover output JSON and slash template creation._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1075,6 +1084,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 23,
       "tasks": ["48.1"]
+    },
+    {
+      "id": 24,
+      "tasks": ["49.1"]
     }
   ]
 }

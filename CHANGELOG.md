@@ -34,6 +34,7 @@ Target version: `0.1.0`.
 - Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.
 - Stable issue fingerprints for LLM review issue notes so repeated or reordered reviewer findings update the same self-loop issue entry.
 - Scheduler helper for turning open Obsidian project issue notes into one-shot follow-up queued tasks.
+- `autoresearch issue-followups` CLI and `/research:issue-followups` slash template for reviewing self-loop follow-up tasks before execution.
 
 ### Changed
 
@@ -58,6 +59,7 @@ Target version: `0.1.0`.
 - Passing `llm-review --project-id` runs now default to promoting actionable warning/blocking reviewer findings into project issue notes, with `--no-write-issues` available to keep review-only behavior.
 - Duplicate actionable LLM reviewer claims in one result are skipped before writing Obsidian `issue_note` entries.
 - Closed or invalid project issue notes are skipped when building scheduler follow-up tasks.
+- Default slash command templates now include the Obsidian issue follow-up discovery workflow.
 
 ### Migration Notes
 
@@ -87,6 +89,7 @@ Target version: `0.1.0`.
 - LLM review issue promotion after task `46`: `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q` passed with 3 tests; real DeepSeek `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-issues.json --min-quality-score 0.85 --vault runs/manual-live/review-vault-issues --project-id deepseek_live_project --source-task-id 46.1 --max-tokens 2400` wrote one review note and two issue notes.
 - LLM review issue deduplication after task `47`: `poetry run pytest tests/unit/llm/test_review_memory.py -q` passed with 3 tests and covered duplicate plus reordered reviewer findings.
 - Obsidian issue scheduler adapter after task `48`: `poetry run pytest tests/unit/test_scheduler.py -q` passed and covered open issue-note task creation plus closed issue skips; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 300 tests and 4 skipped.
+- Issue follow-up CLI after task `49`: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` passed and covered JSON output plus slash template creation; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 301 tests and 4 skipped.
 - Live API smoke after task `41`: `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv` passed with 4 real API tests.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.
