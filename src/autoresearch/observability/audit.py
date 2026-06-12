@@ -20,6 +20,7 @@ class AuditEventType(str, Enum):
     APPROVAL_GATE = "approval_gate"
     SCHEDULER_RUN = "scheduler_run"
     STRATEGY_CHANGE = "strategy_change"
+    ROLLBACK = "rollback"
     PUBLICATION_GATE = "publication_gate"
 
 

@@ -11,6 +11,7 @@ from autoresearch.knowledge import (
     rollback_strategy_card,
     write_strategy_card_entry,
 )
+from autoresearch.observability import AuditEventType, AuditLog
 from autoresearch.schemas import StrategyCard, ValidationStatus
 
 
@@ -34,6 +35,43 @@ def test_versioned_file_store_rolls_back_config(tmp_path: Path) -> None:
     assert result.target_type is RollbackTargetType.CONFIG
     assert result.metadata["reason"] == "restore stable config"
     assert (tmp_path / relative_path).read_text(encoding="utf-8") == "model: small\n"
+
+
+def test_rollback_writes_audit_event_to_jsonl(tmp_path: Path) -> None:
+    store = VersionedFileStore(tmp_path)
+    audit_log = AuditLog(tmp_path / "audit" / "audit.jsonl")
+    relative_path = "configs/system.yaml"
+
+    store.write_file(relative_path, "model: small\n")
+    store.write_file(relative_path, "model: large\n")
+
+    store.rollback_file(
+        relative_path,
+        1,
+        target_type=RollbackTargetType.CONFIG,
+        reason="restore stable config",
+        audit_log=audit_log,
+        actor="rollback-agent",
+        verification_result="passed",
+        run_id="run_rollback_1",
+        task_id="25.2",
+    )
+
+    events = audit_log.read_all()
+
+    assert audit_log.path.exists()
+    assert len(events) == 1
+    assert events[0].event_type is AuditEventType.ROLLBACK
+    assert events[0].actor == "rollback-agent"
+    assert events[0].resource == relative_path
+    assert events[0].run_id == "run_rollback_1"
+    assert events[0].task_id == "25.2"
+    assert events[0].metadata["rollback"] is True
+    assert events[0].metadata["reason"] == "restore stable config"
+    assert events[0].metadata["old_version"] == 2
+    assert events[0].metadata["new_version"] == 1
+    assert events[0].metadata["verification_result"] == "passed"
+    assert events[0].metadata["target_type"] == RollbackTargetType.CONFIG.value
 
 
 def test_strategy_card_versions_and_rolls_back_with_metadata(tmp_path: Path) -> None:

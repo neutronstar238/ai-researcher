@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:28:59 +08:00 - Codex - Task 25.2 rollback audit trail
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `25.2`; record rollback actor, reason, old version, new version, and verification result in audit JSONL.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/knowledge/versioning.py`
+  - `src/autoresearch/observability/audit.py`
+  - `tests/unit/knowledge/test_rollback.py`
+- Summary:
+  - Added `AuditEventType.ROLLBACK` for explicit rollback audit events.
+  - Added optional rollback audit logging to config/prompt/workflow file rollback, knowledge-entry rollback, and strategy-card rollback.
+  - Recorded rollback target type, actor, reason, old version, restored/new version, verification result, path, run ID, project ID, and task ID in existing append-only JSONL audit logs.
+  - Added a unit test that performs a rollback, reloads `audit/audit.jsonl`, and verifies the expected rollback event fields.
+  - Marked task `25.2` and parent task `25` complete.
+- Verification:
+  - `poetry run ruff check src/autoresearch/knowledge/versioning.py src/autoresearch/observability/audit.py tests/unit/knowledge/test_rollback.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/knowledge/test_rollback.py tests/unit/observability/test_audit.py -vv`: passed, 15 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 237 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `26.1` should model candidate strategies and connect them to failure patterns, skill cards, replay results, golden tests, shadow evaluations, and rollback targets.
+
 ### 2026-06-12 12:24:06 +08:00 - Codex - Task 25.1 rollback version foundations
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `25.1`; track versions for prompts, workflow templates, configs, strategy knowledge, and knowledge entries with rollback support.

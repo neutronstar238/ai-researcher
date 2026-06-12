@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -15,6 +16,7 @@ from autoresearch.knowledge.entries import (
     KnowledgeZone,
     MarkdownKnowledgeStore,
 )
+from autoresearch.observability.audit import AuditEvent, AuditEventType, AuditLog
 from autoresearch.schemas import StrategyCard
 
 
@@ -96,9 +98,16 @@ class VersionedFileStore:
         *,
         target_type: RollbackTargetType = RollbackTargetType.CONFIG,
         reason: str | None = None,
+        audit_log: AuditLog | None = None,
+        actor: str = "system",
+        verification_result: str = "not_run",
+        run_id: str | None = None,
+        project_id: str | None = None,
+        task_id: str | None = None,
     ) -> RollbackResult:
         safe_path = _safe_relative_path(relative_path)
         snapshots = self.list_versions(safe_path)
+        old_version = len(snapshots)
         selected = next((snapshot for snapshot in snapshots if snapshot.version == version), None)
         if selected is None:
             msg = f"version {version} does not exist for {safe_path.as_posix()}"
@@ -109,13 +118,25 @@ class VersionedFileStore:
             self._preserve_version(safe_path, target.read_text(encoding="utf-8"))
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(selected.content, encoding="utf-8")
-        return RollbackResult(
+        result = RollbackResult(
             target_type=target_type,
             relative_path=safe_path.as_posix(),
             restored_version=version,
             path=target,
             metadata=_rollback_metadata(reason),
         )
+        _record_rollback_audit(
+            audit_log=audit_log,
+            result=result,
+            actor=actor,
+            old_version=old_version,
+            verification_result=verification_result,
+            reason=reason,
+            run_id=run_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
+        return result
 
     def _preserve_version(self, relative_path: Path, content: str) -> Path:
         version = len(self._saved_versions(relative_path)) + 1
@@ -194,18 +215,38 @@ def rollback_knowledge_entry(
     relative_path: Path | str,
     version: int,
     reason: str | None = None,
+    audit_log: AuditLog | None = None,
+    actor: str = "system",
+    verification_result: str = "not_run",
+    run_id: str | None = None,
+    project_id: str | None = None,
+    task_id: str | None = None,
 ) -> RollbackResult:
     """Rollback any Obsidian knowledge entry to a previous Markdown version."""
 
-    path = MarkdownKnowledgeStore(vault_root).rollback(relative_path, version)
+    store = MarkdownKnowledgeStore(vault_root)
     safe_path = _safe_relative_path(relative_path)
-    return RollbackResult(
+    old_version = len(store.list_versions(safe_path))
+    path = store.rollback(safe_path, version)
+    result = RollbackResult(
         target_type=RollbackTargetType.KNOWLEDGE_ENTRY,
         relative_path=safe_path.as_posix(),
         restored_version=version,
         path=path,
         metadata=_rollback_metadata(reason),
     )
+    _record_rollback_audit(
+        audit_log=audit_log,
+        result=result,
+        actor=actor,
+        old_version=old_version,
+        verification_result=verification_result,
+        reason=reason,
+        run_id=run_id,
+        project_id=project_id,
+        task_id=task_id,
+    )
+    return result
 
 
 def rollback_strategy_card(
@@ -214,22 +255,42 @@ def rollback_strategy_card(
     relative_path: Path | str,
     version: int,
     reason: str | None = None,
+    audit_log: AuditLog | None = None,
+    actor: str = "system",
+    verification_result: str = "not_run",
+    run_id: str | None = None,
+    project_id: str | None = None,
+    task_id: str | None = None,
 ) -> RollbackResult:
     """Rollback an Obsidian strategy card and validate its restored entry type."""
 
-    path = MarkdownKnowledgeStore(vault_root).rollback(relative_path, version)
+    store = MarkdownKnowledgeStore(vault_root)
     safe_path = _safe_relative_path(relative_path)
-    entry = MarkdownKnowledgeStore(vault_root).read_entry(safe_path)
+    old_version = len(store.list_versions(safe_path))
+    path = store.rollback(safe_path, version)
+    entry = store.read_entry(safe_path)
     if entry.entry_type is not KnowledgeEntryType.STRATEGY_CARD:
         msg = f"{safe_path.as_posix()} is not a strategy card after rollback"
         raise ValueError(msg)
-    return RollbackResult(
+    result = RollbackResult(
         target_type=RollbackTargetType.STRATEGY_CARD,
         relative_path=safe_path.as_posix(),
         restored_version=version,
         path=path,
         metadata=_rollback_metadata(reason),
     )
+    _record_rollback_audit(
+        audit_log=audit_log,
+        result=result,
+        actor=actor,
+        old_version=old_version,
+        verification_result=verification_result,
+        reason=reason,
+        run_id=run_id,
+        project_id=project_id,
+        task_id=task_id,
+    )
+    return result
 
 
 def _strategy_body(
@@ -302,6 +363,50 @@ def _rollback_metadata(reason: str | None) -> dict[str, str]:
     if reason:
         metadata["reason"] = reason
     return metadata
+
+
+def _record_rollback_audit(
+    *,
+    audit_log: AuditLog | None,
+    result: RollbackResult,
+    actor: str,
+    old_version: int,
+    verification_result: str,
+    reason: str | None,
+    run_id: str | None,
+    project_id: str | None,
+    task_id: str | None,
+) -> None:
+    if audit_log is None:
+        return
+    if not verification_result:
+        msg = "verification_result must not be empty when recording rollback audit"
+        raise ValueError(msg)
+
+    metadata: dict[str, Any] = {
+        "rollback": True,
+        "target_type": result.target_type.value,
+        "old_version": old_version,
+        "new_version": result.restored_version,
+        "restored_version": result.restored_version,
+        "verification_result": verification_result,
+        "path": str(result.path),
+    }
+    if reason:
+        metadata["reason"] = reason
+
+    audit_log.append(
+        AuditEvent(
+            event_type=AuditEventType.ROLLBACK,
+            actor=actor,
+            action=f"rollback {result.target_type.value} to version {result.restored_version}",
+            resource=result.relative_path,
+            run_id=run_id,
+            project_id=project_id,
+            task_id=task_id,
+            metadata=metadata,
+        )
+    )
 
 
 def _safe_relative_path(path: Path | str) -> Path:
