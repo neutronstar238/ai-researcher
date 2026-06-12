@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-060 - Docker Python 3.13 image forced NumPy source build
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 13:46:39 +08:00
+- Source: `docker compose build app` using `python:3.13-slim`.
+- Symptom: Docker build failed while installing project dependencies because `numpy 1.26.4` attempted a source build and no compiler was available in the slim image.
+- Impact: Task `34.1` container verification could not pass with the initial Dockerfile base image.
+- Evidence: Build failed with Meson reporting unknown compilers `cc`, `gcc`, and `clang` while preparing NumPy metadata.
+- Root cause: The project dependency set pulled `numpy<2.0.0,>=1.26.0` through LangChain; NumPy `1.26.4` has wheels for Python 3.12 but not for Python 3.13 in the tested build path.
+- Workaround: Use a supported Python runtime with available wheels.
+- Next action: Keep the Docker runtime on Python 3.12 until the dependency set is updated for Python 3.13 wheels.
+- Linked tasks: `34.1`
+- Resolution: Changed `deploy/docker/Dockerfile` from `python:3.13-slim` to `python:3.12-slim`.
+- Verification: `docker compose build app` completed successfully after the base image change.
+
+### P-20260612-059 - Docker daemon unavailable before Compose verification
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 13:46:39 +08:00
+- Source: `docker compose build app`.
+- Symptom: Docker Compose could not connect to `npipe:////./pipe/dockerDesktopLinuxEngine`.
+- Impact: Task `34.1` real container verification was blocked until the Docker daemon was reachable.
+- Evidence: Compose reported `failed to connect to the docker API ... The system cannot find the file specified`; `docker context ls` showed `desktop-linux`; `com.docker.service` was stopped.
+- Root cause: Docker Desktop Linux engine was not running at the start of verification.
+- Workaround: Start Docker Desktop and wait until `docker info` succeeds.
+- Next action: Check Docker daemon readiness before future container verification tasks.
+- Linked tasks: `34.1`
+- Resolution: Started Docker Desktop; a direct service start attempt lacked permission, but Docker Desktop came up and `docker info` succeeded.
+- Verification: After Docker Desktop started, `docker compose build app` and `docker compose run --rm app` reached the Docker engine.
+
 ### P-20260612-058 - Plugin sample test used stale schema and colliding filename
 
 - Status: Resolved

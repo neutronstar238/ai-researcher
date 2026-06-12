@@ -735,7 +735,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: sample plugin loads and can be disabled safely._
 
 - [ ] 34. Add deployment packages
-  - [ ] 34.1 Create Docker Compose deployment
+  - [x] 34.1 Create Docker Compose deployment
     - Include app runtime, optional database, artifact storage path, and environment template.
     - _References: EP 8, DES Deployment Architecture_
     - _Verify: container starts and `doctor` command passes._

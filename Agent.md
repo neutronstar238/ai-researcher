@@ -59,6 +59,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:46:39 +08:00 - Codex - Task 34.1 Docker Compose deployment
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `34.1`, and verify with a real Docker Compose container running `doctor`.
+- Files changed:
+  - `.dockerignore`
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `deploy/docker/.env.example`
+  - `deploy/docker/Dockerfile`
+  - `docker-compose.yml`
+- Summary:
+  - Added a Docker runtime image for the installed `autoresearch` CLI.
+  - Added Docker Compose app service with named volumes for `autoresearch-vault`, runs, and artifacts.
+  - Added optional PostgreSQL service behind the `database` profile; default app verification does not start it.
+  - Added an environment template with artifact paths and provider-agnostic LLM variables: base URL, API key, and model name.
+  - Added `.dockerignore` to keep build context small and avoid copying local secrets or caches.
+  - Added `.gitignore` to keep `.env`, caches, runs, and artifacts out of version control.
+  - Marked task `34.1` complete in `tasks.md`; parent task `34` remains open because `34.2` is not complete.
+  - No LLM provider or external literature API was called by this deployment task.
+- Verification:
+  - `docker --version`: passed, Docker `29.4.3`.
+  - `docker compose version`: passed, Docker Compose `v5.1.4`.
+  - `docker compose config`: passed; app service, optional database profile, named volumes, and env template parsed.
+  - First `docker compose build app`: failed because Docker Desktop Linux engine was not running; recorded as `P-20260612-059`.
+  - Started Docker Desktop and waited until `docker info` succeeded; direct service start lacked permission but did not block after Desktop started.
+  - Second `docker compose build app`: failed because `python:3.13-slim` forced a NumPy `1.26.4` source build without a compiler; recorded as `P-20260612-060`.
+  - Changed Dockerfile to `python:3.12-slim`.
+  - Final `docker compose build app`: passed and produced `ai-researcher:local`.
+  - `docker compose run --rm app`: passed; container `doctor` reported OK for Python `3.12.13`, package import, config import, parser, project root, and knowledge vault.
+  - `docker compose down --volumes --remove-orphans`: passed and removed the Compose network and named volumes created for verification.
+- Problems:
+  - `P-20260612-059` added and resolved.
+  - `P-20260612-060` added and resolved.
+  - `P-20260612-057` remains open as a low-severity local dependency warning outside the container build path.
+- Follow-up:
+  - Continue with task `34.2` Kubernetes deployment plan.
+
 ### 2026-06-12 13:37:33 +08:00 - Codex - Task 33.1 plugin interfaces
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `33.1`, defining plugin interfaces and verifying a sample plugin can load and be disabled safely.
