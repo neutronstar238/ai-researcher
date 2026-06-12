@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-053 - Shadow module typing imports failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:50:57 +08:00
+- Source: `poetry run ruff check src/autoresearch/experiments/shadow.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_shadow.py`.
+- Symptom: Ruff reported `UP035` because `Callable` and `Mapping` were imported from `typing`.
+- Impact: Task `28.1` focused lint verification was blocked.
+- Evidence: Ruff required importing `Callable` and `Mapping` from `collections.abc`.
+- Root cause: The new shadow module used older typing import style.
+- Workaround: None needed after ruff autofix.
+- Next action: None.
+- Linked tasks: `28.1`
+- Resolution: Ran ruff autofix on `src/autoresearch/experiments/shadow.py`.
+- Verification: `poetry run ruff check src/autoresearch/experiments/shadow.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_shadow.py`, `poetry run mypy src`, `poetry run pytest tests/unit/experiments/test_shadow.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after import correction.
+
 ### P-20260612-052 - Replay export import order failed ruff
 
 - Status: Resolved

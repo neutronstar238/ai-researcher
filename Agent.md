@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:50:57 +08:00 - Codex - Task 28.1 shadow evaluation
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `28.1`; run candidate strategies in shadow mode without affecting production outputs.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/shadow.py`
+  - `tests/unit/experiments/test_shadow.py`
+- Summary:
+  - Added `ShadowEvaluationRecord` and `ShadowProposal` for isolated candidate-strategy outputs.
+  - Added `run_shadow_evaluation()` to pass a deep-copied replay case into the candidate proposal and record shadow output separately from production output.
+  - Added `write_shadow_evaluation()` for standalone shadow JSON records.
+  - Added a test proving a candidate proposal can mutate its shadow copy while the production replay output remains unchanged.
+  - Marked task `28.1` complete; parent task `28` remains open for reward comparison in `28.2`.
+- Verification:
+  - Initial focused lint exposed `P-20260612-053`; repaired typing imports with ruff autofix.
+  - `poetry run ruff check src/autoresearch/experiments/shadow.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_shadow.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_shadow.py -vv`: passed, 1 test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 262 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-053` added and resolved.
+- Follow-up:
+  - Task `28.2` should calculate strategy reward from quality gain, reproducibility, evidence completeness, compute cost, human intervention, and risk penalty.
+
 ### 2026-06-12 12:47:03 +08:00 - Codex - Task 27.2 golden test set
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `27.2`; create a fixed golden regression suite and verify stable strategies pass before candidate comparison.

@@ -672,7 +672,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: current stable strategy passes all golden tests before comparison._
 
 - [ ] 28. Add shadow evaluation
-  - [ ] 28.1 Run candidate strategies in shadow mode
+  - [x] 28.1 Run candidate strategies in shadow mode
     - Candidate strategy can observe and produce proposed outputs but cannot affect production results.
     - _References: RP 9.2, EP 7.3_
     - _Verify: shadow output is recorded separately and production output remains unchanged._

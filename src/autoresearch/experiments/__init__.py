@@ -69,6 +69,12 @@ from .review import (
     review_generated_code,
 )
 from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
+from .shadow import (
+    ShadowEvaluationRecord,
+    ShadowProposal,
+    run_shadow_evaluation,
+    write_shadow_evaluation,
+)
 from .validation import (
     StatisticalCheck,
     StatisticalNote,
@@ -108,6 +114,8 @@ __all__ = [
     "SandboxAccessMode",
     "SandboxPathDecision",
     "SandboxPathPolicy",
+    "ShadowEvaluationRecord",
+    "ShadowProposal",
     "StatisticalCheck",
     "StatisticalNote",
     "ValidationIssue",
@@ -137,7 +145,9 @@ __all__ = [
     "reproduce_tabular_baseline",
     "run_mvp_acceptance",
     "run_scientistbench_demo",
+    "run_shadow_evaluation",
     "update_recurring_failure_patterns",
     "validate_result_bundle",
     "write_replay_dataset",
+    "write_shadow_evaluation",
 ]
