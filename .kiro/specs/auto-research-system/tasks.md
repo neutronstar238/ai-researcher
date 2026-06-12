@@ -576,7 +576,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 12, REQ 6, Horizon-style source pipeline, arXiv API terms_
     - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access; opt-in live smoke test fetches real ArXiv/Semantic Scholar documents before completion._
 
-  - [ ] 21.3 Add project-start online similarity and novelty cross-check
+  - [x] 21.3 Add project-start online similarity and novelty cross-check
     - Before a candidate is approved into a project, run a broad online search for similar directions, adjacent methods, known baselines, datasets, negative results, and competing claims.
     - Generate multiple query variants from candidate title, research gap, method, dataset, limitation, Obsidian topic index context, and prior failure/skill cards.
     - Cross-check online results against local vault entries and classify each finding as direct duplicate, adjacent work, supporting prior work, contradictory evidence, benchmark gap, or unknown.

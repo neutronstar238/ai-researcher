@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-043 - Similarity API export order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 11:31:12 +08:00
+- Source: `poetry run ruff check src/autoresearch/research/similarity.py src/autoresearch/research/approval.py src/autoresearch/research/__init__.py src/autoresearch/literature/__init__.py tests/unit/research/test_similarity.py tests/unit/research/test_approval.py tests/smoke/test_similarity_live.py`.
+- Symptom: Ruff reported `I001` for `src/autoresearch/literature/__init__.py` after exporting the literature search protocol.
+- Impact: Task `21.3` lint verification was blocked, while type checking and focused unit tests passed.
+- Evidence: Ruff reported one fixable import-order error.
+- Root cause: The newly exported `LiteratureSearchClient` was inserted out of ruff/isort order.
+- Workaround: None needed after import sorting.
+- Next action: Keep package exports sorted when adding new public APIs.
+- Linked tasks: `21.3`
+- Resolution: Ran ruff autofix on `src/autoresearch/literature/__init__.py`.
+- Verification: `poetry run ruff check src tests` passed after the import-order fix.
+
 ### P-20260612-042 - Full ruff gate reported import ordering across existing tests
 
 - Status: Resolved

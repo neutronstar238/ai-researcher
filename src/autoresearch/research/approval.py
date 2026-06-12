@@ -12,6 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from autoresearch.knowledge import VaultLayout, create_vault_layout
 from autoresearch.schemas import ResearchCandidate
 
+from .similarity import (
+    ProjectSimilarityReport,
+    link_similarity_report_to_project,
+    validate_similarity_report_for_candidate,
+)
+
 
 class ApprovalRecord(BaseModel):
     """Human approval record for a research candidate."""
@@ -35,12 +41,14 @@ class ProjectAgentContext(BaseModel):
     candidate_id: str
     approval_id: str
     project_path: Path
+    similarity_summary_path: Path
 
 
 def create_project_from_approved_candidate(
     *,
     candidate: ResearchCandidate,
     approval: ApprovalRecord | None,
+    similarity_report: ProjectSimilarityReport | None = None,
     vault_root: Path | str,
     project_id: str | None = None,
 ) -> ProjectAgentContext:
@@ -56,13 +64,20 @@ def create_project_from_approved_candidate(
         msg = "approval record candidate_id does not match candidate"
         raise ValueError(msg)
 
+    checked_similarity_report = validate_similarity_report_for_candidate(candidate, similarity_report)
     resolved_project_id = project_id or _project_id_from_candidate(candidate)
     layout: VaultLayout = create_vault_layout(vault_root, resolved_project_id)
+    similarity_summary_path = link_similarity_report_to_project(
+        report=checked_similarity_report,
+        vault_root=vault_root,
+        project_id=resolved_project_id,
+    )
     return ProjectAgentContext(
         project_id=resolved_project_id,
         candidate_id=candidate.id,
         approval_id=approval.approval_id,
         project_path=layout.project,
+        similarity_summary_path=similarity_summary_path,
     )
 
 

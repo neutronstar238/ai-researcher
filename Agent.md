@@ -59,6 +59,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:36:21 +08:00 - Codex - Task 21.3 project-start online similarity check
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.3`; add broad online similarity and novelty cross-checks before candidate approval/project creation, with Obsidian summaries and real live-source testing.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/approval.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/research/test_approval.py`
+  - `tests/unit/research/test_similarity.py`
+  - `tests/smoke/test_similarity_live.py`
+- Summary:
+  - Added `run_project_similarity_check()` to generate candidate-title, research-gap, method/dataset/limitation, baseline, negative-result, and Obsidian-context query variants.
+  - Added source-backed similarity findings with explicit classifications: `direct_duplicate`, `adjacent_work`, `supporting_prior_work`, `contradictory_evidence`, `benchmark_gap`, and `unknown`.
+  - Persisted pre-approval similarity summaries under `autoresearch-vault/exploration/topics/` with query text, source URL/DOI, source database, retrieval timestamp, evidence refs, confidence, classification basis, and `unknown`/`pending verification` markers.
+  - Made project creation require a matching similarity report, then write a project-zone link note under `projects/<project-id>/knowledge/`.
+  - Added unsupported-claim validation so findings without provenance or with unsupported claims are rejected instead of being written as facts.
+  - Added an opt-in live smoke test that performs real online similarity checks against ArXiv/Semantic Scholar clients.
+  - Marked task `21.3` complete; parent task `21` remains open for budget-aware execution gates.
+- Verification:
+  - `poetry run pytest tests/unit/research/test_similarity.py tests/unit/research/test_approval.py -vv`: passed, 8 tests.
+  - Initial focused lint command failed with one `I001` import-order issue in `src/autoresearch/literature/__init__.py`; recorded as `P-20260612-043` and fixed with ruff autofix.
+  - `poetry run ruff check src/autoresearch/research/similarity.py src/autoresearch/research/approval.py src/autoresearch/research/__init__.py src/autoresearch/literature/__init__.py tests/unit/research/test_similarity.py tests/unit/research/test_approval.py tests/smoke/test_similarity_live.py`: passed.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 206 tests passed and 3 optional live smoke tests skipped by default.
+  - `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv`: passed, 3 tests using real network calls.
+- Problems:
+  - Added and resolved `P-20260612-043`.
+- Follow-up:
+  - Task `21.4` should add budget-aware execution gates and approval pause behavior.
+
 ### 2026-06-12 11:03:17 +08:00 - Codex - Task 21.2 daily online literature refresh
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.2`; support online discovery from ArXiv/Semantic Scholar with query optimization, cache reuse, deduplication, rate-limit provenance, and Obsidian summary output.
