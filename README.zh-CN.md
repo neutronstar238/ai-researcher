@@ -21,6 +21,7 @@ AI-Researcher 是一个早期 Python 项目，目标是构建“证据优先”�
 - 高成本、高风险、对外发布动作必须人工审批。
 - 默认沙箱执行。
 - 项目根目录 `autoresearch-vault/` 下兼容 Obsidian 的 Markdown vault 是研究、失败、技能和策略进化的共享记忆。
+- 项目启动和定时刷新都必须联网检索文献与相近工作；vault 只沉淀有来源支撑的总结，不能沉淀虚构 claim。
 - 每个实验记录 run ID、commit、配置 hash、数据 hash、指标、日志、产物和成本。
 - 每个 Agent 改动必须写入 [Agent.md](Agent.md)。
 - 每个发现的问题、阻塞或风险必须写入 [Problem.md](Problem.md)。

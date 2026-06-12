@@ -21,6 +21,7 @@ The first usable milestone is not a fully autonomous scientist. It is a minimal 
 - Human approval before high-cost, high-risk, or public actions.
 - Sandboxed execution by default.
 - Obsidian-compatible Markdown vault under `autoresearch-vault/` as the shared memory for research, failures, skills, and strategy evolution.
+- Online literature and similar-work discovery are required at project start and during scheduled refresh; the vault stores source-backed summaries, not fabricated claims.
 - Every experiment records run ID, commit, config hash, data hash, metrics, logs, artifacts, and cost.
 - Every agent change is logged in [Agent.md](Agent.md).
 - Every discovered blocker or risk is tracked in [Problem.md](Problem.md).

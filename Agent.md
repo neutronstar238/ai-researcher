@@ -59,6 +59,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:57:58 +08:00 - Codex - Online discovery planning clarification
+
+- Request: Clarify that AI-Researcher must use online literature and similar-direction search at project start and scheduled refresh, not only local Obsidian lookup; summaries must be source-backed and must not fabricate outcomes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a global task-plan rule that Obsidian is the evidence memory layer, not a replacement for external discovery.
+  - Added task `21.3` for project-start online similarity and novelty cross-check before candidate approval.
+  - Required source URL/DOI, query text, retrieval timestamp, evidence refs, confidence/unsupported markers, and `unknown` or `pending verification` markers when evidence is missing.
+  - Updated research and execution plans plus both README files to state that project-start and scheduled refresh workflows must use online discovery.
+- Verification:
+  - `rg -n "Networked discovery|project-start online similarity|online similarity and novelty|pending verification|not fabricate|不能沉淀虚构|不能只理解为本地知识库" .kiro/specs/auto-research-system/tasks.md AutoResearch_System_Research_Plan.md AutoResearch_System_Execution_Plan.md README.md README.zh-CN.md Problem.md Agent.md`: confirmed required constraints are present.
+  - `git diff --check`: passed with only existing Windows line-ending warnings.
+- Problems:
+  - Added and resolved `P-20260612-038`.
+- Follow-up:
+  - Implement task `21.2` daily online refresh and task `21.3` project-start online similarity scan with mocked network tests before optional live runs.
+
 ### 2026-06-12 10:54:30 +08:00 - Codex - Task 21.1 local scheduler
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.1`, while keeping online literature refresh as a separate upcoming task.

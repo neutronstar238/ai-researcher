@@ -26,6 +26,8 @@ research direction
 
 Core innovation: the Obsidian-compatible knowledge vault is the system's shared memory and evolution substrate. Its canonical project-root path is `autoresearch-vault/`. It is not a replaceable storage detail. The vault must connect global exploration, per-project knowledge, experiment records, issues, failures, skills, evidence, strategy versions, topic indexes, wiki-links, and rollback history so the system can self-loop and self-evolve while staying human-readable and auditable.
 
+Networked discovery is mandatory, not optional. The Obsidian vault is the evidence memory layer, not a substitute for external search. Project-start novelty checks, similar-direction cross-validation, and scheduled candidate refresh must query external sources such as ArXiv and Semantic Scholar before relying on local vault memory. Summaries written to the vault must cite source documents, query text, retrieval timestamps, and unsupported/unknown claims explicitly; never fabricate results, citations, rankings, or experimental outcomes.
+
 ## Source References
 
 - `RP`: `AutoResearch_System_Research_Plan.md`
@@ -574,7 +576,17 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 12, REQ 6, Horizon-style source pipeline, arXiv API terms_
     - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access._
 
-  - [ ] 21.3 Add budget-aware execution gates
+  - [ ] 21.3 Add project-start online similarity and novelty cross-check
+    - Before a candidate is approved into a project, run a broad online search for similar directions, adjacent methods, known baselines, datasets, negative results, and competing claims.
+    - Generate multiple query variants from candidate title, research gap, method, dataset, limitation, Obsidian topic index context, and prior failure/skill cards.
+    - Cross-check online results against local vault entries and classify each finding as direct duplicate, adjacent work, supporting prior work, contradictory evidence, benchmark gap, or unknown.
+    - Store the structured similarity summary in Obsidian under `autoresearch-vault/exploration/topics/` before project creation, and link it into `autoresearch-vault/projects/<project-id>/knowledge/` after approval.
+    - Include source URL/DOI, source database, query text, retrieval timestamp, evidence refs, and confidence/unsupported markers for every summarized finding.
+    - Do not invent paper results, benchmark scores, citations, venue status, code availability, or experimental outcomes. Missing evidence must be written as `unknown` or `pending verification`.
+    - _References: REQ 12, REQ 6, RP 3.3, RP 8, Horizon-style source pipeline_
+    - _Verify: mocked online search writes an Obsidian similarity summary with source-backed findings and rejects unsupported claims._
+
+  - [ ] 21.4 Add budget-aware execution gates
     - Pause or require approval when a task approaches 80 percent of budget.
     - _References: EP 15.2, RP 3.3_
     - _Verify: test triggers budget approval state._

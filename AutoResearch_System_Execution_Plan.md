@@ -217,6 +217,10 @@ The self-loop candidate pool must be fed by a daily online literature refresh pi
 
 ArXiv access must respect the official legacy API constraint of a single connection and no more than one request every three seconds. Search prompts and query templates are evolvable retrieval policies, but they must be versioned and evaluated before promotion.
 
+This online discovery requirement also applies at project start. Before a candidate becomes an approved project, AI-Researcher must run a broad online similarity and novelty cross-check against adjacent directions, competing methods, datasets, baselines, negative evidence, code availability, and contradictory claims. The Obsidian vault stores the evidence-backed summary and query provenance; it is not the only search source.
+
+Summaries written to Obsidian must distinguish verified source metadata, source-backed claims, model interpretation, and unknowns. The system must not fabricate paper results, benchmark scores, citations, venue status, code availability, or experimental outcomes. Missing evidence must stay marked as `unknown` or `pending verification`.
+
 ---
 
 ## 7. Phase 4：自进化试运行

@@ -272,6 +272,10 @@ Claim → Evidence → Source → Artifact → Validation Status
 13. 进入下一轮循环
 ```
 
+这里的“最新文献”不能只理解为本地知识库。项目启动、候选审批、每日/每周候选刷新都必须触发外部联网检索，并把 ArXiv、Semantic Scholar 等免费公开来源中的相近方向、重复工作、相邻方法、数据集、baseline、负面结果和矛盾证据纳入交叉检验。Obsidian vault 是长期记忆和证据落盘层，不是外部检索的替代品。
+
+写入 Obsidian 的调研总结必须区分四类内容：来源元数据、来源明确支持的事实、模型基于证据的解释、未知或待验证事项。系统不得虚构论文结果、benchmark 分数、引用、录用状态、代码可用性或实验结论；缺证据时只能记录为 `unknown` 或 `pending verification`。
+
 ### 8.1 循环终止条件
 
 一个研究项目应在以下条件下终止：

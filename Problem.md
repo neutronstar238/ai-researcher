@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-038 - Planning could be misread as local-vault-only discovery
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 10:57:58 +08:00
+- Source: User clarified that project-start cross-checks need broad online search, not only daily local/vault analysis.
+- Symptom: Recent task wording emphasized Obsidian gap analysis and daily refresh, but did not clearly state that project creation and candidate approval also require external online similarity and novelty checks.
+- Impact: Future agents could incorrectly rely only on the local vault, missing duplicate or adjacent work and writing weak novelty summaries.
+- Evidence: User asked whether the plan assumed all checking could be local and required online search summaries to be written into Obsidian without fabricated outcomes.
+- Root cause: The planning distinction between Obsidian as memory substrate and online discovery as evidence acquisition was not explicit enough.
+- Workaround: None needed after documentation and task updates.
+- Next action: Implement task `21.2` and `21.3` with mocked network tests first, then optional live runs behind explicit flags.
+- Linked tasks: `21.2`, `21.3`
+- Resolution: Updated `tasks.md`, research plan, execution plan, and both README files to require project-start online similarity scans, scheduled online refresh, source-backed Obsidian summaries, and explicit unknown/pending markers for missing evidence.
+- Verification: `rg` confirmed the online discovery, project-start similarity scan, source-backed Obsidian summary, and no-fabrication constraints are present in tasks, research plan, execution plan, README, `Problem.md`, and `Agent.md`; `git diff --check` passed with only existing Windows line-ending warnings.
+
 ### P-20260612-037 - Scheduler test imports were not sorted
 
 - Status: Resolved
