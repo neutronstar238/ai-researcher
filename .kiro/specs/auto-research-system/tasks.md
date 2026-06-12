@@ -973,6 +973,14 @@ A task can be checked only when all applicable items are true:
     - _References: user follow-up on Semantic Scholar access limits and real external API behavior_
     - _Verify: unit tests cover env-based rate/circuit settings, invalid values, existing 429 circuit behavior, and first-deploy template output._
 
+- [x] 53. Remove GitHub Actions Node 20 deprecation warning
+  - [x] 53.1 Upgrade official checkout and setup-python actions to Node 24 majors
+    - Update `actions/checkout` from `v4` to `v5`.
+    - Update `actions/setup-python` from `v5` to `v6`.
+    - Do not change the Python version, Poetry install path, or quality gates.
+    - _References: GitHub Actions CI #21 warning, official checkout/setup-python Node 24 releases_
+    - _Verify: workflow diff is limited to action major versions and pushed CI completes without the Node 20 deprecation warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1129,6 +1137,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 27,
       "tasks": ["52.1"]
+    },
+    {
+      "id": 28,
+      "tasks": ["53.1"]
     }
   ]
 }

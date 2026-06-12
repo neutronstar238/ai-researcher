@@ -62,6 +62,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 18:08:26 +08:00 - Codex - Task 53 GitHub Actions Node 24 maintenance
+
+- Request: Remove the GitHub Actions Node 20 deprecation warning reported by CI after task `52.1`.
+- Files changed:
+  - `.github/workflows/ci.yml`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+- Summary:
+  - Updated `actions/checkout` from `v4` to `v5`.
+  - Updated `actions/setup-python` from `v5` to `v6`.
+  - Left the Python version, Poetry install, ruff, mypy, and pytest gates unchanged.
+  - Added and completed task `53.1` in the implementation task plan.
+- Verification:
+  - Checked official action release guidance before the edit: `actions/checkout@v5` and `actions/setup-python@v6` are the Node 24 major versions.
+  - `rg -n "actions/checkout|actions/setup-python" .github\workflows\ci.yml`: passed, showing `actions/checkout@v5` and `actions/setup-python@v6`.
+  - `git diff --check`: passed with only expected Windows LF-to-CRLF warnings.
+  - GitHub Actions verification is performed after pushing the task commit because this change affects CI runtime metadata.
+- Problems:
+  - None.
+- Follow-up:
+  - Confirm pushed CI no longer reports the Node 20 deprecation warning.
+
 ### 2026-06-12 18:03:34 +08:00 - Codex - Task 52 Semantic Scholar rate tuning
 
 - Request: Continue iterating on real external literature access by making Semantic Scholar rate limiting and 429 circuit behavior easier to tune in deployment.

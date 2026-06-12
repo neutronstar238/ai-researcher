@@ -52,6 +52,7 @@ Target version: `0.1.0`.
 - LLM reviewer checks now require every finding to cite allowed outer local evidence IDs, and the default review token budget is 2400 for reasoning-token models.
 - Re-discovered issue follow-up tasks now preserve completed scheduler-state records instead of reopening them.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
+- GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 
 ### Fixed
 
