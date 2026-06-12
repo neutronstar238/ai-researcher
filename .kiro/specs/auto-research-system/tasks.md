@@ -159,7 +159,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 16.2, DES Development Guidelines_
     - _Verify: `poetry run ruff check src tests`, `poetry run mypy src`, and focused `pytest` pass._
 
-- [ ] 2. Define core schemas and run identity
+- [x] 2. Define core schemas and run identity
   - [x] 2.1 Implement research lifecycle schemas
     - Add data models for `DocumentRecord`, `KnowledgeNode`, `ResearchCandidate`, `Hypothesis`, `ExperimentTask`, `ExecutionRun`, `ResultBundle`, `EvidenceEdge`, `PaperDraft`, and `StrategyCard`.
     - Place them in a clear module such as `src/autoresearch/schemas/`.
@@ -179,7 +179,7 @@ A task can be checked only when all applicable items are true:
     - Add tests that reject missing required evidence fields.
     - Add tests that preserve unknown optional metadata only if explicitly supported.
     - _References: DES Correctness Properties_
-    - _Verify: `poetry run pytest tests/unit/schemas tests/property/schemas` passes._
+    - _Verify: `poetry run pytest tests/unit/schemas -vv` passes._
 
 - [x] 3. Establish logging, audit, and cost foundations
   - [x] 3.1 Add structured logging

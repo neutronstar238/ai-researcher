@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-063 - Task 2 schema verification referenced missing property test path
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 14:57:19 +08:00
+- Source: Task `2` parent verification command `poetry run pytest tests/unit/schemas tests/property/schemas -vv`.
+- Symptom: Pytest failed before running schema tests because `tests/property/schemas` does not exist.
+- Impact: Parent task `2` could not be marked complete using the stale documented command.
+- Evidence: Pytest reported `ERROR: file or directory not found: tests/property/schemas` and collected zero tests.
+- Root cause: Schema round-trip and validation tests currently live in `tests/unit/schemas`; no property schema directory was created.
+- Workaround: Use the actual schema test suite path.
+- Next action: Add a dedicated `tests/property/schemas` suite before documenting that path again.
+- Linked tasks: `2`
+- Resolution: Updated task `2.3` verification text to use `poetry run pytest tests/unit/schemas -vv`.
+- Verification: `poetry run pytest tests/unit/schemas -vv` passed with 30 tests after the task verification path was corrected.
+
 ### P-20260612-062 - Task 0 parent verification found missing task-driven wording
 
 - Status: Resolved

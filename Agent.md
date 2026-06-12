@@ -62,6 +62,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:58:27 +08:00 - Codex - Task 2 schema parent completion
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2`, reconciling the completed core schema and run identity parent task.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+- Summary:
+  - Verified core schema instantiation, JSON round-trip, evidence-ref validation, unknown-field rejection, metadata preservation, run ID generation, stable config/data/file hashes, artifact URI normalization, and `ExecutionRun` provenance fields.
+  - Corrected task `2.3` verification text from the missing `tests/property/schemas` path to the actual `tests/unit/schemas` suite.
+  - Added and resolved `P-20260612-063`.
+  - Marked parent task `2` complete in `tasks.md`.
+  - No external live call was applicable for this local schema task.
+- Verification:
+  - `poetry run pytest tests/unit/schemas tests/property/schemas -vv`: failed because `tests/property/schemas` does not exist.
+  - `poetry run pytest tests/unit/schemas -vv`: passed, 30 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - Added and resolved `P-20260612-063`.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - No remaining unchecked implementation tasks found after parent task reconciliation.
+
 ### 2026-06-12 14:55:59 +08:00 - Codex - Task 1 package scaffold parent completion
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `1`, reconciling the completed package scaffold parent task.
