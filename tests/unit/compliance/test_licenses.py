@@ -27,6 +27,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "Tencent/openclaw-weixin",
         "WecomTeam/wecom-openclaw-plugin",
         "OpenClaw official channel plugins",
+        "UCI Pen-Based Recognition of Handwritten Digits",
     ):
         assert required in third_party
     assert "copy, vendor, adapt, or redistribute" in third_party

@@ -85,7 +85,7 @@ DEFAULT_SLASH_COMMANDS = {
         "Use source URLs and DOI evidence only; unsupported outcomes must remain pending verification.",
     ),
     "research/run-demo.toml": (
-        "Run a local ScientistBench-Lite demo and inspect evidence outputs.",
+        "Run a local demo or public benchmark and inspect evidence outputs.",
         "Run `airesearcher run-demo --demo {{args}}` or default to tabular_baseline. "
         "Review the validation report, evidence map, and Markdown report before making claims.",
     ),
@@ -693,7 +693,7 @@ def run_demo(
         "tabular_baseline",
         "--demo",
         "-d",
-        help="ScientistBench-Lite demo task to run.",
+        help="Demo or public benchmark task to run.",
     ),
     output_dir: Path = typer.Option(
         Path("runs/demo"),
@@ -707,7 +707,7 @@ def run_demo(
         help="Local execution timeout for the generated demo runner.",
     ),
 ) -> None:
-    """Run one local MVP demo from generated code to evidence-backed report."""
+    """Run one local demo or public benchmark from code to evidence-backed report."""
 
     try:
         result = run_scientistbench_demo(
@@ -1002,7 +1002,7 @@ def autopilot(
     ] = "autopilot-demo",
     demo: Annotated[
         str,
-        typer.Option("--demo", help="ScientistBench-Lite demo to execute in each cycle."),
+        typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
     ] = "tabular_baseline",
     max_queries: Annotated[
         int,
@@ -1123,7 +1123,7 @@ def serve(
     ] = "autopilot-demo",
     demo: Annotated[
         str,
-        typer.Option("--demo", help="ScientistBench-Lite demo to execute in each cycle."),
+        typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
     ] = "tabular_baseline",
     max_queries: Annotated[
         int,

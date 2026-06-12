@@ -932,6 +932,11 @@ def _detect_data_path(experiment_dir: Path | None, task_id: str) -> Path | None:
 
 def _is_synthetic_demo(run_record: dict[str, Any], experiment_dir: Path | None) -> bool:
     run = _dict(run_record.get("run"))
+    task_metadata = _dict(run_record.get("task_metadata"))
+    metrics_json = _read_json_if_exists(_dict(run_record.get("metrics")).get("path"))
+    metrics_metadata = _dict(metrics_json.get("metadata"))
+    if task_metadata.get("real_dataset") is True or metrics_metadata.get("real_dataset") is True:
+        return False
     task_id = _text(run.get("task_id")).casefold()
     project_id = _text(run.get("project_id")).casefold()
     if "scientistbench-lite" in project_id or task_id in {"tabular_baseline", "text_classifier_stub"}:
@@ -957,6 +962,12 @@ def _has_baseline_evidence(run_record: dict[str, Any]) -> bool:
 
 
 def _has_ablation_evidence(run_record: dict[str, Any]) -> bool:
+    task_metadata = _dict(run_record.get("task_metadata"))
+    if _text(task_metadata.get("ablation")):
+        return True
+    artifacts = " ".join(_text(path) for path in _list(run_record.get("artifacts"))).casefold()
+    if "ablation" in artifacts:
+        return True
     text = json.dumps(run_record, sort_keys=True).casefold()
     return "ablation" in text
 

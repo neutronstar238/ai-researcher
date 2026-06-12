@@ -1075,6 +1075,17 @@ A task can be checked only when all applicable items are true:
     - _References: user request to understand how HKUDS AI-Researcher differs from this project and verify whether the upstream project is open-source._
     - _Verify: web review of upstream repository/README/package metadata/issue #94, focused license notice tests, and text search for the updated reference boundary._
 
+- [x] 63. Add a real public benchmark demo for publication-audit progression
+  - [x] 63.1 Run UCI Pendigits through the local evidence loop
+    - Add an opt-in `pendigits_centroid_baseline` demo that downloads the public UCI Pendigits train/test files at run time instead of vendoring data into the repository.
+    - Merge the downloaded files into a local CSV under ignored `runs/` artifacts and record source URLs, source byte counts, split policy, data hash, metrics, logs, artifacts, and run metadata.
+    - Run a nearest-centroid baseline over all 16 features and a first-8-features ablation, then emit `accuracy`, `macro_f1`, `test_rows`, `train_rows`, `dataset_rows`, ablation accuracy, accuracy delta, and standard error.
+    - Add validation statistical checks so the validation report records a confidence interval and ablation delta for the benchmark result.
+    - Update publication audit logic so real-dataset metadata, ablation metadata/artifacts, and statistical notes satisfy their respective data-evidence gates without weakening literature, similarity, manuscript, or review gates.
+    - Document the benchmark command and UCI dataset license/attribution boundary without claiming the baseline run is publication-ready.
+    - _References: user requirement that the system verify scripts really run on real data and that CCF-B/Q3-level quality gates distinguish data evidence from unsupported paper claims._
+    - _Verify: focused unit tests, ruff, mypy, full smoke/unit tests, live `run-demo --demo pendigits_centroid_baseline`, and live `serve --once --demo pendigits_centroid_baseline --review` showing script/data/baseline/ablation/statistical gates pass while publication audit still blocks weak literature/manuscript coverage._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

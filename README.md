@@ -185,7 +185,16 @@ Autopilot one-command loop:
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, publication-readiness audit, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; the publication audit is deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
+After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local demo or public benchmark experiment, optional live LLM evidence review, publication-readiness audit, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; the publication audit is deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
+
+Real benchmark opt-in:
+
+```bash
+poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
+poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 60
+```
+
+The `pendigits_centroid_baseline` demo downloads the UCI Pen-Based Recognition of Handwritten Digits train/test files at run time, writes a local merged CSV under `runs/`, evaluates a nearest-centroid baseline and first-8-features ablation, and records source URLs, data hash, metrics, confidence interval, and validation artifacts. It is a stronger evidence check than the toy demos, but it is still only a baseline benchmark run; the publication audit must still pass literature breadth, similar-work breadth, manuscript structure, and reviewer gates before any publication-level claim.
 
 Skill evolution candidates:
 
@@ -243,7 +252,7 @@ poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summar
   --project-id demo_project
 ```
 
-This is a higher bar than `llm-review`: it checks whether the cycle actually executed script/data artifacts, whether validated data are strong enough, whether cross-source literature and similar-work search are broad enough, whether source failures such as Semantic Scholar 429s reduce novelty coverage, whether the report has paper-level sections, and whether baseline/ablation/statistical sanity evidence exists. `ccf-b` and `q3-journal` targets reject synthetic ScientistBench-Lite toy runs by design. Failed audits write `publication-audit` review and issue notes into the Obsidian project memory so the self-loop can queue follow-up work.
+This is a higher bar than `llm-review`: it checks whether the cycle actually executed script/data artifacts, whether validated data are strong enough, whether cross-source literature and similar-work search are broad enough, whether source failures such as Semantic Scholar 429s reduce novelty coverage, whether the report has paper-level sections, and whether baseline/ablation/statistical sanity evidence exists. `ccf-b` and `q3-journal` targets reject synthetic ScientistBench-Lite toy runs by design, and they can still reject real benchmark runs if novelty search, manuscript structure, or evidence breadth are weak. Failed audits write `publication-audit` review and issue notes into the Obsidian project memory so the self-loop can queue follow-up work.
 
 Run the local quality gate:
 

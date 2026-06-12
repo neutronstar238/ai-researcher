@@ -124,7 +124,16 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、发表级质量审计、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；发表级审计会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、可选真实 LLM 证据评审、发表级质量审计、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；发表级审计会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
+
+真实 benchmark 可选运行：
+
+```bash
+poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
+poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 60
+```
+
+`pendigits_centroid_baseline` 会在运行时下载 UCI Pen-Based Recognition of Handwritten Digits 的官方 train/test 文件，在 `runs/` 下写入本地合并 CSV，运行 nearest-centroid baseline 和 first-8-features ablation，并记录来源 URL、数据 hash、指标、置信区间和验证产物。它比玩具 demo 更接近真实证据检查，但仍只是一个 baseline benchmark；只有当文献广度、相似工作广度、论文结构和评审门也通过后，系统才允许发表级声明。
 
 Skill evolution 候选：
 
@@ -182,7 +191,7 @@ poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summar
   --project-id demo_project
 ```
 
-这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，以及 baseline、ablation、统计 sanity 是否有证据。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
+这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，以及 baseline、ablation、统计 sanity 是否有证据。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、论文结构或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
 
 运行本地质量门：
 
@@ -204,6 +213,7 @@ poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.
 ```bash
 poetry run airesearcher doctor
 poetry run airesearcher run-demo --demo tabular_baseline
+poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
 poetry run airesearcher validate-package --manifest <path>
 ```
 

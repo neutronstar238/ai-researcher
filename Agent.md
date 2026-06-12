@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:10:40 +08:00 - Codex - Task 63 real public benchmark demo
+
+- Request: Verify that the system really writes and runs experiment scripts on real data, not only local toy smoke tests; add a real public benchmark path that helps the publication audit distinguish data-side evidence from remaining publication blockers.
+- Files changed:
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `CHANGELOG.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added the opt-in `pendigits_centroid_baseline` demo, which downloads the UCI Pendigits train/test files at run time, merges them into a local CSV, runs a nearest-centroid baseline, runs a first-8-features ablation, and writes metrics, predictions, summary, validation notes, and `dataset_sources.json`.
+  - Recorded real dataset metadata, CC BY 4.0 license, source URLs, raw file byte counts, SHA-256 hashes, baseline/ablation metadata, 3498-test-row data strength, and statistical sanity checks in the run artifacts and run record.
+  - Updated the demo workflow so publication audit can see task metadata and statistical notes without treating the real benchmark as a synthetic ScientistBench-Lite fixture.
+  - Updated publication audit logic so real-dataset metadata, baseline evidence, ablation artifacts, and statistical sanity pass while literature breadth, source breadth, similarity breadth, and manuscript-structure gates can still block publication claims.
+  - Updated bilingual README and third-party notices so users know the real benchmark is stronger than toy demos but still not publishable by itself.
+  - Marked task `63.1` complete in `tasks.md`.
+- Verification:
+  - Web check: UCI Pendigits dataset page reviewed; it reports 10992 instances, 16 features, the official citation, DOI `10.24432/C5MG6K`, and CC BY 4.0 license.
+  - Focused tests: `poetry run pytest tests/unit/experiments/test_demos.py tests/unit/reports/test_publication_audit.py tests/unit/compliance/test_licenses.py -q`: passed with 14 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 90 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 330 tests and 4 live smoke tests skipped.
+  - `git diff --check`: passed with only LF/CRLF warnings.
+  - Real network/data run: `poetry run airesearcher run-demo --demo pendigits_centroid_baseline --output-dir runs\manual-live\pendigits-sha --timeout-seconds 60` exited 0, downloaded `pendigits.tra` and `pendigits.tes`, wrote SHA-256 hashes, produced accuracy `0.777587`, macro-F1 `0.770565`, test rows `3498`, train rows `7494`, ablation accuracy `0.624071`, and validation status `passed`.
+  - Real full-loop run: `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_pendigits_sha_20260613 --demo pendigits_centroid_baseline --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 60 --output-dir runs\manual-live\serve-pendigits-sha --cache .cache\live-pendigits-sha-20260613 --state .airesearcher\scheduler-state-live-pendigits-sha.json --approvals-state .airesearcher\runtime-approvals-live-pendigits-sha.json --min-quality-score 0.85` exited 0 with LLM review `passed`, quality score `1.0`, publication audit `fail`, and one self-loop follow-up task.
+  - Real publication audit result: `runs/manual-live/serve-pendigits-sha/cycle-20260612T170946Z/publication-audit.json` passed script/data verification, data strength, dataset realism, baseline reproduction, ablation coverage, statistical sanity, and LLM evidence review; it correctly failed literature document breadth, literature source breadth, Semantic Scholar 429/source errors, similarity query/source breadth, and manuscript structure.
+- Problems:
+  - Updated `P-20260613-004` with the new real benchmark evidence and remaining publication blockers.
+- Follow-up:
+  - Add another public academic source or configure Semantic Scholar API access, improve project-start similarity query generation to reach four distinct useful queries, and generate paper-structured drafts only after retrieval breadth and method novelty evidence improve.
+
 ### 2026-06-13 00:52:01 +08:00 - Codex - Task 62 HKUDS AI-Researcher license and differentiation review
 
 - Request: Understand how HKUDS AI-Researcher differs from this project and verify whether that upstream project is open-source before using it as a reference.

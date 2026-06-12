@@ -51,6 +51,7 @@ Target version: `0.1.0`.
 - `airesearcher channels openclaw init|list` for repository-tracked OpenClaw communication channel mount metadata.
 - `integrations/openclaw/channels.json` runbook for official/common OpenClaw Lark/Feishu, Weixin, WeCom, Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo channels.
 - `airesearcher publication-audit` for CCF-B/Q3-style publication-readiness gating over completed cycle summaries, including script/data verification, cross-source literature breadth, similar-work coverage, data strength, baseline/ablation/statistical sanity checks, manuscript structure, and Obsidian review/issue writing.
+- Opt-in `pendigits_centroid_baseline` public benchmark demo that downloads the UCI Pendigits train/test files at run time, writes a merged CSV under ignored `runs/` artifacts, runs a nearest-centroid baseline plus first-8-features ablation, and records source metadata, data hash, confidence interval, validation report, evidence map, and run record.
 - `/research:serve`, `/research:publication-audit`, `/research:approve`, and `/research:openclaw-channels` slash command templates.
 
 ### Changed
@@ -73,6 +74,8 @@ Target version: `0.1.0`.
 - LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
 - README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.
 - Autopilot cycles now run a strict publication-readiness audit after the evidence review and before self-loop follow-up task discovery, so toy-data cycles are recorded as not publishable rather than being mistaken for CCF-B/Q3-ready papers.
+- `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
+- The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 
 ### Fixed
 
@@ -103,6 +106,7 @@ Target version: `0.1.0`.
 - Docker Desktop must be running before Docker Compose verification can access the local engine.
 - Some live literature and similarity smoke tests are intentionally skipped unless the live-test environment is configured; live external behavior must be verified before claiming those features are production-ready.
 - Poetry reports non-blocking metadata deprecation warnings for the existing `[tool.poetry]` layout; package metadata is still accepted by `poetry check`.
+- Live CCF-B publication audits can still fail real benchmark cycles when Semantic Scholar rate limits reduce source breadth or when the generated report is not yet a paper-structured manuscript.
 
 ### Verification Snapshot
 

@@ -10,15 +10,17 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.experiments.demos import (
+    PENDIGITS_CENTROID_BASELINE_TASK_ID,
     TABULAR_BASELINE_TASK_ID,
     TEXT_CLASSIFIER_STUB_TASK_ID,
+    generate_pendigits_centroid_baseline_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
 )
 from autoresearch.experiments.evidence import bind_metrics_to_evidence
 from autoresearch.experiments.executor import execute_experiment_task
 from autoresearch.experiments.results import collect_result_bundle
-from autoresearch.experiments.validation import validate_result_bundle
+from autoresearch.experiments.validation import StatisticalCheck, validate_result_bundle
 from autoresearch.reports import (
     ReportContext,
     assert_report_readable,
@@ -49,7 +51,7 @@ def run_scientistbench_demo(
     timeout_seconds: int = 30,
     commit_sha: str | None = None,
 ) -> DemoWorkflowResult:
-    """Run one ScientistBench-Lite demo through the local MVP loop."""
+    """Run one local demo or public benchmark through the local MVP loop."""
 
     experiment_dir, task = _generate_demo(demo, Path(output_dir), timeout_seconds)
     run = execute_experiment_task(
@@ -73,6 +75,7 @@ def run_scientistbench_demo(
         expected_metrics=task.metrics,
         metric_bounds=_metric_bounds(demo),
         expected_artifacts=_expected_artifacts(task),
+        statistical_checks=_statistical_checks(demo, bundle),
     )
     evidence_edges = bind_metrics_to_evidence(
         bundle,
@@ -82,6 +85,7 @@ def run_scientistbench_demo(
     report_context = _report_context(task, run, bundle, validation, evidence_edges, output_dir)
     run_record_path = _write_run_record(
         experiment_dir,
+        task,
         run,
         bundle,
         validation,
@@ -122,6 +126,11 @@ def _generate_demo(
             output_dir,
             timeout_seconds=timeout_seconds,
         )
+    if demo == PENDIGITS_CENTROID_BASELINE_TASK_ID:
+        return generate_pendigits_centroid_baseline_demo(
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
     msg = f"unknown demo {demo!r}"
     raise ValueError(msg)
 
@@ -159,11 +168,43 @@ def _metric_bounds(demo: str) -> dict[str, tuple[float | None, float | None]]:
             "accuracy": (0.0, 1.0),
             "test_rows": (1.0, None),
         }
+    if demo == PENDIGITS_CENTROID_BASELINE_TASK_ID:
+        return {
+            "accuracy": (0.0, 1.0),
+            "macro_f1": (0.0, 1.0),
+            "test_rows": (1000.0, None),
+            "train_rows": (1000.0, None),
+            "dataset_rows": (1000.0, None),
+            "class_count": (2.0, None),
+            "ablation_accuracy_first8": (0.0, 1.0),
+            "accuracy_delta_vs_ablation": (-1.0, 1.0),
+            "accuracy_standard_error": (0.0, 1.0),
+        }
     return {
         "accuracy": (0.0, 1.0),
         "test_rows": (1.0, None),
         "vocabulary_size": (1.0, None),
     }
+
+
+def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
+    if demo != PENDIGITS_CENTROID_BASELINE_TASK_ID:
+        return []
+    test_rows = int(float(bundle.metrics.get("test_rows", 0.0) or 0.0))
+    accuracy = float(bundle.metrics.get("accuracy", 0.0) or 0.0)
+    standard_error = float(bundle.metrics.get("accuracy_standard_error", 0.0) or 0.0)
+    ablation_accuracy = float(bundle.metrics.get("ablation_accuracy_first8", 0.0) or 0.0)
+    return [
+        StatisticalCheck(
+            metric_name="accuracy",
+            sample_size=test_rows,
+            mean=accuracy,
+            standard_error=standard_error,
+            baseline_mean=ablation_accuracy,
+            comparison_mean=accuracy,
+            min_sample_size=1000,
+        )
+    ]
 
 
 def _expected_artifacts(task: ExperimentTask) -> list[Path | str]:
@@ -198,6 +239,7 @@ def _write_evidence_map(
 
 def _write_run_record(
     experiment_dir: Path,
+    task: ExperimentTask,
     run: Any,
     bundle: Any,
     validation: Any,
@@ -212,6 +254,7 @@ def _write_run_record(
             "path": run.metrics_path,
             "values": bundle.metrics,
         },
+        "task_metadata": task.metadata,
         "logs": bundle.logs,
         "artifacts": bundle.artifacts,
         "validation_report": {
@@ -249,6 +292,42 @@ def _report_context(
     output_dir: Path | str,
 ) -> ReportContext:
     command = f"airesearcher run-demo --demo {task.id} --output-dir {Path(output_dir)}"
+    if task.id == PENDIGITS_CENTROID_BASELINE_TASK_ID:
+        return ReportContext(
+            title="UCI Pendigits Centroid Baseline Report",
+            question=(
+                "Can AI-Researcher run a real public benchmark script, validate "
+                "source-backed data and metrics, and preserve enough evidence for "
+                "publication-quality auditing?"
+            ),
+            literature_summary=(
+                "This is an opt-in real benchmark check using the UCI Pendigits "
+                "train/test files fetched by the experiment script. It does not "
+                "replace broader online related-work retrieval or novelty search."
+            ),
+            hypothesis=(
+                "A nearest-centroid baseline should produce bounded metrics on the "
+                "official Pendigits test split, while a first-8-features ablation "
+                "should provide mechanism-comparison evidence and statistical sanity."
+            ),
+            experiment_design=task.description,
+            run=run,
+            results=bundle,
+            validation=validation,
+            evidence_edges=evidence_edges,
+            reproduction_command=command,
+            python_version=sys.version.split()[0],
+            dependency_lock_status=_dependency_lock_status(),
+            limitations=[
+                "Single public benchmark and simple baseline only; this is not enough "
+                "for a CCF-B/Q3 submission without broader literature positioning, "
+                "stronger methods, repeated runs, and manuscript-quality writing.",
+            ],
+            next_steps=[
+                "Use the publication audit output to drive broader source retrieval, "
+                "method improvements, and paper-structured drafting.",
+            ],
+        )
     return ReportContext(
         title=f"ScientistBench-Lite {task.id} Report",
         question=f"Can the local demo task `{task.id}` complete the MVP loop?",
