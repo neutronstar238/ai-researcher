@@ -9,15 +9,22 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 REQUIRED_HEADING_ORDER = (
+    "## Abstract",
+    "## Introduction",
+    "## Related Work",
     "## Question",
     "## Literature Summary",
     "## Hypothesis",
+    "## Method",
     "## Experiment Design",
+    "## Experiments",
     "## Run Metadata",
     "## Reproducibility",
     "## Results",
     "## Validation",
     "## Limitations",
+    "## Conclusion",
+    "## References",
     "## Next Steps",
 )
 

@@ -67,6 +67,22 @@ def test_publication_audit_accepts_real_benchmark_data_evidence_but_keeps_manusc
     assert checks["manuscript_structure"].status.value == "fail"
 
 
+def test_publication_audit_passes_manuscript_gate_for_paper_style_report(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["manuscript_structure"].status.value == "pass"
+    assert report.verdict is PublicationAuditVerdict.PASS
+    assert report.publishable is True
+
+
 def _write_toy_cycle(tmp_path: Path) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-test"
     experiment_dir = cycle_dir / "demo" / "tabular-baseline"
@@ -212,6 +228,51 @@ def _write_toy_cycle(tmp_path: Path) -> Path:
     summary_path = cycle_dir / "cycle-summary.json"
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")
     return summary_path
+
+
+def _paper_style_report() -> str:
+    return "\n".join(
+        [
+            "# UCI Pendigits Baseline Report",
+            "",
+            "## Abstract",
+            "",
+            "Evidence-backed abstract.",
+            "",
+            "## Introduction",
+            "",
+            "Evidence-backed introduction.",
+            "",
+            "## Related Work",
+            "",
+            "Source-backed related work.",
+            "",
+            "## Method",
+            "",
+            "Executed method.",
+            "",
+            "## Experiments",
+            "",
+            "Executed experiments.",
+            "",
+            "## Results",
+            "",
+            "- accuracy = 0.91",
+            "",
+            "## Limitations",
+            "",
+            "- Baseline-only benchmark.",
+            "",
+            "## Conclusion",
+            "",
+            "Bounded conclusion.",
+            "",
+            "## References",
+            "",
+            "- Source-backed references.",
+            "",
+        ]
+    )
 
 
 def _write_real_benchmark_cycle(tmp_path: Path) -> Path:

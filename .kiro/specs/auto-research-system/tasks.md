@@ -1134,6 +1134,36 @@ A task can be checked only when all applicable items are true:
     - _References: user question about whether a coding agent should combine cc-switch with Claude Code CLI to share this project's API model while keeping AI-Researcher validation authority._
     - _Verify: web review of cc-switch repository/license/provider docs and Claude Code model config docs, focused cc-switch integration tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, and CI._
 
+- [x] 69. Generate evidence-backed paper-style Markdown reports
+  - [x] 69.1 Make demo reports satisfy manuscript-structure audit without weakening evidence gates
+    - Extend `generate_markdown_report` so the run report includes publication-style sections: Abstract, Introduction, Related Work, Method, Experiments, Results, Limitations, Conclusion, and References.
+    - Preserve the existing Question, Literature Summary, Hypothesis, Experiment Design, Run Metadata, Reproducibility, Results, Validation, Limitations, and Next Steps evidence blocks so deterministic readability and metric-evidence checks still apply.
+    - Keep quantitative result lines bound to evidence edges; do not infer novelty, significance, or publication readiness from the manuscript structure alone.
+    - Treat this Markdown report as the Obsidian-readable evidence manuscript, not as the final paper-level artifact.
+    - Update report lint expectations and publication audit tests so manuscript structure can pass only when required sections are actually present.
+    - Run a real `serve --once --review --demo pendigits_centroid_baseline` cycle and confirm `manuscript_structure` passes while true source failures still keep the audit at `needs_revision`.
+    - _References: `P-20260613-004`, where the live default-width publication audit passed literature breadth, similarity breadth, data/script/baseline/ablation/statistical/reviewer gates but still failed manuscript structure._
+    - _Verify: focused report tests, report ruff/mypy checks, full smoke/unit tests, and live `serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review` showing manuscript structure passes without hiding Semantic Scholar 429 source errors._
+
+- [ ] 70. Add LaTeX template compatibility testing for paper delivery
+  - [ ] 70.1 Start with generic journal single-column and double-column templates
+    - Add a LaTeX template registry that distinguishes built-in generic templates from externally fetched official templates.
+    - Generate smoke manuscripts with the same required paper sections used by the Markdown manuscript audit.
+    - Keep process data, experiment records, evidence summaries, and final run summaries as Markdown entries in `autoresearch-vault/`.
+    - Define the final paper-level artifact as a template-specific LaTeX build that produces a PDF, not merely a Markdown report.
+    - Compile generic single-column and double-column article templates when a LaTeX engine is available; otherwise emit a structured skipped compatibility result.
+    - Preserve compile logs and template provenance under ignored run artifacts, not as vendored template source.
+    - _References: user requirement that paper structure should be tested against real LaTeX templates, starting with generic journal single/double-column templates._
+    - _Verify: unit tests for registry/rendering/result schema plus a local compile smoke or an explicit skipped result when no TeX engine is installed._
+
+  - [ ] 70.2 Expand template compatibility to selected conference and publisher templates
+    - Fetch official or canonical template sources/metadata for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl` from their current public template locations.
+    - Respect upstream licenses and notices; do not vendor template packages into the repository unless license and attribution requirements are explicitly satisfied.
+    - Add a compatibility matrix report with status, source URL, fetched timestamp, engine, compile command, log path, and failure reason.
+    - Keep source fetching rate-limited and cached, and mark unavailable templates as `source_unavailable` rather than fabricating compatibility.
+    - _References: user requirement to later expand beyond generic templates to partial conference template compatibility._
+    - _Verify: web/source review, notice updates, focused template tests, and at least one live fetch/compile or source-unavailable result per configured external template._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1329,7 +1359,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 37,
-      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1", "67.1", "68.1"]
+      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1", "67.1", "68.1", "69.1", "70.1", "70.2"]
     }
   ]
 }

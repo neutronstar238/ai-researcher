@@ -25,15 +25,22 @@ def test_generate_markdown_report_contains_required_sections_and_evidence_links(
     markdown = generate_markdown_report(context, output_path=output_path)
 
     for heading in [
+        "## Abstract",
+        "## Introduction",
+        "## Related Work",
         "## Question",
         "## Literature Summary",
         "## Hypothesis",
+        "## Method",
         "## Experiment Design",
+        "## Experiments",
         "## Run Metadata",
         "## Reproducibility",
         "## Results",
         "## Validation",
         "## Limitations",
+        "## Conclusion",
+        "## References",
         "## Next Steps",
     ]:
         assert heading in markdown
@@ -46,6 +53,8 @@ def test_generate_markdown_report_contains_required_sections_and_evidence_links(
     assert "- Commit SHA: `abc123`" in markdown
     assert "- Config hash: `config-hash`" in markdown
     assert "- Data hash: `data-hash`" in markdown
+    assert "- Validation report: `validation/validation-report.json`" in markdown
+    assert "- Evidence `evidence_accuracy`: `metrics.json`" in markdown
     assert output_path.read_text(encoding="utf-8") == markdown
 
 

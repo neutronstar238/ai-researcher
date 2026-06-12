@@ -204,7 +204,7 @@ poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summar
   --project-id demo_project
 ```
 
-这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，以及 baseline、ablation、统计 sanity 是否有证据。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、论文结构或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
+这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，以及 baseline、ablation、统计 sanity 是否有证据。当前生成的 Markdown 报告已经包含论文式章节，同时保留指标到 evidence edge 的绑定，并保持 Obsidian 可读；过程数据、总结、证据 note 和最终 cycle summary 仍应以 Markdown 写入 `autoresearch-vault/`。真正的论文级最终产物不是 Markdown 证据稿，而是由对应 LaTeX 模板编译出的 PDF；LaTeX 期刊/会议模板兼容性会作为独立交付门继续测试。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、来源覆盖、模板兼容性或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
 
 运行本地质量门：
 

@@ -68,6 +68,18 @@ def _render_markdown(context: ReportContext) -> str:
     sections = [
         f"# {context.title}",
         "",
+        "## Abstract",
+        "",
+        *_abstract_lines(),
+        "",
+        "## Introduction",
+        "",
+        *_introduction_lines(context),
+        "",
+        "## Related Work",
+        "",
+        *_related_work_lines(context),
+        "",
         "## Question",
         "",
         context.question,
@@ -80,9 +92,17 @@ def _render_markdown(context: ReportContext) -> str:
         "",
         context.hypothesis,
         "",
+        "## Method",
+        "",
+        *_method_lines(context),
+        "",
         "## Experiment Design",
         "",
         context.experiment_design,
+        "",
+        "## Experiments",
+        "",
+        *_experiments_intro_lines(),
         "",
         "## Run Metadata",
         "",
@@ -104,12 +124,106 @@ def _render_markdown(context: ReportContext) -> str:
         "",
         *_bullet_lines(context.limitations),
         "",
+        "## Conclusion",
+        "",
+        *_conclusion_lines(context),
+        "",
+        "## References",
+        "",
+        *_reference_lines(context),
+        "",
         "## Next Steps",
         "",
         *_bullet_lines(context.next_steps),
         "",
     ]
     return "\n".join(sections)
+
+
+def _abstract_lines() -> list[str]:
+    return [
+        (
+            "This draft reports a validated AI-Researcher experiment and keeps "
+            "quantitative conclusions bound to the evidence-linked Results "
+            "section. It does not claim publication-level novelty or generality "
+            "unless the separate publication audit and source coverage checks pass."
+        ),
+    ]
+
+
+def _introduction_lines(context: ReportContext) -> list[str]:
+    return [
+        context.question,
+        "",
+        (
+            "The goal is to make the research loop auditable: the report connects "
+            "the research question, hypothesis, executable run metadata, validated "
+            "metrics, limitations, and follow-up work without inventing unsupported "
+            "findings."
+        ),
+    ]
+
+
+def _related_work_lines(context: ReportContext) -> list[str]:
+    return [
+        context.literature_summary,
+        "",
+        (
+            "This section is limited to the supplied source-backed literature "
+            "summary. A submission-quality manuscript still requires the retrieval "
+            "and citation validators to attach full bibliographic records."
+        ),
+    ]
+
+
+def _method_lines(context: ReportContext) -> list[str]:
+    return [
+        context.experiment_design,
+        "",
+        (
+            "The method description is restricted to the executed experiment "
+            "configuration and reproducibility metadata below; unexecuted variants "
+            "must remain future work."
+        ),
+    ]
+
+
+def _experiments_intro_lines() -> list[str]:
+    return [
+        (
+            "The following subsections preserve the run metadata, reproduction "
+            "command, evidence-linked metrics, and validation output used by the "
+            "audit gates."
+        ),
+    ]
+
+
+def _conclusion_lines(context: ReportContext) -> list[str]:
+    if context.results.metrics:
+        return [
+            (
+                "The completed run produced evidence-linked metrics and a validation "
+                "report. These results support only the bounded experimental claims "
+                "listed in this report; broader novelty, robustness, and publication "
+                "readiness remain subject to the publication audit."
+            )
+        ]
+    return [
+        (
+            "No quantitative result was collected, so this draft cannot support an "
+            "empirical claim beyond recording the attempted workflow."
+        )
+    ]
+
+
+def _reference_lines(context: ReportContext) -> list[str]:
+    lines = [
+        "- Literature context: supplied summary above; full bibliographic records must be provided by the citation pipeline before submission.",
+        f"- Validation report: `{context.validation.json_path}`",
+    ]
+    for edge in sorted(context.evidence_edges, key=lambda item: item.id):
+        lines.append(f"- Evidence `{edge.id}`: `{edge.source_artifact}`")
+    return lines
 
 
 def _run_metadata_lines(run: ExecutionRun) -> list[str]:

@@ -62,6 +62,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 02:06:05 +08:00 - Codex - Task 69 paper-style Markdown manuscript reports
+
+- Request: Continue the AI-Researcher implementation by fixing the publication-audit manuscript-structure blocker without weakening evidence gates; incorporate the user's follow-up that LaTeX template compatibility should become the next separate task.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-69-paper-style-manuscript.md`
+  - `src/autoresearch/reports/generator.py`
+  - `src/autoresearch/reports/lint.py`
+  - `tests/unit/reports/test_lint.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/reports/test_report_generator.py`
+- Summary:
+  - Extended generated Markdown reports with paper-style sections: Abstract, Introduction, Related Work, Method, Experiments, Conclusion, and References.
+  - Preserved the existing evidence-bound result, validation, reproducibility, limitation, and next-step blocks so deterministic metric/evidence checks still apply.
+  - Updated report lint ordering and publication-audit tests so the manuscript gate passes only when required headings are actually present.
+  - Added Task `70` for LaTeX template compatibility: generic single-column/double-column article smoke first, then official/canonical IEEEtran, ACM `acmart`, and Springer Nature template fetch/compile compatibility.
+  - Recorded the user constraint that process data and final run summaries should remain Markdown in the Obsidian vault, while final paper-level output must be a template-specific LaTeX build that compiles to PDF.
+  - Added an Obsidian project progress note with the live Task `69.1` audit result and the remaining Task `70` PDF-template handoff.
+  - Updated README, Chinese README, changelog, and `Problem.md` to state that Markdown manuscript structure now passes, while LaTeX template compatibility and Semantic Scholar/source stability remain separate gates.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_report_generator.py tests/unit/reports/test_lint.py tests/unit/reports/test_publication_audit.py -q`: passed with 14 tests.
+  - `poetry run ruff check src\autoresearch\reports tests\unit\reports`: initially failed with two unused helper arguments, then passed after cleanup.
+  - `poetry run mypy src\autoresearch\reports`: passed with 14 source files.
+  - `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_paper_structure_20260613 --review --demo pendigits_centroid_baseline --timeout-seconds 60 --output-dir runs\manual-live\serve-paper-structure --cache .cache\live-paper-structure --state .airesearcher\scheduler-state-live-paper-structure.json --approvals-state .airesearcher\runtime-approvals-live-paper-structure.json --min-quality-score 0.85`: exited 0 and wrote `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/publication-audit.json`.
+  - Live audit result: verdict `needs_revision`, score `0.8909`, `manuscript_structure=pass`, literature document breadth 30/20 pass, similarity findings 33/10 pass, data/script/baseline/ablation/statistical/LLM-review gates pass, but Semantic Scholar 429/circuit source errors still fail high-severity literature and similarity source-error checks.
+  - `Select-String` over the live generated report confirmed `## Abstract`, `## Introduction`, `## Related Work`, `## Method`, `## Experiments`, `## Results`, `## Limitations`, `## Conclusion`, `## References`, and evidence-linked metric lines.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with 91 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 341 tests and 4 skipped.
+  - `rg -n "Obsidian-readable|template-specific LaTeX build|compiles to PDF|真正的论文级最终产物|Markdown remains|final paper-level artifact|LaTeX template" ...`: confirmed task plan, README files, changelog, and agent log contain the Markdown/Obsidian and LaTeX/PDF boundary.
+- Problems:
+  - `P-20260613-004` updated with live Task `69.1` evidence and remaining blockers.
+- Follow-up:
+  - Complete Task `70.1` by adding LaTeX template compatibility registry/rendering/compile smoke for generic single-column and double-column article templates, then expand to external official templates in `70.2`.
+
 ### 2026-06-13 01:53:55 +08:00 - Codex - Task 68 cc-switch code-agent boundary
 
 - Request: Continue project implementation by turning the cc-switch / Claude Code idea into a concrete integration boundary where Claude Code can draft code through shared provider routing while AI-Researcher retains validation authority.
