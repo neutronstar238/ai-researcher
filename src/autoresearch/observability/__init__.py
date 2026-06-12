@@ -11,6 +11,19 @@ from .dashboard import (
     export_local_dashboard_html,
     export_local_status_report,
 )
+from .health import (
+    QueueLatencySample,
+    SchedulerHealthInput,
+    ServiceHealthReport,
+    ServiceHealthReportArtifact,
+    ServiceHealthStatus,
+    ServiceHealthThresholds,
+    SlaMetric,
+    ValidatorLatencySample,
+    build_service_health_report,
+    export_service_health_report,
+    render_service_health_markdown,
+)
 from .logging import configure_logging, get_logger
 from .metrics import SystemMetricsInput, SystemMetricSnapshot, compute_system_metrics
 
@@ -23,13 +36,24 @@ __all__ = [
     "LocalDashboardHtml",
     "LocalStatusReport",
     "ProjectStatusSummary",
+    "QueueLatencySample",
     "RunStatusSummary",
+    "SchedulerHealthInput",
+    "ServiceHealthReport",
+    "ServiceHealthReportArtifact",
+    "ServiceHealthStatus",
+    "ServiceHealthThresholds",
+    "SlaMetric",
     "SystemMetricSnapshot",
     "SystemMetricsInput",
+    "ValidatorLatencySample",
+    "build_service_health_report",
     "compute_system_metrics",
     "configure_logging",
     "default_audit_log_path",
     "export_local_dashboard_html",
     "export_local_status_report",
+    "export_service_health_report",
     "get_logger",
+    "render_service_health_markdown",
 ]

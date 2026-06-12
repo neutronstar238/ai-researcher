@@ -746,7 +746,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 8_
     - _Verify: chart lint passes when chart exists._
 
-- [ ] 35. Add compliance, cost, and SLA controls
+- [x] 35. Add compliance, cost, and SLA controls
   - [x] 35.1 Add license scanner integration
     - Check datasets, third-party code, and generated packages for license metadata.
     - _References: RP 11, EP 17_
@@ -757,7 +757,7 @@ A task can be checked only when all applicable items are true:
     - _References: EP 11, EP 15_
     - _Verify: cost alert triggers at 80 percent threshold._
 
-  - [ ] 35.3 Add service health and SLA metrics
+  - [x] 35.3 Add service health and SLA metrics
     - Track queue latency, run failure rate, validator latency, dashboard health, and scheduler health.
     - _References: EP 8, EP 15_
     - _Verify: health endpoint or report includes all metrics._

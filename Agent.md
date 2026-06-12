@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:06:39 +08:00 - Codex - Task 35.3 service health and SLA metrics
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `35.3`, adding service health and SLA metrics for queue latency, run failure rate, validator latency, dashboard health, and scheduler health.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/observability/health.py`
+  - `tests/unit/observability/test_health.py`
+- Summary:
+  - Added `autoresearch.observability.health` for local service health reporting.
+  - Added structured inputs for queue latency samples, validator latency samples, and scheduler health state.
+  - Added SLA thresholds and per-metric statuses for healthy, warning, and critical states.
+  - Added health metrics for queue latency, run failure rate, validator latency, dashboard health, and scheduler health.
+  - Added Markdown rendering and export for the service health report.
+  - Exported health report APIs from `autoresearch.observability`.
+  - Added tests that assert the generated report includes all required task metrics.
+  - Marked task `35.3` and parent task `35` complete in `tasks.md`.
+  - No external live call was applicable for this local observability report task.
+- Verification:
+  - `poetry run ruff check src/autoresearch/observability/health.py src/autoresearch/observability/__init__.py tests/unit/observability/test_health.py`: passed.
+  - `poetry run pytest tests/unit/observability/test_health.py -vv`: passed, 2 tests.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 295 passed and 3 skipped.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this task.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with task `36.1` license selection for public release.
+
 ### 2026-06-12 14:00:14 +08:00 - Codex - Task 35.2 cost management
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `35.2`, adding project budget, GPU hour, API token cost, storage cost, and alert management.
