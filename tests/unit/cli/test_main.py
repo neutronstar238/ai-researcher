@@ -269,6 +269,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
+    assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
@@ -280,6 +281,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
+    assert "/research:paper-build" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
@@ -299,6 +301,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher code-agents cc-switch init" in (
         commands_dir / "research" / "code-agent-backends.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher paper-build" in (
+        commands_dir / "research" / "paper-build.toml"
     ).read_text(encoding="utf-8")
 
 
@@ -342,6 +347,62 @@ def test_publication_audit_command_reports_and_can_fail_gate(
     assert fail_result.exit_code == 1
     assert captured["cycle_summary_path"] == summary_path
     assert captured["target"] == "ccf-b"
+
+
+def test_paper_build_command_reports_compiled_artifact(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    report_path = tmp_path / "report.md"
+    report_path.write_text("# Demo\n", encoding="utf-8")
+
+    def fake_build_latex_paper_from_markdown(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["markdown_path"] == report_path
+        assert kwargs["template_id"] == "generic-article-two-column"
+        assert kwargs["authors"] == ("Ada", "Grace")
+        assert kwargs["vault_root"] == tmp_path / "vault"
+        assert kwargs["project_id"] == "demo_project"
+        return SimpleNamespace(
+            status=cli_main.LatexPaperBuildStatus.COMPILED,
+            template=SimpleNamespace(id="generic-article-two-column"),
+            tex_path="runs/paper/main.tex",
+            pdf_path="runs/paper/main.pdf",
+            markdown_path="runs/paper/paper-build.md",
+            json_path="runs/paper/paper-build.json",
+            vault_markdown_path="vault/projects/demo_project/paper/paper-build.md",
+            missing_sections=(),
+        )
+
+    monkeypatch.setattr(
+        cli_main,
+        "build_latex_paper_from_markdown",
+        fake_build_latex_paper_from_markdown,
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "paper-build",
+            str(report_path),
+            "--output-dir",
+            str(tmp_path / "paper"),
+            "--template-id",
+            "generic-article-two-column",
+            "--author",
+            "Ada",
+            "--author",
+            "Grace",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--project-id",
+            "demo_project",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] paper_build: compiled" in result.stdout
+    assert "[OK] pdf: runs/paper/main.pdf" in result.stdout
+    assert "[OK] vault_paper: vault/projects/demo_project/paper/paper-build.md" in result.stdout
 
 
 def test_literature_refresh_command_reports_source_backed_documents(

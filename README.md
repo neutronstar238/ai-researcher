@@ -151,7 +151,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Always-on runtime:
 
@@ -266,6 +266,17 @@ poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summar
 ```
 
 This is a higher bar than `llm-review`: it checks whether the cycle actually executed script/data artifacts, whether validated data are strong enough, whether cross-source literature and similar-work search are broad enough, whether source failures such as Semantic Scholar 429s reduce novelty coverage, whether the report has paper-level sections, and whether baseline/ablation/statistical sanity evidence exists. Generated Markdown reports now include paper-style sections while keeping metrics evidence-bound and Obsidian-readable. Process data, summaries, evidence notes, and final cycle summaries should stay in `autoresearch-vault/` as Markdown; the final paper-level artifact is a LaTeX template build that compiles to PDF, not the Markdown evidence draft. Generic one-column and two-column `article` template smoke tests compile when a local LaTeX engine is available. The external compatibility matrix fetches current source pages for IEEEtran, ACM `acmart`, and Springer Nature, compiles IEEEtran/ACM smoke PDFs when their classes are installed locally, and records Springer Nature `sn-jnl` as `source_unavailable` when `sn-jnl.cls` is absent rather than fabricating compatibility. `ccf-b` and `q3-journal` targets reject synthetic ScientistBench-Lite toy runs by design, and they can still reject real benchmark runs if novelty search, source coverage, template compatibility, or evidence breadth are weak. Failed audits write `publication-audit` review and issue notes into the Obsidian project memory so the self-loop can queue follow-up work.
+
+Build the paper-level LaTeX/PDF artifact from an evidence-bound Markdown report:
+
+```bash
+poetry run airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/report/report.md \
+  --template-id generic-article-one-column \
+  --vault autoresearch-vault \
+  --project-id demo_project
+```
+
+`paper-build` writes generated TeX/PDF/log/JSON artifacts under the selected output directory and writes only the human-readable `paper-build.md` summary into the Obsidian project vault. Missing required paper sections block compilation instead of being filled with invented content.
 
 Run the local quality gate:
 

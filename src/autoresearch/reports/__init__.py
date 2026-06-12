@@ -59,6 +59,11 @@ from .lint import (
     lint_markdown_report,
     lint_metric_consistency,
 )
+from .paper_build import (
+    LatexPaperBuildArtifact,
+    LatexPaperBuildStatus,
+    build_latex_paper_from_markdown,
+)
 from .publication_audit import (
     PublicationAuditCheck,
     PublicationAuditCheckStatus,
@@ -116,6 +121,8 @@ __all__ = [
     "LatexTemplateSourceKind",
     "LatexTemplateSourceMetadata",
     "LatexTemplateSpec",
+    "LatexPaperBuildArtifact",
+    "LatexPaperBuildStatus",
     "MetricsTableArtifact",
     "MetricsTableInput",
     "PaperDraftVersion",
@@ -154,6 +161,7 @@ __all__ = [
     "assert_metric_consistency",
     "assert_report_readable",
     "audit_publication_quality",
+    "build_latex_paper_from_markdown",
     "create_review_backlog",
     "create_reproducibility_package",
     "generate_bibtex",

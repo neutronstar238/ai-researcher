@@ -41,7 +41,12 @@ from autoresearch.llm import (
     write_llm_review_issue_notes,
     write_llm_review_note,
 )
-from autoresearch.reports import audit_publication_quality, validate_reproducibility_package
+from autoresearch.reports import (
+    LatexPaperBuildStatus,
+    audit_publication_quality,
+    build_latex_paper_from_markdown,
+    validate_reproducibility_package,
+)
 from autoresearch.research import (
     SimilarityCheckConfig,
     link_similarity_report_to_project,
@@ -150,6 +155,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher skill-evolve --parent-skill-id <skill_id> --issue-ref <issue> "
         "--change-summary \"...\" --proposed-action \"...\" --validation-check \"...\"`. "
         "Do not promote the candidate until held-out validation passes.",
+    ),
+    "research/paper-build.toml": (
+        "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
+        "Run `airesearcher paper-build <report.md> --template-id {{args}} --vault autoresearch-vault "
+        "--project-id <project_id>`. Use `generic-article-one-column` when no target venue is chosen. "
+        "Missing paper sections must block compilation rather than being filled with invented content.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -990,6 +1001,75 @@ def publication_audit(
         typer.echo(f"[OK] vault_issue: {report.vault_issue_path}")
     if fail_on_not_publishable and not report.publishable:
         typer.echo("[FAIL] cycle is not publication-ready for the selected target", err=True)
+        raise typer.Exit(1)
+
+
+@app.command("paper-build")
+def paper_build(
+    report_path: Annotated[
+        Path,
+        typer.Argument(help="Evidence-bound Markdown report to convert into a LaTeX paper artifact."),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Directory for paper-build.json, .md, .tex, .log, and .pdf."),
+    ] = Path("runs/paper-build/latest"),
+    template_id: Annotated[
+        str,
+        typer.Option("--template-id", help="Registered LaTeX template id."),
+    ] = "generic-article-one-column",
+    title: Annotated[
+        str | None,
+        typer.Option("--title", help="Override the Markdown H1 title."),
+    ] = None,
+    authors: Annotated[
+        list[str] | None,
+        typer.Option("--author", help="Paper author. Repeat for multiple authors."),
+    ] = None,
+    compile_pdf: Annotated[
+        bool,
+        typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the generated TeX into PDF."),
+    ] = True,
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for paper-build summary."),
+    ] = None,
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Project ID for optional Obsidian paper-build summary."),
+    ] = None,
+    fail_on_not_compiled: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-not-compiled/--no-fail-on-not-compiled",
+            help="Exit with code 1 unless the paper PDF compiled successfully.",
+        ),
+    ] = True,
+) -> None:
+    """Build a LaTeX/PDF paper artifact from an evidence-bound Markdown report."""
+
+    artifact = build_latex_paper_from_markdown(
+        markdown_path=report_path,
+        output_dir=output_dir,
+        template_id=template_id,
+        title=title,
+        authors=tuple(authors or ("AI-Researcher",)),
+        compile_pdf=compile_pdf,
+        vault_root=vault,
+        project_id=project_id,
+    )
+    typer.echo(f"[OK] paper_build: {artifact.status.value}")
+    typer.echo(f"[OK] template: {artifact.template.id}")
+    typer.echo(f"[OK] tex: {artifact.tex_path}")
+    typer.echo(f"[OK] pdf: {artifact.pdf_path or 'none'}")
+    typer.echo(f"[OK] report: {artifact.markdown_path}")
+    typer.echo(f"[OK] json: {artifact.json_path}")
+    if artifact.vault_markdown_path:
+        typer.echo(f"[OK] vault_paper: {artifact.vault_markdown_path}")
+    if artifact.missing_sections:
+        typer.echo("[FAIL] missing_sections: " + ", ".join(artifact.missing_sections), err=True)
+    if fail_on_not_compiled and artifact.status is not LatexPaperBuildStatus.COMPILED:
+        typer.echo("[FAIL] paper PDF did not compile", err=True)
         raise typer.Exit(1)
 
 
