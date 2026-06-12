@@ -1054,6 +1054,18 @@ A task can be checked only when all applicable items are true:
     - _References: user request for OpenClaw-style one-command service, WeChat/Feishu communication, `/approve` dangerous-command approval, and 24h local/server runtime._
     - _Verify: runtime approval unit tests, OpenClaw integration manifest tests, CLI approval/channel tests, slash template tests, ruff, mypy, and full smoke/unit tests pass._
 
+- [x] 61. Add publication-level quality gate for autonomous cycles
+  - [x] 61.1 Audit CCF-B/Q3 readiness instead of trusting loop completion
+    - Add a deterministic publication audit over completed `cycle-summary.json` files.
+    - Verify that experiment scripts actually executed against local data by checking run records, entrypoint existence, data hash, metrics path, artifacts, logs, exit code, and validation status.
+    - Score literature and similar-work cross-search breadth separately from local evidence support.
+    - Treat source failures such as Semantic Scholar 429s as novelty-coverage risks instead of silently passing missing sources.
+    - Require real dataset strength, baseline reproduction, ablation evidence, statistical sanity, and manuscript sections for `ccf-b` and `q3-journal` targets.
+    - Add `airesearcher publication-audit` and `/research:publication-audit`.
+    - Run the publication audit automatically in `autopilot`/`serve` cycles and write failed audits into Obsidian review/issue notes so the self-loop can queue follow-up work.
+    - _References: user requirement that system outputs be strictly checked against CCF-B / Q3 journal quality, real data evidence, broad online cross-search, and no fabricated publication claims._
+    - _Verify: publication-audit unit tests, CLI tests, slash template test, ruff, mypy, full smoke/unit tests, and a real `.env` full-loop publication audit that rejects the current toy-data cycle._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1242,6 +1254,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 35,
       "tasks": ["60.1"]
+    },
+    {
+      "id": 36,
+      "tasks": ["61.1"]
     }
   ]
 }

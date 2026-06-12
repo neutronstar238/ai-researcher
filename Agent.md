@@ -62,6 +62,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 00:37:59 +08:00 - Codex - Task 61 publication-level quality gate
+
+- Request: Strictly judge whether autonomous outputs and data evidence can support CCF-B / Q3-journal-level publication claims, verify scripts actually ran on data, and run real online/full-loop checks instead of trusting a smoke pass.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - Real verification also wrote local, uncommitted run/vault evidence under `runs/manual-live/serve-quality*/` and `autoresearch-vault/projects/live_quality*/`.
+- Summary:
+  - Added a deterministic publication audit for completed `cycle-summary.json` files with `ccf-b`, `q3-journal`, and `mvp-demo` targets.
+  - The audit separately checks literature breadth, similar-work cross-search breadth, source failures, duplicate risk, script/data execution evidence, dataset strength, dataset realism, baseline/ablation/statistical sanity, LLM evidence review quality, and manuscript structure.
+  - Added `airesearcher publication-audit` and `/research:publication-audit`.
+  - Integrated publication audit into `autopilot`/`serve` cycles after LLM evidence review and before issue-followup discovery.
+  - Failed audits now write Obsidian `review_note` and `issue_note` entries, so the self-loop queues publication-quality blockers instead of silently claiming success.
+  - Raised the default LLM reviewer completion token budget from 2400 to 4096 after a real DeepSeek full-loop review truncated JSON at 2400.
+  - Marked task `61.1` complete in `tasks.md`.
+- Verification:
+  - Focused tests: `poetry run pytest tests/unit/reports/test_publication_audit.py tests/unit/cli/test_main.py::test_publication_audit_command_reports_and_can_fail_gate tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed with 5 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 90 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 327 tests and 4 live smoke tests skipped.
+  - `git diff --check`: passed with only existing LF/CRLF warnings.
+  - Real audit of prior full-loop run: `poetry run airesearcher publication-audit runs\manual-live\serve-full\cycle-20260612T161532Z\cycle-summary.json --target ccf-b --vault autoresearch-vault --project-id live_full_20260613` exited 1 as expected, wrote `publication-audit.json/md`, verified script/data execution, and rejected the output with score `0.217`.
+  - Real full-loop broad check with explicit 2400 review tokens: `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_quality_20260613 --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 30 --output-dir runs\manual-live\serve-quality --cache .cache\live-quality-20260613 --state .airesearcher\scheduler-state-live-quality.json --approvals-state .airesearcher\runtime-approvals-live-quality.json --min-quality-score 0.85 --max-tokens 2400` completed, but LLM review fell below threshold due truncated JSON and publication audit failed.
+  - Real full-loop broad check with new default 4096 review tokens: `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_quality_4096_20260613 --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 30 --output-dir runs\manual-live\serve-quality-4096 --cache .cache\live-quality-4096-20260613 --state .airesearcher\scheduler-state-live-quality-4096.json --approvals-state .airesearcher\runtime-approvals-live-quality-4096.json --min-quality-score 0.85` completed with LLM review `passed`, quality score `1.0`, valid JSON, publication audit `fail`, score `0.350`, 4 literature queries, 11 documents, 10 similarity findings, verified script/data execution, and 1 self-loop follow-up task.
+- Problems:
+  - `P-20260613-004` added and remains open.
+  - `P-20260613-005` added and resolved.
+- Follow-up:
+  - Add real benchmark tasks with at least 1000 validated test rows, ablations, statistical sanity checks, and paper-structured drafts before any CCF-B/Q3 publication claim.
+  - Configure Semantic Scholar API access or add another public academic source so cross-source novelty checks are not blocked by repeated 429/circuit-breaker errors.
+  - Improve query generation so `max_queries=4` consistently yields four useful literature and similarity queries instead of being limited by duplicate or vault-derived noisy prompts.
+
 ### 2026-06-13 00:15:32 +08:00 - Codex - Task 60 always-on runtime and OpenClaw channels
 
 - Request: Add an OpenClaw-style one-command always-on AI-Researcher runtime with dangerous-command approval and repository-mounted communication channel plugin metadata for Feishu/Lark, Weixin/WeChat, WeCom, and other common OpenClaw channels; then run a real full-loop quality check.

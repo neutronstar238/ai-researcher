@@ -46,6 +46,14 @@ from .lint import (
     lint_markdown_report,
     lint_metric_consistency,
 )
+from .publication_audit import (
+    PublicationAuditCheck,
+    PublicationAuditCheckStatus,
+    PublicationAuditReport,
+    PublicationAuditVerdict,
+    PublicationQualityTarget,
+    audit_publication_quality,
+)
 from .reproducibility import (
     ExcludedReproducibilityArtifact,
     ReproducibilityArtifactInput,
@@ -92,6 +100,11 @@ __all__ = [
     "MetricsTableInput",
     "PaperDraftVersion",
     "PaperDraftVersioningError",
+    "PublicationAuditCheck",
+    "PublicationAuditCheckStatus",
+    "PublicationAuditReport",
+    "PublicationAuditVerdict",
+    "PublicationQualityTarget",
     "ReviewBacklogArtifact",
     "ReviewBacklogRecord",
     "ReviewBacklogRecordType",
@@ -120,6 +133,7 @@ __all__ = [
     "TableGenerationError",
     "assert_metric_consistency",
     "assert_report_readable",
+    "audit_publication_quality",
     "create_review_backlog",
     "create_reproducibility_package",
     "generate_bibtex",

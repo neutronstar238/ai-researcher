@@ -263,6 +263,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "serve.toml").is_file()
+    assert (commands_dir / "research" / "publication-audit.toml").is_file()
     assert (commands_dir / "research" / "approve.toml").is_file()
     assert (commands_dir / "research" / "openclaw-channels.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
@@ -272,6 +273,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert list_result.exit_code == 0, list_result.output
     assert "/research:autopilot" in list_result.stdout
     assert "/research:serve" in list_result.stdout
+    assert "/research:publication-audit" in list_result.stdout
     assert "/research:approve" in list_result.stdout
     assert "/research:openclaw-channels" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
@@ -287,9 +289,54 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher runtime approve" in (
         commands_dir / "research" / "approve.toml"
     ).read_text(encoding="utf-8")
+    assert "airesearcher publication-audit" in (
+        commands_dir / "research" / "publication-audit.toml"
+    ).read_text(encoding="utf-8")
     assert "airesearcher channels openclaw init" in (
         commands_dir / "research" / "openclaw-channels.toml"
     ).read_text(encoding="utf-8")
+
+
+def test_publication_audit_command_reports_and_can_fail_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    summary_path = tmp_path / "cycle-summary.json"
+    summary_path.write_text("{}", encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    def fake_audit(**kwargs: object) -> SimpleNamespace:
+        captured.update(kwargs)
+        return SimpleNamespace(
+            verdict=SimpleNamespace(value="fail"),
+            publishable=False,
+            score=0.25,
+            markdown_path="audit.md",
+            output_path="audit.json",
+            vault_review_path=None,
+            vault_issue_path="vault/issues/publication-audit.md",
+        )
+
+    monkeypatch.setattr(cli_main, "audit_publication_quality", fake_audit)
+
+    ok_result = CliRunner().invoke(
+        app,
+        [
+            "publication-audit",
+            str(summary_path),
+            "--target",
+            "ccf-b",
+            "--no-fail-on-not-publishable",
+        ],
+    )
+    fail_result = CliRunner().invoke(app, ["publication-audit", str(summary_path)])
+
+    assert ok_result.exit_code == 0, ok_result.output
+    assert "[OK] publication_audit: fail" in ok_result.stdout
+    assert "[OK] vault_issue: vault/issues/publication-audit.md" in ok_result.stdout
+    assert fail_result.exit_code == 1
+    assert captured["cycle_summary_path"] == summary_path
+    assert captured["target"] == "ccf-b"
 
 
 def test_literature_refresh_command_reports_source_backed_documents(
@@ -577,10 +624,20 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             run_id="run_autopilot_test",
         )
 
+    def fake_publication_audit(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            to_dict=lambda: {
+                "verdict": "needs_revision",
+                "publishable": False,
+                "score": 0.5,
+            }
+        )
+
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
+    monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)
 
     output_dir = tmp_path / "runs" / "autopilot"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
@@ -605,6 +662,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert result.exit_code == 0, result.output
     assert "[OK] autopilot_cycle:" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
+    assert "[OK] publication_audit: needs_revision" in result.stdout
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
@@ -612,6 +670,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["literature"]["document_count"] == 1
     assert payload["similarity"]["finding_count"] == 1
     assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 
 

@@ -149,7 +149,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:approve`, `/research:openclaw-channels`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:approve`, `/research:openclaw-channels`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Always-on runtime:
 
@@ -185,7 +185,7 @@ Autopilot one-command loop:
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
+After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, publication-readiness audit, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; the publication audit is deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
 
 Skill evolution candidates:
 
@@ -227,12 +227,23 @@ poetry run airesearcher llm-review \
   --config config.yaml \
   --env-path .env \
   --output runs/llm-review/latest.json \
-  --max-tokens 2400 \
+  --max-tokens 4096 \
   --vault autoresearch-vault \
   --project-id demo_project
 ```
 
 The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, and actionable warning/blocking findings become stable-fingerprinted `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`. Repeated reviews update the same issue note for the same subject and claim instead of polluting the self-loop issue pool with duplicates. `airesearcher issue-followups --state .airesearcher/scheduler-state.json` can persist reviewable local follow-up task records without executing them automatically, and `airesearcher scheduler-state list|complete|remove` lets operators inspect, finish, or clean those records without hand-editing JSON. Reasoning models may need the higher review token budget shown above.
+
+Publication-level quality audit:
+
+```bash
+poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json \
+  --target ccf-b \
+  --vault autoresearch-vault \
+  --project-id demo_project
+```
+
+This is a higher bar than `llm-review`: it checks whether the cycle actually executed script/data artifacts, whether validated data are strong enough, whether cross-source literature and similar-work search are broad enough, whether source failures such as Semantic Scholar 429s reduce novelty coverage, whether the report has paper-level sections, and whether baseline/ablation/statistical sanity evidence exists. `ccf-b` and `q3-journal` targets reject synthetic ScientistBench-Lite toy runs by design. Failed audits write `publication-audit` review and issue notes into the Obsidian project memory so the self-loop can queue follow-up work.
 
 Run the local quality gate:
 

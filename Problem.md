@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-005 - Live DeepSeek reviewer can truncate JSON at 2400 completion tokens
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 00:35:04 +08:00
+- Source: Real `airesearcher serve --once --permission-mode allow-all --review --max-tokens 2400` publication-quality verification for task `61.1`.
+- Symptom: The LLM evidence review returned `below_threshold` with quality score `0.273` because the response was cut off mid-JSON.
+- Impact: The deterministic quality gate correctly rejected the review, but the default token budget was not robust enough for reasoning-token models in the full-loop reviewer prompt.
+- Evidence: `runs/manual-live/serve-quality/cycle-20260612T163504Z/llm-review.json` reported `valid_json=false`, missing verdict/summary/findings checks, and `completion_tokens=2400` with `reasoning_tokens=2239`.
+- Root cause: The configured DeepSeek reasoning-style model consumed most of the 2400 completion-token budget before emitting complete final JSON.
+- Workaround: Pass a larger `--max-tokens` value when running review-heavy commands.
+- Next action: Continue monitoring live review outputs; if 4096 also proves unstable on larger reports, add response-repair retry or shorter evidence excerpts.
+- Linked tasks: `61.1`
+- Resolution: Raised the default LLM reviewer completion budget from 2400 to 4096 in the client and CLI examples.
+- Verification: A follow-up real `airesearcher serve --once --permission-mode allow-all --review` run using the new default wrote `runs/manual-live/serve-quality-4096/cycle-20260612T163703Z/llm-review.json` with `quality_score=1.0`, `valid_json=true`, and verdict `pass`.
+
+### P-20260613-004 - Live full-loop outputs are evidence-backed but not publication-ready
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-06-13 00:34:44 +08:00
+- Source: CCF-B publication audit over real `airesearcher serve` full-loop outputs for task `61.1`.
+- Symptom: The system can run live literature retrieval, similarity checking, local experiment execution, and LLM evidence review, but the produced report does not meet CCF-B/Q3-style publication standards.
+- Impact: The project must not describe current ScientistBench-Lite outputs as publishable papers. The loop is a verified research-automation scaffold, not a finished paper generator.
+- Evidence: `runs/manual-live/serve-quality-4096/cycle-20260612T163703Z/publication-audit.md` reports verdict `fail`, score `0.350`, 11 literature documents vs 20 required, only ArXiv successful due Semantic Scholar 429, 4 validated test rows vs 1000 required, synthetic dataset, missing ablation/statistical sanity, and missing paper sections.
+- Root cause: The MVP demo intentionally uses a tiny synthetic ScientistBench-Lite baseline to prove loop correctness; it does not yet run a real benchmark, broad multi-source retrieval, ablations, statistical tests, or an evidence-backed manuscript draft.
+- Workaround: Treat `publication-audit` issue notes as self-loop tasks and keep generated reports labeled as demo evidence until stronger experiments exist.
+- Next action: Add real benchmark tasks, broaden sources beyond ArXiv/Semantic Scholar or configure Semantic Scholar API access, generate paper-structured drafts only after sufficient evidence, and rerun publication audit.
+- Linked tasks: `61.1`
+- Resolution: Not resolved; the new publication audit blocks publishable claims and writes Obsidian `review_note`/`issue_note` records for follow-up.
+- Verification: Real `airesearcher publication-audit` and real `airesearcher serve` runs wrote failed publication audits under `runs/manual-live/serve-full/`, `runs/manual-live/serve-quality/`, `runs/manual-live/serve-quality-4096/`, and Obsidian project issue notes under `autoresearch-vault/projects/live_quality_4096_20260613/issues/`.
+
 ### P-20260613-003 - Live full-loop run hit Semantic Scholar HTTP 429 while ArXiv succeeded
 
 - Status: Mitigated

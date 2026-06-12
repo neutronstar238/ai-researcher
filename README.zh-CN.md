@@ -88,7 +88,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:approve`、`/research:openclaw-channels`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:publication-audit`、`/research:approve`、`/research:openclaw-channels`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
 
 常驻运行入口：
 
@@ -124,7 +124,7 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；真正可发表论文仍需要更强领域实验和人工审阅。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、发表级质量审计、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；发表级审计会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
 
 Skill evolution 候选：
 
@@ -166,12 +166,23 @@ poetry run airesearcher llm-review `
   --config config.yaml `
   --env-path .env `
   --output runs/llm-review/latest.json `
-  --max-tokens 2400 `
+  --max-tokens 4096 `
   --vault autoresearch-vault `
   --project-id demo_project
 ```
 
 该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note`；其中 warning/blocking finding 会继续写入 `autoresearch-vault/projects/<project-id>/issues/` 作为带稳定指纹的 `issue_note`。同一 subject 与 claim 的重复评审会更新同一条 issue note，而不是污染自循环问题池。`airesearcher issue-followups --state .airesearcher/scheduler-state.json` 可以持久化可审阅的本地后续任务记录，但不会自动执行它们；`airesearcher scheduler-state list|complete|remove` 允许操作者查看、完成或清理这些记录，不需要手动编辑 JSON。推理型模型可能需要示例里的较高 review token 预算。
+
+发表级质量审计：
+
+```bash
+poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json `
+  --target ccf-b `
+  --vault autoresearch-vault `
+  --project-id demo_project
+```
+
+这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，以及 baseline、ablation、统计 sanity 是否有证据。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
 
 运行本地质量门：
 

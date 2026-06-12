@@ -37,7 +37,7 @@ from autoresearch.llm import (
     write_llm_review_issue_notes,
     write_llm_review_note,
 )
-from autoresearch.reports import validate_reproducibility_package
+from autoresearch.reports import audit_publication_quality, validate_reproducibility_package
 from autoresearch.research import (
     SimilarityCheckConfig,
     link_similarity_report_to_project,
@@ -102,6 +102,12 @@ DEFAULT_SLASH_COMMANDS = {
         "This is the preferred 24h runtime entry point; it runs the research loop only "
         "after dangerous actions are approved through `airesearcher runtime approve` or "
         "a future WeChat/Feishu `/approve` adapter.",
+    ),
+    "research/publication-audit.toml": (
+        "Audit whether a completed cycle meets CCF-B/Q3 publication-readiness gates.",
+        "Run `airesearcher publication-audit <cycle-summary.json> --target ccf-b` before "
+        "claiming the output is publishable. Treat `fail` or `needs_revision` as blockers, "
+        "not cosmetic polish.",
     ),
     "research/approve.toml": (
         "Approve the latest pending dangerous runtime action.",
@@ -836,7 +842,7 @@ def llm_review(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="Maximum output tokens for the review request."),
-    ] = 2400,
+    ] = 4096,
     vault: Annotated[
         Path,
         typer.Option("--vault", help="Obsidian vault root for optional project review memory."),
@@ -911,6 +917,59 @@ def llm_review(
             typer.echo(f"[OK] vault_issues: {len(issue_notes)}")
 
 
+@app.command("publication-audit")
+def publication_audit(
+    cycle_summary_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a cycle-summary.json produced by autopilot or serve."),
+    ],
+    target: Annotated[
+        str,
+        typer.Option("--target", help="Publication quality target: ccf-b, q3-journal, or mvp-demo."),
+    ] = "ccf-b",
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Directory for publication-audit.json and .md."),
+    ] = None,
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for audit review/issue notes."),
+    ] = None,
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Project ID for optional Obsidian audit notes."),
+    ] = None,
+    fail_on_not_publishable: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-not-publishable/--no-fail-on-not-publishable",
+            help="Exit with code 1 when the audit is not publishable.",
+        ),
+    ] = True,
+) -> None:
+    """Audit whether a completed autonomous cycle is publication-ready."""
+
+    report = audit_publication_quality(
+        cycle_summary_path=cycle_summary_path,
+        target=target,
+        output_dir=output_dir,
+        vault_root=vault,
+        project_id=project_id,
+    )
+    typer.echo(f"[OK] publication_audit: {report.verdict.value}")
+    typer.echo(f"[OK] publishable: {str(report.publishable).lower()}")
+    typer.echo(f"[OK] score: {report.score:.3f}")
+    typer.echo(f"[OK] report: {report.markdown_path}")
+    typer.echo(f"[OK] json: {report.output_path}")
+    if report.vault_review_path:
+        typer.echo(f"[OK] vault_review: {report.vault_review_path}")
+    if report.vault_issue_path:
+        typer.echo(f"[OK] vault_issue: {report.vault_issue_path}")
+    if fail_on_not_publishable and not report.publishable:
+        typer.echo("[FAIL] cycle is not publication-ready for the selected target", err=True)
+        raise typer.Exit(1)
+
+
 @app.command("autopilot")
 def autopilot(
     config_path: Annotated[
@@ -960,7 +1019,7 @@ def autopilot(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 2400,
+    ] = 4096,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -1011,6 +1070,11 @@ def autopilot(
         typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
         typer.echo(f"[OK] summary: {summary['summary_path']}")
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
+        if "publication_audit" in summary:
+            typer.echo(
+                "[OK] publication_audit: "
+                f"{summary['publication_audit']['verdict']}"
+            )
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
         if not watch:
             break
@@ -1076,7 +1140,7 @@ def serve(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 2400,
+    ] = 4096,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -1160,6 +1224,11 @@ def serve(
         typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
         typer.echo(f"[OK] summary: {summary['summary_path']}")
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
+        if "publication_audit" in summary:
+            typer.echo(
+                "[OK] publication_audit: "
+                f"{summary['publication_audit']['verdict']}"
+            )
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
         if not watch:
             break
@@ -1514,13 +1583,10 @@ def _run_autopilot_cycle(
         min_quality_score=min_quality_score,
     )
 
-    followup_records = _issue_followup_records(vault, project_id)
-    _merge_scheduler_state(state, followup_records)
-
     summary: dict[str, Any] = {
         "cycle_id": cycle_id,
         "started_at": now.isoformat(),
-        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": None,
         "project_id": project_id,
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
@@ -1549,12 +1615,31 @@ def _run_autopilot_cycle(
         "review": review_result,
         "followups": {
             "state_path": state.as_posix(),
-            "task_count": len(followup_records),
-            "tasks": followup_records,
+            "task_count": 0,
+            "tasks": [],
         },
     }
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    publication_audit = audit_publication_quality(
+        cycle_summary_path=summary_path,
+        target="ccf-b",
+        output_dir=cycle_dir,
+        vault_root=vault,
+        project_id=project_id,
+    )
+    summary["publication_audit"] = publication_audit.to_dict()
+
+    followup_records = _issue_followup_records(vault, project_id)
+    _merge_scheduler_state(state, followup_records)
+    summary["followups"] = {
+        "state_path": state.as_posix(),
+        "task_count": len(followup_records),
+        "tasks": followup_records,
+    }
+    summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
 
