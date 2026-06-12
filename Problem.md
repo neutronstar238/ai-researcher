@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-076 - Focused test command used stale deploy-setup node name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 18:02:00 +08:00
+- Source: `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_deploy_setup_writes_env_and_non_secret_config -q` during task `52.1` verification.
+- Symptom: Pytest collected zero items and reported `not found` for `test_deploy_setup_writes_env_and_non_secret_config`.
+- Impact: The first focused verification command did not exercise the intended deploy-setup template regression test.
+- Evidence: `rg -n "def test_deploy_setup" tests\unit\cli\test_main.py` showed the current test name is `test_deploy_setup_writes_provider_config_and_env_without_committing_secret`.
+- Root cause: The verification command used a stale guessed test node name.
+- Workaround: None needed after rerunning the correct test node.
+- Next action: Use `rg` to confirm exact pytest node names before running narrow checks when a test was renamed.
+- Linked tasks: `52.1`
+- Resolution: Re-ran the focused check with the correct test node.
+- Verification: `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret -q` passed with 8 tests.
+
 ### P-20260612-075 - Scheduler-state missing-task test read uncaptured stderr
 
 - Status: Resolved

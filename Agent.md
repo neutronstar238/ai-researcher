@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 18:03:34 +08:00 - Codex - Task 52 Semantic Scholar rate tuning
+
+- Request: Continue iterating on real external literature access by making Semantic Scholar rate limiting and 429 circuit behavior easier to tune in deployment.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Verified current Semantic Scholar API guidance before changing the client: API keys are sent with the `x-api-key` header and authenticated introductory limits are 1 request per second.
+  - Added optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` settings while keeping the existing conservative defaults.
+  - Added fail-fast numeric validation for invalid Semantic Scholar rate-policy environment values.
+  - Added the new settings to the root `.env.example` and deploy-setup-generated template.
+  - Documented the tunable rate policy in the bilingual README, changelog, and task plan.
+- Verification:
+  - `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_deploy_setup_writes_env_and_non_secret_config -q`: failed before collection with `P-20260612-076` because the CLI test node name was stale.
+  - `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret -q`: passed, 8 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 305 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-076` added and resolved.
+- Follow-up:
+  - If Semantic Scholar live responses expose additional rate-limit headers in future testing, record them in fetch metadata before changing retry behavior.
+
 ### 2026-06-12 17:53:19 +08:00 - Codex - Task 51 scheduler-state management
 
 - Request: Continue the self-loop workflow by adding operator commands to inspect and maintain persisted scheduler-state follow-up tasks.

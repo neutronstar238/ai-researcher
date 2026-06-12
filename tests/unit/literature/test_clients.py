@@ -107,6 +107,36 @@ def test_semantic_scholar_client_sends_optional_api_key_header() -> None:
     assert seen_headers == [{"x-api-key": "semantic-key"}]
 
 
+def test_semantic_scholar_client_reads_rate_policy_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS", "4.5")
+    monkeypatch.setenv("SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS", "12")
+
+    client = SemanticScholarClient(
+        api_key="",
+        http_get=lambda _url, _params, _headers: json.dumps({"data": []}),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    assert client.rate_limiter.min_interval_seconds == 4.5
+    assert client.circuit_breaker.reset_after_seconds == 12.0
+    assert client.search("trusted", limit=1) == []
+
+
+def test_semantic_scholar_client_rejects_invalid_rate_policy_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS", "fast")
+
+    with pytest.raises(ValueError, match="SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS"):
+        SemanticScholarClient(
+            api_key="",
+            http_get=lambda _url, _params, _headers: json.dumps({"data": []}),
+            retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+        )
+
+
 def test_semantic_scholar_client_uses_exponential_backoff_before_success() -> None:
     calls = 0
     sleeps: list[float] = []

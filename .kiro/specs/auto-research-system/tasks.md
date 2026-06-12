@@ -963,6 +963,16 @@ A task can be checked only when all applicable items are true:
     - _References: task 50.1 follow-up, RP auditable self-loop queue_
     - _Verify: CLI unit tests cover list filtering, complete, remove, missing-task failure, and completed-state preservation._
 
+- [x] 52. Make Semantic Scholar rate policy tunable for real deployments
+  - [x] 52.1 Add env-configurable Semantic Scholar rate and circuit settings
+    - Keep the existing conservative unauthenticated and API-key defaults.
+    - Add optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` for deployment-specific request spacing.
+    - Add optional `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` for deployment-specific 429 cooldown windows.
+    - Validate invalid numeric values early instead of silently using a risky rate policy.
+    - Include the new settings in `.env.example` and first-deploy template generation.
+    - _References: user follow-up on Semantic Scholar access limits and real external API behavior_
+    - _Verify: unit tests cover env-based rate/circuit settings, invalid values, existing 429 circuit behavior, and first-deploy template output._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1115,6 +1125,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 26,
       "tasks": ["51.1"]
+    },
+    {
+      "id": 27,
+      "tasks": ["52.1"]
     }
   ]
 }

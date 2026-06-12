@@ -37,6 +37,7 @@ Target version: `0.1.0`.
 - `autoresearch issue-followups` CLI and `/research:issue-followups` slash template for reviewing self-loop follow-up tasks before execution.
 - Optional local scheduler state merge for issue follow-up discovery with duplicate-safe `task_id` updates.
 - `autoresearch scheduler-state list`, `complete`, and `remove` commands for inspecting and maintaining local follow-up task records without hand-editing JSON.
+- Optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` deployment settings for Semantic Scholar rate-limit tuning.
 
 ### Changed
 
@@ -50,6 +51,7 @@ Target version: `0.1.0`.
 - README guidance now distinguishes local installation/import smoke tests from opt-in live API smoke tests.
 - LLM reviewer checks now require every finding to cite allowed outer local evidence IDs, and the default review token budget is 2400 for reasoning-token models.
 - Re-discovered issue follow-up tasks now preserve completed scheduler-state records instead of reopening them.
+- Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
 
 ### Fixed
 
@@ -96,6 +98,8 @@ Target version: `0.1.0`.
 - Obsidian issue scheduler adapter after task `48`: `poetry run pytest tests/unit/test_scheduler.py -q` passed and covered open issue-note task creation plus closed issue skips; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 300 tests and 4 skipped.
 - Issue follow-up CLI after task `49`: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` passed and covered JSON output plus slash template creation; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 301 tests and 4 skipped.
 - Issue follow-up scheduler state after task `50`: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks -q` passed and covered duplicate-safe state merging; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 301 tests and 4 skipped.
+- Scheduler-state management after task `51`: focused scheduler-state CLI tests passed with 3 tests; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 303 tests and 4 skipped.
+- Semantic Scholar rate tuning after task `52`: `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret -q` passed with 8 tests; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 305 tests and 4 skipped.
 - Live API smoke after task `41`: `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv` passed with 4 real API tests.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.

@@ -187,9 +187,14 @@ class SemanticScholarClient:
     ) -> None:
         self.http_get = http_get
         self.api_key = api_key if api_key is not None else os.getenv(api_key_env)
-        self.rate_limiter = rate_limiter or RateLimiter(1.0 if self.api_key else 3.0)
+        default_interval = 1.0 if self.api_key else 3.0
+        self.rate_limiter = rate_limiter or RateLimiter(
+            _float_env("SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS", default_interval)
+        )
         self.retry = retry
-        self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker()
+        self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker(
+            reset_after_seconds=_float_env("SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS", 60.0)
+        )
         self.sleep = sleep
 
     def search(self, query: str, *, limit: int = 10) -> list[AcademicPaper]:
@@ -255,6 +260,21 @@ def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
         return max(0.0, float(retry_after))
     except ValueError:
         return None
+
+
+def _float_env(name: str, default: float, *, minimum: float = 0.0) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return default
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        msg = f"{name} must be a number"
+        raise ValueError(msg) from exc
+    if value < minimum:
+        msg = f"{name} must be at least {minimum}"
+        raise ValueError(msg)
+    return value
 
 
 def _parse_arxiv_atom(text: str) -> list[AcademicPaper]:

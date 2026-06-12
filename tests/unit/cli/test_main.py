@@ -92,6 +92,8 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     assert "env template created" in result.stdout
     assert "AUTORESEARCH_LLM_API_KEY=" in env_example_text
     assert "SEMANTIC_SCHOLAR_API_KEY=" in env_example_text
+    assert "SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS=" in env_example_text
+    assert "SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS=" in env_example_text
     assert "sk-test" not in env_example_text
 
 
