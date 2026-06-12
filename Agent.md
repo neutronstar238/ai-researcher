@@ -59,6 +59,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:30:54 +08:00 - Codex - Task 32.1 project permissions
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `32.1`, defining roles and project permissions with allowed and denied authorization tests.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/project_permissions.py`
+  - `tests/unit/knowledge/test_project_permissions.py`
+- Summary:
+  - Added `ProjectRole` values: owner, maintainer, researcher, reviewer, and admin.
+  - Added `ProjectPermission` values: project read, project write, approve high-cost run, approve full-permission run, approve publication, and manage strategies.
+  - Added `ProjectMembership` for project-scoped assignments plus global admin access.
+  - Added `ProjectAuthorizationPolicy.can()` and `ProjectAuthorizationPolicy.authorize()` for explicit allow/deny checks.
+  - Exported the project authorization API from `autoresearch.knowledge`.
+  - Added tests covering allowed and denied actions for owner, admin, researcher, reviewer, maintainer, and cross-project isolation.
+  - Marked task `32.1` and parent task `32` complete in `tasks.md`.
+  - No external data source or LLM provider is used by this authorization task, so no live external API test was required or claimed.
+- Verification:
+  - `rg -n "permission|permissions|role|roles|authorization|authorize|RBAC|approve|approval|multi-user|user|owner|maintainer|researcher|reviewer|admin" AutoResearch_System_Research_Plan.md AutoResearch_System_Execution_Plan.md .kiro/specs/auto-research-system/requirements.md .kiro/specs/auto-research-system/design.md .kiro/specs/auto-research-system/tasks.md`: reviewed permissions, approval, audit, and product-role context.
+  - `rg -n "class .*Approval|Permission|Role|authorize|approval|role" src tests`: confirmed existing code only covered agent/vault permissions and approval records, so user-level project RBAC needed a separate minimal module.
+  - `poetry run ruff check src/autoresearch/knowledge/project_permissions.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_project_permissions.py`: passed.
+  - `poetry run mypy src`: passed, 75 source files checked.
+  - `poetry run pytest tests/unit/knowledge/test_project_permissions.py -vv`: passed, 6 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 281 passed and 3 skipped.
+  - Verification commands emitted an existing non-failing `RequestsDependencyWarning`; recorded as `P-20260612-057`.
+- Problems:
+  - `P-20260612-057` added and left open as a low-severity environment dependency warning.
+- Follow-up:
+  - Continue with task `33.1` plugin interfaces.
+
 ### 2026-06-12 13:25:03 +08:00 - Codex - Task 31.2 dashboard MVP
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `31.2`, with real rendered browser QA and no unsupported claims about external API behavior.

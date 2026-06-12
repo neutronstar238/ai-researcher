@@ -9,6 +9,13 @@ from .entries import (
     extract_wiki_links,
 )
 from .permissions import AccessMode, AgentRole, PermissionManager
+from .project_permissions import (
+    ProjectAuthorizationPolicy,
+    ProjectMembership,
+    ProjectPermission,
+    ProjectRole,
+    permissions_for_role,
+)
 from .skills import (
     ExtractedSkillCard,
     SkillMatch,
@@ -47,6 +54,10 @@ __all__ = [
     "MarkdownKnowledgeStore",
     "PROJECT_DIRECTORIES",
     "PermissionManager",
+    "ProjectAuthorizationPolicy",
+    "ProjectMembership",
+    "ProjectPermission",
+    "ProjectRole",
     "RollbackResult",
     "RollbackTargetType",
     "SkillMatch",
@@ -60,6 +71,7 @@ __all__ = [
     "create_strategy_candidate",
     "extract_wiki_links",
     "extract_reusable_skill_card",
+    "permissions_for_role",
     "rollback_knowledge_entry",
     "rollback_strategy_card",
     "retrieve_relevant_skills",

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-057 - Requests dependency warning appears during verification
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-06-12 13:30:54 +08:00
+- Source: `poetry run ruff check ...`, `poetry run mypy src`, and `poetry run pytest ...`.
+- Symptom: Python emitted `RequestsDependencyWarning` stating `urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version`.
+- Impact: Task `32.1` verification still passed, but future real-network smoke tests may produce noisy output or dependency-sensitive behavior if this environment mismatch remains.
+- Evidence: The warning appeared after focused ruff, focused mypy, focused pytest, full ruff, and full pytest commands; full pytest still reported `281 passed, 3 skipped`.
+- Root cause: The active test environment has a `requests` dependency combination that `requests` warns is outside its supported range.
+- Workaround: Treat the warning as non-blocking for non-network authorization work; keep real external API tests mandatory for external-source tasks.
+- Next action: Resolve or pin the `requests` transitive dependency set in a dedicated dependency-maintenance task before relying on warning-free live network output.
+- Linked tasks: `32.1`
+- Resolution: Not resolved in task `32.1`; no authorization code path uses `requests`.
+- Verification: `poetry run ruff check src tests` passed; `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `281 passed, 3 skipped` despite the warning.
+
 ### P-20260612-056 - Dashboard test import order failed ruff
 
 - Status: Resolved

@@ -721,8 +721,8 @@ A task can be checked only when all applicable items are true:
     - _References: EP 8, Build Web Apps plugin perspective_
     - _Verify: browser-based UI test covers desktop and mobile layout._
 
-- [ ] 32. Add multi-user permissions
-  - [ ] 32.1 Define roles and project permissions
+- [x] 32. Add multi-user permissions
+  - [x] 32.1 Define roles and project permissions
     - Roles: owner, maintainer, researcher, reviewer, admin.
     - Permissions: project read, project write, approve high-cost run, approve full-permission run, approve publication, manage strategies.
     - _References: EP 8, RP 3.3_
