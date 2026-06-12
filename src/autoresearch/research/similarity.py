@@ -21,6 +21,7 @@ from autoresearch.literature import (
     AcademicPaper,
     ArxivClient,
     LiteratureSearchClient,
+    OpenAlexClient,
     RetrievalCache,
     SemanticScholarClient,
     deduplicate_papers,
@@ -49,6 +50,7 @@ NEGATIVE_TERMS = (
 DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
     "semantic_scholar": 1.0,
+    "openalex": 1.0,
 }
 STOPWORDS = {
     "and",
@@ -187,6 +189,7 @@ def run_project_similarity_check(
     source_clients = clients or {
         "arxiv": ArxivClient(),
         "semantic_scholar": SemanticScholarClient(),
+        "openalex": OpenAlexClient(),
     }
     cache = RetrievalCache(cache_root, ttl_hours=config.cache_ttl_hours)
     queries = generate_similarity_queries(candidate, vault_root=vault_root, config=config)

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+import autoresearch.research.similarity as similarity_module
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -123,6 +124,53 @@ def test_project_similarity_check_writes_source_backed_obsidian_summary(
     assert "pending verification" in summary
     assert "https://example.com/direct" in summary
     assert "RuntimeError: offline" in summary
+
+
+def test_project_similarity_default_sources_include_openalex_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidate = _candidate()
+    _write_similarity_context(tmp_path, candidate)
+    paper = AcademicPaper(
+        title="OpenAlex agent review evidence",
+        abstract="Agent review workflows need evidence.",
+        url="https://openalex.org/W456",
+        source="openalex",
+    )
+
+    monkeypatch.setattr(
+        similarity_module,
+        "ArxivClient",
+        lambda: _FakeClient([], 3.0),
+    )
+    monkeypatch.setattr(
+        similarity_module,
+        "SemanticScholarClient",
+        lambda: _FakeClient([], 3.0, error=RuntimeError("rate limited")),
+    )
+    monkeypatch.setattr(
+        similarity_module,
+        "OpenAlexClient",
+        lambda: _FakeClient([paper], 1.0),
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=2),
+    )
+
+    assert [fetch.source for fetch in report.fetches] == [
+        "arxiv",
+        "semantic_scholar",
+        "openalex",
+    ]
+    assert report.fetches[1].error == "RuntimeError: rate limited"
+    assert report.findings[0].source_database == "openalex"
+    assert report.summary_path is not None
+    assert "openalex" in report.summary_path.read_text(encoding="utf-8")
 
 
 def test_similarity_findings_reject_unsupported_claims() -> None:

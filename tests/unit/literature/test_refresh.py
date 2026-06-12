@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
+import autoresearch.literature.refresh as refresh_module
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -142,6 +145,50 @@ def test_daily_refresh_records_source_errors_and_continues_other_sources(
     assert report.fetches[1].error is None
     assert report.summary_path is not None
     assert "rate limited" in report.summary_path.read_text(encoding="utf-8")
+
+
+def test_daily_refresh_default_sources_include_openalex_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_candidate_context(tmp_path)
+    paper = AcademicPaper(
+        title="Open Evidence Agent Review",
+        url="https://openalex.org/W123",
+        source="openalex",
+    )
+
+    monkeypatch.setattr(
+        refresh_module,
+        "ArxivClient",
+        lambda: _FakeClient("arxiv", [], 3.0),
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "SemanticScholarClient",
+        lambda: _FakeClient("semantic_scholar", [], 3.0, error=RuntimeError("rate limited")),
+    )
+    monkeypatch.setattr(
+        refresh_module,
+        "OpenAlexClient",
+        lambda: _FakeClient("openalex", [paper], 1.0),
+    )
+
+    report = run_daily_literature_refresh(
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "literature",
+        config=LiteratureRefreshConfig(max_queries=1, max_results_per_source=2),
+    )
+
+    assert [fetch.source for fetch in report.fetches] == [
+        "arxiv",
+        "semantic_scholar",
+        "openalex",
+    ]
+    assert report.fetches[1].error == "RuntimeError: rate limited"
+    assert report.documents[0].tags == ["openalex"]
+    assert report.summary_path is not None
+    assert "openalex" in report.summary_path.read_text(encoding="utf-8")
 
 
 def _write_candidate_context(vault_root: Path) -> None:

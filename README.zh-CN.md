@@ -64,7 +64,7 @@ poetry run airesearcher deploy-setup
 
 该命令会引导输入 LLM provider 标签、API base URL、model name、API key，以及可选的微信/飞书通道参数。API key 和通道密钥只写入 `.env`；`config.yaml` 只保存非密钥模型配置、通道元数据和环境变量名。如果 `.env.example` 缺失，CLI 会创建一个公开的非密钥模板。
 
-如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。也可以填写 `SEMANTIC_SCHOLAR_API_KEY` 以获得更高的 Semantic Scholar Graph API 限额；如果部署环境需要更严格限频，还可以填写可选的 `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` 和 `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS`。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
+如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。也可以填写 `SEMANTIC_SCHOLAR_API_KEY` 以获得更高的 Semantic Scholar Graph API 限额；如果部署环境需要更严格限频，还可以填写可选的 `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` 和 `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS`。OpenAlex 默认可以无 key 小规模使用；较大的部署可以填写 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`，让来源 fallback 更稳定也更礼貌。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
 
 脚本化部署示例：
 
@@ -155,7 +155,7 @@ poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .c
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-这两个命令默认调用真实文献 API，会从 `.env` 读取可选文献 API key，对 Semantic Scholar 使用更保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。
+这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
 
 真实 LLM smoke 与输出质量门：
 

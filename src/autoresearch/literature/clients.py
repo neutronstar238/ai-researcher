@@ -244,6 +244,83 @@ class SemanticScholarClient:
         return {"x-api-key": self.api_key}
 
 
+class OpenAlexClient:
+    """Minimal OpenAlex Works API client."""
+
+    api_url = "https://api.openalex.org/works"
+
+    def __init__(
+        self,
+        *,
+        http_get: HttpGet = _urllib_get_text,
+        rate_limiter: RateLimiter | None = None,
+        retry: RetryConfig = RetryConfig(),
+        api_key: str | None = None,
+        api_key_env: str = "OPENALEX_API_KEY",
+        mailto: str | None = None,
+        mailto_env: str = "OPENALEX_MAILTO",
+        circuit_breaker: RateLimitCircuitBreaker | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self.http_get = http_get
+        self.api_key = api_key if api_key is not None else os.getenv(api_key_env)
+        self.mailto = mailto if mailto is not None else os.getenv(mailto_env)
+        self.rate_limiter = rate_limiter or RateLimiter(
+            _float_env("OPENALEX_MIN_INTERVAL_SECONDS", 1.0)
+        )
+        self.retry = retry
+        self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker(
+            reset_after_seconds=_float_env("OPENALEX_CIRCUIT_RESET_SECONDS", 60.0)
+        )
+        self.sleep = sleep
+
+    def search(self, query: str, *, limit: int = 10) -> list[AcademicPaper]:
+        params: dict[str, str | int] = {
+            "search": query[:1200],
+            "per_page": min(max(limit, 1), 100),
+            "select": (
+                "id,display_name,doi,publication_date,publication_year,authorships,"
+                "abstract_inverted_index,primary_location,cited_by_count"
+            ),
+        }
+        if self.api_key:
+            params["api_key"] = self.api_key
+        if self.mailto:
+            params["mailto"] = self.mailto
+        text = self._get_with_retry(self.api_url, params)
+        return _parse_openalex(text)
+
+    def _get_with_retry(self, url: str, params: dict[str, str | int]) -> str:
+        last_error: Exception | None = None
+        for attempt in range(1, self.retry.max_attempts + 1):
+            self.circuit_breaker.raise_if_open()
+            self.rate_limiter.wait()
+            try:
+                text = self.http_get(url, params, None)
+            except urllib.error.HTTPError as exc:
+                last_error = exc
+                if exc.code == 429:
+                    retry_after = _retry_after_seconds(exc)
+                    self.circuit_breaker.record_rate_limit(retry_after_seconds=retry_after)
+                    remaining = self.circuit_breaker.remaining_seconds()
+                    msg = f"OpenAlex HTTP 429 rate limited; circuit open for {remaining:.1f}s"
+                    raise SourceRateLimitError(msg) from exc
+                if _non_retryable_http_error(exc):
+                    raise
+                if attempt < self.retry.max_attempts:
+                    self.sleep(_backoff_delay(self.retry, attempt))
+            except Exception as exc:  # noqa: BLE001 - client boundary wraps transport errors.
+                last_error = exc
+                if attempt < self.retry.max_attempts:
+                    self.sleep(_backoff_delay(self.retry, attempt))
+            else:
+                self.circuit_breaker.record_success()
+                return text
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("retry loop exited without request")
+
+
 def _backoff_delay(retry: RetryConfig, attempt: int) -> float:
     return float(min(retry.backoff_seconds * (2 ** (attempt - 1)), retry.max_backoff_seconds))
 
@@ -334,6 +411,74 @@ def _parse_semantic_scholar(text: str) -> list[AcademicPaper]:
             )
         )
     return papers
+
+
+def _parse_openalex(text: str) -> list[AcademicPaper]:
+    payload = json.loads(text)
+    rows = payload.get("results", [])
+    papers: list[AcademicPaper] = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("display_name"), str):
+            continue
+        primary_location = row.get("primary_location")
+        source = primary_location.get("source") if isinstance(primary_location, dict) else None
+        venue = source.get("display_name") if isinstance(source, dict) else None
+        landing_page = (
+            primary_location.get("landing_page_url")
+            if isinstance(primary_location, dict)
+            else None
+        )
+        doi = row.get("doi")
+        papers.append(
+            AcademicPaper(
+                title=row["display_name"],
+                authors=_openalex_authors(row.get("authorships")),
+                abstract=_openalex_abstract(row.get("abstract_inverted_index")),
+                publication_date=_parse_date(row.get("publication_date"))
+                if isinstance(row.get("publication_date"), str)
+                else _parse_year(row.get("publication_year")),
+                venue=venue if isinstance(venue, str) else None,
+                doi=doi if isinstance(doi, str) else None,
+                url=landing_page
+                if isinstance(landing_page, str)
+                else row.get("id")
+                if isinstance(row.get("id"), str)
+                else None,
+                citation_count=row.get("cited_by_count", 0)
+                if isinstance(row.get("cited_by_count"), int)
+                else 0,
+                source="openalex",
+            )
+        )
+    return papers
+
+
+def _openalex_authors(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    authors: list[str] = []
+    for authorship in value:
+        if not isinstance(authorship, dict):
+            continue
+        author = authorship.get("author")
+        if isinstance(author, dict) and isinstance(author.get("display_name"), str):
+            authors.append(author["display_name"])
+    return authors
+
+
+def _openalex_abstract(value: Any) -> str | None:
+    if not isinstance(value, dict) or not value:
+        return None
+    positions: dict[int, str] = {}
+    for token, raw_indexes in value.items():
+        if not isinstance(token, str) or not isinstance(raw_indexes, list):
+            continue
+        for raw_index in raw_indexes:
+            if isinstance(raw_index, int):
+                positions[raw_index] = token
+    if not positions:
+        return None
+    return " ".join(positions[index] for index in sorted(positions))
 
 
 def _xml_text(element: ET.Element, path: str, namespace: dict[str, str]) -> str | None:

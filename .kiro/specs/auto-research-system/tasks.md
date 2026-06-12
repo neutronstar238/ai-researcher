@@ -1086,6 +1086,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that the system verify scripts really run on real data and that CCF-B/Q3-level quality gates distinguish data evidence from unsupported paper claims._
     - _Verify: focused unit tests, ruff, mypy, full smoke/unit tests, live `run-demo --demo pendigits_centroid_baseline`, and live `serve --once --demo pendigits_centroid_baseline --review` showing script/data/baseline/ablation/statistical gates pass while publication audit still blocks weak literature/manuscript coverage._
 
+- [x] 64. Add OpenAlex as a real fallback source for literature and novelty breadth
+  - [x] 64.1 Use OpenAlex by default when ArXiv/Semantic Scholar are insufficient
+    - Add an `OpenAlexClient` for the OpenAlex Works API with query search, selected metadata fields, optional `OPENALEX_API_KEY`, optional `OPENALEX_MAILTO`, request spacing, retry, and 429 circuit-breaker handling.
+    - Parse OpenAlex title, authors, reconstructed abstract, publication date/year, venue, DOI, URL, citation count, and source label into the existing `AcademicPaper` schema.
+    - Include OpenAlex in the default source set for daily literature refresh and project-start similarity checks while preserving source-specific fetch errors.
+    - Update `.env.example`, README, third-party notices, and changelog to document OpenAlex as a runtime metadata source, not vendored data.
+    - Add unit tests proving OpenAlex parsing, optional key/mailto settings, default-source participation, and Semantic Scholar failure fallback behavior.
+    - _References: `P-20260613-004` and `P-20260613-003`, where live publication audits failed source-breadth checks because Semantic Scholar 429/circuit errors left ArXiv as the only successful source._
+    - _Verify: focused unit tests, ruff, mypy, full smoke/unit tests, live OpenAlex client query, live `literature-refresh` showing ArXiv and OpenAlex successes even if Semantic Scholar is rate-limited, and live `similarity-check` showing OpenAlex participates in project-start cross-search._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1278,6 +1288,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 36,
       "tasks": ["61.1"]
+    },
+    {
+      "id": 37,
+      "tasks": ["62.1", "63.1", "64.1"]
     }
   ]
 }

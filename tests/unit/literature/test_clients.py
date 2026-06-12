@@ -8,6 +8,7 @@ import pytest
 from autoresearch.literature import (
     ArxivClient,
     CircuitBreakerOpenError,
+    OpenAlexClient,
     RateLimitCircuitBreaker,
     RateLimiter,
     RetryConfig,
@@ -83,6 +84,78 @@ def test_semantic_scholar_client_parses_mocked_response() -> None:
     assert papers[0].venue == "ExampleConf"
     assert papers[0].citation_count == 7
     assert papers[0].source == "semantic_scholar"
+
+
+def test_openalex_client_parses_mocked_works_response() -> None:
+    payload = {
+        "results": [
+            {
+                "id": "https://openalex.org/W123",
+                "display_name": "Evidence Bound Research Agents",
+                "doi": "https://doi.org/10.1234/openalex",
+                "publication_date": "2026-06-01",
+                "authorships": [
+                    {"author": {"display_name": "C. Analyst"}},
+                    {"author": {"display_name": "D. Verifier"}},
+                ],
+                "abstract_inverted_index": {
+                    "Evidence": [0],
+                    "bound": [1],
+                    "agents": [2],
+                },
+                "primary_location": {
+                    "landing_page_url": "https://doi.org/10.1234/openalex",
+                    "source": {"display_name": "Example Journal"},
+                },
+                "cited_by_count": 11,
+            }
+        ]
+    }
+
+    client = OpenAlexClient(
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    papers = client.search("evidence bound agents", limit=1)
+
+    assert papers[0].title == "Evidence Bound Research Agents"
+    assert papers[0].authors == ["C. Analyst", "D. Verifier"]
+    assert papers[0].abstract == "Evidence bound agents"
+    assert papers[0].venue == "Example Journal"
+    assert papers[0].doi == "https://doi.org/10.1234/openalex"
+    assert papers[0].url == "https://doi.org/10.1234/openalex"
+    assert papers[0].citation_count == 11
+    assert papers[0].source == "openalex"
+
+
+def test_openalex_client_sends_optional_api_key_and_mailto_params(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen_params: list[dict[str, str | int]] = []
+    monkeypatch.setenv("OPENALEX_API_KEY", "openalex-key")
+    monkeypatch.setenv("OPENALEX_MAILTO", "researcher@example.com")
+    monkeypatch.setenv("OPENALEX_MIN_INTERVAL_SECONDS", "2.5")
+
+    def fake_get(
+        _url: str,
+        params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        seen_params.append(params)
+        return json.dumps({"results": []})
+
+    client = OpenAlexClient(
+        http_get=fake_get,
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    assert client.search("trusted", limit=250) == []
+    assert seen_params[0]["api_key"] == "openalex-key"
+    assert seen_params[0]["mailto"] == "researcher@example.com"
+    assert seen_params[0]["per_page"] == 100
+    assert client.rate_limiter.min_interval_seconds == 2.5
 
 
 def test_semantic_scholar_client_sends_optional_api_key_header() -> None:

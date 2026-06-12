@@ -125,7 +125,7 @@ poetry run airesearcher deploy-setup
 
 The guided setup asks for the LLM provider label, API base URL, model name, API key, and optional WeChat/Feishu channel credentials. API keys and channel secrets are written only to `.env`; `config.yaml` stores non-secret model and channel metadata plus environment variable names. If `.env.example` is missing, the CLI creates it as a public non-secret template.
 
-If you prefer to fill the model configuration manually, copy `.env.example` to `.env` and set `AUTORESEARCH_LLM_BASE_URL`, `AUTORESEARCH_LLM_MODEL_NAME`, and `AUTORESEARCH_LLM_API_KEY`. You can also set `SEMANTIC_SCHOLAR_API_KEY` for higher Semantic Scholar Graph API limits, plus optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` values when a deployment needs stricter throttling. The root `.env` file is intentionally ignored by git and must never be committed.
+If you prefer to fill the model configuration manually, copy `.env.example` to `.env` and set `AUTORESEARCH_LLM_BASE_URL`, `AUTORESEARCH_LLM_MODEL_NAME`, and `AUTORESEARCH_LLM_API_KEY`. You can also set `SEMANTIC_SCHOLAR_API_KEY` for higher Semantic Scholar Graph API limits, plus optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` values when a deployment needs stricter throttling. OpenAlex is used as a no-key fallback source by default; optional `OPENALEX_API_KEY`, `OPENALEX_MAILTO`, `OPENALEX_MIN_INTERVAL_SECONDS`, and `OPENALEX_CIRCUIT_RESET_SECONDS` settings can make larger deployments more polite and predictable. The root `.env` file is intentionally ignored by git and must never be committed.
 
 For scripted deployment:
 
@@ -216,7 +216,7 @@ poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .c
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-Both commands use real literature APIs by default, load optional literature API keys from `.env`, apply conservative Semantic Scholar rate limiting with tunable request spacing and 429 circuit breaking, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`.
+Both commands use real literature APIs by default: ArXiv, Semantic Scholar, and OpenAlex. They load optional literature API keys from `.env`, apply conservative source-specific rate limiting with tunable request spacing and 429 circuit breaking, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`. OpenAlex is included so Semantic Scholar 429s do not automatically collapse cross-source coverage to ArXiv-only.
 
 Live LLM smoke and output quality gate:
 

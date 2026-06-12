@@ -30,6 +30,7 @@ Target version: `0.1.0`.
 - Live `llm-smoke` CLI for OpenAI-compatible model calls, structured output checks, API-key leak checks, and quality report artifacts.
 - Live API smoke tests now cover LLM, literature client retrieval, daily literature refresh, and project-start similarity checks behind `AUTORESEARCH_LIVE_APIS=1`.
 - Semantic Scholar online discovery now supports optional `SEMANTIC_SCHOLAR_API_KEY`, conservative unauthenticated rate limiting, exponential backoff, and HTTP 429 circuit breaking.
+- OpenAlex is now a default third academic metadata source for literature refresh and project-start similarity checks, with optional `OPENALEX_API_KEY`, `OPENALEX_MAILTO`, request-spacing, and 429 circuit-breaker settings.
 - `llm-review` CLI for live LLM-as-reviewer checks constrained to local evidence artifacts and deterministic citation quality gates.
 - Project-level Obsidian `review/` memory for evidence-constrained LLM review notes.
 - Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.
@@ -68,6 +69,7 @@ Target version: `0.1.0`.
 - LLM reviewer checks now require every finding to cite allowed outer local evidence IDs, and the default review token budget is 4096 for reasoning-token models after live DeepSeek review showed 2400 completion tokens can truncate JSON.
 - Re-discovered issue follow-up tasks now preserve completed scheduler-state records instead of reopening them.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
+- Online discovery now uses ArXiv, Semantic Scholar, and OpenAlex by default, so Semantic Scholar rate limits no longer reduce live source breadth to ArXiv-only when OpenAlex is reachable.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 - README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
@@ -106,7 +108,7 @@ Target version: `0.1.0`.
 - Docker Desktop must be running before Docker Compose verification can access the local engine.
 - Some live literature and similarity smoke tests are intentionally skipped unless the live-test environment is configured; live external behavior must be verified before claiming those features are production-ready.
 - Poetry reports non-blocking metadata deprecation warnings for the existing `[tool.poetry]` layout; package metadata is still accepted by `poetry check`.
-- Live CCF-B publication audits can still fail real benchmark cycles when Semantic Scholar rate limits reduce source breadth or when the generated report is not yet a paper-structured manuscript.
+- Live CCF-B publication audits can still fail real benchmark cycles when all non-ArXiv sources are rate-limited/unreachable, similarity query breadth is weak, or the generated report is not yet a paper-structured manuscript.
 
 ### Verification Snapshot
 

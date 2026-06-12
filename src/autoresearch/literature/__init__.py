@@ -4,6 +4,7 @@ from .cache import RetrievalCache, RetrievalCacheRecord, retrieval_cache_key
 from .clients import (
     ArxivClient,
     CircuitBreakerOpenError,
+    OpenAlexClient,
     RateLimitCircuitBreaker,
     RateLimiter,
     RetryConfig,
@@ -30,6 +31,7 @@ __all__ = [
     "LiteratureRefreshConfig",
     "LiteratureRefreshReport",
     "LiteratureSearchClient",
+    "OpenAlexClient",
     "RateLimitCircuitBreaker",
     "RateLimiter",
     "RetrievalCache",

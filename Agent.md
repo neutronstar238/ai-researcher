@@ -62,6 +62,49 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:23:13 +08:00 - Codex - Task 64 OpenAlex source fallback
+
+- Request: Continue the real online research loop and fix source-breadth weakness observed in publication audits by adding a real fallback when Semantic Scholar is rate-limited.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/literature/clients.py`
+  - `src/autoresearch/literature/refresh.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/literature/test_clients.py`
+  - `tests/unit/literature/test_refresh.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added `OpenAlexClient` for the OpenAlex Works API with selected fields, optional `OPENALEX_API_KEY`, optional `OPENALEX_MAILTO`, request spacing, retry, and 429 circuit breaker handling.
+  - Added OpenAlex to default daily literature refresh and project-start similarity checks so Semantic Scholar 429s do not collapse source coverage to ArXiv-only when OpenAlex is reachable.
+  - Documented OpenAlex configuration and notice boundaries in both READMEs, `.env.example`, CLI bootstrap env text, changelog, third-party notices, and tasks.
+  - Added unit coverage for OpenAlex parsing, optional key/mailto parameters, default-source participation, and notice compliance.
+- Verification:
+  - `poetry run pytest tests/unit/literature/test_clients.py tests/unit/literature/test_refresh.py tests/unit/research/test_similarity.py tests/unit/compliance/test_licenses.py -q`: passed 22 tests.
+  - `poetry run ruff check src/autoresearch/literature src/autoresearch/research tests/unit/literature tests/unit/research tests/unit/compliance/test_licenses.py`: passed.
+  - `poetry run mypy src/autoresearch/literature src/autoresearch/research`: passed.
+  - Live OpenAlex client query for `automated research agents evidence graph reproducibility`: returned source `openalex`, title `Whatever next? Predictive brains, situated agents, and the future of cognitive science`, DOI `https://doi.org/10.1017/s0140525x12000477`.
+  - `poetry run airesearcher literature-refresh --vault runs\manual-live\task64-vault --cache .cache\live-openalex-task64 --max-queries 1 --max-results-per-source 1 --cache-ttl-hours 1`: fetched ArXiv and OpenAlex results while preserving a Semantic Scholar HTTP 429 source error.
+  - `poetry run airesearcher similarity-check --candidate-file runs\manual-live\serve-pendigits-sha\cycle-20260612T170946Z\candidate.json --vault runs\manual-live\task64-vault --cache .cache\live-openalex-task64-similarity --max-queries 4 --max-results-per-source 1 --cache-ttl-hours 1 --project-id task64_openalex_live`: wrote 3 findings and showed OpenAlex participating in project-start cross-search.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with 90 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 334 passed and 4 skipped.
+  - `git diff --check`: no whitespace errors; only expected Windows LF-to-CRLF warnings.
+- Problems:
+  - `P-20260613-003` updated with OpenAlex mitigation evidence and remaining Semantic Scholar/API-key follow-up.
+  - `P-20260613-004` updated with OpenAlex source-breadth evidence and remaining publication-readiness blockers.
+- Follow-up:
+  - Improve similarity query generation so live project-start checks reliably issue four distinct non-duplicate queries, then rerun the full publication audit with OpenAlex in the default loop.
+
 ### 2026-06-13 01:10:40 +08:00 - Codex - Task 63 real public benchmark demo
 
 - Request: Verify that the system really writes and runs experiment scripts on real data, not only local toy smoke tests; add a real public benchmark path that helps the publication audit distinguish data-side evidence from remaining publication blockers.
