@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 23:49:00 +08:00 - Codex - Task 56 live reviewer evidence-quality closure
+
+- Request: Continue the main task after Obsidian setup by fixing the real autopilot reviewer findings about unsupported reproduction metadata and report evidence IDs.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/experiments/test_acceptance.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Added reproduction evidence to demo run records: command, Python version, dependency lock status, commit SHA, config hash, and data hash.
+  - Reused the same report context for run-record evidence and Markdown report generation so the evidence values and report claims stay aligned.
+  - Clarified the evidence-constrained LLM reviewer prompt: subject reports may cite internal metric evidence edge IDs when those IDs are defined in a supplied evidence map, but reviewer JSON findings must still cite outer evidence artifact IDs.
+  - Added tests for run-record reproducibility evidence and reviewer prompt wording.
+  - Marked task `56.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_acceptance.py tests/unit/llm/test_client.py::test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs -q`: passed, 2 tests.
+  - `poetry run ruff check src/autoresearch/experiments/demo_workflow.py src/autoresearch/llm/client.py tests/unit/experiments/test_acceptance.py tests/unit/llm/test_client.py`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run autoresearch run-demo --demo tabular_baseline --output-dir runs/manual-live/task56-demo --timeout-seconds 10`: passed and wrote a run record containing the new reproducibility evidence.
+  - `poetry run autoresearch llm-review --subject runs\manual-live\task56-demo\tabular-baseline\report\report.md -e runs\manual-live\task56-demo\tabular-baseline\validation\validation-report.json -e runs\manual-live\task56-demo\tabular-baseline\evidence\evidence-map.json -e runs\manual-live\task56-demo\tabular-baseline\run\run-record.json --config config.yaml --env-path .env --output runs\manual-live\task56-demo\llm-review.json --max-tokens 2400 --min-quality-score 0.85 --no-write-issues`: passed with DeepSeek `deepseek-v4-flash`, quality score `1.0`, verdict `pass`, and summary confirming metrics, validation, run metadata, and reproducibility details match the artifacts.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 310 tests and 4 opt-in live smoke tests skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `git diff --check`: passed with line-ending warnings only.
+- Problems:
+  - `P-20260612-078` updated to record that task `56.1` closed the follow-up with a real passing LLM review.
+- Follow-up:
+  - Continue toward SkillOpt-inspired skill evolution: convert repeated issue/failure patterns into bounded skill-card edits with held-out validation and rollback.
+
 ### 2026-06-12 23:36:00 +08:00 - Codex - Task 55 Obsidian vault structure and visual setup
 
 - Request: Add Obsidian skill/plugin-style structure and visual polish to the knowledge vault, then continue the main project work.

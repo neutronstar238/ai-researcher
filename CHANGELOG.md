@@ -42,6 +42,7 @@ Target version: `0.1.0`.
 - `/research:autopilot` slash command template for starting the local research loop.
 - `autoresearch obsidian-setup` for creating vault dashboards, templates, plugin recommendations, and CSS snippet assets.
 - `/research:obsidian-setup` slash command template for structuring the local Obsidian vault.
+- Run records now include reproduction command, Python version, dependency lock status, commit, config hash, and data hash as evidence for generated report claims.
 
 ### Changed
 
@@ -59,6 +60,7 @@ Target version: `0.1.0`.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 - README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
+- LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
 
 ### Fixed
 

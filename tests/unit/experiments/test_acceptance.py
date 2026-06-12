@@ -49,5 +49,16 @@ def test_run_mvp_acceptance_writes_report_with_rerun_outcomes(tmp_path: Path) ->
         assert run_record["validation_report"]["json_path"].endswith(
             "validation-report.json"
         )
+        assert run_record["reproducibility"]["command"].startswith(
+            "autoresearch run-demo --demo "
+        )
+        assert run_record["reproducibility"]["python_version"]
+        assert run_record["reproducibility"]["dependency_lock_status"] in {
+            "poetry.lock present",
+            "poetry.lock missing",
+        }
+        assert run_record["reproducibility"]["commit_sha"] == run["commit_sha"]
+        assert run_record["reproducibility"]["config_hash"] == run["config_hash"]
+        assert run_record["reproducibility"]["data_hash"] == run["data_hash"]
         assert run_record["cost_record"]["model_name"] == "local-runner"
         assert run_record["cost_record"]["gpu_hours"] == 0.0

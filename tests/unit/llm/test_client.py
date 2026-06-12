@@ -1,6 +1,12 @@
 import json
+from pathlib import Path
 
-from autoresearch.llm.client import evaluate_llm_output_quality, evaluate_llm_review_quality
+from autoresearch.llm.client import (
+    LLMEvidenceArtifact,
+    _review_messages,
+    evaluate_llm_output_quality,
+    evaluate_llm_review_quality,
+)
 
 
 def test_evaluate_llm_output_quality_accepts_guarded_json() -> None:
@@ -112,3 +118,23 @@ def test_evaluate_llm_review_quality_treats_missing_refs_as_hard_failure() -> No
 
     assert result.checks["finding_refs_present"] is False
     assert result.score <= 0.5
+
+
+def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
+    messages = _review_messages(
+        subject_path=Path("report.md"),
+        subject_text="Metric uses [evidence `evidence_metric`](metrics.json).",
+        evidence=[
+            LLMEvidenceArtifact(
+                evidence_id="evidence_1",
+                path="evidence/evidence-map.json",
+                sha256="abc123",
+                excerpt='{"evidence_edges":[{"id":"evidence_metric"}]}',
+            )
+        ],
+    )
+
+    prompt = messages[1]["content"]
+    assert "internal metric evidence edge IDs" in prompt
+    assert "outer evidence_refs IDs" in prompt
+    assert "evidence_1" in prompt

@@ -457,7 +457,10 @@ def _review_messages(
                 "findings. Allowed evidence_refs values are exactly: "
                 f"{allowed_ids}. Do not use file names, paths, source_run_id values, "
                 "or nested id/evidence_ref values from inside evidence files as "
-                "evidence_refs.\n\n"
+                "evidence_refs. If the subject report cites internal metric evidence "
+                "edge IDs, treat those subject citations as valid when the IDs appear "
+                "inside a provided evidence-map artifact; this rule does not change "
+                "the outer evidence_refs IDs required in your JSON.\n\n"
                 f"SUBJECT path={subject_path.as_posix()}\n{subject_text}\n\n"
                 f"LOCAL EVIDENCE\n{evidence_block}"
             ),

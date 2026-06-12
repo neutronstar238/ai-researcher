@@ -79,11 +79,18 @@ def run_scientistbench_demo(
         validation,
         claim_id=f"{task.id}_claim",
     )
-    run_record_path = _write_run_record(experiment_dir, run, bundle, validation)
+    report_context = _report_context(task, run, bundle, validation, evidence_edges, output_dir)
+    run_record_path = _write_run_record(
+        experiment_dir,
+        run,
+        bundle,
+        validation,
+        report_context,
+    )
     evidence_map_path = _write_evidence_map(experiment_dir, task, evidence_edges)
     report_path = experiment_dir / "report" / "report.md"
     report = generate_markdown_report(
-        _report_context(task, run, bundle, validation, evidence_edges, output_dir),
+        report_context,
         output_path=report_path,
     )
     assert_report_readable(report, base_dir=experiment_dir)
@@ -194,6 +201,7 @@ def _write_run_record(
     run: Any,
     bundle: Any,
     validation: Any,
+    report_context: ReportContext,
 ) -> Path:
     run_dir = experiment_dir / "run"
     run_dir.mkdir(exist_ok=True)
@@ -210,6 +218,14 @@ def _write_run_record(
             "status": validation.status.value,
             "json_path": validation.json_path,
             "markdown_path": validation.markdown_path,
+        },
+        "reproducibility": {
+            "command": report_context.reproduction_command,
+            "python_version": report_context.python_version,
+            "dependency_lock_status": report_context.dependency_lock_status,
+            "commit_sha": run.commit_sha,
+            "config_hash": run.config_hash,
+            "data_hash": run.data_hash,
         },
         "cost_record": (
             run.cost_record.model_dump(mode="json")

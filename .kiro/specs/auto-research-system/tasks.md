@@ -1002,6 +1002,15 @@ A task can be checked only when all applicable items are true:
     - _References: user request for Obsidian skill/plugin structuring and vault beautification_
     - _Verify: unit tests cover helper asset generation, local snippet generation, CLI output, and slash template creation._
 
+- [x] 56. Close live reviewer evidence-quality findings from autopilot
+  - [x] 56.1 Make report reproduction metadata evidence-backed
+    - Write reproduction command, Python version, dependency lock status, commit hash, config hash, and data hash into the local run record.
+    - Clarify the LLM reviewer prompt so subject reports may use internal metric edge IDs when those IDs are defined in the supplied evidence map, while reviewer JSON findings must still cite outer evidence artifact IDs.
+    - Add tests for run-record reproducibility evidence and prompt wording.
+    - Re-run a local demo and a real `.env` LLM review against the fixed evidence bundle.
+    - _References: live autopilot review issues from task `54.1`, `P-20260612-078` follow-up_
+    - _Verify: focused tests pass, full smoke/unit tests pass, and real DeepSeek LLM review no longer reports reproduction metadata as unsupported._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1170,6 +1179,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 30,
       "tasks": ["55.1"]
+    },
+    {
+      "id": 31,
+      "tasks": ["56.1"]
     }
   ]
 }
