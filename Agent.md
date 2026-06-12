@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:13:26 +08:00 - Codex - Task 24.1 system metrics
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `24.1`; compute monitoring metrics from fixture run history.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/observability/metrics.py`
+  - `tests/unit/observability/test_metrics.py`
+- Summary:
+  - Added `SystemMetricsInput`, `SystemMetricSnapshot`, and `compute_system_metrics()`.
+  - Computed task success rate, reproduction rate, validator rejection rate, average cost per success, average human interventions, agent loop depth, rollback count, citation error rate, and evidence coverage.
+  - Derived costs from explicit cost JSON first, then cost records, and counted human interventions from runs plus approval/publication gate audit events.
+  - Counted rollbacks from audit actions or rollback metadata and evidence coverage from claim traces with passed or warning evidence artifacts.
+  - Added fixture-history tests and empty-history denominator checks.
+  - Marked task `24.1` complete; parent task `24` remains open for the local dashboard export in `24.2`.
+- Verification:
+  - Initial focused lint exposed `P-20260612-048`; repaired export ordering with ruff autofix.
+  - `poetry run ruff check src/autoresearch/observability/metrics.py src/autoresearch/observability/__init__.py tests/unit/observability/test_metrics.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/observability/test_metrics.py -vv`: passed, 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 230 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-048` added and resolved.
+- Follow-up:
+  - Task `24.2` should export a local Markdown or static HTML status report using the computed metrics.
+
 ### 2026-06-12 12:06:29 +08:00 - Codex - Task 23.2 skill retrieval
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `23.2`; retrieve skill cards for similar tasks using structured frontmatter and Obsidian links.

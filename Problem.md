@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-048 - Observability metrics export import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:11:44 +08:00
+- Source: `poetry run ruff check src/autoresearch/observability/metrics.py src/autoresearch/observability/__init__.py tests/unit/observability/test_metrics.py`.
+- Symptom: Ruff reported `I001` for `src/autoresearch/observability/__init__.py`.
+- Impact: Task `24.1` focused lint verification was blocked.
+- Evidence: Ruff reported the import block was unsorted or unformatted.
+- Root cause: The metrics export was inserted without matching ruff/isort ordering.
+- Workaround: None needed after autofix.
+- Next action: None.
+- Linked tasks: `24.1`
+- Resolution: Ran ruff autofix on `src/autoresearch/observability/__init__.py`.
+- Verification: `poetry run ruff check src/autoresearch/observability/metrics.py src/autoresearch/observability/__init__.py tests/unit/observability/test_metrics.py`, `poetry run mypy src`, `poetry run pytest tests/unit/observability/test_metrics.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after import sorting.
+
 ### P-20260612-047 - Skill property test basename caused pytest import mismatch
 
 - Status: Resolved
