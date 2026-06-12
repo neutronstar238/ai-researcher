@@ -646,7 +646,7 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 4: Controlled Self-Evolution (Weeks 25-36)
 
-- [ ] 26. Build strategy library
+- [x] 26. Build strategy library
   - [x] 26.1 Define strategy card schema
     - Cover prompt templates, workflow templates, tool routing policy, retrieval policy, experiment search policy, scheduling policy, and validation policy.
     - Explicitly exclude safety policy, approval gates, license policy, and publication rules from automatic mutation.
@@ -655,7 +655,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 2, REQ 8, RP 9.1, EP 7.3_
     - _Verify: schema rejects prohibited strategy targets and writes a linkable strategy card._
 
-  - [ ] 26.2 Add strategy versioning
+  - [x] 26.2 Add strategy versioning
     - Track parent strategy, candidate strategy, evaluation score, golden test status, shadow status, release status, and rollback target.
     - _References: EP 12.2, RP 9.2_
     - _Verify: tests preserve lineage from parent to candidate._

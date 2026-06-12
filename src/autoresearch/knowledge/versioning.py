@@ -17,7 +17,7 @@ from autoresearch.knowledge.entries import (
     MarkdownKnowledgeStore,
 )
 from autoresearch.observability.audit import AuditEvent, AuditEventType, AuditLog
-from autoresearch.schemas import StrategyCard
+from autoresearch.schemas import StrategyCard, ValidationStatus
 
 
 class RollbackTargetType(str, Enum):
@@ -209,6 +209,47 @@ def write_strategy_card_entry(
     )
 
 
+def create_strategy_candidate(
+    parent: StrategyCard,
+    *,
+    content: str,
+    candidate_id: str | None = None,
+    evaluation_score: float | None = None,
+    golden_test_status: ValidationStatus = ValidationStatus.PENDING,
+    shadow_status: ValidationStatus = ValidationStatus.PENDING,
+    release_status: str = "candidate",
+    rollback_target: str | None = None,
+    failure_pattern_refs: tuple[str, ...] = (),
+    skill_card_refs: tuple[str, ...] = (),
+    replay_result_refs: tuple[str, ...] = (),
+    golden_test_refs: tuple[str, ...] = (),
+    shadow_evaluation_refs: tuple[str, ...] = (),
+) -> StrategyCard:
+    """Derive a candidate strategy while preserving parent lineage."""
+
+    next_version = parent.version + 1
+    return StrategyCard(
+        id=candidate_id or f"{parent.id}_v{next_version}",
+        strategy_type=parent.strategy_type,
+        version=next_version,
+        content=content,
+        parent_strategy_id=parent.id,
+        evaluation_score=evaluation_score,
+        golden_test_status=golden_test_status,
+        shadow_status=shadow_status,
+        release_status=release_status,
+        rollback_target=rollback_target or parent.rollback_target or parent.id,
+        failure_pattern_refs=_merge_refs(parent.failure_pattern_refs, failure_pattern_refs),
+        skill_card_refs=_merge_refs(parent.skill_card_refs, skill_card_refs),
+        replay_result_refs=_merge_refs(parent.replay_result_refs, replay_result_refs),
+        golden_test_refs=_merge_refs(parent.golden_test_refs, golden_test_refs),
+        shadow_evaluation_refs=_merge_refs(
+            parent.shadow_evaluation_refs,
+            shadow_evaluation_refs,
+        ),
+    )
+
+
 def rollback_knowledge_entry(
     *,
     vault_root: Path | str,
@@ -373,6 +414,10 @@ def _all_strategy_refs(strategy: StrategyCard, linked_refs: tuple[str, ...]) -> 
     ]
     values.extend(value for value in (strategy.parent_strategy_id, strategy.rollback_target) if value)
     return tuple(values)
+
+
+def _merge_refs(left: tuple[str, ...], right: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys((*left, *right)))
 
 
 def _wiki_lines(items: tuple[str, ...]) -> list[str]:

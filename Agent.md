@@ -59,6 +59,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:38:43 +08:00 - Codex - Task 26.2 strategy versioning
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `26.2`; preserve strategy lineage from parent strategy to candidate strategy.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/versioning.py`
+  - `tests/unit/knowledge/test_strategy_cards.py`
+- Summary:
+  - Added `create_strategy_candidate()` to derive a candidate strategy from a parent strategy with incremented version, parent ID, rollback target, evaluation score, golden test status, shadow status, release status, and inherited/merged context links.
+  - Exported the helper from `autoresearch.knowledge`.
+  - Added a test that derives a retrieval-policy candidate, writes parent and candidate strategy cards to the Obsidian vault, and verifies lineage fields survive the round trip.
+  - Marked task `26.2` and parent task `26` complete.
+- Verification:
+  - `poetry run ruff check src/autoresearch/knowledge/versioning.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_strategy_cards.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/knowledge/test_strategy_cards.py -vv`: passed, 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 254 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `27.1` should create replay datasets from historical tasks with enough inputs, outputs, evidence, costs, and validation outcomes for offline strategy testing.
+
 ### 2026-06-12 12:34:32 +08:00 - Codex - Task 26.1 strategy card schema
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `26.1`; define controlled self-evolution strategy card schema and write linkable Obsidian strategy cards.
