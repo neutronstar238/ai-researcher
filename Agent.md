@@ -59,6 +59,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:53:27 +08:00 - Codex - Task 35.1 license scanner
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `35.1`, adding license scanner integration for datasets, third-party code, and generated packages.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/compliance/__init__.py`
+  - `src/autoresearch/compliance/licenses.py`
+  - `tests/unit/compliance/test_licenses.py`
+- Summary:
+  - Added the `autoresearch.compliance` package.
+  - Added license scan target types for datasets, third-party code, and generated packages.
+  - Added a `LicensePolicy` that maps missing metadata to warning or failure severities by target type.
+  - Added `scan_license_metadata()` to detect text, JSON, manifest, dataset-card, datasheet, README, and license-file metadata.
+  - Added a structured `LicenseScanReport` with warning count, failure count, and pass/fail status.
+  - Added tests for present metadata, default missing-metadata policy, policy downgrade to warning, and empty JSON license metadata.
+  - Marked task `35.1` complete in `tasks.md`; parent task `35` remains open because cost and SLA controls are not complete.
+  - No external source, paid scanner service, or LLM provider was called by this local metadata scanner.
+- Verification:
+  - `poetry run ruff check src/autoresearch/compliance tests/unit/compliance/test_licenses.py`: passed.
+  - `poetry run mypy src`: passed, 80 source files checked.
+  - `poetry run pytest tests/unit/compliance/test_licenses.py -vv`: passed, 4 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 289 passed and 3 skipped.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this task.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with task `35.2` cost management.
+
 ### 2026-06-12 13:49:19 +08:00 - Codex - Task 34.2 Kubernetes deployment plan
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `34.2`, planning Kubernetes deployment without creating a Helm chart before Docker Compose stability.

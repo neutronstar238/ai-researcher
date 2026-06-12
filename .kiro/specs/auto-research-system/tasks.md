@@ -747,7 +747,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: chart lint passes when chart exists._
 
 - [ ] 35. Add compliance, cost, and SLA controls
-  - [ ] 35.1 Add license scanner integration
+  - [x] 35.1 Add license scanner integration
     - Check datasets, third-party code, and generated packages for license metadata.
     - _References: RP 11, EP 17_
     - _Verify: scanner reports missing license metadata as warning or failure according to policy._
