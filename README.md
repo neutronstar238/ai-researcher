@@ -157,6 +157,19 @@ poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
 
 After `deploy-setup`, this keeps the local loop running. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
 
+Skill evolution candidates:
+
+```bash
+poetry run autoresearch skill-evolve \
+  --parent-skill-id skill_evidence_bound_review \
+  --issue-ref projects/autoresearch-system/issues/example_issue \
+  --change-summary "Tighten the evidence bundle before live review." \
+  --proposed-action "Attach run-record evidence before review." \
+  --validation-check "Held-out review has zero unsupported reproduction claims."
+```
+
+This is SkillOpt-inspired but conservative: it writes a candidate skill card and rejected-edit buffer under the Obsidian vault. It does not overwrite or promote the parent skill; promotion still needs held-out validation and human review.
+
 Online discovery commands:
 
 ```bash

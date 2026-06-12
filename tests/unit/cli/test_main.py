@@ -9,7 +9,13 @@ import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
-from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType, KnowledgeZone
+from autoresearch.knowledge import (
+    KnowledgeEntry,
+    KnowledgeEntryType,
+    KnowledgeZone,
+    SuccessfulPatternExample,
+    extract_reusable_skill_card,
+)
 from autoresearch.llm import LLMReviewResult, LLMSmokeResult
 from autoresearch.schemas import ResearchCandidate
 
@@ -66,6 +72,56 @@ def test_obsidian_setup_creates_vault_assets_and_local_snippet(tmp_path: Path) -
     assert "enabledCssSnippets" in (vault_root / ".obsidian" / "appearance.json").read_text(
         encoding="utf-8"
     )
+
+
+def test_skill_evolve_creates_bounded_candidate_from_issue_ref(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+    parent = extract_reusable_skill_card(
+        vault_root=vault_root,
+        name="Evidence-first demo review",
+        examples=(
+            SuccessfulPatternExample(
+                project_id="project_a",
+                experience_ref="projects/project_a/experience/review_a",
+                summary="Review passed after adding run record evidence.",
+                trigger_conditions=("demo report review",),
+                actions=("attach run record evidence",),
+                success_metrics=("review_quality_score >= 0.85",),
+            ),
+            SuccessfulPatternExample(
+                project_id="project_b",
+                experience_ref="projects/project_b/experience/review_b",
+                summary="Unsupported reproduction claims were blocked.",
+                trigger_conditions=("demo report review",),
+                actions=("attach run record evidence",),
+                success_metrics=("unsupported_claims = 0",),
+            ),
+        ),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "skill-evolve",
+            "--vault",
+            str(vault_root),
+            "--parent-skill-id",
+            parent.skill_id,
+            "--change-summary",
+            "Require run-record evidence before promoting a demo report.",
+            "--issue-ref",
+            "projects/project_a/issues/llm_review_missing_evidence",
+            "--proposed-action",
+            "attach run record before live review",
+            "--validation-check",
+            "real LLM review score >= 0.85",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] candidate_skill_id:" in result.stdout
+    assert "[OK] rejected_edit_buffer:" in result.stdout
+    assert list((vault_root / "exploration" / "skills" / "candidates").glob("*.md"))
 
 
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
@@ -204,11 +260,13 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
+    assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
     assert "/research:autopilot" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
+    assert "/research:skill-evolve" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout

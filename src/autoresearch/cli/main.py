@@ -22,7 +22,7 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
-from autoresearch.knowledge import create_obsidian_vault_assets
+from autoresearch.knowledge import create_obsidian_vault_assets, create_skill_evolution_candidate
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
 from autoresearch.llm import (
     LLMClientError,
@@ -80,6 +80,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `autoresearch obsidian-setup --vault autoresearch-vault --project-id {{args}}` "
         "to create Home.md, dashboards, templates, plugin recommendations, and CSS snippet assets. "
         "Use `--write-local-snippet` only on your own machine.",
+    ),
+    "research/skill-evolve.toml": (
+        "Create a bounded skill evolution candidate from vault issue and failure evidence.",
+        "Run `autoresearch skill-evolve --parent-skill-id <skill_id> --issue-ref <issue> "
+        "--change-summary \"...\" --proposed-action \"...\" --validation-check \"...\"`. "
+        "Do not promote the candidate until held-out validation passes.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -244,6 +250,65 @@ def obsidian_setup(
     typer.echo(f"[OK] snippet: {assets.snippet_path}")
     if assets.local_snippet_path is not None:
         typer.echo(f"[OK] local_snippet: {assets.local_snippet_path}")
+
+
+@app.command("skill-evolve")
+def skill_evolve(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root containing skill cards."),
+    ] = Path("autoresearch-vault"),
+    parent_skill_id: Annotated[
+        str,
+        typer.Option("--parent-skill-id", help="Existing skill card ID to evolve."),
+    ] = "",
+    change_summary: Annotated[
+        str,
+        typer.Option("--change-summary", help="Bounded edit summary."),
+    ] = "",
+    issue_ref: Annotated[
+        list[str] | None,
+        typer.Option("--issue-ref", help="Issue evidence ref. Repeat for multiple issues."),
+    ] = None,
+    failure_ref: Annotated[
+        list[str] | None,
+        typer.Option("--failure-ref", help="Failure-pattern evidence ref. Repeat as needed."),
+    ] = None,
+    proposed_action: Annotated[
+        list[str] | None,
+        typer.Option("--proposed-action", help="Candidate action. Repeat for multiple actions."),
+    ] = None,
+    validation_check: Annotated[
+        list[str] | None,
+        typer.Option("--validation-check", help="Held-out validation check. Repeat as needed."),
+    ] = None,
+    candidate_skill_id: Annotated[
+        str | None,
+        typer.Option("--candidate-skill-id", help="Optional explicit candidate skill ID."),
+    ] = None,
+) -> None:
+    """Create a bounded skill evolution candidate from local evidence."""
+
+    try:
+        candidate = create_skill_evolution_candidate(
+            vault_root=vault,
+            parent_skill_id=parent_skill_id,
+            candidate_skill_id=candidate_skill_id,
+            change_summary=change_summary,
+            issue_refs=tuple(issue_ref or ()),
+            failure_pattern_refs=tuple(failure_ref or ()),
+            proposed_actions=tuple(proposed_action or ()),
+            validation_checks=tuple(validation_check or ()),
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] skill_evolve: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"[OK] candidate_skill_id: {candidate.candidate_skill_id}")
+    typer.echo(f"[OK] candidate_path: {candidate.path}")
+    typer.echo(f"[OK] parent_skill_id: {candidate.parent_skill_id}")
+    typer.echo(f"[OK] validation_checks: {len(candidate.validation_checks)}")
+    typer.echo(f"[OK] rejected_edit_buffer: {candidate.rejected_edit_buffer_path}")
 
 
 @app.command("deploy-setup")

@@ -1011,6 +1011,16 @@ A task can be checked only when all applicable items are true:
     - _References: live autopilot review issues from task `54.1`, `P-20260612-078` follow-up_
     - _Verify: focused tests pass, full smoke/unit tests pass, and real DeepSeek LLM review no longer reports reproduction metadata as unsupported._
 
+- [x] 57. Add SkillOpt-inspired bounded skill evolution candidates
+  - [x] 57.1 Create evidence-linked skill evolution candidate workflow
+    - Add a skill evolution helper that creates a candidate skill card instead of mutating the parent skill.
+    - Require issue or failure evidence refs, proposed actions, validation checks, rollback target, and a rejected-edit buffer.
+    - Add `autoresearch skill-evolve` so operators and future autopilot loops can create bounded skill candidates from vault evidence.
+    - Add `/research:skill-evolve` to slash command templates.
+    - Document the command and the non-promotion rule in README files.
+    - _References: user request for SkillOpt-style skill evolution, SkillOpt bounded edits and validation gates_
+    - _Verify: unit tests cover candidate generation, rejected-edit buffer creation, evidence/validation requirements, CLI output, and slash template creation._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1183,6 +1193,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 31,
       "tasks": ["56.1"]
+    },
+    {
+      "id": 32,
+      "tasks": ["57.1"]
     }
   ]
 }

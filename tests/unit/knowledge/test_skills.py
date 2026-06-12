@@ -9,6 +9,7 @@ from autoresearch.knowledge import (
     MarkdownKnowledgeStore,
     SkillRetrievalQuery,
     SuccessfulPatternExample,
+    create_skill_evolution_candidate,
     extract_reusable_skill_card,
     retrieve_relevant_skills,
 )
@@ -200,6 +201,77 @@ def test_retrieve_relevant_skills_rejects_invalid_limits(tmp_path: Path) -> None
         retrieve_relevant_skills(vault_root=tmp_path, query=query, limit=0)
     with pytest.raises(ValueError, match="min_score"):
         retrieve_relevant_skills(vault_root=tmp_path, query=query, min_score=-1)
+
+
+def test_create_skill_evolution_candidate_writes_bounded_candidate_and_buffer(
+    tmp_path: Path,
+) -> None:
+    parent = _write_baseline_skill(tmp_path)
+
+    candidate = create_skill_evolution_candidate(
+        vault_root=tmp_path,
+        parent_skill_id=parent.skill_id,
+        change_summary="Require evidence bundle review before treating a demo as reusable.",
+        issue_refs=("projects/project_a/issues/llm_review_missing_evidence",),
+        failure_pattern_refs=("exploration/failure_patterns/recurring_unsupported_claims",),
+        proposed_actions=(
+            "include run-record evidence before LLM review",
+            "reject reports with unsupported reproduction metadata",
+        ),
+        validation_checks=(
+            "real LLM review score >= 0.85",
+            "held-out demo report has zero unsupported reproduction claims",
+        ),
+    )
+
+    store = MarkdownKnowledgeStore(tmp_path)
+    entry = store.read_entry(
+        f"exploration/skills/candidates/{candidate.candidate_skill_id}.md"
+    )
+    buffer_entry = store.read_entry(
+        f"exploration/skills/rejected/{candidate.candidate_skill_id}_rejections.md"
+    )
+    markdown = candidate.path.read_text(encoding="utf-8")
+
+    assert candidate.parent_skill_id == parent.skill_id
+    assert candidate.path == tmp_path / "exploration" / "skills" / "candidates" / (
+        f"{candidate.candidate_skill_id}.md"
+    )
+    assert entry.entry_type is KnowledgeEntryType.SKILL_CARD
+    assert "skill-evolution" in entry.tags
+    assert "shadow-evaluation" in entry.tags
+    assert "projects/project_a/issues/llm_review_missing_evidence" in entry.source_refs
+    assert "exploration/failure_patterns/recurring_unsupported_claims" in entry.source_refs
+    assert "## Validation Gate" in markdown
+    assert "## Shadow Evaluation Notes" in markdown
+    assert "[[exploration/skills/rejected/" in markdown
+    assert buffer_entry.entry_type is KnowledgeEntryType.EVIDENCE_NOTE
+    assert "rejected-edit-buffer" in buffer_entry.tags
+
+
+def test_create_skill_evolution_candidate_requires_evidence_and_validation(
+    tmp_path: Path,
+) -> None:
+    parent = _write_baseline_skill(tmp_path)
+
+    with pytest.raises(ValueError, match="issue_ref or failure_pattern_ref"):
+        create_skill_evolution_candidate(
+            vault_root=tmp_path,
+            parent_skill_id=parent.skill_id,
+            change_summary="No evidence should be rejected.",
+            issue_refs=(),
+            proposed_actions=("do something",),
+            validation_checks=("check something",),
+        )
+    with pytest.raises(ValueError, match="validation check"):
+        create_skill_evolution_candidate(
+            vault_root=tmp_path,
+            parent_skill_id=parent.skill_id,
+            change_summary="No validation should be rejected.",
+            issue_refs=("projects/project_a/issues/issue",),
+            proposed_actions=("do something",),
+            validation_checks=(),
+        )
 
 
 def _write_baseline_skill(tmp_path: Path):

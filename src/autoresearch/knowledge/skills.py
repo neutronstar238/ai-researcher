@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -86,6 +87,21 @@ class SkillMatch:
     reasons: tuple[str, ...]
     relative_path: str
     entry: KnowledgeEntry
+
+
+@dataclass(frozen=True)
+class SkillEvolutionCandidate:
+    """Bounded skill edit candidate awaiting shadow validation."""
+
+    candidate_skill_id: str
+    path: Path
+    entry: KnowledgeEntry
+    parent_skill_id: str
+    parent_relative_path: str
+    issue_refs: tuple[str, ...]
+    failure_pattern_refs: tuple[str, ...]
+    validation_checks: tuple[str, ...]
+    rejected_edit_buffer_path: Path
 
 
 @dataclass(frozen=True)
@@ -244,6 +260,119 @@ def retrieve_relevant_skills(
     )[:limit]
 
 
+def create_skill_evolution_candidate(
+    *,
+    vault_root: Path | str,
+    parent_skill_id: str,
+    change_summary: str,
+    issue_refs: tuple[str, ...],
+    proposed_actions: tuple[str, ...],
+    validation_checks: tuple[str, ...],
+    failure_pattern_refs: tuple[str, ...] = (),
+    candidate_skill_id: str | None = None,
+) -> SkillEvolutionCandidate:
+    """Create a SkillOpt-inspired bounded edit candidate without mutating the parent."""
+
+    parent_id = _required_text(parent_skill_id, "parent_skill_id")
+    _validate_skill_id(parent_id)
+    summary = _required_text(change_summary, "change_summary")
+    issues = _ordered_unique(issue_refs)
+    failures = _ordered_unique(failure_pattern_refs)
+    actions = _ordered_unique(proposed_actions)
+    checks = _ordered_unique(validation_checks)
+    if not issues and not failures:
+        msg = "at least one issue_ref or failure_pattern_ref is required"
+        raise ValueError(msg)
+    if not actions:
+        msg = "at least one proposed action is required"
+        raise ValueError(msg)
+    if not checks:
+        msg = "at least one validation check is required"
+        raise ValueError(msg)
+
+    parent_relative_path, parent_entry = _find_skill_by_id(Path(vault_root), parent_id)
+    resolved_candidate_id = candidate_skill_id or _candidate_skill_id(
+        parent_id=parent_id,
+        change_summary=summary,
+        issue_refs=issues,
+        failure_pattern_refs=failures,
+        proposed_actions=actions,
+    )
+    _validate_skill_id(resolved_candidate_id)
+    if resolved_candidate_id == parent_id:
+        msg = "candidate_skill_id must differ from parent_skill_id"
+        raise ValueError(msg)
+
+    source_refs = _ordered_unique([parent_relative_path, *issues, *failures])
+    keywords = _ordered_unique(
+        [
+            "skill-evolution",
+            "skillopt-inspired",
+            "bounded-edit",
+            "shadow-evaluation",
+            parent_id,
+            resolved_candidate_id,
+            summary,
+            *actions,
+            *checks,
+            *issues,
+            *failures,
+        ]
+    )
+    entry = KnowledgeEntry(
+        entry_id=resolved_candidate_id,
+        entry_type=KnowledgeEntryType.SKILL_CARD,
+        zone=KnowledgeZone.EXPLORATION,
+        title=f"{parent_entry.title} evolution candidate",
+        tags=[
+            "skill",
+            "skill-card",
+            "skill-evolution",
+            "skillopt-inspired",
+            "shadow-evaluation",
+        ],
+        keywords=list(keywords),
+        source_refs=list(source_refs),
+        related_task_ids=list(parent_entry.related_task_ids),
+        related_run_ids=list(parent_entry.related_run_ids),
+        body=_skill_evolution_body(
+            candidate_skill_id=resolved_candidate_id,
+            parent_skill_id=parent_id,
+            parent_relative_path=parent_relative_path,
+            parent_title=parent_entry.title,
+            change_summary=summary,
+            issue_refs=issues,
+            failure_pattern_refs=failures,
+            proposed_actions=actions,
+            validation_checks=checks,
+        ),
+    )
+    store = MarkdownKnowledgeStore(vault_root)
+    candidate_relative_path = Path("exploration") / "skills" / "candidates" / (
+        f"{resolved_candidate_id}.md"
+    )
+    candidate_path = store.write_entry(candidate_relative_path, entry)
+    buffer_path = _write_rejected_edit_buffer(
+        store=store,
+        candidate_skill_id=resolved_candidate_id,
+        parent_skill_id=parent_id,
+        candidate_relative_path=candidate_relative_path.as_posix(),
+        source_refs=source_refs,
+    )
+    stored_entry = store.read_entry(candidate_relative_path)
+    return SkillEvolutionCandidate(
+        candidate_skill_id=resolved_candidate_id,
+        path=candidate_path,
+        entry=stored_entry,
+        parent_skill_id=parent_id,
+        parent_relative_path=parent_relative_path,
+        issue_refs=issues,
+        failure_pattern_refs=failures,
+        validation_checks=checks,
+        rejected_edit_buffer_path=buffer_path,
+    )
+
+
 def _validate_example(example: SuccessfulPatternExample) -> None:
     _required_text(example.project_id, "project_id")
     _required_text(example.experience_ref, "experience_ref")
@@ -328,6 +457,61 @@ def _skill_body(
             "- Verify the success metrics on the new project before treating this skill as promoted.",
         ]
     )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _skill_evolution_body(
+    *,
+    candidate_skill_id: str,
+    parent_skill_id: str,
+    parent_relative_path: str,
+    parent_title: str,
+    change_summary: str,
+    issue_refs: tuple[str, ...],
+    failure_pattern_refs: tuple[str, ...],
+    proposed_actions: tuple[str, ...],
+    validation_checks: tuple[str, ...],
+) -> str:
+    rejection_buffer_ref = (
+        f"exploration/skills/rejected/{candidate_skill_id}_rejections"
+    )
+    lines = [
+        f"# {parent_title} evolution candidate",
+        "",
+        f"- Candidate skill ID: `{candidate_skill_id}`",
+        f"- Parent skill: [[{parent_relative_path.removesuffix('.md')}|{parent_skill_id}]]",
+        "- Status: `shadow_evaluation`",
+        f"- Rollback target: [[{parent_relative_path.removesuffix('.md')}|{parent_skill_id}]]",
+        f"- Rejected edit buffer: [[{rejection_buffer_ref}]]",
+        "",
+        "## Bounded Edit Summary",
+        "",
+        change_summary,
+        "",
+        "## Trigger Evidence",
+        "",
+        "### Issues",
+        "",
+        *_wiki_bullet_lines(issue_refs),
+        "",
+        "### Failure Patterns",
+        "",
+        *_wiki_bullet_lines(failure_pattern_refs),
+        "",
+        "## Proposed Actions",
+        "",
+        *_bullet_lines(proposed_actions),
+        "",
+        "## Validation Gate",
+        "",
+        *_bullet_lines(validation_checks),
+        "",
+        "## Shadow Evaluation Notes",
+        "",
+        "- Run this candidate against held-out tasks before promotion.",
+        "- Do not replace the parent skill until validation checks pass.",
+        "- Record rejected edits in the linked buffer instead of deleting evidence.",
+    ]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -463,6 +647,75 @@ def _skill_rows(vault_root: Path) -> tuple[_SkillEntryRow, ...]:
             )
         )
     return tuple(rows)
+
+
+def _find_skill_by_id(vault_root: Path, skill_id: str) -> tuple[str, KnowledgeEntry]:
+    for row in _skill_rows(vault_root):
+        if row.entry.entry_id == skill_id:
+            return row.relative_path, row.entry
+    msg = f"parent skill not found: {skill_id}"
+    raise ValueError(msg)
+
+
+def _candidate_skill_id(
+    *,
+    parent_id: str,
+    change_summary: str,
+    issue_refs: tuple[str, ...],
+    failure_pattern_refs: tuple[str, ...],
+    proposed_actions: tuple[str, ...],
+) -> str:
+    seed = "|".join(
+        [
+            parent_id,
+            change_summary,
+            *issue_refs,
+            *failure_pattern_refs,
+            *proposed_actions,
+        ]
+    )
+    return f"{parent_id}_candidate_{sha256(seed.encode('utf-8')).hexdigest()[:8]}"
+
+
+def _write_rejected_edit_buffer(
+    *,
+    store: MarkdownKnowledgeStore,
+    candidate_skill_id: str,
+    parent_skill_id: str,
+    candidate_relative_path: str,
+    source_refs: tuple[str, ...],
+) -> Path:
+    entry = KnowledgeEntry(
+        entry_id=f"{candidate_skill_id}_rejections",
+        entry_type=KnowledgeEntryType.EVIDENCE_NOTE,
+        zone=KnowledgeZone.EXPLORATION,
+        title=f"Rejected edits for {candidate_skill_id}",
+        tags=["skill-evolution", "rejected-edit-buffer"],
+        keywords=[
+            "skill-evolution",
+            "rejected-edit-buffer",
+            candidate_skill_id,
+            parent_skill_id,
+        ],
+        source_refs=[candidate_relative_path, *source_refs],
+        body="\n".join(
+            [
+                f"# Rejected edits for {candidate_skill_id}",
+                "",
+                f"- Candidate skill: [[{candidate_relative_path.removesuffix('.md')}]]",
+                f"- Parent skill ID: `{parent_skill_id}`",
+                "",
+                "## Rejected Edits",
+                "",
+                "| Date | Edit | Reason | Evidence |",
+                "|---|---|---|---|",
+            ]
+        ),
+    )
+    return store.write_entry(
+        Path("exploration") / "skills" / "rejected" / f"{candidate_skill_id}_rejections.md",
+        entry,
+    )
 
 
 def _all_entries(vault_root: Path) -> tuple[tuple[str, KnowledgeEntry], ...]:

@@ -43,6 +43,8 @@ Target version: `0.1.0`.
 - `autoresearch obsidian-setup` for creating vault dashboards, templates, plugin recommendations, and CSS snippet assets.
 - `/research:obsidian-setup` slash command template for structuring the local Obsidian vault.
 - Run records now include reproduction command, Python version, dependency lock status, commit, config hash, and data hash as evidence for generated report claims.
+- `autoresearch skill-evolve` for creating SkillOpt-inspired bounded skill evolution candidates with issue/failure evidence refs, validation gates, rollback target, and rejected-edit buffer.
+- `/research:skill-evolve` slash command template for evidence-linked skill evolution candidates.
 
 ### Changed
 

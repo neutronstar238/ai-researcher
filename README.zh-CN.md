@@ -96,6 +96,19 @@ poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
 
 完成 `deploy-setup` 后，该命令会让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；真正可发表论文仍需要更强领域实验和人工审阅。
 
+Skill evolution 候选：
+
+```bash
+poetry run autoresearch skill-evolve \
+  --parent-skill-id skill_evidence_bound_review \
+  --issue-ref projects/autoresearch-system/issues/example_issue \
+  --change-summary "Tighten the evidence bundle before live review." \
+  --proposed-action "Attach run-record evidence before review." \
+  --validation-check "Held-out review has zero unsupported reproduction claims."
+```
+
+这一步受 SkillOpt 启发，但实现上保持保守：它只会在 Obsidian vault 中写入候选 skill card 和 rejected-edit buffer，不会覆盖或提升父 skill。真正 promotion 仍需要 held-out validation 和人工审阅。
+
 联网发现命令：
 
 ```bash

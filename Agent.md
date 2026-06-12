@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 00:04:00 +08:00 - Codex - Task 57 SkillOpt-inspired skill evolution candidates
+
+- Request: Continue the main task by combining the open-source SkillOpt idea into the Obsidian self-evolution workflow.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `create_skill_evolution_candidate`, a SkillOpt-inspired bounded edit workflow that writes a candidate skill card instead of mutating the parent skill.
+  - Required issue or failure evidence refs, proposed actions, validation checks, rollback target, and a rejected-edit buffer for every skill evolution candidate.
+  - Added `autoresearch skill-evolve` and `/research:skill-evolve`.
+  - Documented the command in English and Chinese README files, emphasizing that candidates are not promoted without held-out validation and human review.
+  - Marked task `57.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run pytest tests/unit/knowledge/test_skills.py tests/unit/cli/test_main.py::test_skill_evolve_creates_bounded_candidate_from_issue_ref tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 9 tests.
+  - `poetry run ruff check src/autoresearch/knowledge/skills.py src/autoresearch/knowledge/__init__.py src/autoresearch/cli/main.py tests/unit/knowledge/test_skills.py tests/unit/cli/test_main.py`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 313 tests and 4 opt-in live smoke tests skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `git diff --check`: passed with line-ending warnings only.
+- Problems:
+  - None.
+- Follow-up:
+  - Wire autopilot issue follow-ups into skill evolution candidate creation when repeated issue patterns recur.
+  - Add held-out shadow evaluation scoring before any skill candidate can be promoted.
+
 ### 2026-06-12 23:49:00 +08:00 - Codex - Task 56 live reviewer evidence-quality closure
 
 - Request: Continue the main task after Obsidian setup by fixing the real autopilot reviewer findings about unsupported reproduction metadata and report evidence IDs.

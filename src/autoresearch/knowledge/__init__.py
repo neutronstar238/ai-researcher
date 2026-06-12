@@ -18,9 +18,11 @@ from .project_permissions import (
 )
 from .skills import (
     ExtractedSkillCard,
+    SkillEvolutionCandidate,
     SkillMatch,
     SkillRetrievalQuery,
     SuccessfulPatternExample,
+    create_skill_evolution_candidate,
     extract_reusable_skill_card,
     retrieve_relevant_skills,
 )
@@ -67,6 +69,7 @@ __all__ = [
     "ObsidianVaultAssets",
     "RollbackResult",
     "RollbackTargetType",
+    "SkillEvolutionCandidate",
     "SkillMatch",
     "SkillRetrievalQuery",
     "StrategyKnowledgeRecord",
@@ -75,6 +78,7 @@ __all__ = [
     "VaultLayout",
     "VersionSnapshot",
     "create_obsidian_vault_assets",
+    "create_skill_evolution_candidate",
     "create_vault_layout",
     "create_strategy_candidate",
     "extract_wiki_links",
