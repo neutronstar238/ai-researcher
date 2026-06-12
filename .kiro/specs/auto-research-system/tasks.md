@@ -782,7 +782,7 @@ A task can be checked only when all applicable items are true:
 
 ## Checkpoints
 
-- [ ] Checkpoint A: Phase 0 baseline
+- [x] Checkpoint A: Phase 0 baseline
   - `poetry run autoresearch doctor` passes.
   - `poetry run pytest tests/smoke tests/unit/config` passes.
   - `poetry run ruff check src tests` passes.

@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:22:06 +08:00 - Codex - Checkpoint A Phase 0 baseline
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint A, verifying the Phase 0 baseline.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran all Checkpoint A verification gates.
+  - Confirmed local doctor, smoke/config tests, ruff, and mypy gates pass.
+  - Confirmed `Agent.md` and `Problem.md` are current, with `P-20260612-057` still open as a known low-severity warning.
+  - Confirmed completed Phase 0 tasks have focused commits: `87df913` covers the 0.x planning baseline, and tasks `1.1` through `4.3` have task-specific commits.
+  - Marked Checkpoint A complete in `tasks.md`.
+  - No external live call was applicable for this local baseline checkpoint.
+- Verification:
+  - `poetry run autoresearch doctor`: passed.
+  - `poetry run pytest tests/smoke tests/unit/config`: passed, 18 passed and 3 skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - `rg -n "^- \\[x\\] [0-4]\\.|^  - \\[x\\] [0-4]\\." .kiro/specs/auto-research-system/tasks.md`: listed completed Phase 0 tasks.
+  - `git log --oneline --regexp-ignore-case --grep "task 0" --grep "task 1" --grep "task 2" --grep "task 3" --grep "task 4"`: confirmed task-specific commits for `1.1` through `4.3`.
+  - `git log --oneline --regexp-ignore-case --grep "bootstrap" --grep "task 0" --grep "governance" --grep "planning"`: confirmed `87df913 docs: establish autoresearch planning baseline`.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this checkpoint.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with Checkpoint B only after confirming the Phase 1 MVP loop acceptance criteria against the current demo workflow.
+
 ### 2026-06-12 14:18:58 +08:00 - Codex - Task 36.3 changelog and release notes
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.3`, adding changelog and release notes.
