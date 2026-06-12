@@ -696,7 +696,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: simulated negative reward triggers rollback event._
 
 - [ ] 30. Generate evolution reports
-  - [ ] 30.1 Summarize strategy changes
+  - [x] 30.1 Summarize strategy changes
     - Report reason, evidence, evaluation, reward delta, risks, release history, rollback target, and final decision.
     - _References: EP 7.3, RP 9.4_
     - _Verify: report includes all required fields and links to strategy cards._

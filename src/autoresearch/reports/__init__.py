@@ -19,6 +19,11 @@ from .drafts import (
     PaperDraftVersioningError,
     store_paper_draft_version,
 )
+from .evolution import (
+    StrategyEvolutionReportArtifact,
+    StrategyEvolutionReportContext,
+    generate_strategy_evolution_report,
+)
 from .figures import FigureArtifact, FigureGenerationError, generate_metric_bar_figure
 from .generator import ReportContext, generate_markdown_report
 from .latex import (
@@ -103,6 +108,8 @@ __all__ = [
     "ReviewDimension",
     "ReviewDimensionScore",
     "ReviewFinding",
+    "StrategyEvolutionReportArtifact",
+    "StrategyEvolutionReportContext",
     "TableGenerationError",
     "assert_metric_consistency",
     "assert_report_readable",
@@ -110,6 +117,7 @@ __all__ = [
     "create_reproducibility_package",
     "generate_bibtex",
     "generate_ablation_table",
+    "generate_strategy_evolution_report",
     "generate_metric_bar_figure",
     "generate_method_comparison_table",
     "generate_latex_skeleton",

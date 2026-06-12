@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:09:32 +08:00 - Codex - Task 30.1 strategy evolution report
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `30.1`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/evolution.py`
+  - `tests/unit/reports/test_evolution.py`
+- Summary:
+  - Added structured strategy evolution report context and artifact models.
+  - Generated Markdown and JSON reports for strategy changes.
+  - Included required sections for strategy cards, reason, evidence, evaluation, reward delta, risks, release history, rollback target, and final decision.
+  - Rendered strategy card and evidence references as Obsidian wiki-links.
+  - Added a test that verifies required report fields and strategy card links.
+  - Marked task `30.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src/autoresearch/reports/evolution.py src/autoresearch/reports/__init__.py tests/unit/reports/test_evolution.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/reports/test_evolution.py -vv`: passed, 1 test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 273 passed and 3 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `30.2` human-readable audit review for maintainers before promotion.
+
 ### 2026-06-12 13:06:20 +08:00 - Codex - Task 29.2 automatic strategy rollback
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `29.2`.
