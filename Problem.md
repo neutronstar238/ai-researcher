@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-058 - Plugin sample test used stale schema and colliding filename
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 13:37:33 +08:00
+- Source: `poetry run pytest tests/unit/plugins/test_registry.py -vv` and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`.
+- Symptom: The first plugin sample test failed because the fixture used unsupported `AcademicPaper` fields; after fixing that, full pytest failed with an import mismatch because `tests/unit/plugins/test_registry.py` shared a basename with `tests/property/agents/test_registry.py`.
+- Impact: Task `33.1` sample plugin verification could not be accepted until the fixture matched the real model and the test module name was unique.
+- Evidence: Pydantic rejected extra fields `paper_id` and `published_year`; pytest later reported imported module `test_registry` came from the unit plugin test while collecting the property agent registry test.
+- Root cause: The sample fixture was written from an assumed paper schema, and the new test file used a generic basename already present elsewhere in the suite.
+- Workaround: None needed after the fixture and filename fixes.
+- Next action: Use actual model fields when writing fixtures, and prefer domain-specific test filenames such as `test_plugin_registry.py`.
+- Linked tasks: `33.1`
+- Resolution: Updated the sample paper fixture to use the real `AcademicPaper` fields, renamed the test file to `tests/unit/plugins/test_plugin_registry.py`, and cleared test caches before rerunning full pytest.
+- Verification: Focused plugin ruff, mypy, focused plugin pytest, full ruff, and full pytest passed after the fixes.
+
 ### P-20260612-057 - Requests dependency warning appears during verification
 
 - Status: Open

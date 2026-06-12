@@ -59,6 +59,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:37:33 +08:00 - Codex - Task 33.1 plugin interfaces
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `33.1`, defining plugin interfaces and verifying a sample plugin can load and be disabled safely.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/plugins/__init__.py`
+  - `src/autoresearch/plugins/interfaces.py`
+  - `src/autoresearch/plugins/registry.py`
+  - `tests/unit/plugins/test_plugin_registry.py`
+- Summary:
+  - Added the `autoresearch.plugins` package.
+  - Defined `PluginKind` for literature source, experiment framework, compute provider, notification, and report export extensions.
+  - Added base `Plugin` protocol plus specialized protocols for literature, experiment framework, compute provider, notification, and report export plugins.
+  - Added shared plugin payload models: `PluginMetadata`, `PluginArtifact`, `PluginJob`, and `Notification`.
+  - Added an in-process `PluginRegistry` that registers plugins, initializes enabled plugins, disables initialized plugins through `shutdown()`, re-enables plugins without loading, filters plugins by kind, and rejects duplicate names.
+  - Added a sample literature plugin and notification plugin test covering load, capability lookup, safe repeated disable, disabled-load rejection, kind filtering, duplicate rejection, and metadata validation.
+  - Marked task `33.1` and parent task `33` complete in `tasks.md`.
+  - No external source or LLM provider is invoked by this interface task, so no live external API test was required or claimed.
+- Verification:
+  - `rg -n "plugin|plugins|extension|interface|Literature source plugins|experiment framework plugins|compute provider plugins|notification plugins|report export plugins" AutoResearch_System_Research_Plan.md AutoResearch_System_Execution_Plan.md .kiro/specs/auto-research-system/requirements.md .kiro/specs/auto-research-system/design.md .kiro/specs/auto-research-system/tasks.md src tests`: reviewed the plugin-system scope and confirmed no existing plugin package.
+  - `poetry run ruff check src/autoresearch/plugins tests/unit/plugins/test_registry.py`: initially passed before the test file was renamed.
+  - `poetry run mypy src`: passed, 78 source files checked.
+  - First focused pytest failed because the sample plugin used stale `AcademicPaper` fields; recorded as `P-20260612-058`.
+  - Focused ruff then failed with `ARG002` for an unused sample plugin query argument; fixed the fixture.
+  - Full pytest then failed with a pytest import mismatch because `test_registry.py` duplicated an existing test basename; recorded as `P-20260612-058`.
+  - Renamed the unit test to `tests/unit/plugins/test_plugin_registry.py` and cleared caches.
+  - `poetry run ruff check src/autoresearch/plugins tests/unit/plugins/test_plugin_registry.py`: passed.
+  - `poetry run mypy src`: passed, 78 source files checked.
+  - `poetry run pytest tests/unit/plugins/test_plugin_registry.py -vv`: passed, 4 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 285 passed and 3 skipped.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - `P-20260612-058` added and resolved.
+  - `P-20260612-057` remains open as a low-severity environment dependency warning.
+- Follow-up:
+  - Continue with task `34.1` Docker Compose deployment.
+
 ### 2026-06-12 13:30:54 +08:00 - Codex - Task 32.1 project permissions
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `32.1`, defining roles and project permissions with allowed and denied authorization tests.

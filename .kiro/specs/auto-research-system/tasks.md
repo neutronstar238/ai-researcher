@@ -728,8 +728,8 @@ A task can be checked only when all applicable items are true:
     - _References: EP 8, RP 3.3_
     - _Verify: authorization tests cover allowed and denied actions._
 
-- [ ] 33. Add plugin system
-  - [ ] 33.1 Define plugin interfaces
+- [x] 33. Add plugin system
+  - [x] 33.1 Define plugin interfaces
     - Literature source plugins, experiment framework plugins, compute provider plugins, notification plugins, report export plugins.
     - _References: EP 8, DES Plugin System_
     - _Verify: sample plugin loads and can be disabled safely._
