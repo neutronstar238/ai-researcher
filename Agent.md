@@ -62,6 +62,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:47:47 +08:00 - Codex - Checkpoint D Phase 3 self-loop
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint D, verifying Phase 3 self-loop criteria.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran targeted verification for scheduler candidate refresh, Obsidian candidate/failure/skill storage, failure classification/searchability, skill card extraction/retrieval, monitoring export, and rollback fixtures.
+  - Marked Checkpoint D complete in `tasks.md`.
+  - No external live call was applicable for this local verification checkpoint.
+- Verification:
+  - `poetry run pytest tests/unit/test_scheduler.py tests/unit/research/test_candidates.py tests/unit/knowledge/test_entries.py tests/unit/knowledge/test_links.py tests/unit/knowledge/test_skills.py tests/unit/knowledge/test_strategy_cards.py tests/unit/knowledge/test_rollback.py tests/unit/knowledge/test_versioning.py tests/unit/experiments/test_failures.py tests/unit/observability/test_metrics.py tests/unit/observability/test_dashboard.py tests/property/knowledge/test_permissions.py tests/property/knowledge/test_skill_retrieval.py -vv`: passed, 61 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this checkpoint.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with Checkpoint E after verifying controlled evolution criteria against replay, golden tests, shadow mode, promotion, and rollback.
+
 ### 2026-06-12 14:40:21 +08:00 - Codex - Checkpoint C Phase 2 research assistant
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint C, verifying Phase 2 research assistant criteria.

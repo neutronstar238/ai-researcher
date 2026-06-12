@@ -804,7 +804,7 @@ A task can be checked only when all applicable items are true:
   - Citation, figure/table, and review checks produce structured reports.
   - Reproducibility package validates.
 
-- [ ] Checkpoint D: Phase 3 self-loop
+- [x] Checkpoint D: Phase 3 self-loop
   - Candidate pool updates on schedule.
   - Candidate pool, failures, and skills are stored as Obsidian Markdown entries with wiki-links and topic index entries.
   - Failures are classified and searchable.
