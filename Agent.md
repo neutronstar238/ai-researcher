@@ -59,6 +59,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:06:29 +08:00 - Codex - Task 23.2 skill retrieval
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `23.2`; retrieve skill cards for similar tasks using structured frontmatter and Obsidian links.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+  - `tests/property/knowledge/test_skill_retrieval.py`
+- Summary:
+  - Added `SkillRetrievalQuery`, `SkillMatch`, and `retrieve_relevant_skills()`.
+  - Scored skill matches using direct skill IDs, frontmatter tags, frontmatter keywords, task metadata terms, source refs, body terms, Obsidian wiki-links, and computed backlinks.
+  - Scanned Obsidian Markdown entries without requiring a database or external service.
+  - Added unit coverage for frontmatter plus Obsidian-link matching and invalid retrieval limits.
+  - Added property coverage that generated similar task contexts retrieve the expected skill above an unrelated control skill.
+  - Marked task `23.2` and parent task `23` complete.
+- Verification:
+  - Initial focused pytest exposed `P-20260612-047`; renamed the property test file to avoid pytest import mismatch.
+  - `poetry run ruff check src/autoresearch/knowledge/skills.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_skills.py tests/property/knowledge/test_skill_retrieval.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/knowledge/test_skills.py tests/property/knowledge/test_skill_retrieval.py -vv`: passed, 6 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 228 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-047` added and resolved.
+- Follow-up:
+  - Task `24.1` should track system metrics such as task success rate, reproduction rate, validator rejection rate, cost per success, interventions, loop depth, rollbacks, citation error rate, and evidence coverage.
+
 ### 2026-06-12 11:59:43 +08:00 - Codex - Task 23.1 reusable skill cards
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `23.1`; extract reusable skill cards from repeated successful patterns.

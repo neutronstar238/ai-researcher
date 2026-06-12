@@ -11,8 +11,11 @@ from .entries import (
 from .permissions import AccessMode, AgentRole, PermissionManager
 from .skills import (
     ExtractedSkillCard,
+    SkillMatch,
+    SkillRetrievalQuery,
     SuccessfulPatternExample,
     extract_reusable_skill_card,
+    retrieve_relevant_skills,
 )
 from .vault import (
     EXPLORATION_DIRECTORIES,
@@ -32,10 +35,13 @@ __all__ = [
     "MarkdownKnowledgeStore",
     "PROJECT_DIRECTORIES",
     "PermissionManager",
+    "SkillMatch",
+    "SkillRetrievalQuery",
+    "SuccessfulPatternExample",
     "VaultLayout",
     "VersionSnapshot",
     "create_vault_layout",
     "extract_wiki_links",
     "extract_reusable_skill_card",
-    "SuccessfulPatternExample",
+    "retrieve_relevant_skills",
 ]

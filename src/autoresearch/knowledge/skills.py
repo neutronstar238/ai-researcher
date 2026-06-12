@@ -3,20 +3,39 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+
+from pydantic import ValidationError
 
 from autoresearch.knowledge.entries import (
     KnowledgeEntry,
     KnowledgeEntryType,
     KnowledgeZone,
     MarkdownKnowledgeStore,
+    extract_wiki_links,
 )
 
 DEFAULT_MIN_SKILL_EXAMPLES = 2
 SKILL_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+STOP_TOKENS = frozenset(
+    {
+        "and",
+        "card",
+        "for",
+        "from",
+        "into",
+        "new",
+        "project",
+        "skill",
+        "task",
+        "the",
+        "use",
+        "with",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +63,37 @@ class ExtractedSkillCard:
     entry: KnowledgeEntry
     example_refs: tuple[str, ...]
     failure_pattern_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SkillRetrievalQuery:
+    """New task context used to retrieve relevant skill cards."""
+
+    title: str
+    description: str = ""
+    metadata: Mapping[str, object] | None = None
+    tags: tuple[str, ...] = ()
+    keywords: tuple[str, ...] = ()
+    links: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SkillMatch:
+    """Ranked skill match for a new task context."""
+
+    skill_id: str
+    score: float
+    reasons: tuple[str, ...]
+    relative_path: str
+    entry: KnowledgeEntry
+
+
+@dataclass(frozen=True)
+class _SkillEntryRow:
+    relative_path: str
+    entry: KnowledgeEntry
+    links: tuple[str, ...]
+    backlinks: tuple[str, ...]
 
 
 def extract_reusable_skill_card(
@@ -143,6 +193,55 @@ def extract_reusable_skill_card(
         example_refs=example_refs,
         failure_pattern_refs=failure_pattern_refs,
     )
+
+
+def retrieve_relevant_skills(
+    *,
+    vault_root: Path | str,
+    query: SkillRetrievalQuery,
+    limit: int = 5,
+    min_score: float = 1.0,
+) -> list[SkillMatch]:
+    """Retrieve skill cards that match a new task's metadata and Obsidian links."""
+
+    if limit < 1:
+        msg = "limit must be at least 1"
+        raise ValueError(msg)
+    if min_score < 0:
+        msg = "min_score must be non-negative"
+        raise ValueError(msg)
+
+    _required_text(query.title, "query.title")
+    query_values = _query_values(query)
+    query_terms = _search_terms(query_values)
+    query_tags = _normalized_values(query.tags)
+    query_keywords = _normalized_values([*query.keywords, *_metadata_values(query.metadata)])
+    query_links = _normalized_targets([*query.links, *_link_like_values(query.metadata)])
+
+    matches: list[SkillMatch] = []
+    for row in _skill_rows(Path(vault_root)):
+        score, reasons = _score_skill(
+            row=row,
+            query_terms=query_terms,
+            query_tags=query_tags,
+            query_keywords=query_keywords,
+            query_links=query_links,
+        )
+        if score >= min_score:
+            matches.append(
+                SkillMatch(
+                    skill_id=row.entry.entry_id,
+                    score=score,
+                    reasons=reasons,
+                    relative_path=row.relative_path,
+                    entry=row.entry,
+                )
+            )
+
+    return sorted(
+        matches,
+        key=lambda match: (-match.score, match.entry.title.casefold(), match.skill_id),
+    )[:limit]
 
 
 def _validate_example(example: SuccessfulPatternExample) -> None:
@@ -259,6 +358,203 @@ def _skill_keywords(
     ]
     tokens = [token for value in raw_values for token in TOKEN_PATTERN.findall(value.casefold())]
     return _ordered_unique([*raw_values, *tokens])
+
+
+def _score_skill(
+    *,
+    row: _SkillEntryRow,
+    query_terms: set[str],
+    query_tags: set[str],
+    query_keywords: set[str],
+    query_links: set[str],
+) -> tuple[float, tuple[str, ...]]:
+    entry = row.entry
+    reasons: list[str] = []
+    score = 0.0
+
+    structured_targets = _normalized_targets(
+        [entry.entry_id, row.relative_path, row.relative_path.removesuffix(".md")]
+    )
+    if structured_targets & query_links or entry.entry_id.casefold() in query_keywords:
+        score += 20.0
+        reasons.append("matched skill id or direct skill wiki-link")
+
+    entry_tags = _normalized_values(entry.tags)
+    matched_tags = sorted(entry_tags & query_tags)
+    if matched_tags:
+        score += 5.0 * len(matched_tags)
+        reasons.append(f"matched frontmatter tags: {', '.join(matched_tags)}")
+
+    entry_keywords = _normalized_values(entry.keywords)
+    matched_keywords = sorted(entry_keywords & query_keywords)
+    if matched_keywords:
+        score += 4.0 * len(matched_keywords)
+        reasons.append(f"matched frontmatter keywords: {', '.join(matched_keywords)}")
+
+    structured_terms = _search_terms(
+        [
+            entry.entry_id,
+            entry.title,
+            *entry.tags,
+            *entry.keywords,
+            *entry.source_refs,
+            *entry.related_task_ids,
+            *entry.related_run_ids,
+        ]
+    )
+    matched_structured_terms = sorted(structured_terms & query_terms)
+    if matched_structured_terms:
+        score += min(8.0, 1.0 * len(matched_structured_terms))
+        reasons.append(
+            "matched structured metadata terms: "
+            + ", ".join(matched_structured_terms[:8])
+        )
+
+    skill_links = _normalized_targets([*row.links, *entry.source_refs])
+    matched_links = sorted(skill_links & query_links)
+    if matched_links:
+        score += 6.0 * len(matched_links)
+        reasons.append(f"matched Obsidian links: {', '.join(matched_links)}")
+
+    backlinks = _normalized_targets(row.backlinks)
+    matched_backlinks = sorted(backlinks & query_links)
+    if matched_backlinks:
+        score += 6.0 * len(matched_backlinks)
+        reasons.append(f"matched Obsidian backlinks: {', '.join(matched_backlinks)}")
+
+    body_terms = _search_terms([entry.body])
+    matched_body_terms = sorted(body_terms & query_terms)
+    if matched_body_terms:
+        score += min(5.0, 0.5 * len(matched_body_terms))
+        reasons.append(f"matched body terms: {', '.join(matched_body_terms[:8])}")
+
+    return score, tuple(reasons)
+
+
+def _skill_rows(vault_root: Path) -> tuple[_SkillEntryRow, ...]:
+    entries = _all_entries(vault_root)
+    target_index: dict[str, str] = {}
+    for relative_path, entry in entries:
+        target_index[_normalize_target(entry.entry_id)] = relative_path
+        target_index[_normalize_target(relative_path)] = relative_path
+        target_index[_normalize_target(relative_path.removesuffix(".md"))] = relative_path
+
+    backlinks: dict[str, set[str]] = {relative_path: set() for relative_path, _ in entries}
+    for source_path, source_entry in entries:
+        for link in extract_wiki_links(source_entry.body):
+            target_path = target_index.get(_normalize_target(link))
+            if target_path is not None and target_path != source_path:
+                backlinks[target_path].add(source_entry.entry_id)
+                backlinks[target_path].add(source_path)
+                backlinks[target_path].add(source_path.removesuffix(".md"))
+
+    rows: list[_SkillEntryRow] = []
+    for relative_path, entry in entries:
+        if entry.entry_type is not KnowledgeEntryType.SKILL_CARD:
+            continue
+        links = _ordered_unique([*entry.links, *extract_wiki_links(entry.body)])
+        row_backlinks = _ordered_unique([*entry.backlinks, *backlinks[relative_path]])
+        rows.append(
+            _SkillEntryRow(
+                relative_path=relative_path,
+                entry=entry,
+                links=links,
+                backlinks=row_backlinks,
+            )
+        )
+    return tuple(rows)
+
+
+def _all_entries(vault_root: Path) -> tuple[tuple[str, KnowledgeEntry], ...]:
+    if not vault_root.exists():
+        return ()
+    entries: list[tuple[str, KnowledgeEntry]] = []
+    for path in sorted(vault_root.rglob("*.md")):
+        relative_path = path.relative_to(vault_root)
+        if any(part.startswith(".") for part in relative_path.parts):
+            continue
+        try:
+            entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
+        except (ValueError, ValidationError):
+            continue
+        entries.append((relative_path.as_posix(), entry))
+    return tuple(entries)
+
+
+def _query_values(query: SkillRetrievalQuery) -> tuple[str, ...]:
+    return _ordered_unique(
+        [
+            query.title,
+            query.description,
+            *query.tags,
+            *query.keywords,
+            *query.links,
+            *_metadata_values(query.metadata),
+        ]
+    )
+
+
+def _metadata_values(metadata: Mapping[str, object] | None) -> tuple[str, ...]:
+    if metadata is None:
+        return ()
+    values: list[str] = []
+    for key, value in metadata.items():
+        values.append(key)
+        values.extend(_flatten_metadata_value(value))
+    return _ordered_unique(values)
+
+
+def _flatten_metadata_value(value: object) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, Mapping):
+        values: list[str] = []
+        for key, item in value.items():
+            values.append(str(key))
+            values.extend(_flatten_metadata_value(item))
+        return _ordered_unique(values)
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, Iterable):
+        values = []
+        for item in value:
+            values.extend(_flatten_metadata_value(item))
+        return _ordered_unique(values)
+    return (str(value),)
+
+
+def _link_like_values(metadata: Mapping[str, object] | None) -> tuple[str, ...]:
+    if metadata is None:
+        return ()
+    links: list[str] = []
+    for key, value in metadata.items():
+        if "link" in key.casefold() or key.casefold().endswith("_ref"):
+            links.extend(_flatten_metadata_value(value))
+    return _ordered_unique(links)
+
+
+def _search_terms(values: Iterable[object]) -> set[str]:
+    terms: set[str] = set()
+    for value in values:
+        text = str(value).strip().casefold()
+        if text:
+            terms.add(text)
+        for token in TOKEN_PATTERN.findall(text):
+            if token not in STOP_TOKENS and len(token) > 1:
+                terms.add(token)
+    return terms
+
+
+def _normalized_values(values: Iterable[object]) -> set[str]:
+    return {str(value).strip().casefold() for value in values if str(value).strip()}
+
+
+def _normalized_targets(values: Iterable[object]) -> set[str]:
+    return {_normalize_target(str(value)) for value in values if str(value).strip()}
+
+
+def _normalize_target(value: str) -> str:
+    return _wiki_target(value).strip().casefold()
 
 
 def _ordered_unique(values: Iterable[object]) -> tuple[str, ...]:

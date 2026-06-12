@@ -606,7 +606,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 8.1, REQ 8.4, RP 12_
     - _Verify: tests classify representative failure records and update a shared failure pattern note._
 
-- [ ] 23. Build Obsidian skill library
+- [x] 23. Build Obsidian skill library
   - [x] 23.1 Extract reusable skill cards
     - Convert repeated successful patterns into skill cards with trigger conditions, actions, success metrics, and examples.
     - Store skills under `autoresearch-vault/exploration/skills/` with usage examples linked to project experience notes and failure patterns.
@@ -614,7 +614,7 @@ A task can be checked only when all applicable items are true:
     - _References: REQ 2.3, REQ 2.5, REQ 8.5, RP 9.3, EP 6.3_
     - _Verify: successful pattern examples generate a skill card in the vault._
 
-  - [ ] 23.2 Retrieve skills for similar tasks
+  - [x] 23.2 Retrieve skills for similar tasks
     - Match new tasks to skill cards based on trigger conditions and metadata.
     - Search both structured frontmatter and Obsidian topic links.
     - _References: REQ 2.6, DES Property 8, DES Property 9_

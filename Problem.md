@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-047 - Skill property test basename caused pytest import mismatch
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:04:43 +08:00
+- Source: `poetry run pytest tests/unit/knowledge/test_skills.py tests/property/knowledge/test_skills.py -vv`.
+- Symptom: pytest reported an import file mismatch between `tests/unit/knowledge/test_skills.py` and `tests/property/knowledge/test_skills.py`.
+- Impact: Task `23.2` focused test verification was blocked during collection.
+- Evidence: pytest imported module `test_skills` from the unit test path while trying to collect the property test file with the same basename.
+- Root cause: The property test file reused the same basename in a non-package test layout.
+- Workaround: None needed after renaming the property test file.
+- Next action: None.
+- Linked tasks: `23.2`
+- Resolution: Renamed the property test file to `tests/property/knowledge/test_skill_retrieval.py`.
+- Verification: `poetry run pytest tests/unit/knowledge/test_skills.py tests/property/knowledge/test_skill_retrieval.py -vv`, `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after the property test rename.
+
 ### P-20260612-046 - Skill extraction helper had incorrect iterable type
 
 - Status: Resolved
