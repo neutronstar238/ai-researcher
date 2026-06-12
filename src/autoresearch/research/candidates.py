@@ -5,7 +5,14 @@ from __future__ import annotations
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 
+from autoresearch.knowledge import (
+    KnowledgeEntry,
+    KnowledgeEntryType,
+    KnowledgeZone,
+    MarkdownKnowledgeStore,
+)
 from autoresearch.schemas import CandidateStatus, DocumentRecord, ResearchCandidate
 
 METHOD_TERMS = (
@@ -34,6 +41,36 @@ DATASET_PATTERN = re.compile(
     r"(?:dataset|benchmark|corpus)\b",
     re.IGNORECASE,
 )
+DEFAULT_CANDIDATE_VAULT_ROOT = Path("autoresearch-vault")
+LEGAL_CANDIDATE_STATUS_TRANSITIONS: dict[CandidateStatus, set[CandidateStatus]] = {
+    CandidateStatus.DRAFT: {
+        CandidateStatus.READY_FOR_REVIEW,
+        CandidateStatus.REJECTED,
+        CandidateStatus.ARCHIVED,
+    },
+    CandidateStatus.READY_FOR_REVIEW: {
+        CandidateStatus.APPROVED,
+        CandidateStatus.REJECTED,
+        CandidateStatus.ARCHIVED,
+    },
+    CandidateStatus.APPROVED: {
+        CandidateStatus.ACTIVE,
+        CandidateStatus.REJECTED,
+        CandidateStatus.ARCHIVED,
+    },
+    CandidateStatus.ACTIVE: {
+        CandidateStatus.COMPLETED,
+        CandidateStatus.REJECTED,
+        CandidateStatus.ARCHIVED,
+    },
+    CandidateStatus.COMPLETED: {CandidateStatus.ARCHIVED},
+    CandidateStatus.REJECTED: {CandidateStatus.ARCHIVED},
+    CandidateStatus.ARCHIVED: set(),
+}
+
+
+class CandidateLifecycleError(ValueError):
+    """Raised when a candidate lifecycle transition is invalid."""
 
 
 @dataclass(frozen=True)
@@ -42,6 +79,17 @@ class CandidateGenerationConfig:
 
     max_candidates: int = 3
     min_ready_evidence_refs: int = 2
+
+
+@dataclass(frozen=True)
+class CandidateVaultLinks:
+    """Obsidian links attached to a persisted research candidate."""
+
+    source_papers: tuple[str, ...] = ()
+    topic_index_entries: tuple[str, ...] = ()
+    prior_failures: tuple[str, ...] = ()
+    useful_skills: tuple[str, ...] = ()
+    strategy_cards: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +126,109 @@ def generate_research_candidates(
             candidate.title,
         ),
     )[: config.max_candidates]
+
+
+def transition_candidate_status(
+    candidate: ResearchCandidate,
+    new_status: CandidateStatus,
+) -> ResearchCandidate:
+    """Return a candidate with a validated lifecycle status transition."""
+
+    if candidate.status is new_status:
+        return candidate
+    allowed = LEGAL_CANDIDATE_STATUS_TRANSITIONS[candidate.status]
+    if new_status not in allowed:
+        msg = (
+            f"illegal candidate status transition: "
+            f"{candidate.status.value} -> {new_status.value}"
+        )
+        raise CandidateLifecycleError(msg)
+    metadata = dict(candidate.metadata)
+    history = list(metadata.get("status_history", []))
+    history.append({"from": candidate.status.value, "to": new_status.value})
+    metadata["status_history"] = history
+    return candidate.model_copy(update={"status": new_status, "metadata": metadata})
+
+
+def store_candidate_lifecycle_entry(
+    candidate: ResearchCandidate,
+    *,
+    vault_root: Path | str = DEFAULT_CANDIDATE_VAULT_ROOT,
+    links: CandidateVaultLinks = CandidateVaultLinks(),
+) -> Path:
+    """Store a research candidate as an Obsidian-readable vault entry."""
+
+    store = MarkdownKnowledgeStore(vault_root)
+    entry = KnowledgeEntry(
+        entry_id=candidate.id,
+        entry_type=KnowledgeEntryType.RESEARCH_CANDIDATE,
+        zone=KnowledgeZone.EXPLORATION,
+        title=candidate.title,
+        tags=["research-candidate", candidate.status.value],
+        keywords=_candidate_keywords(candidate),
+        source_refs=sorted(set(candidate.evidence_refs) | set(links.source_papers)),
+        related_task_ids=[],
+        related_run_ids=[],
+        body=_candidate_body(candidate, links),
+    )
+    relative_path = Path("exploration") / "topics" / f"{candidate.id}.md"
+    return store.write_entry(relative_path, entry)
+
+
+def _candidate_keywords(candidate: ResearchCandidate) -> list[str]:
+    keywords = {
+        "research-candidate",
+        candidate.status.value,
+    }
+    for key in ("method", "dataset", "limitation"):
+        value = candidate.metadata.get(key)
+        if isinstance(value, str) and value:
+            keywords.add(value)
+    return sorted(keywords)
+
+
+def _candidate_body(
+    candidate: ResearchCandidate,
+    links: CandidateVaultLinks,
+) -> str:
+    return "\n".join(
+        [
+            f"# {candidate.title}",
+            "",
+            f"- Candidate ID: `{candidate.id}`",
+            f"- Status: `{candidate.status.value}`",
+            f"- Novelty score: `{candidate.novelty_score}`",
+            f"- Feasibility score: `{candidate.feasibility_score}`",
+            f"- Impact score: `{candidate.impact_score}`",
+            "",
+            "## Research Gap",
+            "",
+            candidate.research_gap,
+            "",
+            "## Description",
+            "",
+            candidate.description,
+            "",
+            "## Evidence",
+            "",
+            *_link_lines("Source papers", tuple(candidate.evidence_refs) + links.source_papers),
+            *_link_lines("Topic indexes", links.topic_index_entries),
+            *_link_lines("Prior failures", links.prior_failures),
+            *_link_lines("Useful skills", links.useful_skills),
+            *_link_lines("Strategy cards", links.strategy_cards),
+        ]
+    ).rstrip() + "\n"
+
+
+def _link_lines(label: str, targets: tuple[str, ...]) -> list[str]:
+    lines = [f"### {label}", ""]
+    unique_targets = tuple(dict.fromkeys(target for target in targets if target))
+    if not unique_targets:
+        lines.extend(["- None", ""])
+        return lines
+    lines.extend(f"- [[{target}]]" for target in unique_targets)
+    lines.append("")
+    return lines
 
 
 def _extract_signal(document: DocumentRecord) -> _DocumentSignal:

@@ -542,7 +542,7 @@ A task can be checked only when all applicable items are true:
 ### Phase 3: Self-Loop Research Platform (Weeks 17-24)
 
 - [ ] 20. Build Obsidian-backed research candidate pool
-  - [ ] 20.1 Store candidate lifecycle
+  - [x] 20.1 Store candidate lifecycle
     - Track candidate status: draft, ready_for_review, approved, active, completed, rejected, archived.
     - Store candidates as Obsidian Markdown entries under `autoresearch-vault/exploration/topics/` or a dedicated candidate folder linked from `autoresearch-vault/exploration/index.md`.
     - Link each candidate to source papers, topic index entries, prior failures, useful skills, and related strategy cards.

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-035 - Candidate lifecycle exports and tests had unsorted imports
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 10:37:00 +08:00
+- Source: `poetry run ruff check src tests` while verifying task `20.1`.
+- Symptom: Ruff reported `I001` in `src/autoresearch/research/__init__.py` and `tests/unit/research/test_candidates.py`.
+- Impact: Focused candidate lifecycle tests and mypy passed, but the lint gate failed until imports were organized.
+- Evidence: Ruff suggested organizing the new candidate lifecycle import blocks.
+- Root cause: New exports and tests were patched in a non-isort order.
+- Workaround: None needed after applying ruff's import organizer.
+- Next action: Re-run ruff after adding aggregate exports and test imports.
+- Linked tasks: `20.1`
+- Resolution: Ran ruff `--fix` on the affected research modules.
+- Verification: `poetry run ruff check src tests` passed after the fix.
+
 ### P-20260611-034 - Reproducibility package verification exposed import and enum typing issues
 
 - Status: Resolved

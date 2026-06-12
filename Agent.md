@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:37:07 +08:00 - Codex - Task 20.1 candidate lifecycle
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `20.1`.
+- Files changed:
+  - `src/autoresearch/research/candidates.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/knowledge/entries.py`
+  - `tests/unit/research/test_candidates.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added legal lifecycle transitions for research candidates from draft through review, approval, active work, completion, rejection, and archival.
+  - Added `research_candidate` as a first-class Obsidian knowledge entry type.
+  - Added candidate vault persistence under `autoresearch-vault/exploration/topics/<candidate-id>.md` with wiki-links to source papers, topic indexes, prior failures, useful skills, and strategy cards.
+  - Ensured candidate entries populate the Obsidian topic index via existing `MarkdownKnowledgeStore` indexing.
+  - Marked task `20.1` complete in `tasks.md`; parent task `20` remains open until `20.2` is complete.
+- Verification:
+  - `poetry run pytest tests/unit/research/test_candidates.py tests/unit/knowledge/test_entries.py`: passed, 18 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 192 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+  - `poetry run ruff check src tests`: passed after import ordering fix.
+  - `poetry run mypy src`: passed with no issues in 57 source files; mypy emitted the existing non-failing unused override-section note.
+- Problems:
+  - `P-20260612-035` resolved.
+- Follow-up:
+  - Task `20.2` should analyze recent literature and vault gaps into evidence-backed candidate updates.
+
 ### 2026-06-12 10:32:07 +08:00 - Codex - Project rename to AI-Researcher
 
 - Request: Rename the project to `AI-Researcher` and continue implementation.
