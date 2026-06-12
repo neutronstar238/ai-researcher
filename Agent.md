@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 15:35:03 +08:00 - Codex - Task 39 NOTICE and environment handoff
+
+- Request: Add the project NOTICE text and make the root `.env` location visible so the user can fill model credentials before real full-chain testing.
+- Files changed:
+  - `.env`
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `NOTICE`
+  - `README.md`
+  - `README.zh-CN.md`
+- Summary:
+  - Added the requested Apache-2.0 `NOTICE` file for AI Researcher attribution.
+  - Added a tracked `.env.example` with provider-agnostic LLM fields and optional WeChat/Feishu channel fields.
+  - Added an ignored root `.env` placeholder for the user to fill before real LLM full-chain testing.
+  - Linked README license sections to `NOTICE` and documented manual `.env` setup.
+  - Added and completed task `39` in the implementation task plan.
+- Verification:
+  - `Test-Path -LiteralPath NOTICE; Test-Path -LiteralPath .env.example; Test-Path -LiteralPath .env`: passed, all three files exist.
+  - `git check-ignore -v .env`: passed, root `.env` is ignored by `.gitignore`.
+  - `rg -n "AI Researcher|Copyright 2026|Apache License, Version 2.0|AUTORESEARCH_LLM_BASE_URL|AUTORESEARCH_LLM_MODEL_NAME|AUTORESEARCH_LLM_API_KEY|NOTICE|\.env.example|39\.1|39\.2" NOTICE .env.example README.md README.zh-CN.md .kiro/specs/auto-research-system/tasks.md CHANGELOG.md Agent.md`: passed.
+  - `git diff --check`: passed with only existing CRLF conversion warnings from Git.
+- Problems:
+  - None.
+- Follow-up:
+  - After the user fills `.env`, run real LLM full-chain testing and output quality inspection without mocking the model call.
+
 ### 2026-06-12 15:16:39 +08:00 - Codex - Task 38 online discovery CLI
 
 - Request: Continue from the first-deploy CLI work by making slash-command targets executable for real online literature refresh and project-start similarity checks.

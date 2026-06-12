@@ -814,6 +814,20 @@ A task can be checked only when all applicable items are true:
     - _References: user project-start cross-check requirement, tasks 21.3 and 37.3_
     - _Verify: mocked CLI unit tests pass and a real CLI run writes exploration and project Obsidian notes._
 
+- [x] 39. Add release notice and visible local environment template
+  - [x] 39.1 Add Apache-2.0 NOTICE file
+    - Add root `NOTICE` with project attribution required by the current public-release package.
+    - Link README license sections to `NOTICE`.
+    - _References: user NOTICE request, task 36.1_
+    - _Verify: `NOTICE` exists and contains the requested AI Researcher copyright and Apache License notice._
+
+  - [x] 39.2 Add root `.env` template for model testing handoff
+    - Add tracked `.env.example` with provider-agnostic LLM fields and optional WeChat/Feishu channel fields.
+    - Add an ignored local `.env` placeholder so the user can fill real model credentials before full-chain LLM testing.
+    - Document that `.env` is git-ignored and should hold real secrets only locally.
+    - _References: user request to fill a model in `.env`, task 37.2_
+    - _Verify: `.env.example` and ignored local `.env` exist; `git check-ignore .env` confirms `.env` is not tracked._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -914,6 +928,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 13,
       "tasks": ["38.1", "38.2"]
+    },
+    {
+      "id": 14,
+      "tasks": ["39.1", "39.2"]
     }
   ]
 }

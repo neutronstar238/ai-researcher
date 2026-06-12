@@ -40,6 +40,8 @@ poetry run autoresearch deploy-setup
 
 该命令会引导输入 LLM provider 标签、API base URL、model name、API key，以及可选的微信/飞书通道参数。API key 和通道密钥只写入 `.env`；`config.yaml` 只保存非密钥模型配置、通道元数据和环境变量名。
 
+如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。根目录 `.env` 会被 git 忽略。
+
 脚本化部署示例：
 
 ```bash
@@ -123,4 +125,4 @@ poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literatur
 
 ## 许可证
 
-AI-Researcher 使用 [Apache License 2.0](LICENSE) 发布。SPDX 标识为 `Apache-2.0`。
+AI-Researcher 使用 [Apache License 2.0](LICENSE) 发布。SPDX 标识为 `Apache-2.0`。署名信息见 [NOTICE](NOTICE)。
