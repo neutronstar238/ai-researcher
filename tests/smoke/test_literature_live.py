@@ -3,7 +3,13 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 
-from autoresearch.literature import ArxivClient, RetryConfig, SemanticScholarClient
+from autoresearch.literature import (
+    ArxivClient,
+    CircuitBreakerOpenError,
+    RetryConfig,
+    SemanticScholarClient,
+    SourceRateLimitError,
+)
 
 
 @pytest.mark.skipif(
@@ -23,7 +29,13 @@ def test_optional_live_literature_clients_return_results() -> None:
     for source, client in clients.items():
         try:
             results[source] = len(client.search("machine learning", limit=1))
-        except (HTTPError, TimeoutError, URLError) as exc:
+        except (
+            CircuitBreakerOpenError,
+            HTTPError,
+            SourceRateLimitError,
+            TimeoutError,
+            URLError,
+        ) as exc:
             errors[source] = f"{type(exc).__name__}: {exc}"
 
     assert any(count > 0 for count in results.values()), errors

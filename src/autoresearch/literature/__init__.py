@@ -1,7 +1,15 @@
 """Literature retrieval models and utilities."""
 
 from .cache import RetrievalCache, RetrievalCacheRecord, retrieval_cache_key
-from .clients import ArxivClient, RateLimiter, RetryConfig, SemanticScholarClient
+from .clients import (
+    ArxivClient,
+    CircuitBreakerOpenError,
+    RateLimitCircuitBreaker,
+    RateLimiter,
+    RetryConfig,
+    SemanticScholarClient,
+    SourceRateLimitError,
+)
 from .models import AcademicPaper, deduplicate_papers, normalize_doi, normalize_title
 from .refresh import (
     LiteratureQuery,
@@ -17,15 +25,18 @@ from .storage import paper_to_document_record, paper_to_knowledge_entry, store_p
 __all__ = [
     "AcademicPaper",
     "ArxivClient",
+    "CircuitBreakerOpenError",
     "LiteratureQuery",
     "LiteratureRefreshConfig",
     "LiteratureRefreshReport",
     "LiteratureSearchClient",
+    "RateLimitCircuitBreaker",
     "RateLimiter",
     "RetrievalCache",
     "RetrievalCacheRecord",
     "RetryConfig",
     "SemanticScholarClient",
+    "SourceRateLimitError",
     "SourceFetchRecord",
     "deduplicate_papers",
     "generate_literature_queries",

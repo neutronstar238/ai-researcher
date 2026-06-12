@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from dotenv import load_dotenv
 
 from autoresearch import __version__
 from autoresearch.config import (
@@ -69,6 +70,9 @@ AUTORESEARCH_LLM_PROVIDER=openai-compatible
 AUTORESEARCH_LLM_BASE_URL=
 AUTORESEARCH_LLM_MODEL_NAME=
 AUTORESEARCH_LLM_API_KEY=
+
+# Optional Semantic Scholar Graph API key for higher rate limits.
+SEMANTIC_SCHOLAR_API_KEY=
 
 # Optional WeChat channel.
 AUTORESEARCH_WECHAT_WEBHOOK_URL=
@@ -383,10 +387,15 @@ def literature_refresh(
         int,
         typer.Option("--cache-ttl-hours", min=1, help="Cache TTL for source responses."),
     ] = 24,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Optional .env file for literature API keys."),
+    ] = Path(".env"),
 ) -> None:
     """Run real online literature refresh and write an Obsidian summary."""
 
     try:
+        _load_optional_env(env_path)
         report = run_daily_literature_refresh(
             vault_root=vault,
             cache_root=cache,
@@ -445,10 +454,15 @@ def similarity_check(
         str | None,
         typer.Option("--project-id", help="Optional project ID to link the report into project knowledge."),
     ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Optional .env file for literature API keys."),
+    ] = Path(".env"),
 ) -> None:
     """Run real online project-start similar-work checking for one candidate."""
 
     try:
+        _load_optional_env(env_path)
         candidate = _load_candidate(candidate_file)
         report = run_project_similarity_check(
             candidate=candidate,
@@ -810,6 +824,11 @@ def _ensure_env_example(env_path: Path) -> tuple[Path, bool]:
     env_example_path.parent.mkdir(parents=True, exist_ok=True)
     env_example_path.write_text(ENV_EXAMPLE_TEXT, encoding="utf-8")
     return env_example_path, True
+
+
+def _load_optional_env(env_path: Path) -> None:
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
 
 
 def _read_env_file(env_path: Path) -> dict[str, str]:

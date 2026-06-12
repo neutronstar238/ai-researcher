@@ -1,12 +1,29 @@
 import json
+from collections.abc import Mapping
+from io import BytesIO
+from urllib.error import HTTPError, URLError
 
-from autoresearch.literature import ArxivClient, RateLimiter, RetryConfig, SemanticScholarClient
+import pytest
+
+from autoresearch.literature import (
+    ArxivClient,
+    CircuitBreakerOpenError,
+    RateLimitCircuitBreaker,
+    RateLimiter,
+    RetryConfig,
+    SemanticScholarClient,
+    SourceRateLimitError,
+)
 
 
 def test_arxiv_client_parses_mocked_atom_response_with_retry() -> None:
     calls: list[tuple[str, dict[str, str | int]]] = []
 
-    def fake_get(url: str, params: dict[str, str | int]) -> str:
+    def fake_get(
+        url: str,
+        params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
         calls.append((url, params))
         if len(calls) == 1:
             raise RuntimeError("temporary")
@@ -54,7 +71,7 @@ def test_semantic_scholar_client_parses_mocked_response() -> None:
     }
 
     client = SemanticScholarClient(
-        http_get=lambda _url, _params: json.dumps(payload),
+        http_get=lambda _url, _params, _headers: json.dumps(payload),
         rate_limiter=RateLimiter(0),
         retry=RetryConfig(max_attempts=1, backoff_seconds=0),
     )
@@ -66,3 +83,89 @@ def test_semantic_scholar_client_parses_mocked_response() -> None:
     assert papers[0].venue == "ExampleConf"
     assert papers[0].citation_count == 7
     assert papers[0].source == "semantic_scholar"
+
+
+def test_semantic_scholar_client_sends_optional_api_key_header() -> None:
+    seen_headers: list[Mapping[str, str] | None] = []
+
+    def fake_get(
+        _url: str,
+        _params: dict[str, str | int],
+        headers: Mapping[str, str] | None,
+    ) -> str:
+        seen_headers.append(headers)
+        return json.dumps({"data": []})
+
+    client = SemanticScholarClient(
+        api_key="semantic-key",
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=1, backoff_seconds=0),
+    )
+
+    assert client.search("trusted", limit=1) == []
+    assert seen_headers == [{"x-api-key": "semantic-key"}]
+
+
+def test_semantic_scholar_client_uses_exponential_backoff_before_success() -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def fake_get(
+        _url: str,
+        _params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise URLError("temporary reset")
+        return json.dumps({"data": []})
+
+    client = SemanticScholarClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=2, backoff_seconds=0.25),
+        sleep=sleeps.append,
+    )
+
+    assert client.search("trusted", limit=1) == []
+    assert calls == 2
+    assert sleeps == [0.25]
+
+
+def test_semantic_scholar_429_opens_circuit_breaker_without_hammering() -> None:
+    calls = 0
+
+    def fake_get(
+        _url: str,
+        _params: dict[str, str | int],
+        _headers: Mapping[str, str] | None,
+    ) -> str:
+        nonlocal calls
+        calls += 1
+        raise HTTPError(
+            url="https://api.semanticscholar.org/graph/v1/paper/search",
+            code=429,
+            msg="Too Many Requests",
+            hdrs={"Retry-After": "5"},
+            fp=BytesIO(b"rate limited"),
+        )
+
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        clock=lambda: 100.0,
+    )
+    client = SemanticScholarClient(
+        http_get=fake_get,
+        rate_limiter=RateLimiter(0),
+        retry=RetryConfig(max_attempts=3, backoff_seconds=0),
+        circuit_breaker=breaker,
+    )
+
+    with pytest.raises(SourceRateLimitError, match="circuit open"):
+        client.search("trusted", limit=1)
+    with pytest.raises(CircuitBreakerOpenError):
+        client.search("trusted", limit=1)
+
+    assert calls == 1

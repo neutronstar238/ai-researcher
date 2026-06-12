@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-068 - Semantic Scholar live access needed explicit throttling and circuit breaking
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 16:34:43 +08:00
+- Source: User follow-up after live literature/similarity smoke tests exposed intermittent Semantic Scholar connection reset and HTTP 429 behavior.
+- Symptom: Semantic Scholar requests used the same simple retry path as other sources, had no optional API key header, and could retry immediately after HTTP 429.
+- Impact: Online discovery could waste calls during provider rate limits and make real API smoke outcomes noisy, especially without a Semantic Scholar API key.
+- Evidence: Prior full-chain verification recorded Semantic Scholar connection reset and HTTP 429 fetch errors while ArXiv-backed paths passed.
+- Root cause: The first live literature client implementation prioritized real source calls and visible error preservation, but did not yet model Semantic Scholar's stricter access limits.
+- Workaround: None needed after the fix; users can optionally add `SEMANTIC_SCHOLAR_API_KEY` to ignored `.env`.
+- Next action: Track real-world provider behavior and tune cooldown/rate defaults if Semantic Scholar changes limits.
+- Linked tasks: `43.1`
+- Resolution: Added optional `x-api-key` support, conservative unauthenticated rate limiting, exponential retry backoff, and a 429 circuit breaker for Semantic Scholar. Updated CLI `.env` loading and documentation so local smoke tests remain local-only while live smoke tests are explicit.
+- Verification: `poetry run pytest tests/unit/literature tests/unit/cli/test_main.py tests/smoke/test_literature_live.py -q` passed with 27 passed and 1 skipped; `poetry run ruff check src tests` passed; `poetry run mypy src` passed with no issues in 84 source files; `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -q` passed with 3 real API smoke tests.
+
 ### P-20260612-067 - Python 3.10 CI test collection failed on runtime-subscripted LoggerAdapter
 
 - Status: Resolved

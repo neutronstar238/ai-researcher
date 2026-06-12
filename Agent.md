@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 16:34:43 +08:00 - Codex - Task 43 Semantic Scholar access hardening
+
+- Request: Continue iterating on Semantic Scholar rate limiting/backoff/API key/429 circuit breaking, keep local smoke tests local-only, and document the live smoke boundary.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/smoke/test_literature_live.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Added optional `SEMANTIC_SCHOLAR_API_KEY` support through `.env` and the Semantic Scholar `x-api-key` header.
+  - Made unauthenticated Semantic Scholar calls more conservative by default and added exponential retry backoff.
+  - Added a 429 circuit breaker so repeated Semantic Scholar rate-limit responses do not hammer the provider.
+  - Loaded `.env` before `literature-refresh` and `similarity-check` so optional literature API keys are available without committing secrets.
+  - Kept `test_cli.py` and `test_imports.py` as local installation/import smoke tests and documented that only explicitly named live smoke tests contact external APIs.
+  - Added and completed task `43.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/literature/test_clients.py tests/unit/cli/test_main.py::test_literature_refresh_command_reports_source_backed_documents -q`: passed, 6 tests.
+  - `poetry run pytest tests/unit/literature tests/unit/cli/test_main.py tests/smoke/test_literature_live.py -q`: passed, 27 tests and 1 skipped.
+  - `poetry run ruff check src tests`: initially failed on import ordering in `src/autoresearch/literature/clients.py`; fixed with `poetry run ruff check src\autoresearch\literature\clients.py --fix`, then passed.
+  - `poetry run mypy src`: initially failed on `_backoff_delay` returning an inferred `Any`; fixed with an explicit `float(...)`, then passed with no issues found in 84 source files.
+  - `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -q`: passed, 3 real API smoke tests.
+- Problems:
+  - `P-20260612-068` added and resolved.
+- Follow-up:
+  - Continue observing live Semantic Scholar behavior; cooldown and unauthenticated rate defaults may need tuning if provider limits change.
+
 ### 2026-06-12 16:16:41 +08:00 - Codex - Task 42 Python 3.10 CI collection compatibility
 
 - Request: Diagnose and fix the GitHub Actions Python 3.10 smoke/unit collection failure from the user-provided CI log.

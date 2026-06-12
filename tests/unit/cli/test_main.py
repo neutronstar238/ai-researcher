@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -89,6 +90,7 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     assert "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook" in env_text
     assert "env template created" in result.stdout
     assert "AUTORESEARCH_LLM_API_KEY=" in env_example_text
+    assert "SEMANTIC_SCHOLAR_API_KEY=" in env_example_text
     assert "sk-test" not in env_example_text
 
 
@@ -180,10 +182,14 @@ def test_literature_refresh_command_reports_source_backed_documents(
     monkeypatch,
 ) -> None:
     summary_path = tmp_path / "vault" / "exploration" / "topics" / "summary.md"
+    env_path = tmp_path / ".env"
+    env_path.write_text("SEMANTIC_SCHOLAR_API_KEY=semantic-test\n", encoding="utf-8")
+    monkeypatch.delenv("SEMANTIC_SCHOLAR_API_KEY", raising=False)
     captured: dict[str, object] = {}
 
     def fake_refresh(**kwargs):
         captured.update(kwargs)
+        assert os.getenv("SEMANTIC_SCHOLAR_API_KEY") == "semantic-test"
         return SimpleNamespace(
             queries=(object(),),
             fetches=(
@@ -213,6 +219,8 @@ def test_literature_refresh_command_reports_source_backed_documents(
             "1",
             "--max-results-per-source",
             "1",
+            "--env-path",
+            str(env_path),
         ],
     )
 

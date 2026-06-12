@@ -40,7 +40,7 @@ poetry run autoresearch deploy-setup
 
 该命令会引导输入 LLM provider 标签、API base URL、model name、API key，以及可选的微信/飞书通道参数。API key 和通道密钥只写入 `.env`；`config.yaml` 只保存非密钥模型配置、通道元数据和环境变量名。如果 `.env.example` 缺失，CLI 会创建一个公开的非密钥模板。
 
-如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
+如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。也可以填写 `SEMANTIC_SCHOLAR_API_KEY` 以获得更高的 Semantic Scholar Graph API 限额。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
 
 脚本化部署示例：
 
@@ -73,7 +73,7 @@ poetry run autoresearch literature-refresh --vault autoresearch-vault --cache .c
 poetry run autoresearch similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-这两个命令默认调用真实文献 API，保留每个来源的 fetch 错误，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。
+这两个命令默认调用真实文献 API，会从 `.env` 读取可选文献 API key，对 Semantic Scholar 使用更保守的限频、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。
 
 真实 LLM smoke 与输出质量门：
 
@@ -89,7 +89,7 @@ poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output 
 python scripts/check.py
 ```
 
-该命令与默认 CI 检查保持一致：`poetry run ruff check src tests`、`poetry run mypy src`、`poetry run pytest tests/smoke tests/unit`。
+该命令与默认 CI 检查保持一致：`poetry run ruff check src tests`、`poetry run mypy src`、`poetry run pytest tests/smoke tests/unit`。默认的 `test_cli.py` 和 `test_imports.py` smoke 只检查本地安装与导入；只有下面显式列出的 live smoke 会访问外部 API。
 
 配置 `.env` 后运行真实 API smoke：
 

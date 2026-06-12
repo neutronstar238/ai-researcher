@@ -879,6 +879,16 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided GitHub Actions Python 3.10 log, task 40.2_
     - _Verify: Python 3.10 Poetry environment runs `pytest tests/smoke tests/unit`, `ruff`, and `mypy` successfully._
 
+- [x] 43. Harden real literature API access and smoke-test boundaries
+  - [x] 43.1 Add Semantic Scholar throttling, optional API key, and 429 circuit breaker
+    - Load optional `SEMANTIC_SCHOLAR_API_KEY` from `.env` for online discovery commands.
+    - Send the API key through the Semantic Scholar `x-api-key` header when present.
+    - Use a more conservative unauthenticated Semantic Scholar rate limit, exponential retry backoff for transient errors, and a 429 circuit breaker to avoid repeated hammering.
+    - Preserve per-source errors in literature refresh and similarity-check outputs rather than fabricating missing source results.
+    - Document that `test_cli.py` and `test_imports.py` remain local installation/import smoke checks; live API smoke tests stay opt-in and explicitly named.
+    - _References: user follow-up on Semantic Scholar access limits and smoke-test boundaries_
+    - _Verify: unit tests cover API key headers, retry backoff, 429 circuit breaking, CLI `.env` loading, and live literature smoke tests pass against real APIs._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -995,6 +1005,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 17,
       "tasks": ["42.1"]
+    },
+    {
+      "id": 18,
+      "tasks": ["43.1"]
     }
   ]
 }
