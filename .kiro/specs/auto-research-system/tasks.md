@@ -734,13 +734,13 @@ A task can be checked only when all applicable items are true:
     - _References: EP 8, DES Plugin System_
     - _Verify: sample plugin loads and can be disabled safely._
 
-- [ ] 34. Add deployment packages
+- [x] 34. Add deployment packages
   - [x] 34.1 Create Docker Compose deployment
     - Include app runtime, optional database, artifact storage path, and environment template.
     - _References: EP 8, DES Deployment Architecture_
     - _Verify: container starts and `doctor` command passes._
 
-  - [ ] 34.2 Plan Kubernetes deployment
+  - [x] 34.2 Plan Kubernetes deployment
     - Add Helm chart only after Docker Compose is stable.
     - Include resource limits, secrets handling, persistent volumes, and health checks.
     - _References: EP 8_

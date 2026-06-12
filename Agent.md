@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:49:19 +08:00 - Codex - Task 34.2 Kubernetes deployment plan
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `34.2`, planning Kubernetes deployment without creating a Helm chart before Docker Compose stability.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `docs/deployment/kubernetes-plan.md`
+- Summary:
+  - Added a Kubernetes deployment plan for future private deployment.
+  - Explicitly kept Helm chart creation out of scope until Docker Compose remains stable and the runtime contract is clearer.
+  - Documented prerequisites, workload shape, resource limits, secrets handling, persistent volumes, health checks, rollout and rollback, Helm chart entry criteria, and first chart acceptance checks.
+  - Preserved the Obsidian vault as a first-class persistent volume and rollback target.
+  - Included provider-agnostic LLM secret names without requiring or using real model credentials.
+  - Marked task `34.2` and parent task `34` complete in `tasks.md`.
+- Verification:
+  - `Test-Path -LiteralPath docs/deployment/kubernetes-plan.md`: passed.
+  - `rg -n "Do not add a Helm chart|Prerequisites|Resource Limits|Secrets Handling|Persistent Volumes|Health Checks|Rollout And Rollback|Helm Chart Entry Criteria|rollback|doctor|AUTORESEARCH_LLM_BASE_URL|AUTORESEARCH_LLM_API_KEY|AUTORESEARCH_LLM_MODEL_NAME" docs/deployment/kubernetes-plan.md`: passed.
+  - No cluster, external source, or LLM live call was required for this planning-only task.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `35.1` compliance checklist.
+
 ### 2026-06-12 13:46:39 +08:00 - Codex - Task 34.1 Docker Compose deployment
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `34.1`, and verify with a real Docker Compose container running `doctor`.
