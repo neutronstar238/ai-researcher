@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-075 - Scheduler-state missing-task test read uncaptured stderr
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:49:59 +08:00
+- Source: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_scheduler_state_commands_list_complete_and_remove_tasks tests/unit/cli/test_main.py::test_issue_followups_state_merge_preserves_completed_tasks -q` during task `51.1` verification.
+- Symptom: The scheduler-state command test failed with `ValueError: stderr not separately captured`.
+- Impact: The new scheduler-state CLI behavior could not pass the focused test gate, even though the command returned the expected non-zero status.
+- Evidence: `missing_complete_result.stderr` raised because this repository's `CliRunner` invocation merges stderr into `output`.
+- Root cause: The test used the wrong Click result stream for this local test runner setup.
+- Workaround: None needed after the test fix.
+- Next action: Use `result.output` for command-line failure text unless a test explicitly configures separate stderr capture.
+- Linked tasks: `51.1`
+- Resolution: Changed the assertion to inspect `missing_complete_result.output`.
+- Verification: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_scheduler_state_commands_list_complete_and_remove_tasks tests/unit/cli/test_issue_followups_state_merge_preserves_completed_tasks -q` passed with 3 tests after the assertion fix. `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed.
+
 ### P-20260612-074 - Issue follow-up state records inferred as too narrow for mypy
 
 - Status: Resolved

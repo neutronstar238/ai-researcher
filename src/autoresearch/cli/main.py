@@ -43,7 +43,11 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 slash_app = typer.Typer(help="Manage project slash command templates.")
+scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 app.add_typer(slash_app, name="slash-commands")
+app.add_typer(scheduler_state_app, name="scheduler-state")
+
+DEFAULT_SCHEDULER_STATE_PATH = Path(".autoresearch/scheduler-state.json")
 
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
@@ -776,6 +780,7 @@ def issue_followups(
             "task_id": task.task_id,
             "name": task.name,
             "queued_at": task.next_run_at.isoformat(),
+            "status": "open",
             "metadata": task.action(),
         }
         for task in tasks
@@ -797,6 +802,67 @@ def issue_followups(
         metadata = record["metadata"]
         issue_path = metadata.get("issue_path") if isinstance(metadata, dict) else "unknown"
         typer.echo(f"[TASK] task_id={record['task_id']} issue_path={issue_path}")
+
+
+@scheduler_state_app.command("list")
+def list_scheduler_state(
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local scheduler state JSON file to inspect."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    include_completed: Annotated[
+        bool,
+        typer.Option("--include-completed", help="Include tasks already marked completed."),
+    ] = False,
+) -> None:
+    """List persisted local scheduler state records."""
+
+    tasks = _read_scheduler_state_tasks(state)
+    visible_tasks = [
+        task
+        for task in tasks
+        if include_completed or str(task.get("status", "open")) != "completed"
+    ]
+    typer.echo(f"[OK] scheduler_state_tasks: {len(visible_tasks)}")
+    for task in visible_tasks:
+        metadata = task.get("metadata")
+        issue_path = metadata.get("issue_path") if isinstance(metadata, dict) else "unknown"
+        typer.echo(
+            f"[TASK] status={task.get('status', 'open')} "
+            f"task_id={task.get('task_id')} issue_path={issue_path}"
+        )
+
+
+@scheduler_state_app.command("complete")
+def complete_scheduler_state_task(
+    task_id: Annotated[str, typer.Argument(help="Task ID to mark completed.")],
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local scheduler state JSON file to update."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+) -> None:
+    """Mark one persisted scheduler task completed."""
+
+    if not _set_scheduler_state_task_status(state, task_id, status="completed"):
+        typer.echo(f"[FAIL] task not found: {task_id}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"[OK] completed: {task_id}")
+
+
+@scheduler_state_app.command("remove")
+def remove_scheduler_state_task(
+    task_id: Annotated[str, typer.Argument(help="Task ID to remove.")],
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local scheduler state JSON file to update."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+) -> None:
+    """Remove one persisted scheduler task."""
+
+    if not _remove_scheduler_state_task(state, task_id):
+        typer.echo(f"[FAIL] task not found: {task_id}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"[OK] removed: {task_id}")
 
 
 @slash_app.command("init")
@@ -1024,12 +1090,15 @@ def _merge_scheduler_state(state_path: Path, records: list[dict[str, object]]) -
     existing_tasks = _read_scheduler_state_tasks(state_path)
     merged = {str(task.get("task_id")): task for task in existing_tasks if task.get("task_id")}
     for record in records:
-        merged[str(record["task_id"])] = record
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps({"tasks": [merged[key] for key in sorted(merged)]}, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+        task_id = str(record["task_id"])
+        previous = merged.get(task_id, {})
+        merged_record = {**record}
+        if previous.get("status") == "completed":
+            merged_record["status"] = "completed"
+            if "completed_at" in previous:
+                merged_record["completed_at"] = previous["completed_at"]
+        merged[task_id] = merged_record
+    _write_scheduler_state_tasks(state_path, list(merged.values()))
 
 
 def _read_scheduler_state_tasks(state_path: Path) -> list[dict[str, object]]:
@@ -1043,6 +1112,40 @@ def _read_scheduler_state_tasks(state_path: Path) -> list[dict[str, object]]:
     if not isinstance(tasks, list):
         return []
     return [task for task in tasks if isinstance(task, dict)]
+
+
+def _write_scheduler_state_tasks(state_path: Path, tasks: list[dict[str, object]]) -> None:
+    sorted_tasks = sorted(tasks, key=lambda task: str(task.get("task_id", "")))
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps({"tasks": sorted_tasks}, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def _set_scheduler_state_task_status(state_path: Path, task_id: str, *, status: str) -> bool:
+    tasks = _read_scheduler_state_tasks(state_path)
+    changed = False
+    for task in tasks:
+        if task.get("task_id") != task_id:
+            continue
+        task["status"] = status
+        if status == "completed":
+            task["completed_at"] = datetime.now(timezone.utc).isoformat()
+        changed = True
+        break
+    if changed:
+        _write_scheduler_state_tasks(state_path, tasks)
+    return changed
+
+
+def _remove_scheduler_state_task(state_path: Path, task_id: str) -> bool:
+    tasks = _read_scheduler_state_tasks(state_path)
+    remaining = [task for task in tasks if task.get("task_id") != task_id]
+    if len(remaining) == len(tasks):
+        return False
+    _write_scheduler_state_tasks(state_path, remaining)
+    return True
 
 
 def _slash_command_toml(description: str, prompt: str) -> str:

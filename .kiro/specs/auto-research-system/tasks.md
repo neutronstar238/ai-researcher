@@ -953,6 +953,16 @@ A task can be checked only when all applicable items are true:
     - _References: task 49.1 follow-up, RP auditable self-loop queue_
     - _Verify: CLI unit tests cover state writing and duplicate-safe merge behavior._
 
+- [x] 51. Manage persisted scheduler-state follow-up tasks
+  - [x] 51.1 Add scheduler-state list, complete, and remove CLI commands
+    - Add `autoresearch scheduler-state list` for local state inspection, hiding completed tasks by default.
+    - Add `autoresearch scheduler-state complete <task-id>` to mark a task record completed with a timestamp.
+    - Add `autoresearch scheduler-state remove <task-id>` to delete stale local task records.
+    - Preserve completed state when `issue-followups --state` rediscovers the same issue task.
+    - Keep these commands local, operator-controlled, and non-executing.
+    - _References: task 50.1 follow-up, RP auditable self-loop queue_
+    - _Verify: CLI unit tests cover list filtering, complete, remove, missing-task failure, and completed-state preservation._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1101,6 +1111,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 25,
       "tasks": ["50.1"]
+    },
+    {
+      "id": 26,
+      "tasks": ["51.1"]
     }
   ]
 }

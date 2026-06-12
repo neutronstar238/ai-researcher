@@ -677,3 +677,114 @@ def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) 
     state_payload = json.loads(state.read_text(encoding="utf-8"))
     assert len(state_payload["tasks"]) == 1
     assert state_payload["tasks"][0]["task_id"] == "issue-follow-up-project_1-abc123def4567890"
+    assert state_payload["tasks"][0]["status"] == "open"
+
+
+def test_scheduler_state_commands_list_complete_and_remove_tasks(tmp_path: Path) -> None:
+    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    state.parent.mkdir(parents=True)
+    state.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_id": "task_open",
+                        "name": "open task",
+                        "queued_at": "2026-06-12T09:00:00+00:00",
+                        "status": "open",
+                        "metadata": {"issue_path": "projects/project_1/issues/open.md"},
+                    },
+                    {
+                        "task_id": "task_done",
+                        "name": "done task",
+                        "queued_at": "2026-06-12T08:00:00+00:00",
+                        "status": "completed",
+                        "completed_at": "2026-06-12T08:30:00+00:00",
+                        "metadata": {"issue_path": "projects/project_1/issues/done.md"},
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    list_result = runner.invoke(app, ["scheduler-state", "list", "--state", str(state)])
+    list_all_result = runner.invoke(
+        app,
+        ["scheduler-state", "list", "--state", str(state), "--include-completed"],
+    )
+    complete_result = runner.invoke(
+        app,
+        ["scheduler-state", "complete", "task_open", "--state", str(state)],
+    )
+    missing_complete_result = runner.invoke(
+        app,
+        ["scheduler-state", "complete", "missing", "--state", str(state)],
+    )
+    remove_result = runner.invoke(
+        app,
+        ["scheduler-state", "remove", "task_done", "--state", str(state)],
+    )
+
+    assert list_result.exit_code == 0, list_result.stdout
+    assert "[OK] scheduler_state_tasks: 1" in list_result.stdout
+    assert "task_id=task_open" in list_result.stdout
+    assert "task_id=task_done" not in list_result.stdout
+    assert list_all_result.exit_code == 0, list_all_result.stdout
+    assert "[OK] scheduler_state_tasks: 2" in list_all_result.stdout
+    assert complete_result.exit_code == 0, complete_result.stdout
+    assert missing_complete_result.exit_code == 1
+    assert "task not found: missing" in missing_complete_result.output
+    assert remove_result.exit_code == 0, remove_result.stdout
+
+    payload = json.loads(state.read_text(encoding="utf-8"))
+    assert [task["task_id"] for task in payload["tasks"]] == ["task_open"]
+    assert payload["tasks"][0]["status"] == "completed"
+    assert "completed_at" in payload["tasks"][0]
+
+
+def test_issue_followups_state_merge_preserves_completed_tasks(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+    issue_dir = vault_root / "projects" / "project_1" / "issues"
+    issue_dir.mkdir(parents=True)
+    issue = KnowledgeEntry(
+        entry_id="llm_review_issue_project_1_abc",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        title="LLM review issue: missing evidence",
+        project_id="project_1",
+        body="- Status: Open\n- Issue fingerprint: `abc123def4567890`\n",
+    )
+    (issue_dir / "open.md").write_text(issue.to_markdown(), encoding="utf-8")
+    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    runner = CliRunner()
+    args = [
+        "issue-followups",
+        "--vault",
+        str(vault_root),
+        "--project-id",
+        "project_1",
+        "--state",
+        str(state),
+    ]
+
+    first_result = runner.invoke(app, args)
+    complete_result = runner.invoke(
+        app,
+        [
+            "scheduler-state",
+            "complete",
+            "issue-follow-up-project_1-abc123def4567890",
+            "--state",
+            str(state),
+        ],
+    )
+    second_result = runner.invoke(app, args)
+
+    assert first_result.exit_code == 0, first_result.stdout
+    assert complete_result.exit_code == 0, complete_result.stdout
+    assert second_result.exit_code == 0, second_result.stdout
+    payload = json.loads(state.read_text(encoding="utf-8"))
+    assert len(payload["tasks"]) == 1
+    assert payload["tasks"][0]["status"] == "completed"

@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:53:19 +08:00 - Codex - Task 51 scheduler-state management
+
+- Request: Continue the self-loop workflow by adding operator commands to inspect and maintain persisted scheduler-state follow-up tasks.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `autoresearch scheduler-state list`, `complete`, and `remove` commands for local scheduler state maintenance.
+  - Added default `open` status to issue follow-up state records and `completed_at` timestamps when tasks are marked complete.
+  - Preserved completed task status when `issue-followups --state` rediscovers the same Obsidian issue note.
+  - Documented the local, non-executing scheduler-state workflow in the task plan, changelog, and bilingual README pages.
+  - Added and completed task `51.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_scheduler_state_commands_list_complete_and_remove_tasks tests/unit/cli/test_issue_followups_state_merge_preserves_completed_tasks -q`: initially failed with `P-20260612-075`; passed after using the merged CLI output stream.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 303 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-075` added and resolved.
+- Follow-up:
+  - Continue hardening the online literature path: Semantic Scholar rate limiting/backoff/API-key behavior is present but should keep being tested against real responses when that surface changes.
+  - Consider a second-stage evidence-bound LLM reviewer for output quality after the deterministic local rules.
+
 ### 2026-06-12 17:44:11 +08:00 - Codex - Task 50 issue follow-up scheduler state
 
 - Request: Continue the issue follow-up CLI by persisting generated self-loop task records across local operator sessions.
