@@ -62,6 +62,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 15:10:36 +08:00 - Codex - Task 37 first-deploy CLI setup
+
+- Request: Build the first-deploy CLI so users provide API model choice, API key, WeChat/Feishu channel parameters, and slash-command templates, referencing OpenClaw/Hermes-style onboarding and slash command patterns.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/config/__init__.py`
+  - `src/autoresearch/config/models.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/config/test_models.py`
+- Summary:
+  - Added task `37` for first-deploy onboarding CLI and slash command templates.
+  - Added provider-agnostic deployment config for LLM provider label, base URL, model name, and API-key environment variable reference.
+  - Added WeChat and Feishu channel config that stores only environment variable names in `config.yaml`.
+  - Added `autoresearch deploy-setup` for interactive first deploy and `--non-interactive` scripted setup.
+  - Added `.env` secret writing for model API key and WeChat/Feishu channel credentials while keeping secrets out of `config.yaml`.
+  - Added `autoresearch slash-commands init` and `autoresearch slash-commands list` to create project-scoped TOML templates for `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, and `/research:status`.
+  - Updated English README and rewrote the Chinese README with current status and first-deploy instructions.
+  - Updated `CHANGELOG.md`.
+  - Consulted OpenClaw onboarding/model/channel CLI docs, Hermes Agent model no-lock-in/channel positioning, and Gemini CLI project-scoped TOML slash-command guidance.
+  - No real LLM API call was performed because this task only writes deployment credentials/configuration; a real model smoke test should run after the user provides `.env` credentials for a model-calling task.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py tests/unit/config/test_models.py -vv`: passed, 11 tests.
+  - `poetry run pytest tests/unit/cli/test_main.py tests/unit/config -vv`: passed, 24 tests.
+  - Temporary real CLI run: `poetry run autoresearch deploy-setup --config <tmp>/config.yaml --env-path <tmp>/.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --wechat --wechat-webhook-url https://wechat.example.test/hook --feishu --feishu-webhook-url https://feishu.example.test/hook --non-interactive`: passed and wrote config plus `.env`.
+  - Temporary real CLI run: `poetry run autoresearch slash-commands init --directory <tmp>/commands`: passed and wrote 4 templates.
+  - Temporary real CLI run: `poetry run autoresearch slash-commands list --directory <tmp>/commands`: passed and listed `/research:refresh-literature`, `/research:run-demo`, `/research:similarity-check`, and `/research:status`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 299 passed and 3 optional live smoke tests skipped by default.
+  - `poetry run autoresearch doctor`: passed.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this task.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Add a real provider-agnostic LLM smoke command after `.env` credentials are available, then stop for user-supplied API credentials before running that external model call.
+
 ### 2026-06-12 14:58:27 +08:00 - Codex - Task 2 schema parent completion
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `2`, reconciling the completed core schema and run identity parent task.

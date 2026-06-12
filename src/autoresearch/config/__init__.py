@@ -3,8 +3,11 @@
 from .models import (
     AgentConfig,
     ComputeConfig,
+    DeploymentConfig,
     KnowledgeBaseConfig,
     LiteratureConfig,
+    MessagingChannelConfig,
+    ModelProviderConfig,
     SystemConfig,
 )
 from .parser import ConfigFormat, ConfigParser
@@ -14,7 +17,10 @@ __all__ = [
     "ConfigFormat",
     "ConfigParser",
     "ComputeConfig",
+    "DeploymentConfig",
     "KnowledgeBaseConfig",
     "LiteratureConfig",
+    "MessagingChannelConfig",
+    "ModelProviderConfig",
     "SystemConfig",
 ]

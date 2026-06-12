@@ -4,7 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.config import SystemConfig
-from autoresearch.config.models import ComputeConfig, LiteratureConfig
+from autoresearch.config.models import (
+    ComputeConfig,
+    LiteratureConfig,
+    MessagingChannelConfig,
+    ModelProviderConfig,
+)
 
 
 def test_system_config_defaults_are_local_first() -> None:
@@ -15,6 +20,8 @@ def test_system_config_defaults_are_local_first() -> None:
     assert config.compute.prefer_local is True
     assert config.compute.sandbox_enabled is True
     assert config.literature.databases == ["arxiv", "semantic_scholar"]
+    assert config.deployment.llm.provider == "openai-compatible"
+    assert config.deployment.llm.api_key_env == "AUTORESEARCH_LLM_API_KEY"
 
 
 def test_config_models_validate_basic_bounds() -> None:
@@ -23,3 +30,18 @@ def test_config_models_validate_basic_bounds() -> None:
 
     with pytest.raises(ValidationError):
         LiteratureConfig(max_results_per_source=0)
+
+    with pytest.raises(ValidationError):
+        ModelProviderConfig(model_name="")
+
+
+def test_deployment_channel_config_keeps_secrets_in_env_references() -> None:
+    channel = MessagingChannelConfig(
+        enabled=True,
+        webhook_url_env="AUTORESEARCH_FEISHU_WEBHOOK_URL",
+        app_secret_env="AUTORESEARCH_FEISHU_APP_SECRET",
+    )
+
+    assert channel.enabled is True
+    assert channel.webhook_url_env == "AUTORESEARCH_FEISHU_WEBHOOK_URL"
+    assert channel.app_secret_env == "AUTORESEARCH_FEISHU_APP_SECRET"

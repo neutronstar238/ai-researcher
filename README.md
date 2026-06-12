@@ -4,7 +4,7 @@
 
 AI-Researcher is an early-stage Python platform for evidence-first automated computational research. The long-term goal is to orchestrate a constrained, auditable research loop: literature search, knowledge modeling, hypothesis generation, experiment design, sandboxed execution, result validation, paper drafting, review simulation, and controlled strategy evolution.
 
-> Status: planning and scaffold. The project currently contains the product and execution plans, a Python package skeleton, and detailed implementation tasks. The runnable CLI, test suite, and trusted MVP loop are Phase 0 and Phase 1 work, not completed features.
+> Status: local MVP scaffold with tested research-loop components. The repository includes the executable task plan, Obsidian vault substrate, provider-agnostic deployment setup, local demo loop, literature/similarity retrieval foundations, validation/reporting modules, and release-preparation checks. It is not yet a production multi-user service.
 
 ## Why This Exists
 
@@ -92,6 +92,38 @@ Install dependencies:
 ```bash
 poetry install
 ```
+
+First-deploy setup:
+
+```bash
+poetry run autoresearch deploy-setup
+```
+
+The guided setup asks for the LLM provider label, API base URL, model name, API key, and optional WeChat/Feishu channel credentials. API keys and channel secrets are written only to `.env`; `config.yaml` stores non-secret model and channel metadata plus environment variable names.
+
+For scripted deployment:
+
+```bash
+poetry run autoresearch deploy-setup \
+  --config config.yaml \
+  --env-path .env \
+  --provider openai-compatible \
+  --base-url https://api.example.com/v1 \
+  --model-name your-model-name \
+  --api-key your-api-key \
+  --wechat --wechat-webhook-url https://wechat.example/hook \
+  --feishu --feishu-webhook-url https://feishu.example/hook \
+  --non-interactive
+```
+
+Project slash command templates:
+
+```bash
+poetry run autoresearch slash-commands init
+poetry run autoresearch slash-commands list
+```
+
+This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, and `/research:status`.
 
 Run the local quality gate:
 

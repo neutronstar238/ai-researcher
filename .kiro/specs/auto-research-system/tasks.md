@@ -780,6 +780,27 @@ A task can be checked only when all applicable items are true:
     - _References: EP 16_
     - _Verify: `CHANGELOG.md` has an unreleased section._
 
+- [x] 37. Add first-deploy onboarding CLI and slash command templates
+  - [x] 37.1 Add provider-agnostic deployment config
+    - Store LLM provider label, API base URL, model name, and API key environment variable name without binding to one vendor.
+    - Store WeChat and Feishu channel settings as environment-variable references so secrets stay in `.env`.
+    - _References: user deploy CLI request, OpenClaw onboarding/configure/channel model, Hermes model no-lock-in pattern_
+    - _Verify: config model tests confirm deployment defaults and channel secret env references._
+
+  - [x] 37.2 Add first-deploy CLI setup command
+    - Add `autoresearch deploy-setup`.
+    - Prompt interactively for provider, base URL, model name, API key, and optional WeChat/Feishu channel credentials.
+    - Support `--non-interactive` scripted deployment with explicit flags.
+    - Write API keys and channel secrets only to `.env`; write non-secret deployment metadata to `config.yaml`.
+    - _References: OpenClaw `setup`/`onboard`/`configure` split, user API-key and channel setup request_
+    - _Verify: CLI tests confirm config and `.env` output and reject enabled channels without credentials._
+
+  - [x] 37.3 Add project slash command templates
+    - Add `autoresearch slash-commands init` and `autoresearch slash-commands list`.
+    - Create project-scoped TOML prompt templates for literature refresh, similarity check, local demo run, and status review.
+    - _References: Gemini CLI project-scoped TOML slash command pattern_
+    - _Verify: CLI tests confirm template files are written and listed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -872,6 +893,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 11,
       "tasks": ["31.1", "31.2", "32.1", "33.1", "34.1", "34.2", "35.1", "35.2", "35.3", "36.1", "36.2", "36.3"]
+    },
+    {
+      "id": 12,
+      "tasks": ["37.1", "37.2", "37.3"]
     }
   ]
 }

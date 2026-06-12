@@ -58,6 +58,38 @@ class LiteratureConfig(BaseModel):
     rate_limit_seconds: float = Field(default=1.0, ge=0.0)
 
 
+class ModelProviderConfig(BaseModel):
+    """Provider-agnostic LLM API settings for deployment setup."""
+
+    provider: str = Field(default="openai-compatible", min_length=1)
+    base_url: str = Field(default="https://api.openai.com/v1", min_length=1)
+    model_name: str = Field(default="gpt-4o-mini", min_length=1)
+    api_key_env: str = Field(default="AUTORESEARCH_LLM_API_KEY", min_length=1)
+    request_timeout_seconds: int = Field(default=60, ge=1)
+    fallback_model_names: list[str] = Field(default_factory=list)
+
+
+class MessagingChannelConfig(BaseModel):
+    """Messaging channel deployment settings backed by environment variables."""
+
+    enabled: bool = False
+    webhook_url_env: str | None = None
+    app_id_env: str | None = None
+    app_secret_env: str | None = None
+    verification_token_env: str | None = None
+    slash_command_prefix: str = "/autoresearch"
+
+
+class DeploymentConfig(BaseModel):
+    """First-deploy model, channel, and slash-command configuration."""
+
+    environment: str = Field(default="local", min_length=1)
+    llm: ModelProviderConfig = Field(default_factory=ModelProviderConfig)
+    wechat: MessagingChannelConfig = Field(default_factory=MessagingChannelConfig)
+    feishu: MessagingChannelConfig = Field(default_factory=MessagingChannelConfig)
+    slash_commands_dir: Path = Path(".autoresearch/commands")
+
+
 class SystemConfig(BaseModel):
     """Top-level configuration for a local AutoResearch installation."""
 
@@ -70,3 +102,4 @@ class SystemConfig(BaseModel):
     compute: ComputeConfig = Field(default_factory=ComputeConfig)
     knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
     literature: LiteratureConfig = Field(default_factory=LiteratureConfig)
+    deployment: DeploymentConfig = Field(default_factory=DeploymentConfig)

@@ -23,6 +23,7 @@ Target version: `0.1.0`.
 - Controlled self-evolution foundations: replay datasets, golden tests, shadow evaluation, reward scoring, gray release approval, rollback, and audit review.
 - Operational reporting: system metrics, static status reports, dashboard HTML export, project permissions, plugin interfaces, license scanner, project cost management, and service health/SLA reports.
 - Deployment and release preparation docs: Docker Compose package, Kubernetes planning document, Apache-2.0 license, contribution guide, and this changelog.
+- First-deploy CLI setup for provider-agnostic model configuration, `.env` secret storage, WeChat/Feishu channel wiring, and project slash command templates.
 
 ### Changed
 
