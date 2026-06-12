@@ -709,7 +709,7 @@ A task can be checked only when all applicable items are true:
 ### Phase 5: Productization and Open-Source Readiness (Future)
 
 - [ ] 31. Design product surface before building full dashboard
-  - [ ] 31.1 Define dashboard users and workflows
+  - [x] 31.1 Define dashboard users and workflows
     - Users: individual researcher, team lead, reviewer, system administrator.
     - Workflows: candidate review, run monitoring, validation review, paper draft review, cost inspection, rollback approval.
     - _References: RP 13, EP 8_

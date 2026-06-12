@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:15:34 +08:00 - Codex - Task 31.1 dashboard product brief
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `31.1`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `docs/product/dashboard-product-brief.md`
+- Summary:
+  - Added a Product Design brief before any full dashboard implementation.
+  - Defined dashboard users: individual researcher, team lead, reviewer, and system administrator.
+  - Defined core workflows: candidate review, run monitoring, validation review, paper draft review, cost inspection, and rollback approval.
+  - Specified MVP information architecture, interaction expectations, visual direction, implementation boundaries, and acceptance checklist.
+  - Kept the dashboard direction operational and evidence-first, with links back to `autoresearch-vault/`, audit events, and run artifacts.
+  - Marked task `31.1` complete in `tasks.md`.
+- Verification:
+  - Loaded Product Design `get-context` skill and used playback mode because the task already specified the product, users, and workflows.
+  - `Test-Path -LiteralPath docs/product/dashboard-product-brief.md`: passed.
+  - `rg -n "Individual researcher|Team lead|Reviewer|System administrator|Candidate review|Run monitoring|Validation review|Paper draft review|Cost inspection|Rollback approval|autoresearch-vault|not a landing page" docs/product/dashboard-product-brief.md`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `31.2` only if proceeding to build a dashboard MVP with browser-based desktop and mobile checks.
+
 ### 2026-06-12 13:13:22 +08:00 - Codex - Task 30.2 promotion audit review
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `30.2`.
