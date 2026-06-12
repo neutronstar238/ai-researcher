@@ -159,7 +159,7 @@ poetry run autoresearch llm-review \
   --project-id demo_project
 ```
 
-The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, and actionable warning/blocking findings become `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`. Quality judgments then become part of the self-loop project memory instead of one-off run artifacts. Reasoning models may need the higher review token budget shown above.
+The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, and actionable warning/blocking findings become stable-fingerprinted `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`. Repeated reviews update the same issue note for the same subject and claim instead of polluting the self-loop issue pool with duplicates. Reasoning models may need the higher review token budget shown above.
 
 Run the local quality gate:
 

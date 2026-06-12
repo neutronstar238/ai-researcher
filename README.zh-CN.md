@@ -98,7 +98,7 @@ poetry run autoresearch llm-review `
   --project-id demo_project
 ```
 
-该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note`；其中 warning/blocking finding 会继续写入 `autoresearch-vault/projects/<project-id>/issues/` 作为 `issue_note`。这样质量判断会进入自循环项目记忆，而不是一次性的 `runs/` 产物。推理型模型可能需要示例里的较高 review token 预算。
+该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note`；其中 warning/blocking finding 会继续写入 `autoresearch-vault/projects/<project-id>/issues/` 作为带稳定指纹的 `issue_note`。同一 subject 与 claim 的重复评审会更新同一条 issue note，而不是污染自循环问题池。推理型模型可能需要示例里的较高 review token 预算。
 
 运行本地质量门：
 

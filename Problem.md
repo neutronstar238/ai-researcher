@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-072 - Stable issue fingerprint helper failed ruff UP012
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:24:55 +08:00
+- Source: `poetry run ruff check src tests` during task `47.1` verification.
+- Symptom: Ruff failed with `src\autoresearch\llm\review_memory.py:286:19: UP012 [*] Unnecessary UTF-8 encoding argument to encode`.
+- Impact: The LLM review issue deduplication change could not pass the repository lint gate.
+- Evidence: The fingerprint helper used `.encode("utf-8")` when the default UTF-8 encoding is sufficient.
+- Root cause: The new hash helper was written with an explicit encoding argument that violates the configured pyupgrade rule.
+- Workaround: None needed after the fix.
+- Next action: Prefer `.encode()` for UTF-8 byte hashing unless a non-default encoding is required.
+- Linked tasks: `47.1`
+- Resolution: Removed the unnecessary `"utf-8"` argument from the fingerprint helper.
+- Verification: `poetry run ruff check src tests` passed after the fix. `poetry run mypy src` passed with no issues found in 85 source files. `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q` passed with 4 tests. `poetry run pytest tests/smoke tests/unit -q` passed with 299 passed and 4 skipped.
+
 ### P-20260612-071 - Review issue writer returned untyped JSON verdict through a typed string helper
 
 - Status: Resolved

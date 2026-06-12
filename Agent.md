@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:25:59 +08:00 - Codex - Task 47 LLM review issue deduplication
+
+- Request: Continue iterating after task `46.1` by preventing repeated LLM reviewer findings from polluting the Obsidian self-loop issue pool.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/llm/review_memory.py`
+  - `tests/unit/llm/test_review_memory.py`
+- Summary:
+  - Added stable issue fingerprints derived from the reviewed subject hash and normalized reviewer claim.
+  - Changed LLM review issue-note filenames and entry IDs to use the stable fingerprint instead of model output order.
+  - Skipped duplicate actionable findings with the same normalized claim within one review result.
+  - Added the issue fingerprint to each issue-note body so humans can audit repeated review updates.
+  - Added and completed task `47.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/llm/test_review_memory.py -q`: passed, 3 tests.
+  - `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q`: passed, 4 tests.
+  - `poetry run ruff check src tests`: initially failed with `P-20260612-072`; passed after removing the unnecessary UTF-8 argument from `.encode()`.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 299 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-072` added and resolved.
+- Follow-up:
+  - Wire stable issue fingerprints into scheduler-side self-loop task selection so already-open review issues can be prioritized without re-creating work items.
+
 ### 2026-06-12 17:17:23 +08:00 - Codex - Task 46 LLM review issue notes
 
 - Request: Continue implementing the project from `tasks.md` by converting evidence-constrained LLM review findings into actionable Obsidian project issue notes.

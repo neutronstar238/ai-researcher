@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -84,14 +85,15 @@ def write_llm_review_issue_notes(
     issues = _actionable_issues(parsed)
     written: list[Path] = []
     review_ref = _source_ref(root=root, path=review_note_path) if review_note_path else None
-    for index, issue in enumerate(issues, start=1):
+    for issue in issues:
         claim = issue["claim"]
         severity = issue["severity"]
+        fingerprint = _issue_fingerprint(result=result, claim=claim)
         relative_path = (
             Path("projects")
             / project_id
             / "issues"
-            / f"llm-review-{result.subject_sha256[:12]}-{index:02d}-{_slug(claim)[:48]}.md"
+            / f"llm-review-{result.subject_sha256[:12]}-{fingerprint[:12]}-{_slug(claim)[:48]}.md"
         )
         source_refs = [
             result.subject_path,
@@ -100,7 +102,7 @@ def write_llm_review_issue_notes(
         if review_ref is not None:
             source_refs.append(review_ref)
         entry = KnowledgeEntry(
-            entry_id=f"llm_review_issue_{_slug(project_id)}_{result.subject_sha256[:12]}_{index:02d}",
+            entry_id=f"llm_review_issue_{_slug(project_id)}_{fingerprint[:16]}",
             entry_type=KnowledgeEntryType.ISSUE_NOTE,
             zone=KnowledgeZone.PROJECT,
             title=f"LLM review issue: {claim[:80]}",
@@ -113,6 +115,7 @@ def write_llm_review_issue_notes(
                 result=result,
                 claim=claim,
                 severity=severity,
+                fingerprint=fingerprint,
                 evidence_refs=issue["evidence_refs"],
                 review_ref=review_ref,
                 next_steps=_string_items(parsed.get("next_steps")),
@@ -204,6 +207,7 @@ def _issue_note_body(
     result: LLMReviewResult,
     claim: str,
     severity: str,
+    fingerprint: str,
     evidence_refs: list[str],
     review_ref: str | None,
     next_steps: list[str],
@@ -213,6 +217,7 @@ def _issue_note_body(
         "",
         "- Status: Open",
         f"- Severity: `{severity}`",
+        f"- Issue fingerprint: `{fingerprint}`",
         f"- Subject: `{result.subject_path}`",
         f"- Reviewer verdict: `{_parsed_verdict(result)}`",
         f"- Review quality score: `{result.quality.score:.3f}`",
@@ -257,7 +262,10 @@ def _actionable_issues(parsed: dict[str, Any]) -> list[dict[str, Any]]:
             normalized_claim = claim.strip()
             if not normalized_claim:
                 continue
-            seen_claims.add(normalized_claim.casefold())
+            normalized_key = normalized_claim.casefold()
+            if normalized_key in seen_claims:
+                continue
+            seen_claims.add(normalized_key)
             issues.append(
                 {
                     "claim": normalized_claim,
@@ -271,6 +279,11 @@ def _actionable_issues(parsed: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         issues.append({"claim": claim, "severity": "blocking", "evidence_refs": []})
     return issues
+
+
+def _issue_fingerprint(*, result: LLMReviewResult, claim: str) -> str:
+    normalized_claim = " ".join(claim.casefold().split())
+    return sha256(f"{result.subject_sha256}:{normalized_claim}".encode()).hexdigest()
 
 
 def _string_items(value: Any) -> list[str]:

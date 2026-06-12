@@ -917,6 +917,15 @@ A task can be checked only when all applicable items are true:
     - _References: RP self-loop task pool, task 45.1 follow-up, user requirement that quality problems feed the project vault_
     - _Verify: unit tests cover issue-note creation and CLI wiring; real DeepSeek `llm-review --project-id` writes review and issue notes in a temporary Obsidian vault._
 
+- [x] 47. Deduplicate LLM review issue notes for self-loop stability
+  - [x] 47.1 Add stable issue fingerprints for reviewer findings
+    - Generate project issue-note paths from the reviewed subject hash plus a normalized claim fingerprint, not from the model output order.
+    - Skip duplicate actionable findings with the same normalized claim in one review result.
+    - Preserve an explicit issue fingerprint in each note body so repeated model reviews can be audited and matched by humans.
+    - Keep existing Obsidian version preservation when a repeated review updates the same issue note.
+    - _References: task 46.1 follow-up, RP self-loop task pool hygiene_
+    - _Verify: unit tests cover duplicate findings and reordered reviewer findings producing the same issue-note file set._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1049,6 +1058,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 21,
       "tasks": ["46.1"]
+    },
+    {
+      "id": 22,
+      "tasks": ["47.1"]
     }
   ]
 }
