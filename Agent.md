@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:56:56 +08:00 - Codex - Task 28.2 strategy rewards
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `28.2`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/reward.py`
+  - `tests/unit/experiments/test_reward.py`
+- Summary:
+  - Added strategy reward input, weight, and result dataclasses for shadow strategy comparison.
+  - Added reward calculation components for quality gain, reproducibility, evidence completeness, compute cost increase, human intervention increase, and risk penalty.
+  - Exported the reward helpers from `autoresearch.experiments`.
+  - Added tests covering quality improvement, cost increase penalty, risk penalty, and human intervention penalty.
+  - Marked task `28.2` and parent task `28` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/__init__.py --fix`: passed, fixed one import-order issue.
+  - `poetry run ruff check src/autoresearch/experiments/reward.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_reward.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_reward.py -vv`: passed, 3 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 265 passed and 3 skipped.
+- Problems:
+  - Added and resolved `P-20260612-054`.
+- Follow-up:
+  - Continue with task `29.1` gray release approval and promotion gates.
+
 ### 2026-06-12 12:50:57 +08:00 - Codex - Task 28.1 shadow evaluation
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `28.1`; run candidate strategies in shadow mode without affecting production outputs.

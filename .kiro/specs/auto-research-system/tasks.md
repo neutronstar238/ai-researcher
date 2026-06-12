@@ -671,13 +671,13 @@ A task can be checked only when all applicable items are true:
     - _References: EP 7.3_
     - _Verify: current stable strategy passes all golden tests before comparison._
 
-- [ ] 28. Add shadow evaluation
+- [x] 28. Add shadow evaluation
   - [x] 28.1 Run candidate strategies in shadow mode
     - Candidate strategy can observe and produce proposed outputs but cannot affect production results.
     - _References: RP 9.2, EP 7.3_
     - _Verify: shadow output is recorded separately and production output remains unchanged._
 
-  - [ ] 28.2 Compare strategy rewards
+  - [x] 28.2 Compare strategy rewards
     - Calculate reward from quality gain, reproducibility, evidence completeness, compute cost, human intervention, and risk penalty.
     - _References: RP 8.2_
     - _Verify: reward calculation test covers improvement, cost increase, and risk penalty cases._

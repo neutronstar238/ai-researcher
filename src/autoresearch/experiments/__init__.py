@@ -68,6 +68,12 @@ from .review import (
     quarantine_unsafe_experiment,
     review_generated_code,
 )
+from .reward import (
+    StrategyRewardInput,
+    StrategyRewardResult,
+    StrategyRewardWeights,
+    calculate_strategy_reward,
+)
 from .sandbox import SandboxAccessMode, SandboxPathDecision, SandboxPathPolicy
 from .shadow import (
     ShadowEvaluationRecord,
@@ -118,11 +124,15 @@ __all__ = [
     "ShadowProposal",
     "StatisticalCheck",
     "StatisticalNote",
+    "StrategyRewardInput",
+    "StrategyRewardResult",
+    "StrategyRewardWeights",
     "ValidationIssue",
     "ValidationReport",
     "bind_metrics_to_evidence",
     "build_replay_case",
     "build_default_golden_suite",
+    "calculate_strategy_reward",
     "classify_failure_category",
     "collect_result_bundle",
     "create_tabular_baseline_task",

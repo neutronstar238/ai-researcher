@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-054 - Reward export import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:56:56 +08:00
+- Source: `poetry run ruff check src/autoresearch/experiments/reward.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_reward.py`.
+- Symptom: Ruff reported `I001` in `src/autoresearch/experiments/__init__.py`.
+- Impact: Task `28.2` focused lint verification was blocked.
+- Evidence: Ruff reported the import block was unsorted or unformatted.
+- Root cause: New reward exports were inserted without matching ruff/isort ordering.
+- Workaround: None needed after ruff autofix.
+- Next action: None.
+- Linked tasks: `28.2`
+- Resolution: Ran ruff autofix on `src/autoresearch/experiments/__init__.py`.
+- Verification: `poetry run ruff check src/autoresearch/experiments/reward.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_reward.py`, `poetry run mypy src`, `poetry run pytest tests/unit/experiments/test_reward.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after import sorting.
+
 ### P-20260612-053 - Shadow module typing imports failed ruff
 
 - Status: Resolved
