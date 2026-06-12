@@ -769,7 +769,7 @@ A task can be checked only when all applicable items are true:
     - _References: README License_
     - _Verify: `LICENSE` exists and README links to it._
 
-  - [ ] 36.2 Add contribution guide
+  - [x] 36.2 Add contribution guide
     - Document development setup, task workflow, commit rule, testing gates, problem log, and code review expectations.
     - _References: AGENTS.md, Agent.md_
     - _Verify: `CONTRIBUTING.md` exists and links to `AGENTS.md`._

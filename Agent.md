@@ -62,6 +62,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:15:27 +08:00 - Codex - Task 36.2 contribution guide
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.2`, adding a contribution guide.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CONTRIBUTING.md`
+  - `README.md`
+  - `README.zh-CN.md`
+- Summary:
+  - Added `CONTRIBUTING.md`.
+  - Documented required reading, development setup, task workflow, one-task commit rule, testing gates, external data and LLM verification, problem logging, code review expectations, and release discipline.
+  - Linked `CONTRIBUTING.md` from both English and Chinese README contribution sections.
+  - Marked task `36.2` complete in `tasks.md`; parent task `36` remains open because changelog and release notes are not complete.
+  - No external live call was applicable for this documentation-only task.
+- Verification:
+  - `Test-Path -LiteralPath CONTRIBUTING.md`: passed, returned `True`.
+  - `rg -n "AGENTS\\.md|Development Setup|Task Workflow|Commit Rule|Testing Gates|Problem Log|Code Review Expectations|External Data and LLM Verification|CONTRIBUTING\\.md|36\\.2 Add contribution guide" CONTRIBUTING.md README.md README.zh-CN.md .kiro/specs/auto-research-system/tasks.md`: passed.
+  - `git diff --check`: passed with only Windows LF-to-CRLF checkout warnings.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `36.3` changelog and release notes.
+
 ### 2026-06-12 14:11:36 +08:00 - Codex - Task 36.1 choose and add license
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.1`, selecting and adding a license before public redistribution.

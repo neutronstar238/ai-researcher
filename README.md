@@ -114,6 +114,8 @@ This mirrors the default CI gates: `poetry run ruff check src tests`, `poetry ru
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup, task workflow, testing, and review guide.
+
 Before changing files:
 
 1. Read [AGENTS.md](AGENTS.md).

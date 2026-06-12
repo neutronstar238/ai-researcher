@@ -116,6 +116,8 @@ python scripts/check.py
 
 ## 贡献方式
 
+完整的开发环境、任务流程、测试和评审指南见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 修改文件前：
 
 1. 阅读 [AGENTS.md](AGENTS.md)。
