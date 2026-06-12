@@ -10,6 +10,25 @@ from autoresearch.compliance import (
 )
 
 
+def test_project_notice_tracks_third_party_reference_policy() -> None:
+    root = Path(__file__).resolve().parents[3]
+    notice = (root / "NOTICE").read_text(encoding="utf-8")
+    third_party = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+    assert "THIRD_PARTY_NOTICES.md" in notice
+    for required in (
+        "HKUDS AI-Researcher",
+        "karpathy/autoresearch",
+        "Thysrael/Horizon",
+        "UltraClr/agent-arxiv-daily",
+        "Microsoft SkillOpt",
+        "OpenClaw",
+    ):
+        assert required in third_party
+    assert "copy, vendor, adapt, or redistribute" in third_party
+    assert "Do not copy or adapt" in third_party
+
+
 def test_license_scanner_accepts_dataset_code_and_package_metadata(tmp_path: Path) -> None:
     dataset = tmp_path / "dataset"
     third_party = tmp_path / "vendor-lib"

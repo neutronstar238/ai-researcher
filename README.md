@@ -65,9 +65,11 @@ AI-Researcher is designed as an evidence-first system rather than a clone of any
 
 - [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher) for the end-to-end scientific pipeline ambition: literature review, hypothesis generation, implementation, manuscript writing, and evaluation.
 - Long-horizon auto-research roadmaps and surveys such as [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) for evaluation pressure around hallucination, novelty checks, and reproducible artifacts.
-- Daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled paper discovery patterns.
+- [Horizon](https://github.com/Thysrael/Horizon) and daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled source discovery, scoring, digest, and delivery patterns.
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.
 - [OpenClaw](https://github.com/openclaw/openclaw) for the operator experience of a self-hosted assistant that is configured once and then runs as an always-on local service.
+
+The license and attribution status for these references is tracked in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). They are design inspirations unless that notice file explicitly says code or assets were incorporated.
 
 This repository's differentiator is the Obsidian-compatible vault as the shared evidence, issue, skill, and strategy substrate for self-looping research. Autonomy is added only where the loop can write auditable evidence and review artifacts.
 
@@ -245,4 +247,4 @@ Before changing files:
 
 ## License
 
-AI-Researcher is licensed under the [Apache License 2.0](LICENSE). The SPDX identifier is `Apache-2.0`. See [NOTICE](NOTICE) for attribution.
+AI-Researcher is licensed under the [Apache License 2.0](LICENSE). The SPDX identifier is `Apache-2.0`. See [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution and third-party reference notes.

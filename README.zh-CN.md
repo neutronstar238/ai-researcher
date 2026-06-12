@@ -24,9 +24,11 @@ AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸
 
 - [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher)：端到端科研流水线目标，包括文献综述、假设生成、实现、论文写作和评估。
 - [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) 等长程自动科研路线图：强调幻觉、创新性检验、可复现产物和评估压力。
-- [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日论文更新项目：启发定时联网抓取和论文更新机制。
+- [Horizon](https://github.com/Thysrael/Horizon) 和 [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日更新项目：启发定时联网抓取、来源评分、摘要分发和论文更新机制。
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。
 - [OpenClaw](https://github.com/openclaw/openclaw)：启发“配置一次、本地常驻”的操作者体验。
+
+这些参考项目的许可证和署名状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。除非该文件明确写明已纳入代码或资产，否则它们只是设计启发，不是本仓库复制或 vendored 的第三方代码。
 
 本项目的核心差异是把 Obsidian 兼容 vault 作为证据、问题、技能和策略的统一底座。自动化只在能写出可审计证据和评审产物时推进。
 
@@ -200,4 +202,4 @@ poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literatur
 
 ## 许可证
 
-AI-Researcher 使用 [Apache License 2.0](LICENSE) 发布。SPDX 标识为 `Apache-2.0`。署名信息见 [NOTICE](NOTICE)。
+AI-Researcher 使用 [Apache License 2.0](LICENSE) 发布。SPDX 标识为 `Apache-2.0`。署名信息和第三方参考声明见 [NOTICE](NOTICE) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

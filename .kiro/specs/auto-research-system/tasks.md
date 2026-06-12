@@ -1031,6 +1031,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to rename public project command to `airesearcher`_
     - _Verify: `poetry run airesearcher version`, `poetry run airesearcher doctor`, focused CLI/config/report tests, ruff, mypy, and full smoke/unit tests pass._
 
+- [x] 59. Add third-party open-source notice coverage
+  - [x] 59.1 Track referenced upstream projects and license boundaries
+    - Add `THIRD_PARTY_NOTICES.md` for referenced projects used as design inspiration, naming context, or implementation-pattern references.
+    - Include license status and incorporation status for HKUDS AI-Researcher, karpathy/autoresearch, Horizon, agent-arxiv-daily, SkillOpt, and OpenClaw.
+    - Clearly distinguish conceptual references from copied, vendored, adapted, or redistributed third-party code/assets.
+    - Link `NOTICE`, English README, and Chinese README to the third-party notice file.
+    - Add a compliance regression test so future edits keep the notice policy visible.
+    - _References: user request to include notice/license statements for open-source projects used as references_
+    - _Verify: compliance tests, `rg` notice checks, ruff, mypy, and full smoke/unit tests pass._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1211,6 +1221,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 33,
       "tasks": ["58.1"]
+    },
+    {
+      "id": 34,
+      "tasks": ["59.1"]
     }
   ]
 }

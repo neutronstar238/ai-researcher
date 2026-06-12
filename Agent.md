@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 23:54:51 +08:00 - Codex - Task 59 third-party open-source notice coverage
+
+- Request: Add notice and license statements for the open-source projects used as references or inspiration.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `NOTICE`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+- Summary:
+  - Added `THIRD_PARTY_NOTICES.md` to track referenced upstream projects, reviewed license status, whether any code/assets are incorporated, and required handling if future code or assets are copied.
+  - Recorded HKUDS AI-Researcher as a conceptual reference with no repository license file found during review, so code/assets must not be copied without clarification or permission.
+  - Recorded karpathy/autoresearch, Horizon, SkillOpt, OpenClaw, and agent-arxiv-daily with their reviewed MIT or Apache-2.0 status and current no-incorporation boundary.
+  - Linked `NOTICE`, English README, and Chinese README to the third-party notice file.
+  - Added a compliance regression test to keep the third-party reference policy visible.
+  - Marked task `59.1` complete in `tasks.md`.
+- Verification:
+  - Web review checked upstream repository/license pages for HKUDS AI-Researcher, karpathy/autoresearch, Thysrael/Horizon, UltraClr/agent-arxiv-daily, Microsoft SkillOpt, and OpenClaw.
+  - `rg -n "THIRD_PARTY_NOTICES|HKUDS AI-Researcher|Thysrael/Horizon|UltraClr/agent-arxiv-daily|Microsoft SkillOpt|OpenClaw|does not copy, vendor, adapt, or redistribute" NOTICE THIRD_PARTY_NOTICES.md README.md README.zh-CN.md .kiro/specs/auto-research-system/tasks.md tests/unit/compliance/test_licenses.py`: passed and showed expected notice links and project entries.
+  - `poetry run pytest tests/unit/compliance/test_licenses.py -q`: passed, 5 tests after resolving `P-20260612-081`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 314 tests and 4 live smoke tests skipped because live API flags were not set.
+- Problems:
+  - `P-20260612-081` added and resolved.
+- Follow-up:
+  - Future dependency vendoring, code copying, external assets, datasets, or packaged model outputs must update `THIRD_PARTY_NOTICES.md` and include upstream license/notice text before release.
+
 ### 2026-06-12 23:48:24 +08:00 - Codex - Task 58 public CLI rename to airesearcher
 
 - Request: Rename the public project command from `autoresearch` to `airesearcher` to avoid collisions with adjacent open-source projects.

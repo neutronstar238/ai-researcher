@@ -24,6 +24,7 @@ Target version: `0.1.0`.
 - Operational reporting: system metrics, static status reports, dashboard HTML export, project permissions, plugin interfaces, license scanner, project cost management, and service health/SLA reports.
 - Deployment and release preparation docs: Docker Compose package, Kubernetes planning document, Apache-2.0 license, contribution guide, and this changelog.
 - Apache-2.0 `NOTICE` file and root `.env.example` for first-deploy model/channel configuration.
+- `THIRD_PARTY_NOTICES.md` for license and attribution status of referenced open-source inspiration projects.
 - First-deploy CLI setup for provider-agnostic model configuration, `.env` secret storage, WeChat/Feishu channel wiring, and project slash command templates.
 - Real online discovery CLI entry points for daily literature refresh and project-start similarity checks, including guarded Obsidian summaries and visible per-source fetch errors.
 - Live `llm-smoke` CLI for OpenAI-compatible model calls, structured output checks, API-key leak checks, and quality report artifacts.

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-081 - Third-party notice compliance test asserted a wrapped sentence
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 23:54:51 +08:00
+- Source: `poetry run pytest tests/unit/compliance/test_licenses.py -q` during task `59.1` verification.
+- Symptom: The new notice test failed because it looked for the exact sentence fragment `does not copy, vendor, adapt, or redistribute`, while the Markdown paragraph wrapped between `does not` and `copy`.
+- Impact: The third-party notice content was present, but the regression test was brittle and blocked task verification.
+- Evidence: Pytest reported one failing assertion in `test_project_notice_tracks_third_party_reference_policy`.
+- Root cause: The test asserted a line-sensitive phrase instead of the stable policy clause.
+- Workaround: None needed after the test assertion was made less brittle.
+- Next action: Prefer compact invariant phrases for Markdown policy tests.
+- Linked tasks: `59.1`
+- Resolution: Changed the assertion to check the stable phrase `copy, vendor, adapt, or redistribute`.
+- Verification: `poetry run pytest tests/unit/compliance/test_licenses.py -q` passed with 5 tests after the fix.
+
 ### P-20260612-080 - Documentation rename pass left extra blank lines at EOF
 
 - Status: Resolved
