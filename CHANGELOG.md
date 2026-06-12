@@ -31,6 +31,7 @@ Target version: `0.1.0`.
 - Semantic Scholar online discovery now supports optional `SEMANTIC_SCHOLAR_API_KEY`, conservative unauthenticated rate limiting, exponential backoff, and HTTP 429 circuit breaking.
 - `llm-review` CLI for live LLM-as-reviewer checks constrained to local evidence artifacts and deterministic citation quality gates.
 - Project-level Obsidian `review/` memory for evidence-constrained LLM review notes.
+- Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.
 
 ### Changed
 
@@ -52,6 +53,7 @@ Target version: `0.1.0`.
 - LLM output quality detection now recognizes independent fact-checking language as valid evidence-policy language.
 - LLM reviewer quality scoring now treats missing evidence refs, unknown nested refs, secret leakage, and fake URLs as hard failures below the CLI threshold.
 - Passing `llm-review` results can now be promoted into project `review_note` entries, while low-quality reviewer outputs remain only in ignored `runs/` artifacts.
+- Passing `llm-review --project-id` runs now default to promoting actionable warning/blocking reviewer findings into project issue notes, with `--no-write-issues` available to keep review-only behavior.
 
 ### Migration Notes
 
@@ -78,6 +80,7 @@ Target version: `0.1.0`.
 - Semantic Scholar hardening after task `43`: unit/CLI literature checks passed, and `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -q` passed with 3 real API tests.
 - Evidence-constrained LLM reviewer after task `44`: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` passed with 296 tests and 4 skipped; real DeepSeek `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest.json --min-quality-score 0.85` passed with quality score `1.000` and verdict `needs_revision`.
 - Obsidian LLM review memory after task `45`: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` passed with 297 tests and 4 skipped; real DeepSeek `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-vault.json --min-quality-score 0.85 --vault runs/manual-live/review-vault --project-id deepseek_live_project --source-task-id 45.1 --max-tokens 2400` wrote an Obsidian `review_note`.
+- LLM review issue promotion after task `46`: `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q` passed with 3 tests; real DeepSeek `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-issues.json --min-quality-score 0.85 --vault runs/manual-live/review-vault-issues --project-id deepseek_live_project --source-task-id 46.1 --max-tokens 2400` wrote one review note and two issue notes.
 - Live API smoke after task `41`: `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv` passed with 4 real API tests.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.

@@ -2,12 +2,68 @@ from pathlib import Path
 
 from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType, KnowledgeZone
 from autoresearch.llm import LLMEvidenceArtifact, LLMReviewQuality, LLMReviewResult
-from autoresearch.llm.review_memory import write_llm_review_note
+from autoresearch.llm.review_memory import write_llm_review_issue_notes, write_llm_review_note
 
 
 def test_write_llm_review_note_creates_project_review_entry(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
-    result = LLMReviewResult(
+    result = _review_result()
+
+    path = write_llm_review_note(
+        result=result,
+        vault_root=vault_root,
+        project_id="project_1",
+        source_task_id="44.1",
+    )
+
+    assert path == vault_root / "projects" / "project_1" / "review" / (
+        "llm-review-report-" + ("a" * 12) + ".md"
+    )
+    entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
+    assert entry.entry_type is KnowledgeEntryType.REVIEW_NOTE
+    assert entry.zone is KnowledgeZone.PROJECT
+    assert entry.project_id == "project_1"
+    assert entry.related_task_ids == ["44.1"]
+    assert "needs_revision" in entry.body
+    assert "`evidence_1`" in entry.body
+    assert "The model quality claim needs another artifact." in entry.body
+
+
+def test_write_llm_review_issue_notes_creates_actionable_project_issues(
+    tmp_path: Path,
+) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+    result = _review_result()
+    review_note = write_llm_review_note(
+        result=result,
+        vault_root=vault_root,
+        project_id="project_1",
+        source_task_id="45.1",
+    )
+
+    issue_paths = write_llm_review_issue_notes(
+        result=result,
+        vault_root=vault_root,
+        project_id="project_1",
+        source_task_id="46.1",
+        review_note_path=review_note,
+    )
+
+    assert len(issue_paths) == 2
+    first_issue = KnowledgeEntry.from_markdown(issue_paths[0].read_text(encoding="utf-8"))
+    second_issue = KnowledgeEntry.from_markdown(issue_paths[1].read_text(encoding="utf-8"))
+    assert first_issue.entry_type is KnowledgeEntryType.ISSUE_NOTE
+    assert first_issue.zone is KnowledgeZone.PROJECT
+    assert first_issue.project_id == "project_1"
+    assert first_issue.related_task_ids == ["46.1"]
+    assert "The validation status is supported." in first_issue.body
+    assert "[[projects/project_1/review/llm-review-report-aaaaaaaaaaaa|LLM evidence review]]" in first_issue.body
+    assert "The model quality claim needs another artifact." in second_issue.body
+    assert "`missing`" in second_issue.body
+
+
+def _review_result() -> LLMReviewResult:
+    return LLMReviewResult(
         provider="test-provider",
         base_url="https://example.invalid",
         model_name="test-model",
@@ -41,22 +97,3 @@ def test_write_llm_review_note_creates_project_review_entry(tmp_path: Path) -> N
             },
         ),
     )
-
-    path = write_llm_review_note(
-        result=result,
-        vault_root=vault_root,
-        project_id="project_1",
-        source_task_id="44.1",
-    )
-
-    assert path == vault_root / "projects" / "project_1" / "review" / (
-        "llm-review-report-" + ("a" * 12) + ".md"
-    )
-    entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
-    assert entry.entry_type is KnowledgeEntryType.REVIEW_NOTE
-    assert entry.zone is KnowledgeZone.PROJECT
-    assert entry.project_id == "project_1"
-    assert entry.related_task_ids == ["44.1"]
-    assert "needs_revision" in entry.body
-    assert "`evidence_1`" in entry.body
-    assert "The model quality claim needs another artifact." in entry.body

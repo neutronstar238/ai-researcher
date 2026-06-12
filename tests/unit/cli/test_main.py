@@ -554,8 +554,15 @@ def test_llm_review_command_writes_local_evidence_report(tmp_path: Path, monkeyp
         captured_note.update(kwargs)
         return vault_note
 
+    captured_issues: dict[str, object] = {}
+
+    def fake_write_issues(**kwargs: object) -> tuple[Path, ...]:
+        captured_issues.update(kwargs)
+        return (tmp_path / "vault" / "projects" / "project_1" / "issues" / "issue.md",)
+
     monkeypatch.setattr(cli_main, "run_llm_evidence_review", fake_review)
     monkeypatch.setattr(cli_main, "write_llm_review_note", fake_write_note)
+    monkeypatch.setattr(cli_main, "write_llm_review_issue_notes", fake_write_issues)
     output = tmp_path / "llm-review.json"
 
     result = CliRunner().invoke(
@@ -586,8 +593,11 @@ def test_llm_review_command_writes_local_evidence_report(tmp_path: Path, monkeyp
     assert "[CHECK] finding_refs_known: pass" in result.stdout
     assert "[VERDICT] pass" in result.stdout
     assert "[OK] vault_review:" in result.stdout
+    assert "[OK] vault_issues: 1" in result.stdout
     assert output.is_file()
     assert captured_note["result"] == review
     assert captured_note["vault_root"] == tmp_path / "vault"
     assert captured_note["project_id"] == "project_1"
     assert captured_note["source_task_id"] == "44.1"
+    assert captured_issues["result"] == review
+    assert captured_issues["review_note_path"] == vault_note

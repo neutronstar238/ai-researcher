@@ -908,6 +908,15 @@ A task can be checked only when all applicable items are true:
     - _References: RP Obsidian self-loop memory, task 44.1, user requirement that outputs and quality findings feed the project vault_
     - _Verify: unit tests cover review-note storage and CLI vault wiring; real DeepSeek `llm-review --project-id` writes an Obsidian `review_note` under the project review directory._
 
+- [x] 46. Convert LLM review findings into project issue notes
+  - [x] 46.1 Add review-to-issue promotion for actionable model findings
+    - Convert passing `llm-review` results with `blocking`, `critical`, `high`, or `warning` findings into project `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`.
+    - Link each issue note back to the source `review_note` with an Obsidian wiki-link and preserve subject/evidence refs in frontmatter.
+    - Include severity, claim, evidence refs, reviewer verdict, quality score, and next actions in each issue note.
+    - Add `--write-issues/--no-write-issues` to `autoresearch llm-review`, defaulting to issue-note creation when `--project-id` is provided and the deterministic review quality gate passes.
+    - _References: RP self-loop task pool, task 45.1 follow-up, user requirement that quality problems feed the project vault_
+    - _Verify: unit tests cover issue-note creation and CLI wiring; real DeepSeek `llm-review --project-id` writes review and issue notes in a temporary Obsidian vault._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1036,6 +1045,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 20,
       "tasks": ["45.1"]
+    },
+    {
+      "id": 21,
+      "tasks": ["46.1"]
     }
   ]
 }

@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:17:23 +08:00 - Codex - Task 46 LLM review issue notes
+
+- Request: Continue implementing the project from `tasks.md` by converting evidence-constrained LLM review findings into actionable Obsidian project issue notes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/llm/review_memory.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_review_memory.py`
+- Summary:
+  - Added review-to-issue promotion for actionable LLM reviewer findings with severities `blocking`, `critical`, `high`, and `warning`.
+  - Added unsupported-claim promotion into project `issue_note` entries under `projects/<project_id>/issues/` with source evidence refs, task links, next actions, and a wiki-link back to the originating review note.
+  - Added `--write-issues/--no-write-issues` to `autoresearch llm-review` so passing project-scoped reviews can feed the Obsidian self-loop issue pool by default while still allowing opt-out.
+  - Updated the task plan, README files, and changelog to describe the implemented issue-note path.
+- Verification:
+  - `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q`: passed, 3 tests.
+  - `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-issues.json --min-quality-score 0.85 --vault runs/manual-live/review-vault-issues --project-id deepseek_live_project --source-task-id 46.1 --max-tokens 2400`: passed against the real DeepSeek endpoint, review quality score 1.000, wrote one `review_note`, and wrote two project `issue_note` files.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: initially failed with `P-20260612-071`; passed after narrowing the JSON-derived verdict value.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 298 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-071` added and resolved.
+- Follow-up:
+  - Deduplicate repeated LLM review issue notes across runs before wiring them into an automated scheduler task pool.
+
 ### 2026-06-12 17:06:47 +08:00 - Codex - Task 45 Obsidian LLM review memory
 
 - Request: Continue implementing the project from `tasks.md` and move evidence-constrained LLM review outputs into the Obsidian self-loop memory layer.

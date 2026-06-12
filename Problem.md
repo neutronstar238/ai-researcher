@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-071 - Review issue writer returned untyped JSON verdict through a typed string helper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:14:56 +08:00
+- Source: `poetry run mypy src` during task `46.1` verification.
+- Symptom: `mypy` failed with `src/autoresearch/llm/review_memory.py:285: error: Returning Any from function declared to return "str"`.
+- Impact: The review-to-issue promotion code could not pass the repository type gate.
+- Evidence: The helper returned `parsed["verdict"]` after a runtime type check on `parsed.get("verdict")`, but mypy still inferred the indexed lookup as `Any`.
+- Root cause: The code narrowed the `dict.get()` result but returned a separate indexed access.
+- Workaround: None needed after the fix.
+- Next action: Keep JSON-derived values in local typed variables before returning them from typed helpers.
+- Linked tasks: `46.1`
+- Resolution: Stored the verdict in a local variable, checked `isinstance(verdict, str)`, and returned that narrowed value.
+- Verification: `poetry run mypy src` passed with no issues found in 85 source files after the fix. `poetry run ruff check src tests` passed. `poetry run pytest tests/smoke tests/unit -q` passed with 298 passed and 4 skipped. A real DeepSeek `autoresearch llm-review` run with `--vault runs/manual-live/review-vault-issues --project-id deepseek_live_project --source-task-id 46.1 --max-tokens 2400` passed the quality gate and wrote one review note plus two issue notes.
+
 ### P-20260612-070 - DeepSeek reviewer sometimes exhausts 1600 output tokens before returning content
 
 - Status: Resolved

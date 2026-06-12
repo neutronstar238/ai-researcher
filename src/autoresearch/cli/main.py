@@ -25,6 +25,7 @@ from autoresearch.llm import (
     LLMClientError,
     run_llm_evidence_review,
     run_llm_smoke_test,
+    write_llm_review_issue_notes,
     write_llm_review_note,
 )
 from autoresearch.reports import validate_reproducibility_package
@@ -674,6 +675,13 @@ def llm_review(
         str | None,
         typer.Option("--source-task-id", help="Optional task ID to attach to the review note."),
     ] = None,
+    write_issues: Annotated[
+        bool,
+        typer.Option(
+            "--write-issues/--no-write-issues",
+            help="Write actionable review findings into project issue notes.",
+        ),
+    ] = True,
 ) -> None:
     """Run an LLM-as-reviewer pass constrained to local evidence files."""
 
@@ -718,6 +726,15 @@ def llm_review(
             source_task_id=source_task_id,
         )
         typer.echo(f"[OK] vault_review: {review_note}")
+        if write_issues:
+            issue_notes = write_llm_review_issue_notes(
+                result=result,
+                vault_root=vault,
+                project_id=project_id,
+                source_task_id=source_task_id,
+                review_note_path=review_note,
+            )
+            typer.echo(f"[OK] vault_issues: {len(issue_notes)}")
 
 
 @slash_app.command("init")
