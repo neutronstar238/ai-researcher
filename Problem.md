@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-067 - Python 3.10 CI test collection failed on runtime-subscripted LoggerAdapter
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 16:16:41 +08:00
+- Source: User-provided GitHub Actions `Python 3.10` log for commit `bbf4687`.
+- Symptom: `poetry run pytest tests/smoke tests/unit` collected tests but failed during import collection with 51 errors ending in `TypeError: 'type' object is not subscriptable`.
+- Impact: CI could not reach smoke or unit test execution on the Python 3.10 runner even though Python 3.13 local tests passed.
+- Evidence: The traceback pointed to `src/autoresearch/observability/logging.py:16`, where `ContextLoggerAdapter` inherited from `logging.LoggerAdapter[logging.Logger]`.
+- Root cause: `logging.LoggerAdapter` is not runtime-subscriptable on Python 3.10, so importing observability logging raised before tests could run.
+- Workaround: None needed after the fix.
+- Next action: Keep standard-library runtime generics compatible with the minimum supported Python version, or guard them behind type-checking-only aliases.
+- Linked tasks: `42.1`
+- Resolution: Changed the logging adapter base class to inherit from `logging.LoggerAdapter` without a runtime generic subscript.
+- Verification: Python 3.10 Poetry environment passed `poetry run pytest tests/smoke tests/unit -q` with 289 passed and 4 skipped; `poetry run ruff check src tests` passed; `poetry run mypy src` passed with no issues in 84 source files.
+
 ### P-20260612-066 - LLM smoke quality gate missed fact-checking evidence policy wording
 
 - Status: Resolved

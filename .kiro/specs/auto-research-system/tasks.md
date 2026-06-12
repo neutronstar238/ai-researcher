@@ -871,6 +871,14 @@ A task can be checked only when all applicable items are true:
     - _References: user request to deploy as a user and inspect full flow_
     - _Verify: all full-chain CLI commands pass; report lint returns zero issues._
 
+- [x] 42. Fix Python 3.10 CI test collection compatibility
+  - [x] 42.1 Make observability logging importable on Python 3.10
+    - Remove runtime use of the Python 3.11+ `logging.LoggerAdapter[...]` generic form from the logging adapter base class.
+    - Keep the structured logging behavior unchanged for run, project, task, and component context fields.
+    - Reproduce the GitHub Actions failure locally under Python 3.10 before validating the fix.
+    - _References: user-provided GitHub Actions Python 3.10 log, task 40.2_
+    - _Verify: Python 3.10 Poetry environment runs `pytest tests/smoke tests/unit`, `ruff`, and `mypy` successfully._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -983,6 +991,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 16,
       "tasks": ["41.1", "41.2", "41.3", "41.4"]
+    },
+    {
+      "id": 17,
+      "tasks": ["42.1"]
     }
   ]
 }

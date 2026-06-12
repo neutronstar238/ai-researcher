@@ -41,6 +41,7 @@ Target version: `0.1.0`.
 
 ### Fixed
 
+- GitHub Actions `pytest tests/smoke tests/unit` collection failure on Python 3.10 caused by runtime use of `logging.LoggerAdapter[...]`.
 - GitHub Actions `mypy src` failure on Python 3.10/Linux caused by direct access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute.
 - Removed stale mypy override entries that produced unused-config warnings in CI.
 - LLM output quality detection now recognizes independent fact-checking language as valid evidence-policy language.
@@ -65,6 +66,8 @@ Target version: `0.1.0`.
 - Current broad local check after task `41`: `poetry run ruff check src tests` passed.
 - Current broad local type check after task `41`: `poetry run mypy src` passed with no issues in 84 source files.
 - Current broad local test set after task `41`: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `306 passed, 4 skipped`.
+- Python 3.10 CI reproduction after task `42`: `poetry run pytest tests/smoke tests/unit -q` passed with `289 passed, 4 skipped`.
+- Python 3.10 quality gates after task `42`: `poetry run ruff check src tests` and `poetry run mypy src` passed.
 - Live API smoke after task `41`: `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv` passed with 4 real API tests.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.

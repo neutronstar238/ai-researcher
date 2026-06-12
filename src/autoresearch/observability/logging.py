@@ -13,7 +13,7 @@ LOG_FORMAT = (
 )
 
 
-class ContextLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
+class ContextLoggerAdapter(logging.LoggerAdapter):
     """Logger adapter that keeps AutoResearch context on every record."""
 
     def process(

@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 16:16:41 +08:00 - Codex - Task 42 Python 3.10 CI collection compatibility
+
+- Request: Diagnose and fix the GitHub Actions Python 3.10 smoke/unit collection failure from the user-provided CI log.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/observability/logging.py`
+- Summary:
+  - Reproduced the CI failure locally with Python 3.10.20: `tests/smoke tests/unit` failed during collection with 51 `TypeError: 'type' object is not subscriptable` errors.
+  - Identified `ContextLoggerAdapter(logging.LoggerAdapter[logging.Logger])` as the shared import-time failure.
+  - Removed the runtime generic subscript from the base class while preserving structured logging behavior.
+  - Added and completed task `42.1` in the implementation task plan.
+  - Recorded the CI issue as `P-20260612-067`.
+- Verification:
+  - `python -m uv python install 3.10`: passed, installed Python 3.10.20 for local reproduction.
+  - Temporary Python 3.10 run before the fix, `$py -m pytest tests/smoke tests/unit -q`: reproduced 51 collection errors with `TypeError: 'type' object is not subscriptable`.
+  - Python 3.10 narrow check, `$py -m pytest tests/unit/observability/test_logging.py tests/smoke/test_cli.py -q`: passed, 3 tests.
+  - Python 3.10 broad check, `$py -m pytest tests/smoke tests/unit -q`: passed, 289 tests and 4 skipped.
+  - `poetry env use <Python 3.10.20>` followed by `poetry install --with dev --no-interaction --no-ansi`: passed.
+  - Python 3.10 Poetry check, `poetry run pytest tests/smoke tests/unit -q`: passed, 289 tests and 4 skipped.
+  - Python 3.10 Poetry check, `poetry run ruff check src tests`: passed.
+  - Python 3.10 Poetry check, `poetry run mypy src`: passed, no issues found in 84 source files.
+- Problems:
+  - `P-20260612-067` added and resolved.
+- Follow-up:
+  - The local Poetry environment now points at Python 3.10.20, matching the CI job. This is intentional for CI compatibility verification.
+
 ### 2026-06-12 15:57:29 +08:00 - Codex - Task 41 live LLM smoke and full-chain verification
 
 - Request: Configure DeepSeek V4 Flash through the first-deploy CLI as a user, run full-chain real API verification, inspect output quality, and convert smoke checks to real API calls.
