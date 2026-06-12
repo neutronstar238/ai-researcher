@@ -62,6 +62,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 00:52:01 +08:00 - Codex - Task 62 HKUDS AI-Researcher license and differentiation review
+
+- Request: Understand how HKUDS AI-Researcher differs from this project and verify whether that upstream project is open-source before using it as a reference.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Reviewed the current HKUDS AI-Researcher repository, upstream README, raw package metadata, and the open GitHub license-clarification issue.
+  - Clarified that the repository is public and `setup.cfg` declares MIT metadata, but no top-level repository `LICENSE` file was found during review and upstream issue #94 remains open for explicit license clarification.
+  - Updated README references to state this repository's differentiation: Obsidian-backed self-loop/self-evolution memory, permissioned always-on operation, evidence graphs, real run records, and publication audits before paper claims.
+  - Updated `THIRD_PARTY_NOTICES.md` to keep HKUDS AI-Researcher as a conceptual reference only and prohibit copying or adapting code, prompts, benchmark data, generated examples, or assets without clarified license text or written permission.
+- Verification:
+  - Web review: `https://github.com/HKUDS/AI-Researcher`, raw `README.md`, raw `setup.cfg`, and `https://github.com/HKUDS/AI-Researcher/issues/94` reviewed.
+  - `rg -n "HKUDS AI-Researcher|setup.cfg|license = MIT|source-available|Obsidian-backed|publication audits|62.1|P-20260613-006" README.md README.zh-CN.md THIRD_PARTY_NOTICES.md .kiro/specs/auto-research-system/tasks.md Problem.md Agent.md`: passed and showed the updated reference boundary in README, notices, task, problem, and Agent log.
+  - `poetry run pytest tests/unit/compliance/test_licenses.py -q`: passed, 5 tests.
+- Problems:
+  - Added `P-20260613-006` for the upstream license-text ambiguity and the no-copy/no-adapt workaround.
+- Follow-up:
+  - Re-check upstream if future work ever wants to incorporate HKUDS repository material instead of merely citing it.
+
 ### 2026-06-13 00:37:59 +08:00 - Codex - Task 61 publication-level quality gate
 
 - Request: Strictly judge whether autonomous outputs and data evidence can support CCF-B / Q3-journal-level publication claims, verify scripts actually ran on data, and run real online/full-loop checks instead of trusting a smoke pass.

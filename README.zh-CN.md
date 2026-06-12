@@ -22,7 +22,7 @@ AI-Researcher 是一个证据优先的自动化计算科研平台。目标不是
 
 AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸收多个开源方向的经验：
 
-- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher)：端到端科研流水线目标，包括文献综述、假设生成、实现、论文写作和评估。
+- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher)：端到端科研流水线目标和 Scientist-Bench 式评测压力。本仓库只把它作为概念参考；AI-Researcher 的重点是 Obsidian 驱动的自循环记忆底座、带权限审批的常驻运行、证据图、真实运行记录，以及在论文声明前先通过发表级审计。
 - [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) 等长程自动科研路线图：强调幻觉、创新性检验、可复现产物和评估压力。
 - [Horizon](https://github.com/Thysrael/Horizon) 和 [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日更新项目：启发定时联网抓取、来源评分、摘要分发和论文更新机制。
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Last reviewed: 2026-06-12
+Last reviewed: 2026-06-13
 
 This file records upstream projects that AI-Researcher explicitly references for
 design comparison, operator experience, naming context, or implementation
@@ -12,7 +12,7 @@ other assets from these projects.
 
 | Project | Upstream | Reviewed license status | Current use in AI-Researcher | Incorporated here? | Required handling |
 |---|---|---|---|---|---|
-| HKUDS AI-Researcher | https://github.com/HKUDS/AI-Researcher | No repository license file was found during this review. | Conceptual comparison for end-to-end autonomous research pipelines and Scientist-Bench-style evaluation pressure. | No | Do not copy or adapt repository code, assets, prompts, benchmark data, or generated examples unless the upstream license is clarified or written permission is obtained. Cite the paper/project when discussing conceptual comparisons. |
+| HKUDS AI-Researcher | https://github.com/HKUDS/AI-Researcher | Public GitHub repository; `setup.cfg` declares `license = MIT`, but no repository `LICENSE` file was found during this review and upstream issue #94 is open for license clarification. | Conceptual comparison for end-to-end autonomous research pipelines and Scientist-Bench-style evaluation pressure. | No | Treat as source-available with ambiguous redistribution terms until upstream adds explicit license text or written permission is obtained. Do not copy or adapt repository code, assets, prompts, benchmark data, or generated examples. Cite the paper/project when discussing conceptual comparisons. |
 | karpathy/autoresearch | https://github.com/karpathy/autoresearch | MIT. | Naming-conflict context and a public example of automated research on a constrained compute setup. | No | If code or assets are ever copied or adapted, preserve upstream copyright and the MIT license text. |
 | Thysrael/Horizon | https://github.com/Thysrael/Horizon | MIT. | Inspiration for scheduled AI-curated digests, source ingestion, scoring, and bilingual delivery patterns. | No | If code or assets are ever copied or adapted, preserve upstream copyright and the MIT license text. |
 | UltraClr/agent-arxiv-daily | https://github.com/UltraClr/agent-arxiv-daily | Apache-2.0. | Reference for daily arXiv/GitHub Actions paper update patterns. | No | If code or assets are ever copied or adapted, preserve the Apache-2.0 license text, notices, and modification notices. |

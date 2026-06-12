@@ -63,7 +63,7 @@ The executable task plan lives in [.kiro/specs/auto-research-system/tasks.md](.k
 
 AI-Researcher is designed as an evidence-first system rather than a clone of any single project. Important references include:
 
-- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher) for the end-to-end scientific pipeline ambition: literature review, hypothesis generation, implementation, manuscript writing, and evaluation.
+- [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher) for the end-to-end scientific pipeline ambition and Scientist-Bench-style evaluation pressure. This repository treats it as a conceptual reference only: AI-Researcher focuses on an Obsidian-backed self-loop memory substrate, permissioned always-on operation, evidence graphs, real run records, and publication audits before paper claims.
 - Long-horizon auto-research roadmaps and surveys such as [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) for evaluation pressure around hallucination, novelty checks, and reproducible artifacts.
 - [Horizon](https://github.com/Thysrael/Horizon) and daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled source discovery, scoring, digest, and delivery patterns.
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.

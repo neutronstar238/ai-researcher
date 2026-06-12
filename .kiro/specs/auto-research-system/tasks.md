@@ -1066,6 +1066,15 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that system outputs be strictly checked against CCF-B / Q3 journal quality, real data evidence, broad online cross-search, and no fabricated publication claims._
     - _Verify: publication-audit unit tests, CLI tests, slash template test, ruff, mypy, full smoke/unit tests, and a real `.env` full-loop publication audit that rejects the current toy-data cycle._
 
+- [x] 62. Clarify HKUDS AI-Researcher reference and license boundary
+  - [x] 62.1 Treat HKUDS AI-Researcher as a conceptual reference, not copied code
+    - Review the current HKUDS AI-Researcher repository, README, package metadata, and open license-clarification issue.
+    - Record that the repository is public and `setup.cfg` declares MIT metadata, but no repository `LICENSE` file was found and upstream issue #94 requests explicit license clarification.
+    - Update README references to explain the core differentiation: this project centers Obsidian as a self-loop/self-evolution memory substrate, permissioned always-on operation, evidence graphs, real run records, and publication audits before paper claims.
+    - Keep `THIRD_PARTY_NOTICES.md` conservative: no HKUDS code, prompts, benchmark data, generated examples, or assets are copied or adapted unless upstream adds explicit license text or written permission is obtained.
+    - _References: user request to understand how HKUDS AI-Researcher differs from this project and verify whether the upstream project is open-source._
+    - _Verify: web review of upstream repository/README/package metadata/issue #94, focused license notice tests, and text search for the updated reference boundary._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
