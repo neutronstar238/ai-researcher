@@ -1,5 +1,10 @@
 """Research report generation helpers."""
 
+from .audit_review import (
+    StrategyPromotionAuditReviewArtifact,
+    StrategyPromotionAuditReviewContext,
+    generate_strategy_promotion_audit_review,
+)
 from .backlog import (
     ReviewBacklogArtifact,
     ReviewBacklogRecord,
@@ -110,6 +115,8 @@ __all__ = [
     "ReviewFinding",
     "StrategyEvolutionReportArtifact",
     "StrategyEvolutionReportContext",
+    "StrategyPromotionAuditReviewArtifact",
+    "StrategyPromotionAuditReviewContext",
     "TableGenerationError",
     "assert_metric_consistency",
     "assert_report_readable",
@@ -117,6 +124,7 @@ __all__ = [
     "create_reproducibility_package",
     "generate_bibtex",
     "generate_ablation_table",
+    "generate_strategy_promotion_audit_review",
     "generate_strategy_evolution_report",
     "generate_metric_bar_figure",
     "generate_method_comparison_table",

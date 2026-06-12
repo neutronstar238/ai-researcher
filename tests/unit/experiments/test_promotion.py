@@ -76,6 +76,7 @@ def test_strategy_promotion_starts_small_gray_release_with_audit(
             baseline_evidence_coverage=0.80,
             candidate_evidence_coverage=0.83,
             approval=_approval(strategy.id),
+            audit_review_ref=_audit_review_ref(),
         ),
         audit_log=audit_log,
         actor="evolution-agent",
@@ -84,6 +85,7 @@ def test_strategy_promotion_starts_small_gray_release_with_audit(
     assert decision.status is StrategyPromotionStatus.GRAY_RELEASE
     assert decision.approved is True
     assert decision.gray_traffic_share == 0.05
+    assert decision.audit_review_ref == _audit_review_ref()
     assert decision.strategy.release_status == "gray_release"
     assert strategy.release_status == "shadow"
 
@@ -92,6 +94,7 @@ def test_strategy_promotion_starts_small_gray_release_with_audit(
     assert event.actor == "evolution-agent"
     assert event.approved is True
     assert event.resource == strategy.id
+    assert event.metadata["audit_review_ref"] == _audit_review_ref()
     assert event.metadata["gray_traffic_share"] == 0.05
     assert event.metadata["release_status"] == "gray_release"
 
@@ -118,3 +121,7 @@ def _approval(strategy_id: str) -> StrategyPromotionApproval:
         approved_by="maintainer",
         notes="Golden suite and shadow evaluation reviewed.",
     )
+
+
+def _audit_review_ref() -> str:
+    return "autoresearch-vault/exploration/reviews/strategy_retrieval_policy_v2"

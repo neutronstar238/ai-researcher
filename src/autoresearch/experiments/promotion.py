@@ -43,6 +43,7 @@ class StrategyPromotionInput(BaseModel):
     baseline_evidence_coverage: float = Field(ge=0.0, le=1.0)
     candidate_evidence_coverage: float = Field(ge=0.0, le=1.0)
     approval: StrategyPromotionApproval | None = None
+    audit_review_ref: str | None = Field(default=None, min_length=1)
     gray_traffic_share: float = Field(default=0.05, gt=0.0, le=0.10)
 
 
@@ -55,6 +56,7 @@ class StrategyPromotionDecision(BaseModel):
     status: StrategyPromotionStatus
     approved: bool
     gray_traffic_share: float = Field(ge=0.0, le=0.10)
+    audit_review_ref: str | None = None
     reasons: tuple[str, ...]
 
 
@@ -80,6 +82,7 @@ def promote_strategy_to_gray_release(
         else StrategyPromotionStatus.BLOCKED,
         approved=approved,
         gray_traffic_share=promotion.gray_traffic_share if approved else 0.0,
+        audit_review_ref=promotion.audit_review_ref,
         reasons=tuple(reasons) if reasons else ("all promotion gates passed",),
     )
     if audit_log is not None:
@@ -96,6 +99,9 @@ def _blocking_reasons(promotion: StrategyPromotionInput) -> list[str]:
         reasons.append("human approval record is not approved")
     elif approval.strategy_id != promotion.strategy.id:
         reasons.append("human approval strategy_id does not match strategy")
+
+    if promotion.audit_review_ref is None:
+        reasons.append("audit review link is required before gray release")
 
     if (
         not promotion.golden_test_passed
@@ -129,6 +135,7 @@ def _audit_event(
         approved=decision.approved,
         metadata={
             "approval_id": approval.approval_id if approval is not None else None,
+            "audit_review_ref": decision.audit_review_ref,
             "release_status": decision.strategy.release_status,
             "gray_traffic_share": decision.gray_traffic_share,
             "reasons": list(decision.reasons),

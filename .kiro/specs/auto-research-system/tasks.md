@@ -695,13 +695,13 @@ A task can be checked only when all applicable items are true:
     - _References: RP 12 Scenario C_
     - _Verify: simulated negative reward triggers rollback event._
 
-- [ ] 30. Generate evolution reports
+- [x] 30. Generate evolution reports
   - [x] 30.1 Summarize strategy changes
     - Report reason, evidence, evaluation, reward delta, risks, release history, rollback target, and final decision.
     - _References: EP 7.3, RP 9.4_
     - _Verify: report includes all required fields and links to strategy cards._
 
-  - [ ] 30.2 Add human-readable audit review
+  - [x] 30.2 Add human-readable audit review
     - Produce a compact review document for maintainers before strategy promotion.
     - _References: RP 3.3_
     - _Verify: promotion workflow links to audit review._

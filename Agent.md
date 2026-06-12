@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:13:22 +08:00 - Codex - Task 30.2 promotion audit review
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `30.2`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/promotion.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/audit_review.py`
+  - `tests/unit/experiments/test_promotion.py`
+  - `tests/unit/reports/test_audit_review.py`
+- Summary:
+  - Added a compact maintainer audit review generator for strategy promotion.
+  - Included strategy card link, gate summary, evidence summary, reward summary, risk summary, rollback plan, recommendation, and maintainer decision.
+  - Required successful gray-release promotion inputs to include an `audit_review_ref`.
+  - Stored the audit review reference in promotion decisions and approval-gate audit metadata.
+  - Added a workflow test that generates the audit review and confirms promotion links to it.
+  - Marked task `30.2` and parent task `30` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src/autoresearch/reports/audit_review.py src/autoresearch/reports/__init__.py src/autoresearch/experiments/promotion.py tests/unit/reports/test_audit_review.py tests/unit/experiments/test_promotion.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/reports/test_audit_review.py tests/unit/experiments/test_promotion.py -vv`: passed, 5 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 274 passed and 3 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `31.1` dashboard users and workflows if moving into Phase 5 productization.
+
 ### 2026-06-12 13:09:32 +08:00 - Codex - Task 30.1 strategy evolution report
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `30.1`.
