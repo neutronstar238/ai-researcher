@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:11:36 +08:00 - Codex - Task 36.1 choose and add license
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `36.1`, selecting and adding a license before public redistribution.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `LICENSE`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `pyproject.toml`
+- Summary:
+  - Selected Apache License 2.0 for the project.
+  - Added `LICENSE` with Apache-2.0 license terms.
+  - Added `license = "Apache-2.0"` to Poetry package metadata.
+  - Updated the English README License section to link to `LICENSE` and show the SPDX identifier.
+  - Updated the Chinese README license section with the same license link and SPDX identifier.
+  - Marked task `36.1` complete in `tasks.md`; parent task `36` remains open because public release preparation is not complete.
+  - No external API or LLM call was required; the license choice was verified against official Apache/SPDX license references.
+- Verification:
+  - `Test-Path -LiteralPath LICENSE`: passed, returned `True`.
+  - `rg -n "Apache License 2\\.0|Apache-2\\.0|\\[Apache License 2\\.0\\]\\(LICENSE\\)" LICENSE README.md README.zh-CN.md pyproject.toml .kiro/specs/auto-research-system/tasks.md`: passed for README, Chinese README, and package metadata.
+  - `rg -n "Version 2\\.0|TERMS AND CONDITIONS|END OF TERMS AND CONDITIONS" LICENSE`: passed.
+  - `poetry check`: passed with non-blocking Poetry metadata deprecation warnings for the existing `[tool.poetry]` style, including the new license field.
+  - `git diff --check`: passed with only Windows LF-to-CRLF checkout warnings.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this task.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with task `36.2` release package hygiene.
+
 ### 2026-06-12 14:06:39 +08:00 - Codex - Task 35.3 service health and SLA metrics
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `35.3`, adding service health and SLA metrics for queue latency, run failure rate, validator latency, dashboard health, and scheduler health.

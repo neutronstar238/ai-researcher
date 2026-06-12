@@ -763,7 +763,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: health endpoint or report includes all metrics._
 
 - [ ] 36. Prepare public release
-  - [ ] 36.1 Choose and add license
+  - [x] 36.1 Choose and add license
     - Select a license before public redistribution.
     - Update README license section.
     - _References: README License_

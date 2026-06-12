@@ -127,4 +127,4 @@ python scripts/check.py
 
 ## 许可证
 
-项目尚未选择许可证。在添加许可证之前，不应假设该项目具备对外再分发授权。
+AI-Researcher 采用 [Apache License 2.0](LICENSE) 许可证发布。SPDX 标识为 `Apache-2.0`。

@@ -125,4 +125,4 @@ Before changing files:
 
 ## License
 
-No license has been selected yet. Do not assume external redistribution rights until a license is added.
+AI-Researcher is licensed under the [Apache License 2.0](LICENSE). The SPDX identifier is `Apache-2.0`.
