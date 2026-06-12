@@ -1096,6 +1096,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-004` and `P-20260613-003`, where live publication audits failed source-breadth checks because Semantic Scholar 429/circuit errors left ArXiv as the only successful source._
     - _Verify: focused unit tests, ruff, mypy, full smoke/unit tests, live OpenAlex client query, live `literature-refresh` showing ArXiv and OpenAlex successes even if Semantic Scholar is rate-limited, and live `similarity-check` showing OpenAlex participates in project-start cross-search._
 
+- [x] 65. Improve project-start similarity query breadth
+  - [x] 65.1 Expand sparse candidates into four evidence-oriented search queries
+    - Add a minimum query floor to `SimilarityCheckConfig` so CCF-B/Q3 novelty checks do not silently issue too few distinct searches when candidate title, research gap, and metadata overlap.
+    - Generate fallback queries from candidate description, seed document title, and core prior-work/benchmark terms while keeping query origins explicit for auditability.
+    - Filter low-value Obsidian topic headings that look like operational run IDs instead of scholarly concepts.
+    - Add unit tests for sparse candidates and low-value topic filtering.
+    - _References: `P-20260613-004`, where live publication audits still failed similarity query breadth after data-side evidence was fixed._
+    - _Verify: focused similarity tests, ruff, mypy, full smoke/unit tests, live query-generation check over the real Pendigits candidate, live `similarity-check` with four queries, and live `serve --once --demo pendigits_centroid_baseline --review` showing similarity query breadth passes._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1291,7 +1300,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 37,
-      "tasks": ["62.1", "63.1", "64.1"]
+      "tasks": ["62.1", "63.1", "64.1", "65.1"]
     }
   ]
 }

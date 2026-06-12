@@ -65,6 +65,55 @@ def test_generate_similarity_queries_uses_candidate_and_vault_context(tmp_path: 
     assert any("exploration/topics/candidate_1.md" in query.vault_paths for query in queries)
 
 
+def test_generate_similarity_queries_expands_sparse_candidates_to_query_floor(
+    tmp_path: Path,
+) -> None:
+    candidate = ResearchCandidate(
+        id="sparse_candidate",
+        title="Evidence-bound self-evolving research loop",
+        description=(
+            "Improve automated research loops by combining live literature discovery, "
+            "local validation, Obsidian memory, and review-driven follow-up tasks."
+        ),
+        research_gap=(
+            "Automated research agents jump from retrieval to writing without durable "
+            "evidence memory or validation-gated self-looping."
+        ),
+        novelty_score=0.55,
+        feasibility_score=0.75,
+        impact_score=0.65,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "seed_document_title": (
+                "Reporting and Reviewing LLM-Integrated Systems in HCI"
+            ),
+        },
+    )
+    (tmp_path / "exploration").mkdir(parents=True)
+    (tmp_path / "exploration" / "index.md").write_text(
+        "# Exploration Index\n\n## Evidence live sha 20260613 20260612170946\n",
+        encoding="utf-8",
+    )
+
+    queries = generate_similarity_queries(
+        candidate,
+        vault_root=tmp_path,
+        config=SimilarityCheckConfig(max_queries=4),
+    )
+
+    assert len(queries) == 4
+    assert len({query.text for query in queries}) == 4
+    assert {query.origin for query in queries} >= {
+        "candidate_title",
+        "research_gap",
+        "candidate_description",
+        "metadata_seed_document_title",
+    }
+    assert "vault_topic_index" not in {query.origin for query in queries}
+
+
 def test_project_similarity_check_writes_source_backed_obsidian_summary(
     tmp_path: Path,
 ) -> None:

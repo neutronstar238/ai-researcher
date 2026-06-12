@@ -74,6 +74,7 @@ class SimilarityCheckConfig:
     """Configuration for candidate similarity and novelty checks."""
 
     max_queries: int = 6
+    min_query_floor: int = 4
     max_results_per_source: int = 10
     cache_ttl_hours: int = 24
 
@@ -168,9 +169,18 @@ def generate_similarity_queries(
         )
 
     raw_queries.extend(_vault_context_queries(candidate, Path(vault_root)))
-    return _deduplicate_queries(
+    queries = _deduplicate_queries(
         [query for query in raw_queries if len(_significant_tokens(query.text)) >= 2]
-    )[: config.max_queries]
+    )
+    target_count = min(config.max_queries, max(config.min_query_floor, 0))
+    if len(queries) < target_count:
+        queries = _deduplicate_queries(
+            [
+                *queries,
+                *_candidate_expansion_queries(candidate, candidate_paths),
+            ]
+        )
+    return queries[: config.max_queries]
 
 
 def run_project_similarity_check(
@@ -578,6 +588,49 @@ def _vault_context_queries(
     return queries
 
 
+def _candidate_expansion_queries(
+    candidate: ResearchCandidate,
+    candidate_paths: tuple[str, ...],
+) -> list[SimilarityQuery]:
+    queries: list[SimilarityQuery] = []
+    if candidate.description:
+        queries.append(
+            SimilarityQuery(
+                _clean_query(candidate.description),
+                "candidate_description",
+                candidate_paths,
+            )
+        )
+    for key in ("seed_document_title", "seed_title", "topic", "benchmark", "dataset"):
+        value = candidate.metadata.get(key)
+        if isinstance(value, str):
+            queries.append(
+                SimilarityQuery(
+                    _clean_query(value),
+                    f"metadata_{key}",
+                    candidate_paths,
+                )
+            )
+
+    core_terms = _significant_tokens(_candidate_search_text(candidate))[:8]
+    if len(core_terms) >= 3:
+        queries.append(
+            SimilarityQuery(
+                _clean_query(" ".join([*core_terms[:6], "prior work"])),
+                "core_prior_work",
+                candidate_paths,
+            )
+        )
+        queries.append(
+            SimilarityQuery(
+                _clean_query(" ".join([*core_terms[:6], "benchmark validation"])),
+                "core_benchmark_validation",
+                candidate_paths,
+            )
+        )
+    return [query for query in queries if len(_significant_tokens(query.text)) >= 2]
+
+
 def _plain_topic_query(
     candidate_terms: set[str],
     relative_path: str,
@@ -589,6 +642,8 @@ def _plain_topic_query(
         if not line.startswith("## "):
             continue
         title = line.removeprefix("## ").strip()
+        if _is_low_value_topic_title(title):
+            continue
         title_terms = set(_significant_tokens(title))
         if candidate_terms & title_terms:
             return SimilarityQuery(
@@ -597,6 +652,17 @@ def _plain_topic_query(
                 vault_paths=(relative_path,),
             )
     return None
+
+
+def _is_low_value_topic_title(title: str) -> bool:
+    tokens = _clean_query(title).split()
+    numeric_like = sum(
+        1
+        for token in tokens
+        if token.isdigit() or re.fullmatch(r"[0-9a-f]{8,}", token) is not None
+    )
+    operational_tokens = {"autopilot", "ci", "cycle", "dry", "live", "manual", "sha", "task"}
+    return numeric_like >= 2 and bool(operational_tokens & set(tokens))
 
 
 def _candidate_vault_paths(candidate: ResearchCandidate, vault_root: Path) -> tuple[str, ...]:

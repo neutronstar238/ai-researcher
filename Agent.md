@@ -62,6 +62,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:32:22 +08:00 - Codex - Task 65 similarity query breadth
+
+- Request: Continue the real full-loop quality iteration until the system can run a real research cycle and make publication-level blockers visible; specifically address similarity query breadth after the previous live audit showed too few distinct cross-searches.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added `min_query_floor` to `SimilarityCheckConfig` and candidate expansion queries from description, seed document title, and core prior-work/benchmark terms.
+  - Kept each fallback query origin explicit so query provenance remains visible in similarity reports.
+  - Filtered low-value Obsidian topic headings that look like operational run IDs, preventing runtime IDs from replacing scholarly cross-search queries.
+  - Added unit coverage for sparse-candidate expansion and low-value topic filtering.
+- Verification:
+  - `poetry run pytest tests/unit/research/test_similarity.py -q`: passed 5 tests.
+  - `poetry run ruff check src/autoresearch/research/similarity.py tests/unit/research/test_similarity.py`: passed.
+  - `poetry run mypy src/autoresearch/research`: passed with 5 source files.
+  - Real query-generation check over `runs/manual-live/serve-pendigits-sha/cycle-20260612T170946Z/candidate.json`: produced 4 distinct queries with origins `candidate_title`, `research_gap`, `candidate_description`, and `metadata_seed_document_title`.
+  - `poetry run airesearcher similarity-check --candidate-file runs\manual-live\serve-pendigits-sha\cycle-20260612T170946Z\candidate.json --vault runs\manual-live\task65-vault --cache .cache\live-query-floor-task65 --max-queries 4 --max-results-per-source 1 --cache-ttl-hours 1 --project-id task65_query_floor_live`: passed with 4 queries and 4 findings while preserving Semantic Scholar 429/circuit errors.
+  - `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_query_floor_20260613 --review --demo pendigits_centroid_baseline --max-queries 4 --max-results-per-source 2 --timeout-seconds 60 --output-dir runs\manual-live\serve-query-floor --cache .cache\live-query-floor-serve --state .airesearcher\scheduler-state-live-query-floor.json --approvals-state .airesearcher\runtime-approvals-live-query-floor.json --min-quality-score 0.85`: passed the runtime cycle and LLM review; publication audit still failed but `similarity_query_breadth` passed at 4/4 and score rose to `0.7018`.
+- Problems:
+  - `P-20260613-004` updated with Task `65.1` mitigation evidence and remaining blockers.
+- Follow-up:
+  - Next blocker is breadth/depth of retrieved evidence: literature documents 6/20, similarity findings 8/10, Semantic Scholar 429/circuit errors, and missing paper-style manuscript sections.
+
 ### 2026-06-13 01:23:13 +08:00 - Codex - Task 64 OpenAlex source fallback
 
 - Request: Continue the real online research loop and fix source-breadth weakness observed in publication audits by adding a real fallback when Semantic Scholar is rate-limited.
