@@ -57,7 +57,7 @@ Target version: `0.1.0`.
 - Opt-in `pendigits_centroid_baseline` public benchmark demo that downloads the UCI Pendigits train/test files at run time, writes a merged CSV under ignored `runs/` artifacts, runs a nearest-centroid baseline plus first-8-features ablation, and records source metadata, data hash, confidence interval, validation report, evidence map, and run record.
 - Paper-style Markdown report sections for generated demo reports: Abstract, Introduction, Related Work, Method, Experiments, Results, Limitations, Conclusion, and References.
 - LaTeX template compatibility smoke tests for built-in generic single-column and double-column `article` templates, including JSON/Markdown reports, compile logs, and optional Obsidian vault copies.
-- Planned external LaTeX template compatibility expansion for IEEEtran, ACM `acmart`, and Springer Nature templates.
+- External LaTeX template compatibility matrix for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl`, including rate-limited source-page fetch metadata, cached source checks, source timestamps, HTTP status, compile logs, PDF paths, and `source_unavailable` results when a class is absent.
 - `/research:serve`, `/research:publication-audit`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
@@ -87,6 +87,7 @@ Target version: `0.1.0`.
 - Generated Markdown reports now satisfy the deterministic manuscript-section gate while preserving evidence-bound metric lines and reproducibility/validation blocks.
 - Markdown remains the Obsidian-readable process and evidence format, while final paper-level output is defined as a LaTeX template build that compiles to PDF.
 - Generic paper-template smoke now produces a PDF when `pdflatex` or another supported LaTeX engine is available, and otherwise records a structured skipped result.
+- External template compatibility does not vendor upstream template packages; it fetches source metadata, uses locally installed LaTeX classes when available, and records missing classes as explicit unavailable sources.
 
 ### Fixed
 

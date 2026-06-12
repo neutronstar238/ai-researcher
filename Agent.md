@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 02:28:53 +08:00 - Codex - Task 70.2 external LaTeX template compatibility
+
+- Request: Continue Task `70` so final paper-level output is a LaTeX-template PDF while process data and summaries remain Markdown in the Obsidian vault; expand from generic templates to selected conference/publisher templates without fabricating compatibility.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `autoresearch-vault/projects/ai_researcher_system/paper/latex-template-compatibility.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-70-2-external-latex-templates.md`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/latex_templates.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/reports/test_latex_templates.py`
+- Summary:
+  - Added external LaTeX template specs for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl`.
+  - Added source metadata evidence to compatibility results: fetch status, checked timestamp, HTTP status, cache path, and fetch error.
+  - Added optional rate-spaced source-page fetching with local JSON cache under the run output directory.
+  - Added template-specific structure metadata so ACM `acmart` can place `abstract` before `\maketitle`.
+  - Added `source_unavailable` handling for external templates whose source page is reachable but local class file is absent.
+  - Updated README, Chinese README, changelog, tasks, notices, and Obsidian progress/compatibility Markdown to reflect the real matrix.
+- Verification:
+  - Web/source review: CTAN IEEEtran, CTAN acmart, and Springer Nature LaTeX author support pages were checked on 2026-06-13.
+  - `poetry run pytest tests\unit\reports\test_latex_templates.py -q`: passed with 9 tests.
+  - `poetry run ruff check src\autoresearch\reports\latex_templates.py src\autoresearch\reports\__init__.py tests\unit\reports\test_latex_templates.py`: passed.
+  - `poetry run mypy src\autoresearch\reports`: passed.
+  - Real external compatibility run: `run_latex_template_compatibility(Path('runs/manual-live/latex-template-compatibility-task70-external'), templates=external_latex_templates(), fetch_sources=True, source_fetch_interval_seconds=1.0, vault_root=Path('autoresearch-vault'), project_id='ai_researcher_system')`.
+  - Real run result: IEEEtran source HTTP 200 and compiled PDF; ACM `acmart` source HTTP 200 and compiled PDF; Springer Nature source HTTP 200 but local `sn-jnl.cls` missing, recorded as `source_unavailable`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\unit\compliance\test_licenses.py tests\unit\reports\test_latex_templates.py -q`: passed with 14 tests.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 350 tests and 4 skipped.
+  - `git diff --check`: passed with only CRLF normalization warnings.
+- Problems added or updated:
+  - `P-20260613-004` updated with Task `70.2` evidence. External template compatibility is now partially verified; the remaining template-side limitation is missing local Springer Nature `sn-jnl.cls`.
+- Follow-up work:
+  - Add/verify Springer Nature `sn-jnl.cls` through an allowed local TeX installation or explicitly reviewed template package before claiming Springer Nature PDF compatibility.
+  - Continue publication-quality work on Semantic Scholar stability and method novelty; Task `70` itself is complete.
+
 ### 2026-06-13 02:15:03 +08:00 - Codex - Task 70.1 generic LaTeX template compatibility
 
 - Request: Continue from Task `69.1` and implement the user's requirement that final paper-level output be a LaTeX template build that compiles to PDF, while process data and summaries remain Markdown in the Obsidian vault.

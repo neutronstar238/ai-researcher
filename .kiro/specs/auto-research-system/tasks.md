@@ -1145,7 +1145,7 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-004`, where the live default-width publication audit passed literature breadth, similarity breadth, data/script/baseline/ablation/statistical/reviewer gates but still failed manuscript structure._
     - _Verify: focused report tests, report ruff/mypy checks, full smoke/unit tests, and live `serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review` showing manuscript structure passes without hiding Semantic Scholar 429 source errors._
 
-- [ ] 70. Add LaTeX template compatibility testing for paper delivery
+- [x] 70. Add LaTeX template compatibility testing for paper delivery
   - [x] 70.1 Start with generic journal single-column and double-column templates
     - Add a LaTeX template registry that distinguishes built-in generic templates from externally fetched official templates.
     - Generate smoke manuscripts with the same required paper sections used by the Markdown manuscript audit.
@@ -1156,13 +1156,14 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that paper structure should be tested against real LaTeX templates, starting with generic journal single/double-column templates._
     - _Verify: unit tests for registry/rendering/result schema plus a local compile smoke or an explicit skipped result when no TeX engine is installed._
 
-  - [ ] 70.2 Expand template compatibility to selected conference and publisher templates
+  - [x] 70.2 Expand template compatibility to selected conference and publisher templates
     - Fetch official or canonical template sources/metadata for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl` from their current public template locations.
     - Respect upstream licenses and notices; do not vendor template packages into the repository unless license and attribution requirements are explicitly satisfied.
     - Add a compatibility matrix report with status, source URL, fetched timestamp, engine, compile command, log path, and failure reason.
     - Keep source fetching rate-limited and cached, and mark unavailable templates as `source_unavailable` rather than fabricating compatibility.
+    - Current live matrix fetches source pages for IEEEtran, ACM `acmart`, and Springer Nature, compiles IEEEtran and ACM PDFs when local TeX Live provides the classes, and records Springer Nature as `source_unavailable` when `sn-jnl.cls` is not installed.
     - _References: user requirement to later expand beyond generic templates to partial conference template compatibility._
-    - _Verify: web/source review, notice updates, focused template tests, and at least one live fetch/compile or source-unavailable result per configured external template._
+    - _Verify: web/source review, notice updates, focused template tests, and a live source fetch plus compile/source-unavailable result per configured external template._
 
 ## Checkpoints
 

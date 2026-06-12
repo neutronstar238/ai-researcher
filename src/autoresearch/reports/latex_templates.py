@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
+import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -24,6 +28,17 @@ class LatexTemplateCompatibilityStatus(str, Enum):
 
     COMPILED = "compiled"
     SKIPPED = "skipped"
+    SOURCE_UNAVAILABLE = "source_unavailable"
+    FAILED = "failed"
+
+
+class LatexTemplateSourceFetchStatus(str, Enum):
+    """Source metadata fetch outcome for external templates."""
+
+    BUILT_IN = "built_in"
+    NOT_REQUESTED = "not_requested"
+    FETCHED = "fetched"
+    CACHED = "cached"
     FAILED = "failed"
 
 
@@ -36,6 +51,9 @@ class LatexTemplateSpec:
     source_kind: LatexTemplateSourceKind
     document_class: str
     class_options: tuple[str, ...] = ()
+    class_file: str | None = None
+    preamble_lines: tuple[str, ...] = ()
+    abstract_before_maketitle: bool = False
     source_url: str | None = None
     license_note: str = "Built-in generic LaTeX article smoke template."
 
@@ -46,8 +64,31 @@ class LatexTemplateSpec:
             "source_kind": self.source_kind.value,
             "document_class": self.document_class,
             "class_options": list(self.class_options),
+            "class_file": self.class_file,
+            "preamble_lines": list(self.preamble_lines),
+            "abstract_before_maketitle": self.abstract_before_maketitle,
             "source_url": self.source_url,
             "license_note": self.license_note,
+        }
+
+
+@dataclass(frozen=True)
+class LatexTemplateSourceMetadata:
+    """Source metadata evidence for one template check."""
+
+    status: LatexTemplateSourceFetchStatus
+    checked_at: str | None = None
+    http_status: int | None = None
+    cache_path: str | None = None
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status.value,
+            "checked_at": self.checked_at,
+            "http_status": self.http_status,
+            "cache_path": self.cache_path,
+            "error": self.error,
         }
 
 
@@ -62,6 +103,7 @@ class LatexTemplateCompatibilityResult:
     log_path: str
     engine: str | None
     command: tuple[str, ...]
+    source_metadata: LatexTemplateSourceMetadata
     reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -73,6 +115,7 @@ class LatexTemplateCompatibilityResult:
             "log_path": self.log_path,
             "engine": self.engine,
             "command": list(self.command),
+            "source_metadata": self.source_metadata.to_dict(),
             "reason": self.reason,
         }
 
@@ -120,6 +163,50 @@ def generic_latex_templates() -> tuple[LatexTemplateSpec, ...]:
     )
 
 
+def external_latex_templates() -> tuple[LatexTemplateSpec, ...]:
+    """Return external venue/publisher template targets for compatibility checks."""
+
+    return (
+        LatexTemplateSpec(
+            id="ieee-ieeetran-conference",
+            display_name="IEEEtran Conference",
+            source_kind=LatexTemplateSourceKind.EXTERNAL_FETCHED,
+            document_class="IEEEtran",
+            class_options=("conference",),
+            class_file="IEEEtran.cls",
+            source_url="https://ctan.org/pkg/IEEEtran",
+            license_note="External IEEEtran class from CTAN/TeX distribution; not vendored by AI-Researcher.",
+        ),
+        LatexTemplateSpec(
+            id="acm-acmart-sigconf",
+            display_name="ACM acmart SIGCONF",
+            source_kind=LatexTemplateSourceKind.EXTERNAL_FETCHED,
+            document_class="acmart",
+            class_options=("sigconf", "nonacm"),
+            class_file="acmart.cls",
+            preamble_lines=(
+                r"\settopmatter{printacmref=false}",
+                r"\setcopyright{none}",
+                r"\acmConference[AI-Researcher Smoke]{AI-Researcher Smoke}{2026}{Local}",
+                r"\acmYear{2026}",
+            ),
+            abstract_before_maketitle=True,
+            source_url="https://ctan.org/pkg/acmart",
+            license_note="External ACM acmart class from CTAN/TeX distribution; not vendored by AI-Researcher.",
+        ),
+        LatexTemplateSpec(
+            id="springer-nature-sn-jnl",
+            display_name="Springer Nature sn-jnl",
+            source_kind=LatexTemplateSourceKind.EXTERNAL_FETCHED,
+            document_class="sn-jnl",
+            class_options=("sn-mathphys",),
+            class_file="sn-jnl.cls",
+            source_url="https://www.springernature.com/gp/authors/campaigns/latex-author-support",
+            license_note="External Springer Nature authoring template; not vendored by AI-Researcher.",
+        ),
+    )
+
+
 def run_latex_template_compatibility(
     output_dir: Path | str,
     *,
@@ -128,21 +215,40 @@ def run_latex_template_compatibility(
     vault_root: Path | str | None = None,
     project_id: str | None = None,
     timeout_seconds: int = 60,
+    fetch_sources: bool = False,
+    source_cache_dir: Path | str | None = None,
+    source_fetch_interval_seconds: float = 1.0,
+    source_fetch_timeout_seconds: int = 15,
 ) -> LatexTemplateCompatibilityReport:
     """Render and optionally compile smoke manuscripts for LaTeX templates."""
 
     root = Path(output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
     selected_templates = templates or generic_latex_templates()
-    results = tuple(
-        _run_template_smoke(
-            root,
-            template,
-            compile_pdf=compile_pdf,
-            timeout_seconds=timeout_seconds,
+    source_cache = Path(source_cache_dir).resolve() if source_cache_dir else root / "source-cache"
+    results_list: list[LatexTemplateCompatibilityResult] = []
+    fetched_any_source = False
+    for template in selected_templates:
+        source_metadata = _default_source_metadata(template)
+        if fetch_sources and template.source_kind is LatexTemplateSourceKind.EXTERNAL_FETCHED:
+            if fetched_any_source and source_fetch_interval_seconds > 0:
+                time.sleep(source_fetch_interval_seconds)
+            source_metadata = _fetch_template_source_metadata(
+                template,
+                source_cache,
+                timeout_seconds=source_fetch_timeout_seconds,
+            )
+            fetched_any_source = True
+        results_list.append(
+            _run_template_smoke(
+                root,
+                template,
+                compile_pdf=compile_pdf,
+                timeout_seconds=timeout_seconds,
+                source_metadata=source_metadata,
+            )
         )
-        for template in selected_templates
-    )
+    results = tuple(results_list)
     generated_at = datetime.now(timezone.utc).isoformat()
     json_path = root / "latex-template-compatibility.json"
     markdown_path = root / "latex-template-compatibility.md"
@@ -203,8 +309,10 @@ def render_latex_template_smoke(
         r"\title{" + _latex_escape(title) + "}",
         r"\author{AI-Researcher}",
         r"\date{}",
+        *template.preamble_lines,
         r"\begin{document}",
-        r"\maketitle",
+    ]
+    abstract_lines = [
         r"\begin{abstract}",
         (
             "This generated manuscript verifies that AI-Researcher can move from "
@@ -213,6 +321,13 @@ def render_latex_template_smoke(
         r"\end{abstract}",
         "",
     ]
+    if template.abstract_before_maketitle:
+        lines.extend(abstract_lines)
+        lines.append(r"\maketitle")
+    else:
+        lines.append(r"\maketitle")
+        lines.extend(abstract_lines)
+    lines.append("")
     for section, body in sections:
         lines.extend([rf"\section{{{section}}}", _latex_escape(body), ""])
     lines.extend(
@@ -233,12 +348,39 @@ def _run_template_smoke(
     *,
     compile_pdf: bool,
     timeout_seconds: int,
+    source_metadata: LatexTemplateSourceMetadata,
 ) -> LatexTemplateCompatibilityResult:
     template_dir = root / template.id
     template_dir.mkdir(parents=True, exist_ok=True)
     tex_path = template_dir / "main.tex"
     log_path = template_dir / "compile.log"
     tex_path.write_text(render_latex_template_smoke(template), encoding="utf-8")
+    if source_metadata.status is LatexTemplateSourceFetchStatus.FAILED:
+        reason = f"source metadata fetch failed: {source_metadata.error}"
+        log_path.write_text(reason + "\n", encoding="utf-8")
+        return _compatibility_result(
+            template,
+            LatexTemplateCompatibilityStatus.SOURCE_UNAVAILABLE,
+            tex_path,
+            log_path,
+            None,
+            (),
+            source_metadata,
+            reason,
+        )
+    if template.source_kind is LatexTemplateSourceKind.EXTERNAL_FETCHED and not _template_class_available(template):
+        reason = f"template class {template.class_file or template.document_class + '.cls'} is unavailable"
+        log_path.write_text(reason + "\n", encoding="utf-8")
+        return _compatibility_result(
+            template,
+            LatexTemplateCompatibilityStatus.SOURCE_UNAVAILABLE,
+            tex_path,
+            log_path,
+            None,
+            (),
+            source_metadata,
+            reason,
+        )
     if not compile_pdf:
         reason = "compile_pdf disabled"
         log_path.write_text(reason + "\n", encoding="utf-8")
@@ -249,6 +391,7 @@ def _run_template_smoke(
             log_path,
             None,
             (),
+            source_metadata,
             reason,
         )
     engine = _select_latex_engine()
@@ -262,6 +405,7 @@ def _run_template_smoke(
             log_path,
             None,
             (),
+            source_metadata,
             reason,
         )
     command = _compile_command(engine, tex_path)
@@ -283,6 +427,7 @@ def _run_template_smoke(
             log_path,
             None,
             tuple(command),
+            source_metadata,
             f"compile timed out after {timeout_seconds}s",
         )
     log_path.write_text(
@@ -298,6 +443,7 @@ def _run_template_smoke(
             log_path,
             pdf_path,
             tuple(command),
+            source_metadata,
             None,
         )
     return _compatibility_result(
@@ -307,6 +453,7 @@ def _run_template_smoke(
         log_path,
         None,
         tuple(command),
+        source_metadata,
         f"LaTeX compile failed with exit code {completed.returncode}",
     )
 
@@ -318,6 +465,7 @@ def _compatibility_result(
     log_path: Path,
     pdf_path: Path | None,
     command: tuple[str, ...],
+    source_metadata: LatexTemplateSourceMetadata,
     reason: str | None,
 ) -> LatexTemplateCompatibilityResult:
     engine = Path(command[0]).name if command else None
@@ -329,6 +477,7 @@ def _compatibility_result(
         log_path=log_path.as_posix(),
         engine=engine,
         command=command,
+        source_metadata=source_metadata,
         reason=reason,
     )
 
@@ -351,8 +500,8 @@ def _render_compatibility_markdown(
         "",
         "## Results",
         "",
-        "| Template | Source kind | Status | Engine | PDF | Log | Reason |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Template | Source kind | Source | Source check | HTTP | Status | Engine | PDF | Log | Reason |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for result in report.results:
         lines.append(
@@ -361,6 +510,14 @@ def _render_compatibility_markdown(
                 [
                     f"`{result.template.id}`",
                     f"`{result.template.source_kind.value}`",
+                    f"`{result.template.source_url or 'built-in'}`",
+                    f"`{result.source_metadata.status.value}`"
+                    + (
+                        f"<br>`{result.source_metadata.checked_at}`"
+                        if result.source_metadata.checked_at
+                        else ""
+                    ),
+                    f"`{result.source_metadata.http_status or 'n/a'}`",
                     f"`{result.status.value}`",
                     f"`{result.engine or 'none'}`",
                     f"`{result.pdf_path or 'none'}`",
@@ -385,6 +542,89 @@ def _write_vault_markdown(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(markdown, encoding="utf-8")
     return target
+
+
+def _default_source_metadata(template: LatexTemplateSpec) -> LatexTemplateSourceMetadata:
+    if template.source_kind is LatexTemplateSourceKind.BUILT_IN_GENERIC:
+        return LatexTemplateSourceMetadata(status=LatexTemplateSourceFetchStatus.BUILT_IN)
+    return LatexTemplateSourceMetadata(status=LatexTemplateSourceFetchStatus.NOT_REQUESTED)
+
+
+def _fetch_template_source_metadata(
+    template: LatexTemplateSpec,
+    cache_dir: Path,
+    *,
+    timeout_seconds: int,
+) -> LatexTemplateSourceMetadata:
+    checked_at = datetime.now(timezone.utc).isoformat()
+    if not template.source_url:
+        return LatexTemplateSourceMetadata(
+            status=LatexTemplateSourceFetchStatus.FAILED,
+            checked_at=checked_at,
+            error="template source URL is not configured",
+        )
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_key = hashlib.sha256(template.source_url.encode("utf-8")).hexdigest()
+    cache_path = cache_dir / f"{cache_key}.json"
+    if cache_path.exists():
+        cached = json.loads(cache_path.read_text(encoding="utf-8"))
+        return LatexTemplateSourceMetadata(
+            status=LatexTemplateSourceFetchStatus.CACHED,
+            checked_at=checked_at,
+            http_status=cached.get("http_status"),
+            cache_path=cache_path.as_posix(),
+        )
+    request = urllib.request.Request(
+        template.source_url,
+        headers={"User-Agent": "AI-Researcher template-compatibility-check/0.1"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            payload = response.read(65536)
+            http_status = response.getcode()
+            metadata = {
+                "url": template.source_url,
+                "final_url": response.geturl(),
+                "http_status": http_status,
+                "fetched_at": checked_at,
+                "sample_sha256": hashlib.sha256(payload).hexdigest(),
+                "sample_bytes": len(payload),
+            }
+    except urllib.error.HTTPError as exc:
+        return LatexTemplateSourceMetadata(
+            status=LatexTemplateSourceFetchStatus.FAILED,
+            checked_at=checked_at,
+            http_status=exc.code,
+            error=str(exc),
+        )
+    except (OSError, TimeoutError, urllib.error.URLError) as exc:
+        return LatexTemplateSourceMetadata(
+            status=LatexTemplateSourceFetchStatus.FAILED,
+            checked_at=checked_at,
+            error=str(exc),
+        )
+    cache_path.write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+    return LatexTemplateSourceMetadata(
+        status=LatexTemplateSourceFetchStatus.FETCHED,
+        checked_at=checked_at,
+        http_status=http_status,
+        cache_path=cache_path.as_posix(),
+    )
+
+
+def _template_class_available(template: LatexTemplateSpec) -> bool:
+    class_file = template.class_file or f"{template.document_class}.cls"
+    try:
+        completed = subprocess.run(
+            ["kpsewhich", class_file],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0 and bool(completed.stdout.strip())
 
 
 def _select_latex_engine() -> str | None:

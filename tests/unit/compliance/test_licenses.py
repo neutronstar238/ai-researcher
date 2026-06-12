@@ -31,6 +31,9 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "OpenClaw official channel plugins",
         "UCI Pen-Based Recognition of Handwritten Digits",
         "OpenAlex",
+        "IEEEtran",
+        "ACM acmart",
+        "Springer Nature LaTeX authoring template",
     ):
         assert required in third_party
     assert "copy, vendor, adapt, or redistribute" in third_party
