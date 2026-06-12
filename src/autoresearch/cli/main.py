@@ -1,7 +1,5 @@
 """Minimal Typer CLI for the AI-Researcher Phase 0 scaffold."""
 
-from __future__ import annotations
-
 import sys
 from importlib import import_module
 from pathlib import Path

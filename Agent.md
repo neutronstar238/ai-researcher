@@ -59,6 +59,52 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:03:17 +08:00 - Codex - Task 21.2 daily online literature refresh
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `21.2`; support online discovery from ArXiv/Semantic Scholar with query optimization, cache reuse, deduplication, rate-limit provenance, and Obsidian summary output.
+- Files changed:
+  - `AGENTS.md`
+  - `pyproject.toml`
+  - `poetry.lock`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/clients.py`
+  - `src/autoresearch/literature/refresh.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `tests/unit/literature/test_refresh.py`
+  - `tests/smoke/test_literature_live.py`
+  - `tests/smoke/test_literature_refresh_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated project agent guidance: external-source features require deterministic mocked tests plus opt-in live smoke tests, and the live smoke must be run before task completion.
+  - Added provider-agnostic large-model guidance: integrations must read `base_url`, `api_key`, and `model_name` from configuration or environment; stop for user-provided `.env` values when credentials are needed.
+  - Added `generate_literature_queries()` to derive external-search queries from Obsidian research candidates, method cards, dataset cards, failure cases, project experience, and topic index headings.
+  - Added `run_daily_literature_refresh()` to fetch from injectable ArXiv/Semantic Scholar clients, use `RetrievalCache`, record cache hit/miss, rate-limit decisions, and per-source errors, deduplicate papers, normalize them into `DocumentRecord` items, and write an Obsidian evidence note.
+  - Added explicit `certifi` dependency and made the stdlib urllib client use `certifi.where()` for HTTPS verification rather than disabling TLS checks.
+  - Constrained Click to the Typer-compatible `>=8.1,<8.2` range and removed deferred annotations from the CLI entrypoint so locked-environment CLI tests continue to parse options correctly.
+  - Declared `autoresearch` as the first-party package for ruff/isort so lint does not rewrite existing local-vs-third-party import groups.
+  - Added opt-in live smoke tests for real literature clients and the daily refresh pipeline.
+  - Added summary guardrails requiring missing evidence to remain `unknown` or `pending verification`, with no inferred benchmark scores, acceptance status, code availability, or experimental outcomes.
+  - Marked task `21.2` complete; parent task `21` remains open for project-start similarity checks and budget gates.
+- Verification:
+  - `poetry run pytest tests/unit/literature/test_refresh.py tests/unit/literature/test_cache.py tests/property/literature/test_deduplication.py`: passed, 8 tests.
+  - `poetry run ruff check src/autoresearch/literature/refresh.py src/autoresearch/literature/__init__.py tests/unit/literature/test_refresh.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - First live run, `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py -vv`: failed on TLS certificate verification; recorded as `P-20260612-039`.
+  - Second live run after adding `certifi`: reached real services but failed on ArXiv `429 Too Many Requests` and a source timeout; refresh pipeline was updated to record source-level errors and continue.
+  - Final live run, `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py -vv`: passed, 2 tests using real network calls.
+  - `poetry run pytest tests/unit/cli/test_main.py -vv`: passed, 5 tests after Click constraint and CLI annotation fix.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 202 tests passed and 2 optional live literature tests skipped by default.
+- Problems:
+  - Added and resolved `P-20260612-039`.
+  - Added and resolved `P-20260612-040`.
+  - Added and resolved `P-20260612-041`.
+  - Added and resolved `P-20260612-042`.
+- Follow-up:
+  - Task `21.3` should add the project-start online similarity and novelty cross-check before candidate approval.
+
 ### 2026-06-12 10:57:58 +08:00 - Codex - Online discovery planning clarification
 
 - Request: Clarify that AI-Researcher must use online literature and similar-direction search at project start and scheduled refresh, not only local Obsidian lookup; summaries must be source-backed and must not fabricate outcomes.

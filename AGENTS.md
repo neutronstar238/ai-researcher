@@ -92,6 +92,10 @@ Keep problem entries factual. Include evidence and next action.
 
 For code changes, run the narrowest meaningful check first, then broader checks when risk justifies it.
 
+For features that depend on external data sources, mocked tests are not enough to mark the task complete. Add deterministic mocked tests for CI, add an opt-in live smoke test, and run the live smoke test once before completing the task. Record the real command and result in `Agent.md`. If the live test needs secrets or paid model credentials, stop and ask the user to provide them through `.env`.
+
+Large-model integrations must be provider-agnostic. Do not hard-code one vendor. Read `base_url`, `api_key`, and `model_name` from configuration or environment, and test against the user-provided values when credentials are required.
+
 Expected gates by phase:
 
 - Phase 0: import smoke tests, config parser tests, `pytest`, `ruff`, and `mypy` once modules exist.

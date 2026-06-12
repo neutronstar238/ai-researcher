@@ -32,6 +32,70 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-042 - Full ruff gate reported import ordering across existing tests
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 11:28:41 +08:00
+- Source: `poetry run ruff check src tests`.
+- Symptom: Ruff reported 32 `I001` import-order errors across existing test modules after dependency installation generated a lock file.
+- Impact: Task `21.2` cannot be committed until the repository lint gate passes, but blindly rewriting many unrelated tests would create avoidable churn.
+- Evidence: `poetry run ruff --version` reported `ruff 0.4.10`; `poetry run ruff check tests/unit/cli/test_main.py --diff` showed only import grouping/order changes in a pre-existing test file.
+- Root cause: Ruff/isort was not told that `autoresearch` is the first-party package, so the locked lint environment grouped local imports with other third-party imports and flagged many existing tests.
+- Workaround: None needed after configuration fix.
+- Next action: Keep `autoresearch` declared as first-party when adding new package roots.
+- Linked tasks: `21.2`
+- Resolution: Added `[tool.ruff.lint.isort] known-first-party = ["autoresearch"]` and ran ruff autofix only on the two new live smoke test files.
+- Verification: `poetry run ruff check src tests` passed.
+
+### P-20260612-041 - CLI tests failed after dependency lock resolved Typer with Click 8.4
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 11:26:48 +08:00
+- Source: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`.
+- Symptom: Three CLI tests exited with code 2 after `poetry install --with dev` generated the current lock file.
+- Impact: The daily literature refresh feature itself passed focused tests and live smoke tests, but the broader verification gate is blocked.
+- Evidence: A direct `CliRunner` invocation of `init-demo --path <tmp>` returned `Got unexpected extra argument`; help rendering returned `TypeError("Parameter.make_metavar() missing 1 required positional argument: 'ctx'")`; local versions were `typer 0.12.5` and `click 8.4.1`.
+- Root cause: Typer 0.12.5 is not compatible with Click 8.4 help rendering, and deferred annotations in the CLI left Typer with string annotations for option parameters.
+- Workaround: None needed after dependency and annotation fix.
+- Next action: Re-check CLI smoke tests if Typer or Click constraints are changed.
+- Linked tasks: `21.2`
+- Resolution: Constrained Click to `>=8.1,<8.2`, regenerated the lock file, installed dependencies, and removed deferred annotations from `src/autoresearch/cli/main.py` so Typer receives concrete runtime option types.
+- Verification: `poetry run pytest tests/unit/cli/test_main.py -vv` passed; `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with 202 tests passed and 2 live smoke tests skipped by default.
+
+### P-20260612-040 - Live literature refresh changes failed ruff style checks
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 11:16:31 +08:00
+- Source: `poetry run ruff check src/autoresearch/literature/clients.py src/autoresearch/literature/refresh.py src/autoresearch/literature/__init__.py tests/unit/literature/test_refresh.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py`.
+- Symptom: Ruff reported import ordering in the new live smoke tests and `UP038` for an `isinstance()` tuple in `refresh.py`.
+- Impact: Functional unit tests and mypy passed, but lint gate failed.
+- Evidence: Ruff reported `I001` in `tests/smoke/test_literature_live.py` and `tests/smoke/test_literature_refresh_live.py`, plus `UP038` in `src/autoresearch/literature/refresh.py`.
+- Root cause: Manual patches did not match the configured import order and pyupgrade style.
+- Workaround: None needed after formatting and style fix.
+- Next action: Re-run ruff after applying fixes.
+- Linked tasks: `21.2`
+- Resolution: Applied ruff import sorting and changed the `isinstance()` check to Python 3.10 union syntax.
+- Verification: `poetry run ruff check src/autoresearch/literature/clients.py src/autoresearch/literature/refresh.py src/autoresearch/literature/__init__.py tests/unit/literature/test_refresh.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py` passed after the fix.
+
+### P-20260612-039 - Live literature API tests exposed TLS and source reliability issues
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 11:06:15 +08:00
+- Source: `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py -vv`.
+- Symptom: First live run failed before API parsing because Python `urllib` raised `SSL: CERTIFICATE_VERIFY_FAILED unable to get local issuer certificate`; after adding CA support, a later live run reached real services but hit ArXiv `429 Too Many Requests` and a source timeout.
+- Impact: The mocked refresh pipeline tests passed, but task `21.2` could not be accepted under the live-call requirement until HTTPS verification and source-level failure handling worked against real APIs.
+- Evidence: The first live run failed at `urllib.request.urlopen()`; `poetry run python -c "import certifi"` initially failed with `ModuleNotFoundError`; after installing dependencies, the next live run reported `HTTP Error 429: Too Many Requests` and `TimeoutError`.
+- Root cause: The runtime lacked an explicit CA bundle for stdlib `urllib`, and the refresh pipeline treated a single source failure as a whole-run failure.
+- Workaround: Do not disable TLS verification. Keep live tests opt-in, but run them for external-source tasks.
+- Next action: Continue real live smoke checks for future external-source tasks; do not mark them complete from mocks alone.
+- Linked tasks: `21.2`
+- Resolution: Added explicit `certifi` dependency, made the urllib client verify HTTPS with `certifi.where()`, and changed refresh fetches to record per-source errors while continuing other sources.
+- Verification: `$env:AUTORESEARCH_LIVE_LITERATURE='1'; poetry run pytest tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py -vv` passed with real network calls after the fix.
+
 ### P-20260612-038 - Planning could be misread as local-vault-only discovery
 
 - Status: Resolved

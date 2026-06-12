@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 import time
 import urllib.parse
 import urllib.request
@@ -11,6 +12,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, cast
+
+import certifi
 
 from .models import AcademicPaper
 
@@ -54,7 +57,8 @@ def _urllib_get_text(url: str, params: dict[str, str | int]) -> str:
         f"{url}?{query}",
         headers={"User-Agent": "ai-researcher/0.1"},
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    context = ssl.create_default_context(cafile=certifi.where())
+    with urllib.request.urlopen(request, timeout=30, context=context) as response:
         return cast(bytes, response.read()).decode("utf-8")
 
 

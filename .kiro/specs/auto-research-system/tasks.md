@@ -567,14 +567,14 @@ A task can be checked only when all applicable items are true:
     - _References: EP 6.3, RP 8_
     - _Verify: scheduler runs a mock recurring task and records audit logs._
 
-  - [ ] 21.2 Add daily online literature refresh pipeline
+  - [x] 21.2 Add daily online literature refresh pipeline
     - Fetch fresh papers and research materials automatically from free/public sources, starting with ArXiv and Semantic Scholar.
     - Respect source-specific API limits; ArXiv legacy API access must use a single connection and at least 3 seconds between requests.
     - Optimize search queries from project topics, Obsidian topic indexes, method cards, dataset cards, prior failures, and active candidate gaps.
     - Store raw metadata, normalized `DocumentRecord` items, source query text, timestamps, and rate-limit decisions in the Obsidian vault or retrieval cache.
     - Deduplicate results across sources before candidate update analysis.
     - _References: REQ 12, REQ 6, Horizon-style source pipeline, arXiv API terms_
-    - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access._
+    - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access; opt-in live smoke test fetches real ArXiv/Semantic Scholar documents before completion._
 
   - [ ] 21.3 Add project-start online similarity and novelty cross-check
     - Before a candidate is approved into a project, run a broad online search for similar directions, adjacent methods, known baselines, datasets, negative results, and competing claims.
