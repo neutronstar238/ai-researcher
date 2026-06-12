@@ -24,6 +24,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "UltraClr/agent-arxiv-daily",
         "Microsoft SkillOpt",
         "OpenClaw",
+        "farion1231/cc-switch",
         "larksuite/openclaw-lark",
         "Tencent/openclaw-weixin",
         "WecomTeam/wecom-openclaw-plugin",

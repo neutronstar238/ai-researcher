@@ -52,9 +52,10 @@ Target version: `0.1.0`.
 - `airesearcher runtime list` and `airesearcher runtime approve` for inspecting and approving pending runtime actions from local terminals or future chat-channel adapters.
 - `airesearcher channels openclaw init|list` for repository-tracked OpenClaw communication channel mount metadata.
 - `integrations/openclaw/channels.json` runbook for official/common OpenClaw Lark/Feishu, Weixin, WeCom, Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo channels.
+- `airesearcher code-agents cc-switch init|list` and `integrations/cc-switch/code-agent.json` for a cc-switch / Claude Code external code-agent contract where Claude Code can draft code while AI-Researcher keeps validation, approval, merge, rollback, and Obsidian logging authority.
 - `airesearcher publication-audit` for CCF-B/Q3-style publication-readiness gating over completed cycle summaries, including script/data verification, cross-source literature breadth, similar-work coverage, data strength, baseline/ablation/statistical sanity checks, manuscript structure, and Obsidian review/issue writing.
 - Opt-in `pendigits_centroid_baseline` public benchmark demo that downloads the UCI Pendigits train/test files at run time, writes a merged CSV under ignored `runs/` artifacts, runs a nearest-centroid baseline plus first-8-features ablation, and records source metadata, data hash, confidence interval, validation report, evidence map, and run record.
-- `/research:serve`, `/research:publication-audit`, `/research:approve`, and `/research:openclaw-channels` slash command templates.
+- `/research:serve`, `/research:publication-audit`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
 

@@ -1,0 +1,76 @@
+{
+  "approval_bridge": {
+    "approve_command": "airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json",
+    "list_command": "airesearcher runtime list --state .airesearcher/runtime-approvals.json",
+    "local_state": ".airesearcher/runtime-approvals.json",
+    "runtime_command": "airesearcher serve --permission-mode approve-dangerous"
+  },
+  "backends": [
+    {
+      "approval_gates": [
+        "full-permission shell commands require `airesearcher runtime approve`",
+        "provider/profile writes require operator confirmation during first deployment",
+        "generated code cannot bypass publication audit or reproducibility checks"
+      ],
+      "backend_id": "claude-code-via-cc-switch",
+      "handoff_commands": [
+        "cc-switch: create or select a Universal Provider for the AI-Researcher model endpoint",
+        "cc-switch: sync the provider to Claude Code",
+        "claude: run the code-writing task inside an isolated AI-Researcher worktree",
+        "airesearcher: capture the resulting diff, run validation gates, and decide acceptance"
+      ],
+      "label": "Claude Code through cc-switch provider routing",
+      "license": "MIT",
+      "managed_tools": [
+        "Claude Code",
+        "Codex",
+        "OpenClaw",
+        "Gemini CLI",
+        "OpenCode"
+      ],
+      "notes": [
+        "Do not vendor cc-switch source code in this repository for this integration.",
+        "Keep `.env` and AI-Researcher config as the source of truth for model base URL, key, and model name.",
+        "cc-switch may mirror provider routing for Claude Code, but AI-Researcher remains the validator.",
+        "Claude Code endpoint routing and model selection must be checked separately when using gateways."
+      ],
+      "provider_mode": "cc-switch Universal Provider or local proxy",
+      "runner_command": "claude",
+      "upstream": "https://github.com/farion1231/cc-switch",
+      "validation_gates": [
+        "git diff must be captured before acceptance",
+        "ruff, mypy, and focused tests must pass for touched Python code",
+        "dangerous command use must be routed through runtime approval",
+        "result claims must cite local evidence artifacts before reports are accepted",
+        "AI-Researcher owns merge, rollback, Obsidian issue notes, and Agent.md logging"
+      ]
+    }
+  ],
+  "execution_contract": {
+    "acceptance_policy": "generated diffs are proposals until AI-Researcher gates pass",
+    "generation_owner": "Claude Code via cc-switch",
+    "memory_policy": "write accepted findings and failures into the Obsidian vault",
+    "merge_policy": "AI-Researcher-owned commit after tests, logs, and Agent.md update",
+    "rollback_policy": "AI-Researcher rollback or follow-up issue note on failed gates",
+    "validation_owner": "AI-Researcher"
+  },
+  "generated_for": "AI-Researcher",
+  "model_bridge": {
+    "cc_switch_role": "Mirror or proxy the configured provider into Claude Code through a Universal Provider or local proxy.",
+    "claude_code_caveat": "Endpoint routing and model selection are separate concerns; verify the selected model after cc-switch sync.",
+    "provider_fields": [
+      "base_url",
+      "api_key",
+      "model_name"
+    ],
+    "source_of_truth": "AI-Researcher config/.env"
+  },
+  "purpose": "Reference execution contract for using cc-switch provider routing and Claude Code as an external code-generation backend while keeping AI-Researcher responsible for validation and acceptance.",
+  "schema_version": 1,
+  "security_notes": [
+    "This manifest records integration metadata; it does not execute Claude Code or cc-switch.",
+    "Never write provider API keys, cc-switch exports, or Claude Code credentials to git.",
+    "Run Claude Code in a dedicated worktree or sandbox and inspect generated diffs before acceptance.",
+    "Treat provider sync, proxy takeover, shell execution, and public release as approval-gated actions."
+  ]
+}

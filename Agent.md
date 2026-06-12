@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:53:55 +08:00 - Codex - Task 68 cc-switch code-agent boundary
+
+- Request: Continue project implementation by turning the cc-switch / Claude Code idea into a concrete integration boundary where Claude Code can draft code through shared provider routing while AI-Researcher retains validation authority.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `integrations/cc-switch/code-agent.json`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/integrations/__init__.py`
+  - `src/autoresearch/integrations/cc_switch.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/integrations/test_cc_switch.py`
+- Summary:
+  - Reviewed cc-switch as a provider/profile manager for Claude Code, Codex, OpenClaw, Gemini CLI, OpenCode, and related tools, and recorded its MIT license boundary without copying upstream code.
+  - Added a `claude-code-via-cc-switch` external code-agent backend manifest that keeps AI-Researcher as validation owner for diff capture, tests, dangerous-command approval, merge/rollback, Obsidian memory, and `Agent.md` logging.
+  - Added `airesearcher code-agents cc-switch init|list` plus the `/research:code-agent-backends` slash template so operators can generate and inspect the contract.
+  - Updated English/Chinese README, changelog, third-party notices, compliance tests, and Kiro tasks to describe the cc-switch reference boundary and secret-handling rules.
+- Verification:
+  - Web review: `https://github.com/farion1231/cc-switch` is public, has a top-level MIT license, documents provider/profile management and Universal Provider behavior, and Claude Code docs state endpoint routing and model selection are separate concerns.
+  - `poetry run airesearcher code-agents cc-switch init --output integrations\cc-switch\code-agent.json`: passed and wrote the repository manifest.
+  - `poetry run airesearcher code-agents cc-switch list`: passed and reported `claude-code-via-cc-switch` with `validator=AI-Researcher`.
+  - `poetry run pytest tests/unit/integrations/test_cc_switch.py tests/unit/integrations/test_openclaw.py tests/unit/compliance/test_licenses.py -q`: passed with 13 tests.
+  - `poetry run pytest tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates tests/unit/cli/test_main.py::test_ccswitch_code_agent_manifest_cli_writes_validation_contract -q`: passed with 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with 91 source files.
+  - `git diff --check`: passed; only Git line-ending conversion warnings were printed.
+  - `rg -n "cc-switch|code-agent-backends|claude-code-via-cc-switch|farion1231/cc-switch|validation_owner|AI-Researcher remains the validator" ...`: confirmed README, notices, task plan, manifest, source, and tests mention the new boundary.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 340 tests and 4 skipped.
+- Problems:
+  - `P-20260613-007` added and mitigated with the external code-agent contract.
+- Follow-up:
+  - Future execution support should run Claude Code in an isolated worktree, capture command transcripts and diffs, and require runtime approval before full-permission shell commands or provider-profile writes.
+
 ### 2026-06-13 01:45:12 +08:00 - Codex - Task 67 publication search defaults
 
 - Request: Continue the real full-loop quality iteration by making the default `autopilot`/`serve` runtime use publication-width literature and similarity search instead of smoke-width search.

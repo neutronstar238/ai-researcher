@@ -1124,6 +1124,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-004`, where live publication audits showed the loop could execute real data/script/review gates but still needed sufficient literature and similarity breadth before publication claims._
     - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and live `serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review` without explicit breadth flags showing literature documents and similarity findings pass breadth gates while Semantic Scholar source errors and manuscript structure remain blockers._
 
+- [x] 68. Add cc-switch / Claude Code external code-agent boundary
+  - [x] 68.1 Treat cc-switch as provider-routing infrastructure, not copied runtime code
+    - Review the current `farion1231/cc-switch` repository, top-level MIT license, provider-management docs, Universal Provider behavior, and Claude Code model-routing caveat.
+    - Add repository-tracked metadata for a `claude-code-via-cc-switch` external code-agent backend.
+    - Make the execution contract explicit: Claude Code may draft code through cc-switch provider routing, but AI-Researcher owns diff capture, validation gates, dangerous-command approval, merge/rollback, Obsidian memory, and `Agent.md` logging.
+    - Add `airesearcher code-agents cc-switch init|list` and `/research:code-agent-backends` so operators can generate and inspect the contract without copying upstream code or secrets.
+    - Update README, Chinese README, changelog, third-party notices, and compliance tests to record cc-switch's MIT reference boundary and secret-handling rules.
+    - _References: user question about whether a coding agent should combine cc-switch with Claude Code CLI to share this project's API model while keeping AI-Researcher validation authority._
+    - _Verify: web review of cc-switch repository/license/provider docs and Claude Code model config docs, focused cc-switch integration tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, and CI._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1319,7 +1329,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 37,
-      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1", "67.1"]
+      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1", "67.1", "68.1"]
     }
   ]
 }
