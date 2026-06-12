@@ -708,14 +708,14 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 5: Productization and Open-Source Readiness (Future)
 
-- [ ] 31. Design product surface before building full dashboard
+- [x] 31. Design product surface before building full dashboard
   - [x] 31.1 Define dashboard users and workflows
     - Users: individual researcher, team lead, reviewer, system administrator.
     - Workflows: candidate review, run monitoring, validation review, paper draft review, cost inspection, rollback approval.
     - _References: RP 13, EP 8_
     - _Verify: product brief exists before dashboard implementation._
 
-  - [ ] 31.2 Build dashboard MVP only after Phase 1 is stable
+  - [x] 31.2 Build dashboard MVP only after Phase 1 is stable
     - Show project status, runs, metrics, failures, costs, evidence coverage, and approval queue.
     - Avoid marketing-style landing pages inside the app.
     - _References: EP 8, Build Web Apps plugin perspective_

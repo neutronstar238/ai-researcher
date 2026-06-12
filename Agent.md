@@ -59,6 +59,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:25:03 +08:00 - Codex - Task 31.2 dashboard MVP
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `31.2`, with real rendered browser QA and no unsupported claims about external API behavior.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/observability/dashboard.py`
+  - `tests/unit/observability/test_dashboard.py`
+- Summary:
+  - Confirmed Phase 1 tasks `5` through `16` are already complete before building the dashboard MVP.
+  - Added a static operational HTML dashboard export for project status, runs, failures, costs, evidence coverage, metrics, and approval queue.
+  - Added dashboard row models for runs, failures, approval items, and the exported local dashboard artifact.
+  - Added responsive CSS and a small browser-side run filter interaction without adding a React/Vite stack for this MVP.
+  - Kept the page operational and evidence-first, not a marketing landing page.
+  - Exported the new dashboard APIs from `autoresearch.observability`.
+  - Added unit coverage for rendered sections and the run-filter hook.
+  - Marked task `31.2` and parent task `31` complete in `tasks.md`.
+  - Acknowledged the project testing rule: external-source and LLM tasks must use real API/live-call verification before completion; this task had no external data dependency, so no external-network result was claimed.
+- Verification:
+  - Loaded Product Design `get-context`, Build Web Apps `frontend-app-builder`, Build Web Apps `frontend-testing-debugging`, and Browser control guidance relevant to the dashboard workflow.
+  - `rg -n "^- \[[ x]\] (5|6|7|8|9|10|11|12|13|14|15|16)\." .kiro/specs/auto-research-system/tasks.md`: confirmed Phase 1 parent tasks were already checked.
+  - First focused lint, `poetry run ruff check src/autoresearch/observability/dashboard.py src/autoresearch/observability/__init__.py tests/unit/observability/test_dashboard.py`: failed with `I001` in `tests/unit/observability/test_dashboard.py`; recorded as `P-20260612-056`.
+  - `poetry run ruff check tests/unit/observability/test_dashboard.py --fix`: passed, 1 import-order issue fixed.
+  - `poetry run ruff check src/autoresearch/observability/dashboard.py src/autoresearch/observability/__init__.py tests/unit/observability/test_dashboard.py`: passed.
+  - `poetry run mypy src`: passed, 74 source files checked.
+  - `poetry run pytest tests/unit/observability/test_dashboard.py -vv`: passed, 3 tests.
+  - Generated a sample dashboard at `%TEMP%\ai-researcher-dashboard-qa\index.html` using `export_local_dashboard_html`.
+  - Browser direct `file://` navigation was blocked by Browser URL policy; temporary server first path also failed readiness; recorded as `P-20260612-055`.
+  - `python -m http.server 8765 --bind 127.0.0.1` from the generated dashboard directory: reached `http://127.0.0.1:8765/index.html` with HTTP `200`.
+  - Browser desktop QA at `http://127.0.0.1:8765/index.html`: title `AI-Researcher Dashboard`, required sections present, no console issues, run filter returned `1 visible` for `failed`.
+  - Browser mobile QA at `390x844`: required sections present, no console issues, no page overflow (`documentScrollWidth` and `bodyScrollWidth` within viewport).
+  - Stopped the temporary HTTP server after browser QA.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 275 passed and 3 skipped.
+- Problems:
+  - `P-20260612-055` added and resolved.
+  - `P-20260612-056` added and resolved.
+- Follow-up:
+  - Continue with task `32.1` roles and project permissions.
+
 ### 2026-06-12 13:15:34 +08:00 - Codex - Task 31.1 dashboard product brief
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `31.1`.

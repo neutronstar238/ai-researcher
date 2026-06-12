@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-056 - Dashboard test import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 13:25:03 +08:00
+- Source: `poetry run ruff check src/autoresearch/observability/dashboard.py src/autoresearch/observability/__init__.py tests/unit/observability/test_dashboard.py`.
+- Symptom: Ruff reported `I001` in `tests/unit/observability/test_dashboard.py`.
+- Impact: Task `31.2` focused lint verification was blocked until the test import block was sorted.
+- Evidence: Ruff reported the import block was unsorted or unformatted.
+- Root cause: New dashboard test imports were inserted without matching ruff/isort ordering.
+- Workaround: None needed after ruff autofix.
+- Next action: Keep new public API imports sorted when extending observability tests.
+- Linked tasks: `31.2`
+- Resolution: Ran `poetry run ruff check tests/unit/observability/test_dashboard.py --fix`.
+- Verification: Focused ruff, `poetry run mypy src`, focused dashboard pytest, full ruff, and full pytest passed after the import-order fix.
+
+### P-20260612-055 - Browser file URL and initial temp server QA path failed
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 13:25:03 +08:00
+- Source: Browser QA for `file:///C:/Users/Z/AppData/Local/Temp/ai-researcher-dashboard-qa/index.html`, then temporary local HTTP server startup on port `8765`.
+- Symptom: Browser Use rejected direct `file://` navigation; the first temporary HTTP server readiness check could not connect.
+- Impact: Task `31.2` browser-based desktop and mobile QA could not use direct file navigation or the first server startup path.
+- Evidence: Browser returned `Browser Use cannot visit the requested page because its URL is blocked by the Browser Use URL policy`; `Invoke-WebRequest` initially reported it could not connect to the remote server.
+- Root cause: Browser security policy disallows direct `file://` navigation, and the first `Start-Process -FilePath "poetry"` temp-server path did not become reachable.
+- Workaround: Serve the same generated static dashboard with `python -m http.server` bound to `127.0.0.1`.
+- Next action: For static browser QA, use a temporary local HTTP server instead of `file://`.
+- Linked tasks: `31.2`
+- Resolution: Started `python -m http.server 8765 --bind 127.0.0.1` from the generated dashboard directory, verified HTTP 200, completed desktop and mobile Browser QA, then stopped the server.
+- Verification: Local HTTP returned status `200`; Browser desktop QA passed with no console issues and run filtering working; Browser mobile QA passed with no console issues and no page overflow.
+
 ### P-20260612-054 - Reward export import order failed ruff
 
 - Status: Resolved
