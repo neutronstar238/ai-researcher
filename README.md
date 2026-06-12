@@ -1,8 +1,8 @@
-# AutoResearch System
+# AI-Researcher
 
 [Simplified Chinese](README.zh-CN.md)
 
-AutoResearch System is an early-stage Python platform for evidence-first automated computational research. The long-term goal is to orchestrate a constrained, auditable research loop: literature search, knowledge modeling, hypothesis generation, experiment design, sandboxed execution, result validation, paper drafting, review simulation, and controlled strategy evolution.
+AI-Researcher is an early-stage Python platform for evidence-first automated computational research. The long-term goal is to orchestrate a constrained, auditable research loop: literature search, knowledge modeling, hypothesis generation, experiment design, sandboxed execution, result validation, paper drafting, review simulation, and controlled strategy evolution.
 
 > Status: planning and scaffold. The project currently contains the product and execution plans, a Python package skeleton, and detailed implementation tasks. The runnable CLI, test suite, and trusted MVP loop are Phase 0 and Phase 1 work, not completed features.
 

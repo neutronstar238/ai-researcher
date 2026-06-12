@@ -59,6 +59,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:32:07 +08:00 - Codex - Project rename to AI-Researcher
+
+- Request: Rename the project to `AI-Researcher` and continue implementation.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `pyproject.toml`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Updated the public project display name to `AI-Researcher` in English and Chinese README files.
+  - Updated Poetry package metadata to the normalized package name `ai-researcher` while leaving the Python import package `autoresearch` unchanged.
+  - Updated the implementation plan title to `AI-Researcher`.
+  - Kept existing planning document filenames unchanged so current links and task references remain stable.
+- Verification:
+  - `rg -n "AutoResearch System|autoresearch-system" README.md README.zh-CN.md pyproject.toml .kiro/specs/auto-research-system/tasks.md`: no matches.
+  - `poetry check`: passed with existing Poetry deprecation warnings for legacy `[tool.poetry]` metadata fields.
+  - `poetry run pytest tests/smoke/test_imports.py tests/unit/cli/test_main.py::test_version_command_prints_package_version`: passed, 3 tests.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue task `20.1` for the Obsidian-backed candidate lifecycle.
+
 ### 2026-06-11 23:05:46 +08:00 - Codex - Task 19.2 package validation
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `19.2`.

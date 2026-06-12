@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "autoresearch-system"
+name = "ai-researcher"
 version = "0.1.0"
-description = "Automated end-to-end research workflow platform with multi-agent collaboration"
-authors = ["AutoResearch Team"]
+description = "AI-Researcher: evidence-first automated computational research platform with multi-agent collaboration"
+authors = ["AI-Researcher Team"]
 readme = "README.md"
 packages = [{include = "autoresearch", from = "src"}]
 

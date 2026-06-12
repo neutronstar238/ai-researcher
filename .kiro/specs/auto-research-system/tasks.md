@@ -1,4 +1,4 @@
-# Implementation Plan: AutoResearch System
+# Implementation Plan: AI-Researcher
 
 ## Overview
 
