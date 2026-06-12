@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:45:12 +08:00 - Codex - Task 67 publication search defaults
+
+- Request: Continue the real full-loop quality iteration by making the default `autopilot`/`serve` runtime use publication-width literature and similarity search instead of smoke-width search.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added shared CLI constants for publication-gate search breadth: 4 generated queries and up to 10 papers per source/query.
+  - Changed `airesearcher autopilot` and `airesearcher serve` defaults from smoke-width 1/1 to the publication-width defaults while preserving CLI overrides for explicit smoke or cost-control runs.
+  - Updated the autopilot slash-command text, English/Chinese README guidance, changelog, and Kiro task plan to describe the new default evidence-width loop.
+  - Added CLI test assertions proving the default values flow into literature refresh, similarity checking, and the always-on serve cycle.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/cli/test_main.py::test_serve_allow_all_runs_without_approval_state -q`: passed with 2 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with 90 source files.
+  - `git diff --check`: passed; only Git line-ending conversion warnings were printed.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 335 tests and 4 skipped.
+  - Real default-width full-loop verification: `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_publication_defaults_20260613 --review --demo pendigits_centroid_baseline --timeout-seconds 60 --output-dir runs\manual-live\serve-publication-defaults --cache .cache\live-publication-defaults --state .airesearcher\scheduler-state-live-publication-defaults.json --approvals-state .airesearcher\runtime-approvals-live-publication-defaults.json --min-quality-score 0.85` exited 0. The publication audit at `runs/manual-live/serve-publication-defaults/cycle-20260612T174020Z/publication-audit.json` reported `needs_revision`, score `0.8421`, literature query breadth 4/4, literature documents 30/20, similarity query breadth 4/4, similarity findings 33/10, and passing data/script/baseline/ablation/statistical/LLM-review gates; it still blocked publication because Semantic Scholar source errors and manuscript structure were not resolved.
+- Problems:
+  - `P-20260613-004` updated with Task `67.1` mitigation evidence and remaining blockers.
+- Follow-up:
+  - Next blockers are Semantic Scholar source-error handling/API-key stability, paper-structured manuscript generation, and stronger method novelty beyond the Pendigits baseline.
+
 ### 2026-06-13 01:33:34 +08:00 - Codex - Task 66 AutoResearchClaw reference boundary
 
 - Request: Compare AI-Researcher against `aiming-lab/AutoResearchClaw`, recognize its MIT license, and record how it can be referenced without blurring this project's differentiation.

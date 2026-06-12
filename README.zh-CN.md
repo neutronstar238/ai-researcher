@@ -129,9 +129,11 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 真实 benchmark 可选运行：
 
+`autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
+
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
-poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 60
+poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --timeout-seconds 60
 ```
 
 `pendigits_centroid_baseline` 会在运行时下载 UCI Pen-Based Recognition of Handwritten Digits 的官方 train/test 文件，在 `runs/` 下写入本地合并 CSV，运行 nearest-centroid baseline 和 first-8-features ablation，并记录来源 URL、数据 hash、指标、置信区间和验证产物。它比玩具 demo 更接近真实证据检查，但仍只是一个 baseline benchmark；只有当文献广度、相似工作广度、论文结构和评审门也通过后，系统才允许发表级声明。

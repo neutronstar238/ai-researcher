@@ -585,7 +585,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         error=None,
     )
 
-    def fake_literature_refresh(**_kwargs: object) -> SimpleNamespace:
+    def fake_literature_refresh(**kwargs: object) -> SimpleNamespace:
+        config = kwargs["config"]
+        assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         return SimpleNamespace(
             queries=(SimpleNamespace(text="evidence graph autonomous research"),),
             fetches=(fetch,),
@@ -593,7 +596,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             summary_path=literature_summary,
         )
 
-    def fake_similarity_check(**_kwargs: object) -> SimpleNamespace:
+    def fake_similarity_check(**kwargs: object) -> SimpleNamespace:
+        config = kwargs["config"]
+        assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         return SimpleNamespace(
             fetches=(fetch,),
             findings=(SimpleNamespace(source_uri="https://example.test/paper"),),
@@ -795,6 +801,8 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
 
     def fake_cycle(**kwargs: object) -> dict[str, object]:
         assert kwargs["project_id"] == "project_1"
+        assert kwargs["max_queries"] == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert kwargs["max_results_per_source"] == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         return {
             "cycle_id": "cycle-allow-all",
             "summary_path": "runs/autopilot/cycle-allow-all/cycle-summary.json",

@@ -188,11 +188,13 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local demo or public benchmark experiment, optional live LLM evidence review, publication-readiness audit, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; the publication audit is deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
 
+By default, `autopilot` and `serve` use 4 generated queries and up to 10 papers per source/query for publication-gate evidence breadth. Pass lower `--max-queries` or `--max-results-per-source` values only for explicit smoke or cost-control runs.
+
 Real benchmark opt-in:
 
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
-poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --max-queries 4 --max-results-per-source 5 --timeout-seconds 60
+poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --timeout-seconds 60
 ```
 
 The `pendigits_centroid_baseline` demo downloads the UCI Pen-Based Recognition of Handwritten Digits train/test files at run time, writes a local merged CSV under `runs/`, evaluates a nearest-centroid baseline and first-8-features ablation, and records source URLs, data hash, metrics, confidence interval, and validation artifacts. It is a stronger evidence check than the toy demos, but it is still only a baseline benchmark run; the publication audit must still pass literature breadth, similar-work breadth, manuscript structure, and reviewer gates before any publication-level claim.

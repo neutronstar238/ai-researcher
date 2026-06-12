@@ -71,6 +71,8 @@ channels_app.add_typer(openclaw_channels_app, name="openclaw")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
+PUBLICATION_SEARCH_QUERIES = 4
+PUBLICATION_RESULTS_PER_SOURCE = 10
 
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
@@ -94,7 +96,8 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` "
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
-        "follow-up discovery; inspect cycle-summary.json before claiming publication quality.",
+        "follow-up discovery using publication-grade default search breadth; inspect "
+        "cycle-summary.json before claiming publication quality.",
     ),
     "research/serve.toml": (
         "Start the always-on operator service with dangerous-action approval gates.",
@@ -1012,12 +1015,20 @@ def autopilot(
     ] = "tabular_baseline",
     max_queries: Annotated[
         int,
-        typer.Option("--max-queries", min=1, help="Maximum generated literature/similarity queries."),
-    ] = 1,
+        typer.Option(
+            "--max-queries",
+            min=1,
+            help="Maximum generated literature/similarity queries; lower only for smoke runs.",
+        ),
+    ] = PUBLICATION_SEARCH_QUERIES,
     max_results_per_source: Annotated[
         int,
-        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
-    ] = 1,
+        typer.Option(
+            "--max-results-per-source",
+            min=1,
+            help="Maximum papers per source/query; lower only for smoke runs.",
+        ),
+    ] = PUBLICATION_RESULTS_PER_SOURCE,
     timeout_seconds: Annotated[
         int,
         typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),
@@ -1133,12 +1144,20 @@ def serve(
     ] = "tabular_baseline",
     max_queries: Annotated[
         int,
-        typer.Option("--max-queries", min=1, help="Maximum generated literature/similarity queries."),
-    ] = 1,
+        typer.Option(
+            "--max-queries",
+            min=1,
+            help="Maximum generated literature/similarity queries; lower only for smoke runs.",
+        ),
+    ] = PUBLICATION_SEARCH_QUERIES,
     max_results_per_source: Annotated[
         int,
-        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
-    ] = 1,
+        typer.Option(
+            "--max-results-per-source",
+            min=1,
+            help="Maximum papers per source/query; lower only for smoke runs.",
+        ),
+    ] = PUBLICATION_RESULTS_PER_SOURCE,
     timeout_seconds: Annotated[
         int,
         typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),

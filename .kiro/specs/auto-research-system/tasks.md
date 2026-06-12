@@ -1114,6 +1114,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to compare against `aiming-lab/AutoResearchClaw` and note that it has MIT licensing._
     - _Verify: web review of upstream repository/README/license status, focused compliance tests, README/notice text search, ruff, mypy, and full smoke/unit tests._
 
+- [x] 67. Align always-on runtime defaults with publication evidence gates
+  - [x] 67.1 Use publication-grade default search breadth for autopilot and serve
+    - Add shared CLI defaults for publication-gate evidence breadth: 4 generated queries and up to 10 papers per source/query.
+    - Make `airesearcher autopilot` and `airesearcher serve` use these defaults instead of smoke-width 1/1 values.
+    - Keep CLI overrides so operators can still lower breadth for explicit smoke or cost-control runs.
+    - Update slash command and README guidance so the one-command runtime is documented as a real evidence-width loop.
+    - Add CLI tests proving `autopilot` and `serve` pass the publication-width defaults into literature and similarity stages.
+    - _References: `P-20260613-004`, where live publication audits showed the loop could execute real data/script/review gates but still needed sufficient literature and similarity breadth before publication claims._
+    - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and live `serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review` without explicit breadth flags showing literature documents and similarity findings pass breadth gates while Semantic Scholar source errors and manuscript structure remain blockers._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1309,7 +1319,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 37,
-      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1"]
+      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1", "67.1"]
     }
   ]
 }

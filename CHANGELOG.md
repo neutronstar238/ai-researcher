@@ -79,6 +79,7 @@ Target version: `0.1.0`.
 - Autopilot cycles now run a strict publication-readiness audit after the evidence review and before self-loop follow-up task discovery, so toy-data cycles are recorded as not publishable rather than being mistaken for CCF-B/Q3-ready papers.
 - `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
+- `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.
 
 ### Fixed
 
