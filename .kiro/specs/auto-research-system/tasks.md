@@ -828,6 +828,20 @@ A task can be checked only when all applicable items are true:
     - _References: user request to fill a model in `.env`, task 37.2_
     - _Verify: `.env.example` and ignored local `.env` exist; `git check-ignore .env` confirms `.env` is not tracked._
 
+- [x] 40. Fix first-deploy environment semantics and CI mypy portability
+  - [x] 40.1 Make deploy setup own the environment template path
+    - Ensure `autoresearch deploy-setup` writes the real local `.env` and creates adjacent `.env.example` when that public template is missing.
+    - Preserve an existing `.env.example` instead of overwriting local or repository template edits.
+    - Document that `.env.example` is a public non-secret template and `.env` is the ignored real secret file.
+    - _References: user feedback on first-deploy CLI `.env` flow, task 37.2_
+    - _Verify: CLI tests confirm `.env` receives secrets, `.env.example` contains no secrets, and existing templates are preserved._
+
+  - [x] 40.2 Fix GitHub Actions mypy failure on non-Windows runners
+    - Avoid direct static access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute on Linux type-checking runners.
+    - Remove stale mypy override entries that trigger unused-config warnings.
+    - _References: GitHub Actions screenshot for Python 3.10 `mypy src` failure_
+    - _Verify: `poetry run mypy src` passes without the Windows-only subprocess attribute error._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -932,6 +946,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 14,
       "tasks": ["39.1", "39.2"]
+    },
+    {
+      "id": 15,
+      "tasks": ["40.1", "40.2"]
     }
   ]
 }

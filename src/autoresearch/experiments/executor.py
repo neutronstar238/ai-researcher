@@ -169,7 +169,8 @@ def _finish_run(
 
 def _process_group_kwargs(task: ExperimentTask) -> dict[str, Any]:
     if os.name == "nt":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        return {"creationflags": creationflags}
 
     preexec_fn = _resource_limiter(task)
     return {"start_new_session": True, "preexec_fn": preexec_fn}

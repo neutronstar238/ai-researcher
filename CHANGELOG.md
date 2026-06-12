@@ -34,6 +34,12 @@ Target version: `0.1.0`.
 - Docker runtime uses Python 3.12 until the dependency set is compatible with Python 3.13 wheels in the container build path.
 - Verification standard now requires real network/API calls for external data features when that surface is being tested; mocked responses only prove parser behavior.
 - LLM integration guidance is provider-agnostic: base URL, API key, and model name must come from configuration or `.env`.
+- `autoresearch deploy-setup` now ensures `.env.example` exists as a non-secret template while writing real secrets only to `.env`.
+
+### Fixed
+
+- GitHub Actions `mypy src` failure on Python 3.10/Linux caused by direct access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute.
+- Removed stale mypy override entries that produced unused-config warnings in CI.
 
 ### Migration Notes
 
@@ -52,7 +58,8 @@ Target version: `0.1.0`.
 
 ### Verification Snapshot
 
-- Current broad local check after task `35.3`: `poetry run ruff check src tests` passed.
-- Current broad local test set after task `35.3`: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `295 passed, 3 skipped`.
+- Current broad local check after task `40`: `poetry run ruff check src tests` passed.
+- Current broad local type check after task `40`: `poetry run mypy src` passed with no issues in 82 source files.
+- Current broad local test set after task `40`: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `303 passed, 3 skipped`.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.

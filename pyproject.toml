@@ -128,10 +128,6 @@ strict_optional = true
 module = [
     "langgraph.*",
     "langchain.*",
-    "arxiv.*",
-    "semanticscholar.*",
-    "fabric.*",
-    "hypothesis.*",
 ]
 ignore_missing_imports = true
 

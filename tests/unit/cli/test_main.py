@@ -42,6 +42,7 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
 ) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
+    env_example_path = tmp_path / ".env.example"
 
     result = CliRunner().invoke(
         app,
@@ -80,10 +81,48 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
 
     config_text = config_path.read_text(encoding="utf-8")
     env_text = env_path.read_text(encoding="utf-8")
+    env_example_text = env_example_path.read_text(encoding="utf-8")
     assert "sk-test" not in config_text
     assert "AUTORESEARCH_LLM_API_KEY=sk-test" in env_text
     assert "AUTORESEARCH_WECHAT_WEBHOOK_URL=https://wechat.example.test/hook" in env_text
     assert "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook" in env_text
+    assert "env template created" in result.stdout
+    assert "AUTORESEARCH_LLM_API_KEY=" in env_example_text
+    assert "sk-test" not in env_example_text
+
+
+def test_deploy_setup_keeps_existing_env_example_template(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    env_example_path = tmp_path / ".env.example"
+    env_example_path.write_text("CUSTOM_TEMPLATE=1\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "deploy-setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert env_path.is_file()
+    assert env_example_path.read_text(encoding="utf-8") == "CUSTOM_TEMPLATE=1\n"
+    assert "env template ready" in result.stdout
 
 
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:

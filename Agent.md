@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 15:39:56 +08:00 - Codex - Task 40 first-deploy env semantics and CI mypy fix
+
+- Request: Clarify that `.env.example` is a public template, make first-deploy CLI own the `.env`/`.env.example` flow, and explain/fix the GitHub Actions Python 3.10 mypy failure shown in the screenshot.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `pyproject.toml`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Updated `autoresearch deploy-setup` so the first-deploy CLI writes real local secrets to `.env` and creates adjacent `.env.example` as a non-secret template when missing.
+  - Preserved existing `.env.example` files instead of overwriting templates.
+  - Clarified README guidance that `.env.example` is public and `.env` is the ignored real secret file.
+  - Fixed Linux/Python 3.10 mypy failure by avoiding direct static access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute.
+  - Removed stale mypy override entries that created unused-config warnings in CI.
+  - Added and completed task `40` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py -vv`: passed, 12 tests.
+  - `poetry run mypy src`: passed, no issues found in 82 source files.
+  - `poetry run ruff check src tests`: passed.
+  - Temporary real CLI run `poetry run autoresearch deploy-setup --config <tmp>/config.yaml --env-path <tmp>/.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive`: passed, wrote `.env`, `.env.example`, and `config.yaml`; `.env.example` did not contain the test API key.
+  - `poetry run pytest tests/unit/experiments/test_executor.py -vv`: passed, 4 tests.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 303 tests and 3 skipped.
+  - `git diff --check`: passed with only existing CRLF conversion warnings from Git.
+- Problems:
+  - `P-20260612-065` added and resolved.
+- Follow-up:
+  - After the user fills `.env`, run real LLM full-chain testing and output quality inspection without mocking the model call.
+
 ### 2026-06-12 15:35:03 +08:00 - Codex - Task 39 NOTICE and environment handoff
 
 - Request: Add the project NOTICE text and make the root `.env` location visible so the user can fill model credentials before real full-chain testing.

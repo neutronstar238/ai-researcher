@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-065 - GitHub Actions mypy failed on Windows-only subprocess attribute
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 15:39:56 +08:00
+- Source: User-provided GitHub Actions screenshot for the Python 3.10 job.
+- Symptom: `poetry run mypy src` failed with `src/autoresearch/experiments/executor.py:172: error: Module has no attribute "CREATE_NEW_PROCESS_GROUP" [attr-defined]`.
+- Impact: CI failed on Linux runners even though the runtime branch using the constant is Windows-only.
+- Evidence: GitHub Actions log showed one mypy error in `src/autoresearch/experiments/executor.py` and an unused-config warning from `pyproject.toml`.
+- Root cause: The code directly referenced `subprocess.CREATE_NEW_PROCESS_GROUP`, which is only exposed on Windows, and mypy checked the attribute against the Linux/Python 3.10 environment.
+- Workaround: None needed after the fix.
+- Next action: Keep OS-specific subprocess constants behind `getattr` or platform-specific helper functions.
+- Linked tasks: `40`
+- Resolution: Changed the Windows process-group flag lookup to `getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)` and removed stale mypy override entries.
+- Verification: `poetry run mypy src` passed with no issues in 82 source files; `poetry run ruff check src tests` passed; `poetry run pytest tests/unit/cli/test_main.py -vv` passed with 12 tests; `poetry run pytest tests/unit/experiments/test_executor.py -vv` passed with 4 tests; `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with 303 tests and 3 skipped.
+
 ### P-20260612-064 - similarity-check CLI rejected Windows UTF-8 BOM candidate JSON
 
 - Status: Resolved
