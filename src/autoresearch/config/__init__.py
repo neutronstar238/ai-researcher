@@ -1,4 +1,4 @@
-"""Configuration management module for AutoResearch System."""
+"""Configuration management module for AI-Researcher."""
 
 from .models import (
     AgentConfig,

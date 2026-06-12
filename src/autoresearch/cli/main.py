@@ -1,4 +1,4 @@
-"""Minimal Typer CLI for the AutoResearch Phase 0 scaffold."""
+"""Minimal Typer CLI for the AI-Researcher Phase 0 scaffold."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ from autoresearch.reports import validate_reproducibility_package
 from autoresearch.schemas import ValidationStatus
 
 app = typer.Typer(
-    help="AutoResearch System command line interface.",
+    help="AI-Researcher command line interface.",
     no_args_is_help=True,
 )
 
 
 @app.command()
 def version() -> None:
-    """Print the installed AutoResearch version."""
+    """Print the installed AI-Researcher version."""
 
     typer.echo(__version__)
 
@@ -95,7 +95,7 @@ def init_demo(
 
     if not readme_path.exists():
         readme_path.write_text(
-            "# AutoResearch Demo\n\n"
+            "# AI-Researcher Demo\n\n"
             "This scaffold is created by `autoresearch init-demo`.\n"
             "It does not run the research workflow yet.\n",
             encoding="utf-8",

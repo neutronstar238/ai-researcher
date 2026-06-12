@@ -1,6 +1,6 @@
 # autoresearch-vault
 
-This directory is the canonical Obsidian-compatible knowledge vault for AutoResearch System.
+This directory is the canonical Obsidian-compatible knowledge vault for AI-Researcher.
 
 Future implementation work should store the project's unified research memory here:
 

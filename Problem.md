@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-036 - AI-Researcher rename left user-facing old-name references
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 10:41:20 +08:00
+- Source: Repository-wide `rg -n "AutoResearch System|autoresearch-system"` check before task `20.2`.
+- Symptom: Planning headers, vault README, current project vault index, CLI help, package docstrings, and literature client User-Agent still used the old `AutoResearch System` or `autoresearch-system` label.
+- Impact: New agents and users could see conflicting project names after the rename to `AI-Researcher`.
+- Evidence: `rg` matched current user-facing files outside historical `Agent.md` entries.
+- Root cause: The initial rename commit only checked README, Chinese README, `pyproject.toml`, and `tasks.md`.
+- Workaround: None needed after this cleanup.
+- Next action: Keep `autoresearch` as the Python package name unless a dedicated package migration is requested.
+- Linked tasks: Project rename request
+- Resolution: Updated user-facing project labels, CLI help text, vault README/index text, and User-Agent to `AI-Researcher` / `ai-researcher`.
+- Verification: `rg -n "AutoResearch System" AutoResearch_System_Research_Plan.md AutoResearch_System_Execution_Plan.md autoresearch-vault src README.md README.zh-CN.md pyproject.toml .kiro/specs/auto-research-system/tasks.md` returned no matches.
+
 ### P-20260612-035 - Candidate lifecycle exports and tests had unsorted imports
 
 - Status: Resolved

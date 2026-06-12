@@ -2,7 +2,7 @@
 
 > 文件名：研究计划.md
 > 生成日期：2026-06-11
-> 项目代号：AutoResearch System / ai-researcher
+> 项目名称：AI-Researcher
 > 定位：面向计算实验型科研的全自动、自循环、自进化科研操作系统
 
 ---

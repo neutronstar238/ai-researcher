@@ -1,6 +1,6 @@
-# autoresearch-system
+# AI-Researcher
 
-Project knowledge index for the AutoResearch System implementation.
+Project knowledge index for the AI-Researcher implementation.
 
 ## Branches
 

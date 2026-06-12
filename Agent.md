@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:41:20 +08:00 - Codex - AI-Researcher rename cleanup
+
+- Request: Continue work and ensure the project name is `AI-Researcher`.
+- Files changed:
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `autoresearch-vault/README.md`
+  - `autoresearch-vault/projects/autoresearch-system/index.md`
+  - `src/autoresearch/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/config/__init__.py`
+  - `src/autoresearch/literature/clients.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed user-facing `AutoResearch System` naming from planning headers, vault documentation, CLI help, package/config docstrings, demo scaffold title, and literature client User-Agent.
+  - Kept the Python package name `autoresearch` unchanged to avoid a separate import-path migration.
+  - Kept historical `Agent.md` entries unchanged.
+- Verification:
+  - `rg -n "AutoResearch System" AutoResearch_System_Research_Plan.md AutoResearch_System_Execution_Plan.md autoresearch-vault src README.md README.zh-CN.md pyproject.toml .kiro/specs/auto-research-system/tasks.md`: no matches.
+  - `poetry run pytest tests/smoke/test_imports.py tests/unit/cli/test_main.py tests/unit/literature`: passed.
+- Problems:
+  - Added and resolved `P-20260612-036`.
+- Follow-up:
+  - Continue task `20.2`; treat any future full import-path/package rename as a dedicated migration.
+
 ### 2026-06-12 10:37:07 +08:00 - Codex - Task 20.1 candidate lifecycle
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `20.1`.

@@ -52,7 +52,7 @@ def _urllib_get_text(url: str, params: dict[str, str | int]) -> str:
     query = urllib.parse.urlencode(params)
     request = urllib.request.Request(
         f"{url}?{query}",
-        headers={"User-Agent": "autoresearch-system/0.1"},
+        headers={"User-Agent": "ai-researcher/0.1"},
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         return cast(bytes, response.read()).decode("utf-8")
