@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType, KnowledgeZone
 from autoresearch.observability import AuditEventType, AuditLog
 from autoresearch.scheduler import (
     LocalScheduler,
     ScheduledRunStatus,
     ScheduleInterval,
     candidate_refresh_action,
+    queued_issue_followups_from_vault,
     queued_task,
     scheduled_task,
 )
@@ -114,3 +116,57 @@ def test_scheduler_audits_failed_task_without_stopping(tmp_path: Path) -> None:
     assert runs[0].status is ScheduledRunStatus.FAILED
     assert runs[0].metadata == {"error": "network disabled", "error_type": "RuntimeError"}
     assert events[0].approved is False
+
+
+def test_scheduler_builds_queued_followups_from_open_issue_notes(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+    issue_dir = vault_root / "projects" / "project_1" / "issues"
+    issue_dir.mkdir(parents=True)
+    open_issue = KnowledgeEntry(
+        entry_id="llm_review_issue_project_1_abc",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        title="LLM review issue: missing evidence",
+        project_id="project_1",
+        related_task_ids=["47.1"],
+        body="\n".join(
+            [
+                "# LLM Review Follow-Up",
+                "",
+                "- Status: Open",
+                "- Issue fingerprint: `abc123def4567890`",
+                "",
+                "## Claim",
+                "",
+                "The evidence is missing.",
+            ]
+        ),
+    )
+    closed_issue = KnowledgeEntry(
+        entry_id="closed_issue",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        title="Closed issue",
+        project_id="project_1",
+        body="- Status: Closed\n",
+    )
+    (issue_dir / "open.md").write_text(open_issue.to_markdown(), encoding="utf-8")
+    (issue_dir / "closed.md").write_text(closed_issue.to_markdown(), encoding="utf-8")
+
+    tasks = queued_issue_followups_from_vault(
+        vault_root=vault_root,
+        project_id="project_1",
+        queued_at=datetime(2026, 6, 12, 8, tzinfo=timezone.utc),
+    )
+
+    assert len(tasks) == 1
+    assert tasks[0].task_id == "issue-follow-up-project_1-abc123def4567890"
+    assert tasks[0].name == "issue follow-up: LLM review issue: missing evidence"
+    assert tasks[0].action() == {
+        "kind": "issue_followup",
+        "issue_id": "llm_review_issue_project_1_abc",
+        "issue_title": "LLM review issue: missing evidence",
+        "issue_path": "projects/project_1/issues/open.md",
+        "project_id": "project_1",
+        "related_task_ids": ["47.1"],
+    }

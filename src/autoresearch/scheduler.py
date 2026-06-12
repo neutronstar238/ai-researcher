@@ -6,8 +6,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from autoresearch.knowledge import KnowledgeEntry, KnowledgeEntryType
 from autoresearch.observability import AuditEvent, AuditEventType, AuditLog
 from autoresearch.schemas import DocumentRecord
 
@@ -28,6 +32,7 @@ class ScheduledRunStatus(str, Enum):
 
 
 ScheduleAction = Callable[[], dict[str, Any]]
+IssueFollowUpActionFactory = Callable[[KnowledgeEntry, Path], ScheduleAction]
 
 
 @dataclass(frozen=True)
@@ -191,6 +196,39 @@ def candidate_refresh_action(
     return action
 
 
+def queued_issue_followups_from_vault(
+    *,
+    vault_root: Path | str,
+    project_id: str,
+    queued_at: datetime,
+    action_factory: IssueFollowUpActionFactory | None = None,
+) -> list[ScheduledTask]:
+    """Create one-shot follow-up tasks from open project issue notes."""
+
+    root = Path(vault_root)
+    issue_root = root / "projects" / project_id / "issues"
+    if not issue_root.exists():
+        return []
+
+    factory = action_factory or _default_issue_followup_action
+    tasks: list[ScheduledTask] = []
+    for path in sorted(issue_root.glob("*.md")):
+        entry = _read_issue_entry(path)
+        if entry is None or not _is_open_issue(entry):
+            continue
+        fingerprint = _issue_task_fingerprint(entry)
+        relative_path = path.relative_to(root)
+        tasks.append(
+            queued_task(
+                task_id=f"issue-follow-up-{project_id}-{fingerprint[:16]}",
+                name=f"issue follow-up: {entry.title}",
+                queued_at=queued_at,
+                action=factory(entry, relative_path),
+            )
+        )
+    return tasks
+
+
 def _interval_delta(interval: ScheduleInterval) -> timedelta:
     if interval is ScheduleInterval.DAILY:
         return timedelta(days=1)
@@ -205,3 +243,46 @@ def _normalize_datetime(value: datetime | None) -> datetime:
     if timestamp.tzinfo is None:
         return timestamp.replace(tzinfo=timezone.utc)
     return timestamp.astimezone(timezone.utc)
+
+
+def _read_issue_entry(path: Path) -> KnowledgeEntry | None:
+    try:
+        entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
+    except (ValueError, ValidationError):
+        return None
+    if entry.entry_type is not KnowledgeEntryType.ISSUE_NOTE:
+        return None
+    return entry
+
+
+def _is_open_issue(entry: KnowledgeEntry) -> bool:
+    for line in entry.body.splitlines():
+        if line.casefold().startswith("- status:"):
+            return "open" in line.casefold()
+    return True
+
+
+def _issue_task_fingerprint(entry: KnowledgeEntry) -> str:
+    for line in entry.body.splitlines():
+        if line.casefold().startswith("- issue fingerprint:"):
+            value = line.split(":", 1)[1].strip().strip("`")
+            if value:
+                return value
+    return entry.entry_id
+
+
+def _default_issue_followup_action(
+    entry: KnowledgeEntry,
+    relative_path: Path,
+) -> ScheduleAction:
+    def action() -> dict[str, Any]:
+        return {
+            "kind": "issue_followup",
+            "issue_id": entry.entry_id,
+            "issue_title": entry.title,
+            "issue_path": relative_path.as_posix(),
+            "project_id": entry.project_id,
+            "related_task_ids": entry.related_task_ids,
+        }
+
+    return action

@@ -926,6 +926,15 @@ A task can be checked only when all applicable items are true:
     - _References: task 46.1 follow-up, RP self-loop task pool hygiene_
     - _Verify: unit tests cover duplicate findings and reordered reviewer findings producing the same issue-note file set._
 
+- [x] 48. Queue self-loop follow-up tasks from Obsidian issue notes
+  - [x] 48.1 Add issue-note to scheduler queued-task adapter
+    - Read open `KnowledgeEntryType.ISSUE_NOTE` files from `autoresearch-vault/projects/<project-id>/issues/`.
+    - Generate one-shot queued scheduler tasks with stable IDs from the issue fingerprint when present, falling back to entry ID for older issue notes.
+    - Skip closed issue notes and invalid Markdown/frontmatter files without blocking the scheduler.
+    - Emit deterministic task metadata with issue ID, title, vault path, project ID, and related task IDs.
+    - _References: task 47.1 follow-up, RP Obsidian self-loop task pool_
+    - _Verify: unit tests cover open issue notes, closed issue skips, stable task IDs, and action metadata._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1062,6 +1071,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 22,
       "tasks": ["47.1"]
+    },
+    {
+      "id": 23,
+      "tasks": ["48.1"]
     }
   ]
 }

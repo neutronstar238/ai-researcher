@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:32:29 +08:00 - Codex - Task 48 issue-note scheduler adapter
+
+- Request: Continue the Obsidian self-loop work by making project `issue_note` entries schedulable follow-up tasks.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/scheduler.py`
+  - `tests/unit/test_scheduler.py`
+- Summary:
+  - Added `queued_issue_followups_from_vault()` to read open project issue notes from `autoresearch-vault/projects/<project-id>/issues/`.
+  - Generated one-shot scheduler tasks with stable IDs from issue fingerprints when available and entry IDs for older notes.
+  - Skipped closed issue notes and invalid Markdown/frontmatter files so one bad vault note does not block the local scheduler.
+  - Added deterministic issue follow-up metadata for issue ID, title, vault path, project ID, and related task IDs.
+  - Added and completed task `48.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/test_scheduler.py -q`: passed, 5 tests.
+  - `poetry run ruff check src tests`: initially failed with `P-20260612-073`; passed after sorting the test imports.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 300 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-073` added and resolved.
+- Follow-up:
+  - Add a CLI or scheduled command that registers these generated follow-up tasks into a persisted local scheduler state file.
+
 ### 2026-06-12 17:25:59 +08:00 - Codex - Task 47 LLM review issue deduplication
 
 - Request: Continue iterating after task `46.1` by preventing repeated LLM reviewer findings from polluting the Obsidian self-loop issue pool.

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-073 - Scheduler issue follow-up test import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:31:28 +08:00
+- Source: `poetry run ruff check src tests` during task `48.1` verification.
+- Symptom: Ruff failed with `tests\unit\test_scheduler.py:1:1: I001 [*] Import block is un-sorted or un-formatted`.
+- Impact: The Obsidian issue scheduler adapter could not pass the repository lint gate.
+- Evidence: The new `autoresearch.knowledge` import was placed after `autoresearch.observability`.
+- Root cause: The test import block was not kept in ruff/isort order after adding scheduler issue-note coverage.
+- Workaround: None needed after the fix.
+- Next action: Keep local package imports sorted alphabetically when adding focused scheduler tests.
+- Linked tasks: `48.1`
+- Resolution: Moved the `autoresearch.knowledge` import before `autoresearch.observability`.
+- Verification: `poetry run ruff check src tests` passed after the import-order fix. `poetry run mypy src` passed with no issues found in 85 source files. `poetry run pytest tests/unit/test_scheduler.py -q` passed with 5 tests. `poetry run pytest tests/smoke tests/unit -q` passed with 300 passed and 4 skipped.
+
 ### P-20260612-072 - Stable issue fingerprint helper failed ruff UP012
 
 - Status: Resolved
