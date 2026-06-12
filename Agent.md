@@ -59,6 +59,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:24:06 +08:00 - Codex - Task 25.1 rollback version foundations
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `25.1`; track versions for prompts, workflow templates, configs, strategy knowledge, and knowledge entries with rollback support.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/versioning.py`
+  - `tests/unit/knowledge/test_rollback.py`
+- Summary:
+  - Added `VersionedFileStore` for versioned plain-text prompts, workflow templates, and configs.
+  - Added rollback result and target-type models for config, prompt, workflow-template, knowledge-entry, and strategy-card rollback targets.
+  - Added Obsidian Markdown strategy-card writing with rollback metadata and strategy-linked version history.
+  - Added knowledge-entry and strategy-card rollback wrappers backed by `MarkdownKnowledgeStore`.
+  - Added tests for rolling back a fixture config, strategy card, and knowledge entry.
+  - Marked task `25.1` complete; parent task `25` remains open for rollback audit trail work in `25.2`.
+- Verification:
+  - Initial focused lint exposed `P-20260612-049`; removed the unused import.
+  - Initial type checking exposed `P-20260612-050`; converted parsed version metadata through `str` before `int`.
+  - `poetry run ruff check src/autoresearch/knowledge/versioning.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_rollback.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/knowledge/test_rollback.py -vv`: passed, 3 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 235 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-049` added and resolved.
+  - `P-20260612-050` added and resolved.
+- Follow-up:
+  - Task `25.2` should add rollback audit trail JSONL events with actor, reason, old version, new version, and verification result.
+
 ### 2026-06-12 12:17:14 +08:00 - Codex - Task 24.2 local dashboard export
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `24.2`; export a local status report from sample metrics without external services.

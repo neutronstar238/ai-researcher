@@ -633,7 +633,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: export renders from sample metrics without external services._
 
 - [ ] 25. Implement rollback foundations
-  - [ ] 25.1 Version strategy, config, and knowledge entries
+  - [x] 25.1 Version strategy, config, and knowledge entries
     - Track versions for prompts, workflow templates, configs, and knowledge records.
     - Store strategy-related knowledge in Obsidian Markdown with version history and rollback metadata.
     - _References: REQ 28, RP 9.4, EP 6.3_

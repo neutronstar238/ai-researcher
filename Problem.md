@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-050 - Rollback version metadata needed explicit type conversion
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:21:24 +08:00
+- Source: `poetry run mypy src`.
+- Symptom: mypy reported `int(metadata["version"])` could receive `object`.
+- Impact: Task `25.1` type verification was blocked.
+- Evidence: mypy reported `src\autoresearch\knowledge\versioning.py:144: error: No overload variant of "int" matches argument type "object"`.
+- Root cause: YAML metadata is typed as generic objects after parsing.
+- Workaround: None needed after explicit string conversion.
+- Next action: None.
+- Linked tasks: `25.1`
+- Resolution: Converted the parsed version with `int(str(metadata["version"]))`.
+- Verification: `poetry run mypy src`, `poetry run pytest tests/unit/knowledge/test_rollback.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed.
+
+### P-20260612-049 - Rollback foundations module had unused import
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 12:20:40 +08:00
+- Source: `poetry run ruff check src/autoresearch/knowledge/versioning.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_rollback.py`.
+- Symptom: Ruff reported unused `VersionSnapshot` in `src/autoresearch/knowledge/versioning.py`.
+- Impact: Task `25.1` focused lint verification was blocked.
+- Evidence: Ruff reported `F401`.
+- Root cause: The implementation originally reused the naming pattern from `MarkdownKnowledgeStore` but did not need the existing `VersionSnapshot` type.
+- Workaround: None needed after removing the import.
+- Next action: None.
+- Linked tasks: `25.1`
+- Resolution: Removed the unused import.
+- Verification: `poetry run ruff check src/autoresearch/knowledge/versioning.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_rollback.py`, `poetry run mypy src`, `poetry run pytest tests/unit/knowledge/test_rollback.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed.
+
 ### P-20260612-048 - Observability metrics export import order failed ruff
 
 - Status: Resolved
