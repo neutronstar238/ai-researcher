@@ -22,6 +22,7 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.knowledge import create_obsidian_vault_assets
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
 from autoresearch.llm import (
     LLMClientError,
@@ -73,6 +74,12 @@ DEFAULT_SLASH_COMMANDS = {
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
         "follow-up discovery; inspect cycle-summary.json before claiming publication quality.",
+    ),
+    "research/obsidian-setup.toml": (
+        "Structure and style the Obsidian vault for readable research operations.",
+        "Run `autoresearch obsidian-setup --vault autoresearch-vault --project-id {{args}}` "
+        "to create Home.md, dashboards, templates, plugin recommendations, and CSS snippet assets. "
+        "Use `--write-local-snippet` only on your own machine.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -198,6 +205,45 @@ def init_demo(
         parser.write_file(config, config_path, ConfigFormat.YAML)
 
     typer.echo(f"Demo scaffold ready at {path}")
+
+
+@app.command("obsidian-setup")
+def obsidian_setup(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to structure."),
+    ] = Path("autoresearch-vault"),
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID under the vault `projects/` directory."),
+    ] = "autoresearch-system",
+    write_local_snippet: Annotated[
+        bool,
+        typer.Option(
+            "--write-local-snippet/--no-write-local-snippet",
+            help="Also write and enable a local `.obsidian/snippets/ai-researcher.css` file.",
+        ),
+    ] = False,
+) -> None:
+    """Create Obsidian dashboards, templates, plugin notes, and styling assets."""
+
+    try:
+        assets = create_obsidian_vault_assets(
+            vault,
+            project_id,
+            write_local_snippet=write_local_snippet,
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] obsidian_setup: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"[OK] vault_home: {assets.home_path}")
+    typer.echo(f"[OK] dashboard: {assets.dashboard_path}")
+    typer.echo(f"[OK] plugin_recommendations: {assets.plugin_recommendations_path}")
+    typer.echo(f"[OK] templates: {len(assets.template_paths)}")
+    typer.echo(f"[OK] snippet: {assets.snippet_path}")
+    if assets.local_snippet_path is not None:
+        typer.echo(f"[OK] local_snippet: {assets.local_snippet_path}")
 
 
 @app.command("deploy-setup")

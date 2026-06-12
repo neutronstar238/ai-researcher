@@ -26,8 +26,12 @@ from .skills import (
 )
 from .vault import (
     EXPLORATION_DIRECTORIES,
+    OBSIDIAN_SYSTEM_DIRECTORIES,
     PROJECT_DIRECTORIES,
+    RECOMMENDED_OBSIDIAN_PLUGINS,
+    ObsidianVaultAssets,
     VaultLayout,
+    create_obsidian_vault_assets,
     create_vault_layout,
 )
 from .versioning import (
@@ -52,12 +56,15 @@ __all__ = [
     "KnowledgeEntryType",
     "KnowledgeZone",
     "MarkdownKnowledgeStore",
+    "OBSIDIAN_SYSTEM_DIRECTORIES",
     "PROJECT_DIRECTORIES",
     "PermissionManager",
     "ProjectAuthorizationPolicy",
     "ProjectMembership",
     "ProjectPermission",
     "ProjectRole",
+    "RECOMMENDED_OBSIDIAN_PLUGINS",
+    "ObsidianVaultAssets",
     "RollbackResult",
     "RollbackTargetType",
     "SkillMatch",
@@ -67,6 +74,7 @@ __all__ = [
     "VersionedFileStore",
     "VaultLayout",
     "VersionSnapshot",
+    "create_obsidian_vault_assets",
     "create_vault_layout",
     "create_strategy_candidate",
     "extract_wiki_links",

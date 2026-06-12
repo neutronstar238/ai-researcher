@@ -992,6 +992,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request for one-command always-on CLI, SkillOpt, OpenClaw/hemenus-style operator experience_
     - _Verify: unit tests cover a non-review autopilot cycle and slash template creation; real `.env` single-cycle run calls live literature APIs and the configured live LLM reviewer._
 
+- [x] 55. Add Obsidian vault structure and visual setup
+  - [x] 55.1 Add safe Obsidian setup assets and CLI
+    - Add a reusable helper that creates `Home.md`, a research-loop dashboard, Obsidian templates, plugin recommendations, and CSS snippet assets under the vault.
+    - Add `autoresearch obsidian-setup` so users can structure the vault after first deploy without manually copying files.
+    - Keep `.obsidian/` local and ignored by git, while allowing `--write-local-snippet` to generate a local CSS snippet for the current machine.
+    - Add `/research:obsidian-setup` to slash command templates.
+    - Document the command in both README files without claiming third-party plugins are bundled.
+    - _References: user request for Obsidian skill/plugin structuring and vault beautification_
+    - _Verify: unit tests cover helper asset generation, local snippet generation, CLI output, and slash template creation._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1156,6 +1166,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 29,
       "tasks": ["54.1"]
+    },
+    {
+      "id": 30,
+      "tasks": ["55.1"]
     }
   ]
 }

@@ -71,6 +71,16 @@ AI-Researcher is designed as an evidence-first system rather than a clone of any
 
 This repository's differentiator is the Obsidian-compatible vault as the shared evidence, issue, skill, and strategy substrate for self-looping research. Autonomy is added only where the loop can write auditable evidence and review artifacts.
 
+## Obsidian Vault Setup
+
+Structure the local vault with dashboards, templates, plugin recommendations, and a CSS snippet:
+
+```bash
+poetry run autoresearch obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
+```
+
+Add `--write-local-snippet` on your own machine to also create `.obsidian/snippets/ai-researcher.css` and enable it in the local Obsidian appearance settings. Third-party Obsidian plugins are not bundled; see `autoresearch-vault/_system/plugins/recommended-plugins.md` after setup for optional manual installs such as Dataview, Tasks, Templater, Periodic Notes, and Omnisearch.
+
 ## Repository Layout
 
 ```text
@@ -137,7 +147,7 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Autopilot one-command loop:
 

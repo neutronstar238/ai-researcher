@@ -4,7 +4,9 @@ import pytest
 
 from autoresearch.knowledge import (
     EXPLORATION_DIRECTORIES,
+    OBSIDIAN_SYSTEM_DIRECTORIES,
     PROJECT_DIRECTORIES,
+    create_obsidian_vault_assets,
     create_vault_layout,
 )
 
@@ -33,3 +35,36 @@ def test_create_vault_layout_rejects_unsafe_project_ids(
 ) -> None:
     with pytest.raises(ValueError):
         create_vault_layout(tmp_path / "autoresearch-vault", project_id)
+
+
+def test_create_obsidian_vault_assets_adds_dashboards_templates_and_snippet(
+    tmp_path: Path,
+) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+
+    assets = create_obsidian_vault_assets(
+        vault_root,
+        "project-001",
+        write_local_snippet=True,
+    )
+
+    assert assets.home_path == vault_root / "Home.md"
+    assert assets.dashboard_path == vault_root / "_system" / "dashboards" / "research-loop.md"
+    assert assets.plugin_recommendations_path == (
+        vault_root / "_system" / "plugins" / "recommended-plugins.md"
+    )
+    assert assets.snippet_path == vault_root / "_system" / "snippets" / "ai-researcher.css"
+    assert assets.local_snippet_path == vault_root / ".obsidian" / "snippets" / "ai-researcher.css"
+    assert len(assets.template_paths) == 6
+
+    for directory in OBSIDIAN_SYSTEM_DIRECTORIES:
+        assert (vault_root / "_system" / directory).is_dir()
+
+    assert "Dataview" in assets.plugin_recommendations_path.read_text(encoding="utf-8")
+    assert "projects/project-001/issues" in assets.dashboard_path.read_text(encoding="utf-8")
+    assert "entry_type: skill_card" in (
+        vault_root / "_system" / "templates" / "skill-card.md"
+    ).read_text(encoding="utf-8")
+    assert "ai-researcher" in (vault_root / ".obsidian" / "appearance.json").read_text(
+        encoding="utf-8"
+    )

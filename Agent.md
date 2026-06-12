@@ -62,6 +62,54 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 23:36:00 +08:00 - Codex - Task 55 Obsidian vault structure and visual setup
+
+- Request: Add Obsidian skill/plugin-style structure and visual polish to the knowledge vault, then continue the main project work.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/README.md`
+  - `autoresearch-vault/Home.md`
+  - `autoresearch-vault/_system/dashboards/research-loop.md`
+  - `autoresearch-vault/_system/plugins/recommended-plugins.md`
+  - `autoresearch-vault/_system/snippets/ai-researcher.css`
+  - `autoresearch-vault/_system/templates/daily-cycle.md`
+  - `autoresearch-vault/_system/templates/experiment-record.md`
+  - `autoresearch-vault/_system/templates/issue-note.md`
+  - `autoresearch-vault/_system/templates/paper-note.md`
+  - `autoresearch-vault/_system/templates/skill-card.md`
+  - `autoresearch-vault/_system/templates/strategy-card.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/vault.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/knowledge/test_vault.py`
+- Summary:
+  - Added `create_obsidian_vault_assets` to generate a vault home page, research-loop dashboard, plugin recommendation note, reusable Obsidian templates, and a CSS snippet.
+  - Added `autoresearch obsidian-setup` with optional `--write-local-snippet` for local `.obsidian/snippets/ai-researcher.css` generation while keeping `.obsidian/` ignored by git.
+  - Added `/research:obsidian-setup` to slash command templates.
+  - Generated the repository vault assets under `autoresearch-vault/Home.md` and `autoresearch-vault/_system/`.
+  - Documented the setup command in English and Chinese README files, with a clear note that third-party Obsidian plugins are recommended manual installs, not bundled dependencies.
+  - Marked task `55.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run autoresearch obsidian-setup --vault autoresearch-vault --project-id autoresearch-system --write-local-snippet`: passed and generated tracked vault assets plus an ignored local `.obsidian` snippet.
+  - `poetry run pytest tests/unit/knowledge/test_vault.py tests/unit/cli/test_main.py::test_obsidian_setup_creates_vault_assets_and_local_snippet tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 8 tests.
+  - `poetry run ruff check src/autoresearch/knowledge src/autoresearch/cli/main.py tests/unit/knowledge/test_vault.py tests/unit/cli/test_main.py`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 309 tests and 4 opt-in live smoke tests skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `git diff --check`: passed with line-ending warnings only.
+  - Secret check: real DeepSeek key prefix was not found in tracked files outside ignored runtime directories.
+- Problems:
+  - `P-20260612-080` added and resolved for ruff import ordering in the new vault test.
+- Follow-up:
+  - Continue with the evidence-quality issue surfaced by the live autopilot reviewer: fix report evidence IDs and reproduction metadata.
+  - Implement a SkillOpt-inspired skill evolution loop for bounded skill-card edits after the evidence-quality gate is stable.
+
 ### 2026-06-12 23:22:00 +08:00 - Codex - Task 54 one-command autopilot loop
 
 - Request: Continue until the system can run its own loop, use real online discovery and the configured `.env` model, document references such as AI-Researcher, Horizon-style/daily literature refresh patterns, OpenClaw, and SkillOpt, and expose a one-command always-on CLI.

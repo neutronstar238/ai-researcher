@@ -40,6 +40,8 @@ Target version: `0.1.0`.
 - Optional `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` and `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS` deployment settings for Semantic Scholar rate-limit tuning.
 - `autoresearch autopilot` one-command loop for live literature refresh, source-backed candidate generation, similarity checking, local experiment execution, optional live LLM evidence review, Obsidian issue writing, and follow-up state merging.
 - `/research:autopilot` slash command template for starting the local research loop.
+- `autoresearch obsidian-setup` for creating vault dashboards, templates, plugin recommendations, and CSS snippet assets.
+- `/research:obsidian-setup` slash command template for structuring the local Obsidian vault.
 
 ### Changed
 
@@ -56,6 +58,7 @@ Target version: `0.1.0`.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 - README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
+- README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
 
 ### Fixed
 

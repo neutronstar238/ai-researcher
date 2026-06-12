@@ -30,6 +30,16 @@ AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸
 
 本项目的核心差异是把 Obsidian 兼容 vault 作为证据、问题、技能和策略的统一底座。自动化只在能写出可审计证据和评审产物时推进。
 
+## Obsidian 知识库设置
+
+用一条命令生成本地 vault 的首页、dashboard、模板、插件推荐清单和 CSS snippet：
+
+```bash
+poetry run autoresearch obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
+```
+
+如果是在自己的机器上使用 Obsidian，可以额外加 `--write-local-snippet`，它会写入 `.obsidian/snippets/ai-researcher.css` 并在本地外观配置中启用。第三方 Obsidian 插件不会随仓库打包；运行后可查看 `autoresearch-vault/_system/plugins/recommended-plugins.md`，按需手动安装 Dataview、Tasks、Templater、Periodic Notes、Omnisearch 等插件。
+
 ## 开发环境
 
 前置条件：
@@ -76,7 +86,7 @@ poetry run autoresearch slash-commands init
 poetry run autoresearch slash-commands list
 ```
 
-默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.autoresearch/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
 
 Autopilot 一条命令常驻循环：
 

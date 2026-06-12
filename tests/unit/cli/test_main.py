@@ -40,6 +40,34 @@ def test_init_demo_creates_readme_and_config(tmp_path: Path) -> None:
     assert (demo_path / "config.yaml").is_file()
 
 
+def test_obsidian_setup_creates_vault_assets_and_local_snippet(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "obsidian-setup",
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project_1",
+            "--write-local-snippet",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] vault_home:" in result.stdout
+    assert "[OK] templates: 6" in result.stdout
+    assert (vault_root / "Home.md").is_file()
+    assert (vault_root / "_system" / "dashboards" / "research-loop.md").is_file()
+    assert (vault_root / "_system" / "plugins" / "recommended-plugins.md").is_file()
+    assert (vault_root / "_system" / "templates" / "skill-card.md").is_file()
+    assert (vault_root / ".obsidian" / "snippets" / "ai-researcher.css").is_file()
+    assert "enabledCssSnippets" in (vault_root / ".obsidian" / "appearance.json").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -175,10 +203,12 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
+    assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
     assert "/research:autopilot" in list_result.stdout
+    assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout

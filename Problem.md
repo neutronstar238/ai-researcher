@@ -80,6 +80,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Resolution: Updated the assertion to check the merged CLI output.
 - Verification: `poetry run pytest tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/cli/test_main.py::test_autopilot_command_reports_empty_literature_result tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 3 tests.
 
+### P-20260612-080 - Obsidian vault test import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 23:30:00 +08:00
+- Source: Focused task `55.1` ruff check after adding Obsidian vault setup tests.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `tests/unit/knowledge/test_vault.py`.
+- Impact: The new Obsidian helper tests passed, but the formatting gate failed.
+- Evidence: `poetry run ruff check src/autoresearch/knowledge src/autoresearch/cli/main.py tests/unit/knowledge/test_vault.py tests/unit/cli/test_main.py` returned one fixable import-order error.
+- Root cause: The new `create_obsidian_vault_assets` import was not ordered according to ruff/isort.
+- Workaround: None needed after automatic formatting.
+- Next action: Continue running ruff before marking code tasks complete.
+- Linked tasks: `55.1`
+- Resolution: Ran `poetry run ruff check tests/unit/knowledge/test_vault.py --fix`.
+- Verification: `poetry run ruff check src/autoresearch/knowledge src/autoresearch/cli/main.py tests/unit/knowledge/test_vault.py tests/unit/cli/test_main.py` passed after formatting.
+
 ### P-20260612-076 - Focused test command used stale deploy-setup node name
 
 - Status: Resolved
