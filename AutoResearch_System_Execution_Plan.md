@@ -211,6 +211,12 @@ autoresearch/
 4. 至少生成 10 张 Skill Card；
 5. 至少支持一次配置或策略回滚。
 
+### 6.5 Online literature refresh constraint
+
+The self-loop candidate pool must be fed by a daily online literature refresh pipeline. The first implementation should follow the same pipeline separation used by Horizon-style news radar systems: configured sources, fetch, deduplicate, score/filter, enrich, summarize or persist. For AI-Researcher this means ArXiv and Semantic Scholar first, search-query generation from Obsidian topics/methods/datasets/failures, source-specific rate limits, retrieval cache reuse, and evidence-backed `DocumentRecord` output before trend/gap analysis.
+
+ArXiv access must respect the official legacy API constraint of a single connection and no more than one request every three seconds. Search prompts and query templates are evolvable retrieval policies, but they must be versioned and evaluated before promotion.
+
 ---
 
 ## 7. Phase 4：自进化试运行

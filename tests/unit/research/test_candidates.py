@@ -3,11 +3,18 @@ from pathlib import Path
 
 import pytest
 
-from autoresearch.knowledge import MarkdownKnowledgeStore
+from autoresearch.knowledge import (
+    KnowledgeEntry,
+    KnowledgeEntryType,
+    KnowledgeZone,
+    MarkdownKnowledgeStore,
+)
 from autoresearch.research import (
     CandidateGenerationConfig,
     CandidateLifecycleError,
     CandidateVaultLinks,
+    TrendGapAnalysisConfig,
+    analyze_trends_and_gaps,
     generate_research_candidates,
     store_candidate_lifecycle_entry,
     transition_candidate_status,
@@ -129,6 +136,71 @@ def test_store_candidate_lifecycle_entry_writes_obsidian_links(
     assert "[[skill_baseline_first]]" in markdown
     assert "[[strategy_card_1]]" in markdown
     assert "[[candidate_1|Reduce Weak Evidence In Agent On Review]]" in index
+
+
+def test_analyze_trends_and_gaps_compares_literature_with_vault_paths(
+    tmp_path: Path,
+) -> None:
+    store = MarkdownKnowledgeStore(tmp_path)
+    store.write_entry(
+        "exploration/methodologies/agent.md",
+        KnowledgeEntry(
+            entry_id="method_agent",
+            entry_type=KnowledgeEntryType.METHOD_CARD,
+            zone=KnowledgeZone.EXPLORATION,
+            title="Agent Method",
+            keywords=["agent"],
+            body="Agent workflows for evidence collection.",
+        ),
+    )
+    store.write_entry(
+        "projects/project-1/experience/review.md",
+        KnowledgeEntry(
+            entry_id="experience_review",
+            entry_type=KnowledgeEntryType.PROJECT_PROGRESS,
+            zone=KnowledgeZone.PROJECT,
+            project_id="project-1",
+            title="Review Experience",
+            keywords=["weak evidence"],
+            body="Prior project experience found weak evidence in agent review workflows.",
+        ),
+    )
+
+    updates = analyze_trends_and_gaps(
+        [
+            _doc(
+                "doc_1",
+                "Agent evaluation with weak evidence",
+                "Agent workflows using the Review benchmark report weak evidence.",
+            ),
+            _doc(
+                "doc_2",
+                "Agent review benchmark has weak evidence",
+                "Agent systems on the Review benchmark still report weak evidence.",
+            ),
+        ],
+        vault_root=tmp_path,
+        config=TrendGapAnalysisConfig(max_updates=2, min_ready_evidence_refs=2),
+    )
+
+    assert len(updates) == 1
+    update = updates[0]
+    assert update.evidence_refs == ("doc_1", "doc_2")
+    assert "exploration/index.md" in update.vault_paths
+    assert "exploration/methodologies/agent.md" in update.vault_paths
+    assert "projects/project-1/experience/review.md" in update.vault_paths
+    assert update.gap_reasons == ("missing dataset card for review",)
+    assert update.missing_vault_paths == ("exploration/datasets/review.md",)
+    assert update.candidate.metadata["gap_analysis"]["evidence_refs"] == ["doc_1", "doc_2"]
+    assert update.candidate.metadata["gap_analysis"]["vault_paths"]
+
+
+def test_analyze_trends_and_gaps_skips_candidates_without_source_evidence(
+    tmp_path: Path,
+) -> None:
+    updates = analyze_trends_and_gaps([], vault_root=tmp_path)
+
+    assert updates == []
 
 
 def _candidate() -> ResearchCandidate:

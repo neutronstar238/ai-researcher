@@ -541,7 +541,7 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 3: Self-Loop Research Platform (Weeks 17-24)
 
-- [ ] 20. Build Obsidian-backed research candidate pool
+- [x] 20. Build Obsidian-backed research candidate pool
   - [x] 20.1 Store candidate lifecycle
     - Track candidate status: draft, ready_for_review, approved, active, completed, rejected, archived.
     - Store candidates as Obsidian Markdown entries under `autoresearch-vault/exploration/topics/` or a dedicated candidate folder linked from `autoresearch-vault/exploration/index.md`.
@@ -549,7 +549,7 @@ A task can be checked only when all applicable items are true:
     - _References: RP 8, EP 6.3_
     - _Verify: unit tests cover legal status transitions and confirm candidate wiki-links are written._
 
-  - [ ] 20.2 Add trend and gap analyzer
+  - [x] 20.2 Add trend and gap analyzer
     - Generate candidate updates from recent literature and knowledge base gaps.
     - Require source evidence for each gap.
     - Compare recent literature against Obsidian topic indexes, method cards, dataset cards, and prior project experience.
@@ -560,10 +560,21 @@ A task can be checked only when all applicable items are true:
   - [ ] 21.1 Implement local task scheduler
     - Support daily/weekly candidate refresh and queued experiment checks.
     - Keep external orchestrators optional.
+    - The scheduled candidate refresh must call the literature retrieval layer before trend/gap analysis.
+    - Use Horizon-style pipeline separation: configured sources, fetch, deduplicate, score/filter, enrich, summarize or persist.
     - _References: EP 6.3, RP 8_
     - _Verify: scheduler runs a mock recurring task and records audit logs._
 
-  - [ ] 21.2 Add budget-aware execution gates
+  - [ ] 21.2 Add daily online literature refresh pipeline
+    - Fetch fresh papers and research materials automatically from free/public sources, starting with ArXiv and Semantic Scholar.
+    - Respect source-specific API limits; ArXiv legacy API access must use a single connection and at least 3 seconds between requests.
+    - Optimize search queries from project topics, Obsidian topic indexes, method cards, dataset cards, prior failures, and active candidate gaps.
+    - Store raw metadata, normalized `DocumentRecord` items, source query text, timestamps, and rate-limit decisions in the Obsidian vault or retrieval cache.
+    - Deduplicate results across sources before candidate update analysis.
+    - _References: REQ 12, REQ 6, Horizon-style source pipeline, arXiv API terms_
+    - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access._
+
+  - [ ] 21.3 Add budget-aware execution gates
     - Pause or require approval when a task approaches 80 percent of budget.
     - _References: EP 15.2, RP 3.3_
     - _Verify: test triggers budget approval state._

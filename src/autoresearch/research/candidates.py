@@ -7,6 +7,8 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -93,6 +95,25 @@ class CandidateVaultLinks:
 
 
 @dataclass(frozen=True)
+class TrendGapAnalysisConfig:
+    """Tuning knobs for literature-vault gap analysis."""
+
+    max_updates: int = 3
+    min_ready_evidence_refs: int = 2
+
+
+@dataclass(frozen=True)
+class TrendGapUpdate:
+    """Evidence-backed candidate update produced from literature-vault gaps."""
+
+    candidate: ResearchCandidate
+    gap_reasons: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    vault_paths: tuple[str, ...]
+    missing_vault_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class _DocumentSignal:
     document: DocumentRecord
     methods: tuple[str, ...]
@@ -107,6 +128,13 @@ class _Cluster:
     limitation: str
     dataset: str
     signals: tuple[_DocumentSignal, ...]
+
+
+@dataclass(frozen=True)
+class _VaultReference:
+    entry: KnowledgeEntry
+    relative_path: str
+    searchable_text: str
 
 
 def generate_research_candidates(
@@ -126,6 +154,53 @@ def generate_research_candidates(
             candidate.title,
         ),
     )[: config.max_candidates]
+
+
+def analyze_trends_and_gaps(
+    documents: list[DocumentRecord],
+    *,
+    vault_root: Path | str = DEFAULT_CANDIDATE_VAULT_ROOT,
+    config: TrendGapAnalysisConfig = TrendGapAnalysisConfig(),
+) -> list[TrendGapUpdate]:
+    """Compare recent literature candidates against Obsidian knowledge gaps."""
+
+    candidates = generate_research_candidates(
+        documents,
+        config=CandidateGenerationConfig(
+            max_candidates=config.max_updates,
+            min_ready_evidence_refs=config.min_ready_evidence_refs,
+        ),
+    )
+    root = Path(vault_root)
+    references = _load_vault_references(root)
+    index_paths = _topic_index_paths(root)
+
+    updates: list[TrendGapUpdate] = []
+    for candidate in candidates:
+        gap_reasons = _candidate_gap_reasons(candidate, references, root)
+        if not gap_reasons:
+            continue
+        vault_paths = _candidate_vault_paths(candidate, references, index_paths)
+        missing_paths = _candidate_missing_vault_paths(candidate, gap_reasons)
+        evidence_refs = tuple(candidate.evidence_refs)
+        metadata = dict(candidate.metadata)
+        metadata["gap_analysis"] = {
+            "gap_reasons": list(gap_reasons),
+            "evidence_refs": list(evidence_refs),
+            "vault_paths": list(vault_paths),
+            "missing_vault_paths": list(missing_paths),
+        }
+        updates.append(
+            TrendGapUpdate(
+                candidate=candidate.model_copy(update={"metadata": metadata}),
+                gap_reasons=gap_reasons,
+                evidence_refs=evidence_refs,
+                vault_paths=vault_paths,
+                missing_vault_paths=missing_paths,
+            )
+        )
+
+    return updates
 
 
 def transition_candidate_status(
@@ -229,6 +304,164 @@ def _link_lines(label: str, targets: tuple[str, ...]) -> list[str]:
     lines.extend(f"- [[{target}]]" for target in unique_targets)
     lines.append("")
     return lines
+
+
+def _load_vault_references(vault_root: Path) -> tuple[_VaultReference, ...]:
+    if not vault_root.exists():
+        return ()
+
+    references: list[_VaultReference] = []
+    for path in sorted(vault_root.rglob("*.md")):
+        relative_path = path.relative_to(vault_root)
+        if any(part.startswith(".") for part in relative_path.parts):
+            continue
+        try:
+            entry = KnowledgeEntry.from_markdown(path.read_text(encoding="utf-8"))
+        except (ValueError, ValidationError):
+            continue
+        references.append(
+            _VaultReference(
+                entry=entry,
+                relative_path=relative_path.as_posix(),
+                searchable_text=_entry_searchable_text(entry),
+            )
+        )
+    return tuple(references)
+
+
+def _entry_searchable_text(entry: KnowledgeEntry) -> str:
+    return " ".join(
+        [
+            entry.title,
+            *entry.tags,
+            *entry.keywords,
+            entry.body,
+        ]
+    ).casefold()
+
+
+def _topic_index_paths(vault_root: Path) -> tuple[str, ...]:
+    exploration_root = vault_root / "exploration"
+    candidates = [exploration_root / "index.md"]
+    if exploration_root.exists():
+        candidates.extend(sorted(exploration_root.glob("**/index.md")))
+    return tuple(
+        dict.fromkeys(
+            path.relative_to(vault_root).as_posix()
+            for path in candidates
+            if path.exists()
+        )
+    )
+
+
+def _candidate_gap_reasons(
+    candidate: ResearchCandidate,
+    references: tuple[_VaultReference, ...],
+    vault_root: Path,
+) -> tuple[str, ...]:
+    method = _metadata_text(candidate, "method")
+    dataset = _metadata_text(candidate, "dataset")
+    limitation = _metadata_text(candidate, "limitation")
+    reasons: list[str] = []
+
+    if not _has_reference(references, KnowledgeEntryType.METHOD_CARD, method):
+        reasons.append(f"missing method card for {method}")
+    if not _has_reference(references, KnowledgeEntryType.DATASET_CARD, dataset):
+        reasons.append(f"missing dataset card for {dataset}")
+    if not _has_project_experience(references, (method, dataset, limitation)):
+        reasons.append(f"missing prior project experience for {limitation}")
+    if not _topic_index_covers(vault_root, (method, dataset, limitation)):
+        reasons.append("topic index lacks candidate gap keywords")
+
+    return tuple(reasons)
+
+
+def _candidate_vault_paths(
+    candidate: ResearchCandidate,
+    references: tuple[_VaultReference, ...],
+    index_paths: tuple[str, ...],
+) -> tuple[str, ...]:
+    terms = (
+        _metadata_text(candidate, "method"),
+        _metadata_text(candidate, "dataset"),
+        _metadata_text(candidate, "limitation"),
+    )
+    matched_paths = [
+        reference.relative_path
+        for reference in references
+        if any(term in reference.searchable_text for term in terms)
+    ]
+    return tuple(sorted(dict.fromkeys([*index_paths, *matched_paths])))
+
+
+def _candidate_missing_vault_paths(
+    candidate: ResearchCandidate,
+    gap_reasons: tuple[str, ...],
+) -> tuple[str, ...]:
+    method = _metadata_text(candidate, "method")
+    dataset = _metadata_text(candidate, "dataset")
+    limitation = _metadata_text(candidate, "limitation")
+    paths: list[str] = []
+    for reason in gap_reasons:
+        if reason.startswith("missing method card"):
+            paths.append(f"exploration/methodologies/{_slugify(method)}.md")
+        elif reason.startswith("missing dataset card"):
+            paths.append(f"exploration/datasets/{_slugify(dataset)}.md")
+        elif reason.startswith("missing prior project experience"):
+            paths.append(f"projects/*/experience/{_slugify(limitation)}.md")
+        elif reason.startswith("topic index lacks"):
+            paths.append("exploration/index.md")
+    return tuple(paths)
+
+
+def _metadata_text(candidate: ResearchCandidate, key: str) -> str:
+    value = candidate.metadata.get(key)
+    if isinstance(value, str) and value:
+        return value.casefold()
+    return key
+
+
+def _has_reference(
+    references: tuple[_VaultReference, ...],
+    entry_type: KnowledgeEntryType,
+    term: str,
+) -> bool:
+    return any(
+        reference.entry.entry_type == entry_type and term in reference.searchable_text
+        for reference in references
+    )
+
+
+def _has_project_experience(
+    references: tuple[_VaultReference, ...],
+    terms: tuple[str, ...],
+) -> bool:
+    experience_types = {
+        KnowledgeEntryType.EXPERIMENT_RECORD,
+        KnowledgeEntryType.FAILURE_CASE,
+        KnowledgeEntryType.ISSUE_NOTE,
+        KnowledgeEntryType.PROJECT_PROGRESS,
+        KnowledgeEntryType.REVIEW_NOTE,
+    }
+    return any(
+        reference.entry.entry_type in experience_types
+        and reference.entry.zone == KnowledgeZone.PROJECT
+        and any(term in reference.searchable_text for term in terms)
+        for reference in references
+    )
+
+
+def _topic_index_covers(vault_root: Path, terms: tuple[str, ...]) -> bool:
+    index_path = vault_root / "exploration" / "index.md"
+    if not index_path.exists():
+        return False
+    text = index_path.read_text(encoding="utf-8").casefold()
+    return all(term in text for term in terms)
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+    return slug or "entry"
 
 
 def _extract_signal(document: DocumentRecord) -> _DocumentSignal:

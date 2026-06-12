@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 10:48:37 +08:00 - Codex - Task 20.2 trend and gap analyzer
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `20.2`, and record the requirement that AI-Researcher must later fetch online literature daily with Horizon-style pipeline separation.
+- Files changed:
+  - `src/autoresearch/research/candidates.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_candidates.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Agent.md`
+- Summary:
+  - Added deterministic trend/gap analysis that converts recent `DocumentRecord` literature into candidate updates only when source evidence exists.
+  - Compared candidate method, dataset, and limitation signals against Obsidian method cards, dataset cards, project experience entries, and topic index coverage.
+  - Added `TrendGapUpdate` output with evidence references, matched vault paths, missing vault paths, and gap reasons.
+  - Marked task `20.2` and parent task `20` complete.
+  - Added task `21.2` for daily online literature refresh from ArXiv/Semantic Scholar with query optimization, cache reuse, deduplication, and source-specific rate limits.
+  - Added the Phase 3 execution-plan constraint to use Horizon-style source/fetch/dedup/score/enrich/persist pipeline separation and ArXiv's single-connection, 3-second request interval rule.
+- Verification:
+  - `poetry run pytest tests/unit/research/test_candidates.py tests/unit/knowledge/test_links.py`: passed, 8 tests.
+  - `poetry run ruff check src/autoresearch/research/candidates.py src/autoresearch/research/__init__.py tests/unit/research/test_candidates.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 194 tests passed and 1 optional live literature test skipped; emitted the existing non-failing LangGraph pending-deprecation warning.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `21.1` should implement the scheduler; task `21.2` should implement the mocked daily online literature refresh pipeline before enabling real network runs.
+
 ### 2026-06-12 10:41:20 +08:00 - Codex - AI-Researcher rename cleanup
 
 - Request: Continue work and ensure the project name is `AI-Researcher`.
