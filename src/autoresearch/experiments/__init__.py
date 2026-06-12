@@ -88,6 +88,12 @@ from .shadow import (
     run_shadow_evaluation,
     write_shadow_evaluation,
 )
+from .strategy_rollback import (
+    StrategyRollbackDecision,
+    StrategyRollbackInput,
+    StrategyRollbackStatus,
+    evaluate_strategy_rollback,
+)
 from .validation import (
     StatisticalCheck,
     StatisticalNote,
@@ -135,6 +141,9 @@ __all__ = [
     "StrategyPromotionDecision",
     "StrategyPromotionInput",
     "StrategyPromotionStatus",
+    "StrategyRollbackDecision",
+    "StrategyRollbackInput",
+    "StrategyRollbackStatus",
     "StrategyRewardInput",
     "StrategyRewardResult",
     "StrategyRewardWeights",
@@ -152,6 +161,7 @@ __all__ = [
     "execute_experiment_task",
     "evaluate_budget_gate",
     "evaluate_golden_suite",
+    "evaluate_strategy_rollback",
     "generate_tabular_baseline_demo",
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",

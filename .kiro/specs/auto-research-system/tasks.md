@@ -682,14 +682,14 @@ A task can be checked only when all applicable items are true:
     - _References: RP 8.2_
     - _Verify: reward calculation test covers improvement, cost increase, and risk penalty cases._
 
-- [ ] 29. Add gray release and automatic rollback
+- [x] 29. Add gray release and automatic rollback
   - [x] 29.1 Promote strategies through approval and gray release
     - Require golden test pass, no safety regression, evidence coverage not reduced, and human approval before gray release.
     - Start gray release at a small traffic share.
     - _References: EP 7.4, RP 9.4_
     - _Verify: promotion fails without approval or golden test pass._
 
-  - [ ] 29.2 Roll back negative strategies
+  - [x] 29.2 Roll back negative strategies
     - Automatically roll back after repeated negative reward or safety incident.
     - Freeze the strategy family until reviewed.
     - _References: RP 12 Scenario C_

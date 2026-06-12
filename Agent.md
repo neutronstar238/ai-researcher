@@ -59,6 +59,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:06:20 +08:00 - Codex - Task 29.2 automatic strategy rollback
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `29.2`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/strategy_rollback.py`
+  - `tests/unit/experiments/test_strategy_rollback.py`
+- Summary:
+  - Added automatic strategy rollback decision models and evaluation logic.
+  - Triggered rollback after repeated negative reward or any safety incident.
+  - Returned a rolled-back strategy copy, rollback target, strategy family id, frozen-family flag, and review-required flag.
+  - Recorded rollback audit events with recent reward history, trigger reasons, freeze status, and rollback target.
+  - Added tests for repeated negative reward rollback, no rollback after a single negative reward, and safety incident rollback.
+  - Marked task `29.2` and parent task `29` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/strategy_rollback.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_strategy_rollback.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_strategy_rollback.py -vv`: passed, 3 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 272 passed and 3 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `30.1` strategy evolution report summary.
+
 ### 2026-06-12 13:02:58 +08:00 - Codex - Task 29.1 gray release promotion gate
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `29.1`.
