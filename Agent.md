@@ -59,6 +59,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 12:47:03 +08:00 - Codex - Task 27.2 golden test set
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `27.2`; create a fixed golden regression suite and verify stable strategies pass before candidate comparison.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/golden.py`
+  - `tests/unit/experiments/test_golden.py`
+- Summary:
+  - Added golden-suite models for fixed regression cases, observations, per-case results, and suite evaluations.
+  - Added default required golden domains for literature retrieval, config parsing, sandbox denial, result validation, citation validation, and report generation.
+  - Added `build_default_golden_suite()` and `evaluate_golden_suite()` so only a stable strategy with all required cases passed can serve as the comparison baseline.
+  - Added tests for required domain coverage, stable strategy pass, warning/missing failures, and candidate pre-release failure.
+  - Marked task `27.2` and parent task `27` complete.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/golden.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_golden.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_golden.py -vv`: passed, 4 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 261 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - None.
+- Follow-up:
+  - Task `28.1` should run candidate strategies in shadow mode while keeping production output unchanged.
+
 ### 2026-06-12 12:42:57 +08:00 - Codex - Task 27.1 replay dataset
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `27.1`; create replay datasets from historical tasks with inputs, outputs, evidence, costs, and validation outcomes.

@@ -29,6 +29,17 @@ from .failures import (
     update_recurring_failure_patterns,
 )
 from .generator import generate_experiment_directory
+from .golden import (
+    REQUIRED_GOLDEN_DOMAINS,
+    GoldenSuite,
+    GoldenSuiteEvaluation,
+    GoldenTestCase,
+    GoldenTestDomain,
+    GoldenTestObservation,
+    GoldenTestResult,
+    build_default_golden_suite,
+    evaluate_golden_suite,
+)
 from .network import (
     NetworkDecision,
     RestrictedNetworkPolicy,
@@ -81,7 +92,14 @@ __all__ = [
     "EvidenceBindingError",
     "ExperimentPlanningConfig",
     "FailureKnowledgeRecord",
+    "GoldenSuite",
+    "GoldenSuiteEvaluation",
+    "GoldenTestCase",
+    "GoldenTestDomain",
+    "GoldenTestObservation",
+    "GoldenTestResult",
     "NetworkDecision",
+    "REQUIRED_GOLDEN_DOMAINS",
     "RecurringFailurePattern",
     "ReplayCase",
     "ReplayDataset",
@@ -96,6 +114,7 @@ __all__ = [
     "ValidationReport",
     "bind_metrics_to_evidence",
     "build_replay_case",
+    "build_default_golden_suite",
     "classify_failure_category",
     "collect_result_bundle",
     "create_tabular_baseline_task",
@@ -103,6 +122,7 @@ __all__ = [
     "default_network_policy",
     "execute_experiment_task",
     "evaluate_budget_gate",
+    "evaluate_golden_suite",
     "generate_tabular_baseline_demo",
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",
