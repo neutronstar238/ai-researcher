@@ -24,7 +24,7 @@ from autoresearch.reports import (
     assert_report_readable,
     generate_markdown_report,
 )
-from autoresearch.schemas import EvidenceEdge, ExperimentTask, file_hash
+from autoresearch.schemas import CostRecord, EvidenceEdge, ExperimentTask, file_hash
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,7 @@ class DemoWorkflowResult:
     task: ExperimentTask
     report_path: Path
     evidence_map_path: Path
+    run_record_path: Path
     validation_json_path: Path
     validation_markdown_path: Path
     run_id: str
@@ -60,6 +61,7 @@ def run_scientistbench_demo(
     run = run.model_copy(
         update={
             "data_hash": file_hash(_data_path(experiment_dir, demo)),
+            "cost_record": _cost_record(run),
             "cost_json": _cost_json(run),
         }
     )
@@ -77,6 +79,7 @@ def run_scientistbench_demo(
         validation,
         claim_id=f"{task.id}_claim",
     )
+    run_record_path = _write_run_record(experiment_dir, run, bundle, validation)
     evidence_map_path = _write_evidence_map(experiment_dir, task, evidence_edges)
     report_path = experiment_dir / "report" / "report.md"
     report = generate_markdown_report(
@@ -90,6 +93,7 @@ def run_scientistbench_demo(
         task=task,
         report_path=report_path,
         evidence_map_path=evidence_map_path,
+        run_record_path=run_record_path,
         validation_json_path=Path(validation.json_path),
         validation_markdown_path=Path(validation.markdown_path),
         run_id=run.id,
@@ -128,6 +132,18 @@ def _cost_json(run: Any) -> dict[str, float | int]:
         "gpu_hours": 0.0,
         "human_approval_count": 0,
     }
+
+
+def _cost_record(run: Any) -> CostRecord:
+    cpu_time_seconds = 0.0
+    if run.start_time is not None and run.end_time is not None:
+        cpu_time_seconds = max((run.end_time - run.start_time).total_seconds(), 0.0)
+    return CostRecord(
+        model_name="local-runner",
+        cpu_time_seconds=cpu_time_seconds,
+        gpu_hours=0.0,
+        human_approval_count=0,
+    )
 
 
 def _metric_bounds(demo: str) -> dict[str, tuple[float | None, float | None]]:
@@ -171,6 +187,41 @@ def _write_evidence_map(
         encoding="utf-8",
     )
     return evidence_map_path
+
+
+def _write_run_record(
+    experiment_dir: Path,
+    run: Any,
+    bundle: Any,
+    validation: Any,
+) -> Path:
+    run_dir = experiment_dir / "run"
+    run_dir.mkdir(exist_ok=True)
+    run_record_path = run_dir / "run-record.json"
+    payload = {
+        "run": run.model_dump(mode="json"),
+        "metrics": {
+            "path": run.metrics_path,
+            "values": bundle.metrics,
+        },
+        "logs": bundle.logs,
+        "artifacts": bundle.artifacts,
+        "validation_report": {
+            "status": validation.status.value,
+            "json_path": validation.json_path,
+            "markdown_path": validation.markdown_path,
+        },
+        "cost_record": (
+            run.cost_record.model_dump(mode="json")
+            if run.cost_record is not None
+            else None
+        ),
+    }
+    run_record_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return run_record_path
 
 
 def _report_context(

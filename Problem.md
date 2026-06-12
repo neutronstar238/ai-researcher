@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-061 - Sandbox property test hit Hypothesis deadline on Windows
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 14:29:00 +08:00
+- Source: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` during Checkpoint B verification.
+- Symptom: `tests/property/experiments/test_sandbox.py::test_sandbox_allows_configured_cache_and_output_dirs` failed as a Hypothesis flaky failure because the first generated example exceeded the default 200 ms deadline.
+- Impact: Checkpoint B full-suite verification could not pass until the property test allowed normal Windows filesystem timing variability.
+- Evidence: Hypothesis reported `DeadlineExceeded: Test took 746.90ms, which exceeds the deadline of 200.00ms`, then marked the test flaky when a later rerun took 19.56 ms.
+- Root cause: The property test creates temporary directories and resolves filesystem paths; on Windows the first run can exceed Hypothesis' default deadline even though the property outcome is stable.
+- Workaround: None needed after disabling the deadline for this filesystem timing-sensitive property test.
+- Next action: Keep Hypothesis deadlines disabled or relaxed for filesystem-heavy property tests that are validating correctness rather than performance.
+- Linked tasks: Checkpoint B
+- Resolution: Added `@settings(deadline=None)` to `test_sandbox_allows_configured_cache_and_output_dirs`.
+- Verification: `poetry run pytest tests/property/experiments/test_sandbox.py -vv` passed with 7 tests, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with 295 passed and 3 skipped after the deadline setting update.
+
 ### P-20260612-060 - Docker Python 3.13 image forced NumPy source build
 
 - Status: Resolved

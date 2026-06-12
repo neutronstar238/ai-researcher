@@ -62,6 +62,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:35:22 +08:00 - Codex - Checkpoint B Phase 1 MVP loop
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint B, verifying the Phase 1 MVP loop with real local demo runs.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `tests/property/experiments/test_sandbox.py`
+  - `tests/unit/experiments/test_acceptance.py`
+- Summary:
+  - Added structured `CostRecord` attachment to local ScientistBench-Lite demo runs.
+  - Added `run/run-record.json` persistence for demo runs, including run metadata, metrics, logs, artifacts, validation report paths, and cost record payloads.
+  - Extended MVP acceptance tests to assert each initial run and rerun has run ID, commit SHA, config hash, data hash, metrics, logs, artifacts, validation report, and cost record.
+  - Disabled the Hypothesis deadline for a filesystem-heavy sandbox property test after a Windows deadline flake blocked full-suite verification.
+  - Added and resolved `P-20260612-061`.
+  - Updated `CHANGELOG.md` for the new persisted run record.
+  - Marked Checkpoint B complete in `tasks.md`.
+  - No external live call was applicable for this local MVP loop checkpoint.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/demo_workflow.py tests/unit/experiments/test_acceptance.py`: passed.
+  - `poetry run pytest tests/unit/experiments/test_acceptance.py tests/unit/experiments/test_demos.py tests/unit/experiments/test_validation.py tests/unit/reports/test_report_generator.py -vv`: passed, 12 tests.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - First real acceptance wrapper failed before project code ran because the temporary script directory was not created; reran with `New-Item -ItemType Directory` and the acceptance verification passed.
+  - Real local acceptance verification: passed; available demo count 2; success rate 1.0; rerun success rate 1.0; 4 run records verified; 4 reports verified with evidence links.
+  - `poetry run ruff check src tests`: passed.
+  - First full-suite pytest failed on `test_sandbox_allows_configured_cache_and_output_dirs` due Hypothesis deadline flake; recorded as `P-20260612-061`.
+  - `poetry run pytest tests/property/experiments/test_sandbox.py -vv`: passed, 7 tests after the deadline setting update.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 295 passed and 3 skipped after the deadline setting update.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - `P-20260612-061` added and resolved.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with Checkpoint C only after verifying Phase 2 assistant criteria against current code paths.
+
 ### 2026-06-12 14:22:06 +08:00 - Codex - Checkpoint A Phase 0 baseline
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint A, verifying the Phase 0 baseline.

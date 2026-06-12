@@ -18,6 +18,7 @@ Target version: `0.1.0`.
 - Literature client and storage foundations for ArXiv and Semantic Scholar workflows.
 - Knowledge-vault entry storage, permissions, backlink/index handling, version history, rollback, failure records, skill cards, and strategy cards.
 - Minimal experiment execution, result collection, validation reports, evidence binding, report generation, citation checks, figure/table helpers, and reproducibility package validation.
+- ScientistBench-Lite demo acceptance now persists `run/run-record.json` with run metadata, metrics, logs, artifacts, validation report paths, and cost records.
 - Local scheduler, daily literature refresh workflow foundations, similarity checks, candidate generation, hypotheses, and approval records.
 - Controlled self-evolution foundations: replay datasets, golden tests, shadow evaluation, reward scoring, gray release approval, rollback, and audit review.
 - Operational reporting: system metrics, static status reports, dashboard HTML export, project permissions, plugin interfaces, license scanner, project cost management, and service health/SLA reports.

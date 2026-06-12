@@ -790,7 +790,7 @@ A task can be checked only when all applicable items are true:
   - `Agent.md` and `Problem.md` are current.
   - A focused commit exists for each completed Phase 0 task or subtask.
 
-- [ ] Checkpoint B: Phase 1 MVP loop
+- [x] Checkpoint B: Phase 1 MVP loop
   - At least one ScientistBench-Lite task completes from direction to Markdown report.
   - Every run has run ID, commit SHA, config hash, data hash, logs, metrics, artifacts, validation report, and cost record.
   - Every quantitative claim in the report links to evidence.

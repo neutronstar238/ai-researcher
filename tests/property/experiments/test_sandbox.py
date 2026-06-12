@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from autoresearch.experiments import SandboxAccessMode, SandboxPathPolicy
@@ -52,6 +52,7 @@ def test_sandbox_blocks_absolute_paths_outside_allowlist(filename: str) -> None:
             policy.require_access(outside_dir / f"{filename}.txt")
 
 
+@settings(deadline=None)
 @given(filename=SAFE_NAMES)
 def test_sandbox_allows_configured_cache_and_output_dirs(filename: str) -> None:
     with TemporaryDirectory() as temp_dir:
