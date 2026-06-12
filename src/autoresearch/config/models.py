@@ -77,7 +77,7 @@ class MessagingChannelConfig(BaseModel):
     app_id_env: str | None = None
     app_secret_env: str | None = None
     verification_token_env: str | None = None
-    slash_command_prefix: str = "/autoresearch"
+    slash_command_prefix: str = "/airesearcher"
 
 
 class DeploymentConfig(BaseModel):
@@ -87,11 +87,11 @@ class DeploymentConfig(BaseModel):
     llm: ModelProviderConfig = Field(default_factory=ModelProviderConfig)
     wechat: MessagingChannelConfig = Field(default_factory=MessagingChannelConfig)
     feishu: MessagingChannelConfig = Field(default_factory=MessagingChannelConfig)
-    slash_commands_dir: Path = Path(".autoresearch/commands")
+    slash_commands_dir: Path = Path(".airesearcher/commands")
 
 
 class SystemConfig(BaseModel):
-    """Top-level configuration for a local AutoResearch installation."""
+    """Top-level configuration for a local AI-Researcher installation."""
 
     project_root: Path = Path(".")
     log_level: str = "INFO"

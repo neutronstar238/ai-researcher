@@ -248,7 +248,7 @@ def _report_context(
     evidence_edges: list[EvidenceEdge],
     output_dir: Path | str,
 ) -> ReportContext:
-    command = f"autoresearch run-demo --demo {task.id} --output-dir {Path(output_dir)}"
+    command = f"airesearcher run-demo --demo {task.id} --output-dir {Path(output_dir)}"
     return ReportContext(
         title=f"ScientistBench-Lite {task.id} Report",
         question=f"Can the local demo task `{task.id}` complete the MVP loop?",

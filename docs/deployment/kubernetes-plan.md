@@ -4,7 +4,7 @@ Status: planning only. Do not add a Helm chart until the Docker Compose package 
 
 ## Scope
 
-This plan covers a future private Kubernetes deployment for AI-Researcher. The current deployable runtime is still the CLI-centered app image that can run `autoresearch doctor`; it is not yet a full web platform.
+This plan covers a future private Kubernetes deployment for AI-Researcher. The current deployable runtime is still the CLI-centered app image that can run `airesearcher doctor`; it is not yet a full web platform.
 
 ## Prerequisites
 
@@ -74,7 +74,7 @@ Use object storage for large raw datasets instead of storing them directly in th
 
 ## Health Checks
 
-- Use an init check equivalent to `autoresearch doctor` to verify package import, config parser availability, project root, and knowledge vault path.
+- Use an init check equivalent to `airesearcher doctor` to verify package import, config parser availability, project root, and knowledge vault path.
 - Use a readiness probe that runs a lightweight command until a real HTTP server exists.
 - Use a liveness probe only for long-running services; do not restart one-shot research Jobs just because a long experiment is active.
 - CronJobs must surface failed runs through logs and audit records rather than silently retrying without provenance.
@@ -104,5 +104,5 @@ Do not create the Helm chart until all of the following are true:
 
 - `helm template` renders Deployment or Job, optional database profile, Secrets references, PVCs, probes, and resource limits.
 - `helm install --dry-run --debug` passes in a test namespace.
-- A test deployment runs `autoresearch doctor` successfully inside the cluster.
+- A test deployment runs `airesearcher doctor` successfully inside the cluster.
 - Rollback instructions identify the previous image tag, release revision, PVC snapshot, and Obsidian Git revision.

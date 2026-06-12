@@ -62,6 +62,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 23:48:24 +08:00 - Codex - Task 58 public CLI rename to airesearcher
+
+- Request: Rename the public project command from `autoresearch` to `airesearcher` to avoid collisions with adjacent open-source projects.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/Home.md`
+  - `docs/deployment/kubernetes-plan.md`
+  - `pyproject.toml`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/knowledge/vault.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/config/test_models.py`
+  - `tests/unit/experiments/test_acceptance.py`
+  - `tests/unit/reports/test_reproducibility_package.py`
+- Summary:
+  - Replaced the Poetry console script with `airesearcher = "autoresearch.cli.main:app"` while keeping the internal import package `autoresearch`.
+  - Updated README examples, Chinese README examples, changelog entries, Kubernetes deployment notes, generated slash-command prompts, Obsidian Home operator commands, and reproducibility command output to use `airesearcher`.
+  - Moved default local operator state and slash command directories to `.airesearcher/`, while keeping `.autoresearch/` ignored as a legacy local-only path.
+  - Added regression checks that generated slash templates contain `airesearcher` and that default deployment config points to `.airesearcher/commands`.
+  - Kept `autoresearch-vault/` unchanged as the canonical Obsidian knowledge vault path.
+- Verification:
+  - `poetry install`: passed; refreshed the local console script entry point after the `pyproject.toml` script rename.
+  - `poetry run airesearcher version`: passed, printed `0.1.0`.
+  - `poetry run airesearcher doctor`: passed, including package import, config import, parser, project root, and knowledge vault checks.
+  - `poetry run pytest tests/unit/cli/test_main.py tests/unit/config/test_models.py tests/unit/experiments/test_acceptance.py tests/unit/reports/test_reproducibility_package.py -q`: passed, 27 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 313 tests and 4 live smoke tests skipped because live API flags were not set.
+  - `poetry run autoresearch version`: failed as expected because the old public command is no longer installed.
+  - `rg` check found no remaining old public command references except the intentional legacy `.autoresearch/` ignore note and a negative regression assertion.
+  - `git diff --check`: passed after resolving `P-20260612-080`.
+- Problems:
+  - `P-20260612-080` added and resolved.
+- Follow-up:
+  - Add a third-party open-source notice task for referenced inspiration projects before expanding the always-on daemon work.
+
 ### 2026-06-13 00:04:00 +08:00 - Codex - Task 57 SkillOpt-inspired skill evolution candidates
 
 - Request: Continue the main task by combining the open-source SkillOpt idea into the Obsidian self-evolution workflow.

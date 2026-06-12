@@ -255,6 +255,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     )
 
     assert init_result.exit_code == 0, init_result.output
+    autopilot_template = (commands_dir / "research" / "autopilot.toml").read_text(
+        encoding="utf-8"
+    )
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
@@ -270,6 +273,8 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
+    assert "airesearcher autopilot" in autopilot_template
+    assert "autoresearch autopilot" not in autopilot_template
 
 
 def test_literature_refresh_command_reports_source_backed_documents(
@@ -563,7 +568,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
 
     output_dir = tmp_path / "runs" / "autopilot"
-    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
     result = CliRunner().invoke(
         app,
         [
@@ -621,7 +626,7 @@ def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monke
             "--output-dir",
             str(tmp_path / "runs" / "autopilot"),
             "--state",
-            str(tmp_path / ".autoresearch" / "scheduler-state.json"),
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
             "--project-id",
             "project_1",
             "--no-review",
@@ -865,7 +870,7 @@ def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) 
     (issue_dir / "open.md").write_text(open_issue.to_markdown(), encoding="utf-8")
     (issue_dir / "closed.md").write_text(closed_issue.to_markdown(), encoding="utf-8")
     output = tmp_path / "followups.json"
-    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
 
     result = CliRunner().invoke(
         app,
@@ -909,7 +914,7 @@ def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) 
 
 
 def test_scheduler_state_commands_list_complete_and_remove_tasks(tmp_path: Path) -> None:
-    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
     state.parent.mkdir(parents=True)
     state.write_text(
         json.dumps(
@@ -985,7 +990,7 @@ def test_issue_followups_state_merge_preserves_completed_tasks(tmp_path: Path) -
         body="- Status: Open\n- Issue fingerprint: `abc123def4567890`\n",
     )
     (issue_dir / "open.md").write_text(issue.to_markdown(), encoding="utf-8")
-    state = tmp_path / ".autoresearch" / "scheduler-state.json"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
     runner = CliRunner()
     args = [
         "issue-followups",

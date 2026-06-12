@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-080 - Documentation rename pass left extra blank lines at EOF
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 23:48:24 +08:00
+- Source: `git diff --check` during task `58.1` verification.
+- Symptom: Git reported `new blank line at EOF` for `tasks.md`, both README files, `CHANGELOG.md`, `autoresearch-vault/Home.md`, and `docs/deployment/kubernetes-plan.md`.
+- Impact: The rename task could not pass the whitespace gate until generated document endings were normalized.
+- Evidence: `git diff --check` listed six Markdown files with extra EOF blank lines.
+- Root cause: The targeted PowerShell documentation replacement preserved an extra trailing blank line in several Markdown files.
+- Workaround: None needed after trimming the affected files to a single final newline.
+- Next action: Keep running `git diff --check` after mechanical documentation rewrites.
+- Linked tasks: `58.1`
+- Resolution: Trimmed the affected Markdown files to a single final newline.
+- Verification: `git diff --check` passed after the cleanup.
+
 ### P-20260612-077 - Autopilot helper type annotations failed mypy
 
 - Status: Resolved

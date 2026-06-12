@@ -22,6 +22,7 @@ def test_system_config_defaults_are_local_first() -> None:
     assert config.literature.databases == ["arxiv", "semantic_scholar"]
     assert config.deployment.llm.provider == "openai-compatible"
     assert config.deployment.llm.api_key_env == "AUTORESEARCH_LLM_API_KEY"
+    assert config.deployment.slash_commands_dir == Path(".airesearcher/commands")
 
 
 def test_config_models_validate_basic_bounds() -> None:

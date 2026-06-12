@@ -23,6 +23,6 @@
 ## Operator Commands
 
 ```bash
-poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
-poetry run autoresearch issue-followups --vault autoresearch-vault --project-id autoresearch-system
+poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
+poetry run airesearcher issue-followups --vault autoresearch-vault --project-id autoresearch-system
 ```

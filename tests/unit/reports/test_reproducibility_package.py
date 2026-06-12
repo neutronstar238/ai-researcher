@@ -66,7 +66,7 @@ def test_create_reproducibility_package_manifest_hashes_included_artifacts(
         ],
         project_id="project-001",
         run_id="run-001",
-        run_commands=["poetry run autoresearch run-demo"],
+        run_commands=["poetry run airesearcher run-demo"],
         validation_status=ValidationStatus.PASSED,
         environment_notes=["poetry.lock present"],
         max_raw_data_bytes=10,
@@ -98,7 +98,7 @@ def test_create_reproducibility_package_manifest_hashes_included_artifacts(
         "large raw data excluded by default"
     )
     assert manifest["validation_status"] == "passed"
-    assert "poetry run autoresearch run-demo" in Path(
+    assert "poetry run airesearcher run-demo" in Path(
         package.environment_notes_path
     ).read_text(encoding="utf-8")
 

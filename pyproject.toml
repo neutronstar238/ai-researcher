@@ -57,7 +57,7 @@ types-toml = "^0.10"
 types-requests = "^2.31.0"
 
 [tool.poetry.scripts]
-autoresearch = "autoresearch.cli.main:app"
+airesearcher = "autoresearch.cli.main:app"
 
 [build-system]
 requires = ["poetry-core"]

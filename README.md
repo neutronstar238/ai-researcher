@@ -76,7 +76,7 @@ This repository's differentiator is the Obsidian-compatible vault as the shared 
 Structure the local vault with dashboards, templates, plugin recommendations, and a CSS snippet:
 
 ```bash
-poetry run autoresearch obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
+poetry run airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
 ```
 
 Add `--write-local-snippet` on your own machine to also create `.obsidian/snippets/ai-researcher.css` and enable it in the local Obsidian appearance settings. Third-party Obsidian plugins are not bundled; see `autoresearch-vault/_system/plugins/recommended-plugins.md` after setup for optional manual installs such as Dataview, Tasks, Templater, Periodic Notes, and Omnisearch.
@@ -118,7 +118,7 @@ poetry install
 First-deploy setup:
 
 ```bash
-poetry run autoresearch deploy-setup
+poetry run airesearcher deploy-setup
 ```
 
 The guided setup asks for the LLM provider label, API base URL, model name, API key, and optional WeChat/Feishu channel credentials. API keys and channel secrets are written only to `.env`; `config.yaml` stores non-secret model and channel metadata plus environment variable names. If `.env.example` is missing, the CLI creates it as a public non-secret template.
@@ -128,7 +128,7 @@ If you prefer to fill the model configuration manually, copy `.env.example` to `
 For scripted deployment:
 
 ```bash
-poetry run autoresearch deploy-setup \
+poetry run airesearcher deploy-setup \
   --config config.yaml \
   --env-path .env \
   --provider openai-compatible \
@@ -143,16 +143,16 @@ poetry run autoresearch deploy-setup \
 Project slash command templates:
 
 ```bash
-poetry run autoresearch slash-commands init
-poetry run autoresearch slash-commands list
+poetry run airesearcher slash-commands init
+poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.autoresearch/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Autopilot one-command loop:
 
 ```bash
-poetry run autoresearch autopilot --watch --cycles 0 --interval-seconds 86400
+poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
 After `deploy-setup`, this keeps the local loop running. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
@@ -160,7 +160,7 @@ After `deploy-setup`, this keeps the local loop running. Each cycle performs liv
 Skill evolution candidates:
 
 ```bash
-poetry run autoresearch skill-evolve \
+poetry run airesearcher skill-evolve \
   --parent-skill-id skill_evidence_bound_review \
   --issue-ref projects/autoresearch-system/issues/example_issue \
   --change-summary "Tighten the evidence bundle before live review." \
@@ -173,8 +173,8 @@ This is SkillOpt-inspired but conservative: it writes a candidate skill card and
 Online discovery commands:
 
 ```bash
-poetry run autoresearch literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1
-poetry run autoresearch similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
+poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1
+poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
 Both commands use real literature APIs by default, load optional literature API keys from `.env`, apply conservative Semantic Scholar rate limiting with tunable request spacing and 429 circuit breaking, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`.
@@ -182,7 +182,7 @@ Both commands use real literature APIs by default, load optional literature API 
 Live LLM smoke and output quality gate:
 
 ```bash
-poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/latest.json
+poetry run airesearcher llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/latest.json
 ```
 
 This calls the configured OpenAI-compatible model, requires structured JSON output, checks evidence-policy language, verifies no API key leakage, and writes a local quality report under `runs/`.
@@ -190,7 +190,7 @@ This calls the configured OpenAI-compatible model, requires structured JSON outp
 LLM-as-reviewer with local evidence:
 
 ```bash
-poetry run autoresearch llm-review \
+poetry run airesearcher llm-review \
   --subject runs/manual-live/demo/tabular-baseline/report/report.md \
   --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json \
   --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json \
@@ -202,7 +202,7 @@ poetry run autoresearch llm-review \
   --project-id demo_project
 ```
 
-The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, and actionable warning/blocking findings become stable-fingerprinted `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`. Repeated reviews update the same issue note for the same subject and claim instead of polluting the self-loop issue pool with duplicates. `autoresearch issue-followups --state .autoresearch/scheduler-state.json` can persist reviewable local follow-up task records without executing them automatically, and `autoresearch scheduler-state list|complete|remove` lets operators inspect, finish, or clean those records without hand-editing JSON. Reasoning models may need the higher review token budget shown above.
+The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, and actionable warning/blocking findings become stable-fingerprinted `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`. Repeated reviews update the same issue note for the same subject and claim instead of polluting the self-loop issue pool with duplicates. `airesearcher issue-followups --state .airesearcher/scheduler-state.json` can persist reviewable local follow-up task records without executing them automatically, and `airesearcher scheduler-state list|complete|remove` lets operators inspect, finish, or clean those records without hand-editing JSON. Reasoning models may need the higher review token budget shown above.
 
 Run the local quality gate:
 

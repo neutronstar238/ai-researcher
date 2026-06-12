@@ -138,11 +138,11 @@ A task can be checked only when all applicable items are true:
   - [x] 1.3 Add minimal CLI skeleton
     - Create `src/autoresearch/cli/main.py`.
     - Expose a Typer app matching `pyproject.toml`.
-    - Add `autoresearch version`, `autoresearch doctor`, and `autoresearch init-demo` commands.
+    - Add `airesearcher version`, `airesearcher doctor`, and `airesearcher init-demo` commands.
     - `doctor` should check Python version, import health, config parser availability, and planned directory roots.
     - Do not add research workflow execution yet.
     - _References: EP 3.3, DES CLI Interface_
-    - _Verify: `poetry run autoresearch version` and `poetry run autoresearch doctor` run without import errors._
+    - _Verify: `poetry run airesearcher version` and `poetry run airesearcher doctor` run without import errors._
 
   - [x] 1.4 Add test scaffold
     - Create `tests/unit`, `tests/integration`, `tests/property`, and `tests/smoke`.
@@ -788,7 +788,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: config model tests confirm deployment defaults and channel secret env references._
 
   - [x] 37.2 Add first-deploy CLI setup command
-    - Add `autoresearch deploy-setup`.
+    - Add `airesearcher deploy-setup`.
     - Prompt interactively for provider, base URL, model name, API key, and optional WeChat/Feishu channel credentials.
     - Support `--non-interactive` scripted deployment with explicit flags.
     - Write API keys and channel secrets only to `.env`; write non-secret deployment metadata to `config.yaml`.
@@ -796,20 +796,20 @@ A task can be checked only when all applicable items are true:
     - _Verify: CLI tests confirm config and `.env` output and reject enabled channels without credentials._
 
   - [x] 37.3 Add project slash command templates
-    - Add `autoresearch slash-commands init` and `autoresearch slash-commands list`.
+    - Add `airesearcher slash-commands init` and `airesearcher slash-commands list`.
     - Create project-scoped TOML prompt templates for literature refresh, similarity check, local demo run, and status review.
     - _References: Gemini CLI project-scoped TOML slash command pattern_
     - _Verify: CLI tests confirm template files are written and listed._
 
 - [x] 38. Add operator CLI for real online discovery
   - [x] 38.1 Add daily literature refresh CLI
-    - Add `autoresearch literature-refresh`.
+    - Add `airesearcher literature-refresh`.
     - Read Obsidian vault context, call real literature APIs, preserve source fetch errors, and write guarded Obsidian summaries.
     - _References: user real-network discovery requirement, tasks 21.2 and 37.3_
     - _Verify: mocked CLI unit test passes and a real CLI run writes a source-backed literature refresh summary._
 
   - [x] 38.2 Add project-start similarity check CLI
-    - Add `autoresearch similarity-check --candidate-file`.
+    - Add `airesearcher similarity-check --candidate-file`.
     - Accept Windows UTF-8 BOM candidate JSON, call real literature APIs, write source-backed similarity findings, and optionally link the report into a project vault.
     - _References: user project-start cross-check requirement, tasks 21.3 and 37.3_
     - _Verify: mocked CLI unit tests pass and a real CLI run writes exploration and project Obsidian notes._
@@ -830,7 +830,7 @@ A task can be checked only when all applicable items are true:
 
 - [x] 40. Fix first-deploy environment semantics and CI mypy portability
   - [x] 40.1 Make deploy setup own the environment template path
-    - Ensure `autoresearch deploy-setup` writes the real local `.env` and creates adjacent `.env.example` when that public template is missing.
+    - Ensure `airesearcher deploy-setup` writes the real local `.env` and creates adjacent `.env.example` when that public template is missing.
     - Preserve an existing `.env.example` instead of overwriting local or repository template edits.
     - Document that `.env.example` is a public non-secret template and `.env` is the ignored real secret file.
     - _References: user feedback on first-deploy CLI `.env` flow, task 37.2_
@@ -851,11 +851,11 @@ A task can be checked only when all applicable items are true:
     - _Verify: unit tests cover output quality scoring and live CLI smoke calls the configured model._
 
   - [x] 41.2 Add CLI output quality inspection
-    - Add `autoresearch llm-smoke`.
+    - Add `airesearcher llm-smoke`.
     - Write a JSON quality report under ignored `runs/`.
     - Check non-empty output, valid JSON, status, summary, evidence-policy language, risks, next steps, secret leakage, and fake URL leakage.
     - _References: user output quality inspection request_
-    - _Verify: `poetry run autoresearch llm-smoke --config config.yaml --env-path .env` passes against the configured DeepSeek model._
+    - _Verify: `poetry run airesearcher llm-smoke --config config.yaml --env-path .env` passes against the configured DeepSeek model._
 
   - [x] 41.3 Convert live smoke suite to real API coverage
     - Add a live LLM smoke test.
@@ -865,7 +865,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: live smoke tests pass with real LLM, ArXiv, literature refresh, and similarity-check API calls._
 
   - [x] 41.4 Run user-style full-chain deployment check
-    - Configure DeepSeek V4 Flash through `autoresearch deploy-setup`.
+    - Configure DeepSeek V4 Flash through `airesearcher deploy-setup`.
     - Run `doctor`, `llm-smoke`, `literature-refresh`, `similarity-check`, `run-demo`, and deterministic report lint.
     - Record source errors and output quality findings without claiming unavailable provider success.
     - _References: user request to deploy as a user and inspect full flow_
@@ -891,7 +891,7 @@ A task can be checked only when all applicable items are true:
 
 - [x] 44. Add evidence-constrained LLM reviewer quality gate
   - [x] 44.1 Add local-evidence LLM review CLI
-    - Add `autoresearch llm-review` to call the configured provider-agnostic OpenAI-compatible model against a local subject file and one or more local evidence files.
+    - Add `airesearcher llm-review` to call the configured provider-agnostic OpenAI-compatible model against a local subject file and one or more local evidence files.
     - Assign outer evidence IDs such as `evidence_1` and require every reviewer finding to cite only those provided IDs.
     - Treat missing evidence references, unknown nested evidence IDs, secret leakage, and fake URLs as hard quality failures below the CLI threshold.
     - Keep `test_cli.py` and `test_imports.py` local-only; use the new review command for explicit live LLM quality inspection.
@@ -903,7 +903,7 @@ A task can be checked only when all applicable items are true:
   - [x] 45.1 Add project review-note storage for evidence-constrained LLM reviews
     - Add `review/` to the project vault layout so project-level human and model review notes have a canonical Obsidian location.
     - Convert passing `llm-review` results into `KnowledgeEntryType.REVIEW_NOTE` Markdown with YAML frontmatter, subject/evidence refs, quality checks, findings, unsupported claims, next steps, and raw reviewer JSON.
-    - Add `--vault`, `--project-id`, and `--source-task-id` to `autoresearch llm-review`; write to the vault only after the deterministic review quality threshold passes.
+    - Add `--vault`, `--project-id`, and `--source-task-id` to `airesearcher llm-review`; write to the vault only after the deterministic review quality threshold passes.
     - Preserve failed or low-quality reviewer outputs under ignored `runs/` but do not promote them into long-term project memory.
     - _References: RP Obsidian self-loop memory, task 44.1, user requirement that outputs and quality findings feed the project vault_
     - _Verify: unit tests cover review-note storage and CLI vault wiring; real DeepSeek `llm-review --project-id` writes an Obsidian `review_note` under the project review directory._
@@ -913,7 +913,7 @@ A task can be checked only when all applicable items are true:
     - Convert passing `llm-review` results with `blocking`, `critical`, `high`, or `warning` findings into project `issue_note` entries under `autoresearch-vault/projects/<project-id>/issues/`.
     - Link each issue note back to the source `review_note` with an Obsidian wiki-link and preserve subject/evidence refs in frontmatter.
     - Include severity, claim, evidence refs, reviewer verdict, quality score, and next actions in each issue note.
-    - Add `--write-issues/--no-write-issues` to `autoresearch llm-review`, defaulting to issue-note creation when `--project-id` is provided and the deterministic review quality gate passes.
+    - Add `--write-issues/--no-write-issues` to `airesearcher llm-review`, defaulting to issue-note creation when `--project-id` is provided and the deterministic review quality gate passes.
     - _References: RP self-loop task pool, task 45.1 follow-up, user requirement that quality problems feed the project vault_
     - _Verify: unit tests cover issue-note creation and CLI wiring; real DeepSeek `llm-review --project-id` writes review and issue notes in a temporary Obsidian vault._
 
@@ -937,7 +937,7 @@ A task can be checked only when all applicable items are true:
 
 - [x] 49. Add operator CLI for issue follow-up task discovery
   - [x] 49.1 Expose Obsidian issue follow-ups through CLI and slash commands
-    - Add `autoresearch issue-followups` to list scheduler follow-up tasks derived from open project issue notes.
+    - Add `airesearcher issue-followups` to list scheduler follow-up tasks derived from open project issue notes.
     - Support `--vault`, `--project-id`, and optional JSON `--output` for review before execution.
     - Print deterministic task IDs and source issue paths without executing follow-up work.
     - Add `/research:issue-followups` to default slash command templates.
@@ -946,7 +946,7 @@ A task can be checked only when all applicable items are true:
 
 - [x] 50. Persist issue follow-up task discovery across sessions
   - [x] 50.1 Add local scheduler state merge for issue follow-ups
-    - Add optional `--state` to `autoresearch issue-followups`.
+    - Add optional `--state` to `airesearcher issue-followups`.
     - Merge generated issue follow-up records into a local JSON scheduler state file by stable `task_id`.
     - Re-running the command must update existing tasks rather than appending duplicates.
     - Keep the state file local/operator-controlled and do not execute tasks automatically.
@@ -955,9 +955,9 @@ A task can be checked only when all applicable items are true:
 
 - [x] 51. Manage persisted scheduler-state follow-up tasks
   - [x] 51.1 Add scheduler-state list, complete, and remove CLI commands
-    - Add `autoresearch scheduler-state list` for local state inspection, hiding completed tasks by default.
-    - Add `autoresearch scheduler-state complete <task-id>` to mark a task record completed with a timestamp.
-    - Add `autoresearch scheduler-state remove <task-id>` to delete stale local task records.
+    - Add `airesearcher scheduler-state list` for local state inspection, hiding completed tasks by default.
+    - Add `airesearcher scheduler-state complete <task-id>` to mark a task record completed with a timestamp.
+    - Add `airesearcher scheduler-state remove <task-id>` to delete stale local task records.
     - Preserve completed state when `issue-followups --state` rediscovers the same issue task.
     - Keep these commands local, operator-controlled, and non-executing.
     - _References: task 50.1 follow-up, RP auditable self-loop queue_
@@ -982,7 +982,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: workflow diff is limited to action major versions and pushed CI completes without the Node 20 deprecation warning._
 
 - [x] 54. Add one-command autonomous research loop CLI
-  - [x] 54.1 Add `autoresearch autopilot` orchestration command
+  - [x] 54.1 Add `airesearcher autopilot` orchestration command
     - Run live literature refresh, generate a source-backed candidate, run project-start similarity checking, execute the local ScientistBench-Lite loop, and write a cycle summary from one command.
     - Support `--watch --cycles 0 --interval-seconds <seconds>` for an always-on local loop after first deploy.
     - Run the evidence-constrained live LLM reviewer by default when `.env` is configured, with `--no-review` for offline dry runs.
@@ -995,7 +995,7 @@ A task can be checked only when all applicable items are true:
 - [x] 55. Add Obsidian vault structure and visual setup
   - [x] 55.1 Add safe Obsidian setup assets and CLI
     - Add a reusable helper that creates `Home.md`, a research-loop dashboard, Obsidian templates, plugin recommendations, and CSS snippet assets under the vault.
-    - Add `autoresearch obsidian-setup` so users can structure the vault after first deploy without manually copying files.
+    - Add `airesearcher obsidian-setup` so users can structure the vault after first deploy without manually copying files.
     - Keep `.obsidian/` local and ignored by git, while allowing `--write-local-snippet` to generate a local CSS snippet for the current machine.
     - Add `/research:obsidian-setup` to slash command templates.
     - Document the command in both README files without claiming third-party plugins are bundled.
@@ -1015,16 +1015,26 @@ A task can be checked only when all applicable items are true:
   - [x] 57.1 Create evidence-linked skill evolution candidate workflow
     - Add a skill evolution helper that creates a candidate skill card instead of mutating the parent skill.
     - Require issue or failure evidence refs, proposed actions, validation checks, rollback target, and a rejected-edit buffer.
-    - Add `autoresearch skill-evolve` so operators and future autopilot loops can create bounded skill candidates from vault evidence.
+    - Add `airesearcher skill-evolve` so operators and future autopilot loops can create bounded skill candidates from vault evidence.
     - Add `/research:skill-evolve` to slash command templates.
     - Document the command and the non-promotion rule in README files.
     - _References: user request for SkillOpt-style skill evolution, SkillOpt bounded edits and validation gates_
     - _Verify: unit tests cover candidate generation, rejected-edit buffer creation, evidence/validation requirements, CLI output, and slash template creation._
 
+- [x] 58. Rename the public CLI and operator state namespace to `airesearcher`
+  - [x] 58.1 Make `airesearcher` the canonical user-facing command
+    - Replace the Poetry console script `autoresearch` with `airesearcher` to avoid name collisions with adjacent open-source projects.
+    - Update README examples, Chinese README examples, slash command templates, generated vault operator commands, deployment notes, and reproducibility command output to use `airesearcher`.
+    - Move default local operator state from `.autoresearch/` to `.airesearcher/` while keeping the old ignored path out of git history.
+    - Keep the internal Python package import path `autoresearch` unchanged for now to avoid a broad import/package migration.
+    - Keep `autoresearch-vault/` unchanged as the canonical Obsidian knowledge vault path.
+    - _References: user request to rename public project command to `airesearcher`_
+    - _Verify: `poetry run airesearcher version`, `poetry run airesearcher doctor`, focused CLI/config/report tests, ruff, mypy, and full smoke/unit tests pass._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
-  - `poetry run autoresearch doctor` passes.
+  - `poetry run airesearcher doctor` passes.
   - `poetry run pytest tests/smoke tests/unit/config` passes.
   - `poetry run ruff check src tests` passes.
   - `poetry run mypy src` passes or typed-scope exceptions are documented.
@@ -1197,6 +1207,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 32,
       "tasks": ["57.1"]
+    },
+    {
+      "id": 33,
+      "tasks": ["58.1"]
     }
   ]
 }

@@ -50,7 +50,7 @@ def test_run_mvp_acceptance_writes_report_with_rerun_outcomes(tmp_path: Path) ->
             "validation-report.json"
         )
         assert run_record["reproducibility"]["command"].startswith(
-            "autoresearch run-demo --demo "
+            "airesearcher run-demo --demo "
         )
         assert run_record["reproducibility"]["python_version"]
         assert run_record["reproducibility"]["dependency_lock_status"] in {
