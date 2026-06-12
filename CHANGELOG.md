@@ -56,7 +56,8 @@ Target version: `0.1.0`.
 - `airesearcher publication-audit` for CCF-B/Q3-style publication-readiness gating over completed cycle summaries, including script/data verification, cross-source literature breadth, similar-work coverage, data strength, baseline/ablation/statistical sanity checks, manuscript structure, and Obsidian review/issue writing.
 - Opt-in `pendigits_centroid_baseline` public benchmark demo that downloads the UCI Pendigits train/test files at run time, writes a merged CSV under ignored `runs/` artifacts, runs a nearest-centroid baseline plus first-8-features ablation, and records source metadata, data hash, confidence interval, validation report, evidence map, and run record.
 - Paper-style Markdown report sections for generated demo reports: Abstract, Introduction, Related Work, Method, Experiments, Results, Limitations, Conclusion, and References.
-- Planned LaTeX template compatibility tasks for generic single-column/double-column article smoke tests before expanding to IEEEtran, ACM `acmart`, and Springer Nature templates.
+- LaTeX template compatibility smoke tests for built-in generic single-column and double-column `article` templates, including JSON/Markdown reports, compile logs, and optional Obsidian vault copies.
+- Planned external LaTeX template compatibility expansion for IEEEtran, ACM `acmart`, and Springer Nature templates.
 - `/research:serve`, `/research:publication-audit`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
@@ -85,6 +86,7 @@ Target version: `0.1.0`.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.
 - Generated Markdown reports now satisfy the deterministic manuscript-section gate while preserving evidence-bound metric lines and reproducibility/validation blocks.
 - Markdown remains the Obsidian-readable process and evidence format, while final paper-level output is defined as a LaTeX template build that compiles to PDF.
+- Generic paper-template smoke now produces a PDF when `pdflatex` or another supported LaTeX engine is available, and otherwise records a structured skipped result.
 
 ### Fixed
 

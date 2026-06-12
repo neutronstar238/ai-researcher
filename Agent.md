@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 02:15:03 +08:00 - Codex - Task 70.1 generic LaTeX template compatibility
+
+- Request: Continue from Task `69.1` and implement the user's requirement that final paper-level output be a LaTeX template build that compiles to PDF, while process data and summaries remain Markdown in the Obsidian vault.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/paper/latex-template-compatibility.md`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/latex_templates.py`
+  - `tests/unit/reports/test_latex_templates.py`
+- Summary:
+  - Added a LaTeX template compatibility module with built-in generic one-column and two-column `article` template specs.
+  - Added smoke manuscript rendering with the same manuscript sections used by the publication audit: abstract, introduction, related work, method, experiments, results, limitations, conclusion, and references.
+  - Added compile-or-skip compatibility results with JSON and Markdown reports, compile logs, generated TeX paths, PDF paths, engine name, command, and reason fields.
+  - Added optional Obsidian vault Markdown report writing under `autoresearch-vault/projects/<project-id>/paper/latex-template-compatibility.md`.
+  - Updated tasks, README files, changelog, and `Problem.md` to state that generic template PDF smoke is implemented while external IEEE/ACM/Springer compatibility remains Task `70.2`.
+- Verification:
+  - `poetry run pytest tests/unit/reports/test_latex_templates.py -q`: passed with 5 tests; the compile test used local `pdflatex` and produced PDFs.
+  - `poetry run ruff check src\autoresearch\reports\latex_templates.py src\autoresearch\reports\__init__.py tests\unit\reports\test_latex_templates.py`: passed.
+  - `poetry run mypy src\autoresearch\reports`: passed with 15 source files.
+  - Real compatibility run: `run_latex_template_compatibility(Path('runs/manual-live/latex-template-compatibility-task70'), vault_root=Path('autoresearch-vault'), project_id='ai_researcher_system')` compiled `generic-article-one-column` and `generic-article-two-column` with `pdflatex.EXE`.
+  - Verified artifacts exist: `runs/manual-live/latex-template-compatibility-task70/generic-article-one-column/main.pdf`, `runs/manual-live/latex-template-compatibility-task70/generic-article-two-column/main.pdf`, and `autoresearch-vault/projects/ai_researcher_system/paper/latex-template-compatibility.md`.
+- Problems:
+  - `P-20260613-004` updated with Task `70.1` evidence and remaining external-template/Semantic Scholar/method-novelty blockers.
+- Follow-up:
+  - Complete Task `70.2`: fetch/review official or canonical IEEEtran, ACM `acmart`, and Springer Nature template sources, preserve license/notice boundaries, and write a compatibility matrix with live fetch/compile or source-unavailable results.
+
 ### 2026-06-13 02:06:05 +08:00 - Codex - Task 69 paper-style Markdown manuscript reports
 
 - Request: Continue the AI-Researcher implementation by fixing the publication-audit manuscript-structure blocker without weakening evidence gates; incorporate the user's follow-up that LaTeX template compatibility should become the next separate task.

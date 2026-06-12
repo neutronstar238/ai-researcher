@@ -1146,7 +1146,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: focused report tests, report ruff/mypy checks, full smoke/unit tests, and live `serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review` showing manuscript structure passes without hiding Semantic Scholar 429 source errors._
 
 - [ ] 70. Add LaTeX template compatibility testing for paper delivery
-  - [ ] 70.1 Start with generic journal single-column and double-column templates
+  - [x] 70.1 Start with generic journal single-column and double-column templates
     - Add a LaTeX template registry that distinguishes built-in generic templates from externally fetched official templates.
     - Generate smoke manuscripts with the same required paper sections used by the Markdown manuscript audit.
     - Keep process data, experiment records, evidence summaries, and final run summaries as Markdown entries in `autoresearch-vault/`.
