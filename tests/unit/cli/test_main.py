@@ -637,6 +637,7 @@ def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) 
     (issue_dir / "open.md").write_text(open_issue.to_markdown(), encoding="utf-8")
     (issue_dir / "closed.md").write_text(closed_issue.to_markdown(), encoding="utf-8")
     output = tmp_path / "followups.json"
+    state = tmp_path / ".autoresearch" / "scheduler-state.json"
 
     result = CliRunner().invoke(
         app,
@@ -648,12 +649,31 @@ def test_issue_followups_command_lists_open_project_issue_tasks(tmp_path: Path) 
             "project_1",
             "--output",
             str(output),
+            "--state",
+            str(state),
+        ],
+    )
+    second_result = CliRunner().invoke(
+        app,
+        [
+            "issue-followups",
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project_1",
+            "--state",
+            str(state),
         ],
     )
 
     assert result.exit_code == 0, result.stdout
+    assert second_result.exit_code == 0, second_result.stdout
     assert "[OK] issue_followups: 1" in result.stdout
+    assert "[OK] state:" in result.stdout
     assert "[TASK] task_id=issue-follow-up-project_1-abc123def4567890" in result.stdout
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["tasks"][0]["metadata"]["issue_path"] == "projects/project_1/issues/open.md"
     assert payload["tasks"][0]["metadata"]["related_task_ids"] == ["48.1"]
+    state_payload = json.loads(state.read_text(encoding="utf-8"))
+    assert len(state_payload["tasks"]) == 1
+    assert state_payload["tasks"][0]["task_id"] == "issue-follow-up-project_1-abc123def4567890"

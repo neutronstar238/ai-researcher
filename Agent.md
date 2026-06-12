@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:44:11 +08:00 - Codex - Task 50 issue follow-up scheduler state
+
+- Request: Continue the issue follow-up CLI by persisting generated self-loop task records across local operator sessions.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `--state` to `autoresearch issue-followups` to merge generated follow-up records into a local JSON scheduler state file.
+  - Merged records by stable `task_id` so repeated runs update existing tasks instead of appending duplicates.
+  - Updated the `/research:issue-followups` slash template to write both review output and scheduler state.
+  - Documented that state persistence is local and does not execute tasks automatically.
+  - Added and completed task `50.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks -q`: passed, 1 test.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: initially failed with `P-20260612-074`; passed after annotating the mixed JSON record list.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 301 tests passed and 4 skipped.
+- Problems:
+  - `P-20260612-074` added and resolved.
+- Follow-up:
+  - Add commands to inspect, mark complete, or remove persisted scheduler-state tasks without editing JSON by hand.
+
 ### 2026-06-12 17:38:06 +08:00 - Codex - Task 49 issue follow-up CLI
 
 - Request: Continue the self-loop workflow by exposing Obsidian issue follow-up task discovery through the operator CLI and slash command templates.

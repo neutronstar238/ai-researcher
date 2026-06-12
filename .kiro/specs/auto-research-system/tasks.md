@@ -944,6 +944,15 @@ A task can be checked only when all applicable items are true:
     - _References: task 48.1 follow-up, user request for CLI and slash-command style workflows_
     - _Verify: CLI unit tests cover output JSON and slash template creation._
 
+- [x] 50. Persist issue follow-up task discovery across sessions
+  - [x] 50.1 Add local scheduler state merge for issue follow-ups
+    - Add optional `--state` to `autoresearch issue-followups`.
+    - Merge generated issue follow-up records into a local JSON scheduler state file by stable `task_id`.
+    - Re-running the command must update existing tasks rather than appending duplicates.
+    - Keep the state file local/operator-controlled and do not execute tasks automatically.
+    - _References: task 49.1 follow-up, RP auditable self-loop queue_
+    - _Verify: CLI unit tests cover state writing and duplicate-safe merge behavior._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1088,6 +1097,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 24,
       "tasks": ["49.1"]
+    },
+    {
+      "id": 25,
+      "tasks": ["50.1"]
     }
   ]
 }

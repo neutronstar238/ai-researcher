@@ -35,6 +35,7 @@ Target version: `0.1.0`.
 - Stable issue fingerprints for LLM review issue notes so repeated or reordered reviewer findings update the same self-loop issue entry.
 - Scheduler helper for turning open Obsidian project issue notes into one-shot follow-up queued tasks.
 - `autoresearch issue-followups` CLI and `/research:issue-followups` slash template for reviewing self-loop follow-up tasks before execution.
+- Optional local scheduler state merge for issue follow-up discovery with duplicate-safe `task_id` updates.
 
 ### Changed
 
@@ -60,6 +61,7 @@ Target version: `0.1.0`.
 - Duplicate actionable LLM reviewer claims in one result are skipped before writing Obsidian `issue_note` entries.
 - Closed or invalid project issue notes are skipped when building scheduler follow-up tasks.
 - Default slash command templates now include the Obsidian issue follow-up discovery workflow.
+- `autoresearch issue-followups --state` keeps generated task records reviewable across sessions without executing them automatically.
 
 ### Migration Notes
 
@@ -90,6 +92,7 @@ Target version: `0.1.0`.
 - LLM review issue deduplication after task `47`: `poetry run pytest tests/unit/llm/test_review_memory.py -q` passed with 3 tests and covered duplicate plus reordered reviewer findings.
 - Obsidian issue scheduler adapter after task `48`: `poetry run pytest tests/unit/test_scheduler.py -q` passed and covered open issue-note task creation plus closed issue skips; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 300 tests and 4 skipped.
 - Issue follow-up CLI after task `49`: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates -q` passed and covered JSON output plus slash template creation; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 301 tests and 4 skipped.
+- Issue follow-up scheduler state after task `50`: `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks -q` passed and covered duplicate-safe state merging; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` also passed with 301 tests and 4 skipped.
 - Live API smoke after task `41`: `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv` passed with 4 real API tests.
 - License task `36.1`: `LICENSE` exists, README files link to it, and `poetry check` passed with non-blocking metadata deprecation warnings.
 - Contribution task `36.2`: `CONTRIBUTING.md` exists and links to `AGENTS.md`.

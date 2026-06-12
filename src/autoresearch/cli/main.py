@@ -70,8 +70,8 @@ DEFAULT_SLASH_COMMANDS = {
     "research/issue-followups.toml": (
         "List self-loop follow-up tasks from open Obsidian project issue notes.",
         "Run `autoresearch issue-followups --vault autoresearch-vault --project-id {{args}} "
-        "--output runs/issue-followups/latest.json`. Review the generated task IDs and issue paths before "
-        "scheduling or executing follow-up work.",
+        "--output runs/issue-followups/latest.json --state .autoresearch/scheduler-state.json`. "
+        "Review the generated task IDs and issue paths before executing follow-up work.",
     ),
 }
 
@@ -759,6 +759,10 @@ def issue_followups(
         Path | None,
         typer.Option("--output", help="Optional JSON file for the generated follow-up task list."),
     ] = None,
+    state: Annotated[
+        Path | None,
+        typer.Option("--state", help="Optional scheduler state JSON file to merge generated tasks into."),
+    ] = None,
 ) -> None:
     """List scheduler follow-up tasks derived from open project issue notes."""
 
@@ -767,7 +771,7 @@ def issue_followups(
         project_id=project_id,
         queued_at=datetime.now(timezone.utc),
     )
-    records = [
+    records: list[dict[str, object]] = [
         {
             "task_id": task.task_id,
             "name": task.name,
@@ -783,6 +787,10 @@ def issue_followups(
             encoding="utf-8",
         )
         typer.echo(f"[OK] output: {output}")
+
+    if state is not None:
+        _merge_scheduler_state(state, records)
+        typer.echo(f"[OK] state: {state}")
 
     typer.echo(f"[OK] issue_followups: {len(records)}")
     for record in records:
@@ -1010,6 +1018,31 @@ def _read_env_file(env_path: Path) -> dict[str, str]:
         key, value = stripped.split("=", 1)
         values[key.strip()] = value.strip()
     return values
+
+
+def _merge_scheduler_state(state_path: Path, records: list[dict[str, object]]) -> None:
+    existing_tasks = _read_scheduler_state_tasks(state_path)
+    merged = {str(task.get("task_id")): task for task in existing_tasks if task.get("task_id")}
+    for record in records:
+        merged[str(record["task_id"])] = record
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps({"tasks": [merged[key] for key in sorted(merged)]}, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def _read_scheduler_state_tasks(state_path: Path) -> list[dict[str, object]]:
+    if not state_path.exists():
+        return []
+    try:
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    tasks = payload.get("tasks") if isinstance(payload, dict) else None
+    if not isinstance(tasks, list):
+        return []
+    return [task for task in tasks if isinstance(task, dict)]
 
 
 def _slash_command_toml(description: str, prompt: str) -> str:

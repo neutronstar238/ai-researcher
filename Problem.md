@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-074 - Issue follow-up state records inferred as too narrow for mypy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:43:05 +08:00
+- Source: `poetry run mypy src` during task `50.1` verification.
+- Symptom: Mypy failed with `Argument 2 to "_merge_scheduler_state" has incompatible type "list[dict[str, Collection[str]]]"; expected "list[dict[str, object]]"`.
+- Impact: The issue follow-up scheduler state change could not pass the repository type gate.
+- Evidence: The generated `records` list mixed strings and nested metadata dictionaries, so mypy inferred an overly specific collection type.
+- Root cause: The list literal did not have an explicit `list[dict[str, object]]` annotation at the construction point.
+- Workaround: None needed after the fix.
+- Next action: Add explicit container annotations when CLI JSON records mix scalar and nested object fields.
+- Linked tasks: `50.1`
+- Resolution: Annotated `records` as `list[dict[str, object]]` before passing it to the state merge helper.
+- Verification: `poetry run mypy src` passed with no issues found in 85 source files after the annotation. `poetry run ruff check src tests` passed. `poetry run pytest tests/unit/cli/test_main.py::test_issue_followups_command_lists_open_project_issue_tasks -q` passed. `poetry run pytest tests/smoke tests/unit -q` passed with 301 passed and 4 skipped.
+
 ### P-20260612-073 - Scheduler issue follow-up test import order failed ruff
 
 - Status: Resolved
