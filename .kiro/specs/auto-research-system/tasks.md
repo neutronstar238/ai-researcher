@@ -797,7 +797,7 @@ A task can be checked only when all applicable items are true:
   - At least 60 percent of 5 to 10 demo tasks complete the full loop when the demo suite exists.
   - At least 80 percent of successful demo tasks rerun successfully.
 
-- [ ] Checkpoint C: Phase 2 research assistant
+- [x] Checkpoint C: Phase 2 research assistant
   - Multi-agent workflow can pause and resume.
   - Evidence graph blocks unsupported claims.
   - Paper draft compiles for a validated demo project.
