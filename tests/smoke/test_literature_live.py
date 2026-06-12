@@ -7,8 +7,9 @@ from autoresearch.literature import ArxivClient, RetryConfig, SemanticScholarCli
 
 
 @pytest.mark.skipif(
-    os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
-    reason="Set AUTORESEARCH_LIVE_LITERATURE=1 to run optional live literature API smoke tests.",
+    os.getenv("AUTORESEARCH_LIVE_APIS") != "1"
+    and os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
+    reason="Set AUTORESEARCH_LIVE_APIS=1 to run live literature API smoke tests.",
 )
 def test_optional_live_literature_clients_return_results() -> None:
     clients = {

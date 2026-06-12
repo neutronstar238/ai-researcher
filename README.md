@@ -136,6 +136,14 @@ poetry run autoresearch similarity-check --candidate-file candidate.json --vault
 
 Both commands use real literature APIs by default, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`.
 
+Live LLM smoke and output quality gate:
+
+```bash
+poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/latest.json
+```
+
+This calls the configured OpenAI-compatible model, requires structured JSON output, checks evidence-policy language, verifies no API key leakage, and writes a local quality report under `runs/`.
+
 Run the local quality gate:
 
 ```bash
@@ -143,6 +151,12 @@ python scripts/check.py
 ```
 
 This mirrors the default CI gates: `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit`.
+
+Run live smoke tests after `.env` is configured:
+
+```bash
+AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv
+```
 
 ## Documentation
 

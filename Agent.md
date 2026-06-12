@@ -62,6 +62,54 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 15:57:29 +08:00 - Codex - Task 41 live LLM smoke and full-chain verification
+
+- Request: Configure DeepSeek V4 Flash through the first-deploy CLI as a user, run full-chain real API verification, inspect output quality, and convert smoke checks to real API calls.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/smoke/test_literature_live.py`
+  - `tests/smoke/test_literature_refresh_live.py`
+  - `tests/smoke/test_llm_live.py`
+  - `tests/smoke/test_similarity_live.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Used `autoresearch deploy-setup` to configure local DeepSeek V4 Flash deployment in ignored `.env` and ignored `config.yaml`.
+  - Added a provider-agnostic OpenAI-compatible LLM smoke client and `autoresearch llm-smoke`.
+  - Added deterministic output quality checks for JSON structure, evidence-policy language, risk/next-step presence, secret leakage, and fake URL leakage.
+  - Added live LLM smoke coverage and made `AUTORESEARCH_LIVE_APIS=1` the shared switch for real LLM/literature smoke tests.
+  - Added `config.yaml` to `.gitignore` as local deployment state.
+  - Optimized the quality gate after real DeepSeek output exposed a false negative for fact-checking language.
+  - Added and completed task `41` in the implementation task plan.
+- Verification:
+  - `poetry run autoresearch deploy-setup --config config.yaml --env-path .env --provider deepseek --base-url https://api.deepseek.com --model-name deepseek-v4-flash --api-key <redacted> --no-wechat --no-feishu --non-interactive`: passed and wrote ignored local `.env` plus ignored local `config.yaml`.
+  - `poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/latest.json --min-quality-score 0.85 --max-tokens 600`: passed against the live DeepSeek V4 Flash API with quality score `1.000`.
+  - `AUTORESEARCH_LIVE_APIS=1 poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv`: passed, 4 real API smoke tests.
+  - `poetry run autoresearch doctor`: passed.
+  - `poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/manual-full-chain.json --min-quality-score 0.85 --max-tokens 600`: passed with quality score `0.889`; exposed `P-20260612-066`.
+  - `poetry run autoresearch literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1`: passed, returned 1 ArXiv document and preserved a Semantic Scholar connection-reset fetch error.
+  - `poetry run autoresearch similarity-check --candidate-file runs/manual-live/candidate.json --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1 --project-id deepseek_live_project`: passed, returned 1 ArXiv-backed finding, linked the project vault note, and preserved a Semantic Scholar HTTP 429 fetch error.
+  - `poetry run autoresearch run-demo --demo tabular_baseline --output-dir runs/manual-live/demo --timeout-seconds 30`: passed and wrote run metadata, metrics, validation, evidence map, and Markdown report.
+  - Report lint one-liner using `autoresearch.reports.lint.lint_markdown_report` on `runs/manual-live/demo/tabular-baseline/report/report.md`: passed with `issues=0`.
+  - `poetry run pytest tests/unit/llm -vv`: passed, 2 tests.
+  - Rerun `poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/manual-full-chain-v2.json --min-quality-score 0.85 --max-tokens 600`: passed with quality score `1.000` after the evidence-policy detector fix.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, no issues found in 84 source files.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 306 tests and 4 skipped.
+- Problems:
+  - `P-20260612-066` added and resolved.
+- Follow-up:
+  - Semantic Scholar live calls still intermittently return connection reset or HTTP 429; ArXiv-backed paths pass and the CLI preserves provider errors in output.
+
 ### 2026-06-12 15:39:56 +08:00 - Codex - Task 40 first-deploy env semantics and CI mypy fix
 
 - Request: Clarify that `.env.example` is a public template, make first-deploy CLI own the `.env`/`.env.example` flow, and explain/fix the GitHub Actions Python 3.10 mypy failure shown in the screenshot.

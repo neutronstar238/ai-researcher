@@ -20,6 +20,7 @@ from autoresearch.config import (
 )
 from autoresearch.experiments import run_scientistbench_demo
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
+from autoresearch.llm import LLMClientError, run_llm_smoke_test
 from autoresearch.reports import validate_reproducibility_package
 from autoresearch.research import (
     SimilarityCheckConfig,
@@ -549,6 +550,63 @@ def validate_package(
         target = f" ({issue.package_path})" if issue.package_path else ""
         typer.echo(f"[{issue.severity.value.upper()}] {issue.check}{target}: {issue.message}")
     raise typer.Exit(code=1)
+
+
+@app.command("llm-smoke")
+def llm_smoke(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by deploy-setup."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file containing the configured API key."),
+    ] = Path(".env"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="JSON quality report output path under ignored run artifacts."),
+    ] = Path("runs/llm-smoke/latest.json"),
+    min_quality_score: Annotated[
+        float,
+        typer.Option("--min-quality-score", min=0.0, max=1.0, help="Fail below this score."),
+    ] = 0.85,
+    max_tokens: Annotated[
+        int,
+        typer.Option("--max-tokens", min=128, help="Maximum output tokens for the smoke request."),
+    ] = 600,
+) -> None:
+    """Call the configured live LLM API and run a structured output quality gate."""
+
+    try:
+        result = run_llm_smoke_test(
+            config_path=config_path,
+            env_path=env_path,
+            max_tokens=max_tokens,
+        )
+    except LLMClientError as exc:
+        typer.echo(f"[FAIL] LLM smoke request failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    typer.echo(f"[OK] provider: {result.provider}")
+    typer.echo(f"[OK] model: {result.model_name}")
+    typer.echo(f"[OK] endpoint: {result.endpoint}")
+    typer.echo(f"[OK] quality_score: {result.quality.score:.3f}")
+    for check, passed in result.quality.checks.items():
+        typer.echo(f"[CHECK] {check}: {'pass' if passed else 'fail'}")
+
+    parsed = result.quality.parsed_output or {}
+    summary = parsed.get("summary")
+    evidence_policy = parsed.get("evidence_policy")
+    if isinstance(summary, str):
+        typer.echo(f"[SUMMARY] {summary}")
+    if isinstance(evidence_policy, str):
+        typer.echo(f"[EVIDENCE] {evidence_policy}")
+    typer.echo(f"[OK] report written: {output}")
+    if result.quality.score < min_quality_score:
+        typer.echo("[FAIL] LLM output quality score below threshold", err=True)
+        raise typer.Exit(1)
 
 
 @slash_app.command("init")

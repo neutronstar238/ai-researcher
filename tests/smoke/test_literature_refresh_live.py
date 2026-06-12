@@ -14,8 +14,9 @@ from autoresearch.literature import LiteratureRefreshConfig, run_daily_literatur
 
 
 @pytest.mark.skipif(
-    os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
-    reason="Set AUTORESEARCH_LIVE_LITERATURE=1 to run live literature refresh tests.",
+    os.getenv("AUTORESEARCH_LIVE_APIS") != "1"
+    and os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
+    reason="Set AUTORESEARCH_LIVE_APIS=1 to run live literature refresh tests.",
 )
 def test_live_daily_literature_refresh_returns_real_documents(tmp_path: Path) -> None:
     store = MarkdownKnowledgeStore(tmp_path / "vault")

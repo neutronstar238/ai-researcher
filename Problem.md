@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-066 - LLM smoke quality gate missed fact-checking evidence policy wording
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 15:57:29 +08:00
+- Source: Real `autoresearch llm-smoke` run against the configured DeepSeek V4 Flash model.
+- Symptom: The model output passed the quality threshold but `evidence_policy_present` failed when the model wrote `All outputs require manual fact-checking before use.`
+- Impact: Quality inspection could under-score acceptable evidence-discipline language and produce confusing reports.
+- Evidence: `runs/llm-smoke/manual-full-chain.json` recorded quality score `0.889` with only `evidence_policy_present` failing.
+- Root cause: The evidence-policy detector recognized `evidence`, `source`, `verified`, `verification`, `pending`, and `unknown`, but not common fact-checking wording.
+- Workaround: None needed after the fix.
+- Next action: Add more real-output examples as fixtures if additional provider wording appears.
+- Linked tasks: `41`
+- Resolution: Updated the LLM smoke prompt to request source-backed evidence or independent fact-checking language and updated the quality detector to accept fact-checking phrases.
+- Verification: Rerun `poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/manual-full-chain-v2.json --min-quality-score 0.85 --max-tokens 600` passed with quality score `1.000`.
+
 ### P-20260612-065 - GitHub Actions mypy failed on Windows-only subprocess attribute
 
 - Status: Resolved

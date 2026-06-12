@@ -75,6 +75,14 @@ poetry run autoresearch similarity-check --candidate-file candidate.json --vault
 
 这两个命令默认调用真实文献 API，保留每个来源的 fetch 错误，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。
 
+真实 LLM smoke 与输出质量门：
+
+```bash
+poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output runs/llm-smoke/latest.json
+```
+
+该命令会调用当前配置的 OpenAI-compatible 模型，要求结构化 JSON 输出，检查证据策略语言、API key 泄露风险，并把质量报告写入 `runs/`。
+
 运行本地质量门：
 
 ```bash
@@ -82,6 +90,13 @@ python scripts/check.py
 ```
 
 该命令与默认 CI 检查保持一致：`poetry run ruff check src tests`、`poetry run mypy src`、`poetry run pytest tests/smoke tests/unit`。
+
+配置 `.env` 后运行真实 API smoke：
+
+```bash
+$env:AUTORESEARCH_LIVE_APIS='1'
+poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.py tests/smoke/test_literature_refresh_live.py tests/smoke/test_similarity_live.py -vv
+```
 
 ## 常用命令
 

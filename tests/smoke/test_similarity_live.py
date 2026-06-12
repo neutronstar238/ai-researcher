@@ -10,8 +10,9 @@ from autoresearch.schemas import CandidateStatus, ResearchCandidate
 
 
 @pytest.mark.skipif(
-    os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
-    reason="Set AUTORESEARCH_LIVE_LITERATURE=1 to run live online similarity checks.",
+    os.getenv("AUTORESEARCH_LIVE_APIS") != "1"
+    and os.getenv("AUTORESEARCH_LIVE_LITERATURE") != "1",
+    reason="Set AUTORESEARCH_LIVE_APIS=1 to run live online similarity checks.",
 )
 def test_live_project_similarity_check_returns_source_backed_findings(tmp_path: Path) -> None:
     candidate = ResearchCandidate(

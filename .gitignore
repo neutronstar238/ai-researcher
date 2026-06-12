@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 !deploy/docker/.env.example
+config.yaml
 
 __pycache__/
 *.py[cod]

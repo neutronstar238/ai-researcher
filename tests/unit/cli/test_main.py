@@ -8,6 +8,7 @@ import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.llm import LLMSmokeResult
 from autoresearch.schemas import ResearchCandidate
 
 
@@ -418,3 +419,62 @@ def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> No
     assert "[FAIL] package validation failed" in result.stdout
     assert "artifact_exists" in result.stdout
     assert "code/run.py" in result.stdout
+
+
+def test_llm_smoke_command_writes_quality_report(tmp_path: Path, monkeypatch) -> None:
+    quality = LLMSmokeResult.model_validate(
+        {
+            "provider": "deepseek",
+            "base_url": "https://api.deepseek.com",
+            "model_name": "deepseek-v4-flash",
+            "endpoint": "https://api.deepseek.com/chat/completions",
+            "response_text": '{"status":"ok"}',
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20},
+            "quality": {
+                "score": 1.0,
+                "checks": {
+                    "non_empty": True,
+                    "valid_json": True,
+                    "status_ok": True,
+                    "summary_present": True,
+                    "evidence_policy_present": True,
+                    "risks_present": True,
+                    "next_steps_present": True,
+                    "no_secret_leak": True,
+                    "no_fake_urls": True,
+                },
+                "issues": [],
+                "parsed_output": {
+                    "status": "ok",
+                    "summary": "Unverified research outcomes remain pending verification.",
+                    "evidence_policy": "Use source-backed evidence and keep unknowns pending.",
+                    "risks": ["missing evidence", "configuration drift"],
+                    "next_steps": ["run live literature search", "inspect validation report"],
+                },
+            },
+        }
+    )
+
+    def fake_run_llm_smoke_test(**_kwargs: object) -> LLMSmokeResult:
+        return quality
+
+    monkeypatch.setattr(cli_main, "run_llm_smoke_test", fake_run_llm_smoke_test)
+    output = tmp_path / "llm-smoke.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "llm-smoke",
+            "--config",
+            str(tmp_path / "config.yaml"),
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] model: deepseek-v4-flash" in result.stdout
+    assert "[CHECK] valid_json: pass" in result.stdout
+    assert output.is_file()

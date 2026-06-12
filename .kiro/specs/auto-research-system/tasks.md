@@ -842,6 +842,35 @@ A task can be checked only when all applicable items are true:
     - _References: GitHub Actions screenshot for Python 3.10 `mypy src` failure_
     - _Verify: `poetry run mypy src` passes without the Windows-only subprocess attribute error._
 
+- [x] 41. Add live LLM deployment smoke and quality gate
+  - [x] 41.1 Add provider-agnostic LLM smoke client
+    - Read `config.yaml` plus ignored `.env`, call the configured OpenAI-compatible chat completions endpoint, and avoid binding to one vendor SDK.
+    - Require structured JSON output from the model and capture token usage when returned by the provider.
+    - Redact API keys from API error messages and fail if a model response leaks a key-shaped secret.
+    - _References: user DeepSeek live deployment request, task 37.2_
+    - _Verify: unit tests cover output quality scoring and live CLI smoke calls the configured model._
+
+  - [x] 41.2 Add CLI output quality inspection
+    - Add `autoresearch llm-smoke`.
+    - Write a JSON quality report under ignored `runs/`.
+    - Check non-empty output, valid JSON, status, summary, evidence-policy language, risks, next steps, secret leakage, and fake URL leakage.
+    - _References: user output quality inspection request_
+    - _Verify: `poetry run autoresearch llm-smoke --config config.yaml --env-path .env` passes against the configured DeepSeek model._
+
+  - [x] 41.3 Convert live smoke suite to real API coverage
+    - Add a live LLM smoke test.
+    - Use `AUTORESEARCH_LIVE_APIS=1` as the shared switch for real LLM and literature API smoke tests.
+    - Keep mocked unit tests only for parser/control-flow coverage, not for claiming external integration success.
+    - _References: user request to change smoke checks to real API calls_
+    - _Verify: live smoke tests pass with real LLM, ArXiv, literature refresh, and similarity-check API calls._
+
+  - [x] 41.4 Run user-style full-chain deployment check
+    - Configure DeepSeek V4 Flash through `autoresearch deploy-setup`.
+    - Run `doctor`, `llm-smoke`, `literature-refresh`, `similarity-check`, `run-demo`, and deterministic report lint.
+    - Record source errors and output quality findings without claiming unavailable provider success.
+    - _References: user request to deploy as a user and inspect full flow_
+    - _Verify: all full-chain CLI commands pass; report lint returns zero issues._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -950,6 +979,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 15,
       "tasks": ["40.1", "40.2"]
+    },
+    {
+      "id": 16,
+      "tasks": ["41.1", "41.2", "41.3", "41.4"]
     }
   ]
 }
