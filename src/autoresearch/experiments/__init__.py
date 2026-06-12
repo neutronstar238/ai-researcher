@@ -54,6 +54,13 @@ from .planner import (
     plan_ablation_matrix,
     plan_experiment_tasks,
 )
+from .promotion import (
+    StrategyPromotionApproval,
+    StrategyPromotionDecision,
+    StrategyPromotionInput,
+    StrategyPromotionStatus,
+    promote_strategy_to_gray_release,
+)
 from .replay import (
     ReplayCase,
     ReplayDataset,
@@ -124,6 +131,10 @@ __all__ = [
     "ShadowProposal",
     "StatisticalCheck",
     "StatisticalNote",
+    "StrategyPromotionApproval",
+    "StrategyPromotionDecision",
+    "StrategyPromotionInput",
+    "StrategyPromotionStatus",
     "StrategyRewardInput",
     "StrategyRewardResult",
     "StrategyRewardWeights",
@@ -148,6 +159,7 @@ __all__ = [
     "load_replay_dataset",
     "plan_ablation_matrix",
     "plan_experiment_tasks",
+    "promote_strategy_to_gray_release",
     "quarantine_unsafe_experiment",
     "record_failed_run_as_knowledge",
     "require_evidence_for_metrics",

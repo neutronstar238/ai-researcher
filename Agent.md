@@ -59,6 +59,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 13:02:58 +08:00 - Codex - Task 29.1 gray release promotion gate
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `29.1`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/promotion.py`
+  - `tests/unit/experiments/test_promotion.py`
+- Summary:
+  - Added a strategy promotion gate for controlled gray release.
+  - Required human approval, golden test pass status, no safety regression, and non-decreasing evidence coverage before promotion.
+  - Started approved promotions at a default 5 percent gray traffic share and capped configured gray traffic share at 10 percent.
+  - Returned an immutable promoted strategy copy with `release_status="gray_release"` while leaving the input strategy unchanged.
+  - Wrote an approval-gate audit event for promotion decisions.
+  - Added tests for missing approval, missing golden pass, safety/evidence regression, and successful gray release with audit.
+  - Marked task `29.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run ruff check src/autoresearch/experiments/promotion.py src/autoresearch/experiments/__init__.py tests/unit/experiments/test_promotion.py`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests/unit/experiments/test_promotion.py -vv`: passed, 4 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 269 passed and 3 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with task `29.2` automatic rollback after negative strategy reward or safety incident.
+
 ### 2026-06-12 12:56:56 +08:00 - Codex - Task 28.2 strategy rewards
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `28.2`.
