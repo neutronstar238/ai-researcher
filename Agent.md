@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 17:06:47 +08:00 - Codex - Task 45 Obsidian LLM review memory
+
+- Request: Continue implementing the project from `tasks.md` and move evidence-constrained LLM review outputs into the Obsidian self-loop memory layer.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/vault.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/llm/review_memory.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_review_memory.py`
+- Summary:
+  - Added project-level `review/` to the Obsidian vault layout.
+  - Added review-memory persistence that converts a passing `LLMReviewResult` into a project `review_note` with evidence refs, quality checks, findings, unsupported claims, next steps, and raw reviewer JSON.
+  - Added `--vault`, `--project-id`, and `--source-task-id` to `autoresearch llm-review`; low-quality reviews stay in ignored `runs/` and are not promoted to vault memory.
+  - Raised the default LLM review token budget from 1600 to 2400 after a real DeepSeek review call returned empty content at 1600.
+  - Added and completed task `45.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/llm/test_review_memory.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report tests/unit/knowledge/test_vault.py -q`: passed, 7 tests.
+  - `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-vault.json --min-quality-score 0.85 --vault runs/manual-live/review-vault --project-id deepseek_live_project --source-task-id 45.1`: failed at the previous 1600 default with empty model content.
+  - `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-vault.json --min-quality-score 0.85 --vault runs/manual-live/review-vault --project-id deepseek_live_project --source-task-id 45.1 --max-tokens 2400`: passed with quality score `1.000`, verdict `fail`, and wrote `runs/manual-live/review-vault/projects/deepseek_live_project/review/llm-review-report-a332eff33a58.md`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues found in 85 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 297 tests and 4 skipped.
+- Problems:
+  - `P-20260612-070` added and resolved.
+- Follow-up:
+  - Wire accepted `review_note` outputs into review backlog creation so blocking model-review findings can automatically become project follow-up tasks.
+
 ### 2026-06-12 16:48:16 +08:00 - Codex - Task 44 evidence-constrained LLM reviewer
 
 - Request: Add an LLM-as-reviewer second-stage quality check that may use the configured live model but must cite local evidence and must not fabricate pass/fail conclusions.

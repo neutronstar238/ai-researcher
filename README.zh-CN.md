@@ -93,10 +93,12 @@ poetry run autoresearch llm-review `
   --config config.yaml `
   --env-path .env `
   --output runs/llm-review/latest.json `
-  --max-tokens 1600
+  --max-tokens 2400 `
+  --vault autoresearch-vault `
+  --project-id demo_project
 ```
 
-该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。推理型模型可能需要示例里的较高 review token 预算。
+该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note` 项目记忆，而不是一次性的 `runs/` 产物。推理型模型可能需要示例里的较高 review token 预算。
 
 运行本地质量门：
 

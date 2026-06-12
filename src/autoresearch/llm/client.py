@@ -132,7 +132,7 @@ def run_llm_evidence_review(
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     timeout_seconds: int | None = None,
-    max_tokens: int = 1600,
+    max_tokens: int = 2400,
 ) -> LLMReviewResult:
     """Ask the configured model to review output using only local evidence artifacts."""
 

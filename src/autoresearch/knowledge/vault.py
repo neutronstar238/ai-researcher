@@ -23,6 +23,7 @@ PROJECT_DIRECTORIES = (
     "results",
     "evidence",
     "paper",
+    "review",
 )
 
 

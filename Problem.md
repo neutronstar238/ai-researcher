@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-070 - DeepSeek reviewer sometimes exhausts 1600 output tokens before returning content
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 17:04:55 +08:00
+- Source: Real `autoresearch llm-review --project-id` verification for task `45.1`.
+- Symptom: The configured DeepSeek V4 Flash model returned an empty `message.content` at the previous 1600 review token budget.
+- Impact: Live review verification could fail before writing a JSON report or Obsidian review note, even though the same prompt can succeed with a larger budget.
+- Evidence: `poetry run autoresearch llm-review ... --vault runs/manual-live/review-vault --project-id deepseek_live_project --source-task-id 45.1` failed with `LLM API message content is empty; reasoning models may need a higher --max-tokens value`.
+- Root cause: Reasoning-token models can spend variable output budget before emitting final JSON; 1600 tokens was not stable enough for the evidence-constrained reviewer prompt.
+- Workaround: Users can still pass `--max-tokens` explicitly for larger reviews.
+- Next action: Track provider-specific behavior and consider model-aware token defaults if more providers show different output-budget needs.
+- Linked tasks: `45.1`
+- Resolution: Raised the LLM review default token budget from 1600 to 2400 and updated README examples.
+- Verification: `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest-vault.json --min-quality-score 0.85 --vault runs/manual-live/review-vault --project-id deepseek_live_project --source-task-id 45.1 --max-tokens 2400` passed with quality score `1.000`, verdict `fail`, and wrote `runs/manual-live/review-vault/projects/deepseek_live_project/review/llm-review-report-a332eff33a58.md`; `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests/smoke tests/unit -q` passed with 297 tests and 4 skipped.
+
 ### P-20260612-069 - LLM reviewer could pass weak evidence discipline without hard local citation gates
 
 - Status: Resolved

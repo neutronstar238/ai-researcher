@@ -899,6 +899,15 @@ A task can be checked only when all applicable items are true:
     - _References: user follow-up requesting an LLM-as-reviewer second-stage quality review that must cite local evidence_
     - _Verify: unit tests cover deterministic review quality checks and CLI report writing; real DeepSeek `llm-review` passes against local run artifacts while preserving `needs_revision` findings when evidence is incomplete._
 
+- [x] 45. Persist LLM review outcomes into Obsidian project memory
+  - [x] 45.1 Add project review-note storage for evidence-constrained LLM reviews
+    - Add `review/` to the project vault layout so project-level human and model review notes have a canonical Obsidian location.
+    - Convert passing `llm-review` results into `KnowledgeEntryType.REVIEW_NOTE` Markdown with YAML frontmatter, subject/evidence refs, quality checks, findings, unsupported claims, next steps, and raw reviewer JSON.
+    - Add `--vault`, `--project-id`, and `--source-task-id` to `autoresearch llm-review`; write to the vault only after the deterministic review quality threshold passes.
+    - Preserve failed or low-quality reviewer outputs under ignored `runs/` but do not promote them into long-term project memory.
+    - _References: RP Obsidian self-loop memory, task 44.1, user requirement that outputs and quality findings feed the project vault_
+    - _Verify: unit tests cover review-note storage and CLI vault wiring; real DeepSeek `llm-review --project-id` writes an Obsidian `review_note` under the project review directory._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1023,6 +1032,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 19,
       "tasks": ["44.1"]
+    },
+    {
+      "id": 20,
+      "tasks": ["45.1"]
     }
   ]
 }

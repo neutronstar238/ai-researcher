@@ -21,7 +21,12 @@ from autoresearch.config import (
 )
 from autoresearch.experiments import run_scientistbench_demo
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
-from autoresearch.llm import LLMClientError, run_llm_evidence_review, run_llm_smoke_test
+from autoresearch.llm import (
+    LLMClientError,
+    run_llm_evidence_review,
+    run_llm_smoke_test,
+    write_llm_review_note,
+)
 from autoresearch.reports import validate_reproducibility_package
 from autoresearch.research import (
     SimilarityCheckConfig,
@@ -656,7 +661,19 @@ def llm_review(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="Maximum output tokens for the review request."),
-    ] = 1600,
+    ] = 2400,
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root for optional project review memory."),
+    ] = Path("autoresearch-vault"),
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Optional project ID that receives an Obsidian review note."),
+    ] = None,
+    source_task_id: Annotated[
+        str | None,
+        typer.Option("--source-task-id", help="Optional task ID to attach to the review note."),
+    ] = None,
 ) -> None:
     """Run an LLM-as-reviewer pass constrained to local evidence files."""
 
@@ -693,6 +710,14 @@ def llm_review(
     if result.quality.score < min_quality_score:
         typer.echo("[FAIL] LLM review quality score below threshold", err=True)
         raise typer.Exit(1)
+    if project_id:
+        review_note = write_llm_review_note(
+            result=result,
+            vault_root=vault,
+            project_id=project_id,
+            source_task_id=source_task_id,
+        )
+        typer.echo(f"[OK] vault_review: {review_note}")
 
 
 @slash_app.command("init")

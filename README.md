@@ -154,10 +154,12 @@ poetry run autoresearch llm-review \
   --config config.yaml \
   --env-path .env \
   --output runs/llm-review/latest.json \
-  --max-tokens 1600
+  --max-tokens 2400 \
+  --vault autoresearch-vault \
+  --project-id demo_project
 ```
 
-The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Reasoning models may need the higher review token budget shown above.
+The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Passing reviews can be written back to `autoresearch-vault/projects/<project-id>/review/` as Obsidian `review_note` entries, so quality judgments become part of the project memory instead of one-off run artifacts. Reasoning models may need the higher review token budget shown above.
 
 Run the local quality gate:
 
