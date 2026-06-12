@@ -889,6 +889,16 @@ A task can be checked only when all applicable items are true:
     - _References: user follow-up on Semantic Scholar access limits and smoke-test boundaries_
     - _Verify: unit tests cover API key headers, retry backoff, 429 circuit breaking, CLI `.env` loading, and live literature smoke tests pass against real APIs._
 
+- [x] 44. Add evidence-constrained LLM reviewer quality gate
+  - [x] 44.1 Add local-evidence LLM review CLI
+    - Add `autoresearch llm-review` to call the configured provider-agnostic OpenAI-compatible model against a local subject file and one or more local evidence files.
+    - Assign outer evidence IDs such as `evidence_1` and require every reviewer finding to cite only those provided IDs.
+    - Treat missing evidence references, unknown nested evidence IDs, secret leakage, and fake URLs as hard quality failures below the CLI threshold.
+    - Keep `test_cli.py` and `test_imports.py` local-only; use the new review command for explicit live LLM quality inspection.
+    - Document the command in both README files, including the higher default review token budget needed by reasoning-token models.
+    - _References: user follow-up requesting an LLM-as-reviewer second-stage quality review that must cite local evidence_
+    - _Verify: unit tests cover deterministic review quality checks and CLI report writing; real DeepSeek `llm-review` passes against local run artifacts while preserving `needs_revision` findings when evidence is incomplete._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1009,6 +1019,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 18,
       "tasks": ["43.1"]
+    },
+    {
+      "id": 19,
+      "tasks": ["44.1"]
     }
   ]
 }

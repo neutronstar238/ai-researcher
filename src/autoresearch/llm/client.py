@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.schemas import file_hash
 
 
 class LLMClientError(RuntimeError):
@@ -39,6 +40,39 @@ class LLMSmokeResult(BaseModel):
     response_text: str
     usage: dict[str, Any] = Field(default_factory=dict)
     quality: LLMOutputQuality
+
+
+class LLMEvidenceArtifact(BaseModel):
+    """Local evidence artifact supplied to an LLM reviewer."""
+
+    evidence_id: str
+    path: str
+    sha256: str
+    excerpt: str
+
+
+class LLMReviewQuality(BaseModel):
+    """Local checks for an LLM-as-reviewer response."""
+
+    score: float = Field(ge=0.0, le=1.0)
+    checks: dict[str, bool]
+    issues: list[str] = Field(default_factory=list)
+    parsed_output: dict[str, Any] | None = None
+
+
+class LLMReviewResult(BaseModel):
+    """Source-constrained LLM review result with local evidence provenance."""
+
+    provider: str
+    base_url: str
+    model_name: str
+    endpoint: str
+    subject_path: str
+    subject_sha256: str
+    evidence: list[LLMEvidenceArtifact]
+    response_text: str
+    usage: dict[str, Any] = Field(default_factory=dict)
+    quality: LLMReviewQuality
 
 
 def run_llm_smoke_test(
@@ -85,6 +119,62 @@ def run_llm_smoke_test(
         base_url=llm.base_url,
         model_name=llm.model_name,
         endpoint=endpoint,
+        response_text=content,
+        usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
+        quality=quality,
+    )
+
+
+def run_llm_evidence_review(
+    *,
+    subject_path: Path | str,
+    evidence_paths: list[Path | str],
+    config_path: Path | str = Path("config.yaml"),
+    env_path: Path | str = Path(".env"),
+    timeout_seconds: int | None = None,
+    max_tokens: int = 1600,
+) -> LLMReviewResult:
+    """Ask the configured model to review output using only local evidence artifacts."""
+
+    if not evidence_paths:
+        msg = "at least one local evidence file is required for LLM review"
+        raise LLMClientError(msg)
+
+    config, api_key = _load_llm_config_and_api_key(config_path=config_path, env_path=env_path)
+    llm = config.deployment.llm
+    endpoint = _chat_completions_endpoint(llm.base_url)
+    subject_file = Path(subject_path)
+    subject_text = _read_limited_text(subject_file, label="subject", max_chars=12_000)
+    evidence = [
+        _read_evidence_artifact(index=index, path=Path(path))
+        for index, path in enumerate(evidence_paths, start=1)
+    ]
+    response = _post_chat_completion(
+        endpoint=endpoint,
+        api_key=api_key,
+        model_name=llm.model_name,
+        timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+        max_tokens=max_tokens,
+        messages=_review_messages(
+            subject_path=subject_file,
+            subject_text=subject_text,
+            evidence=evidence,
+        ),
+    )
+    content = _extract_message_content(response)
+    quality = evaluate_llm_review_quality(
+        content,
+        evidence_ids=[artifact.evidence_id for artifact in evidence],
+        secret_values=[api_key],
+    )
+    return LLMReviewResult(
+        provider=llm.provider,
+        base_url=llm.base_url,
+        model_name=llm.model_name,
+        endpoint=endpoint,
+        subject_path=subject_file.as_posix(),
+        subject_sha256=file_hash(subject_file),
+        evidence=evidence,
         response_text=content,
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         quality=quality,
@@ -140,6 +230,78 @@ def evaluate_llm_output_quality(
     return LLMOutputQuality(score=score, checks=checks, issues=issues, parsed_output=parsed)
 
 
+def evaluate_llm_review_quality(
+    response_text: str,
+    *,
+    evidence_ids: list[str],
+    secret_values: list[str] | None = None,
+) -> LLMReviewQuality:
+    """Score an LLM reviewer response for local evidence discipline."""
+
+    known_ids = set(evidence_ids)
+    checks: dict[str, bool] = {
+        "non_empty": bool(response_text.strip()),
+        "valid_json": False,
+        "verdict_present": False,
+        "summary_present": False,
+        "findings_present": False,
+        "finding_refs_present": False,
+        "finding_refs_known": False,
+        "unsupported_claims_present": False,
+        "next_steps_present": False,
+        "no_secret_leak": _has_no_secret_leak(response_text, secret_values or []),
+        "no_fake_urls": not bool(re.search(r"https?://", response_text, flags=re.IGNORECASE)),
+    }
+    issues: list[str] = []
+    parsed: dict[str, Any] | None = None
+    try:
+        decoded = json.loads(_strip_json_fences(response_text))
+    except json.JSONDecodeError as exc:
+        issues.append(f"Review response is not valid JSON: {exc.msg}")
+    else:
+        if isinstance(decoded, dict):
+            parsed = decoded
+            checks["valid_json"] = True
+            checks["verdict_present"] = decoded.get("verdict") in {
+                "pass",
+                "needs_revision",
+                "fail",
+            }
+            checks["summary_present"] = _short_text(decoded.get("summary"))
+            findings = decoded.get("findings")
+            checks["findings_present"] = isinstance(findings, list) and bool(findings)
+            refs_by_finding = _finding_evidence_refs(findings)
+            checks["finding_refs_present"] = bool(refs_by_finding) and all(refs_by_finding)
+            checks["finding_refs_known"] = bool(refs_by_finding) and all(
+                ref in known_ids for refs in refs_by_finding for ref in refs
+            )
+            checks["unsupported_claims_present"] = isinstance(
+                decoded.get("unsupported_claims"),
+                list,
+            )
+            checks["next_steps_present"] = _string_list_has_items(
+                decoded.get("next_steps"),
+                minimum=1,
+            )
+        else:
+            issues.append("Review response JSON top-level value is not an object")
+
+    for check, passed in checks.items():
+        if not passed:
+            issues.append(f"Review quality check failed: {check}")
+
+    score = round(sum(1 for passed in checks.values() if passed) / len(checks), 3)
+    critical_checks = (
+        "finding_refs_present",
+        "finding_refs_known",
+        "no_secret_leak",
+        "no_fake_urls",
+    )
+    if any(not checks[check] for check in critical_checks):
+        score = min(score, 0.5)
+    return LLMReviewQuality(score=score, checks=checks, issues=issues, parsed_output=parsed)
+
+
 def _post_chat_completion(
     *,
     endpoint: str,
@@ -147,10 +309,12 @@ def _post_chat_completion(
     model_name: str,
     timeout_seconds: int,
     max_tokens: int,
+    messages: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
-        "messages": [
+        "messages": messages
+        or [
             {
                 "role": "system",
                 "content": (
@@ -205,6 +369,102 @@ def _post_chat_completion(
     return decoded
 
 
+def _load_llm_config_and_api_key(
+    *,
+    config_path: Path | str,
+    env_path: Path | str,
+) -> tuple[SystemConfig, str]:
+    env_file = Path(env_path)
+    if env_file.exists():
+        load_dotenv(env_file, override=True)
+
+    config_file = Path(config_path)
+    config = (
+        ConfigParser().parse_file(config_file, model_type=SystemConfig)
+        if config_file.exists()
+        else SystemConfig()
+    )
+    if not isinstance(config, SystemConfig):
+        msg = f"Expected SystemConfig from {config_file}"
+        raise LLMClientError(msg)
+
+    llm = config.deployment.llm
+    api_key = os.getenv(llm.api_key_env)
+    if not api_key:
+        msg = f"Missing API key environment variable {llm.api_key_env}; run deploy-setup first"
+        raise LLMClientError(msg)
+    return config, api_key
+
+
+def _read_evidence_artifact(*, index: int, path: Path) -> LLMEvidenceArtifact:
+    excerpt = _read_limited_text(path, label=f"evidence_{index}", max_chars=6_000)
+    return LLMEvidenceArtifact(
+        evidence_id=f"evidence_{index}",
+        path=path.as_posix(),
+        sha256=file_hash(path),
+        excerpt=excerpt,
+    )
+
+
+def _read_limited_text(path: Path, *, label: str, max_chars: int) -> str:
+    if not path.exists():
+        msg = f"{label} file is missing: {path.as_posix()}"
+        raise LLMClientError(msg)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        msg = f"{label} file must be UTF-8 text: {path.as_posix()}"
+        raise LLMClientError(msg) from exc
+    return text[:max_chars]
+
+
+def _review_messages(
+    *,
+    subject_path: Path,
+    subject_text: str,
+    evidence: list[LLMEvidenceArtifact],
+) -> list[dict[str, str]]:
+    evidence_block = "\n\n".join(
+        (
+            f"[{artifact.evidence_id}] path={artifact.path} sha256={artifact.sha256}\n"
+            f"{artifact.excerpt}"
+        )
+        for artifact in evidence
+    )
+    allowed_ids = ", ".join(artifact.evidence_id for artifact in evidence)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are the AI-Researcher quality reviewer. Return only JSON. "
+                "Judge the subject only against the provided local evidence artifacts. "
+                "Every finding must cite one or more provided evidence IDs exactly. "
+                "Use only the outer evidence IDs supplied by this prompt as citations. "
+                "Do not invent URLs, papers, metrics, benchmark results, or files."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Review the subject output for evidence support, unsupported claims, "
+                "missing caveats, and next actions. Use this exact JSON object shape: "
+                '{"verdict":"pass|needs_revision|fail","summary":"...",'
+                '"findings":[{"severity":"info|warning|blocking","claim":"...",'
+                '"evidence_refs":["evidence_1"]}],"unsupported_claims":["..."],'
+                '"next_steps":["..."]}. Every finding must have at least one evidence_refs '
+                "entry from the provided local evidence IDs. If you cannot cite a provided "
+                "evidence ID for a claim, put that claim in unsupported_claims instead of "
+                "findings. Allowed evidence_refs values are exactly: "
+                f"{allowed_ids}. Do not use file names, paths, source_run_id values, "
+                "or nested id/evidence_ref values from inside evidence files as "
+                "evidence_refs.\n\n"
+                f"SUBJECT path={subject_path.as_posix()}\n{subject_text}\n\n"
+                f"LOCAL EVIDENCE\n{evidence_block}"
+            ),
+        },
+    ]
+
+
 def _extract_message_content(response: dict[str, Any]) -> str:
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
@@ -217,8 +477,27 @@ def _extract_message_content(response: dict[str, Any]) -> str:
         raise LLMClientError("LLM API first choice did not include a message object")
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
-        raise LLMClientError("LLM API message content is empty")
+        raise LLMClientError(
+            "LLM API message content is empty; reasoning models may need a higher "
+            "--max-tokens value"
+        )
     return content.strip()
+
+
+def _finding_evidence_refs(findings: Any) -> list[list[str]]:
+    if not isinstance(findings, list):
+        return []
+    refs_by_finding: list[list[str]] = []
+    for finding in findings:
+        if not isinstance(finding, dict):
+            refs_by_finding.append([])
+            continue
+        refs = finding.get("evidence_refs")
+        if not isinstance(refs, list):
+            refs_by_finding.append([])
+            continue
+        refs_by_finding.append([ref for ref in refs if isinstance(ref, str) and ref.strip()])
+    return refs_by_finding
 
 
 def _chat_completions_endpoint(base_url: str) -> str:

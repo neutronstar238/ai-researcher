@@ -9,7 +9,7 @@ import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
-from autoresearch.llm import LLMSmokeResult
+from autoresearch.llm import LLMReviewResult, LLMSmokeResult
 from autoresearch.schemas import ResearchCandidate
 
 
@@ -485,4 +485,90 @@ def test_llm_smoke_command_writes_quality_report(tmp_path: Path, monkeypatch) ->
     assert result.exit_code == 0, result.output
     assert "[OK] model: deepseek-v4-flash" in result.stdout
     assert "[CHECK] valid_json: pass" in result.stdout
+    assert output.is_file()
+
+
+def test_llm_review_command_writes_local_evidence_report(tmp_path: Path, monkeypatch) -> None:
+    subject_path = tmp_path / "report.md"
+    evidence_path = tmp_path / "validation.json"
+    subject_path.write_text("# Report\n\nClaim backed by validation.", encoding="utf-8")
+    evidence_path.write_text('{"status":"passed"}', encoding="utf-8")
+    review = LLMReviewResult.model_validate(
+        {
+            "provider": "deepseek",
+            "base_url": "https://api.deepseek.com",
+            "model_name": "deepseek-v4-flash",
+            "endpoint": "https://api.deepseek.com/chat/completions",
+            "subject_path": subject_path.as_posix(),
+            "subject_sha256": "sha-subject",
+            "evidence": [
+                {
+                    "evidence_id": "evidence_1",
+                    "path": evidence_path.as_posix(),
+                    "sha256": "sha-evidence",
+                    "excerpt": '{"status":"passed"}',
+                }
+            ],
+            "response_text": '{"verdict":"pass"}',
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20},
+            "quality": {
+                "score": 1.0,
+                "checks": {
+                    "non_empty": True,
+                    "valid_json": True,
+                    "verdict_present": True,
+                    "summary_present": True,
+                    "findings_present": True,
+                    "finding_refs_present": True,
+                    "finding_refs_known": True,
+                    "unsupported_claims_present": True,
+                    "next_steps_present": True,
+                    "no_secret_leak": True,
+                    "no_fake_urls": True,
+                },
+                "issues": [],
+                "parsed_output": {
+                    "verdict": "pass",
+                    "summary": "The report is grounded in local evidence.",
+                    "findings": [
+                        {
+                            "severity": "info",
+                            "claim": "Validation passed.",
+                            "evidence_refs": ["evidence_1"],
+                        }
+                    ],
+                    "unsupported_claims": [],
+                    "next_steps": ["Keep evidence attached."],
+                },
+            },
+        }
+    )
+
+    def fake_review(**_kwargs: object) -> LLMReviewResult:
+        return review
+
+    monkeypatch.setattr(cli_main, "run_llm_evidence_review", fake_review)
+    output = tmp_path / "llm-review.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "llm-review",
+            "--subject",
+            str(subject_path),
+            "--evidence",
+            str(evidence_path),
+            "--config",
+            str(tmp_path / "config.yaml"),
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] review_quality_score: 1.000" in result.stdout
+    assert "[CHECK] finding_refs_known: pass" in result.stdout
+    assert "[VERDICT] pass" in result.stdout
     assert output.is_file()

@@ -83,6 +83,21 @@ poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output 
 
 该命令会调用当前配置的 OpenAI-compatible 模型，要求结构化 JSON 输出，检查证据策略语言、API key 泄露风险，并把质量报告写入 `runs/`。
 
+基于本地证据的 LLM-as-reviewer：
+
+```bash
+poetry run autoresearch llm-review `
+  --subject runs/manual-live/demo/tabular-baseline/report/report.md `
+  --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json `
+  --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json `
+  --config config.yaml `
+  --env-path .env `
+  --output runs/llm-review/latest.json `
+  --max-tokens 1600
+```
+
+该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。推理型模型可能需要示例里的较高 review token 预算。
+
 运行本地质量门：
 
 ```bash

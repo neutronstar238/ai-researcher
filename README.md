@@ -144,6 +144,21 @@ poetry run autoresearch llm-smoke --config config.yaml --env-path .env --output 
 
 This calls the configured OpenAI-compatible model, requires structured JSON output, checks evidence-policy language, verifies no API key leakage, and writes a local quality report under `runs/`.
 
+LLM-as-reviewer with local evidence:
+
+```bash
+poetry run autoresearch llm-review \
+  --subject runs/manual-live/demo/tabular-baseline/report/report.md \
+  --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json \
+  --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json \
+  --config config.yaml \
+  --env-path .env \
+  --output runs/llm-review/latest.json \
+  --max-tokens 1600
+```
+
+The reviewer can use the configured live model, but the deterministic gate requires every finding to cite provided local evidence IDs such as `evidence_1`; missing or unknown evidence references fail below the quality threshold. Reasoning models may need the higher review token budget shown above.
+
 Run the local quality gate:
 
 ```bash

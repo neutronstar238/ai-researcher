@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 16:48:16 +08:00 - Codex - Task 44 evidence-constrained LLM reviewer
+
+- Request: Add an LLM-as-reviewer second-stage quality check that may use the configured live model but must cite local evidence and must not fabricate pass/fail conclusions.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Added `autoresearch llm-review` for provider-agnostic live model review of a local subject file against local evidence artifacts.
+  - Added local evidence artifact hashing, outer evidence IDs, structured reviewer JSON expectations, and deterministic review quality scoring.
+  - Made missing evidence refs, unknown nested evidence refs, secret leakage, and fake URLs hard failures below the CLI quality threshold.
+  - Raised the default review token budget to 1600 after a real DeepSeek call returned empty `message.content` at 900 tokens.
+  - Strengthened the reviewer prompt after a real DeepSeek call cited nested evidence-map IDs instead of the allowed outer evidence IDs.
+  - Added and completed task `44.1` in the implementation task plan.
+- Verification:
+  - `poetry run pytest tests/unit/llm/test_client.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q`: passed, 6 tests.
+  - `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest.json --min-quality-score 0.85 --max-tokens 900`: failed with empty model content, motivating the 1600 default for reasoning-token models.
+  - `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest.json --min-quality-score 0.85`: initially failed with quality score `0.500` when the model cited nested evidence-map IDs; after prompt tightening, passed with quality score `1.000` and verdict `needs_revision`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues found in 84 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 296 tests and 4 skipped.
+- Problems:
+  - `P-20260612-069` added and resolved.
+- Follow-up:
+  - Add provider-output fixtures if other LLMs invent different citation shapes; keep the deterministic local-evidence gate as the final authority.
+
 ### 2026-06-12 16:34:43 +08:00 - Codex - Task 43 Semantic Scholar access hardening
 
 - Request: Continue iterating on Semantic Scholar rate limiting/backoff/API key/429 circuit breaking, keep local smoke tests local-only, and document the live smoke boundary.

@@ -21,7 +21,7 @@ from autoresearch.config import (
 )
 from autoresearch.experiments import run_scientistbench_demo
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
-from autoresearch.llm import LLMClientError, run_llm_smoke_test
+from autoresearch.llm import LLMClientError, run_llm_evidence_review, run_llm_smoke_test
 from autoresearch.reports import validate_reproducibility_package
 from autoresearch.research import (
     SimilarityCheckConfig,
@@ -620,6 +620,78 @@ def llm_smoke(
     typer.echo(f"[OK] report written: {output}")
     if result.quality.score < min_quality_score:
         typer.echo("[FAIL] LLM output quality score below threshold", err=True)
+        raise typer.Exit(1)
+
+
+@app.command("llm-review")
+def llm_review(
+    subject: Annotated[
+        Path,
+        typer.Option("--subject", help="Local output file to review."),
+    ],
+    evidence: Annotated[
+        list[Path],
+        typer.Option(
+            "--evidence",
+            "-e",
+            help="Local evidence file. Repeat this option for multiple files.",
+        ),
+    ],
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by deploy-setup."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file containing the configured API key."),
+    ] = Path(".env"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="JSON reviewer report output path under ignored run artifacts."),
+    ] = Path("runs/llm-review/latest.json"),
+    min_quality_score: Annotated[
+        float,
+        typer.Option("--min-quality-score", min=0.0, max=1.0, help="Fail below this score."),
+    ] = 0.85,
+    max_tokens: Annotated[
+        int,
+        typer.Option("--max-tokens", min=256, help="Maximum output tokens for the review request."),
+    ] = 1600,
+) -> None:
+    """Run an LLM-as-reviewer pass constrained to local evidence files."""
+
+    try:
+        result = run_llm_evidence_review(
+            subject_path=subject,
+            evidence_paths=list(evidence),
+            config_path=config_path,
+            env_path=env_path,
+            max_tokens=max_tokens,
+        )
+    except LLMClientError as exc:
+        typer.echo(f"[FAIL] LLM review request failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    typer.echo(f"[OK] provider: {result.provider}")
+    typer.echo(f"[OK] model: {result.model_name}")
+    typer.echo(f"[OK] subject: {result.subject_path}")
+    typer.echo(f"[OK] evidence_files: {len(result.evidence)}")
+    typer.echo(f"[OK] review_quality_score: {result.quality.score:.3f}")
+    for check, passed in result.quality.checks.items():
+        typer.echo(f"[CHECK] {check}: {'pass' if passed else 'fail'}")
+
+    parsed = result.quality.parsed_output or {}
+    verdict = parsed.get("verdict")
+    summary = parsed.get("summary")
+    if isinstance(verdict, str):
+        typer.echo(f"[VERDICT] {verdict}")
+    if isinstance(summary, str):
+        typer.echo(f"[SUMMARY] {summary}")
+    typer.echo(f"[OK] review report written: {output}")
+    if result.quality.score < min_quality_score:
+        typer.echo("[FAIL] LLM review quality score below threshold", err=True)
         raise typer.Exit(1)
 
 

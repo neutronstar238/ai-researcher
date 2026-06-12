@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-069 - LLM reviewer could pass weak evidence discipline without hard local citation gates
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-12 16:47:51 +08:00
+- Source: User follow-up requesting an LLM-as-reviewer stage that must cite local evidence instead of inventing quality conclusions.
+- Symptom: The first real `llm-review` call scored above the threshold even though one finding had empty `evidence_refs`. A later real call used nested evidence-map IDs instead of the allowed outer evidence IDs.
+- Impact: A model reviewer could make unsupported or ambiguous review findings look acceptable, undermining the evidence-first validation loop.
+- Evidence: `poetry run autoresearch llm-review ... --max-tokens 900` initially exposed a missing-reference finding; after hard gates were added, a default live call correctly failed at quality score `0.500` when the model cited nested IDs like `evidence_3bb...` instead of `evidence_1` or `evidence_2`.
+- Root cause: The deterministic review quality score treated evidence-reference checks as ordinary weighted checks, and the first prompt did not clearly distinguish outer reviewer evidence IDs from IDs nested inside evidence artifacts. The 900 token budget was also too low for some reasoning-token model responses.
+- Workaround: None needed after the fix; users can still override `--max-tokens` for unusually large reviews.
+- Next action: Add more real provider fixtures if other models use different invalid citation patterns.
+- Linked tasks: `44.1`
+- Resolution: Added `autoresearch llm-review`, made missing/unknown evidence refs hard quality failures, listed allowed evidence IDs explicitly in the review prompt, prohibited nested file IDs as reviewer citations, raised the default review token budget to 1600, and documented the workflow in both README files.
+- Verification: `poetry run pytest tests/unit/llm/test_client.py tests/unit/cli/test_main.py::test_llm_review_command_writes_local_evidence_report -q` passed with 6 tests; `poetry run ruff check src tests` passed; `poetry run mypy src` passed; `poetry run pytest tests/smoke tests/unit -q` passed with 296 tests and 4 skipped; final real DeepSeek `poetry run autoresearch llm-review --subject runs/manual-live/demo/tabular-baseline/report/report.md --evidence runs/manual-live/demo/tabular-baseline/validation/validation-report.json --evidence runs/manual-live/demo/tabular-baseline/evidence/evidence-map.json --config config.yaml --env-path .env --output runs/llm-review/latest.json --min-quality-score 0.85` passed with quality score `1.000` and verdict `needs_revision`.
+
 ### P-20260612-068 - Semantic Scholar live access needed explicit throttling and circuit breaking
 
 - Status: Resolved
