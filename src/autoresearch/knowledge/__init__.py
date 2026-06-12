@@ -9,6 +9,11 @@ from .entries import (
     extract_wiki_links,
 )
 from .permissions import AccessMode, AgentRole, PermissionManager
+from .skills import (
+    ExtractedSkillCard,
+    SuccessfulPatternExample,
+    extract_reusable_skill_card,
+)
 from .vault import (
     EXPLORATION_DIRECTORIES,
     PROJECT_DIRECTORIES,
@@ -20,6 +25,7 @@ __all__ = [
     "AccessMode",
     "AgentRole",
     "EXPLORATION_DIRECTORIES",
+    "ExtractedSkillCard",
     "KnowledgeEntry",
     "KnowledgeEntryType",
     "KnowledgeZone",
@@ -30,4 +36,6 @@ __all__ = [
     "VersionSnapshot",
     "create_vault_layout",
     "extract_wiki_links",
+    "extract_reusable_skill_card",
+    "SuccessfulPatternExample",
 ]

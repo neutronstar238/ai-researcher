@@ -607,7 +607,7 @@ A task can be checked only when all applicable items are true:
     - _Verify: tests classify representative failure records and update a shared failure pattern note._
 
 - [ ] 23. Build Obsidian skill library
-  - [ ] 23.1 Extract reusable skill cards
+  - [x] 23.1 Extract reusable skill cards
     - Convert repeated successful patterns into skill cards with trigger conditions, actions, success metrics, and examples.
     - Store skills under `autoresearch-vault/exploration/skills/` with usage examples linked to project experience notes and failure patterns.
     - Skills must be retrievable by ID, tags, keywords, and wiki-links.

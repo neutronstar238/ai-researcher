@@ -59,6 +59,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 11:59:43 +08:00 - Codex - Task 23.1 reusable skill cards
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `23.1`; extract reusable skill cards from repeated successful patterns.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `SuccessfulPatternExample`, `ExtractedSkillCard`, and `extract_reusable_skill_card()`.
+  - Required at least two successful examples before generating a reusable skill card.
+  - Wrote skill cards under `autoresearch-vault/exploration/skills/` with trigger conditions, actions, success metrics, project experience links, failure pattern links, tags, keywords, related tasks, and related runs.
+  - Exported the skill extraction API from `autoresearch.knowledge`.
+  - Added tests for skill-card creation, keyword retrieval, wiki-link extraction, topic-index presence, repeated-example validation, and incomplete-example rejection.
+  - Marked task `23.1` complete; parent task `23` remains open for skill retrieval in `23.2`.
+- Verification:
+  - Initial `mypy` and follow-up focused `ruff` checks exposed `P-20260612-046`; repaired the iterable type annotation and import location.
+  - `poetry run ruff check src/autoresearch/knowledge/skills.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_skills.py`: passed.
+  - `poetry run mypy src`: passed with the existing non-failing unused optional dependency override note.
+  - `poetry run pytest tests/unit/knowledge/test_skills.py -vv`: passed, 3 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents`: passed, 225 tests passed and 3 optional live smoke tests skipped by default.
+- Problems:
+  - `P-20260612-046` added and resolved.
+- Follow-up:
+  - Task `23.2` should retrieve relevant skill cards for similar tasks from frontmatter keywords and Obsidian links.
+
 ### 2026-06-12 11:53:22 +08:00 - Codex - Task 22.2 recurring failure classification
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, task `22.2`; classify recurring failure patterns and feed repeated failures into skill and strategy work.

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-046 - Skill extraction helper had incorrect iterable type
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 11:58:02 +08:00
+- Source: `poetry run mypy src`; `poetry run ruff check src/autoresearch/knowledge/skills.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_skills.py`.
+- Symptom: mypy reported `_ordered_unique` as iterating over an `object`; ruff then required `Iterable` to be imported from `collections.abc`.
+- Impact: Task `23.1` type verification was blocked while the implementation intent was otherwise clear.
+- Evidence: mypy reported `src\autoresearch\knowledge\skills.py:265: error: "object" has no attribute "__iter__"`; ruff reported `UP035`.
+- Root cause: The helper accepted any iterable, but its parameter annotation was written as `object`, then corrected with the older typing import location.
+- Workaround: None needed after correcting the type annotation.
+- Next action: None.
+- Linked tasks: `23.1`
+- Resolution: Changed `_ordered_unique` to accept `Iterable[object]` imported from `collections.abc`.
+- Verification: `poetry run ruff check src/autoresearch/knowledge/skills.py src/autoresearch/knowledge/__init__.py tests/unit/knowledge/test_skills.py`, `poetry run mypy src`, `poetry run pytest tests/unit/knowledge/test_skills.py -vv`, `poetry run ruff check src tests`, and `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed after the type annotation repair.
+
 ### P-20260612-045 - Recurring failure exports caused syntax error
 
 - Status: Resolved
