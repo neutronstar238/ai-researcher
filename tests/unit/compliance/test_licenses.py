@@ -18,6 +18,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
     assert "THIRD_PARTY_NOTICES.md" in notice
     for required in (
         "HKUDS AI-Researcher",
+        "aiming-lab/AutoResearchClaw",
         "karpathy/autoresearch",
         "Thysrael/Horizon",
         "UltraClr/agent-arxiv-daily",

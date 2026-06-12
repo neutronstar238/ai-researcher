@@ -25,6 +25,7 @@ Target version: `0.1.0`.
 - Deployment and release preparation docs: Docker Compose package, Kubernetes planning document, Apache-2.0 license, contribution guide, and this changelog.
 - Apache-2.0 `NOTICE` file and root `.env.example` for first-deploy model/channel configuration.
 - `THIRD_PARTY_NOTICES.md` for license and attribution status of referenced open-source inspiration projects.
+- AutoResearchClaw is now tracked as a MIT-licensed design reference for one-command/OpenClaw-style operation, HITL modes, multi-source literature workflow, claim verification, and skill-learning direction.
 - First-deploy CLI setup for provider-agnostic model configuration, `.env` secret storage, WeChat/Feishu channel wiring, and project slash command templates.
 - Real online discovery CLI entry points for daily literature refresh and project-start similarity checks, including guarded Obsidian summaries and visible per-source fetch errors.
 - Live `llm-smoke` CLI for OpenAI-compatible model calls, structured output checks, API-key leak checks, and quality report artifacts.
@@ -71,7 +72,7 @@ Target version: `0.1.0`.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
 - Online discovery now uses ArXiv, Semantic Scholar, and OpenAlex by default, so Semantic Scholar rate limits no longer reduce live source breadth to ArXiv-only when OpenAlex is reachable.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
-- README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
+- README now documents design inspirations from AI-Researcher, AutoResearchClaw, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
 - LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
 - README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.

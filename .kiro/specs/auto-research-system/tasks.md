@@ -1105,6 +1105,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-004`, where live publication audits still failed similarity query breadth after data-side evidence was fixed._
     - _Verify: focused similarity tests, ruff, mypy, full smoke/unit tests, live query-generation check over the real Pendigits candidate, live `similarity-check` with four queries, and live `serve --once --demo pendigits_centroid_baseline --review` showing similarity query breadth passes._
 
+- [x] 66. Clarify AutoResearchClaw MIT reference and differentiation
+  - [x] 66.1 Track AutoResearchClaw as a usable MIT reference without copying it
+    - Review the current AutoResearchClaw repository, README, and visible license status.
+    - Record that AutoResearchClaw has a top-level MIT license and can be used as a clearer open-source reference than projects with ambiguous repository license text.
+    - Update English and Chinese README reference sections to explain the difference: AutoResearchClaw emphasizes a 23-stage one-command/OpenClaw-compatible research pipeline, while AI-Researcher centers the Obsidian vault as the auditable self-loop/self-evolution substrate plus strict publication-readiness gates.
+    - Update `THIRD_PARTY_NOTICES.md` and compliance tests so any future copied/adapted code, prompts, benchmark files, skills, assets, or docs preserve MIT license text and attribution.
+    - _References: user request to compare against `aiming-lab/AutoResearchClaw` and note that it has MIT licensing._
+    - _Verify: web review of upstream repository/README/license status, focused compliance tests, README/notice text search, ruff, mypy, and full smoke/unit tests._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1300,7 +1309,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 37,
-      "tasks": ["62.1", "63.1", "64.1", "65.1"]
+      "tasks": ["62.1", "63.1", "64.1", "65.1", "66.1"]
     }
   ]
 }

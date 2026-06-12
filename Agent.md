@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 01:33:34 +08:00 - Codex - Task 66 AutoResearchClaw reference boundary
+
+- Request: Compare AI-Researcher against `aiming-lab/AutoResearchClaw`, recognize its MIT license, and record how it can be referenced without blurring this project's differentiation.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+- Summary:
+  - Reviewed AutoResearchClaw's public GitHub repository, README, and visible license status.
+  - Added AutoResearchClaw to English and Chinese README reference sections as a MIT-licensed reference for one-command/OpenClaw-style operation, 23-stage pipeline framing, HITL modes, multi-source literature workflow, claim verification, and skill-learning direction.
+  - Clarified that AI-Researcher differentiates through an Obsidian-compatible auditable self-loop/self-evolution vault, strict publication-readiness gates before paper claims, provider-agnostic local deployment, and permissioned long-running operation.
+  - Added AutoResearchClaw to `THIRD_PARTY_NOTICES.md` and compliance coverage, with MIT attribution requirements if future code/prompts/benchmark files/skills/assets/docs are copied or adapted.
+- Verification:
+  - Web review: `https://github.com/aiming-lab/AutoResearchClaw` is public, exposes a top-level `LICENSE`, GitHub reports MIT license, and its README describes the one-command pipeline, OpenClaw compatibility, HITL modes, multi-source literature, claim verification, and skill-learning features.
+  - `poetry run pytest tests/unit/compliance/test_licenses.py -q`: passed 5 tests.
+  - `rg -n "AutoResearchClaw|aiming-lab/AutoResearchClaw|23-stage|MIT" README.md README.zh-CN.md THIRD_PARTY_NOTICES.md CHANGELOG.md .kiro/specs/auto-research-system/tasks.md tests/unit/compliance/test_licenses.py`: confirmed reference, notice, changelog, task, and test coverage.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with 90 source files.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 335 passed and 4 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - If future implementation copies or adapts any AutoResearchClaw material, add upstream copyright/license text and a precise incorporation note before merging.
+
 ### 2026-06-13 01:32:22 +08:00 - Codex - Task 65 similarity query breadth
 
 - Request: Continue the real full-loop quality iteration until the system can run a real research cycle and make publication-level blockers visible; specifically address similarity query breadth after the previous live audit showed too few distinct cross-searches.
