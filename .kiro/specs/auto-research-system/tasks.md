@@ -62,7 +62,7 @@ A task can be checked only when all applicable items are true:
 
 ### Phase 0: Project Governance and Engineering Baseline (Weeks 0-2)
 
-- [ ] 0. Establish repository governance and documentation baseline
+- [x] 0. Establish repository governance and documentation baseline
   - [x] 0.1 Create agent collaboration instructions
     - Add `AGENTS.md` as repository-wide instructions for future coding agents.
     - Require agents to read plans, tasks, problems, and prior change logs before non-trivial edits.

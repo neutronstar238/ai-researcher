@@ -81,6 +81,7 @@ Keep problem entries factual. Include evidence and next action.
 ## Implementation Discipline
 
 - Prefer the smallest implementation that satisfies the task.
+- Treat work as task-driven work: choose one task from `.kiro/specs/auto-research-system/tasks.md`, verify it, then log and commit it before moving on.
 - Match existing project style and documented architecture.
 - Do not refactor unrelated code.
 - Do not mark a task complete unless its acceptance checks have actually passed.

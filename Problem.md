@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260612-062 - Task 0 parent verification found missing task-driven wording
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-12 14:53:46 +08:00
+- Source: Task 0 parent verification command checking `AGENTS.md` acceptance phrases.
+- Symptom: Verification failed because `AGENTS.md` mentioned task-scoped work but did not contain the explicit `task-driven` wording required by task `0.1`.
+- Impact: Parent task `0` could not be honestly marked complete until the repository-wide agent instructions directly satisfied the documented acceptance check.
+- Evidence: The verification script reported `Missing pattern 'task-driven' in AGENTS.md`.
+- Root cause: Earlier instructions captured the behavior through task and commit rules without the exact acceptance wording.
+- Workaround: None needed after updating `AGENTS.md`.
+- Next action: Use explicit acceptance language when parent tasks verify documentation requirements.
+- Linked tasks: `0`
+- Resolution: Added a task-driven work rule to the `AGENTS.md` implementation discipline section.
+- Verification: Task `0` parent verification rerun passed after the `AGENTS.md` wording update.
+
 ### P-20260612-061 - Sandbox property test hit Hypothesis deadline on Windows
 
 - Status: Resolved
