@@ -88,7 +88,35 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:approve`、`/research:openclaw-channels`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
+
+常驻运行入口：
+
+```bash
+poetry run airesearcher serve --permission-mode approve-dangerous
+```
+
+这是推荐的 24h 本地/服务器运行入口。它复用已有 autopilot 循环，但在执行联网发现、实验、真实 LLM review 或写入 vault/state 前，会把危险动作写入 `.airesearcher/runtime-approvals.json` 等待人工批准。可信单用户部署可以使用 `--permission-mode allow-all`；更安全的部署应保留 `approve-dangerous`，通过本地终端或通信软件适配器批准：
+
+```bash
+poetry run airesearcher runtime list
+poetry run airesearcher runtime approve latest --approved-by operator
+```
+
+OpenClaw 通信通道挂载清单：
+
+```bash
+poetry run airesearcher channels openclaw init
+poetry run airesearcher channels openclaw list
+```
+
+该命令会写入 `integrations/openclaw/channels.json`，作为把官方/常见 OpenClaw 通信插件挂到 AI-Researcher 运行时上的仓库 runbook。清单覆盖飞书/Lark（`@larksuite/openclaw-lark`）、微信（`npx -y @tencent-weixin/openclaw-weixin-cli install` / `@tencent-weixin/openclaw-weixin`）、企业微信（`@wecom/wecom-openclaw-plugin`），以及 OpenClaw 文档中的 Telegram、Discord、Slack、WhatsApp、Microsoft Teams、QQ Bot、Signal 和 Zalo 等通道。第三方通道插件不会被 vendor 到本仓库；请在 OpenClaw 部署内安装，并把密钥保存在 OpenClaw 凭据、`.env` 或平台密钥管理中。
+
+通信软件中的 `/approve` 应映射到：
+
+```bash
+poetry run airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+```
 
 Autopilot 一条命令常驻循环：
 
@@ -96,7 +124,7 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令会让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；真正可发表论文仍需要更强领域实验和人工审阅。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 ScientistBench-Lite 实验、可选真实 LLM 证据评审、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据和评审轨迹的报告；真正可发表论文仍需要更强领域实验和人工审阅。
 
 Skill evolution 候选：
 

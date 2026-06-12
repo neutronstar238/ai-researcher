@@ -62,6 +62,58 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 00:15:32 +08:00 - Codex - Task 60 always-on runtime and OpenClaw channels
+
+- Request: Add an OpenClaw-style one-command always-on AI-Researcher runtime with dangerous-command approval and repository-mounted communication channel plugin metadata for Feishu/Lark, Weixin/WeChat, WeCom, and other common OpenClaw channels; then run a real full-loop quality check.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `integrations/openclaw/channels.json`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/integrations/__init__.py`
+  - `src/autoresearch/integrations/openclaw.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/runtime/approval.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/integrations/test_openclaw.py`
+  - `tests/unit/runtime/test_runtime_approval.py`
+  - Runtime verification also wrote local Obsidian evidence under `autoresearch-vault/projects/live_full_20260613/` and local run artifacts under `runs/manual-live/serve-full/`; these are verification outputs, not vendored third-party code.
+- Summary:
+  - Added `RuntimePermissionMode`, `RuntimeActionRisk`, and runtime approval request persistence under `.airesearcher/runtime-approvals.json`.
+  - Added `airesearcher serve` as the preferred 24h local/server runtime entry point over the existing autopilot loop.
+  - Added `approve-dangerous` mode, where dangerous research-loop actions wait for approval, and `allow-all` mode for trusted deployments.
+  - Added `airesearcher runtime list` and `airesearcher runtime approve` so future WeChat/Feishu `/approve` adapters can map to the same local approval queue.
+  - Added OpenClaw channel integration metadata and `airesearcher channels openclaw init|list`, then generated `integrations/openclaw/channels.json`.
+  - The OpenClaw channel manifest covers Lark/Feishu `@larksuite/openclaw-lark`, Weixin `@tencent-weixin/openclaw-weixin`, WeCom `@wecom/wecom-openclaw-plugin`, and OpenClaw-documented Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo channels.
+  - Added slash templates `/research:serve`, `/research:approve`, and `/research:openclaw-channels`.
+  - Updated bilingual README guidance to position `serve --permission-mode approve-dangerous` as the default always-on operator entry point, while documenting that actual chat webhook adapters remain future transports over the same approval queue.
+  - Updated third-party notices for the official/common OpenClaw communication plugins without vendoring third-party npm packages.
+  - Marked task `60.1` complete in `tasks.md`.
+- Verification:
+  - `poetry run airesearcher channels openclaw init --output integrations/openclaw/channels.json`: passed and wrote the OpenClaw channel manifest.
+  - Focused runtime/channel checks: `poetry run pytest tests/unit/runtime/test_runtime_approval.py tests/unit/integrations/test_openclaw.py tests/unit/cli/test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests/unit/cli/test_main.py::test_serve_allow_all_runs_without_approval_state tests/unit/cli/test_main.py::test_runtime_list_defaults_to_pending_requests tests/unit/cli/test_main.py::test_openclaw_channel_manifest_cli_writes_official_plugin_mounts tests/unit/cli/test_main.py::test_slash_commands_init_and_list_project_templates tests/unit/compliance/test_licenses.py::test_project_notice_tracks_third_party_reference_policy -q`: passed with 12 tests after resolving `P-20260613-001` and `P-20260613-002`.
+  - `poetry run ruff check src tests`: passed after resolving `P-20260613-001`.
+  - `poetry run mypy src`: passed with no issues in 89 source files after resolving `P-20260613-001`.
+  - `poetry run airesearcher serve --once --permission-mode allow-all --project-id ci_dry --no-review --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --output-dir runs/serve-dry --state .airesearcher/scheduler-state-test.json --approvals-state .airesearcher/runtime-approvals-test.json`: passed and produced a local full-cycle dry run without LLM review.
+  - `poetry run airesearcher channels openclaw list --channel openclaw-weixin`: passed and printed the Tencent Weixin plugin route.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed with 324 tests and 4 live smoke tests skipped after resolving `P-20260613-002`.
+  - `git diff --check`: passed.
+  - Real full-loop live verification: `poetry run airesearcher serve --once --permission-mode allow-all --project-id live_full_20260613 --review --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --output-dir runs/manual-live/serve-full --cache .cache/live-full-20260613 --state .airesearcher/scheduler-state-live-full.json --approvals-state .airesearcher/runtime-approvals-live-full.json --min-quality-score 0.85 --max-tokens 2400` passed with real ArXiv retrieval, real Semantic Scholar 429 recording, local ScientistBench-Lite execution, live DeepSeek `deepseek-v4-flash` evidence review, quality score `1.0`, verdict `pass`, zero unsupported claims, and an Obsidian review note at `autoresearch-vault/projects/live_full_20260613/review/llm-review-report-f45111310524.md`.
+- Problems:
+  - `P-20260613-001` added and resolved.
+  - `P-20260613-002` added and resolved.
+  - `P-20260613-003` added and mitigated.
+- Follow-up:
+  - Configure `SEMANTIC_SCHOLAR_API_KEY` or stricter rate spacing before claiming robust multi-source novelty coverage from the always-on loop.
+  - Implement actual channel webhook adapters that translate Feishu/Weixin/WeCom `/approve` messages into `airesearcher runtime approve`, using `integrations/openclaw/channels.json` as the install/runbook metadata.
+  - Add a community-channel section later if the project wants to track non-official plugins such as DingTalk without mixing them into the official/common channel manifest.
+
 ### 2026-06-12 23:54:51 +08:00 - Codex - Task 59 third-party open-source notice coverage
 
 - Request: Add notice and license statements for the open-source projects used as references or inspiration.

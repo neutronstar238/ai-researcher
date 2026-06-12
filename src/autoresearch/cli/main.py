@@ -22,6 +22,12 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.integrations import (
+    OpenClawChannelPlugin,
+    get_openclaw_channel_plugin,
+    iter_openclaw_channel_plugins,
+    write_openclaw_channel_manifest,
+)
 from autoresearch.knowledge import create_obsidian_vault_assets, create_skill_evolution_candidate
 from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
 from autoresearch.llm import (
@@ -37,6 +43,14 @@ from autoresearch.research import (
     link_similarity_report_to_project,
     run_project_similarity_check,
 )
+from autoresearch.runtime import (
+    RuntimeActionRisk,
+    RuntimeApprovalError,
+    RuntimePermissionMode,
+    approve_runtime_request,
+    ensure_runtime_approval,
+    list_runtime_approval_requests,
+)
 from autoresearch.scheduler import queued_issue_followups_from_vault
 from autoresearch.schemas import CandidateStatus, ResearchCandidate, ValidationStatus
 
@@ -46,10 +60,17 @@ app = typer.Typer(
 )
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
+runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
+channels_app = typer.Typer(help="Manage communication channel integration manifests.")
+openclaw_channels_app = typer.Typer(help="Manage OpenClaw channel plugin manifests.")
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
+app.add_typer(runtime_app, name="runtime")
+app.add_typer(channels_app, name="channels")
+channels_app.add_typer(openclaw_channels_app, name="openclaw")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
+DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
@@ -74,6 +95,26 @@ DEFAULT_SLASH_COMMANDS = {
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
         "follow-up discovery; inspect cycle-summary.json before claiming publication quality.",
+    ),
+    "research/serve.toml": (
+        "Start the always-on operator service with dangerous-action approval gates.",
+        "Run `airesearcher serve --permission-mode approve-dangerous` after deploy-setup. "
+        "This is the preferred 24h runtime entry point; it runs the research loop only "
+        "after dangerous actions are approved through `airesearcher runtime approve` or "
+        "a future WeChat/Feishu `/approve` adapter.",
+    ),
+    "research/approve.toml": (
+        "Approve the latest pending dangerous runtime action.",
+        "Run `airesearcher runtime approve {{args}} --state .airesearcher/runtime-approvals.json "
+        "--approved-by operator`. Use `latest` when approving the newest pending request "
+        "from a WeChat/Feishu `/approve` message.",
+    ),
+    "research/openclaw-channels.toml": (
+        "Write the OpenClaw communication channel integration manifest.",
+        "Run `airesearcher channels openclaw init --output integrations/openclaw/channels.json` "
+        "to create the repository runbook for official Lark/Feishu, Weixin, WeCom, "
+        "Telegram, Discord, Slack, WhatsApp, Teams, QQ, Signal, and Zalo channel plugins. "
+        "Review upstream permissions and secrets before installing any plugin.",
     ),
     "research/obsidian-setup.toml": (
         "Structure and style the Obsidian vault for readable research operations.",
@@ -978,6 +1019,155 @@ def autopilot(
         time.sleep(interval_seconds)
 
 
+@app.command("serve")
+def serve(
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by deploy-setup."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file with provider credentials."),
+    ] = Path(".env"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root for loop memory."),
+    ] = Path("autoresearch-vault"),
+    cache: Annotated[
+        Path,
+        typer.Option("--cache", help="Literature retrieval cache root."),
+    ] = Path(".cache/literature"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Runtime autopilot output directory."),
+    ] = Path("runs/autopilot"),
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local scheduler state JSON file."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    approvals_state: Annotated[
+        Path,
+        typer.Option("--approvals-state", help="Local runtime approval queue JSON file."),
+    ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    permission_mode: Annotated[
+        RuntimePermissionMode,
+        typer.Option("--permission-mode", help="Runtime permission mode."),
+    ] = RuntimePermissionMode.APPROVE_DANGEROUS,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for Obsidian review and issue notes."),
+    ] = "autopilot-demo",
+    demo: Annotated[
+        str,
+        typer.Option("--demo", help="ScientistBench-Lite demo to execute in each cycle."),
+    ] = "tabular_baseline",
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum generated literature/similarity queries."),
+    ] = 1,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
+    ] = 1,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),
+    ] = 30,
+    max_tokens: Annotated[
+        int,
+        typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
+    ] = 2400,
+    min_quality_score: Annotated[
+        float,
+        typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
+    ] = 0.85,
+    review: Annotated[
+        bool,
+        typer.Option("--review/--no-review", help="Run the live LLM evidence reviewer."),
+    ] = True,
+    watch: Annotated[
+        bool,
+        typer.Option("--watch/--once", help="Keep the runtime alive after one cycle."),
+    ] = True,
+    cycles: Annotated[
+        int,
+        typer.Option("--cycles", min=0, help="Approved cycle count; use 0 with --watch forever."),
+    ] = 0,
+    interval_seconds: Annotated[
+        int,
+        typer.Option("--interval-seconds", min=1, help="Delay between runtime checks or cycles."),
+    ] = 86400,
+) -> None:
+    """Run AI-Researcher as an always-on local/server operator service."""
+
+    _load_optional_env(env_path)
+    completed = 0
+    action_id = f"serve:autopilot-cycle:{project_id}:{demo}"
+    command_text = _serve_command_text(
+        project_id=project_id,
+        demo=demo,
+        permission_mode=permission_mode,
+        review=review,
+    )
+    typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
+    while True:
+        decision = ensure_runtime_approval(
+            state_path=approvals_state,
+            mode=permission_mode,
+            action_id=action_id,
+            command=command_text,
+            risk=RuntimeActionRisk.DANGEROUS,
+            reason=(
+                "Runs online literature discovery, source-backed similarity checks, "
+                "local experiment execution, optional live LLM review, and vault/state writes."
+            ),
+        )
+        if not decision.allowed:
+            request = decision.request
+            request_id = request.request_id if request is not None else "unknown"
+            typer.echo(f"[WAITING] approval_required: {request_id}")
+            typer.echo(f"[WAITING] state: {approvals_state}")
+            typer.echo(
+                "[WAITING] approve: "
+                f"airesearcher runtime approve {request_id} --state {approvals_state}"
+            )
+            if not watch:
+                raise typer.Exit(code=2)
+            time.sleep(interval_seconds)
+            continue
+
+        completed += 1
+        try:
+            summary = _run_autopilot_cycle(
+                config_path=config_path,
+                env_path=env_path,
+                vault=vault,
+                cache=cache,
+                output_dir=output_dir,
+                state=state,
+                project_id=project_id,
+                demo=demo,
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+                timeout_seconds=timeout_seconds,
+                max_tokens=max_tokens,
+                min_quality_score=min_quality_score,
+                review=review,
+            )
+        except RuntimeError as exc:
+            typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
+        typer.echo(f"[OK] summary: {summary['summary_path']}")
+        typer.echo(f"[OK] review_status: {summary['review']['status']}")
+        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+        if not watch:
+            break
+        if cycles > 0 and completed >= cycles:
+            break
+        time.sleep(interval_seconds)
+
+
 @app.command("issue-followups")
 def issue_followups(
     vault: Annotated[
@@ -1092,6 +1282,101 @@ def remove_scheduler_state_task(
         typer.echo(f"[FAIL] task not found: {task_id}", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"[OK] removed: {task_id}")
+
+
+@runtime_app.command("list")
+def list_runtime_approvals(
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime approval queue JSON file to inspect."),
+    ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    include_completed: Annotated[
+        bool,
+        typer.Option("--include-completed", help="Include approved or rejected requests."),
+    ] = False,
+) -> None:
+    """List pending runtime approval requests."""
+
+    requests = list_runtime_approval_requests(state, include_completed=include_completed)
+    typer.echo(f"[OK] runtime_approval_requests: {len(requests)}")
+    for request in requests:
+        typer.echo(
+            f"[REQUEST] status={request.status.value} request_id={request.request_id} "
+            f"risk={request.risk.value} action_id={request.action_id}"
+        )
+
+
+@runtime_app.command("approve")
+def approve_runtime(
+    request_id: Annotated[
+        str,
+        typer.Argument(help="Runtime approval request ID, or `latest` for newest pending."),
+    ] = "latest",
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime approval queue JSON file to update."),
+    ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    approved_by: Annotated[
+        str,
+        typer.Option("--approved-by", help="Operator identity recorded on the approval."),
+    ] = "operator",
+) -> None:
+    """Approve a pending dangerous runtime action."""
+
+    try:
+        request = approve_runtime_request(
+            state,
+            request_id,
+            approved_by=approved_by,
+        )
+    except RuntimeApprovalError as exc:
+        typer.echo(f"[FAIL] runtime approval failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"[OK] approved: {request.request_id}")
+    typer.echo(f"[OK] action_id: {request.action_id}")
+
+
+@openclaw_channels_app.command("init")
+def init_openclaw_channels(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="OpenClaw channel manifest output path."),
+    ] = Path("integrations/openclaw/channels.json"),
+) -> None:
+    """Write OpenClaw channel plugin install metadata for AI-Researcher."""
+
+    manifest_path = write_openclaw_channel_manifest(output)
+    channel_count = len(iter_openclaw_channel_plugins())
+    typer.echo(f"[OK] openclaw_channels: {channel_count}")
+    typer.echo(f"[OK] manifest: {manifest_path}")
+    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+
+
+@openclaw_channels_app.command("list")
+def list_openclaw_channels(
+    channel: Annotated[
+        str | None,
+        typer.Option("--channel", help="Optional channel or plugin ID to show."),
+    ] = None,
+) -> None:
+    """List official/common OpenClaw channel plugin metadata."""
+
+    plugins: tuple[OpenClawChannelPlugin, ...]
+    if channel:
+        try:
+            plugins = (get_openclaw_channel_plugin(channel),)
+        except KeyError as exc:
+            typer.echo(f"[FAIL] {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+    else:
+        plugins = iter_openclaw_channel_plugins()
+    typer.echo(f"[OK] openclaw_channels: {len(plugins)}")
+    for plugin in plugins:
+        package = plugin.package_name or "bundled"
+        typer.echo(
+            f"[CHANNEL] channel={plugin.channel_id} plugin={plugin.plugin_id} "
+            f"package={package} route={plugin.install_route}"
+        )
 
 
 @slash_app.command("init")
@@ -1415,6 +1700,23 @@ def _path_text(path: object) -> str | None:
     if isinstance(path, str):
         return Path(path).as_posix()
     return str(path)
+
+
+def _serve_command_text(
+    *,
+    project_id: str,
+    demo: str,
+    permission_mode: RuntimePermissionMode,
+    review: bool,
+) -> str:
+    review_flag = "--review" if review else "--no-review"
+    return (
+        "airesearcher serve "
+        f"--permission-mode {permission_mode.value} "
+        f"--project-id {project_id} "
+        f"--demo {demo} "
+        f"{review_flag}"
+    )
 
 
 def _can_import(module_name: str) -> bool:

@@ -149,7 +149,35 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:approve`, `/research:openclaw-channels`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+
+Always-on runtime:
+
+```bash
+poetry run airesearcher serve --permission-mode approve-dangerous
+```
+
+This is the preferred one-command operator entry point for a 24h local/server deployment. It sits on top of the existing autopilot cycle but queues dangerous actions in `.airesearcher/runtime-approvals.json` before running online discovery, experiments, live review, or vault writes. Trusted single-user deployments can use `--permission-mode allow-all`; safer deployments should keep `approve-dangerous` and approve pending work from a local terminal or a chat-channel adapter:
+
+```bash
+poetry run airesearcher runtime list
+poetry run airesearcher runtime approve latest --approved-by operator
+```
+
+OpenClaw communication channel mounts:
+
+```bash
+poetry run airesearcher channels openclaw init
+poetry run airesearcher channels openclaw list
+```
+
+This writes `integrations/openclaw/channels.json`, a repository runbook for mounting official/common OpenClaw channel plugins onto AI-Researcher. The manifest covers Lark/Feishu (`@larksuite/openclaw-lark`), Weixin/WeChat (`npx -y @tencent-weixin/openclaw-weixin-cli install` / `@tencent-weixin/openclaw-weixin`), WeCom (`@wecom/wecom-openclaw-plugin`), and OpenClaw-documented channels such as Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo. Channel plugins are not vendored here; install them inside an OpenClaw deployment after reviewing upstream permissions and storing secrets outside git.
+
+Chat adapters should map `/approve` to:
+
+```bash
+poetry run airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+```
 
 Autopilot one-command loop:
 
@@ -157,7 +185,7 @@ Autopilot one-command loop:
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-After `deploy-setup`, this keeps the local loop running. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
+After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local ScientistBench-Lite experiment, optional live LLM evidence review, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; claims of a truly publishable paper still require stronger domain experiments and human review.
 
 Skill evolution candidates:
 

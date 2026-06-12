@@ -23,6 +23,10 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "UltraClr/agent-arxiv-daily",
         "Microsoft SkillOpt",
         "OpenClaw",
+        "larksuite/openclaw-lark",
+        "Tencent/openclaw-weixin",
+        "WecomTeam/wecom-openclaw-plugin",
+        "OpenClaw official channel plugins",
     ):
         assert required in third_party
     assert "copy, vendor, adapt, or redistribute" in third_party

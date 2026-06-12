@@ -262,12 +262,18 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
+    assert (commands_dir / "research" / "serve.toml").is_file()
+    assert (commands_dir / "research" / "approve.toml").is_file()
+    assert (commands_dir / "research" / "openclaw-channels.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
     assert "/research:autopilot" in list_result.stdout
+    assert "/research:serve" in list_result.stdout
+    assert "/research:approve" in list_result.stdout
+    assert "/research:openclaw-channels" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
@@ -275,6 +281,15 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:similarity-check" in list_result.stdout
     assert "airesearcher autopilot" in autopilot_template
     assert "autoresearch autopilot" not in autopilot_template
+    assert "airesearcher serve" in (
+        commands_dir / "research" / "serve.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher runtime approve" in (
+        commands_dir / "research" / "approve.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher channels openclaw init" in (
+        commands_dir / "research" / "openclaw-channels.toml"
+    ).read_text(encoding="utf-8")
 
 
 def test_literature_refresh_command_reports_source_backed_documents(
@@ -635,6 +650,203 @@ def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monke
 
     assert result.exit_code == 1
     assert "[FAIL] autopilot_cycle: autopilot requires at least one retrieved literature document" in result.output
+
+
+def test_serve_queues_dangerous_action_until_runtime_approval(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    runner = CliRunner()
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should not run before approval")
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    pending_result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert pending_result.exit_code == 2, pending_result.output
+    assert "[WAITING] approval_required:" in pending_result.stdout
+    payload = json.loads(approvals_state.read_text(encoding="utf-8"))
+    request_id = payload["requests"][0]["request_id"]
+    assert payload["requests"][0]["status"] == "pending"
+    assert payload["requests"][0]["action_id"] == "serve:autopilot-cycle:project_1:tabular_baseline"
+
+    approve_result = runner.invoke(
+        app,
+        [
+            "runtime",
+            "approve",
+            request_id,
+            "--state",
+            str(approvals_state),
+            "--approved-by",
+            "tester",
+        ],
+    )
+
+    assert approve_result.exit_code == 0, approve_result.output
+    assert f"[OK] approved: {request_id}" in approve_result.stdout
+
+    def fake_cycle(**kwargs: object) -> dict[str, object]:
+        assert kwargs["project_id"] == "project_1"
+        assert kwargs["review"] is False
+        return {
+            "cycle_id": "cycle-test",
+            "summary_path": "runs/autopilot/cycle-test/cycle-summary.json",
+            "review": {"status": "skipped"},
+            "followups": {"task_count": 0},
+        }
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fake_cycle)
+    allowed_result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert allowed_result.exit_code == 0, allowed_result.output
+    assert "[OK] serve_cycle: cycle-test" in allowed_result.stdout
+
+
+def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+
+    def fake_cycle(**kwargs: object) -> dict[str, object]:
+        assert kwargs["project_id"] == "project_1"
+        return {
+            "cycle_id": "cycle-allow-all",
+            "summary_path": "runs/autopilot/cycle-allow-all/cycle-summary.json",
+            "review": {"status": "skipped"},
+            "followups": {"task_count": 0},
+        }
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fake_cycle)
+    result = CliRunner().invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "allow-all",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] runtime_mode: allow-all" in result.stdout
+    assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
+    assert not approvals_state.exists()
+
+
+def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    runner = CliRunner()
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should only queue")
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    pending_result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+    list_pending_result = runner.invoke(
+        app,
+        ["runtime", "list", "--state", str(approvals_state)],
+    )
+    approve_result = runner.invoke(
+        app,
+        ["runtime", "approve", "latest", "--state", str(approvals_state)],
+    )
+    list_after_result = runner.invoke(
+        app,
+        ["runtime", "list", "--state", str(approvals_state)],
+    )
+    list_all_result = runner.invoke(
+        app,
+        ["runtime", "list", "--state", str(approvals_state), "--include-completed"],
+    )
+
+    assert pending_result.exit_code == 2, pending_result.output
+    assert list_pending_result.exit_code == 0, list_pending_result.output
+    assert "[OK] runtime_approval_requests: 1" in list_pending_result.stdout
+    assert "[REQUEST] status=pending" in list_pending_result.stdout
+    assert approve_result.exit_code == 0, approve_result.output
+    assert list_after_result.exit_code == 0, list_after_result.output
+    assert "[OK] runtime_approval_requests: 0" in list_after_result.stdout
+    assert list_all_result.exit_code == 0, list_all_result.output
+    assert "[OK] runtime_approval_requests: 1" in list_all_result.stdout
+    assert "[REQUEST] status=approved" in list_all_result.stdout
+
+
+def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:
+    output = tmp_path / "integrations" / "openclaw" / "channels.json"
+    runner = CliRunner()
+
+    init_result = runner.invoke(
+        app,
+        ["channels", "openclaw", "init", "--output", str(output)],
+    )
+    list_result = runner.invoke(app, ["channels", "openclaw", "list"])
+    feishu_result = runner.invoke(
+        app,
+        ["channels", "openclaw", "list", "--channel", "openclaw-lark"],
+    )
+
+    assert init_result.exit_code == 0, init_result.output
+    assert "[OK] openclaw_channels: 11" in init_result.stdout
+    assert "[OK] approval_bridge: airesearcher runtime approve latest" in init_result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    channels = {channel["channel_id"]: channel for channel in payload["channels"]}
+    assert channels["feishu"]["package_name"] == "@larksuite/openclaw-lark"
+    assert channels["openclaw-weixin"]["package_name"] == "@tencent-weixin/openclaw-weixin"
+    assert channels["wecom"]["package_name"] == "@wecom/wecom-openclaw-plugin"
+    assert payload["approval_bridge"]["runtime_command"] == (
+        "airesearcher serve --permission-mode approve-dangerous"
+    )
+    assert list_result.exit_code == 0, list_result.output
+    assert "[CHANNEL] channel=feishu plugin=openclaw-lark" in list_result.stdout
+    assert "[CHANNEL] channel=qqbot plugin=qqbot" in list_result.stdout
+    assert feishu_result.exit_code == 0, feishu_result.output
+    assert "[OK] openclaw_channels: 1" in feishu_result.stdout
+    assert "package=@larksuite/openclaw-lark" in feishu_result.stdout
 
 
 def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> None:

@@ -1041,6 +1041,19 @@ A task can be checked only when all applicable items are true:
     - _References: user request to include notice/license statements for open-source projects used as references_
     - _Verify: compliance tests, `rg` notice checks, ruff, mypy, and full smoke/unit tests pass._
 
+- [x] 60. Add always-on operator runtime and approval queue
+  - [x] 60.1 Introduce `airesearcher serve` with dangerous-action approval
+    - Add a runtime approval state model for pending and approved local actions.
+    - Add `airesearcher serve` as the default long-running operator entry point over the existing autopilot loop.
+    - Support `--permission-mode allow-all` for trusted deployments and `--permission-mode approve-dangerous` for deployments where dangerous actions wait for human approval.
+    - Add `airesearcher runtime list` and `airesearcher runtime approve` so WeChat/Feishu `/approve` adapters can map to the same local approval queue.
+    - Add `/research:serve` and `/research:approve` slash command templates.
+    - Add repository-tracked OpenClaw channel plugin mount metadata for official/common Lark/Feishu, Weixin, WeCom, Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo channels.
+    - Add `airesearcher channels openclaw init|list` and `/research:openclaw-channels` so deployments can generate and inspect that integration runbook without vendoring third-party npm packages.
+    - Document the current core runtime honestly: channel credentials are collected by `deploy-setup`, while channel webhook adapters are future transports over the same approval queue.
+    - _References: user request for OpenClaw-style one-command service, WeChat/Feishu communication, `/approve` dangerous-command approval, and 24h local/server runtime._
+    - _Verify: runtime approval unit tests, OpenClaw integration manifest tests, CLI approval/channel tests, slash template tests, ruff, mypy, and full smoke/unit tests pass._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1225,6 +1238,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 34,
       "tasks": ["59.1"]
+    },
+    {
+      "id": 35,
+      "tasks": ["60.1"]
     }
   ]
 }

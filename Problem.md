@@ -32,6 +32,54 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-003 - Live full-loop run hit Semantic Scholar HTTP 429 while ArXiv succeeded
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-06-13 00:15:32 +08:00
+- Source: Real `airesearcher serve --once --permission-mode allow-all --review` full-loop verification for task `60.1`.
+- Symptom: The literature refresh and similarity-check stages both retrieved one ArXiv result, but Semantic Scholar returned `SourceRateLimitError: Semantic Scholar HTTP 429 rate limited; circuit open for 60.0s`.
+- Impact: The full loop still completed with source-backed ArXiv evidence and passed the live LLM evidence review, but cross-source novelty coverage was reduced for this run.
+- Evidence: `runs/manual-live/serve-full/cycle-20260612T161532Z/cycle-summary.json` recorded ArXiv success, Semantic Scholar 429 errors, `review.status = passed`, `review.quality_score = 1.0`, and `review.verdict = pass`.
+- Root cause: The live Semantic Scholar endpoint rate-limited the unauthenticated or current deployment request window.
+- Workaround: The existing Semantic Scholar circuit breaker prevented retry spam and preserved the rate-limit error in the run summary instead of fabricating missing source results.
+- Next action: For stronger full-loop novelty checks, configure `SEMANTIC_SCHOLAR_API_KEY`, increase request spacing, or schedule a delayed rerun after the circuit reset window.
+- Linked tasks: `60.1`
+- Resolution: Not fully resolved; mitigated by visible source-level error recording and successful ArXiv-backed loop completion.
+- Verification: Live DeepSeek evidence review passed with quality score `1.0`, all findings cited known local evidence IDs, and no unsupported claims were reported.
+
+### P-20260613-002 - Runtime approval test filename collided with existing approval test module
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 00:13:00 +08:00
+- Source: `poetry run pytest tests/smoke tests/unit -q` during task `60.1` verification.
+- Symptom: Pytest reported an import file mismatch because `tests/unit/research/test_approval.py` and `tests/unit/runtime/test_approval.py` shared the same module basename.
+- Impact: Focused runtime tests passed, but the full smoke/unit suite could not collect tests.
+- Evidence: Pytest reported imported module `test_approval` came from `tests/unit/research/test_approval.py` instead of `tests/unit/runtime/test_approval.py`.
+- Root cause: Test directories are not Python packages, so duplicate test basenames collide in pytest import mode.
+- Workaround: None needed after renaming the runtime test file.
+- Next action: Use domain-specific test filenames for new test modules.
+- Linked tasks: `60.1`
+- Resolution: Renamed `tests/unit/runtime/test_approval.py` to `tests/unit/runtime/test_runtime_approval.py`.
+- Verification: `poetry run pytest tests/smoke tests/unit -q` passed with 324 tests and 4 skipped after the rename.
+
+### P-20260613-001 - Runtime/channel task quality gates caught import and type issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 00:05:00 +08:00
+- Source: `poetry run ruff check src tests` and `poetry run mypy src` during task `60.1` verification.
+- Symptom: Ruff reported `I001 Import block is un-sorted or un-formatted` in `tests/unit/runtime/test_approval.py`; mypy reported an incompatible tuple assignment in `src/autoresearch/cli/main.py` for the OpenClaw channel list command.
+- Impact: Focused tests passed, but the repository quality gates blocked task completion.
+- Evidence: Ruff found one fixable import-order issue; mypy reported `Incompatible types in assignment (expression has type "tuple[OpenClawChannelPlugin, ...]", variable has type "tuple[OpenClawChannelPlugin]")`.
+- Root cause: The new test file import order did not match ruff/isort, and the CLI branch for a single channel let mypy infer a one-item tuple before the all-channel branch assigned a variable-length tuple.
+- Workaround: None needed after formatting and annotation fixes.
+- Next action: Keep running ruff and mypy after adding CLI commands with branch-dependent collection shapes.
+- Linked tasks: `60.1`
+- Resolution: Reordered the test imports and annotated the CLI `plugins` variable as `tuple[OpenClawChannelPlugin, ...]`.
+- Verification: `poetry run ruff check src tests` and `poetry run mypy src` passed after the fix.
+
 ### P-20260612-081 - Third-party notice compliance test asserted a wrapped sentence
 
 - Status: Resolved

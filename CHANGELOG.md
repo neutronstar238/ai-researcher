@@ -46,6 +46,11 @@ Target version: `0.1.0`.
 - Run records now include reproduction command, Python version, dependency lock status, commit, config hash, and data hash as evidence for generated report claims.
 - `airesearcher skill-evolve` for creating SkillOpt-inspired bounded skill evolution candidates with issue/failure evidence refs, validation gates, rollback target, and rejected-edit buffer.
 - `/research:skill-evolve` slash command template for evidence-linked skill evolution candidates.
+- `airesearcher serve` always-on runtime entry point with local dangerous-action approval queue.
+- `airesearcher runtime list` and `airesearcher runtime approve` for inspecting and approving pending runtime actions from local terminals or future chat-channel adapters.
+- `airesearcher channels openclaw init|list` for repository-tracked OpenClaw communication channel mount metadata.
+- `integrations/openclaw/channels.json` runbook for official/common OpenClaw Lark/Feishu, Weixin, WeCom, Telegram, Discord, Slack, WhatsApp, Microsoft Teams, QQ Bot, Signal, and Zalo channels.
+- `/research:serve`, `/research:approve`, and `/research:openclaw-channels` slash command templates.
 
 ### Changed
 
@@ -65,6 +70,7 @@ Target version: `0.1.0`.
 - README now documents design inspirations from AI-Researcher, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
 - LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
+- README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.
 
 ### Fixed
 
