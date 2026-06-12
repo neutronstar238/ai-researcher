@@ -62,6 +62,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-12 14:50:54 +08:00 - Codex - Checkpoint E Phase 4 controlled evolution
+
+- Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint E, verifying Phase 4 controlled evolution criteria.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran targeted verification for offline replay, golden tests, shadow evaluation isolation, reward comparison, human-approved gray release, negative-reward rollback, strategy card vault links, evolution reports, and promotion audit reviews.
+  - Marked Checkpoint E complete in `tasks.md`.
+  - No external live call was applicable for this local controlled-evolution checkpoint.
+- Verification:
+  - `poetry run pytest tests/unit/experiments/test_replay.py tests/unit/experiments/test_golden.py tests/unit/experiments/test_shadow.py tests/unit/experiments/test_reward.py tests/unit/experiments/test_promotion.py tests/unit/experiments/test_strategy_rollback.py tests/unit/knowledge/test_strategy_cards.py tests/unit/reports/test_evolution.py tests/unit/reports/test_audit_review.py -vv`: passed, 22 tests.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 82 source files checked.
+  - Verification commands still emitted the non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - None for this checkpoint.
+  - `P-20260612-057` remains open as a low-severity local dependency warning.
+- Follow-up:
+  - Continue with remaining post-Phase-4 planning or product/deployment tasks in `tasks.md`.
+
 ### 2026-06-12 14:47:47 +08:00 - Codex - Checkpoint D Phase 3 self-loop
 
 - Request: Continue implementing `.kiro/specs/auto-research-system/tasks.md`, Checkpoint D, verifying Phase 3 self-loop criteria.

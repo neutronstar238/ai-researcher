@@ -812,7 +812,7 @@ A task can be checked only when all applicable items are true:
   - Monitoring export shows cost, failure rate, reproduction rate, and evidence coverage.
   - Rollback works for config or strategy fixtures.
 
-- [ ] Checkpoint E: Phase 4 controlled evolution
+- [x] Checkpoint E: Phase 4 controlled evolution
   - Strategy candidates pass offline replay and golden tests before shadow mode.
   - Strategy cards are stored in the Obsidian vault and linked to failure patterns, skills, evaluation reports, and rollback targets.
   - Shadow evaluation cannot affect production outputs.
