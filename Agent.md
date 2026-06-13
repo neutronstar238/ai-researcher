@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 08:50:58 +08:00 - Codex - Task 73.1 automatic cycle paper build and evidence gate
+
+- Request: Continue toward the one-command always-on research system by removing the manual `paper-build` plus `evidence-gate` chain from completed `autopilot`/`serve` cycles.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-73-1-cycle-paper-build-evidence-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added task `73.1` to the executable plan.
+  - Updated `_run_autopilot_cycle()` so every completed cycle runs `build_latex_paper_from_markdown()` after publication audit, writes `paper_build` into `cycle-summary.json`, then runs `run_evidence_gate()` and writes `evidence_gate` into `cycle-summary.json`.
+  - Kept blocked gates non-fatal for the always-on loop so the system can continue self-looping from explicit blockers.
+  - Added CLI output for `evidence_gate` verdict in both `autopilot` and `serve`.
+  - Updated README, Chinese README, changelog, problem log, and Obsidian progress notes.
+- Verification:
+  - Focused CLI test: `poetry run pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - Focused ruff: `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\cli\main.py`: passed.
+  - Real single-cycle run: `poetry run airesearcher autopilot --vault runs\manual-live\task73-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-cycle-gate-task73 --state runs\manual-live\autopilot-cycle-gate-task73\scheduler-state.json --project-id task73_cycle_gate --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review`: passed with `publication_audit: fail` and `evidence_gate: blocked`.
+  - Real run evidence: `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json` contains `paper_build.status=compiled`, a compiled paper PDF path, `evidence_gate.verdict=blocked`, and `release_allowed=false`; the paper-build JSON/PDF and evidence-gate JSON files exist.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 365 passed and 4 skipped.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems added or updated:
+  - Added `P-20260613-011` for the manual paper-build/evidence-gate chaining gap; marked mitigated by task `73.1`.
+  - Updated `P-20260613-004` with task `73.1` evidence that automatic paper build can compile while the release gate still correctly blocks non-publishable cycles.
+- Follow-up work:
+  - Improve real method novelty and external-source stability so future cycles can move from correctly blocked evidence packages toward credible CCF-B/Q3-level claims.
+
 ### 2026-06-13 08:42:33 +08:00 - Codex - Task 72.3 locked session state mutations
 
 - Request: Continue SCALE-inspired governance hardening after task `72.2` by preventing simultaneous session claims from racing through the local JSON gate.

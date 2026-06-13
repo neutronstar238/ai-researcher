@@ -760,6 +760,29 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
                 "verdict": "needs_revision",
                 "publishable": False,
                 "score": 0.5,
+                "output_path": str(output_dir / "cycle-test" / "publication-audit.json"),
+            }
+        )
+
+    def fake_paper_build(**kwargs: object) -> SimpleNamespace:
+        assert Path(kwargs["markdown_path"]).name == "report.md"
+        assert Path(kwargs["output_dir"]).name == "paper-build"
+        return SimpleNamespace(
+            to_dict=lambda: {
+                "status": "compiled",
+                "json_path": str(Path(kwargs["output_dir"]) / "paper-build.json"),
+                "pdf_path": str(Path(kwargs["output_dir"]) / "main.pdf"),
+            }
+        )
+
+    def fake_evidence_gate(**kwargs: object) -> SimpleNamespace:
+        assert Path(kwargs["cycle_summary_path"]).name == "cycle-summary.json"
+        assert Path(kwargs["output_dir"]).name == "evidence-gate"
+        return SimpleNamespace(
+            to_dict=lambda: {
+                "verdict": "blocked",
+                "release_allowed": False,
+                "output_path": str(Path(kwargs["output_dir"]) / "evidence-gate.json"),
             }
         )
 
@@ -768,6 +791,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
     monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)
+    monkeypatch.setattr(cli_main, "build_latex_paper_from_markdown", fake_paper_build)
+    monkeypatch.setattr(cli_main, "run_evidence_gate", fake_evidence_gate)
 
     output_dir = tmp_path / "runs" / "autopilot"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
@@ -793,6 +818,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert "[OK] autopilot_cycle:" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
+    assert "[OK] evidence_gate: blocked" in result.stdout
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
@@ -801,6 +827,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["similarity"]["finding_count"] == 1
     assert payload["demo"]["run_id"] == "run_autopilot_test"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
+    assert payload["paper_build"]["status"] == "compiled"
+    assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 
 

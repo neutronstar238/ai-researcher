@@ -197,7 +197,7 @@ Autopilot one-command loop:
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local demo or public benchmark experiment, optional live LLM evidence review, publication-readiness audit, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report and review trail; the publication audit is deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
+After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local demo or public benchmark experiment, optional live LLM evidence review, publication-readiness audit, automatic LaTeX paper build, physical evidence gate, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report, paper-build record, and review trail; the publication audit and evidence gate are deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
 
 By default, `autopilot` and `serve` use 4 generated queries and up to 10 papers per source/query for publication-gate evidence breadth. Pass lower `--max-queries` or `--max-results-per-source` values only for explicit smoke or cost-control runs.
 
@@ -277,7 +277,7 @@ poetry run airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/rep
   --project-id demo_project
 ```
 
-`paper-build` writes generated TeX/PDF/log/JSON artifacts under the selected output directory and writes only the human-readable `paper-build.md` summary into the Obsidian project vault. Missing required paper sections block compilation instead of being filled with invented content.
+`paper-build` writes generated TeX/PDF/log/JSON artifacts under the selected output directory and writes only the human-readable `paper-build.md` summary into the Obsidian project vault. Missing required paper sections block compilation instead of being filled with invented content. `autopilot` and `serve` now run this step automatically for each completed cycle; the standalone command remains useful for reruns, alternate templates, and compatibility checks.
 
 Run the physical release evidence gate:
 
@@ -289,7 +289,7 @@ poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.js
   --project-id demo_project
 ```
 
-`evidence-gate` is the SCALE-inspired lightweight hard gate for AI-Researcher. It checks that the cycle summary, literature summary, similarity summary, experiment report, validation report, evidence map, run record, review artifact, publication audit, and compiled paper PDF physically exist. By default it exits non-zero unless the evidence-constrained review passes, `publication-audit` reports `publishable=true`, and `paper-build` reports a compiled PDF. A blocked gate writes JSON/Markdown evidence plus Obsidian review and issue notes, so the self-loop can continue from concrete blockers instead of prompt-only reminders.
+`evidence-gate` is the SCALE-inspired lightweight hard gate for AI-Researcher. It checks that the cycle summary, literature summary, similarity summary, experiment report, validation report, evidence map, run record, review artifact, publication audit, and compiled paper PDF physically exist. By default it exits non-zero unless the evidence-constrained review passes, `publication-audit` reports `publishable=true`, and `paper-build` reports a compiled PDF. `autopilot` and `serve` run this gate automatically after their automatic paper build, recording the verdict in `cycle-summary.json`; blocked gates remain non-fatal for the always-on loop so the self-loop can continue from concrete blockers instead of prompt-only reminders.
 
 Coordinate concurrent agent file scopes before editing:
 

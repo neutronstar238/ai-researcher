@@ -1295,6 +1295,8 @@ def autopilot(
                 "[OK] publication_audit: "
                 f"{summary['publication_audit']['verdict']}"
             )
+        if "evidence_gate" in summary:
+            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
         if not watch:
             break
@@ -1457,6 +1459,8 @@ def serve(
                 "[OK] publication_audit: "
                 f"{summary['publication_audit']['verdict']}"
             )
+        if "evidence_gate" in summary:
+            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
         if not watch:
             break
@@ -2027,6 +2031,25 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["publication_audit"] = publication_audit.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    paper_build = build_latex_paper_from_markdown(
+        markdown_path=Path(demo_result.report_path),
+        output_dir=cycle_dir / "paper-build",
+        template_id="generic-article-one-column",
+        vault_root=vault,
+        project_id=project_id,
+    )
+    summary["paper_build"] = paper_build.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    evidence_gate = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        output_dir=cycle_dir / "evidence-gate",
+        vault_root=vault,
+        project_id=project_id,
+    )
+    summary["evidence_gate"] = evidence_gate.to_dict()
 
     followup_records = _issue_followup_records(vault, project_id)
     _merge_scheduler_state(state, followup_records)

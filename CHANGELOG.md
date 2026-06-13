@@ -84,6 +84,7 @@ Target version: `0.1.0`.
 - LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
 - README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.
 - Autopilot cycles now run a strict publication-readiness audit after the evidence review and before self-loop follow-up task discovery, so toy-data cycles are recorded as not publishable rather than being mistaken for CCF-B/Q3-ready papers.
+- Autopilot and serve cycles now automatically run the LaTeX paper build and physical evidence gate after publication audit, then record `paper_build` and `evidence_gate` in `cycle-summary.json`.
 - `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.

@@ -1208,6 +1208,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to convert multi-agent prompt discipline into physical governance gates._
     - _Verify: focused runtime lock tests, CLI tests, ruff, mypy, full smoke/unit tests, and a real fail-fast locked-state CLI demo._
 
+- [x] 73. Remove manual release-gate steps from the always-on research loop
+  - [x] 73.1 Run paper build and evidence gate automatically in each `autopilot`/`serve` cycle
+    - After the publication audit, build the evidence-bound Markdown report through the generic LaTeX template inside the cycle directory.
+    - Write `paper_build` into `cycle-summary.json` with the paper-build JSON/PDF/log paths.
+    - Run `run_evidence_gate` over the updated cycle summary and write `evidence_gate` into `cycle-summary.json`.
+    - Keep blocked gates non-fatal for the always-on loop; blocked output becomes Obsidian review/issue evidence and self-loop follow-up material instead of a prompt-only warning.
+    - Echo the evidence-gate verdict from `autopilot` and `serve` so operators can see whether the cycle is releasable.
+    - _References: user requirement for a one-command 24h system where paper-level outputs and quality gates are automatic, not manually chained._
+    - _Verify: focused autopilot CLI test, ruff, mypy, full smoke/unit tests, and a real local single-cycle run showing `paper_build` plus `evidence_gate` in `cycle-summary.json`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1412,6 +1422,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 39,
       "tasks": ["72.1", "72.2", "72.3"]
+    },
+    {
+      "id": 40,
+      "tasks": ["73.1"]
     }
   ]
 }
