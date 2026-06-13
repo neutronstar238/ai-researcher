@@ -59,7 +59,8 @@ Target version: `0.1.0`.
 - LaTeX template compatibility smoke tests for built-in generic single-column and double-column `article` templates, including JSON/Markdown reports, compile logs, and optional Obsidian vault copies.
 - External LaTeX template compatibility matrix for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl`, including rate-limited source-page fetch metadata, cached source checks, source timestamps, HTTP status, compile logs, PDF paths, and `source_unavailable` results when a class is absent.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
-- `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
+- `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
+- `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
 
@@ -90,6 +91,7 @@ Target version: `0.1.0`.
 - Generic paper-template smoke now produces a PDF when `pdflatex` or another supported LaTeX engine is available, and otherwise records a structured skipped result.
 - External template compatibility does not vendor upstream template packages; it fetches source metadata, uses locally installed LaTeX classes when available, and records missing classes as explicit unavailable sources.
 - Paper-level builds now stop on missing required manuscript sections instead of filling unsupported content; generated TeX/PDF/log artifacts stay under ignored run directories while the Obsidian vault receives only `paper-build.md`.
+- Release-readiness now has a physical evidence gate: prompt-only assurances cannot override missing artifacts, failed review, non-publishable audit results, or missing compiled PDFs.
 
 ### Fixed
 

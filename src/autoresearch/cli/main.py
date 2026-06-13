@@ -42,9 +42,11 @@ from autoresearch.llm import (
     write_llm_review_note,
 )
 from autoresearch.reports import (
+    EvidenceGateVerdict,
     LatexPaperBuildStatus,
     audit_publication_quality,
     build_latex_paper_from_markdown,
+    run_evidence_gate,
     validate_reproducibility_package,
 )
 from autoresearch.research import (
@@ -161,6 +163,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher paper-build <report.md> --template-id {{args}} --vault autoresearch-vault "
         "--project-id <project_id>`. Use `generic-article-one-column` when no target venue is chosen. "
         "Missing paper sections must block compilation rather than being filled with invented content.",
+    ),
+    "research/evidence-gate.toml": (
+        "Run the physical evidence gate before release or paper-ready claims.",
+        "Run `airesearcher evidence-gate <cycle-summary.json> --publication-audit <publication-audit.json> "
+        "--paper-build-json <paper-build.json> --vault autoresearch-vault --project-id <project_id>`. "
+        "Blocked gates are release blockers; do not override them with prompt-only assurances.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -1070,6 +1078,94 @@ def paper_build(
         typer.echo("[FAIL] missing_sections: " + ", ".join(artifact.missing_sections), err=True)
     if fail_on_not_compiled and artifact.status is not LatexPaperBuildStatus.COMPILED:
         typer.echo("[FAIL] paper PDF did not compile", err=True)
+        raise typer.Exit(1)
+
+
+@app.command("evidence-gate")
+def evidence_gate(
+    cycle_summary_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a cycle-summary.json produced by autopilot or serve."),
+    ],
+    output_dir: Annotated[
+        Path | None,
+        typer.Option("--output-dir", help="Directory for evidence-gate.json and .md."),
+    ] = None,
+    publication_audit_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--publication-audit",
+            help="publication-audit.json path. Defaults to cycle_summary.publication_audit.output_path.",
+        ),
+    ] = None,
+    paper_build_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--paper-build-json",
+            help="paper-build.json path for the compiled LaTeX/PDF artifact gate.",
+        ),
+    ] = None,
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for gate review/issue notes."),
+    ] = None,
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Project ID for optional Obsidian gate notes."),
+    ] = None,
+    require_review_pass: Annotated[
+        bool,
+        typer.Option(
+            "--require-review-pass/--no-require-review-pass",
+            help="Require the evidence-constrained review status and verdict to pass.",
+        ),
+    ] = True,
+    require_publication_pass: Annotated[
+        bool,
+        typer.Option(
+            "--require-publication-pass/--no-require-publication-pass",
+            help="Require publication-audit publishable=true and verdict=pass.",
+        ),
+    ] = True,
+    require_paper_build: Annotated[
+        bool,
+        typer.Option(
+            "--require-paper-build/--no-require-paper-build",
+            help="Require a compiled paper-build PDF artifact.",
+        ),
+    ] = True,
+    fail_on_blocked: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-blocked/--no-fail-on-blocked",
+            help="Exit with code 1 when the physical evidence gate blocks release.",
+        ),
+    ] = True,
+) -> None:
+    """Run the physical release gate over a completed research cycle."""
+
+    report = run_evidence_gate(
+        cycle_summary_path=cycle_summary_path,
+        output_dir=output_dir,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+        vault_root=vault,
+        project_id=project_id,
+        require_review_pass=require_review_pass,
+        require_publication_pass=require_publication_pass,
+        require_paper_build=require_paper_build,
+    )
+    typer.echo(f"[OK] evidence_gate: {report.verdict.value}")
+    typer.echo(f"[OK] release_allowed: {str(report.release_allowed).lower()}")
+    typer.echo(f"[OK] failed_checks: {report.failed_check_count}")
+    typer.echo(f"[OK] report: {report.markdown_path}")
+    typer.echo(f"[OK] json: {report.output_path}")
+    if report.vault_review_path:
+        typer.echo(f"[OK] vault_review: {report.vault_review_path}")
+    if report.vault_issue_path:
+        typer.echo(f"[OK] vault_issue: {report.vault_issue_path}")
+    if fail_on_blocked and report.verdict is EvidenceGateVerdict.BLOCKED:
+        typer.echo("[FAIL] physical evidence gate blocked release", err=True)
         raise typer.Exit(1)
 
 

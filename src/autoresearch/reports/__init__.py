@@ -24,6 +24,13 @@ from .drafts import (
     PaperDraftVersioningError,
     store_paper_draft_version,
 )
+from .evidence_gate import (
+    EvidenceGateCheck,
+    EvidenceGateCheckStatus,
+    EvidenceGateReport,
+    EvidenceGateVerdict,
+    run_evidence_gate,
+)
 from .evolution import (
     StrategyEvolutionReportArtifact,
     StrategyEvolutionReportContext,
@@ -108,6 +115,10 @@ __all__ = [
     "CitationGenerationError",
     "CitationStatus",
     "CitationValidation",
+    "EvidenceGateCheck",
+    "EvidenceGateCheckStatus",
+    "EvidenceGateReport",
+    "EvidenceGateVerdict",
     "FigureArtifact",
     "FigureGenerationError",
     "LatexCompilationError",
@@ -179,6 +190,7 @@ __all__ = [
     "lint_markdown_report",
     "render_latex_template_smoke",
     "run_latex_template_compatibility",
+    "run_evidence_gate",
     "simulate_paper_review",
     "store_paper_draft_version",
     "validate_reproducibility_package",

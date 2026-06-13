@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-008 - Prompt-only release discipline is insufficient for autonomous research claims
+
+- Status: Mitigated
+- Severity: High
+- Discovered: 2026-06-13 03:12:00 +08:00
+- Source: User requested SCALE-style physical gates after warning that AI agents can claim tests passed, overwrite each other, or skip review when governance is only prompt-based.
+- Symptom: Before task `72.1`, AI-Researcher had strong publication-audit and paper-build artifacts, but no single physical release gate that checked required evidence files, review status, publication audit verdict, and compiled PDF together with a release-blocking exit code.
+- Impact: A future operator or agent could treat a non-publishable cycle as releasable by reading only a successful local experiment or compiled PDF while ignoring source errors or audit blockers.
+- Evidence: The latest real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` has a compiled PDF through task `71.1`, but its publication audit remains `needs_revision` because Semantic Scholar source errors still reduce novelty confidence.
+- Root cause: The project relied on separate evidence-producing commands and documentation discipline rather than one release decision command that fails closed.
+- Workaround: Use `airesearcher evidence-gate` before any release or paper-ready claim.
+- Next action: Add lightweight session/workspace conflict detection in a later task if multiple coding/research agents start running concurrently.
+- Linked tasks: `72.1`
+- Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries.
+- Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`.
+
 ### P-20260613-007 - cc-switch code-agent integration must not bypass AI-Researcher validation
 
 - Status: Mitigated
@@ -97,10 +113,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Additional evidence: Task `70.1` added generic LaTeX template compatibility smoke tests. A local real run wrote `runs/manual-live/latex-template-compatibility-task70/latex-template-compatibility.json`, compiled both `generic-article-one-column/main.pdf` and `generic-article-two-column/main.pdf` with `pdflatex`, and wrote an Obsidian Markdown compatibility report to `autoresearch-vault/projects/ai_researcher_system/paper/latex-template-compatibility.md`.
 - Additional evidence: Task `70.2` added an external LaTeX template compatibility matrix with source metadata fetches. A real run wrote `runs/manual-live/latex-template-compatibility-task70-external/latex-template-compatibility.json`; IEEEtran and ACM `acmart` source pages returned HTTP 200 and compiled to PDF with local TeX Live, while the Springer Nature source page returned HTTP 200 but `sn-jnl.cls` was not installed locally, so it was recorded as `source_unavailable` instead of being treated as compatible.
 - Additional evidence: Task `71.1` added `airesearcher paper-build` and ran it against the live `serve-paper-structure` Markdown report. The command compiled `runs/manual-live/paper-build-task71/main.pdf`, wrote `runs/manual-live/paper-build-task71/paper-build.json`, and mirrored the human-readable summary to `autoresearch-vault/projects/ai_researcher_system/paper/paper-build.md` with no missing sections.
+- Additional evidence: Task `72.1` added `airesearcher evidence-gate` as a physical release gate. A real gate run over `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/cycle-summary.json` plus `runs/manual-live/paper-build-task71/paper-build.json` correctly reported `blocked`: the compiled PDF existed, but `publication_release_gate` failed because the publication audit remained `needs_revision`/`publishable=false`.
 - Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, and task `71.1` added final Markdown-to-LaTeX/PDF artifact building. The full system still lacks Semantic Scholar API stability, locally available Springer Nature `sn-jnl` class support, and method novelty beyond a baseline benchmark.
 - Workaround: Treat `publication-audit` issue notes as self-loop tasks and keep generated reports labeled as demo evidence until stronger experiments exist.
 - Next action: Stabilize or key Semantic Scholar access, decide how source-error severity should interact with OpenAlex/ArXiv fallback, add/verify Springer Nature `sn-jnl` class support when license terms and local installation are clear, and add stronger method novelty beyond the Pendigits baseline.
-- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`
+- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`
 - Resolution: Not resolved; the new publication audit blocks publishable claims and writes Obsidian `review_note`/`issue_note` records for follow-up.
 - Verification: Real `airesearcher publication-audit` and real `airesearcher serve` runs wrote failed or needs-revision publication audits under `runs/manual-live/serve-full/`, `runs/manual-live/serve-quality/`, `runs/manual-live/serve-quality-4096/`, `runs/manual-live/serve-pendigits/`, `runs/manual-live/serve-pendigits-sha/`, `runs/manual-live/serve-query-floor/`, `runs/manual-live/serve-publication-defaults/`, and Obsidian project issue notes under `autoresearch-vault/projects/live_quality_4096_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_sha_20260613/issues/`, and `autoresearch-vault/projects/live_publication_defaults_20260613/issues/`.
 

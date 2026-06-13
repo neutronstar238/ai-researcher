@@ -65,6 +65,7 @@ AI-Researcher is designed as an evidence-first system rather than a clone of any
 
 - [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher) for the end-to-end scientific pipeline ambition and Scientist-Bench-style evaluation pressure. This repository treats it as a conceptual reference only: AI-Researcher focuses on an Obsidian-backed self-loop memory substrate, permissioned always-on operation, evidence graphs, real run records, and publication audits before paper claims.
 - [AutoResearchClaw](https://github.com/aiming-lab/AutoResearchClaw) for its MIT-licensed one-command/OpenClaw-style operator experience, 23-stage research pipeline framing, human-in-the-loop modes, multi-source literature workflow, claim verification, and skill-learning direction. AI-Researcher is intentionally differentiated around an Obsidian-compatible vault as the canonical auditable memory substrate, stricter publication-readiness blocking before paper claims, provider-agnostic local deployment, and permissioned long-running operation.
+- [SCALE Engine](https://github.com/hongmaple0820/scale-engine) for the lightweight lesson that AI-agent governance should be enforced through executable workflow gates and evidence files, not prompt-only self-discipline. AI-Researcher adopts this as a narrower research-cycle release gate: missing evidence, failed review, non-publishable audit, or missing compiled PDF blocks release claims.
 - Long-horizon auto-research roadmaps and surveys such as [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) for evaluation pressure around hallucination, novelty checks, and reproducible artifacts.
 - [Horizon](https://github.com/Thysrael/Horizon) and daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled source discovery, scoring, digest, and delivery patterns.
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.
@@ -151,7 +152,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Always-on runtime:
 
@@ -277,6 +278,18 @@ poetry run airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/rep
 ```
 
 `paper-build` writes generated TeX/PDF/log/JSON artifacts under the selected output directory and writes only the human-readable `paper-build.md` summary into the Obsidian project vault. Missing required paper sections block compilation instead of being filled with invented content.
+
+Run the physical release evidence gate:
+
+```bash
+poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.json \
+  --publication-audit runs/autopilot/<cycle-id>/publication-audit.json \
+  --paper-build-json runs/paper-build/<cycle-id>/paper-build.json \
+  --vault autoresearch-vault \
+  --project-id demo_project
+```
+
+`evidence-gate` is the SCALE-inspired lightweight hard gate for AI-Researcher. It checks that the cycle summary, literature summary, similarity summary, experiment report, validation report, evidence map, run record, review artifact, publication audit, and compiled paper PDF physically exist. By default it exits non-zero unless the evidence-constrained review passes, `publication-audit` reports `publishable=true`, and `paper-build` reports a compiled PDF. A blocked gate writes JSON/Markdown evidence plus Obsidian review and issue notes, so the self-loop can continue from concrete blockers instead of prompt-only reminders.
 
 Run the local quality gate:
 

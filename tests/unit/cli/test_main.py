@@ -270,6 +270,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
+    assert (commands_dir / "research" / "evidence-gate.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
@@ -282,6 +283,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
+    assert "/research:evidence-gate" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
@@ -304,6 +306,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher paper-build" in (
         commands_dir / "research" / "paper-build.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher evidence-gate" in (
+        commands_dir / "research" / "evidence-gate.toml"
     ).read_text(encoding="utf-8")
 
 
@@ -403,6 +408,54 @@ def test_paper_build_command_reports_compiled_artifact(
     assert "[OK] paper_build: compiled" in result.stdout
     assert "[OK] pdf: runs/paper/main.pdf" in result.stdout
     assert "[OK] vault_paper: vault/projects/demo_project/paper/paper-build.md" in result.stdout
+
+
+def test_evidence_gate_command_reports_blocked_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    summary_path = tmp_path / "cycle-summary.json"
+    summary_path.write_text("{}", encoding="utf-8")
+    publication_audit_path = tmp_path / "publication-audit.json"
+    paper_build_path = tmp_path / "paper-build.json"
+    calls: list[dict[str, object]] = []
+
+    def fake_run_evidence_gate(**kwargs: object) -> SimpleNamespace:
+        calls.append(dict(kwargs))
+        return SimpleNamespace(
+            verdict=cli_main.EvidenceGateVerdict.BLOCKED,
+            release_allowed=False,
+            failed_check_count=2,
+            markdown_path="gate.md",
+            output_path="gate.json",
+            vault_review_path="vault/review/evidence-gate.md",
+            vault_issue_path="vault/issues/evidence-gate.md",
+        )
+
+    monkeypatch.setattr(cli_main, "run_evidence_gate", fake_run_evidence_gate)
+
+    ok_result = CliRunner().invoke(
+        app,
+        [
+            "evidence-gate",
+            str(summary_path),
+            "--publication-audit",
+            str(publication_audit_path),
+            "--paper-build-json",
+            str(paper_build_path),
+            "--no-fail-on-blocked",
+        ],
+    )
+    fail_result = CliRunner().invoke(app, ["evidence-gate", str(summary_path)])
+
+    assert ok_result.exit_code == 0, ok_result.output
+    assert "[OK] evidence_gate: blocked" in ok_result.stdout
+    assert "[OK] failed_checks: 2" in ok_result.stdout
+    assert "[OK] vault_issue: vault/issues/evidence-gate.md" in ok_result.stdout
+    assert fail_result.exit_code == 1
+    assert calls[0]["cycle_summary_path"] == summary_path
+    assert calls[0]["publication_audit_path"] == publication_audit_path
+    assert calls[0]["paper_build_path"] == paper_build_path
 
 
 def test_literature_refresh_command_reports_source_backed_documents(

@@ -19,6 +19,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
     for required in (
         "HKUDS AI-Researcher",
         "aiming-lab/AutoResearchClaw",
+        "hongmaple0820/scale-engine",
         "karpathy/autoresearch",
         "Thysrael/Horizon",
         "UltraClr/agent-arxiv-daily",
