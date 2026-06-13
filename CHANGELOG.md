@@ -74,6 +74,7 @@ Target version: `0.1.0`.
 - External LaTeX template compatibility matrix for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl`, including rate-limited source-page fetch metadata, cached source checks, source timestamps, HTTP status, compile logs, PDF paths, and `source_unavailable` results when a class is absent.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
 - `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
+- `airesearcher publication-stability` and `/research:publication-stability` for cross-cycle stable-output claims; the default `ccf-b-matrix` target blocks CCF-B/Q3 stability claims until multiple release-allowed cycles, distinct real datasets, and LaTeX template diversity are present.
 - Paper-build quality reports for page count, manuscript word count, per-section technical depth, technical term coverage, and LaTeX `Overfull \hbox` layout warnings; thin or overflowing PDFs are marked `compiled_with_quality_issues`.
 - Autopilot and serve cycles now compose a dedicated evidence-bound publication manuscript from cycle artifacts before publication audit and LaTeX build, instead of compiling the thinner experiment report directly.
 - Project-start similarity checks now classify query-backed adjacent method families for prototype/centroid classifiers, Mahalanobis metric-learning/classification work, and clustering/prototype classification while keeping broad Gaussian, variance, covariance, shrinkage, generic prototype, and generic centroid matches `unknown` unless source metadata provides classification-method context.
@@ -135,6 +136,7 @@ Target version: `0.1.0`.
 - Persisted source circuit-breaker read-modify-write updates now use a local `.lock` file; active locks become structured `state_locked` source-preflight blockers with JSON/Markdown evidence and Obsidian issue notes instead of unhandled runtime failures.
 - Persisted source circuit-breaker writes now use same-directory temporary files and atomic replacement, preserving the previous valid cooldown state if replacement fails and cleaning temporary files after the attempt.
 - Persisted source circuit-breaker state is read with UTF-8 BOM tolerance so operator-created JSON files do not silently bypass source preflight gates.
+- Publication stability now prefers the paper-build artifact path recorded by the evidence gate, preventing stale inline cycle-summary paper-build paths from misclassifying paper quality.
 - GitHub Actions `pytest tests/smoke tests/unit` collection failure on Python 3.10 caused by runtime use of `logging.LoggerAdapter[...]`.
 - GitHub Actions `mypy src` failure on Python 3.10/Linux caused by direct access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute.
 - Removed stale mypy override entries that produced unused-config warnings in CI.
@@ -166,6 +168,7 @@ Target version: `0.1.0`.
 
 ### Verification Snapshot
 
+- Publication stability gate after task `105`: focused stability/CLI tests passed with 6 tests; focused ruff and mypy passed; real `publication-stability` over the task `104.1` Pendigits cycle returned `verdict=blocked`, `stable=false`, `score=0.500`, with paper quality correctly read from the evidence-gate-reviewed task `103.1` paper build.
 - Current broad local check after task `41`: `poetry run ruff check src tests` passed.
 - Current broad local type check after task `41`: `poetry run mypy src` passed with no issues in 84 source files.
 - Current broad local test set after task `41`: `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `306 passed, 4 skipped`.

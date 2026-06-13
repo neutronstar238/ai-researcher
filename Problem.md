@@ -32,21 +32,37 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-041 - Publication stability gate initially read a stale paper-build path from the cycle summary
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 20:37:00 +08:00
+- Source: Task `105.1` real `publication-stability` run over `runs/manual-live/task104-similarity-classification/cycle-summary.json`.
+- Symptom: The first stability matrix run reported `paper_quality_all_releases=fail` even though the task `104.1` evidence gate released against the corrected task `103.1` paper build with `paper_quality.passed=true`.
+- Impact: A stability gate could misclassify paper quality when a cycle summary retained older inline `paper_build.json_path` fields while the evidence gate correctly referenced the artifact used for release.
+- Evidence: `runs/manual-live/task104-similarity-classification/cycle-summary.json` still contained the old task `101.1` paper-build path, while `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` recorded `paper_build_path=runs/manual-live/task103-manuscript-quality/paper-build/paper-build.json`.
+- Root cause: The initial stability auditor loaded `cycle_summary.paper_build.json_path` before considering the artifact path recorded by the evidence gate.
+- Workaround: None needed after the fix; the auditor now prefers the evidence-gate-reviewed paper-build artifact when present.
+- Next action: Keep release/stability gates anchored to the artifact paths used by upstream gates, not duplicated inline summaries.
+- Linked tasks: `105.1`
+- Resolution: Added evidence-gate artifact-path precedence for paper build loading and a regression test with a stale summary paper-build path.
+- Verification: Focused stability tests passed with 4 report tests; real rerun wrote `runs/manual-live/task105-stability-matrix/publication-stability.json` with `paper_quality_passed=true`, `paper_quality_all_releases=pass`, `verdict=blocked`, and `score=0.500`.
+
 ### P-20260613-040 - Single-cycle release pass does not prove stable cross-topic publication output
 
-- Status: Open
+- Status: Mitigated
 - Severity: High
 - Discovered: 2026-06-13 19:45:00 +08:00
 - Source: Task `104.1` real CCF-B publication-audit and evidence-gate rerun over the task `101.1` Pendigits cycle.
 - Symptom: One real Pendigits cycle can now pass publication audit and the physical evidence gate after similarity classification, optional-source policy, and manuscript generation fixes, but this does not yet prove stable CCF-B/Q3-level output across topics, datasets, templates, or multiple autonomous cycles.
-- Impact: The system could overstate general readiness if a single benchmark success is treated as a stable publication pipeline.
-- Evidence: `runs/manual-live/task104-similarity-classification/publication-audit/publication-audit.json` passed with score `0.9615` and `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` passed with `release_allowed=true`; the publication audit still recorded warnings for optional Semantic Scholar 429s and 14 adjacent-work findings requiring related-work positioning.
+- Impact: The system could overstate general readiness if a single benchmark success is treated as a stable publication pipeline. Task `105.1` now blocks that claim, but the underlying cross-topic stability evidence is still missing.
+- Evidence: `runs/manual-live/task104-similarity-classification/publication-audit/publication-audit.json` passed with score `0.9615` and `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` passed with `release_allowed=true`; `runs/manual-live/task105-stability-matrix/publication-stability.json` correctly blocked stable CCF-B/Q3 claims because the matrix has 1 cycle, 1 release-allowed cycle, 1 distinct real dataset, and 1 LaTeX template.
 - Root cause: Current evidence covers one controlled Pendigits method-candidate cycle and a generic LaTeX template build, not a statistically meaningful portfolio of cycles, datasets, or venue templates.
-- Workaround: Treat task `104.1` as a single-cycle acceptance proof, not as a global stable-publication claim.
+- Workaround: Run `airesearcher publication-stability ... --target ccf-b-matrix` before any stable-output claim; it now fails closed when the matrix is too small.
 - Next action: Run a multi-cycle benchmark matrix with at least two additional public datasets/tasks, source diversity checks, related-work positioning checks, and venue-template compatibility before claiming stable CCF-B/Q3 generation.
-- Linked tasks: `104.1`
-- Resolution: Not resolved.
-- Verification: Not applicable; this is a forward-looking stability risk created by the successful single-cycle gate run.
+- Linked tasks: `104.1`, `105.1`
+- Resolution: Mitigated by task `105.1`, not resolved. Stable output still requires additional real cycles and template diversity.
+- Verification: `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task105-stability-matrix --vault runs\manual-live\task105-stability-vault --project-id task105_stability_matrix --no-fail-on-unstable` returned `verdict=blocked`, `stable=false`, and `score=0.500`.
 
 ### P-20260613-039 - Similarity classifier overclassified broad method-family word matches during breadth repair
 

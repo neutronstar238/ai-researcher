@@ -108,6 +108,15 @@ from .review import (
     load_review_criteria,
     simulate_paper_review,
 )
+from .stability import (
+    CycleStabilityRecord,
+    PublicationStabilityCheck,
+    PublicationStabilityCheckStatus,
+    PublicationStabilityReport,
+    PublicationStabilityTarget,
+    PublicationStabilityVerdict,
+    audit_publication_stability,
+)
 from .tables import (
     MetricsTableArtifact,
     MetricsTableInput,
@@ -154,6 +163,11 @@ __all__ = [
     "PublicationAuditVerdict",
     "PublicationQualityTarget",
     "PublicationManuscriptArtifact",
+    "PublicationStabilityCheck",
+    "PublicationStabilityCheckStatus",
+    "PublicationStabilityReport",
+    "PublicationStabilityTarget",
+    "PublicationStabilityVerdict",
     "ReviewBacklogArtifact",
     "ReviewBacklogRecord",
     "ReviewBacklogRecordType",
@@ -180,8 +194,10 @@ __all__ = [
     "StrategyPromotionAuditReviewArtifact",
     "StrategyPromotionAuditReviewContext",
     "TableGenerationError",
+    "CycleStabilityRecord",
     "assert_metric_consistency",
     "assert_report_readable",
+    "audit_publication_stability",
     "audit_publication_quality",
     "build_latex_paper_from_markdown",
     "compose_publication_manuscript",

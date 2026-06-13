@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 20:45:00 +08:00 - Codex - Task 105.1 publication stability matrix gate
+
+- Request: Continue toward stable CCF-B/Q3-level output without manually writing root Obsidian project progress notes; add a cross-cycle gate so one passing cycle cannot be overstated as stable publication capability.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/stability.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_stability.py`
+- Summary:
+  - Added `audit_publication_stability(...)` with `ccf-b-matrix` and `mvp-matrix` targets.
+  - Added `airesearcher publication-stability` and `/research:publication-stability` so operators can gate stable-output claims across completed cycle summaries.
+  - Required the CCF-B/Q3 matrix to include multiple completed release-allowed cycles, distinct real public datasets, LaTeX template diversity, paper-quality evidence, and a bounded warning budget.
+  - Ensured the stability gate uses the paper-build artifact path recorded by the evidence gate when available, so release-level stability checks follow the artifact actually reviewed upstream.
+  - Confirmed runtime-generated Obsidian notes for this verification were written only to `runs/manual-live/task105-stability-vault`, not to the project-root `autoresearch-vault/`.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_stability.py tests\unit\cli\test_main.py::test_publication_stability_command_reports_blocked_gate tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed with 6 tests.
+  - `poetry run ruff check src\autoresearch\reports\stability.py src\autoresearch\reports\__init__.py src\autoresearch\cli\main.py tests\unit\reports\test_stability.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\stability.py`: passed.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task105-stability-matrix --vault runs\manual-live\task105-stability-vault --project-id task105_stability_matrix --no-fail-on-unstable`: passed as a real blocked gate with `verdict=blocked`, `stable=false`, `score=0.500`, and `paper_quality_all_releases=pass`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 99 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 429 tests and 4 skipped.
+- Problems:
+  - `P-20260613-040` mitigated by the new stability matrix gate; stable CCF-B/Q3 claims still require additional real cycles.
+  - `P-20260613-041` added and resolved for stale paper-build artifact selection.
+- Follow-up:
+  - Run at least two additional full real public-benchmark cycles with another LaTeX template family, then rerun `publication-stability --target ccf-b-matrix`.
+
 ### 2026-06-13 19:45:00 +08:00 - Codex - Task 104.1 source-backed similarity classification
 
 - Request: Continue hardening the real autonomous research loop so CCF-B/Q3 publication gates use source-backed similar-work evidence instead of unknown-only retrieval, while avoiding manual root-vault progress notes.

@@ -1534,6 +1534,17 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement for strict CCF-B/Q3 novelty cross-checks; task `86.1`, task `88.1`, task `95.1`, task `101.1`, task `103.1`; `P-20260613-036`._
     - _Verify: focused similarity tests, ruff, mypy, real ArXiv/OpenAlex similarity-check over the task `101.1` candidate with 57 findings and 18 non-unknown classifications, CCF-B `publication-audit` pass with `similarity_classified_finding_breadth=18/10`, and `evidence-gate` pass with `release_allowed=true`._
 
+- [x] 105. Add cross-cycle publication stability gates
+  - [x] 105.1 Block stable CCF-B/Q3 claims until a multi-cycle matrix passes
+    - Add a publication-stability auditor that reads completed cycle summaries plus their publication-audit, evidence-gate, paper-build, and run-record artifacts.
+    - Require the `ccf-b-matrix` target to include at least 3 completed cycles, 3 release-allowed cycles, 100% release pass rate, 3 distinct real public datasets, at least 2 LaTeX templates, and at most 2 publication-audit warnings per cycle.
+    - Add a lighter `mvp-matrix` target for local development while keeping `ccf-b-matrix` as the default CLI target.
+    - Add `airesearcher publication-stability` and `/research:publication-stability` so operators can gate stable-output claims from one command.
+    - Prefer the paper-build artifact path recorded by the evidence gate when it is available, because the release decision must inspect the artifact actually reviewed by the physical gate rather than stale inline cycle-summary fields.
+    - Write optional Obsidian review/issue notes only through the AI-Researcher runtime command and only to the operator-selected vault; do not hand-write root-vault project progress notes for this maintenance task.
+    - _References: user correction that Obsidian project notes should be system-written runtime output; user requirement for strict CCF-B/Q3 stability evidence across topics; task `101.1`, task `103.1`, task `104.1`; `P-20260613-040`._
+    - _Verify: focused stability and CLI tests, ruff, mypy, and real `publication-stability` over the task `104.1` Pendigits cycle blocking stable claims with `score=0.500` while confirming paper quality evidence is read from the evidence-gate-reviewed task `103.1` paper build._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1862,6 +1873,14 @@ A task can be checked only when all applicable items are true:
     {
       "id": 70,
       "tasks": ["103.1"]
+    },
+    {
+      "id": 71,
+      "tasks": ["104.1"]
+    },
+    {
+      "id": 72,
+      "tasks": ["105.1"]
     }
   ]
 }

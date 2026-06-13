@@ -359,6 +359,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "serve.toml").is_file()
     assert (commands_dir / "research" / "publication-audit.toml").is_file()
+    assert (commands_dir / "research" / "publication-stability.toml").is_file()
     assert (commands_dir / "research" / "approve.toml").is_file()
     assert (commands_dir / "research" / "openclaw-channels.toml").is_file()
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
@@ -374,6 +375,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:autopilot" in list_result.stdout
     assert "/research:serve" in list_result.stdout
     assert "/research:publication-audit" in list_result.stdout
+    assert "/research:publication-stability" in list_result.stdout
     assert "/research:approve" in list_result.stdout
     assert "/research:openclaw-channels" in list_result.stdout
     assert "/research:code-agent-backends" in list_result.stdout
@@ -397,6 +399,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher publication-audit" in (
         commands_dir / "research" / "publication-audit.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher publication-stability" in (
+        commands_dir / "research" / "publication-stability.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher inspiration-refresh" in (
         commands_dir / "research" / "inspiration-refresh.toml"
@@ -585,6 +590,54 @@ def test_evidence_gate_command_reports_blocked_gate(
     assert calls[0]["cycle_summary_path"] == summary_path
     assert calls[0]["publication_audit_path"] == publication_audit_path
     assert calls[0]["paper_build_path"] == paper_build_path
+
+
+def test_publication_stability_command_reports_blocked_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    summary_path = tmp_path / "cycle-summary.json"
+    summary_path.write_text("{}", encoding="utf-8")
+    calls: list[dict[str, object]] = []
+
+    def fake_stability(**kwargs: object) -> SimpleNamespace:
+        calls.append(dict(kwargs))
+        return SimpleNamespace(
+            verdict=SimpleNamespace(value="blocked"),
+            stable=False,
+            score=0.375,
+            cycles=(SimpleNamespace(),),
+            markdown_path="runs/stability/publication-stability.md",
+            output_path="runs/stability/publication-stability.json",
+            vault_review_path="vault/review/publication-stability.md",
+            vault_issue_path="vault/issues/publication-stability.md",
+        )
+
+    monkeypatch.setattr(cli_main, "audit_publication_stability", fake_stability)
+
+    ok_result = CliRunner().invoke(
+        app,
+        [
+            "publication-stability",
+            str(summary_path),
+            "--no-fail-on-unstable",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--project-id",
+            "project_1",
+        ],
+    )
+    fail_result = CliRunner().invoke(app, ["publication-stability", str(summary_path)])
+
+    assert ok_result.exit_code == 0, ok_result.output
+    assert "[OK] publication_stability: blocked" in ok_result.stdout
+    assert "[OK] stable: false" in ok_result.stdout
+    assert "[OK] cycles: 1" in ok_result.stdout
+    assert "[OK] vault_issue: vault/issues/publication-stability.md" in ok_result.stdout
+    assert fail_result.exit_code == 1
+    assert calls[0]["cycle_summary_paths"] == (summary_path,)
+    assert calls[0]["vault_root"] == tmp_path / "vault"
+    assert calls[0]["project_id"] == "project_1"
 
 
 def test_literature_refresh_command_reports_source_backed_documents(

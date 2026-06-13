@@ -69,6 +69,7 @@ from autoresearch.reports import (
     EvidenceGateVerdict,
     LatexPaperBuildStatus,
     audit_publication_quality,
+    audit_publication_stability,
     build_latex_paper_from_markdown,
     compose_publication_manuscript,
     run_evidence_gate,
@@ -167,6 +168,13 @@ DEFAULT_SLASH_COMMANDS = {
         "[--review-json runs/llm-review/latest.json]` before claiming the output is publishable. "
         "A standalone review can satisfy review checks only; treat `fail` or `needs_revision` "
         "as blockers, not cosmetic polish.",
+    ),
+    "research/publication-stability.toml": (
+        "Gate stable publication-output claims across multiple completed cycles.",
+        "Run `airesearcher publication-stability <cycle-summary.json> ... --target ccf-b-matrix` "
+        "after several complete cycles. The matrix requires multiple release-allowed cycles, "
+        "distinct real public datasets, and LaTeX template diversity before stable CCF-B/Q3 "
+        "claims are allowed.",
     ),
     "research/approve.toml": (
         "Approve the latest pending dangerous runtime action.",
@@ -1409,6 +1417,63 @@ def evidence_gate(
         typer.echo(f"[OK] vault_issue: {report.vault_issue_path}")
     if fail_on_blocked and report.verdict is EvidenceGateVerdict.BLOCKED:
         typer.echo("[FAIL] physical evidence gate blocked release", err=True)
+        raise typer.Exit(1)
+
+
+@app.command("publication-stability")
+def publication_stability(
+    cycle_summary_paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more completed cycle-summary.json paths to evaluate."),
+    ],
+    target: Annotated[
+        str,
+        typer.Option(
+            "--target",
+            help="Stability target: ccf-b-matrix or mvp-matrix.",
+        ),
+    ] = "ccf-b-matrix",
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Directory for publication-stability.json and .md."),
+    ] = Path("runs/publication-stability/latest"),
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for stability review/issue notes."),
+    ] = None,
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Project ID for optional Obsidian stability notes."),
+    ] = None,
+    fail_on_unstable: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-unstable/--no-fail-on-unstable",
+            help="Exit with code 1 when the matrix does not support stable output claims.",
+        ),
+    ] = True,
+) -> None:
+    """Gate stable CCF-B/Q3 output claims across multiple completed cycles."""
+
+    report = audit_publication_stability(
+        cycle_summary_paths=tuple(cycle_summary_paths),
+        target=target,
+        output_dir=output_dir,
+        vault_root=vault,
+        project_id=project_id,
+    )
+    typer.echo(f"[OK] publication_stability: {report.verdict.value}")
+    typer.echo(f"[OK] stable: {str(report.stable).lower()}")
+    typer.echo(f"[OK] score: {report.score:.3f}")
+    typer.echo(f"[OK] cycles: {len(report.cycles)}")
+    typer.echo(f"[OK] report: {report.markdown_path}")
+    typer.echo(f"[OK] json: {report.output_path}")
+    if report.vault_review_path:
+        typer.echo(f"[OK] vault_review: {report.vault_review_path}")
+    if report.vault_issue_path:
+        typer.echo(f"[OK] vault_issue: {report.vault_issue_path}")
+    if fail_on_unstable and not report.stable:
+        typer.echo("[FAIL] publication stability matrix blocked stable output claims", err=True)
         raise typer.Exit(1)
 
 
