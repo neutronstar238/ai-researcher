@@ -234,7 +234,7 @@ poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .c
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-Both commands use real literature APIs by default: ArXiv, Semantic Scholar, and OpenAlex. They load optional literature API keys from `.env`, apply conservative source-specific rate limiting with tunable request spacing and 429 circuit breaking, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`. OpenAlex is included so Semantic Scholar 429s do not automatically collapse cross-source coverage to ArXiv-only.
+Both commands use real literature APIs by default: ArXiv, Semantic Scholar, and OpenAlex. They load optional literature API keys from `.env`, apply conservative source-specific rate limiting with tunable request spacing and 429 circuit breaking, preserve per-source fetch errors, and write guarded Obsidian summaries that keep unsupported outcomes as `unknown` or `pending verification`. Similarity summaries can classify direct duplicates, adjacent work, supporting prior work, contradictory evidence, and benchmark gaps, but only when source title/abstract metadata supports the classification; conservative method/dataset token overlap is recorded in the classification basis, and weak live hits remain `unknown`. OpenAlex is included so Semantic Scholar 429s do not automatically collapse cross-source coverage to ArXiv-only.
 
 Live LLM smoke and output quality gate:
 

@@ -173,7 +173,7 @@ poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .c
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
+这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
 
 真实 LLM smoke 与输出质量门：
 

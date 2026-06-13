@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:30:28 +08:00 - Codex - Task 87.1 similarity token-overlap classifier
+
+- Request: Continue improving innovation quality control by reducing avoidable `unknown` similarity classifications only when source metadata provides evidence, while keeping weak live hits as `unknown`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-87-1-similarity-token-overlap-classifier.md`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added conservative method/dataset token-overlap classification to similarity checks.
+  - Promotes findings to `adjacent_work` only when enough method tokens and dataset tokens are present in source metadata.
+  - Promotes method-only matches to `supporting_prior_work` only when enough method tokens are present.
+  - Records matched tokens in the classification basis written to Obsidian summaries.
+  - Keeps weak or irrelevant real online hits as `unknown` with pending-verification basis.
+- Verification:
+  - Initial focused test `poetry run pytest tests\unit\research\test_similarity.py -q` failed because `benchmark_gap` priority masked the new method+dataset token-overlap classification; fixed in task `87.1` and recorded as `P-20260613-025`.
+  - Focused test after fix: `poetry run pytest tests\unit\research\test_similarity.py -q` passed with 7 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\research\similarity.py tests\unit\research\test_similarity.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\research\similarity.py` passed.
+  - Real online CLI: `poetry run airesearcher similarity-check --candidate-file runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\candidate.json --vault runs\manual-live\task87-similarity-vault --cache runs\manual-live\task87-similarity-cache --project-id task87_similarity_classifier --max-queries 1 --max-results-per-source 1 --env-path .env` returned real ArXiv and OpenAlex findings, preserved a real Semantic Scholar 429 error, and kept both low-relevance findings as `unknown` rather than over-classifying them.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 387 passed and 4 skipped.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked earlier in `Problem.md`.
+- Problems added or updated:
+  - Added and resolved `P-20260613-025` for classification priority masking the new token-overlap path.
+- Follow-up work:
+  - Improve query generation and abstract-aware reranking so live source results are more relevant, while preserving the rule that weak evidence remains `unknown`.
+
 ### 2026-06-13 11:19:51 +08:00 - Codex - Task 86.1 similarity classification coverage gate
 
 - Request: Continue strict innovation quality control so AI-Researcher cannot treat unknown similar-work hits as publication-level novelty evidence; incorporate the SCALE-style lesson as a lightweight physical gate rather than prompt-only discipline.

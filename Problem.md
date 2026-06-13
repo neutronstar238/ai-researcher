@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-025 - Similarity token-overlap classifier initially lost to benchmark-gap priority
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 11:30:00 +08:00
+- Source: Focused test verification for task `87.1`.
+- Symptom: `test_project_similarity_classifies_conservative_token_overlap` expected a source-backed method+dataset token match to classify as `adjacent_work`, but the classifier returned `benchmark_gap`.
+- Impact: The new evidence-backed adjacent-work path was implemented, but an earlier dataset/benchmark branch masked the more specific method+dataset evidence.
+- Evidence: `poetry run pytest tests\unit\research\test_similarity.py -q` failed with `AssertionError: assert 'benchmark_gap' == 'adjacent_work'`.
+- Root cause: Classification priority checked the generic dataset benchmark rule before the new conservative method+dataset token-overlap rule.
+- Workaround: None needed after task `87.1`.
+- Next action: Keep focused tests around classification priority whenever similarity categories are changed.
+- Linked tasks: `87.1`
+- Resolution: Moved method+dataset token-overlap classification ahead of the generic benchmark-gap rule while keeping weak-overlap findings as `unknown`.
+- Verification: Reran `poetry run pytest tests\unit\research\test_similarity.py -q`, `poetry run ruff check src\autoresearch\research\similarity.py tests\unit\research\test_similarity.py`, and `poetry run mypy src\autoresearch\research\similarity.py`; all passed.
+
 ### P-20260613-024 - Unknown-only similarity findings could satisfy novelty coverage
 
 - Status: Resolved

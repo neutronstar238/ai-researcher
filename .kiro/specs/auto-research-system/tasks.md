@@ -1349,6 +1349,15 @@ A task can be checked only when all applicable items are true:
     - _References: user request for strict innovation quality control and SCALE-style physical gates that do not rely on prompt-only self-discipline._
     - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` CLI run over a real autopilot cycle showing `similarity_classification_coverage=fail` when all findings remain `unknown`._
 
+- [x] 87. Improve conservative similarity classification without weakening unknowns
+  - [x] 87.1 Add evidence-backed token-overlap classification basis
+    - Add conservative token-overlap matching for method and dataset metadata when exact phrase matching misses source-backed adjacent work.
+    - Require enough method-token overlap, and dataset-token overlap for `adjacent_work`, before promoting an online finding above `unknown`.
+    - Keep weak or irrelevant live hits as `unknown` with pending-verification basis rather than fabricating novelty positioning.
+    - Record matched method and dataset tokens in the similarity summary classification basis so publication audits can inspect why a finding was classified.
+    - _References: task `86.1` follow-up and user requirement that novelty checks be broad and strict enough for CCF-B/Q3-style claims._
+    - _Verify: focused similarity tests for positive token-overlap classification and weak-overlap unknown behavior, ruff, mypy, full smoke/unit tests, and a real `similarity-check` CLI run against live sources showing irrelevant real hits remain `unknown` rather than being over-classified._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1609,6 +1618,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 53,
       "tasks": ["86.1"]
+    },
+    {
+      "id": 54,
+      "tasks": ["87.1"]
     }
   ]
 }

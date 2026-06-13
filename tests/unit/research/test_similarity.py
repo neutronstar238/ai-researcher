@@ -222,6 +222,90 @@ def test_project_similarity_default_sources_include_openalex_fallback(
     assert "openalex" in report.summary_path.read_text(encoding="utf-8")
 
 
+def test_project_similarity_classifies_conservative_token_overlap(
+    tmp_path: Path,
+) -> None:
+    candidate = ResearchCandidate(
+        id="variance_candidate",
+        title="Improve public handwriting classifiers with calibrated centroids",
+        description="Evaluate a diagonal variance calibrated prototype method.",
+        research_gap="Nearest-centroid baselines underuse class-specific variance.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "method": "diagonal variance calibrated prototypes",
+            "dataset": "pendigits",
+        },
+    )
+    paper = AcademicPaper(
+        title="Variance calibrated prototype distances for Pendigits recognition",
+        abstract=(
+            "A source-backed study of diagonal variance calibration for prototype "
+            "classification on the Pendigits benchmark."
+        ),
+        url="https://example.com/variance",
+        source="openalex",
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={"openalex": _FakeClient([paper], 1.0)},
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=1),
+    )
+
+    assert len(report.findings) == 1
+    finding = report.findings[0]
+    assert finding.classification == "adjacent_work"
+    assert any("method token overlap" in basis for basis in finding.classification_basis)
+    assert any("dataset token overlap" in basis for basis in finding.classification_basis)
+    assert report.summary_path is not None
+    summary = report.summary_path.read_text(encoding="utf-8")
+    assert "method token overlap" in summary
+    assert "dataset token overlap" in summary
+
+
+def test_project_similarity_keeps_weak_token_overlap_unknown(tmp_path: Path) -> None:
+    candidate = ResearchCandidate(
+        id="weak_overlap_candidate",
+        title="Improve public handwriting classifiers with calibrated centroids",
+        description="Evaluate a diagonal variance calibrated prototype method.",
+        research_gap="Nearest-centroid baselines underuse class-specific variance.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "method": "diagonal variance calibrated prototypes",
+            "dataset": "pendigits",
+        },
+    )
+    paper = AcademicPaper(
+        title="Variance study for a generic classifier benchmark",
+        abstract="A broad survey without the target method or dataset evidence.",
+        url="https://example.com/weak",
+        source="openalex",
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={"openalex": _FakeClient([paper], 1.0)},
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=1),
+    )
+
+    assert len(report.findings) == 1
+    assert report.findings[0].classification == "unknown"
+
+
 def test_similarity_findings_reject_unsupported_claims() -> None:
     finding = SimilarityFinding(
         document_id="doc_1",

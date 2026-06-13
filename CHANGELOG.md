@@ -104,6 +104,7 @@ Target version: `0.1.0`.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.
 - Generated Markdown reports now satisfy the deterministic manuscript-section gate while preserving evidence-bound metric lines and reproducibility/validation blocks.
+- Similarity-check classification now uses conservative method/dataset token-overlap evidence when exact phrase matching misses adjacent work, records the matched tokens in the classification basis, and keeps weak live hits as `unknown`.
 - Markdown remains the Obsidian-readable process and evidence format, while final paper-level output is defined as a LaTeX template build that compiles to PDF.
 - Generic paper-template smoke now produces a PDF when `pdflatex` or another supported LaTeX engine is available, and otherwise records a structured skipped result.
 - External template compatibility does not vendor upstream template packages; it fetches source metadata, uses locally installed LaTeX classes when available, and records missing classes as explicit unavailable sources.

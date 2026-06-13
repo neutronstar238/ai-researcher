@@ -398,6 +398,11 @@ def _classify_document(
     method = _metadata_text(candidate, "method")
     dataset = _metadata_text(candidate, "dataset")
     limitation = _metadata_text(candidate, "limitation")
+    document_tokens = set(_significant_tokens(document_text))
+    method_tokens = _metadata_tokens(candidate, "method")
+    dataset_tokens = _metadata_tokens(candidate, "dataset")
+    method_matches = _matched_tokens(method_tokens, document_tokens)
+    dataset_matches = _matched_tokens(dataset_tokens, document_tokens)
 
     if title_similarity >= 0.78:
         return (
@@ -419,6 +424,16 @@ def _classify_document(
             0.65,
             (f"metadata contains limitation `{limitation}` and negative-evidence terms",),
         )
+    if _has_conservative_overlap(method_tokens, method_matches) and dataset_matches:
+        basis = (
+            f"method token overlap {', '.join(method_matches)} from `{method}`",
+            f"dataset token overlap {', '.join(dataset_matches)} from `{dataset}`",
+        )
+        return (
+            "adjacent_work",
+            0.68,
+            basis,
+        )
     if dataset and dataset in document_text and "benchmark" in document_text:
         return (
             "benchmark_gap",
@@ -431,11 +446,35 @@ def _classify_document(
             0.55,
             (f"metadata references method `{method}`",),
         )
+    if _has_conservative_overlap(method_tokens, method_matches):
+        return (
+            "supporting_prior_work",
+            0.5,
+            (f"method token overlap {', '.join(method_matches)} from `{method}`",),
+        )
     return (
         "unknown",
         0.25,
         ("source metadata did not support a stronger classification; pending verification",),
     )
+
+
+def _metadata_tokens(candidate: ResearchCandidate, key: str) -> tuple[str, ...]:
+    return tuple(_significant_tokens(_metadata_text(candidate, key)))
+
+
+def _matched_tokens(needles: tuple[str, ...], haystack: set[str]) -> tuple[str, ...]:
+    return tuple(token for token in needles if token in haystack)
+
+
+def _has_conservative_overlap(
+    needles: tuple[str, ...],
+    matches: tuple[str, ...],
+) -> bool:
+    if not needles:
+        return False
+    required = 1 if len(needles) <= 2 else max(2, (len(needles) + 1) // 2)
+    return len(matches) >= required
 
 
 def _write_similarity_summary(
