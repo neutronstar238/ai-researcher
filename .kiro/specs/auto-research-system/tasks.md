@@ -1524,6 +1524,16 @@ A task can be checked only when all applicable items are true:
     - _References: user correction that Obsidian project notes should be system-written runtime output; task `96.1` paper-quality gate; task `101.1` full-cycle paper quality failure; `P-20260613-036`._
     - _Verify: focused manuscript/publication-audit/autopilot tests, focused ruff and mypy, real manuscript compose from the task `101.1` cycle, real LaTeX paper-build producing 9 pages / 2856 words / 0 overfull hbox, real publication audit failing only the similarity-classified breadth blocker, real evidence gate passing paper quality but blocking release._
 
+- [x] 104. Improve source-backed similar-work classification quality
+  - [x] 104.1 Classify query-backed adjacent method families without weakening unknowns
+    - Add query-aware method-family classification for project-start similarity findings, covering prototype/centroid classifiers, Mahalanobis metric-learning/classification work, and clustering/prototype classification.
+    - Add dataset alias handling for Pendigits-style wording such as `UCI Pendigits`, `pen based`, and `handwritten digit` only as supporting classification evidence.
+    - Require classification/recognition/learning/metric context before method-family matches can count, so generic prototype, centroid, Gaussian, variance, covariance, or shrinkage papers remain `unknown` when they lack classification-method evidence.
+    - Preserve the strict publication gate: raw findings and unknown findings do not satisfy `similarity_classified_finding_breadth`.
+    - Verify against the real task `101.1` candidate and source metadata; do not hand-write root-vault progress notes for this maintenance task.
+    - _References: user requirement for strict CCF-B/Q3 novelty cross-checks; task `86.1`, task `88.1`, task `95.1`, task `101.1`, task `103.1`; `P-20260613-036`._
+    - _Verify: focused similarity tests, ruff, mypy, real ArXiv/OpenAlex similarity-check over the task `101.1` candidate with 57 findings and 18 non-unknown classifications, CCF-B `publication-audit` pass with `similarity_classified_finding_breadth=18/10`, and `evidence-gate` pass with `release_allowed=true`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

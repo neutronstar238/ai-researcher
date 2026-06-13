@@ -72,6 +72,101 @@ STOPWORDS = {
     "using",
     "with",
 }
+BENCHMARK_TERMS = {
+    "benchmark",
+    "benchmarks",
+    "dataset",
+    "datasets",
+    "recognition",
+    "classification",
+    "classifier",
+    "classifiers",
+}
+METHOD_ANCHOR_TOKENS = {
+    "classification",
+    "classifier",
+    "classifiers",
+    "cluster",
+    "clustering",
+    "centroid",
+    "centroids",
+    "mahalanobis",
+    "prototype",
+    "prototypes",
+}
+
+
+@dataclass(frozen=True)
+class _MethodFamily:
+    name: str
+    terms: tuple[str, ...]
+    supporting_terms: tuple[str, ...] = ()
+    min_document_terms: int = 1
+    min_supporting_terms: int = 0
+
+
+@dataclass(frozen=True)
+class _MethodFamilyMatch:
+    family: str
+    document_terms: tuple[str, ...]
+    context_terms: tuple[str, ...]
+    supporting_terms: tuple[str, ...]
+
+
+METHOD_FAMILIES = (
+    _MethodFamily(
+        name="prototype_classification",
+        terms=(
+            "prototype",
+            "prototypes",
+            "prototype classifier",
+            "prototype classifiers",
+            "prototype based",
+            "nearest prototype",
+            "centroid",
+            "centroids",
+            "nearest centroid",
+            "nearest centroids",
+        ),
+        supporting_terms=(
+            "classification",
+            "classifier",
+            "classifiers",
+            "recognition",
+            "learning",
+            "few shot",
+            "few-shot",
+            "long tailed",
+            "long-tailed",
+        ),
+        min_supporting_terms=1,
+    ),
+    _MethodFamily(
+        name="mahalanobis_metric",
+        terms=(
+            "mahalanobis",
+            "metric learning",
+            "distance metric",
+            "distance metrics",
+            "large margin nearest neighbor",
+            "nearest neighbor",
+        ),
+        supporting_terms=(
+            "classification",
+            "classifier",
+            "classifiers",
+            "learning",
+            "verification",
+            "estimation",
+        ),
+        min_supporting_terms=1,
+    ),
+    _MethodFamily(
+        name="clustering_classifier",
+        terms=("clustering", "cluster", "clusters", "k means", "k-means", "prototype based"),
+        supporting_terms=("classification", "classifier", "classifiers"),
+    ),
+)
 
 
 class UnsupportedSimilarityClaimError(ValueError):
@@ -386,7 +481,7 @@ def _finding_for_document(
     query: SimilarityQuery | None,
     timestamp: datetime,
 ) -> SimilarityFinding:
-    classification, confidence, basis = _classify_document(candidate, document)
+    classification, confidence, basis = _classify_document(candidate, document, query)
     return SimilarityFinding(
         document_id=document.id,
         title=document.title,
@@ -406,10 +501,12 @@ def _finding_for_document(
 def _classify_document(
     candidate: ResearchCandidate,
     document: DocumentRecord,
+    query: SimilarityQuery | None,
 ) -> tuple[str, float, tuple[str, ...]]:
     candidate_title = _clean_query(candidate.title)
     document_title = _clean_query(document.title)
     document_text = _clean_query(f"{document.title} {document.abstract or ''} {document.venue or ''}")
+    document_match_text = _match_text(document_text)
     title_similarity = SequenceMatcher(None, candidate_title, document_title).ratio()
     method = _metadata_text(candidate, "method")
     dataset = _metadata_text(candidate, "dataset")
@@ -419,6 +516,8 @@ def _classify_document(
     dataset_tokens = _metadata_tokens(candidate, "dataset")
     method_matches = _matched_tokens(method_tokens, document_tokens)
     dataset_matches = _matched_tokens(dataset_tokens, document_tokens)
+    dataset_alias_matches = _dataset_alias_matches(candidate, document_match_text)
+    family_matches = _method_family_matches(candidate, document_match_text, query)
 
     if title_similarity >= 0.78:
         return (
@@ -440,15 +539,41 @@ def _classify_document(
             0.65,
             (f"metadata contains limitation `{limitation}` and negative-evidence terms",),
         )
-    if _has_conservative_overlap(method_tokens, method_matches) and dataset_matches:
-        basis = (
+    if _has_conservative_method_overlap(method_tokens, method_matches) and dataset_matches:
+        token_basis = (
             f"method token overlap {', '.join(method_matches)} from `{method}`",
             f"dataset token overlap {', '.join(dataset_matches)} from `{dataset}`",
         )
         return (
             "adjacent_work",
             0.68,
-            basis,
+            token_basis,
+        )
+    if family_matches and dataset_alias_matches:
+        family_dataset_basis = (
+            *_method_family_basis(family_matches, query),
+            f"dataset alias overlap {', '.join(dataset_alias_matches)}",
+        )
+        return (
+            "adjacent_work",
+            0.72,
+            family_dataset_basis,
+        )
+    if family_matches and query is not None and query.origin in {
+        "baseline_dataset_search",
+        "limitation_risk_search",
+        "method_dataset_search",
+    }:
+        return (
+            "adjacent_work",
+            0.64,
+            _method_family_basis(family_matches, query),
+        )
+    if dataset_alias_matches and _has_benchmark_language(document_tokens):
+        return (
+            "benchmark_gap",
+            0.6,
+            (f"dataset alias overlap {', '.join(dataset_alias_matches)} with benchmark language",),
         )
     if dataset and dataset in document_text and "benchmark" in document_text:
         return (
@@ -462,11 +587,17 @@ def _classify_document(
             0.55,
             (f"metadata references method `{method}`",),
         )
-    if _has_conservative_overlap(method_tokens, method_matches):
+    if _has_conservative_method_overlap(method_tokens, method_matches):
         return (
             "supporting_prior_work",
             0.5,
             (f"method token overlap {', '.join(method_matches)} from `{method}`",),
+        )
+    if family_matches:
+        return (
+            "supporting_prior_work",
+            0.55,
+            _method_family_basis(family_matches, query),
         )
     return (
         "unknown",
@@ -477,6 +608,134 @@ def _classify_document(
 
 def _metadata_tokens(candidate: ResearchCandidate, key: str) -> tuple[str, ...]:
     return tuple(_significant_tokens(_metadata_text(candidate, key)))
+
+
+def _dataset_alias_matches(candidate: ResearchCandidate, document_text: str) -> tuple[str, ...]:
+    aliases = _dataset_aliases(candidate)
+    return _matched_terms(aliases, document_text)
+
+
+def _dataset_aliases(candidate: ResearchCandidate) -> tuple[str, ...]:
+    raw_parts = [
+        candidate.title,
+        _metadata_text(candidate, "dataset"),
+        _metadata_text(candidate, "benchmark"),
+    ]
+    raw_text = _match_text(" ".join(part for part in raw_parts if part))
+    aliases: list[str] = []
+    for key in ("dataset", "benchmark"):
+        value = _metadata_text(candidate, key)
+        if value:
+            aliases.append(value)
+    if "pendigits" in raw_text or ("pen based" in raw_text and "digit" in raw_text):
+        aliases.extend(
+            [
+                "pendigits",
+                "uci pendigits",
+                "pen based",
+                "pen based recognition",
+                "handwritten digit",
+                "handwritten digits",
+                "digit recognition",
+            ]
+        )
+    return tuple(dict.fromkeys(_match_text(alias) for alias in aliases if _match_text(alias)))
+
+
+def _method_family_matches(
+    candidate: ResearchCandidate,
+    document_text: str,
+    query: SimilarityQuery | None,
+) -> tuple[_MethodFamilyMatch, ...]:
+    context_text = _method_family_context(candidate, query)
+    matches: list[_MethodFamilyMatch] = []
+    for family in METHOD_FAMILIES:
+        context_terms = _matched_terms(family.terms, context_text)
+        if not context_terms:
+            continue
+        document_terms = _matched_terms(family.terms, document_text)
+        supporting_terms = _matched_terms(family.supporting_terms, document_text)
+        if len(document_terms) < family.min_document_terms:
+            continue
+        if len(supporting_terms) < family.min_supporting_terms:
+            continue
+        matches.append(
+            _MethodFamilyMatch(
+                family=family.name,
+                document_terms=document_terms,
+                context_terms=context_terms,
+                supporting_terms=supporting_terms,
+            )
+        )
+    return tuple(matches)
+
+
+def _method_family_context(
+    candidate: ResearchCandidate,
+    query: SimilarityQuery | None,
+) -> str:
+    metadata = " ".join(value for value in candidate.metadata.values() if isinstance(value, str))
+    query_text = query.text if query is not None else ""
+    query_origin = query.origin if query is not None else ""
+    return _match_text(
+        " ".join(
+            [
+                candidate.title,
+                candidate.description,
+                candidate.research_gap,
+                metadata,
+                query_text,
+                query_origin,
+            ]
+        )
+    )
+
+
+def _method_family_basis(
+    matches: tuple[_MethodFamilyMatch, ...],
+    query: SimilarityQuery | None,
+) -> tuple[str, ...]:
+    query_basis = (
+        f"query `{query.text}` ({query.origin})"
+        if query is not None
+        else "candidate metadata without source query"
+    )
+    basis: list[str] = []
+    for match in matches:
+        support = (
+            f"; supporting terms {', '.join(match.supporting_terms)}"
+            if match.supporting_terms
+            else ""
+        )
+        basis.append(
+            "query family overlap "
+            f"{match.family}: document terms {', '.join(match.document_terms)}; "
+            f"candidate/query terms {', '.join(match.context_terms)}"
+            f"{support}; source {query_basis}"
+        )
+    return tuple(basis)
+
+
+def _matched_terms(needles: tuple[str, ...], haystack_text: str) -> tuple[str, ...]:
+    if not needles:
+        return ()
+    haystack_tokens = set(haystack_text.split())
+    matches: list[str] = []
+    for raw_needle in needles:
+        needle = _match_text(raw_needle)
+        if not needle:
+            continue
+        if " " in needle:
+            if needle in haystack_text:
+                matches.append(needle)
+            continue
+        if needle in haystack_tokens:
+            matches.append(needle)
+    return tuple(dict.fromkeys(matches))
+
+
+def _has_benchmark_language(document_tokens: set[str]) -> bool:
+    return bool(document_tokens & BENCHMARK_TERMS)
 
 
 def _matched_tokens(needles: tuple[str, ...], haystack: set[str]) -> tuple[str, ...]:
@@ -491,6 +750,18 @@ def _has_conservative_overlap(
         return False
     required = 1 if len(needles) <= 2 else max(2, (len(needles) + 1) // 2)
     return len(matches) >= required
+
+
+def _has_conservative_method_overlap(
+    method_tokens: tuple[str, ...],
+    method_matches: tuple[str, ...],
+) -> bool:
+    if not _has_conservative_overlap(method_tokens, method_matches):
+        return False
+    candidate_anchors = set(method_tokens) & METHOD_ANCHOR_TOKENS
+    if not candidate_anchors:
+        return True
+    return bool(set(method_matches) & candidate_anchors)
 
 
 def _write_similarity_summary(
@@ -848,6 +1119,10 @@ def _summary_keywords(candidate: ResearchCandidate) -> list[str]:
 def _clean_query(value: str) -> str:
     normalized = re.sub(r"[^a-zA-Z0-9 -]+", " ", value.casefold())
     return " ".join(normalized.split())
+
+
+def _match_text(value: str) -> str:
+    return _clean_query(value).replace("-", " ")
 
 
 def _significant_tokens(value: str) -> list[str]:

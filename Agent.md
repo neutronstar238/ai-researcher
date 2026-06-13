@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 19:45:00 +08:00 - Codex - Task 104.1 source-backed similarity classification
+
+- Request: Continue hardening the real autonomous research loop so CCF-B/Q3 publication gates use source-backed similar-work evidence instead of unknown-only retrieval, while avoiding manual root-vault progress notes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added query-aware method-family classification for project-start similarity findings.
+  - Covered prototype/centroid classifiers, Mahalanobis metric-learning/classification work, and clustering/prototype classification when source metadata contains classification, recognition, learning, metric, or method-anchor evidence.
+  - Added Pendigits dataset alias matching for `UCI Pendigits`, `pen based`, and `handwritten digit` wording as supporting evidence only.
+  - Tightened false-positive controls after live inspection: broad Gaussian, variance, covariance, shrinkage, generic prototype, and generic centroid matches remain `unknown` unless classification-method context is present.
+  - Added tests for query-backed adjacent method-family classification, weak-overlap unknown behavior, and variance-shrinkage false-positive prevention.
+  - Did not hand-write root `autoresearch-vault/projects/.../progress` notes; the vault evidence used here was produced by `airesearcher similarity-check`, `publication-audit`, and `evidence-gate` under `runs/manual-live/...`.
+- Verification:
+  - `poetry run pytest tests\unit\research\test_similarity.py -q`: passed, 11 tests.
+  - `poetry run ruff check src\autoresearch\research\similarity.py tests\unit\research\test_similarity.py`: passed.
+  - `poetry run mypy src\autoresearch\research\similarity.py`: passed.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 98 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 424 tests and 4 skipped opt-in live smoke tests.
+  - Real API run: `poetry run airesearcher similarity-check --candidate-file runs\manual-live\task101-full-cycle\cycle-20260613T091517Z\candidate.json --vault runs\manual-live\task104d-similarity-vault --cache runs\manual-live\task104-similarity-cache --max-queries 4 --max-results-per-source 10 --cache-ttl-hours 1 --project-id task104_similarity_classification --env-path .env` passed using ArXiv/OpenAlex metadata, wrote 57 findings, and final classification counts were 14 `adjacent_work`, 4 `supporting_prior_work`, and 39 `unknown`.
+  - Real CCF-B audit: `poetry run airesearcher publication-audit runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b --output-dir runs\manual-live\task104-similarity-classification\publication-audit --vault runs\manual-live\task104d-similarity-vault --project-id task104_similarity_classification --no-fail-on-not-publishable` passed with score `0.9615`, `publishable=true`, and `similarity_classified_finding_breadth=18/10`; warnings remained for optional Semantic Scholar 429s and adjacent-work positioning.
+  - Real physical gate: `poetry run airesearcher evidence-gate runs\manual-live\task104-similarity-classification\cycle-summary.json --output-dir runs\manual-live\task104-similarity-classification\evidence-gate --publication-audit runs\manual-live\task104-similarity-classification\publication-audit\publication-audit.json --paper-build-json runs\manual-live\task103-manuscript-quality\paper-build\paper-build.json --vault runs\manual-live\task104d-similarity-vault --project-id task104_similarity_classification --no-fail-on-blocked` passed with `release_allowed=true` and 0 failed checks.
+- Problems:
+  - `P-20260613-036` resolved for the task `101.1` Pendigits cycle.
+  - `P-20260613-039` added and resolved for overbroad similarity classification false positives.
+  - `P-20260613-040` added for the remaining cross-topic stability risk.
+- Follow-up:
+  - Run a multi-cycle public benchmark matrix before claiming stable CCF-B/Q3 publication output across topics.
+
 ### 2026-06-13 19:25:00 +08:00 - Codex - Task 103.1 evidence-bound publication manuscript
 
 - Request: Continue hardening the autonomous loop so paper output is evidence-bound and not just a thin experiment report, while keeping Obsidian project progress notes as runtime-generated system output rather than manual maintenance notes.

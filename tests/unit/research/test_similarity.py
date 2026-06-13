@@ -47,6 +47,20 @@ class _FakeClient:
         return self.papers
 
 
+class _QueryAwareFakeClient:
+    def __init__(self, responses: dict[str, list[AcademicPaper]], rate_limit: float) -> None:
+        self.responses = responses
+        self.rate_limiter = _RateLimiter(rate_limit)
+        self.calls: list[tuple[str, int]] = []
+
+    def search(self, query: str, *, limit: int = 10) -> list[AcademicPaper]:
+        self.calls.append((query, limit))
+        for marker, papers in self.responses.items():
+            if marker in query:
+                return papers[:limit]
+        return []
+
+
 def test_generate_similarity_queries_uses_candidate_and_vault_context(tmp_path: Path) -> None:
     candidate = _candidate()
     _write_similarity_context(tmp_path, candidate)
@@ -329,10 +343,10 @@ def test_project_similarity_classifies_conservative_token_overlap(
         },
     )
     paper = AcademicPaper(
-        title="Variance calibrated prototype distances for Pendigits recognition",
+        title="Variance calibrated prototypes distances for Pendigits recognition",
         abstract=(
             "A source-backed study of diagonal variance calibration for prototype "
-            "classification on the Pendigits benchmark."
+            "prototypes classification on the Pendigits benchmark."
         ),
         url="https://example.com/variance",
         source="openalex",
@@ -355,6 +369,67 @@ def test_project_similarity_classifies_conservative_token_overlap(
     summary = report.summary_path.read_text(encoding="utf-8")
     assert "method token overlap" in summary
     assert "dataset token overlap" in summary
+
+
+def test_project_similarity_classifies_query_backed_method_family_overlap(
+    tmp_path: Path,
+) -> None:
+    candidate = _pendigits_candidate()
+    prototype_paper = AcademicPaper(
+        title="Learning Prototype Classifiers for Long-Tailed Recognition",
+        abstract=(
+            "Prototype classifiers compare learned class prototypes for recognition "
+            "under long-tailed class distributions."
+        ),
+        url="https://example.com/prototype",
+        source="openalex",
+    )
+    centroid_paper = AcademicPaper(
+        title="Visual Recognition with Deep Nearest Centroids",
+        abstract=(
+            "Nearest centroid classifiers are studied as interpretable visual "
+            "recognition models."
+        ),
+        url="https://example.com/centroids",
+        source="openalex",
+    )
+    mahalanobis_paper = AcademicPaper(
+        title="Large Margin Nearest Neighbor Classification using Curved Mahalanobis Distances",
+        abstract=(
+            "A Mahalanobis distance metric learning method for nearest-neighbor "
+            "classification."
+        ),
+        url="https://example.com/mahalanobis",
+        source="openalex",
+    )
+    client = _QueryAwareFakeClient(
+        {
+            "diagonal variance-calibrated prototypes": [prototype_paper],
+            "nearest centroid": [centroid_paper],
+            "mahalanobis": [mahalanobis_paper],
+        },
+        1.0,
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={"openalex": client},
+        config=SimilarityCheckConfig(max_queries=4, max_results_per_source=3),
+    )
+
+    classifications = {finding.title: finding.classification for finding in report.findings}
+    assert classifications == {
+        prototype_paper.title: "adjacent_work",
+        centroid_paper.title: "adjacent_work",
+        mahalanobis_paper.title: "adjacent_work",
+    }
+    assert all(
+        any("query family overlap" in basis for basis in finding.classification_basis)
+        for finding in report.findings
+    )
+    assert len([finding for finding in report.findings if finding.classification != "unknown"]) == 3
 
 
 def test_project_similarity_keeps_weak_token_overlap_unknown(tmp_path: Path) -> None:
@@ -386,6 +461,35 @@ def test_project_similarity_keeps_weak_token_overlap_unknown(tmp_path: Path) -> 
         vault_root=tmp_path,
         cache_root=tmp_path / ".cache" / "similarity",
         clients={"openalex": _FakeClient([paper], 1.0)},
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=1),
+    )
+
+    assert len(report.findings) == 1
+    assert report.findings[0].classification == "unknown"
+
+
+def test_project_similarity_requires_method_anchor_for_variance_overlap(
+    tmp_path: Path,
+) -> None:
+    candidate = _pendigits_candidate()
+    paper = AcademicPaper(
+        title=(
+            "Shrinkage MMSE estimators of covariances beyond the zero-mean "
+            "and stationary variance assumptions"
+        ),
+        abstract=(
+            "A diagonal covariance shrinkage estimator for variance assumptions "
+            "in a generic statistical estimation setting."
+        ),
+        url="https://example.com/shrinkage",
+        source="arxiv",
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={"arxiv": _FakeClient([paper], 3.0)},
         config=SimilarityCheckConfig(max_queries=1, max_results_per_source=1),
     )
 
@@ -428,6 +532,39 @@ def _candidate() -> ResearchCandidate:
             "method": "agent",
             "dataset": "review",
             "limitation": "weak evidence",
+        },
+    )
+
+
+def _pendigits_candidate() -> ResearchCandidate:
+    return ResearchCandidate(
+        id="pendigits_variance_candidate",
+        title="Variance-calibrated prototype classifiers for UCI Pendigits",
+        description=(
+            "Evaluate whether diagonal per-class variance calibration improves a "
+            "nearest-prototype classifier."
+        ),
+        research_gap=(
+            "Nearest-centroid baselines are reproducible and interpretable, but a "
+            "publication claim requires checking whether variance-calibrated prototype "
+            "distance has already been covered by Gaussian, Mahalanobis, or "
+            "metric-learning classifiers on handwritten digit benchmarks."
+        ),
+        novelty_score=0.45,
+        feasibility_score=0.85,
+        impact_score=0.55,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+            "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+            "benchmark": "UCI Pendigits",
+            "baseline": "nearest centroid classifier and z-score centroid ablation",
+            "limitation": (
+                "single public benchmark; adjacent Gaussian, Mahalanobis, and "
+                "distance-metric classifiers may already cover the mechanism"
+            ),
         },
     )
 

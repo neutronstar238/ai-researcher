@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-040 - Single-cycle release pass does not prove stable cross-topic publication output
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-06-13 19:45:00 +08:00
+- Source: Task `104.1` real CCF-B publication-audit and evidence-gate rerun over the task `101.1` Pendigits cycle.
+- Symptom: One real Pendigits cycle can now pass publication audit and the physical evidence gate after similarity classification, optional-source policy, and manuscript generation fixes, but this does not yet prove stable CCF-B/Q3-level output across topics, datasets, templates, or multiple autonomous cycles.
+- Impact: The system could overstate general readiness if a single benchmark success is treated as a stable publication pipeline.
+- Evidence: `runs/manual-live/task104-similarity-classification/publication-audit/publication-audit.json` passed with score `0.9615` and `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` passed with `release_allowed=true`; the publication audit still recorded warnings for optional Semantic Scholar 429s and 14 adjacent-work findings requiring related-work positioning.
+- Root cause: Current evidence covers one controlled Pendigits method-candidate cycle and a generic LaTeX template build, not a statistically meaningful portfolio of cycles, datasets, or venue templates.
+- Workaround: Treat task `104.1` as a single-cycle acceptance proof, not as a global stable-publication claim.
+- Next action: Run a multi-cycle benchmark matrix with at least two additional public datasets/tasks, source diversity checks, related-work positioning checks, and venue-template compatibility before claiming stable CCF-B/Q3 generation.
+- Linked tasks: `104.1`
+- Resolution: Not resolved.
+- Verification: Not applicable; this is a forward-looking stability risk created by the successful single-cycle gate run.
+
+### P-20260613-039 - Similarity classifier overclassified broad method-family word matches during breadth repair
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 19:35:00 +08:00
+- Source: Live task `104.1` similarity classification rerun over the task `101.1` Pendigits candidate.
+- Symptom: An initial query-backed method-family classifier improved classified breadth but incorrectly counted broad word matches such as crystallographic prototypes, centroid bodies, portfolio variance shrinkage, and generic Gaussian/variance papers as adjacent or supporting prior work.
+- Impact: Publication audit could pass `similarity_classified_finding_breadth` using weakly related evidence, weakening the novelty and CCF-B/Q3 quality bar.
+- Evidence: The first task `104.1` live similarity-check over `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/candidate.json` classified 30/57 findings, including visibly unrelated prototype/centroid/variance titles. After tightening method-family context and method-anchor token overlap, the final run classified 18/57 findings concentrated in prototype/centroid, Mahalanobis metric, clustering/prototype classification, and pattern-analysis work.
+- Root cause: The first method-family rules allowed broad `prototype`, `centroid`, `gaussian`, `variance`, and `shrinkage` matches without requiring classification, recognition, learning, metric, or method-anchor evidence in the source metadata.
+- Workaround: None needed after tightening the classifier.
+- Next action: Keep adding negative fixtures whenever real live search reveals another false adjacent-work class.
+- Linked tasks: `104.1`
+- Resolution: Added query-aware method-family matching with required classification/recognition/learning/metric context, removed broad Gaussian/variance-shrinkage families, and required core method anchors for conservative token-overlap classification.
+- Verification: `poetry run pytest tests\unit\research\test_similarity.py -q` passed 11 tests, including weak-overlap and variance-shrinkage unknown regressions. Final real similarity-check wrote `runs/manual-live/task104d-similarity-vault/exploration/topics/similarity_check_autopilot_task101_full_cycle_20260613091517.md` with 57 findings, 18 non-unknown classifications, and no broad prototype/centroid/Gaussian/variance false positives observed in the sampled classified list.
+
 ### P-20260613-038 - Autopilot paper build used the thin experiment report instead of an evidence-bound manuscript
 
 - Status: Resolved
@@ -66,19 +98,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-036 - Real task101 full cycle is functional but not directly publishable
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 17:25:00 +08:00
 - Source: Task `101.1` real full-cycle and self-evolution acceptance audit.
 - Symptom: `airesearcher serve --once` completed a real end-to-end cycle with source preflight, online search, UCI Pendigits execution, live LLM review, reproduction rerun, paper build, and evidence gate, but publication audit failed and evidence gate blocked release.
 - Impact: The system can run the autonomous loop and self-evolution support path, but the current research output must not be claimed as CCF-B/Q3 publication-ready or directly publishable.
-- Evidence: `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json` recorded `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `publication-audit.json` scored `0.8485` but failed source-error and similarity-classification gates; `paper-build.json` recorded `compiled_with_quality_issues`. After tasks `102.1` and `103.1`, Semantic Scholar-only errors are optional-source warnings and the same cycle evidence can generate a 9-page / 2856-word PDF with `paper_quality.passed=true`, but publication audit still fails because only 1 of 57 similar-work findings is evidence-classified against a target of 10.
-- Root cause: The original failure combined three blockers: Semantic Scholar 429/circuit-breaker errors, insufficient evidence-classified similar-work breadth, and a thin 3-page / 314-word PDF. Tasks `102.1` and `103.1` resolved the optional-source handling and thin-manuscript blockers; evidence-classified novelty/similarity breadth remains unresolved.
+- Evidence: `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json` recorded `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `publication-audit.json` scored `0.8485` but failed source-error and similarity-classification gates; `paper-build.json` recorded `compiled_with_quality_issues`. Tasks `102.1`, `103.1`, and `104.1` resolved those blockers for this cycle: optional Semantic Scholar failures are warnings, the manuscript compiles to 9 pages / 2856 words with `paper_quality.passed=true`, and the final task `104.1` similarity-check classified 18/57 source-backed findings.
+- Root cause: The original failure combined three blockers: Semantic Scholar 429/circuit-breaker errors, insufficient evidence-classified similar-work breadth, and a thin 3-page / 314-word PDF. Tasks `102.1`, `103.1`, and `104.1` resolved these blockers for the task `101.1` Pendigits cycle.
 - Workaround: The generated issue notes and scheduler follow-up tasks preserve the blockers for another cycle; the self-evolution candidate remains in shadow evaluation.
-- Next action: Classify more similar-work findings using source-backed abstracts/metadata and broaden adjacent-work query/enrichment before treating novelty positioning as sufficient.
-- Linked tasks: `101.1`, `102.1`, `103.1`
-- Resolution: Not resolved. Optional-source handling and manuscript quality are mitigated/resolved in focused tasks, but the current output still must not be claimed as CCF-B/Q3 publication-ready because novelty-positioning breadth remains below threshold.
-- Verification: `poetry run airesearcher issue-followups --vault runs\manual-live\task101-vault --project-id task101_full_cycle --output runs\manual-live\task101-followups.json --state runs\manual-live\task101-scheduler-state.json` wrote 2 open follow-up tasks; `skill-evolve` wrote `runs/manual-live/task101-vault/exploration/skills/candidates/skill_publication_evidence_recovery_task101_candidate.md`; `skill-polish-audit` passed 60/60 for the candidate using the real task101 evidence refs. Task `103.1` reran paper-build/publication-audit/evidence-gate over task101 evidence and confirmed paper quality now passes while release remains blocked by publication audit.
+- Next action: Treat this as one cycle's release-gate pass; continue with `P-20260613-040` before making a stable cross-topic publication-readiness claim.
+- Linked tasks: `101.1`, `102.1`, `103.1`, `104.1`
+- Resolution: Resolved for the task `101.1` Pendigits cycle. The updated cycle summary at `runs/manual-live/task104-similarity-classification/cycle-summary.json` passes CCF-B publication audit and the physical evidence gate, while leaving broader stability tracked separately.
+- Verification: `poetry run airesearcher publication-audit runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b --output-dir runs\manual-live\task104-similarity-classification\publication-audit --vault runs\manual-live\task104d-similarity-vault --project-id task104_similarity_classification --no-fail-on-not-publishable` passed with score `0.9615`, `publishable=true`, and `similarity_classified_finding_breadth=18/10`. `poetry run airesearcher evidence-gate runs\manual-live\task104-similarity-classification\cycle-summary.json --output-dir runs\manual-live\task104-similarity-classification\evidence-gate --publication-audit runs\manual-live\task104-similarity-classification\publication-audit\publication-audit.json --paper-build-json runs\manual-live\task103-manuscript-quality\paper-build\paper-build.json --vault runs\manual-live\task104d-similarity-vault --project-id task104_similarity_classification --no-fail-on-blocked` passed with `release_allowed=true` and 0 failed checks.
 
 ### P-20260613-035 - Springer template dependency recovery needed template-specific amsmath preamble
 
