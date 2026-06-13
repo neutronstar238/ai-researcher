@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-038 - Autopilot paper build used the thin experiment report instead of an evidence-bound manuscript
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 19:05:00 +08:00
+- Source: Follow-up to task `101.1` and the user's review that the generated LaTeX paper had too few pages, insufficient technical detail, and layout issues.
+- Symptom: The autonomous cycle built LaTeX directly from the demo experiment report. That report contained useful run evidence, but it was not a full paper manuscript and produced a thin PDF that failed publication-level paper-quality checks.
+- Impact: A real cycle could have all experiment artifacts present while still producing a paper artifact that was far below CCF-B/Q3 writing and technical-depth expectations.
+- Evidence: The task `101.1` paper build produced 3 pages / 314 words with layout warnings. The task `103.1` rerun over the same cycle evidence produced `runs/manual-live/task103-manuscript-quality/paper-manuscript/manuscript.md` with 2856 words and a compiled 9-page PDF with 0 overfull hbox warnings.
+- Root cause: `autopilot` passed `demo.report_path` directly to `build_latex_paper_from_markdown`; publication audit also inspected that demo report instead of a dedicated paper-level manuscript.
+- Workaround: Before this fix, operators could manually write a longer Markdown file and pass it to `paper-build`, but that bypassed the autonomous evidence-bound cycle.
+- Next action: Improve similarity classification breadth and richer novelty positioning; do not treat the now-compilable manuscript as publication-ready while publication audit remains blocked.
+- Linked tasks: `103.1`
+- Resolution: Added `compose_publication_manuscript(...)`, wired `autopilot`/`serve` to write `paper-manuscript/manuscript.md` before audit/build, and made publication audit prefer `cycle_summary.paper_manuscript.markdown_path`.
+- Verification: Focused manuscript/publication-audit/autopilot tests passed with 14 tests. Focused ruff and mypy passed. Real manuscript compose from task `101.1` evidence produced 2856 words with Method 561 words and Related Work 635 words. Real `paper-build` compiled a 9-page PDF with `paper_quality.passed=true`, words `2856/2500`, pages `9/6`, and `overfull_hbox=0/0`. Real `publication-audit` scored `0.9062` but correctly stayed `fail` because `similarity_classified_finding_breadth=1/10`. Real `evidence-gate` passed `paper_quality_gate` and blocked release on `publication_release_gate`.
+
 ### P-20260613-037 - Semantic Scholar was treated as a required default source despite 429-prone access
 
 - Status: Resolved
@@ -56,13 +72,13 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Task `101.1` real full-cycle and self-evolution acceptance audit.
 - Symptom: `airesearcher serve --once` completed a real end-to-end cycle with source preflight, online search, UCI Pendigits execution, live LLM review, reproduction rerun, paper build, and evidence gate, but publication audit failed and evidence gate blocked release.
 - Impact: The system can run the autonomous loop and self-evolution support path, but the current research output must not be claimed as CCF-B/Q3 publication-ready or directly publishable.
-- Evidence: `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json` recorded `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `publication-audit.json` scored `0.8485` but failed source-error and similarity-classification gates; `paper-build.json` recorded `compiled_with_quality_issues`.
-- Root cause: Semantic Scholar returned HTTP 429/circuit-breaker errors, only 1 of 57 similar-work findings was evidence-classified against a target of 10, and the compiled PDF was only 3 pages / 314 words with 12 overfull hbox warnings.
+- Evidence: `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json` recorded `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `publication-audit.json` scored `0.8485` but failed source-error and similarity-classification gates; `paper-build.json` recorded `compiled_with_quality_issues`. After tasks `102.1` and `103.1`, Semantic Scholar-only errors are optional-source warnings and the same cycle evidence can generate a 9-page / 2856-word PDF with `paper_quality.passed=true`, but publication audit still fails because only 1 of 57 similar-work findings is evidence-classified against a target of 10.
+- Root cause: The original failure combined three blockers: Semantic Scholar 429/circuit-breaker errors, insufficient evidence-classified similar-work breadth, and a thin 3-page / 314-word PDF. Tasks `102.1` and `103.1` resolved the optional-source handling and thin-manuscript blockers; evidence-classified novelty/similarity breadth remains unresolved.
 - Workaround: The generated issue notes and scheduler follow-up tasks preserve the blockers for another cycle; the self-evolution candidate remains in shadow evaluation.
-- Next action: Improve Semantic Scholar API-key/rate-limit handling, classify more similar-work findings using source-backed abstracts/metadata, and expand the manuscript generator with evidence-backed technical detail before rerunning publication/evidence gates.
-- Linked tasks: `101.1`
-- Resolution: Not resolved. This is the correct fail-closed outcome for the current output.
-- Verification: `poetry run airesearcher issue-followups --vault runs\manual-live\task101-vault --project-id task101_full_cycle --output runs\manual-live\task101-followups.json --state runs\manual-live\task101-scheduler-state.json` wrote 2 open follow-up tasks; `skill-evolve` wrote `runs/manual-live/task101-vault/exploration/skills/candidates/skill_publication_evidence_recovery_task101_candidate.md`; `skill-polish-audit` passed 60/60 for the candidate using the real task101 evidence refs.
+- Next action: Classify more similar-work findings using source-backed abstracts/metadata and broaden adjacent-work query/enrichment before treating novelty positioning as sufficient.
+- Linked tasks: `101.1`, `102.1`, `103.1`
+- Resolution: Not resolved. Optional-source handling and manuscript quality are mitigated/resolved in focused tasks, but the current output still must not be claimed as CCF-B/Q3 publication-ready because novelty-positioning breadth remains below threshold.
+- Verification: `poetry run airesearcher issue-followups --vault runs\manual-live\task101-vault --project-id task101_full_cycle --output runs\manual-live\task101-followups.json --state runs\manual-live\task101-scheduler-state.json` wrote 2 open follow-up tasks; `skill-evolve` wrote `runs/manual-live/task101-vault/exploration/skills/candidates/skill_publication_evidence_recovery_task101_candidate.md`; `skill-polish-audit` passed 60/60 for the candidate using the real task101 evidence refs. Task `103.1` reran paper-build/publication-audit/evidence-gate over task101 evidence and confirmed paper quality now passes while release remains blocked by publication audit.
 
 ### P-20260613-035 - Springer template dependency recovery needed template-specific amsmath preamble
 

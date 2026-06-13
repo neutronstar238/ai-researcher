@@ -70,6 +70,7 @@ from .lint import (
     lint_markdown_report,
     lint_metric_consistency,
 )
+from .manuscript import PublicationManuscriptArtifact, compose_publication_manuscript
 from .paper_build import (
     LatexPaperBuildArtifact,
     LatexPaperBuildStatus,
@@ -152,6 +153,7 @@ __all__ = [
     "PublicationAuditReport",
     "PublicationAuditVerdict",
     "PublicationQualityTarget",
+    "PublicationManuscriptArtifact",
     "ReviewBacklogArtifact",
     "ReviewBacklogRecord",
     "ReviewBacklogRecordType",
@@ -182,6 +184,7 @@ __all__ = [
     "assert_report_readable",
     "audit_publication_quality",
     "build_latex_paper_from_markdown",
+    "compose_publication_manuscript",
     "create_review_backlog",
     "create_reproducibility_package",
     "ensure_latex_template_class_available",

@@ -70,6 +70,7 @@ from autoresearch.reports import (
     LatexPaperBuildStatus,
     audit_publication_quality,
     build_latex_paper_from_markdown,
+    compose_publication_manuscript,
     run_evidence_gate,
     validate_reproducibility_package,
 )
@@ -2363,6 +2364,7 @@ def _run_autopilot_cycle(
             "run_id": demo_result.run_id,
             "experiment_dir": Path(demo_result.experiment_dir).as_posix(),
             "report_path": Path(demo_result.report_path).as_posix(),
+            "run_record_path": Path(demo_result.run_record_path).as_posix(),
             "validation_json_path": Path(demo_result.validation_json_path).as_posix(),
             "evidence_map_path": Path(demo_result.evidence_map_path).as_posix(),
         },
@@ -2378,6 +2380,15 @@ def _run_autopilot_cycle(
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
+    paper_manuscript = compose_publication_manuscript(
+        cycle_summary_path=summary_path,
+        output_dir=cycle_dir / "paper-manuscript",
+        vault_root=vault,
+        project_id=project_id,
+    )
+    summary["paper_manuscript"] = paper_manuscript.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
     publication_audit = audit_publication_quality(
         cycle_summary_path=summary_path,
         target="ccf-b",
@@ -2389,7 +2400,7 @@ def _run_autopilot_cycle(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     paper_build = build_latex_paper_from_markdown(
-        markdown_path=Path(demo_result.report_path),
+        markdown_path=Path(paper_manuscript.markdown_path),
         output_dir=cycle_dir / "paper-build",
         template_id="generic-article-one-column",
         vault_root=vault,

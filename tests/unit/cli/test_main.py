@@ -988,8 +988,22 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             }
         )
 
+    def fake_compose_manuscript(**kwargs: object) -> SimpleNamespace:
+        assert Path(kwargs["cycle_summary_path"]).name == "cycle-summary.json"
+        output_path = Path(kwargs["output_dir"]) / "manuscript.md"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("# Manuscript\n\n## Abstract\n\nEvidence.\n", encoding="utf-8")
+        return SimpleNamespace(
+            markdown_path=output_path.as_posix(),
+            to_dict=lambda: {
+                "markdown_path": output_path.as_posix(),
+                "word_count": 2600,
+                "section_word_counts": {"Abstract": 100},
+            },
+        )
+
     def fake_paper_build(**kwargs: object) -> SimpleNamespace:
-        assert Path(kwargs["markdown_path"]).name == "report.md"
+        assert Path(kwargs["markdown_path"]).name == "manuscript.md"
         assert Path(kwargs["output_dir"]).name == "paper-build"
         return SimpleNamespace(
             to_dict=lambda: {
@@ -1041,6 +1055,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
+    monkeypatch.setattr(cli_main, "compose_publication_manuscript", fake_compose_manuscript)
     monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)
     monkeypatch.setattr(cli_main, "build_latex_paper_from_markdown", fake_paper_build)
     monkeypatch.setattr(cli_main, "_run_cycle_reproduction_check", fake_reproduction_check)
@@ -1083,6 +1098,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "dataset/community/news signals only; not scholarly evidence"
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
     assert payload["reproduction_check"]["status"] == "passed"

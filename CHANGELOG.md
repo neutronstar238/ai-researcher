@@ -75,6 +75,7 @@ Target version: `0.1.0`.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
 - `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
 - Paper-build quality reports for page count, manuscript word count, per-section technical depth, technical term coverage, and LaTeX `Overfull \hbox` layout warnings; thin or overflowing PDFs are marked `compiled_with_quality_issues`.
+- Autopilot and serve cycles now compose a dedicated evidence-bound publication manuscript from cycle artifacts before publication audit and LaTeX build, instead of compiling the thinner experiment report directly.
 - `evidence-gate` now requires `paper_quality.passed=true` in addition to a physical compiled PDF before paper-level release claims can pass.
 - `evidence-gate` now emits a structured `lifecycle_trace` manifest for `define -> plan -> build -> verify -> review -> ship`, including plan/config/code/test/review/release artifact coverage.
 - `evidence-gate --review-json` for post-hoc standalone `llm-review.json` artifacts when a historical cycle skipped review but should still be physically gated without rerunning the full cycle.

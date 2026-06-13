@@ -1513,6 +1513,17 @@ A task can be checked only when all applicable items are true:
     - _References: user request to optimize `README.md` and the Chinese README; user request to lower Semantic Scholar priority because 429s are common and to prefer free APIs first._
     - _Verify: focused literature/similarity/publication-audit/CLI tests, focused ruff, focused mypy, and live `literature-refresh` using default ArXiv/OpenAlex sources without Semantic Scholar._
 
+- [x] 103. Generate evidence-bound publication manuscripts before LaTeX build
+  - [x] 103.1 Compose paper manuscripts from cycle evidence instead of thin experiment reports
+    - Add a deterministic manuscript composer that reads the cycle summary, candidate metadata, run record, validation report, evidence map, literature summary, and similarity summary before writing paper text.
+    - Write `paper-manuscript/manuscript.md` and `paper-manuscript/manuscript.json` with section word counts, evidence refs, and explicit publishability caveats when gates still fail.
+    - Mirror the manuscript into the runtime-selected Obsidian vault project paper area only when AI-Researcher executes the command; do not hand-write root-vault maintenance progress notes.
+    - Wire `autopilot` and `serve` to generate this manuscript before publication audit and LaTeX paper-build, then compile the manuscript instead of the thin demo report.
+    - Make publication audit prefer `cycle_summary.paper_manuscript.markdown_path` while keeping `cycle_summary.demo.report_path` as a fallback for older cycles.
+    - Preserve the hard CCF-B/Q3 release boundary: paper quality can pass while publication audit and evidence gate still block when novelty/similarity evidence is insufficient.
+    - _References: user correction that Obsidian project notes should be system-written runtime output; task `96.1` paper-quality gate; task `101.1` full-cycle paper quality failure; `P-20260613-036`._
+    - _Verify: focused manuscript/publication-audit/autopilot tests, focused ruff and mypy, real manuscript compose from the task `101.1` cycle, real LaTeX paper-build producing 9 pages / 2856 words / 0 overfull hbox, real publication audit failing only the similarity-classified breadth blocker, real evidence gate passing paper quality but blocking release._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1837,6 +1848,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 69,
       "tasks": ["102.1"]
+    },
+    {
+      "id": 70,
+      "tasks": ["103.1"]
     }
   ]
 }

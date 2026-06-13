@@ -854,7 +854,7 @@ def _manuscript_checks(
     summary: dict[str, Any],
     base_dir: Path,
 ) -> list[PublicationAuditCheck]:
-    report_path = _resolve_path(_dict(summary.get("demo")).get("report_path"), base_dir)
+    report_path = _manuscript_path(summary, base_dir)
     if report_path is None or not report_path.exists():
         return [
             PublicationAuditCheck(
@@ -862,7 +862,7 @@ def _manuscript_checks(
                 PublicationAuditCheckStatus.FAIL,
                 "high",
                 "No Markdown report or paper draft was found for manuscript-structure audit.",
-                ("cycle_summary.demo.report_path",),
+                ("cycle_summary.paper_manuscript.markdown_path", "cycle_summary.demo.report_path"),
                 "Generate a paper draft with required academic sections.",
             )
         ]
@@ -890,6 +890,15 @@ def _manuscript_checks(
             (report_path.as_posix(),),
         )
     ]
+
+
+def _manuscript_path(summary: dict[str, Any], base_dir: Path) -> Path | None:
+    paper_manuscript = _dict(summary.get("paper_manuscript"))
+    for key in ("markdown_path", "path"):
+        path = _resolve_path(paper_manuscript.get(key), base_dir)
+        if path is not None:
+            return path
+    return _resolve_path(_dict(summary.get("demo")).get("report_path"), base_dir)
 
 
 def _threshold_check(

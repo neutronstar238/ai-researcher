@@ -91,6 +91,24 @@ def test_publication_audit_keeps_baseline_only_paper_from_passing(
     assert report.publishable is False
 
 
+def test_publication_audit_prefers_paper_manuscript_over_demo_report(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    manuscript_path = tmp_path / "paper-manuscript" / "manuscript.md"
+    manuscript_path.parent.mkdir(parents=True)
+    manuscript_path.write_text(_paper_style_report(), encoding="utf-8")
+    summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["manuscript_structure"].status.value == "pass"
+    assert checks["manuscript_structure"].evidence_refs == (manuscript_path.as_posix(),)
+
+
 def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     tmp_path: Path,
 ) -> None:
