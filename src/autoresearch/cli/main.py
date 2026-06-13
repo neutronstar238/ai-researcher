@@ -863,6 +863,7 @@ def llm_smoke(
     typer.echo(f"[OK] provider: {result.provider}")
     typer.echo(f"[OK] model: {result.model_name}")
     typer.echo(f"[OK] endpoint: {result.endpoint}")
+    typer.echo(f"[OK] attempts: {result.attempts}")
     typer.echo(f"[OK] quality_score: {result.quality.score:.3f}")
     for check, passed in result.quality.checks.items():
         typer.echo(f"[CHECK] {check}: {'pass' if passed else 'fail'}")

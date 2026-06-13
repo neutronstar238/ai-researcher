@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from autoresearch.llm import client as llm_client
 from autoresearch.llm.client import (
     LLMEvidenceArtifact,
     _review_messages,
@@ -45,6 +46,68 @@ def test_evaluate_llm_output_quality_rejects_secret_leaks_and_fake_urls() -> Non
     assert result.checks["no_secret_leak"] is False
     assert result.checks["no_fake_urls"] is False
     assert result.score < 1.0
+
+
+def test_evaluate_llm_output_quality_caps_missing_next_steps() -> None:
+    result = evaluate_llm_output_quality(
+        json.dumps(
+            {
+                "status": "ok",
+                "summary": "Unverified research outcomes remain pending verification.",
+                "evidence_policy": "Only source-backed evidence should be promoted.",
+                "risks": ["missing external evidence", "configuration drift"],
+                "next_steps": "[\"run live literature retrieval\", \"inspect validation reports\"]",
+            }
+        ),
+    )
+
+    assert result.checks["next_steps_present"] is False
+    assert result.score <= 0.5
+
+
+def test_run_llm_smoke_retries_once_on_critical_quality_failure(monkeypatch) -> None:
+    calls: list[list[dict[str, str]] | None] = []
+    invalid_content = json.dumps(
+        {
+            "status": "ok",
+            "summary": "Unverified research outcomes remain pending verification.",
+            "evidence_policy": "Only source-backed evidence should be promoted.",
+            "risks": ["missing external evidence", "configuration drift"],
+            "next_steps": "[\"run live literature retrieval\", \"inspect validation reports\"]",
+        }
+    )
+    valid_content = json.dumps(
+        {
+            "status": "ok",
+            "summary": "Unverified research outcomes remain pending verification.",
+            "evidence_policy": "Only source-backed evidence should be promoted.",
+            "risks": ["missing external evidence", "configuration drift"],
+            "next_steps": ["run live literature retrieval", "inspect validation reports"],
+        }
+    )
+
+    def fake_post_chat_completion(**kwargs: object) -> dict[str, object]:
+        messages = kwargs.get("messages")
+        calls.append(messages if isinstance(messages, list) else None)
+        content = invalid_content if len(calls) == 1 else valid_content
+        return {
+            "choices": [{"message": {"content": content}}],
+            "usage": {"completion_tokens": 12},
+        }
+
+    monkeypatch.setenv("AUTORESEARCH_LLM_API_KEY", "sk-testsecret")
+    monkeypatch.setattr(llm_client, "_post_chat_completion", fake_post_chat_completion)
+
+    result = llm_client.run_llm_smoke_test(
+        config_path=Path("missing-config.yaml"),
+        env_path=Path("missing.env"),
+    )
+
+    assert result.attempts == 2
+    assert result.quality.score == 1.0
+    assert len(calls) == 2
+    assert calls[1] is not None
+    assert "previous response failed" in calls[1][1]["content"].lower()
 
 
 def test_evaluate_llm_review_quality_accepts_known_local_evidence_refs() -> None:
@@ -117,6 +180,30 @@ def test_evaluate_llm_review_quality_treats_missing_refs_as_hard_failure() -> No
     )
 
     assert result.checks["finding_refs_present"] is False
+    assert result.score <= 0.5
+
+
+def test_evaluate_llm_review_quality_caps_missing_next_steps() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "needs_revision",
+                "summary": "The report is grounded in local evidence but needs one follow-up.",
+                "findings": [
+                    {
+                        "severity": "warning",
+                        "claim": "The claim is supported.",
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": "Add the missing limitation before release.",
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["next_steps_present"] is False
     assert result.score <= 0.5
 
 

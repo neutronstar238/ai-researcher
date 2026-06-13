@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-028 - Live LLM smoke produced malformed or weak structured JSON under strict gates
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 11:55:00 +08:00
+- Source: Real DeepSeek `llm-smoke` verification for task `90.1`.
+- Symptom: After hardening structured-output checks, a real `llm-smoke` run failed with malformed JSON and earlier live output encoded `next_steps` as a quoted JSON string instead of an array.
+- Impact: Prompt wording alone was not enough to guarantee provider-compliant JSON, so accepting the first response could have let weak structured evidence pass or fail without a recovery artifact.
+- Evidence: `poetry run airesearcher llm-smoke --env-path .env --output runs\manual-live\llm-smoke-task90-strict.json --max-tokens 1000 --min-quality-score 0.85` exited 1 with quality score `0.333`; the repaired task run wrote `runs\manual-live\llm-smoke-task90-retry.json` with `attempts=2` and quality score `1.000`.
+- Root cause: The live model sometimes returned syntactically invalid JSON or stringified arrays despite JSON-mode and explicit prompt constraints.
+- Workaround: None needed after task `90.1`.
+- Next action: Keep the one-shot repair path bounded; do not add unbounded retries. Apply the same hard-cap principle to future model-producing gates.
+- Linked tasks: `90.1`
+- Resolution: Added critical-check score caps, stricter prompts, and a single deterministic repair retry for `llm-smoke`; review quality now also treats missing core structure as hard failure.
+- Verification: Focused LLM/CLI tests passed with 44 tests; full `ruff`, full `mypy`, full smoke/unit tests passed with 392 passed and 4 skipped; the real DeepSeek retry run passed with `attempts=2` and quality score `1.000`.
+
 ### P-20260613-027 - Evidence lifecycle stage export import order failed ruff
 
 - Status: Resolved

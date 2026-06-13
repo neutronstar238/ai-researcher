@@ -1380,6 +1380,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `72.1`, task `74.1`, SCALE Engine design review, and user requirement to borrow the lightweight "no evidence, no release" gate without adopting a heavyweight lifecycle._
     - _Verify: focused evidence-gate tests, ruff, mypy, full smoke/unit tests, and a real `evidence-gate` CLI run over a real cycle showing lifecycle stages and blocking the missing review stage._
 
+- [x] 90. Harden live LLM output quality gates
+  - [x] 90.1 Cap critical structured-output failures and retry once with repair prompt
+    - Treat malformed JSON, missing required structured fields, quoted array fields, unknown/missing review refs, fake URLs, and secret leaks as hard quality failures capped below the default quality threshold.
+    - Retry `llm-smoke` once with deterministic repair instructions when critical smoke checks fail.
+    - Record the final attempt count in `LLMSmokeResult`, CLI output, and the JSON quality artifact.
+    - Keep the deterministic local quality gate as final authority; a repair prompt may help the model comply, but cannot override failed checks.
+    - _References: task `41.1`, task `44.1`, task `89.1`, and user requirement to replace prompt-only self-discipline with evidence-producing hard gates._
+    - _Verify: focused LLM/CLI tests, ruff, mypy, full smoke/unit tests, and real DeepSeek `llm-smoke` calls showing the strict gate catches bad structure and the one-shot repair path can pass._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1652,6 +1661,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 56,
       "tasks": ["89.1"]
+    },
+    {
+      "id": 57,
+      "tasks": ["90.1"]
     }
   ]
 }

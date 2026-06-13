@@ -182,6 +182,7 @@ poetry run airesearcher llm-smoke --config config.yaml --env-path .env --output 
 ```
 
 该命令会调用当前配置的 OpenAI-compatible 模型，要求结构化 JSON 输出，检查证据策略语言、API key 泄露风险，并把质量报告写入 `runs/`。
+关键结构化输出错误会被视为硬失败：JSON 语法错误、必需字段缺失、把数组写成字符串、伪造 URL、泄露密钥都会被压到默认质量阈值以下。smoke 命令会用确定性的修复提示最多重试一次，并在输出里记录 `attempts`；最终是否通过仍由本地质量检查决定。
 
 基于本地证据的 LLM-as-reviewer：
 

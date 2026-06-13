@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:56:14 +08:00 - Codex - Task 90.1 LLM quality retry gate
+
+- Request: Continue strict innovation and evidence governance by replacing prompt-only LLM output discipline with deterministic quality caps and a bounded repair path for live model smoke tests.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-90-1-llm-quality-retry-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Added `attempts` to `LLMSmokeResult` and CLI output.
+  - Added critical-check score caps for smoke and review quality so malformed JSON, missing core fields, quoted arrays, invalid review refs, fake URLs, and secret leaks cannot pass by aggregate score.
+  - Refactored smoke prompts into explicit JSON-array-safe messages and added a one-shot repair prompt when critical smoke checks fail.
+  - Added focused tests for quoted-array failures, review missing-next-step failures, and the one-shot smoke repair path.
+  - Updated README, changelog, tasks, problem log, and Obsidian progress memory.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\llm\test_client.py tests\unit\cli\test_main.py -q` passed with 44 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\llm\client.py src\autoresearch\cli\main.py tests\unit\llm\test_client.py tests\unit\cli\test_main.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\llm\client.py src\autoresearch\cli\main.py` passed.
+  - Strict real LLM check before repair: `poetry run airesearcher llm-smoke --env-path .env --output runs\manual-live\llm-smoke-task90-strict.json --max-tokens 1000 --min-quality-score 0.85` failed as intended with quality score `0.333` on malformed JSON, recorded as `P-20260613-028`.
+  - Real LLM retry check: `poetry run airesearcher llm-smoke --env-path .env --output runs\manual-live\llm-smoke-task90-retry.json --max-tokens 1000 --min-quality-score 0.85` passed with `attempts=2`, quality score `1.000`, valid JSON, no secret leak, and no fake URLs.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 392 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files.
+- Problems:
+  - Added and resolved `P-20260613-028` for live LLM malformed/weak structured JSON under strict gates.
+- Follow-up:
+  - Extend the same bounded repair and hard-cap pattern to full LLM reviewer artifacts if future live runs show truncation, quoted arrays, or uncited claims.
+
 ### 2026-06-13 11:47:29 +08:00 - Codex - Task 89.1 lifecycle trace evidence gate
 
 - Request: Continue SCALE-lite physical gate work so AI-Researcher cannot rely on prompt-only discipline; add a concrete requirements/plan/code/test/review/release evidence trace to the release gate.

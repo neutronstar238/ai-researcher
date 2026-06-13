@@ -40,6 +40,7 @@ class LLMSmokeResult(BaseModel):
     response_text: str
     usage: dict[str, Any] = Field(default_factory=dict)
     quality: LLMOutputQuality
+    attempts: int = Field(default=1, ge=1)
 
 
 class LLMEvidenceArtifact(BaseModel):
@@ -111,9 +112,26 @@ def run_llm_smoke_test(
         model_name=llm.model_name,
         timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
         max_tokens=max_tokens,
+        messages=_smoke_messages(),
     )
     content = _extract_message_content(response)
     quality = evaluate_llm_output_quality(content, secret_values=[api_key])
+    attempts = 1
+    if _has_failed_output_critical_checks(quality):
+        attempts += 1
+        response = _post_chat_completion(
+            endpoint=endpoint,
+            api_key=api_key,
+            model_name=llm.model_name,
+            timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+            max_tokens=max_tokens,
+            messages=_smoke_repair_messages(
+                previous_response=content,
+                issues=quality.issues,
+            ),
+        )
+        content = _extract_message_content(response)
+        quality = evaluate_llm_output_quality(content, secret_values=[api_key])
     return LLMSmokeResult(
         provider=llm.provider,
         base_url=llm.base_url,
@@ -122,6 +140,7 @@ def run_llm_smoke_test(
         response_text=content,
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         quality=quality,
+        attempts=attempts,
     )
 
 
@@ -227,6 +246,18 @@ def evaluate_llm_output_quality(
             issues.append(f"Quality check failed: {check}")
 
     score = round(sum(1 for passed in checks.values() if passed) / len(checks), 3)
+    critical_checks = (
+        "valid_json",
+        "status_ok",
+        "summary_present",
+        "evidence_policy_present",
+        "risks_present",
+        "next_steps_present",
+        "no_secret_leak",
+        "no_fake_urls",
+    )
+    if any(not checks[check] for check in critical_checks):
+        score = min(score, 0.5)
     return LLMOutputQuality(score=score, checks=checks, issues=issues, parsed_output=parsed)
 
 
@@ -292,14 +323,34 @@ def evaluate_llm_review_quality(
 
     score = round(sum(1 for passed in checks.values() if passed) / len(checks), 3)
     critical_checks = (
+        "valid_json",
+        "verdict_present",
+        "summary_present",
+        "findings_present",
         "finding_refs_present",
         "finding_refs_known",
+        "unsupported_claims_present",
+        "next_steps_present",
         "no_secret_leak",
         "no_fake_urls",
     )
     if any(not checks[check] for check in critical_checks):
         score = min(score, 0.5)
     return LLMReviewQuality(score=score, checks=checks, issues=issues, parsed_output=parsed)
+
+
+def _has_failed_output_critical_checks(quality: LLMOutputQuality) -> bool:
+    critical_checks = (
+        "valid_json",
+        "status_ok",
+        "summary_present",
+        "evidence_policy_present",
+        "risks_present",
+        "next_steps_present",
+        "no_secret_leak",
+        "no_fake_urls",
+    )
+    return any(not quality.checks.get(check, False) for check in critical_checks)
 
 
 def _post_chat_completion(
@@ -313,29 +364,7 @@ def _post_chat_completion(
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
-        "messages": messages
-        or [
-            {
-                "role": "system",
-                "content": (
-                    "You are the AI-Researcher deployment smoke-test model. "
-                    "Return only JSON. Do not include markdown fences. Do not invent URLs, "
-                    "paper titles, benchmark scores, or external results."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    "Create a concise deployment readiness note for AI-Researcher. "
-                    "Use this exact JSON object shape: "
-                    '{"status":"ok","summary":"...","evidence_policy":"...",'
-                    '"risks":["...","..."],"next_steps":["...","..."]}. '
-                    "The summary must say that unverified research outcomes remain pending "
-                    "verification. The evidence_policy must mention source-backed evidence "
-                    "or independent fact-checking."
-                ),
-            },
-        ],
+        "messages": messages or _smoke_messages(),
         "temperature": 0,
         "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
@@ -367,6 +396,66 @@ def _post_chat_completion(
     if not isinstance(decoded, dict):
         raise LLMClientError("LLM API response JSON top-level value is not an object")
     return decoded
+
+
+def _smoke_messages() -> list[dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are the AI-Researcher deployment smoke-test model. "
+                "Return only one valid JSON object. Do not include markdown fences. "
+                "Do not invent URLs, paper titles, benchmark scores, or external results. "
+                "Do not encode JSON arrays as strings."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Create a concise deployment readiness note for AI-Researcher. "
+                "Use this exact JSON object shape: "
+                '{"status":"ok","summary":"...","evidence_policy":"...",'
+                '"risks":["...","..."],"next_steps":["...","..."]}. '
+                "`risks` and `next_steps` must be real JSON arrays, not quoted strings. "
+                "The summary must say that unverified research outcomes remain pending "
+                "verification. The evidence_policy must mention source-backed evidence "
+                "or independent fact-checking."
+            ),
+        },
+    ]
+
+
+def _smoke_repair_messages(
+    *,
+    previous_response: str,
+    issues: list[str],
+) -> list[dict[str, str]]:
+    issue_text = "; ".join(issues[:8])
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are repairing a failed AI-Researcher deployment smoke-test response. "
+                "Return only one syntactically valid JSON object. Do not include markdown "
+                "fences, comments, URLs, or quoted JSON arrays."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "The previous response failed deterministic local quality checks. "
+                f"Failed checks and parser errors: {issue_text}. "
+                "Return a corrected object with exactly these keys and value types: "
+                '{"status":"ok","summary":"...","evidence_policy":"...",'
+                '"risks":["...","..."],"next_steps":["...","..."]}. '
+                "Both `risks` and `next_steps` must be arrays of strings. "
+                "The summary must say that unverified research outcomes remain pending "
+                "verification. The evidence_policy must mention source-backed evidence "
+                "or independent fact-checking.\n\n"
+                f"Previous invalid response:\n{previous_response[:2000]}"
+            ),
+        },
+    ]
 
 
 def _load_llm_config_and_api_key(
@@ -440,7 +529,8 @@ def _review_messages(
                 "Judge the subject only against the provided local evidence artifacts. "
                 "Every finding must cite one or more provided evidence IDs exactly. "
                 "Use only the outer evidence IDs supplied by this prompt as citations. "
-                "Do not invent URLs, papers, metrics, benchmark results, or files."
+                "Do not invent URLs, papers, metrics, benchmark results, or files. "
+                "Do not encode JSON arrays as strings."
             ),
         },
         {
@@ -451,7 +541,9 @@ def _review_messages(
                 '{"verdict":"pass|needs_revision|fail","summary":"...",'
                 '"findings":[{"severity":"info|warning|blocking","claim":"...",'
                 '"evidence_refs":["evidence_1"]}],"unsupported_claims":["..."],'
-                '"next_steps":["..."]}. Every finding must have at least one evidence_refs '
+                '"next_steps":["..."]}. `findings`, `evidence_refs`, `unsupported_claims`, '
+                "and `next_steps` must be real JSON arrays, not quoted strings. "
+                "Every finding must have at least one evidence_refs "
                 "entry from the provided local evidence IDs. If you cannot cite a provided "
                 "evidence ID for a claim, put that claim in unsupported_claims instead of "
                 "findings. Allowed evidence_refs values are exactly: "

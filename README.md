@@ -243,6 +243,7 @@ poetry run airesearcher llm-smoke --config config.yaml --env-path .env --output 
 ```
 
 This calls the configured OpenAI-compatible model, requires structured JSON output, checks evidence-policy language, verifies no API key leakage, and writes a local quality report under `runs/`.
+Critical structured-output failures are hard failures: malformed JSON, missing required fields, quoted JSON arrays, fake URLs, and secret leaks are capped below the default quality threshold. The smoke command retries once with a deterministic repair prompt and records `attempts`; the local checks remain the final authority.
 
 LLM-as-reviewer with local evidence:
 
