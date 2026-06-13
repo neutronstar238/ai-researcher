@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 10:42:11 +08:00 - Codex - Task 82.1 source cooldown preflight gate
+
+- Request: Continue strict innovation and evidence governance by adopting the useful part of SCALE-style physical gates without copying the heavy full lifecycle.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-82-1-source-preflight-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Added task `82.1` to the executable task plan and dependency graph.
+  - Added a no-network source preflight gate at the start of `autopilot` and `serve` cycles.
+  - When a persisted source cooldown is active, the cycle now writes `source-preflight.json` and `source-preflight.md`, creates an Obsidian issue note, merges that issue into scheduler follow-up state, and skips costly experiment, LLM review, publication audit, paper-build, and evidence-gate work.
+  - Normal cycles record `source_preflight.verdict=pass` in `cycle-summary.json`.
+  - Made persisted source cooldown reads tolerant of UTF-8 BOM state files after a real PowerShell-written state file initially bypassed the preflight.
+  - Updated README, changelog, Problem log, and Obsidian progress memory with the preflight gate behavior and its publication-readiness limits.
+- Verification:
+  - `poetry run pytest tests\unit\cli\test_main.py -q`: passed, 33 tests.
+  - `poetry run pytest tests\unit\literature\test_clients.py tests\unit\cli\test_main.py -q`: passed, 44 tests.
+  - `poetry run ruff check src\autoresearch\literature\clients.py src\autoresearch\cli\main.py tests\unit\literature\test_clients.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\literature\clients.py src\autoresearch\cli\main.py`: passed.
+  - Initial real CLI verification with a PowerShell-written cooldown file printed `[OK] source_preflight: pass`; this exposed `P-20260613-020` and was not accepted as passing evidence.
+  - `$cache='runs\manual-live\task82-preflight-cache-bom'; New-Item -ItemType Directory -Force -Path $cache | Out-Null; $until=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()+300; @{semantic_scholar=$until} | ConvertTo-Json | Set-Content -Path "$cache\source-circuit-breakers.json" -Encoding UTF8; poetry run airesearcher autopilot --vault runs\manual-live\task82-preflight-vault-bom --cache $cache --output-dir runs\manual-live\autopilot-source-preflight-task82-bom --state runs\manual-live\autopilot-source-preflight-task82-bom\scheduler-state.json --project-id task82_source_preflight_bom --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real CLI gate run. It printed `[BLOCKED] source_preflight: blocked`, wrote `runs/manual-live/autopilot-source-preflight-task82-bom/cycle-20260613T023832Z/cycle-summary.json`, skipped review, and queued one Obsidian issue follow-up.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 379 tests passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260613-020` for BOM-bearing cooldown state failing open.
+  - Updated `P-20260613-019` to include the new preflight gate over persisted cooldown state.
+  - Updated `P-20260613-016`; the gate prevents waste and hallucinated source coverage but does not make the current Pendigits method candidate publishable.
+- Follow-up:
+  - Consider making truly malformed cooldown state files block rather than fail open.
+  - Rerun an aligned review-enabled Pendigits cycle only after Semantic Scholar cooldown/API-key access is healthy enough for failure-free novelty coverage.
+
 ### 2026-06-13 10:30:19 +08:00 - Codex - Task 81.1 persistent source cooldowns across autopilot cycles
 
 - Request: Continue hardening real online research execution by making external-source cooldowns survive across autopilot processes and scheduled cycles.

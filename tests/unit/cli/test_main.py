@@ -901,6 +901,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
     assert payload["candidate"]["related_document_ids"] == ["doc_seed"]
+    assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["literature"]["document_count"] == 1
     assert payload["similarity"]["finding_count"] == 1
     assert payload["demo"]["run_id"] == "run_autopilot_test"
@@ -909,6 +910,69 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
+
+
+def test_autopilot_source_preflight_blocks_cooling_source(tmp_path: Path, monkeypatch) -> None:
+    cache_root = tmp_path / "cache"
+    state_path = cache_root / "source-circuit-breakers.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cooling_breaker = SimpleNamespace(
+        remaining_seconds=lambda: 180.0,
+        state_path=state_path,
+    )
+    shared_clients = {
+        "arxiv": object(),
+        "semantic_scholar": SimpleNamespace(circuit_breaker=cooling_breaker),
+        "openalex": object(),
+    }
+
+    def fail_if_called(**_kwargs: object) -> SimpleNamespace:
+        raise AssertionError("preflight-blocked cycle should not run costly work")
+
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(cache_root),
+            "--output-dir",
+            str(output_dir),
+            "--state",
+            str(scheduler_state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] source_preflight: blocked" in result.stdout
+    assert "[OK] review_status: skipped_source_preflight" in result.stdout
+
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["source_preflight"]["verdict"] == "blocked"
+    assert payload["source_preflight"]["blocked_sources"] == ["semantic_scholar"]
+    assert payload["review"]["status"] == "skipped_source_preflight"
+    assert Path(payload["source_preflight"]["output_path"]).exists()
+    assert Path(payload["source_preflight"]["markdown_path"]).exists()
+    issue_path = Path(payload["source_preflight"]["issue_path"])
+    assert issue_path.exists()
+    assert "Source Preflight Blocker" in issue_path.read_text(encoding="utf-8")
+    scheduler_payload = json.loads(scheduler_state.read_text(encoding="utf-8"))
+    assert len(scheduler_payload["tasks"]) == 1
+    assert "source-preflight" in scheduler_payload["tasks"][0]["task_id"]
 
 
 def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monkeypatch) -> None:

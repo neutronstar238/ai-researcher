@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
@@ -33,7 +33,14 @@ from autoresearch.integrations import (
     write_ccswitch_code_agent_manifest,
     write_openclaw_channel_manifest,
 )
-from autoresearch.knowledge import create_obsidian_vault_assets, create_skill_evolution_candidate
+from autoresearch.knowledge import (
+    KnowledgeEntry,
+    KnowledgeEntryType,
+    KnowledgeZone,
+    MarkdownKnowledgeStore,
+    create_obsidian_vault_assets,
+    create_skill_evolution_candidate,
+)
 from autoresearch.literature import (
     ArxivClient,
     LiteratureRefreshConfig,
@@ -1297,6 +1304,10 @@ def autopilot(
             raise typer.Exit(1) from exc
         typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
         typer.echo(f"[OK] summary: {summary['summary_path']}")
+        if "source_preflight" in summary:
+            preflight = summary["source_preflight"]
+            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
         if "publication_audit" in summary:
             typer.echo(
@@ -1461,6 +1472,10 @@ def serve(
             raise typer.Exit(1) from exc
         typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
         typer.echo(f"[OK] summary: {summary['summary_path']}")
+        if "source_preflight" in summary:
+            preflight = summary["source_preflight"]
+            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
         if "publication_audit" in summary:
             typer.echo(
@@ -1942,6 +1957,39 @@ def _run_autopilot_cycle(
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
     literature_clients = _autopilot_literature_clients(cache)
+    source_preflight = _run_source_preflight_gate(
+        clients=literature_clients,
+        cycle_dir=cycle_dir,
+        vault=vault,
+        project_id=project_id,
+        cycle_id=cycle_id,
+    )
+    if bool(source_preflight["blocked"]):
+        followup_records = _issue_followup_records(vault, project_id)
+        _merge_scheduler_state(state, followup_records)
+        blocked_summary: dict[str, Any] = {
+            "cycle_id": cycle_id,
+            "status": "blocked",
+            "started_at": now.isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": project_id,
+            "vault": vault.as_posix(),
+            "cache": cache.as_posix(),
+            "source_preflight": source_preflight,
+            "review": {"status": "skipped_source_preflight"},
+            "followups": {
+                "state_path": state.as_posix(),
+                "task_count": len(followup_records),
+                "tasks": followup_records,
+            },
+        }
+        summary_path = cycle_dir / "cycle-summary.json"
+        blocked_summary["summary_path"] = summary_path.as_posix()
+        summary_path.write_text(
+            json.dumps(blocked_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        return blocked_summary
 
     literature_report = run_daily_literature_refresh(
         vault_root=vault,
@@ -2017,6 +2065,7 @@ def _run_autopilot_cycle(
         "project_id": project_id,
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
+        "source_preflight": source_preflight,
         "candidate_path": candidate_path.as_posix(),
         "literature": {
             "query_count": len(getattr(literature_report, "queries", ())),
@@ -2089,6 +2138,168 @@ def _run_autopilot_cycle(
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
+
+
+def _run_source_preflight_gate(
+    *,
+    clients: Mapping[str, LiteratureSearchClient],
+    cycle_dir: Path,
+    vault: Path,
+    project_id: str,
+    cycle_id: str,
+) -> dict[str, Any]:
+    """Write a no-network source health gate before costly cycle work."""
+
+    output_path = cycle_dir / "source-preflight.json"
+    markdown_path = cycle_dir / "source-preflight.md"
+    checks = [_source_preflight_check(source, client) for source, client in clients.items()]
+    blocked_sources = [
+        str(check["source"])
+        for check in checks
+        if str(check["status"]) == "cooling_down"
+    ]
+    blocked = bool(blocked_sources)
+    report: dict[str, Any] = {
+        "verdict": "blocked" if blocked else "pass",
+        "blocked": blocked,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checks": checks,
+        "blocked_sources": blocked_sources,
+        "output_path": output_path.as_posix(),
+        "markdown_path": markdown_path.as_posix(),
+        "issue_path": None,
+    }
+    if blocked:
+        issue_path = _write_source_preflight_issue(
+            report=report,
+            vault=vault,
+            project_id=project_id,
+            cycle_id=cycle_id,
+        )
+        report["issue_path"] = issue_path.as_posix()
+
+    output_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    markdown_path.write_text(_render_source_preflight_markdown(report), encoding="utf-8")
+    return report
+
+
+def _source_preflight_check(source: str, client: LiteratureSearchClient) -> dict[str, object]:
+    breaker = getattr(client, "circuit_breaker", None)
+    if breaker is None:
+        return {
+            "source": source,
+            "status": "ready",
+            "remaining_seconds": 0.0,
+            "state_path": None,
+            "message": "No persisted rate-limit circuit is active for this source.",
+        }
+    state_path = _path_text(getattr(breaker, "state_path", None))
+    remaining_seconds = 0.0
+    remaining = getattr(breaker, "remaining_seconds", None)
+    if callable(remaining):
+        remaining_seconds = max(0.0, float(remaining()))
+    status = "cooling_down" if remaining_seconds > 0 else "ready"
+    return {
+        "source": source,
+        "status": status,
+        "remaining_seconds": round(remaining_seconds, 1),
+        "state_path": state_path,
+        "message": (
+            f"Source cooldown is still active for {remaining_seconds:.1f}s."
+            if status == "cooling_down"
+            else "Source cooldown gate is clear."
+        ),
+    }
+
+
+def _write_source_preflight_issue(
+    *,
+    report: dict[str, Any],
+    vault: Path,
+    project_id: str,
+    cycle_id: str,
+) -> Path:
+    blocked_sources = [str(source) for source in report.get("blocked_sources", [])]
+    source_slug = _source_preflight_slug(blocked_sources)
+    relative_path = Path("projects") / project_id / "issues" / f"source-preflight-{source_slug}.md"
+    source_lines = [
+        f"- `{check['source']}`: {check['message']}"
+        for check in report["checks"]
+        if str(check["status"]) == "cooling_down"
+    ]
+    body = "\n".join(
+        [
+            "# Source Preflight Blocker",
+            "",
+            "- Status: open",
+            f"- Issue fingerprint: `source-preflight:{project_id}:{source_slug}`",
+            f"- Cycle: `{cycle_id}`",
+            f"- Blocked sources: `{', '.join(blocked_sources)}`",
+            f"- Evidence JSON: `{report['output_path']}`",
+            f"- Evidence Markdown: `{report['markdown_path']}`",
+            "",
+            "## Reason",
+            "",
+            "The cycle was stopped before literature refresh, experiment execution, live review, and paper build because at least one required online source still has an active persisted rate-limit cooldown.",
+            "",
+            "## Source Status",
+            "",
+            *(source_lines or ["- No blocked sources were listed."]),
+            "",
+            "## Next Action",
+            "",
+            "Wait for the cooldown to expire, configure an appropriate source API key if available, or reduce/schedule source usage before rerunning publication-level novelty checks.",
+        ]
+    )
+    entry = KnowledgeEntry(
+        entry_id=f"source_preflight_issue_{project_id}_{source_slug}",
+        entry_type=KnowledgeEntryType.ISSUE_NOTE,
+        zone=KnowledgeZone.PROJECT,
+        project_id=project_id,
+        title=f"Source preflight blocked for {', '.join(blocked_sources)}",
+        tags=["open", "source-preflight", "rate-limit", "evidence-gate"],
+        keywords=["source-preflight", "rate-limit", *blocked_sources],
+        source_refs=[str(report["output_path"]), str(report["markdown_path"])],
+        related_task_ids=["82.1"],
+        related_run_ids=[cycle_id],
+        body=body,
+    )
+    return MarkdownKnowledgeStore(vault).write_entry(relative_path, entry)
+
+
+def _source_preflight_slug(sources: list[str]) -> str:
+    if not sources:
+        return "none"
+    return "-".join(source.replace("_", "-") for source in sorted(sources))
+
+
+def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Source Preflight Gate",
+        "",
+        f"- Verdict: `{report['verdict']}`",
+        f"- Blocked: `{report['blocked']}`",
+        f"- Checked at: `{report['checked_at']}`",
+        f"- Issue path: `{report.get('issue_path') or 'none'}`",
+        "",
+        "## Checks",
+        "",
+    ]
+    for check in report["checks"]:
+        lines.append(
+            f"- `{check['source']}`: `{check['status']}` "
+            f"({check['remaining_seconds']}s remaining) - {check['message']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Policy",
+            "",
+            "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:

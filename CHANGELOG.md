@@ -34,6 +34,7 @@ Target version: `0.1.0`.
 - OpenAlex is now a default third academic metadata source for literature refresh and project-start similarity checks, with optional `OPENALEX_API_KEY`, `OPENALEX_MAILTO`, request-spacing, and 429 circuit-breaker settings.
 - Autopilot now shares one ArXiv/Semantic Scholar/OpenAlex client set across literature refresh and similarity checks so rate-limit and 429 circuit-breaker state persists for the whole cycle.
 - Optional on-disk source circuit-breaker state under the literature cache root so Semantic Scholar/OpenAlex cooldowns can survive autopilot process restarts and consecutive cycles.
+- SCALE-lite source preflight gate for `autopilot` and `serve`: active persisted source cooldowns now write `source-preflight` evidence, create an Obsidian issue note, queue a follow-up task, and skip costly experiment/review/paper-build work for that cycle.
 - `llm-review` CLI for live LLM-as-reviewer checks constrained to local evidence artifacts and deterministic citation quality gates.
 - Project-level Obsidian `review/` memory for evidence-constrained LLM review notes.
 - Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.
@@ -111,6 +112,7 @@ Target version: `0.1.0`.
 
 ### Fixed
 
+- Persisted source circuit-breaker state is read with UTF-8 BOM tolerance so operator-created JSON files do not silently bypass source preflight gates.
 - GitHub Actions `pytest tests/smoke tests/unit` collection failure on Python 3.10 caused by runtime use of `logging.LoggerAdapter[...]`.
 - GitHub Actions `mypy src` failure on Python 3.10/Linux caused by direct access to the Windows-only `subprocess.CREATE_NEW_PROCESS_GROUP` attribute.
 - Removed stale mypy override entries that produced unused-config warnings in CI.

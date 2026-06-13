@@ -298,3 +298,18 @@ def test_rate_limit_circuit_breaker_persists_open_state(tmp_path) -> None:
 
     payload = json.loads(state_path.read_text(encoding="utf-8"))
     assert set(payload) == {"semantic_scholar"}
+
+
+def test_rate_limit_circuit_breaker_reads_bom_state_file(tmp_path) -> None:
+    state_path = tmp_path / "source-circuit-breakers.json"
+    state_path.write_text('{"semantic_scholar": 1030.0}', encoding="utf-8-sig")
+
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        wall_clock=lambda: 1000.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+    )
+
+    with pytest.raises(CircuitBreakerOpenError, match="30.0s"):
+        breaker.raise_if_open()

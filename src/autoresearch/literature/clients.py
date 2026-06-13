@@ -126,7 +126,7 @@ class RateLimitCircuitBreaker:
         if self.state_path is None or not self.state_path.exists():
             return {}
         try:
-            payload = json.loads(self.state_path.read_text(encoding="utf-8"))
+            payload = json.loads(self.state_path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError):
             return {}
         if not isinstance(payload, dict):

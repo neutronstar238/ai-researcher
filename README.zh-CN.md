@@ -136,13 +136,13 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、命令行复现实验 rerun、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录、reproduction-check 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会先执行来源冷却 preflight gate，再执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、命令行复现实验 rerun、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录、reproduction-check 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
 
 真实 benchmark 可选运行：
 
 `autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
 
-同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。如果 Semantic Scholar 在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。该 circuit 状态也会持久化到所选文献 cache root 下的 `source-circuit-breakers.json`，让同一部署的后续 cycle 在冷却窗口结束前继续尊重限流状态。
+同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。如果 Semantic Scholar 在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。该 circuit 状态也会持久化到所选文献 cache root 下的 `source-circuit-breakers.json`，让同一部署的后续 cycle 在冷却窗口结束前继续尊重限流状态。在昂贵步骤开始前，SCALE-lite source preflight gate 会无联网读取该持久化状态；如果某个来源仍在冷却，cycle 会写出 `source-preflight.json`/`.md`，创建 Obsidian issue note，排入 follow-up task，并跳过本轮实验、review 和 paper-build。
 
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60

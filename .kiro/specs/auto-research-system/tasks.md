@@ -1301,6 +1301,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `80.1` follow-up and user requirement for a 24h loop that respects real API access limits._
     - _Verify: focused client/CLI tests, ruff, mypy, full smoke/unit tests, and two consecutive real no-review `autopilot` cycles sharing a cache root where the second cycle starts Semantic Scholar as `CircuitBreakerOpenError` rather than another immediate 429._
 
+- [x] 82. Add SCALE-lite source preflight gate before costly cycle work
+  - [x] 82.1 Block autopilot/serve early when a persisted source cooldown is active
+    - Add a no-network source preflight gate immediately after autopilot/serve source clients are created.
+    - Inspect existing persisted source circuit-breaker state before literature refresh, experiments, LLM review, paper build, and evidence gate.
+    - When a source is still cooling down, write `source-preflight.json` and `source-preflight.md`, write an Obsidian `issue_note`, merge the issue into scheduler state, and return a blocked cycle summary without running costly work.
+    - Keep normal cycles unchanged when all source cooldown gates are clear, and record the preflight report in `cycle-summary.json`.
+    - Read persisted source state as `utf-8-sig` so operator-created JSON files with a UTF-8 BOM do not silently bypass the gate.
+    - _References: user request to adopt the useful part of SCALE Engine as physical gates rather than prompt-only discipline; tasks `80.1` and `81.1` source-politeness follow-ups._
+    - _Verify: focused client/CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with a BOM-bearing persisted Semantic Scholar cooldown file showing `[BLOCKED] source_preflight: blocked`, skipped review, a blocked cycle summary, and a queued Obsidian issue follow-up._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1541,6 +1551,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 48,
       "tasks": ["81.1"]
+    },
+    {
+      "id": 49,
+      "tasks": ["82.1"]
     }
   ]
 }
