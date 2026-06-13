@@ -140,7 +140,7 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 真实 benchmark 可选运行：
 
-`autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
+`autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致。相似工作检查会优先使用短结构化 novelty-stress queries，例如 method+benchmark、baseline+benchmark、adjacent-risk-technique+benchmark，再使用长 research-gap prose；这是因为真实学术搜索 API 对段落式提示词常返回弱相关结果。只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
 
 同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。如果 Semantic Scholar 在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。该 circuit 状态也会持久化到所选文献 cache root 下的 `source-circuit-breakers.json`，让同一部署的后续 cycle 在冷却窗口结束前继续尊重限流状态。状态文件会先写入同目录临时文件，再用原子替换更新，降低中断写入留下半文件的风险；读-改-写更新还会使用本地 `.lock` 文件，避免并发 worker 静默覆盖彼此的来源冷却状态。在昂贵步骤开始前，SCALE-lite source preflight gate 会无联网读取该持久化状态；如果某个来源仍在冷却、状态文件正被另一个进程锁定，或持久化状态文件损坏导致无法验证，cycle 会写出 `source-preflight.json`/`.md`，创建 Obsidian issue note，排入 follow-up task，并跳过本轮实验、review 和 paper-build。
 
@@ -173,7 +173,7 @@ poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .c
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
+这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。项目启动检索现在会优先使用短结构化查询，而不是把长段落直接塞给搜索 API；research-gap、negative-result 和 vault-context 查询仍作为扩展广度保留。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
 
 真实 LLM smoke 与输出质量门：
 

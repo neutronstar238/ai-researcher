@@ -1427,6 +1427,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `92.1`, task `93.1`, SCALE Engine physical gate lesson, and user request to prevent prompt-only or fake evidence._
     - _Verify: focused report tests, ruff, mypy, full smoke/unit tests, and real publication-audit/evidence-gate runs showing binding pass for the real DeepSeek review artifact while release remains blocked by publication-audit quality._
 
+- [x] 95. Improve real online novelty-search prompt quality
+  - [x] 95.1 Prioritize concise structured similarity queries
+    - Generate method-plus-benchmark, baseline-plus-benchmark, and limitation-risk-plus-benchmark similarity queries from candidate metadata before long research-gap prose.
+    - Preserve vault-context, negative-result, and long research-gap queries as fallback breadth rather than default top-four search prompts.
+    - Handle hyphenated risk terms such as `distance-metric` when building novelty stress queries.
+    - Keep weakly supported live hits as `unknown`; do not reclassify findings without title/abstract metadata evidence.
+    - _References: user requirement to optimize online search prompts, task `86.1`, task `87.1`, task `88.1`, and the real task 95 baseline cycle with 36 unknown similarity findings._
+    - _Verify: focused similarity tests, ruff, mypy, full smoke/unit tests, and a real autopilot cycle showing structured queries in the similarity summary, 57 source-backed findings, 1 evidence-classified finding, and continued publication blocking because classified breadth is still below target._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1719,6 +1728,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 61,
       "tasks": ["94.1"]
+    },
+    {
+      "id": 62,
+      "tasks": ["95.1"]
     }
   ]
 }

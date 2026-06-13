@@ -54,7 +54,7 @@ def test_generate_similarity_queries_uses_candidate_and_vault_context(tmp_path: 
     queries = generate_similarity_queries(
         candidate,
         vault_root=tmp_path,
-        config=SimilarityCheckConfig(max_queries=6),
+        config=SimilarityCheckConfig(max_queries=8),
     )
 
     origins = {query.origin for query in queries}
@@ -112,6 +112,59 @@ def test_generate_similarity_queries_expands_sparse_candidates_to_query_floor(
         "metadata_seed_document_title",
     }
     assert "vault_topic_index" not in {query.origin for query in queries}
+
+
+def test_generate_similarity_queries_prioritizes_concise_novelty_stress_queries(
+    tmp_path: Path,
+) -> None:
+    candidate = ResearchCandidate(
+        id="pendigits_variance_candidate",
+        title="Variance-calibrated prototype classifiers for UCI Pendigits",
+        description=(
+            "Evaluate whether diagonal per-class variance calibration improves a "
+            "nearest-prototype classifier."
+        ),
+        research_gap=(
+            "Nearest-centroid baselines are reproducible and interpretable, but a "
+            "publication claim requires checking whether variance-calibrated prototype "
+            "distance has already been covered by Gaussian, Mahalanobis, or "
+            "metric-learning classifiers on handwritten digit benchmarks."
+        ),
+        novelty_score=0.45,
+        feasibility_score=0.85,
+        impact_score=0.55,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+            "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+            "benchmark": "UCI Pendigits",
+            "baseline": "nearest centroid classifier and z-score centroid ablation",
+            "limitation": (
+                "single public benchmark; adjacent Gaussian, Mahalanobis, and "
+                "distance-metric classifiers may already cover the mechanism"
+            ),
+        },
+    )
+
+    queries = generate_similarity_queries(
+        candidate,
+        vault_root=tmp_path,
+        config=SimilarityCheckConfig(max_queries=4),
+    )
+
+    assert [query.origin for query in queries] == [
+        "candidate_title",
+        "method_dataset_search",
+        "baseline_dataset_search",
+        "limitation_risk_search",
+    ]
+    assert queries[1].text == "diagonal variance-calibrated prototypes variance shrinkage uci pendigits"
+    assert queries[2].text == "nearest centroid classifier z-score ablation uci pendigits"
+    assert queries[3].text == "mahalanobis distance metric gaussian prototype classifiers uci pendigits"
+    assert all("publication claim requires" not in query.text for query in queries)
+    assert all(len(query.text.split()) <= 10 for query in queries)
 
 
 def test_project_similarity_check_writes_source_backed_obsidian_summary(

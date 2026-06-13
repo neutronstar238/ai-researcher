@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 12:50:49 +08:00 - Codex - Task 95.1 structured similarity queries
+
+- Request: Continue strict innovation gatekeeping by improving real online similarity-search prompts instead of weakening publication-readiness blockers.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-95-1-structured-similarity-queries.md`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added concise structured similarity queries from candidate metadata: method plus benchmark, baseline plus benchmark, and limitation-risk technique plus benchmark.
+  - Kept long research-gap, negative-result, and vault-context queries as additional breadth instead of first-choice publication-gate prompts.
+  - Handled hyphenated risk phrases such as `distance-metric` when generating novelty stress queries.
+  - Added tests proving default four-query similarity search prefers concise metadata-backed novelty queries while larger query budgets still include vault context.
+  - Recorded the real-cycle result in `Problem.md` and an Obsidian progress note: retrieval improved, but publication remains blocked because classified similar-work breadth is still insufficient.
+- Verification:
+  - Baseline real cycle before code change: `poetry run airesearcher autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 10 --timeout-seconds 120 --output-dir runs\manual-live\autopilot-task95-real-cycle --vault runs\manual-live\task95-vault --cache runs\manual-live\task95-literature-cache --project-id task95_real_cycle --cycles 1` exited 0 with `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`, 36 similarity findings, and 0 classified findings.
+  - Focused tests initially failed because the old max-query budget test no longer left room for vault context and because hyphenated `distance-metric` risk terms were not matched; both issues were fixed before completion.
+  - Focused tests: `poetry run pytest tests\unit\research\test_similarity.py -q` passed with 8 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\research\similarity.py tests\unit\research\test_similarity.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\research\similarity.py` passed.
+  - Real patched cycle: `poetry run airesearcher autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 10 --timeout-seconds 120 --output-dir runs\manual-live\autopilot-task95-structured-queries --vault runs\manual-live\task95-structured-vault --cache runs\manual-live\task95-structured-literature-cache --project-id task95_structured_queries --cycles 1` exited 0 with structured similarity queries, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`, 57 similarity findings, 1 classified finding, `similarity_classification_coverage=pass`, and `similarity_classified_finding_breadth=fail`.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 398 passed and 4 skipped.
+- Problems:
+  - `P-20260613-030` added.
+- Follow-up:
+  - Improve evidence-backed classification for retrieved abstracts/metadata and configure Semantic Scholar API key/rate limits; do not lower `similarity_classified_finding_breadth`.
+
 ### 2026-06-13 12:39:43 +08:00 - Codex - Task 94.1 review artifact binding
 
 - Request: Continue strict innovation and output-quality gatekeeping by preventing standalone post-hoc review artifacts from being reused across unrelated cycles.

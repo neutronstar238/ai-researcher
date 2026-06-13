@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-030 - Real publication cycle still lacks enough classified similar-work evidence
+
+- Status: Mitigated
+- Severity: High
+- Discovered: 2026-06-13 12:47:00 +08:00
+- Source: Real `.env` autopilot verification for task `95.1`.
+- Symptom: A full real `pendigits_variance_calibrated_prototypes` autopilot cycle completed live literature search, live LLM review, publication audit, paper build, and evidence gate, but publication audit stayed `fail` and evidence gate stayed `blocked`.
+- Impact: The system can run a real end-to-end cycle, but it must not claim CCF-B/Q3-level publishability because external novelty positioning is still too weak.
+- Evidence: Baseline real run `runs/manual-live/autopilot-task95-real-cycle/cycle-20260613T044400Z/cycle-summary.json` produced 36 similarity findings, all `unknown`. After task `95.1`, `runs/manual-live/autopilot-task95-structured-queries/cycle-20260613T044908Z/cycle-summary.json` used structured queries, produced 57 similarity findings, and reduced `similarity_classification_coverage` from fail to pass with 1 non-unknown finding, but `similarity_classified_finding_breadth` still failed with 1/10 classified findings.
+- Root cause: Long paragraph-like research-gap queries produced weak live search matches; task `95.1` mitigated that by prioritizing concise method/baseline/risk benchmark queries. Semantic Scholar also returned HTTP 429/circuit-breaker errors in both literature and similarity phases, keeping source-error risk visible.
+- Workaround: Use the structured query generator from task `95.1`; do not lower the publication audit threshold.
+- Next action: Improve evidence-backed similarity classification and source recovery: add richer metadata/abstract inspection, broaden adjacent-work query templates, and configure Semantic Scholar API key/rate limits before treating publication novelty as sufficient.
+- Linked tasks: `95.1`
+- Resolution: Partial mitigation only. Query prompt quality improved, but publication readiness remains blocked by `similarity_classified_finding_breadth` and Semantic Scholar source errors.
+- Verification: Focused similarity tests, ruff, and mypy passed. Real patched autopilot cycle passed source preflight and LLM review, wrote structured queries in the similarity summary, improved findings from 36 to 57 and classified findings from 0 to 1, but still wrote `publication_audit=fail` and `evidence_gate=blocked`.
+
 ### P-20260613-029 - LLM review repair test initially expected empty findings to pass
 
 - Status: Resolved

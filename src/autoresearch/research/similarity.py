@@ -47,6 +47,14 @@ NEGATIVE_TERMS = (
     "limitation",
     "limited",
 )
+RISK_QUERY_PHRASES = (
+    "mahalanobis",
+    "metric learning",
+    "distance metric",
+    "gaussian",
+    "nearest centroid",
+    "prototype",
+)
 DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
     "semantic_scholar": 1.0,
@@ -145,8 +153,9 @@ def generate_similarity_queries(
     candidate_paths = _candidate_vault_paths(candidate, Path(vault_root))
     raw_queries = [
         SimilarityQuery(_clean_query(candidate.title), "candidate_title", candidate_paths),
-        SimilarityQuery(_clean_query(candidate.research_gap), "research_gap", candidate_paths),
     ]
+    raw_queries.extend(_structured_metadata_queries(candidate, candidate_paths))
+    raw_queries.append(SimilarityQuery(_clean_query(candidate.research_gap), "research_gap", candidate_paths))
 
     metadata_query = _metadata_query(candidate, ("method", "dataset", "limitation"))
     if metadata_query:
@@ -668,6 +677,70 @@ def _candidate_expansion_queries(
             )
         )
     return [query for query in queries if len(_significant_tokens(query.text)) >= 2]
+
+
+def _structured_metadata_queries(
+    candidate: ResearchCandidate,
+    candidate_paths: tuple[str, ...],
+) -> list[SimilarityQuery]:
+    queries: list[SimilarityQuery] = []
+    dataset = _preferred_dataset_text(candidate)
+    method_query = _compact_metadata_query(
+        (_metadata_text(candidate, "method"), dataset),
+        max_tokens=10,
+    )
+    if method_query:
+        queries.append(SimilarityQuery(method_query, "method_dataset_search", candidate_paths))
+
+    baseline_query = _compact_metadata_query(
+        (_metadata_text(candidate, "baseline"), dataset),
+        max_tokens=10,
+    )
+    if baseline_query:
+        queries.append(SimilarityQuery(baseline_query, "baseline_dataset_search", candidate_paths))
+
+    risk_query = _limitation_risk_query(candidate, dataset)
+    if risk_query:
+        queries.append(SimilarityQuery(risk_query, "limitation_risk_search", candidate_paths))
+    return queries
+
+
+def _preferred_dataset_text(candidate: ResearchCandidate) -> str:
+    return _metadata_text(candidate, "benchmark") or _metadata_text(candidate, "dataset")
+
+
+def _limitation_risk_query(candidate: ResearchCandidate, dataset: str) -> str:
+    limitation = _metadata_text(candidate, "limitation")
+    if not limitation:
+        return ""
+    limitation_match_text = limitation.replace("-", " ")
+    risk_tokens: list[str] = []
+    for phrase in RISK_QUERY_PHRASES:
+        if _clean_query(phrase) in limitation_match_text:
+            risk_tokens.extend(_significant_tokens(phrase))
+    if not risk_tokens:
+        return ""
+    context_terms = [
+        token
+        for token in _significant_tokens(" ".join([candidate.title, _metadata_text(candidate, "method")]))
+        if token.startswith("classif") or token.startswith("prototype")
+    ]
+    return _compact_tokens(
+        [*risk_tokens, *context_terms[:2], *_significant_tokens(dataset)[:4]],
+        max_tokens=10,
+    )
+
+
+def _compact_metadata_query(parts: tuple[str, ...], *, max_tokens: int) -> str:
+    tokens: list[str] = []
+    for part in parts:
+        tokens.extend(_significant_tokens(part))
+    return _compact_tokens(tokens, max_tokens=max_tokens)
+
+
+def _compact_tokens(tokens: list[str], *, max_tokens: int) -> str:
+    unique = list(dict.fromkeys(tokens))
+    return _clean_query(" ".join(unique[:max_tokens]))
 
 
 def _plain_topic_query(
