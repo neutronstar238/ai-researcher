@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 21:35:00 +08:00 - Codex - Task 108.1 autonomous template selection
+
+- Request: Continue toward stable CCF-B/Q3-level publication output by moving LaTeX template diversity into the autonomous cycle instead of hand-built artifacts.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `--paper-template-id` to `airesearcher autopilot`.
+  - Added `--paper-template-id` to `airesearcher serve`.
+  - Passed the selected template ID into the autonomous `paper-build` step.
+  - Updated the autopilot slash command template text to mention template selection for venue-template compatibility evidence.
+  - Added a CLI regression assertion that the selected template reaches `build_latex_paper_from_markdown`.
+  - Ran a real two-column Letter Recognition autonomous cycle; the generated paper-build artifact used `generic-article-two-column` and passed publication/evidence gates.
+  - Used only runtime-selected vault outputs under `runs/manual-live/...`; did not hand-write root `autoresearch-vault/projects/.../progress` notes.
+- Verification:
+  - `poetry run pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed with 2 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py`: passed.
+  - `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task108-template-vault --cache runs\manual-live\task108-template-cache --output-dir runs\manual-live\task108-template-cycle --state runs\manual-live\task108-template-state.json --project-id task108_template_cycle --demo letter_variance_calibrated_prototypes --paper-template-id generic-article-two-column --timeout-seconds 60 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed as a real loop; `publication_audit=pass`, `evidence_gate=pass`, and `followup_tasks=0`.
+  - `runs/manual-live/task108-template-cycle/cycle-20260613T111030Z/paper-build/paper-build.json`: inspected; `template.id=generic-article-two-column`, `paper_quality.passed=true`, `page_count=7`, `word_count=2914`, and `overfull_hbox_count=0`.
+  - `runs/manual-live/task108-template-cycle/cycle-20260613T111030Z/publication-audit.json`: inspected; `method_effect_evidence` passed with delta `0.068250`, equal to `8.91` standard errors.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task107-letter-cycle\cycle-20260613T105702Z\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task108-template-cycle\stability-matrix --vault runs\manual-live\task108-template-vault --project-id task108_template_cycle --no-fail-on-unstable`: passed as a blocked gate with `stable=false`, score `0.875`; `paper_template_diversity=pass`, `release_allowed_cycles=pass`, and `distinct_real_datasets=fail`.
+- Problems:
+  - `P-20260613-040` updated; template diversity is now demonstrated by runtime evidence, but stable CCF-B/Q3 output still needs a third distinct strong real dataset cycle.
+- Follow-up:
+  - Add or select another public benchmark where the autonomous method candidate clears the 2.0-standard-error effect gate, then rerun the CCF-B stability matrix.
+
 ### 2026-06-13 21:15:00 +08:00 - Codex - Task 107.1 uncertainty-aware method-effect gate
 
 - Request: Continue toward stable CCF-B/Q3-level publication output by preventing weak positive benchmark deltas from passing publication and stability gates.

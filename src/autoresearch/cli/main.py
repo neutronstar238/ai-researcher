@@ -153,7 +153,8 @@ DEFAULT_SLASH_COMMANDS = {
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
         "follow-up discovery using publication-grade default search breadth; inspect "
-        "cycle-summary.json before claiming publication quality.",
+        "cycle-summary.json before claiming publication quality. Use "
+        "`--paper-template-id <template>` to collect venue-template compatibility evidence.",
     ),
     "research/serve.toml": (
         "Start the always-on operator service with dangerous-action approval gates.",
@@ -1543,6 +1544,13 @@ def autopilot(
         bool,
         typer.Option("--review/--no-review", help="Run the live LLM evidence reviewer."),
     ] = True,
+    paper_template_id: Annotated[
+        str,
+        typer.Option(
+            "--paper-template-id",
+            help="Registered LaTeX template ID for the autonomous paper build.",
+        ),
+    ] = "generic-article-one-column",
     watch: Annotated[
         bool,
         typer.Option("--watch", help="Keep running cycles after the first one."),
@@ -1578,6 +1586,7 @@ def autopilot(
                 max_tokens=max_tokens,
                 min_quality_score=min_quality_score,
                 review=review,
+                paper_template_id=paper_template_id,
             )
         except RuntimeError as exc:
             typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
@@ -1678,6 +1687,13 @@ def serve(
         bool,
         typer.Option("--review/--no-review", help="Run the live LLM evidence reviewer."),
     ] = True,
+    paper_template_id: Annotated[
+        str,
+        typer.Option(
+            "--paper-template-id",
+            help="Registered LaTeX template ID for the autonomous paper build.",
+        ),
+    ] = "generic-article-one-column",
     watch: Annotated[
         bool,
         typer.Option("--watch/--once", help="Keep the runtime alive after one cycle."),
@@ -1701,6 +1717,7 @@ def serve(
         demo=demo,
         permission_mode=permission_mode,
         review=review,
+        paper_template_id=paper_template_id,
     )
     typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
     while True:
@@ -1746,6 +1763,7 @@ def serve(
                 max_tokens=max_tokens,
                 min_quality_score=min_quality_score,
                 review=review,
+                paper_template_id=paper_template_id,
             )
         except RuntimeError as exc:
             typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
@@ -2276,6 +2294,7 @@ def _run_autopilot_cycle(
     max_tokens: int,
     min_quality_score: float,
     review: bool,
+    paper_template_id: str,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
@@ -2467,7 +2486,7 @@ def _run_autopilot_cycle(
     paper_build = build_latex_paper_from_markdown(
         markdown_path=Path(paper_manuscript.markdown_path),
         output_dir=cycle_dir / "paper-build",
-        template_id="generic-article-one-column",
+        template_id=paper_template_id,
         vault_root=vault,
         project_id=project_id,
     )
@@ -3225,6 +3244,7 @@ def _serve_command_text(
     demo: str,
     permission_mode: RuntimePermissionMode,
     review: bool,
+    paper_template_id: str,
 ) -> str:
     review_flag = "--review" if review else "--no-review"
     return (
@@ -3232,6 +3252,7 @@ def _serve_command_text(
         f"--permission-mode {permission_mode.value} "
         f"--project-id {project_id} "
         f"--demo {demo} "
+        f"--paper-template-id {paper_template_id} "
         f"{review_flag}"
     )
 

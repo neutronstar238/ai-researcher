@@ -1571,6 +1571,19 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-042`; task `105.1`; task `106.1`; user requirement for strict CCF-B/Q3 quality gates and real data/API validation._
     - _Verify: focused publication-audit tests, focused ruff, focused mypy, real Spambase `autopilot` with live search/LLM review/paper build/evidence gate, real Pendigits and Letter publication-audit reruns, and real three-cycle `publication-stability` rerun._
 
+- [x] 108. Add autonomous LaTeX template diversity control
+  - [x] 108.1 Make autopilot and serve paper templates configurable
+    - Add `--paper-template-id` to `airesearcher autopilot`.
+    - Add `--paper-template-id` to `airesearcher serve` so always-on operation can collect venue-template compatibility evidence without manual artifact patching.
+    - Pass the selected template ID into the autonomous `paper-build` step and preserve it in the cycle summary, paper-build JSON, and evidence-gate-reviewed artifact.
+    - Update the autopilot slash command template text to mention template selection.
+    - Add a CLI regression test proving the selected template reaches `build_latex_paper_from_markdown`.
+    - Run a real Letter Recognition autonomous cycle with `generic-article-two-column` and confirm publication audit, paper build, paper quality, and evidence gate pass.
+    - Rerun the CCF-B stability matrix using release-allowed Pendigits plus Letter one-column/two-column cycles and confirm `paper_template_diversity` passes while `distinct_real_datasets` still blocks stable CCF-B/Q3 claims.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; template evidence must be runtime-generated under the selected vault.
+    - _References: task `105.1`; `P-20260613-040`; user requirement that LaTeX template compatibility be tested, first with generic templates and later with venue templates._
+    - _Verify: focused CLI tests, focused ruff, focused mypy, real two-column Letter `autopilot`, and real three-cycle `publication-stability` rerun with template diversity passing._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1915,6 +1928,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 74,
       "tasks": ["107.1"]
+    },
+    {
+      "id": 75,
+      "tasks": ["108.1"]
     }
   ]
 }

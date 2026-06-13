@@ -1058,6 +1058,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     def fake_paper_build(**kwargs: object) -> SimpleNamespace:
         assert Path(kwargs["markdown_path"]).name == "manuscript.md"
         assert Path(kwargs["output_dir"]).name == "paper-build"
+        assert kwargs["template_id"] == "generic-article-two-column"
         return SimpleNamespace(
             to_dict=lambda: {
                 "status": "compiled",
@@ -1130,6 +1131,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             str(state),
             "--project-id",
             "project_1",
+            "--paper-template-id",
+            "generic-article-two-column",
             "--no-review",
         ],
     )
