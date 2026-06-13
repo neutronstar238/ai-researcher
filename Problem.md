@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-029 - LLM review repair test initially expected empty findings to pass
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 12:01:00 +08:00
+- Source: Focused LLM/CLI tests for task `91.1`.
+- Symptom: `poetry run pytest tests\unit\llm\test_client.py tests\unit\cli\test_main.py -q` failed because the new review-repair test expected a repaired response with empty `findings` to score `1.0`.
+- Impact: The implementation correctly kept `findings_present` as a hard review-structure gate, but the test fixture was weaker than the intended publication-review behavior.
+- Evidence: Pytest reported `assert 0.5 == 1.0` for `test_run_llm_review_retries_once_on_critical_quality_failure`.
+- Root cause: The first repaired fixture moved the invalid claim to `unsupported_claims` but left no cited finding, triggering the existing `findings_present` hard check.
+- Workaround: None needed after task `91.1`.
+- Next action: Keep review fixtures strict: repaired passing outputs must contain at least one valid finding with an allowed outer evidence ID.
+- Linked tasks: `91.1`
+- Resolution: Updated the repaired fixture to cite `evidence_1` in a valid finding.
+- Verification: Reran the focused LLM/CLI tests; they passed with 45 tests.
+
 ### P-20260613-028 - Live LLM smoke produced malformed or weak structured JSON under strict gates
 
 - Status: Resolved

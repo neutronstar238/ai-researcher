@@ -74,6 +74,7 @@ class LLMReviewResult(BaseModel):
     response_text: str
     usage: dict[str, Any] = Field(default_factory=dict)
     quality: LLMReviewQuality
+    attempts: int = Field(default=1, ge=1)
 
 
 def run_llm_smoke_test(
@@ -186,6 +187,27 @@ def run_llm_evidence_review(
         evidence_ids=[artifact.evidence_id for artifact in evidence],
         secret_values=[api_key],
     )
+    attempts = 1
+    if _has_failed_review_critical_checks(quality):
+        attempts += 1
+        response = _post_chat_completion(
+            endpoint=endpoint,
+            api_key=api_key,
+            model_name=llm.model_name,
+            timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+            max_tokens=max_tokens,
+            messages=_review_repair_messages(
+                previous_response=content,
+                issues=quality.issues,
+                evidence=evidence,
+            ),
+        )
+        content = _extract_message_content(response)
+        quality = evaluate_llm_review_quality(
+            content,
+            evidence_ids=[artifact.evidence_id for artifact in evidence],
+            secret_values=[api_key],
+        )
     return LLMReviewResult(
         provider=llm.provider,
         base_url=llm.base_url,
@@ -197,6 +219,7 @@ def run_llm_evidence_review(
         response_text=content,
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         quality=quality,
+        attempts=attempts,
     )
 
 
@@ -346,6 +369,22 @@ def _has_failed_output_critical_checks(quality: LLMOutputQuality) -> bool:
         "summary_present",
         "evidence_policy_present",
         "risks_present",
+        "next_steps_present",
+        "no_secret_leak",
+        "no_fake_urls",
+    )
+    return any(not quality.checks.get(check, False) for check in critical_checks)
+
+
+def _has_failed_review_critical_checks(quality: LLMReviewQuality) -> bool:
+    critical_checks = (
+        "valid_json",
+        "verdict_present",
+        "summary_present",
+        "findings_present",
+        "finding_refs_present",
+        "finding_refs_known",
+        "unsupported_claims_present",
         "next_steps_present",
         "no_secret_leak",
         "no_fake_urls",
@@ -555,6 +594,45 @@ def _review_messages(
                 "the outer evidence_refs IDs required in your JSON.\n\n"
                 f"SUBJECT path={subject_path.as_posix()}\n{subject_text}\n\n"
                 f"LOCAL EVIDENCE\n{evidence_block}"
+            ),
+        },
+    ]
+
+
+def _review_repair_messages(
+    *,
+    previous_response: str,
+    issues: list[str],
+    evidence: list[LLMEvidenceArtifact],
+) -> list[dict[str, str]]:
+    issue_text = "; ".join(issues[:10])
+    allowed_ids = ", ".join(artifact.evidence_id for artifact in evidence)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are repairing a failed AI-Researcher local-evidence review response. "
+                "Return only one syntactically valid JSON object. Do not include markdown "
+                "fences, comments, URLs, quoted JSON arrays, or new uncited claims."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "The previous review response failed deterministic local quality checks. "
+                f"Failed checks and parser errors: {issue_text}. "
+                "Return a corrected object with exactly these keys and value types: "
+                '{"verdict":"pass|needs_revision|fail","summary":"...",'
+                '"findings":[{"severity":"info|warning|blocking","claim":"...",'
+                '"evidence_refs":["evidence_1"]}],"unsupported_claims":["..."],'
+                '"next_steps":["..."]}. '
+                "All array fields must be real JSON arrays, not quoted strings. "
+                f"Allowed evidence_refs values are exactly: {allowed_ids}. "
+                "Do not cite file paths, URLs, paper titles, source_run_id values, or "
+                "nested evidence ids. Do not add findings that were not in the previous "
+                "response. If a previous finding lacks an allowed evidence ref, move its "
+                "claim into unsupported_claims instead of guessing a ref.\n\n"
+                f"Previous invalid response:\n{previous_response[:3000]}"
             ),
         },
     ]

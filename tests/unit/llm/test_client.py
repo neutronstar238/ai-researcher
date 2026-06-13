@@ -207,6 +207,74 @@ def test_evaluate_llm_review_quality_caps_missing_next_steps() -> None:
     assert result.score <= 0.5
 
 
+def test_run_llm_review_retries_once_on_critical_quality_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    subject = tmp_path / "report.md"
+    subject.write_text("Claim cites local validation evidence.", encoding="utf-8")
+    evidence = tmp_path / "validation-report.json"
+    evidence.write_text('{"metric":"accuracy","value":0.9}', encoding="utf-8")
+    calls: list[list[dict[str, str]] | None] = []
+    invalid_content = json.dumps(
+        {
+            "verdict": "needs_revision",
+            "summary": "The report is grounded but needs a caveat.",
+            "findings": [
+                {
+                    "severity": "warning",
+                    "claim": "The accuracy claim is supported.",
+                    "evidence_refs": ["not_allowed"],
+                }
+            ],
+            "unsupported_claims": [],
+            "next_steps": "Add a limitation.",
+        }
+    )
+    valid_content = json.dumps(
+        {
+            "verdict": "needs_revision",
+            "summary": "The report is grounded but needs a caveat.",
+            "findings": [
+                {
+                    "severity": "warning",
+                    "claim": "The accuracy claim is supported by the local validation report.",
+                    "evidence_refs": ["evidence_1"],
+                }
+            ],
+            "unsupported_claims": [],
+            "next_steps": ["Add a limitation."],
+        }
+    )
+
+    def fake_post_chat_completion(**kwargs: object) -> dict[str, object]:
+        messages = kwargs.get("messages")
+        calls.append(messages if isinstance(messages, list) else None)
+        content = invalid_content if len(calls) == 1 else valid_content
+        return {
+            "choices": [{"message": {"content": content}}],
+            "usage": {"completion_tokens": 20},
+        }
+
+    monkeypatch.setenv("AUTORESEARCH_LLM_API_KEY", "sk-testsecret")
+    monkeypatch.setattr(llm_client, "_post_chat_completion", fake_post_chat_completion)
+
+    result = llm_client.run_llm_evidence_review(
+        subject_path=subject,
+        evidence_paths=[evidence],
+        config_path=Path("missing-config.yaml"),
+        env_path=Path("missing.env"),
+    )
+
+    assert result.attempts == 2
+    assert result.quality.score == 1.0
+    assert len(calls) == 2
+    assert calls[1] is not None
+    assert "previous review response failed" in calls[1][1]["content"].lower()
+    assert "evidence_1" in calls[1][1]["content"]
+    assert "\"evidence_1\"" in result.response_text
+
+
 def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
     messages = _review_messages(
         subject_path=Path("report.md"),

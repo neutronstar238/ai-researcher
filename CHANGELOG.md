@@ -30,6 +30,7 @@ Target version: `0.1.0`.
 - Real online discovery CLI entry points for daily literature refresh and project-start similarity checks, including guarded Obsidian summaries and visible per-source fetch errors.
 - Live `llm-smoke` CLI for OpenAI-compatible model calls, structured output checks, API-key leak checks, and quality report artifacts.
 - `llm-smoke` now retries once with deterministic repair instructions when critical smoke output checks fail, and records `attempts` in CLI/JSON output.
+- `llm-review` now records `attempts` and performs one bounded repair attempt for critical local-evidence review JSON failures without weakening citation gates.
 - Live API smoke tests now cover LLM, literature client retrieval, daily literature refresh, and project-start similarity checks behind `AUTORESEARCH_LIVE_APIS=1`.
 - Semantic Scholar online discovery now supports optional `SEMANTIC_SCHOLAR_API_KEY`, conservative unauthenticated rate limiting, exponential backoff, and HTTP 429 circuit breaking.
 - OpenAlex is now a default third academic metadata source for literature refresh and project-start similarity checks, with optional `OPENALEX_API_KEY`, `OPENALEX_MAILTO`, request-spacing, and 429 circuit-breaker settings.

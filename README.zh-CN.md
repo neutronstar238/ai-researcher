@@ -199,7 +199,7 @@ poetry run airesearcher llm-review `
   --project-id demo_project
 ```
 
-该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note`；其中 warning/blocking finding 会继续写入 `autoresearch-vault/projects/<project-id>/issues/` 作为带稳定指纹的 `issue_note`。同一 subject 与 claim 的重复评审会更新同一条 issue note，而不是污染自循环问题池。`airesearcher issue-followups --state .airesearcher/scheduler-state.json` 可以持久化可审阅的本地后续任务记录，但不会自动执行它们；`airesearcher scheduler-state list|complete|remove` 允许操作者查看、完成或清理这些记录，不需要手动编辑 JSON。推理型模型可能需要示例里的较高 review token 预算。
+该评审可以调用当前配置的真实模型，但确定性质量门要求每条 finding 引用提供的本地证据 ID，例如 `evidence_1`；缺少证据引用或引用未知证据都会低于质量阈值。关键 review JSON 结构失败也只允许一次有界修复，并在结果里记录 `attempts`；修复提示不能覆盖本地 citation、伪造 URL 或密钥泄露门禁。通过质量门的评审可以写回 `autoresearch-vault/projects/<project-id>/review/`，成为 Obsidian `review_note`；其中 warning/blocking finding 会继续写入 `autoresearch-vault/projects/<project-id>/issues/` 作为带稳定指纹的 `issue_note`。同一 subject 与 claim 的重复评审会更新同一条 issue note，而不是污染自循环问题池。`airesearcher issue-followups --state .airesearcher/scheduler-state.json` 可以持久化可审阅的本地后续任务记录，但不会自动执行它们；`airesearcher scheduler-state list|complete|remove` 允许操作者查看、完成或清理这些记录，不需要手动编辑 JSON。推理型模型可能需要示例里的较高 review token 预算。
 
 发表级质量审计：
 

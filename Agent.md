@@ -62,6 +62,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 12:04:13 +08:00 - Codex - Task 91.1 LLM review repair gate
+
+- Request: Continue strict output-quality governance by extending bounded repair and physical evidence checks from `llm-smoke` to `llm-review`.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-91-1-llm-review-repair-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Added `attempts` to `LLMReviewResult` and `llm-review` CLI output.
+  - Added one deterministic repair retry for critical local-evidence review failures.
+  - Constrained review repair prompts to allowed outer evidence IDs and forbidden new uncited claims.
+  - Added a focused unit test proving a failed review response can be repaired once without weakening citation gates.
+  - Updated bilingual README guidance, changelog, tasks, problem log, and Obsidian progress memory.
+- Verification:
+  - Initial focused tests: `poetry run pytest tests\unit\llm\test_client.py tests\unit\cli\test_main.py -q` failed because the first repaired fixture expected empty `findings` to pass; fixed in task `91.1` and recorded as `P-20260613-029`.
+  - Focused tests after fix: `poetry run pytest tests\unit\llm\test_client.py tests\unit\cli\test_main.py -q` passed with 45 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\llm\client.py src\autoresearch\cli\main.py tests\unit\llm\test_client.py tests\unit\cli\test_main.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\llm\client.py src\autoresearch\cli\main.py` passed.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 393 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files.
+  - Real LLM review with incomplete evidence bundle: `poetry run airesearcher llm-review --subject runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\report\report.md --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\validation\validation-report.json --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\evidence\evidence-map.json --env-path .env --output runs\manual-live\llm-review-task91.json --max-tokens 4096 --min-quality-score 0.85 --vault runs\manual-live\task91-review-vault --project-id task91_review_repair --source-task-id 91.1` passed structurally with `attempts=1`, quality score `1.000`, verdict `needs_revision`, and six issue notes for unsupported reproducibility metadata.
+  - Real LLM review with complete evidence bundle: `poetry run airesearcher llm-review --subject runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\report\report.md --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\validation\validation-report.json --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\evidence\evidence-map.json --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\run\run-record.json --evidence runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\demo\pendigits-variance-calibrated-prototypes\metrics.json --env-path .env --output runs\manual-live\llm-review-task91-with-run-record.json --max-tokens 4096 --min-quality-score 0.85 --vault runs\manual-live\task91-review-vault-with-run-record --project-id task91_review_repair_full_evidence --source-task-id 91.1` passed with `attempts=1`, quality score `1.000`, verdict `pass`, and zero issue notes.
+- Problems:
+  - Added and resolved `P-20260613-029` for the initially weak repaired review fixture.
+- Follow-up:
+  - Keep automated full-cycle review evidence bundles complete; missing run-record or metrics evidence should produce reviewer issues, not looser gates.
+
 ### 2026-06-13 11:56:14 +08:00 - Codex - Task 90.1 LLM quality retry gate
 
 - Request: Continue strict innovation and evidence governance by replacing prompt-only LLM output discipline with deterministic quality caps and a bounded repair path for live model smoke tests.

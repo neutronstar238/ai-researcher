@@ -955,6 +955,7 @@ def llm_review(
     typer.echo(f"[OK] model: {result.model_name}")
     typer.echo(f"[OK] subject: {result.subject_path}")
     typer.echo(f"[OK] evidence_files: {len(result.evidence)}")
+    typer.echo(f"[OK] attempts: {result.attempts}")
     typer.echo(f"[OK] review_quality_score: {result.quality.score:.3f}")
     for check, passed in result.quality.checks.items():
         typer.echo(f"[CHECK] {check}: {'pass' if passed else 'fail'}")

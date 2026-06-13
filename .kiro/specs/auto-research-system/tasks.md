@@ -1389,6 +1389,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `41.1`, task `44.1`, task `89.1`, and user requirement to replace prompt-only self-discipline with evidence-producing hard gates._
     - _Verify: focused LLM/CLI tests, ruff, mypy, full smoke/unit tests, and real DeepSeek `llm-smoke` calls showing the strict gate catches bad structure and the one-shot repair path can pass._
 
+- [x] 91. Harden LLM reviewer repair gates
+  - [x] 91.1 Add bounded repair attempts to local-evidence review
+    - Add `attempts` to `LLMReviewResult` and `llm-review` CLI output.
+    - Retry `llm-review` once with deterministic repair instructions when critical local-evidence review checks fail.
+    - Instruct review repair to use only allowed outer evidence IDs, avoid new uncited claims, and move claims without allowed refs into `unsupported_claims`.
+    - Keep finding citation checks, unknown-ref checks, fake URL checks, and secret-leak checks as local hard gates that repair prompts cannot override.
+    - _References: task `44.1`, task `90.1`, and user requirement that output quality and evidence support be physically checked rather than trusted to prompt self-discipline._
+    - _Verify: focused LLM/CLI tests, ruff, mypy, full smoke/unit tests, and real DeepSeek `llm-review` calls showing incomplete evidence is blocked while a complete local evidence bundle can pass._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1665,6 +1674,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 57,
       "tasks": ["90.1"]
+    },
+    {
+      "id": 58,
+      "tasks": ["91.1"]
     }
   ]
 }
