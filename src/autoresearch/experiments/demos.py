@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
 from autoresearch.schemas import ExperimentTask, TaskStatus
@@ -17,6 +18,105 @@ PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID = "pendigits_prototype_shrinkage"
 PENDIGITS_PROTOTYPE_SHRINKAGE_DIR = "pendigits-prototype-shrinkage"
 PENDIGITS_VARIANCE_CALIBRATED_TASK_ID = "pendigits_variance_calibrated_prototypes"
 PENDIGITS_VARIANCE_CALIBRATED_DIR = "pendigits-variance-calibrated-prototypes"
+LETTER_VARIANCE_CALIBRATED_TASK_ID = "letter_variance_calibrated_prototypes"
+LETTER_VARIANCE_CALIBRATED_DIR = "letter-variance-calibrated-prototypes"
+SPAMBASE_VARIANCE_CALIBRATED_TASK_ID = "spambase_variance_calibrated_prototypes"
+SPAMBASE_VARIANCE_CALIBRATED_DIR = "spambase-variance-calibrated-prototypes"
+
+
+@dataclass(frozen=True)
+class _UciVarianceDemoSpec:
+    task_id: str
+    directory: str
+    project_id: str
+    hypothesis_id: str
+    name: str
+    dataset: str
+    dataset_source: str
+    source_file: str
+    source_url: str
+    feature_count: int
+    label_position: str
+    split_policy: str
+    split_mode: str
+    train_rows: int | None
+    train_fraction: float | None
+    shuffle_seed: int | None
+    variance_shrinkage: float
+    min_test_rows: int
+    class_count: int
+    baseline: str
+    proposed_method: str
+    novel_contribution: str
+    limitation: str
+
+
+_LETTER_VARIANCE_SPEC = _UciVarianceDemoSpec(
+    task_id=LETTER_VARIANCE_CALIBRATED_TASK_ID,
+    directory=LETTER_VARIANCE_CALIBRATED_DIR,
+    project_id="public-benchmark-letter",
+    hypothesis_id="hypothesis_letter_variance_calibrated",
+    name="UCI Letter Recognition variance-calibrated prototype candidate",
+    dataset="Letter Recognition",
+    dataset_source="https://archive.ics.uci.edu/ml/datasets/letter+recognition",
+    source_file="letter-recognition.data",
+    source_url=(
+        "https://archive.ics.uci.edu/ml/machine-learning-databases/"
+        "letter-recognition/letter-recognition.data"
+    ),
+    feature_count=16,
+    label_position="first",
+    split_policy="first 16000 rows for training and remaining 4000 rows for testing",
+    split_mode="first_n",
+    train_rows=16000,
+    train_fraction=None,
+    shuffle_seed=None,
+    variance_shrinkage=1.0,
+    min_test_rows=1000,
+    class_count=26,
+    baseline="z-score nearest-centroid classifier over 16 letter image features",
+    proposed_method="diagonal variance-calibrated class prototypes",
+    novel_contribution=(
+        "Evaluate whether per-class diagonal feature variance improves prototype "
+        "classification on the UCI Letter Recognition benchmark."
+    ),
+    limitation=(
+        "single tabular character-recognition benchmark; adjacent Gaussian and "
+        "prototype classifiers require broad related-work positioning"
+    ),
+)
+
+_SPAMBASE_VARIANCE_SPEC = _UciVarianceDemoSpec(
+    task_id=SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+    directory=SPAMBASE_VARIANCE_CALIBRATED_DIR,
+    project_id="public-benchmark-spambase",
+    hypothesis_id="hypothesis_spambase_variance_calibrated",
+    name="UCI Spambase variance-calibrated prototype candidate",
+    dataset="Spambase",
+    dataset_source="https://archive.ics.uci.edu/ml/datasets/spambase",
+    source_file="spambase.data",
+    source_url="https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data",
+    feature_count=57,
+    label_position="last",
+    split_policy="deterministic 75/25 shuffled split with seed 238",
+    split_mode="fraction_shuffle",
+    train_rows=None,
+    train_fraction=0.75,
+    shuffle_seed=238,
+    variance_shrinkage=0.1,
+    min_test_rows=1000,
+    class_count=2,
+    baseline="z-score nearest-centroid classifier over 57 email-frequency features",
+    proposed_method="diagonal variance-calibrated spam/ham prototypes",
+    novel_contribution=(
+        "Evaluate whether a light diagonal variance correction improves centroid "
+        "classification on a non-image public benchmark."
+    ),
+    limitation=(
+        "single public email benchmark and a small effect size; significance and "
+        "related-work positioning must be checked before publication claims"
+    ),
+)
 
 
 def create_tabular_baseline_task(
@@ -517,6 +617,720 @@ def generate_pendigits_variance_calibrated_demo(
     _write(experiment_dir / "config.yaml", _pendigits_variance_calibrated_config_yaml(task))
     _write(experiment_dir / "run.py", _pendigits_variance_calibrated_run_py())
     return experiment_dir, task
+
+
+def create_letter_variance_calibrated_task(
+    *,
+    project_id: str = _LETTER_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _LETTER_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> ExperimentTask:
+    """Return the UCI Letter Recognition variance-calibrated benchmark task."""
+
+    return _create_uci_variance_task(
+        _LETTER_VARIANCE_SPEC,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def generate_letter_variance_calibrated_demo(
+    root: Path | str,
+    *,
+    project_id: str = _LETTER_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _LETTER_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> tuple[Path, ExperimentTask]:
+    """Create the UCI Letter Recognition variance-calibrated experiment."""
+
+    return _generate_uci_variance_demo(
+        _LETTER_VARIANCE_SPEC,
+        root,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def create_spambase_variance_calibrated_task(
+    *,
+    project_id: str = _SPAMBASE_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _SPAMBASE_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> ExperimentTask:
+    """Return the UCI Spambase variance-calibrated benchmark task."""
+
+    return _create_uci_variance_task(
+        _SPAMBASE_VARIANCE_SPEC,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def generate_spambase_variance_calibrated_demo(
+    root: Path | str,
+    *,
+    project_id: str = _SPAMBASE_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _SPAMBASE_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> tuple[Path, ExperimentTask]:
+    """Create the UCI Spambase variance-calibrated experiment."""
+
+    return _generate_uci_variance_demo(
+        _SPAMBASE_VARIANCE_SPEC,
+        root,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def _create_uci_variance_task(
+    spec: _UciVarianceDemoSpec,
+    *,
+    project_id: str,
+    hypothesis_id: str,
+    timeout_seconds: int,
+) -> ExperimentTask:
+    return ExperimentTask(
+        id=spec.task_id,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        name=spec.name,
+        description=(
+            f"Download the public UCI {spec.dataset} data, compare a nearest-centroid "
+            "baseline against a diagonal variance-calibrated prototype classifier, "
+            "and emit metrics, logs, source artifacts, and method-effect evidence."
+        ),
+        entrypoint=f"experiments/{spec.directory}/run.py",
+        config_path=f"experiments/{spec.directory}/config.yaml",
+        metrics=[
+            "accuracy",
+            "macro_f1",
+            "baseline_accuracy",
+            "accuracy_delta_vs_baseline",
+            "zscore_centroid_accuracy",
+            "accuracy_delta_vs_zscore",
+            "test_rows",
+            "train_rows",
+            "dataset_rows",
+            "class_count",
+            "accuracy_standard_error",
+            "variance_shrinkage",
+        ],
+        resource_budget={
+            "cpu_time_seconds": min(timeout_seconds, 60),
+            "memory_mb": 384,
+            "gpu_hours": 0.0,
+            "storage_mb": 96,
+        },
+        timeout_seconds=timeout_seconds,
+        expected_outputs=[
+            "metrics.json",
+            "logs/run.log",
+            "artifacts/summary.md",
+            "artifacts/predictions.csv",
+            "artifacts/ablation.csv",
+            "artifacts/dataset_sources.json",
+            "artifacts/innovation_evidence.json",
+        ],
+        dependencies=["python>=3.10"],
+        priority=3,
+        status=TaskStatus.READY,
+        metadata={
+            "bench_suite": "UCI ML Repository",
+            "demo_task": spec.task_id,
+            "dataset": spec.dataset,
+            "dataset_source": spec.dataset_source,
+            "dataset_license": "CC BY 4.0",
+            "dataset_rows_expected": "downloaded from UCI source file",
+            "real_dataset": True,
+            "dataset_realism": "real_public_benchmark",
+            "split_policy": spec.split_policy,
+            "baseline": spec.baseline,
+            "ablation": "z-score normalized nearest-centroid classifier",
+            "proposed_method": spec.proposed_method,
+            "novel_contribution": spec.novel_contribution,
+            "method_contribution": "heteroscedastic prototype distance calibration",
+            "baseline_only": False,
+            "baseline_metric": {"accuracy": "computed from held-out public split"},
+            "limitation": spec.limitation,
+            "validation_checks": [
+                "metrics.json exists",
+                "accuracy is between 0 and 1",
+                "macro_f1 is between 0 and 1",
+                "baseline_accuracy is between 0 and 1",
+                "test_rows is at least 1000 on the held-out split",
+                "dataset_sources.json records source URL and byte count",
+                "artifacts/ablation.csv exists",
+                "artifacts/innovation_evidence.json exists",
+                "validation report includes statistical sanity notes",
+            ],
+        },
+    )
+
+
+def _generate_uci_variance_demo(
+    spec: _UciVarianceDemoSpec,
+    root: Path | str,
+    *,
+    project_id: str,
+    hypothesis_id: str,
+    timeout_seconds: int,
+) -> tuple[Path, ExperimentTask]:
+    task = _create_uci_variance_task(
+        spec,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+    experiment_dir = Path(root) / spec.directory
+    (experiment_dir / "data").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "logs").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+
+    _write(experiment_dir / "README.md", _uci_variance_readme(spec))
+    _write(experiment_dir / "config.yaml", _uci_variance_config_yaml(spec, task))
+    _write(experiment_dir / "run.py", _uci_variance_run_py(spec))
+    return experiment_dir, task
+
+
+def _uci_variance_readme(spec: _UciVarianceDemoSpec) -> str:
+    return textwrap.dedent(
+        f"""\
+        # UCI {spec.dataset}: variance-calibrated prototypes
+
+        This opt-in demo downloads the real public UCI `{spec.dataset}` source
+        file when it is not already cached under `data/`. It compares a
+        z-score nearest-centroid baseline against diagonal variance-calibrated
+        class prototypes and writes metrics, source provenance, predictions,
+        ablations, and method-effect evidence.
+
+        The benchmark is still only one cycle in the publication matrix. Passing
+        this demo does not by itself justify a stable CCF-B/Q3 claim.
+        """
+    )
+
+
+def _uci_variance_config_yaml(spec: _UciVarianceDemoSpec, task: ExperimentTask) -> str:
+    return textwrap.dedent(
+        f"""\
+        task_id: {task.id}
+        project_id: {task.project_id}
+        hypothesis_id: {task.hypothesis_id}
+        dataset_path: data/{spec.task_id}.csv
+        source_url: {spec.source_url}
+        split_policy: {spec.split_policy}
+        baseline: {spec.baseline}
+        proposed_method: {spec.proposed_method}
+        timeout_seconds: {task.timeout_seconds}
+        """
+    )
+
+
+def _uci_variance_run_py(spec: _UciVarianceDemoSpec) -> str:
+    return textwrap.dedent(
+        f"""\
+        from __future__ import annotations
+
+        import csv
+        import hashlib
+        import json
+        import math
+        import random
+        import sys
+        from collections import defaultdict
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from urllib.request import urlopen
+
+
+        TASK_ID = {spec.task_id!r}
+        DATASET_NAME = {spec.dataset!r}
+        DATASET_SOURCE = {spec.dataset_source!r}
+        SOURCE_FILE = {spec.source_file!r}
+        SOURCE_URL = {spec.source_url!r}
+        FEATURE_COUNT = {spec.feature_count!r}
+        LABEL_POSITION = {spec.label_position!r}
+        SPLIT_POLICY = {spec.split_policy!r}
+        SPLIT_MODE = {spec.split_mode!r}
+        TRAIN_ROWS = {spec.train_rows!r}
+        TRAIN_FRACTION = {spec.train_fraction!r}
+        SHUFFLE_SEED = {spec.shuffle_seed!r}
+        VARIANCE_SHRINKAGE = {spec.variance_shrinkage!r}
+        MIN_TEST_ROWS = {spec.min_test_rows!r}
+        PROPOSED_METHOD = {spec.proposed_method!r}
+        BASELINE = {spec.baseline!r}
+        NOVEL_CONTRIBUTION = {spec.novel_contribution!r}
+
+
+        def main() -> int:
+            root = Path(__file__).resolve().parent
+            data_dir = root / "data"
+            logs_dir = root / "logs"
+            artifacts_dir = root / "artifacts"
+            data_dir.mkdir(exist_ok=True)
+            logs_dir.mkdir(exist_ok=True)
+            artifacts_dir.mkdir(exist_ok=True)
+            log_path = logs_dir / "run.log"
+            metrics_path = root / "metrics.json"
+            merged_csv_path = data_dir / f"{{TASK_ID}}.csv"
+            predictions_path = artifacts_dir / "predictions.csv"
+            ablation_path = artifacts_dir / "ablation.csv"
+            summary_path = artifacts_dir / "summary.md"
+            sources_path = artifacts_dir / "dataset_sources.json"
+            innovation_path = artifacts_dir / "innovation_evidence.json"
+
+            try:
+                source_record = _ensure_source_file(data_dir)
+                rows = _load_rows(data_dir / SOURCE_FILE)
+                train_rows, test_rows = _split_rows(rows)
+                if len(test_rows) < MIN_TEST_ROWS:
+                    raise ValueError(
+                        f"held-out split is unexpectedly small: {{len(test_rows)}} < {{MIN_TEST_ROWS}}"
+                    )
+                train_rows, test_rows = _standardized_rows(train_rows, test_rows)
+                _write_merged_csv(merged_csv_path, train_rows, test_rows)
+
+                model = _fit_model(train_rows)
+                baseline = _evaluate_centroid(test_rows, model)
+                calibrated = _evaluate_variance_model(test_rows, model)
+                accuracy = float(calibrated["accuracy"])
+                baseline_accuracy = float(baseline["accuracy"])
+                delta_vs_baseline = accuracy - baseline_accuracy
+                accuracy_standard_error = math.sqrt(
+                    max(accuracy * (1.0 - accuracy), 0.0) / len(test_rows)
+                )
+                source_payload = {{
+                    "dataset": DATASET_NAME,
+                    "dataset_source": DATASET_SOURCE,
+                    "license": "CC BY 4.0",
+                    "split_policy": SPLIT_POLICY,
+                    "sources": [source_record],
+                }}
+
+                _write_predictions(predictions_path, calibrated["predictions"], baseline["predictions"])
+                _write_ablation(ablation_path, baseline=baseline, calibrated=calibrated)
+                sources_path.write_text(
+                    json.dumps(source_payload, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+                _write_summary(
+                    summary_path,
+                    source_payload,
+                    train_rows=len(train_rows),
+                    test_rows=len(test_rows),
+                    baseline=baseline,
+                    calibrated=calibrated,
+                    delta_vs_baseline=delta_vs_baseline,
+                    accuracy_standard_error=accuracy_standard_error,
+                )
+                innovation_path.write_text(
+                    json.dumps(
+                        {{
+                            "accuracy_delta_vs_baseline": delta_vs_baseline,
+                            "accuracy_delta_vs_zscore": delta_vs_baseline,
+                            "baseline_accuracy": baseline_accuracy,
+                            "candidate_accuracy": accuracy,
+                            "effect_direction": _effect_direction(delta_vs_baseline),
+                            "mechanism": (
+                                "Class prototypes are scored with per-class diagonal "
+                                "feature variances and log-variance penalties after "
+                                "train-set z-score normalization."
+                            ),
+                            "proposed_method": PROPOSED_METHOD,
+                            "support_artifacts": [
+                                "metrics.json",
+                                "artifacts/predictions.csv",
+                                "artifacts/ablation.csv",
+                                "artifacts/summary.md",
+                            ],
+                            "variance_shrinkage": VARIANCE_SHRINKAGE,
+                        }},
+                        indent=2,
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+                metrics = {{
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "metadata": {{
+                        "ablation": "z-score normalized nearest centroid",
+                        "baseline": BASELINE,
+                        "dataset": f"UCI {{DATASET_NAME}}",
+                        "dataset_license": "CC BY 4.0",
+                        "innovation_artifact": innovation_path.as_posix(),
+                        "novel_contribution": NOVEL_CONTRIBUTION,
+                        "proposed_method": PROPOSED_METHOD,
+                        "real_dataset": True,
+                        "source_urls": [SOURCE_URL],
+                        "split_policy": SPLIT_POLICY,
+                    }},
+                    "metrics": {{
+                        "accuracy": accuracy,
+                        "macro_f1": float(calibrated["macro_f1"]),
+                        "baseline_accuracy": baseline_accuracy,
+                        "accuracy_delta_vs_baseline": delta_vs_baseline,
+                        "zscore_centroid_accuracy": baseline_accuracy,
+                        "accuracy_delta_vs_zscore": delta_vs_baseline,
+                        "test_rows": float(len(test_rows)),
+                        "train_rows": float(len(train_rows)),
+                        "dataset_rows": float(len(rows)),
+                        "class_count": float(len(_labels(train_rows))),
+                        "accuracy_standard_error": accuracy_standard_error,
+                        "variance_shrinkage": VARIANCE_SHRINKAGE,
+                    }},
+                    "status": "success",
+                    "task_id": TASK_ID,
+                }}
+                metrics_path.write_text(
+                    json.dumps(metrics, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+                log_path.write_text(
+                    f"{{TASK_ID}} completed successfully\\n"
+                    f"train_rows={{len(train_rows)}} test_rows={{len(test_rows)}} "
+                    f"accuracy={{accuracy:.6f}} baseline_accuracy={{baseline_accuracy:.6f}} "
+                    f"delta={{delta_vs_baseline:.6f}}\\n",
+                    encoding="utf-8",
+                )
+                return 0
+            except Exception as exc:
+                metrics_path.write_text(
+                    json.dumps(
+                        {{
+                            "error": str(exc),
+                            "error_type": type(exc).__name__,
+                            "generated_at": datetime.now(timezone.utc).isoformat(),
+                            "metrics": {{}},
+                            "status": "failed",
+                        }},
+                        indent=2,
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+                log_path.write_text(
+                    f"{{TASK_ID}} failed: {{type(exc).__name__}}: {{exc}}\\n",
+                    encoding="utf-8",
+                )
+                return 1
+
+
+        def _ensure_source_file(data_dir: Path) -> dict[str, object]:
+            path = data_dir / SOURCE_FILE
+            if path.exists():
+                status = "cached"
+            else:
+                with urlopen(SOURCE_URL, timeout=30) as response:
+                    payload = response.read()
+                path.write_bytes(payload)
+                status = "downloaded"
+            return {{
+                "filename": SOURCE_FILE,
+                "url": SOURCE_URL,
+                "path": path.as_posix(),
+                "status": status,
+                "bytes": path.stat().st_size,
+                "sha256": _file_sha256(path),
+            }}
+
+
+        def _load_rows(path: Path) -> list[dict[str, object]]:
+            rows = []
+            for row_index, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                parts = [piece.strip() for piece in stripped.split(",")]
+                if len(parts) != FEATURE_COUNT + 1:
+                    raise ValueError(
+                        f"{{path.name}}:{{row_index + 1}} expected {{FEATURE_COUNT + 1}} comma values, "
+                        f"got {{len(parts)}}"
+                    )
+                if LABEL_POSITION == "first":
+                    label = parts[0]
+                    feature_parts = parts[1:]
+                elif LABEL_POSITION == "last":
+                    label = parts[-1]
+                    feature_parts = parts[:-1]
+                else:
+                    raise ValueError(f"unknown LABEL_POSITION {{LABEL_POSITION!r}}")
+                rows.append(
+                    {{
+                        "source_index": row_index,
+                        "label": label,
+                        "features": [float(piece) for piece in feature_parts],
+                    }}
+                )
+            return rows
+
+
+        def _split_rows(rows: list[dict[str, object]]) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+            if SPLIT_MODE == "first_n":
+                if TRAIN_ROWS is None:
+                    raise ValueError("TRAIN_ROWS is required for first_n split")
+                train_rows = rows[:TRAIN_ROWS]
+                test_rows = rows[TRAIN_ROWS:]
+            elif SPLIT_MODE == "fraction_shuffle":
+                if TRAIN_FRACTION is None or SHUFFLE_SEED is None:
+                    raise ValueError("TRAIN_FRACTION and SHUFFLE_SEED are required")
+                shuffled = list(rows)
+                random.Random(SHUFFLE_SEED).shuffle(shuffled)
+                split_at = int(len(shuffled) * TRAIN_FRACTION)
+                train_rows = shuffled[:split_at]
+                test_rows = shuffled[split_at:]
+            else:
+                raise ValueError(f"unknown SPLIT_MODE {{SPLIT_MODE!r}}")
+            if not train_rows or not test_rows:
+                raise ValueError("split produced empty train or test rows")
+            return train_rows, test_rows
+
+
+        def _standardized_rows(
+            train_rows: list[dict[str, object]],
+            test_rows: list[dict[str, object]],
+        ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+            means = [
+                sum(_features(row)[index] for row in train_rows) / len(train_rows)
+                for index in range(FEATURE_COUNT)
+            ]
+            variances = [
+                sum((_features(row)[index] - means[index]) ** 2 for row in train_rows)
+                / max(len(train_rows) - 1, 1)
+                for index in range(FEATURE_COUNT)
+            ]
+            scales = [math.sqrt(max(value, 0.0)) + 1e-6 for value in variances]
+            return (
+                [_with_standard_features(row, means, scales, "train") for row in train_rows],
+                [_with_standard_features(row, means, scales, "test") for row in test_rows],
+            )
+
+
+        def _with_standard_features(
+            row: dict[str, object],
+            means: list[float],
+            scales: list[float],
+            split: str,
+        ) -> dict[str, object]:
+            features = _features(row)
+            copied = dict(row)
+            copied["split"] = split
+            copied["features_z"] = [
+                (features[index] - means[index]) / scales[index]
+                for index in range(FEATURE_COUNT)
+            ]
+            return copied
+
+
+        def _fit_model(train_rows: list[dict[str, object]]) -> dict[str, object]:
+            labels = _labels(train_rows)
+            means: dict[str, list[float]] = {{}}
+            variances: dict[str, list[float]] = {{}}
+            for label in labels:
+                rows = [row for row in train_rows if str(row["label"]) == label]
+                means[label] = [
+                    sum(_features_z(row)[index] for row in rows) / len(rows)
+                    for index in range(FEATURE_COUNT)
+                ]
+                variances[label] = [
+                    sum((_features_z(row)[index] - means[label][index]) ** 2 for row in rows)
+                    / max(len(rows) - 1, 1)
+                    for index in range(FEATURE_COUNT)
+                ]
+            return {{"labels": labels, "means": means, "variances": variances}}
+
+
+        def _evaluate_centroid(
+            test_rows: list[dict[str, object]],
+            model: dict[str, object],
+        ) -> dict[str, object]:
+            predictions = []
+            for row in test_rows:
+                prediction = _predict_centroid(_features_z(row), model)
+                predictions.append((str(row["source_index"]), str(row["label"]), prediction))
+            return _metrics(predictions)
+
+
+        def _evaluate_variance_model(
+            test_rows: list[dict[str, object]],
+            model: dict[str, object],
+        ) -> dict[str, object]:
+            predictions = []
+            for row in test_rows:
+                prediction = _predict_variance(_features_z(row), model)
+                predictions.append((str(row["source_index"]), str(row["label"]), prediction))
+            return _metrics(predictions)
+
+
+        def _predict_centroid(features: list[float], model: dict[str, object]) -> str:
+            labels = list(model["labels"])
+            means = model["means"]
+            return min(
+                labels,
+                key=lambda label: sum(
+                    (features[index] - means[label][index]) ** 2
+                    for index in range(FEATURE_COUNT)
+                ),
+            )
+
+
+        def _predict_variance(features: list[float], model: dict[str, object]) -> str:
+            labels = list(model["labels"])
+            means = model["means"]
+            variances = model["variances"]
+            return min(labels, key=lambda label: _variance_distance(features, means[label], variances[label]))
+
+
+        def _variance_distance(
+            features: list[float],
+            means: list[float],
+            variances: list[float],
+        ) -> float:
+            distance = 0.0
+            for index in range(FEATURE_COUNT):
+                variance = VARIANCE_SHRINKAGE * variances[index] + (1.0 - VARIANCE_SHRINKAGE)
+                variance = max(variance, 1e-6)
+                diff = features[index] - means[index]
+                distance += (diff * diff) / variance + math.log(variance)
+            return distance
+
+
+        def _metrics(predictions: list[tuple[str, str, str]]) -> dict[str, object]:
+            correct = sum(1 for _row_id, actual, predicted in predictions if actual == predicted)
+            return {{
+                "accuracy": correct / len(predictions),
+                "macro_f1": _macro_f1(predictions),
+                "predictions": predictions,
+            }}
+
+
+        def _macro_f1(predictions: list[tuple[str, str, str]]) -> float:
+            labels = sorted({{actual for _row_id, actual, _predicted in predictions}})
+            scores = []
+            for label in labels:
+                tp = sum(1 for _row_id, actual, predicted in predictions if actual == label and predicted == label)
+                fp = sum(1 for _row_id, actual, predicted in predictions if actual != label and predicted == label)
+                fn = sum(1 for _row_id, actual, predicted in predictions if actual == label and predicted != label)
+                precision = tp / (tp + fp) if tp + fp else 0.0
+                recall = tp / (tp + fn) if tp + fn else 0.0
+                scores.append(2 * precision * recall / (precision + recall) if precision + recall else 0.0)
+            return sum(scores) / len(scores) if scores else 0.0
+
+
+        def _write_merged_csv(
+            path: Path,
+            train_rows: list[dict[str, object]],
+            test_rows: list[dict[str, object]],
+        ) -> None:
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["split", "source_index", "label", *[f"feature_{{index}}" for index in range(FEATURE_COUNT)]])
+                for row in [*train_rows, *test_rows]:
+                    writer.writerow([row["split"], row["source_index"], row["label"], *_features(row)])
+
+
+        def _write_predictions(
+            path: Path,
+            calibrated_predictions: list[tuple[str, str, str]],
+            baseline_predictions: list[tuple[str, str, str]],
+        ) -> None:
+            baseline_by_id = {{row_id: predicted for row_id, _actual, predicted in baseline_predictions}}
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["source_index", "actual", "baseline_prediction", "candidate_prediction", "correct"])
+                for row_id, actual, predicted in calibrated_predictions:
+                    writer.writerow([row_id, actual, baseline_by_id[row_id], predicted, str(actual == predicted).lower()])
+
+
+        def _write_ablation(path: Path, *, baseline: dict[str, object], calibrated: dict[str, object]) -> None:
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["model", "accuracy", "macro_f1"])
+                writer.writerow(["zscore_nearest_centroid", baseline["accuracy"], baseline["macro_f1"]])
+                writer.writerow(["variance_calibrated_prototypes", calibrated["accuracy"], calibrated["macro_f1"]])
+
+
+        def _write_summary(
+            path: Path,
+            source_payload: dict[str, object],
+            *,
+            train_rows: int,
+            test_rows: int,
+            baseline: dict[str, object],
+            calibrated: dict[str, object],
+            delta_vs_baseline: float,
+            accuracy_standard_error: float,
+        ) -> None:
+            path.write_text(
+                "\\n".join(
+                    [
+                        f"# {{DATASET_NAME}} Variance-Calibrated Prototype Demo",
+                        "",
+                        "## Dataset",
+                        "",
+                        f"- Source: {{SOURCE_URL}}",
+                        f"- Split: {{SPLIT_POLICY}}",
+                        f"- Train rows: `{{train_rows}}`",
+                        f"- Test rows: `{{test_rows}}`",
+                        f"- Source SHA256: `{{source_payload['sources'][0]['sha256']}}`",
+                        "",
+                        "## Results",
+                        "",
+                        f"- Baseline accuracy: `{{baseline['accuracy']:.6f}}`",
+                        f"- Candidate accuracy: `{{calibrated['accuracy']:.6f}}`",
+                        f"- Delta vs baseline: `{{delta_vs_baseline:.6f}}`",
+                        f"- Candidate macro F1: `{{calibrated['macro_f1']:.6f}}`",
+                        f"- Accuracy standard error: `{{accuracy_standard_error:.6f}}`",
+                        "",
+                        "## Evidence",
+                        "",
+                        "- Metrics: `metrics.json`",
+                        "- Predictions: `artifacts/predictions.csv`",
+                        "- Ablation: `artifacts/ablation.csv`",
+                        "- Source metadata: `artifacts/dataset_sources.json`",
+                        "- Method effect: `artifacts/innovation_evidence.json`",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+
+        def _effect_direction(delta: float) -> str:
+            if delta > 0.0:
+                return "positive"
+            if delta < 0.0:
+                return "negative"
+            return "neutral"
+
+
+        def _labels(rows: list[dict[str, object]]) -> list[str]:
+            return sorted({{str(row["label"]) for row in rows}})
+
+
+        def _features(row: dict[str, object]) -> list[float]:
+            return list(row["features"])
+
+
+        def _features_z(row: dict[str, object]) -> list[float]:
+            return list(row["features_z"])
+
+
+        def _file_sha256(path: Path) -> str:
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            return digest.hexdigest()
+
+
+        if __name__ == "__main__":
+            raise SystemExit(main())
+        """
+    )
 
 
 def _readme() -> str:

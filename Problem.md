@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-042 - Spambase variance-calibrated prototype effect is positive but small
+
+- Status: Open
+- Severity: Medium
+- Discovered: 2026-06-13 20:55:00 +08:00
+- Source: Task `106.1` real `run-demo` over UCI Spambase.
+- Symptom: The Spambase demo recorded a positive accuracy delta, but the effect size is smaller than one accuracy standard error.
+- Impact: The cycle is useful as a real public non-image benchmark, but it should not be treated as strong publication evidence without additional statistical checks, related-work positioning, and possibly a more robust method variant.
+- Evidence: `runs/manual-live/task106-benchmark-demos/spambase-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.8922675933970461`, `baseline_accuracy=0.8853171155516942`, `accuracy_delta_vs_baseline=0.0069504778453518545`, `accuracy_standard_error=0.009138671763868286`, and `test_rows=1151`.
+- Root cause: The diagonal variance correction only gives a small improvement on this deterministic 75/25 Spambase split.
+- Workaround: Keep the demo as a real benchmark coverage path, but require publication audit, evidence gate, and stability matrix checks before using it in any CCF-B/Q3 claim.
+- Next action: Add stronger significance/effect-size gates or rerun with repeated deterministic splits before treating Spambase as a release-allowed publication cycle.
+- Linked tasks: `106.1`
+- Resolution: Not resolved.
+- Verification: Real UCI Spambase run completed and validation passed; the effect-size caution remains.
+
 ### P-20260613-041 - Publication stability gate initially read a stale paper-build path from the cycle summary
 
 - Status: Resolved

@@ -10,14 +10,18 @@ from pathlib import Path
 from typing import Any
 
 from autoresearch.experiments.demos import (
+    LETTER_VARIANCE_CALIBRATED_TASK_ID,
     PENDIGITS_CENTROID_BASELINE_TASK_ID,
     PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
     PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+    SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
     TABULAR_BASELINE_TASK_ID,
     TEXT_CLASSIFIER_STUB_TASK_ID,
+    generate_letter_variance_calibrated_demo,
     generate_pendigits_centroid_baseline_demo,
     generate_pendigits_prototype_shrinkage_demo,
     generate_pendigits_variance_calibrated_demo,
+    generate_spambase_variance_calibrated_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
 )
@@ -145,6 +149,16 @@ def _generate_demo(
             output_dir,
             timeout_seconds=timeout_seconds,
         )
+    if demo == LETTER_VARIANCE_CALIBRATED_TASK_ID:
+        return generate_letter_variance_calibrated_demo(
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
+    if demo == SPAMBASE_VARIANCE_CALIBRATED_TASK_ID:
+        return generate_spambase_variance_calibrated_demo(
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
     msg = f"unknown demo {demo!r}"
     raise ValueError(msg)
 
@@ -210,7 +224,11 @@ def _metric_bounds(demo: str) -> dict[str, tuple[float | None, float | None]]:
             "prototype_shift_l2_mean": (0.0, None),
             "shrinkage_alpha": (0.0, 1.0),
         }
-    if demo == PENDIGITS_VARIANCE_CALIBRATED_TASK_ID:
+    if demo in {
+        PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+        LETTER_VARIANCE_CALIBRATED_TASK_ID,
+        SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+    }:
         return {
             "accuracy": (0.0, 1.0),
             "macro_f1": (0.0, 1.0),
@@ -237,6 +255,8 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
         PENDIGITS_CENTROID_BASELINE_TASK_ID,
         PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
         PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+        LETTER_VARIANCE_CALIBRATED_TASK_ID,
+        SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
     }:
         return []
     test_rows = int(float(bundle.metrics.get("test_rows", 0.0) or 0.0))
@@ -248,6 +268,8 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
         in {
             PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
             PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+            LETTER_VARIANCE_CALIBRATED_TASK_ID,
+            SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
         }
         else "ablation_accuracy_first8"
     )
@@ -350,6 +372,47 @@ def _report_context(
     output_dir: Path | str,
 ) -> ReportContext:
     command = f"airesearcher run-demo --demo {task.id} --output-dir {Path(output_dir)}"
+    if task.id in {
+        LETTER_VARIANCE_CALIBRATED_TASK_ID,
+        SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+    }:
+        dataset = str(task.metadata.get("dataset", task.id))
+        return ReportContext(
+            title=f"UCI {dataset} Variance-Calibrated Prototype Report",
+            question=(
+                "Can AI-Researcher validate the same prototype-family method "
+                "candidate on a different real public benchmark while preserving "
+                "source-backed data and method-effect evidence?"
+            ),
+            literature_summary=(
+                f"This is an opt-in real benchmark method-candidate check using "
+                f"the UCI {dataset} source data fetched by the experiment script. "
+                "It must still pass online related-work and novelty checks before "
+                "any publication claim."
+            ),
+            hypothesis=(
+                "Train-set z-score normalization plus per-class diagonal variance "
+                "calibration may improve nearest-centroid prototype scoring. The "
+                "run records the baseline-vs-candidate delta."
+            ),
+            experiment_design=task.description,
+            run=run,
+            results=bundle,
+            validation=validation,
+            evidence_edges=evidence_edges,
+            reproduction_command=command,
+            python_version=sys.version.split()[0],
+            dependency_lock_status=_dependency_lock_status(),
+            limitations=[
+                str(task.metadata.get("limitation", "Single public benchmark only.")),
+                "One positive method-effect run is not enough for stable CCF-B/Q3 claims; "
+                "the publication-stability matrix must pass across multiple cycles.",
+            ],
+            next_steps=[
+                "Run project-start similarity search for diagonal variance, Gaussian "
+                "discriminant, and prototype-classifier prior work on this dataset.",
+            ],
+        )
     if task.id == PENDIGITS_VARIANCE_CALIBRATED_TASK_ID:
         return ReportContext(
             title="UCI Pendigits Variance-Calibrated Prototype Report",

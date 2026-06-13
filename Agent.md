@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 20:58:00 +08:00 - Codex - Task 106.1 UCI benchmark demo expansion
+
+- Request: Continue toward a real multi-cycle publication stability matrix by adding additional public datasets that can be executed through the existing `run-demo` and `autopilot --demo` surfaces.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/demos.py`
+  - `tests/unit/experiments/test_demos.py`
+- Summary:
+  - Added `letter_variance_calibrated_prototypes` and `spambase_variance_calibrated_prototypes` as real UCI public benchmark demo selectors.
+  - Added a shared UCI variance-calibrated prototype demo generator that downloads source files at run time, writes source provenance, compares a z-score nearest-centroid baseline to a diagonal variance-calibrated prototype model, and emits predictions, ablation, summary, metrics, and innovation evidence artifacts.
+  - Wired both demo selectors into `run_scientistbench_demo`, report context generation, experiment exports, and autopilot literature seed/candidate metadata.
+  - Preserved `real_dataset=true`, `dataset_realism=real_public_benchmark`, dataset names, source URLs, split policies, and method-effect metrics in generated run records.
+- Verification:
+  - `poetry run pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_acceptance.py -q`: passed with 15 tests.
+  - `poetry run ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py src\autoresearch\cli\main.py tests\unit\experiments\test_demos.py`: passed.
+  - `poetry run mypy src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\cli\main.py`: passed.
+  - `poetry run airesearcher run-demo --demo letter_variance_calibrated_prototypes --output-dir runs\manual-live\task106-benchmark-demos --timeout-seconds 60`: passed, downloaded UCI Letter Recognition, wrote `run_ae65dc6540e3414388d81fd869aaf331`, `dataset_rows=20000`, `test_rows=4000`, `accuracy=0.62375`, `baseline_accuracy=0.5555`, `accuracy_delta_vs_baseline=0.06825`.
+  - `poetry run airesearcher run-demo --demo spambase_variance_calibrated_prototypes --output-dir runs\manual-live\task106-benchmark-demos --timeout-seconds 60`: passed, downloaded UCI Spambase, wrote `run_4a53ecdc41f04d569229629e0f2185dd`, `dataset_rows=4601`, `test_rows=1151`, `accuracy=0.8922675933970461`, `baseline_accuracy=0.8853171155516942`, `accuracy_delta_vs_baseline=0.0069504778453518545`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 99 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 433 tests and 4 skipped.
+- Problems:
+  - `P-20260613-042` added for the small Spambase positive effect size.
+- Follow-up:
+  - Run complete autopilot cycles for the new Letter and Spambase selectors, then rerun `publication-stability --target ccf-b-matrix` with Pendigits plus the new cycle summaries.
+
 ### 2026-06-13 20:45:00 +08:00 - Codex - Task 105.1 publication stability matrix gate
 
 - Request: Continue toward stable CCF-B/Q3-level output without manually writing root Obsidian project progress notes; add a cross-cycle gate so one passing cycle cannot be overstated as stable publication capability.

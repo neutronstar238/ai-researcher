@@ -2748,6 +2748,20 @@ def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
 
 
 def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:
+    if demo == "letter_variance_calibrated_prototypes":
+        return (
+            "UCI Letter Recognition variance calibrated prototype classifier",
+            "Letter Recognition nearest centroid classifier",
+            "diagonal Gaussian prototype classification letter recognition",
+            "prototype classifier variance normalization character recognition",
+        )
+    if demo == "spambase_variance_calibrated_prototypes":
+        return (
+            "UCI Spambase variance calibrated prototype classifier",
+            "Spambase nearest centroid spam classification",
+            "diagonal Gaussian prototype classification spam filtering",
+            "prototype classifier variance normalization email classification",
+        )
     if demo == "pendigits_variance_calibrated_prototypes":
         return (
             "UCI Pendigits variance calibrated prototype classifier",
@@ -2793,6 +2807,78 @@ def _autopilot_candidate_from_literature(
     seed_uri = str(getattr(seed, "source_uri", seed_title)).strip()
     seed_id = str(getattr(seed, "id", seed_uri)).strip()
     candidate_id = f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}"
+    if demo == "letter_variance_calibrated_prototypes":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Variance-calibrated prototype classifiers for UCI Letter Recognition",
+            description=(
+                "Evaluate whether diagonal per-class variance calibration improves a "
+                "z-score nearest-prototype classifier on the UCI Letter Recognition split."
+            ),
+            research_gap=(
+                "Letter Recognition gives a second real public benchmark for the same "
+                "prototype-family mechanism, but publication claims still require checking "
+                "Gaussian, Mahalanobis, nearest-centroid, and character-recognition prior work."
+            ),
+            novelty_score=0.45,
+            feasibility_score=0.85,
+            impact_score=0.55,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+                "dataset": "UCI Letter Recognition",
+                "benchmark": "UCI Letter Recognition",
+                "baseline": "z-score nearest centroid classifier",
+                "limitation": (
+                    "single public character-recognition benchmark; adjacent Gaussian, "
+                    "Mahalanobis, and prototype classifiers may already cover the mechanism"
+                ),
+            },
+        )
+    if demo == "spambase_variance_calibrated_prototypes":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Variance-calibrated prototype classifiers for UCI Spambase",
+            description=(
+                "Evaluate whether diagonal per-class variance calibration improves a "
+                "z-score nearest-prototype spam classifier on a deterministic UCI Spambase split."
+            ),
+            research_gap=(
+                "Spambase adds a non-image public benchmark for the same interpretable "
+                "prototype mechanism, but the expected effect is small and must be audited "
+                "against spam-filtering and Gaussian classifier prior work."
+            ),
+            novelty_score=0.4,
+            feasibility_score=0.85,
+            impact_score=0.5,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+                "dataset": "UCI Spambase",
+                "benchmark": "UCI Spambase",
+                "baseline": "z-score nearest centroid classifier",
+                "limitation": (
+                    "single public email benchmark and small effect size; claims require "
+                    "statistical caution plus spam-filtering related-work checks"
+                ),
+            },
+        )
     if demo == "pendigits_variance_calibrated_prototypes":
         return ResearchCandidate(
             id=candidate_id,

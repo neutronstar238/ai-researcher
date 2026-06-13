@@ -1545,6 +1545,18 @@ A task can be checked only when all applicable items are true:
     - _References: user correction that Obsidian project notes should be system-written runtime output; user requirement for strict CCF-B/Q3 stability evidence across topics; task `101.1`, task `103.1`, task `104.1`; `P-20260613-040`._
     - _Verify: focused stability and CLI tests, ruff, mypy, and real `publication-stability` over the task `104.1` Pendigits cycle blocking stable claims with `score=0.500` while confirming paper quality evidence is read from the evidence-gate-reviewed task `103.1` paper build._
 
+- [x] 106. Expand real public benchmark coverage for the stability matrix
+  - [x] 106.1 Add Letter Recognition and Spambase variance-calibrated prototype demos
+    - Add `letter_variance_calibrated_prototypes` and `spambase_variance_calibrated_prototypes` as `run-demo`/`autopilot --demo` selectors.
+    - Download each dataset from the public UCI ML Repository source file at run time unless a cache file already exists under the run directory.
+    - Write source provenance with URL, byte count, SHA256, split policy, and license field into `artifacts/dataset_sources.json`.
+    - Compare a train-set z-score nearest-centroid baseline against diagonal variance-calibrated prototypes, then write `metrics.json`, `predictions.csv`, `ablation.csv`, `summary.md`, and `innovation_evidence.json`.
+    - Preserve `real_dataset=true`, `dataset_realism=real_public_benchmark`, method metadata, and baseline-vs-candidate deltas in the run record for publication audit and stability-matrix consumption.
+    - Add autopilot literature seed queries and candidate metadata for both new demos so topic selection, search, and experiment execution stay aligned.
+    - Do not claim these demo runs are publication-ready; they only add real benchmark coverage for later full-cycle audit/stability work.
+    - _References: `P-20260613-040`; task `105.1`; user request to run real scripts/data and build a multi-cycle, multi-dataset stability bar._
+    - _Verify: focused demo/acceptance tests, ruff, mypy, real `run-demo` over UCI Letter Recognition and UCI Spambase with downloaded source files, positive recorded deltas, validation reports passing, and run records preserving real dataset metadata._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1881,6 +1893,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 72,
       "tasks": ["105.1"]
+    },
+    {
+      "id": 73,
+      "tasks": ["106.1"]
     }
   ]
 }

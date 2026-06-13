@@ -68,6 +68,7 @@ Target version: `0.1.0`.
 - Opt-in `pendigits_centroid_baseline` public benchmark demo that downloads the UCI Pendigits train/test files at run time, writes a merged CSV under ignored `runs/` artifacts, runs a nearest-centroid baseline plus first-8-features ablation, and records source metadata, data hash, confidence interval, validation report, evidence map, and run record.
 - Opt-in `pendigits_prototype_shrinkage` public benchmark method-candidate demo that reuses the UCI Pendigits train/test split, compares a nearest-centroid baseline, first-8-feature ablation, and class-prototype shrinkage, and records file-backed innovation evidence with honest gain/tie/underperformance interpretation.
 - Opt-in `pendigits_variance_calibrated_prototypes` public benchmark method-candidate demo that reuses the UCI Pendigits train/test split, compares nearest-centroid and z-score centroid baselines against diagonal variance-calibrated prototypes, and records positive method-effect evidence when supported by real metrics.
+- Opt-in `letter_variance_calibrated_prototypes` and `spambase_variance_calibrated_prototypes` public benchmark demos that download UCI source files at run time, compare z-score nearest-centroid baselines against diagonal variance-calibrated prototypes, and record source provenance plus method-effect evidence for later stability-matrix cycles.
 - Demo-aligned autopilot literature seeds and candidate metadata so publication-level novelty checks target the same method, dataset, benchmark, and baseline as the executed demo instead of drifting to a generic research-agent topic.
 - Paper-style Markdown report sections for generated demo reports: Abstract, Introduction, Related Work, Method, Experiments, Results, Limitations, Conclusion, and References.
 - LaTeX template compatibility smoke tests for built-in generic single-column and double-column `article` templates, including JSON/Markdown reports, compile logs, and optional Obsidian vault copies.
@@ -168,6 +169,7 @@ Target version: `0.1.0`.
 
 ### Verification Snapshot
 
+- Additional UCI benchmark demos after task `106`: focused demo/acceptance tests passed with 15 tests; focused ruff and mypy passed; real `run-demo` downloaded UCI Letter Recognition and Spambase sources, with Letter delta `+0.06825` over 4,000 test rows and Spambase delta `+0.00695` over 1,151 test rows.
 - Publication stability gate after task `105`: focused stability/CLI tests passed with 6 tests; focused ruff and mypy passed; real `publication-stability` over the task `104.1` Pendigits cycle returned `verdict=blocked`, `stable=false`, `score=0.500`, with paper quality correctly read from the evidence-gate-reviewed task `103.1` paper build.
 - Current broad local check after task `41`: `poetry run ruff check src tests` passed.
 - Current broad local type check after task `41`: `poetry run mypy src` passed with no issues in 84 source files.
