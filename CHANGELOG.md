@@ -35,6 +35,7 @@ Target version: `0.1.0`.
 - Autopilot now shares one ArXiv/Semantic Scholar/OpenAlex client set across literature refresh and similarity checks so rate-limit and 429 circuit-breaker state persists for the whole cycle.
 - Optional on-disk source circuit-breaker state under the literature cache root so Semantic Scholar/OpenAlex cooldowns can survive autopilot process restarts and consecutive cycles.
 - SCALE-lite source preflight gate for `autopilot` and `serve`: active persisted source cooldowns now write `source-preflight` evidence, create an Obsidian issue note, queue a follow-up task, and skip costly experiment/review/paper-build work for that cycle.
+- Source preflight now fails closed when `source-circuit-breakers.json` is malformed or contains non-numeric expiry values, producing `state_error` evidence instead of continuing with unverifiable source state.
 - `llm-review` CLI for live LLM-as-reviewer checks constrained to local evidence artifacts and deterministic citation quality gates.
 - Project-level Obsidian `review/` memory for evidence-constrained LLM review notes.
 - Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.

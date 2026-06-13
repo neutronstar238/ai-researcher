@@ -1311,6 +1311,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to adopt the useful part of SCALE Engine as physical gates rather than prompt-only discipline; tasks `80.1` and `81.1` source-politeness follow-ups._
     - _Verify: focused client/CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with a BOM-bearing persisted Semantic Scholar cooldown file showing `[BLOCKED] source_preflight: blocked`, skipped review, a blocked cycle summary, and a queued Obsidian issue follow-up._
 
+- [x] 83. Make source preflight fail closed on unverifiable state
+  - [x] 83.1 Block autopilot/serve when persisted source state is malformed
+    - Validate the persisted source circuit-breaker JSON during source preflight before reading cooldown values.
+    - Treat unreadable JSON, non-object payloads, and non-numeric expiry values as `state_error` blockers.
+    - Preserve the no-network preflight contract: state validation must not ping external sources.
+    - Write `state_error` source checks into `source-preflight.json` and the generated Obsidian issue note.
+    - Tag generated malformed-state issue notes with both `82.1` and `83.1` so scheduler follow-ups retain the source-preflight origin and the fail-closed hardening task.
+    - _References: task `82.1` follow-up and `P-20260613-020` recommendation to avoid fail-open behavior for operator-edited state files._
+    - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with malformed `source-circuit-breakers.json` showing `[BLOCKED] source_preflight: blocked`, `state_error` checks for Semantic Scholar/OpenAlex, skipped review, and a queued Obsidian issue follow-up._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1555,6 +1565,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 49,
       "tasks": ["82.1"]
+    },
+    {
+      "id": 50,
+      "tasks": ["83.1"]
     }
   ]
 }

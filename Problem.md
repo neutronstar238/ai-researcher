@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-021 - Malformed source cooldown state would have failed open after BOM fix
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 10:46:00 +08:00
+- Source: Follow-up hardening after task `82.1` added source preflight and BOM-tolerant state reads.
+- Symptom: A syntactically invalid or structurally invalid `source-circuit-breakers.json` could still leave source cooldowns unverifiable. Treating that as empty state would let a 24h deployment continue into costly work with unknown source safety.
+- Impact: Operator-edited state files or partial writes could make the system fail open, weakening the SCALE-lite physical gate and source-politeness guarantees.
+- Evidence: A real CLI run with `runs\manual-live\task83-malformed-state-cache\source-circuit-breakers.json` containing `{not-json` was used to exercise the new fail-closed behavior. The verified run at `runs/manual-live/autopilot-malformed-source-state-task83-v2/cycle-20260613T024745Z/cycle-summary.json` recorded `state_error` for Semantic Scholar and OpenAlex and skipped review.
+- Root cause: Task `82.1` made valid BOM-bearing JSON readable, but preflight still needed an explicit validation step that treats malformed cooldown state as blocking evidence.
+- Workaround: None needed after task `83.1`.
+- Next action: Consider atomic writes or file locking for source cooldown state if concurrent deployments edit the same cache root.
+- Linked tasks: `83.1`
+- Resolution: Task `83.1` validates persisted source cooldown state in preflight and blocks on unreadable JSON, non-object payloads, or non-numeric expiry values.
+- Verification: `poetry run pytest tests\unit\cli\test_main.py -q`, `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`, and `poetry run mypy src\autoresearch\cli\main.py` passed. The real CLI run `poetry run airesearcher autopilot --vault runs\manual-live\task83-malformed-state-vault-v2 --cache runs\manual-live\task83-malformed-state-cache-v2 --output-dir runs\manual-live\autopilot-malformed-source-state-task83-v2 --state runs\manual-live\autopilot-malformed-source-state-task83-v2\scheduler-state.json --project-id task83_malformed_state_v2 --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review` printed `[BLOCKED] source_preflight: blocked` and generated an Obsidian issue with related task IDs `82.1` and `83.1`.
+
 ### P-20260613-020 - Source cooldown preflight could be bypassed by operator-written BOM state
 
 - Status: Resolved
@@ -43,9 +59,9 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: `poetry run airesearcher autopilot --vault runs\manual-live\task82-preflight-vault --cache runs\manual-live\task82-preflight-cache --output-dir runs\manual-live\autopilot-source-preflight-task82 --state runs\manual-live\autopilot-source-preflight-task82\scheduler-state.json --project-id task82_source_preflight --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review` printed `[OK] source_preflight: pass` even though `source-circuit-breakers.json` contained a future `semantic_scholar` expiry.
 - Root cause: `RateLimitCircuitBreaker._read_state()` used `encoding="utf-8"` and silently treated a UTF-8 BOM JSON file as unreadable, returning an empty state.
 - Workaround: None needed after task `82.1`; source state is now read with `utf-8-sig`.
-- Next action: Keep the source preflight gate in the physical-gate path and consider making truly malformed state files blocking instead of fail-open if operators edit the file directly.
-- Linked tasks: `82.1`
-- Resolution: Task `82.1` changes source cooldown reads to `utf-8-sig` and adds a BOM-state regression test.
+- Next action: Done in task `83.1`; malformed state files now block source preflight.
+- Linked tasks: `82.1`, `83.1`
+- Resolution: Task `82.1` changes source cooldown reads to `utf-8-sig` and adds a BOM-state regression test. Task `83.1` makes malformed persisted source state fail closed during source preflight.
 - Verification: `poetry run pytest tests\unit\literature\test_clients.py tests\unit\cli\test_main.py -q` passed, including the BOM-state test. A second real CLI run with a BOM-bearing Semantic Scholar cooldown at `runs/manual-live/autopilot-source-preflight-task82-bom/cycle-20260613T023832Z/cycle-summary.json` printed `[BLOCKED] source_preflight: blocked`, skipped review, wrote `source-preflight.json`/`.md`, and queued one Obsidian issue follow-up.
 
 ### P-20260613-019 - Source cooldowns did not survive process or cycle boundaries

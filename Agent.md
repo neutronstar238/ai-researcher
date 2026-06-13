@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 10:50:03 +08:00 - Codex - Task 83.1 malformed source state fail-closed gate
+
+- Request: Continue SCALE-lite hard-gate work by preventing unverifiable source cooldown state from failing open.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-83-1-malformed-source-state-fail-closed.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added task `83.1` to the executable task plan and dependency graph.
+  - Made source preflight validate `source-circuit-breakers.json` before treating source state as safe.
+  - Added `state_error` blockers for unreadable JSON, non-object payloads, and non-numeric expiry values.
+  - Preserved the no-network preflight contract while making malformed source state fail closed.
+  - Updated generated Obsidian issue notes so malformed-state blockers include both `82.1` and `83.1` in related task IDs.
+  - Updated README, changelog, Problem log, and Obsidian progress memory.
+- Verification:
+  - `poetry run pytest tests\unit\cli\test_main.py -q`: passed, 34 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py`: passed.
+  - `$cache='runs\manual-live\task83-malformed-state-cache-v2'; New-Item -ItemType Directory -Force -Path $cache | Out-Null; Set-Content -Path "$cache\source-circuit-breakers.json" -Value '{not-json' -Encoding UTF8; poetry run airesearcher autopilot --vault runs\manual-live\task83-malformed-state-vault-v2 --cache $cache --output-dir runs\manual-live\autopilot-malformed-source-state-task83-v2 --state runs\manual-live\autopilot-malformed-source-state-task83-v2\scheduler-state.json --project-id task83_malformed_state_v2 --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real CLI gate run. It printed `[BLOCKED] source_preflight: blocked`, wrote `runs/manual-live/autopilot-malformed-source-state-task83-v2/cycle-20260613T024745Z/cycle-summary.json`, recorded `state_error` for Semantic Scholar and OpenAlex, skipped review, and queued one Obsidian issue follow-up.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 380 tests passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260613-021` for malformed source cooldown state failing open.
+  - Updated `P-20260613-020` to note that task `83.1` completed the malformed-state fail-closed follow-up.
+- Follow-up:
+  - Consider atomic writes or file locking for source cooldown state if concurrent deployments share one cache root.
+
 ### 2026-06-13 10:42:11 +08:00 - Codex - Task 82.1 source cooldown preflight gate
 
 - Request: Continue strict innovation and evidence governance by adopting the useful part of SCALE-style physical gates without copying the heavy full lifecycle.

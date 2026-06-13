@@ -2156,7 +2156,7 @@ def _run_source_preflight_gate(
     blocked_sources = [
         str(check["source"])
         for check in checks
-        if str(check["status"]) == "cooling_down"
+        if str(check["status"]) in {"cooling_down", "state_error"}
     ]
     blocked = bool(blocked_sources)
     report: dict[str, Any] = {
@@ -2193,7 +2193,17 @@ def _source_preflight_check(source: str, client: LiteratureSearchClient) -> dict
             "state_path": None,
             "message": "No persisted rate-limit circuit is active for this source.",
         }
-    state_path = _path_text(getattr(breaker, "state_path", None))
+    raw_state_path = getattr(breaker, "state_path", None)
+    state_path = _path_text(raw_state_path)
+    state_error = _source_state_file_error(raw_state_path)
+    if state_error is not None:
+        return {
+            "source": source,
+            "status": "state_error",
+            "remaining_seconds": 0.0,
+            "state_path": state_path,
+            "message": f"Persisted source cooldown state is unreadable: {state_error}",
+        }
     remaining_seconds = 0.0
     remaining = getattr(breaker, "remaining_seconds", None)
     if callable(remaining):
@@ -2225,8 +2235,11 @@ def _write_source_preflight_issue(
     source_lines = [
         f"- `{check['source']}`: {check['message']}"
         for check in report["checks"]
-        if str(check["status"]) == "cooling_down"
+        if str(check["status"]) in {"cooling_down", "state_error"}
     ]
+    related_task_ids = ["82.1"]
+    if any(str(check["status"]) == "state_error" for check in report["checks"]):
+        related_task_ids.append("83.1")
     body = "\n".join(
         [
             "# Source Preflight Blocker",
@@ -2240,7 +2253,7 @@ def _write_source_preflight_issue(
             "",
             "## Reason",
             "",
-            "The cycle was stopped before literature refresh, experiment execution, live review, and paper build because at least one required online source still has an active persisted rate-limit cooldown.",
+            "The cycle was stopped before literature refresh, experiment execution, live review, and paper build because at least one required online source has an active persisted rate-limit cooldown or an unreadable cooldown state file.",
             "",
             "## Source Status",
             "",
@@ -2248,7 +2261,7 @@ def _write_source_preflight_issue(
             "",
             "## Next Action",
             "",
-            "Wait for the cooldown to expire, configure an appropriate source API key if available, or reduce/schedule source usage before rerunning publication-level novelty checks.",
+            "Wait for the cooldown to expire, fix or remove malformed cooldown state, configure an appropriate source API key if available, or reduce/schedule source usage before rerunning publication-level novelty checks.",
         ]
     )
     entry = KnowledgeEntry(
@@ -2260,7 +2273,7 @@ def _write_source_preflight_issue(
         tags=["open", "source-preflight", "rate-limit", "evidence-gate"],
         keywords=["source-preflight", "rate-limit", *blocked_sources],
         source_refs=[str(report["output_path"]), str(report["markdown_path"])],
-        related_task_ids=["82.1"],
+        related_task_ids=related_task_ids,
         related_run_ids=[cycle_id],
         body=body,
     )
@@ -2271,6 +2284,26 @@ def _source_preflight_slug(sources: list[str]) -> str:
     if not sources:
         return "none"
     return "-".join(source.replace("_", "-") for source in sorted(sources))
+
+
+def _source_state_file_error(path_value: object) -> str | None:
+    if path_value is None:
+        return None
+    if not isinstance(path_value, str | Path):
+        return "state path is not a filesystem path"
+    path = Path(path_value)
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return str(exc)
+    if not isinstance(payload, dict):
+        return "state file must contain a JSON object"
+    for key, value in payload.items():
+        if not isinstance(value, int | float):
+            return f"state entry {key!r} must be a numeric epoch timestamp"
+    return None
 
 
 def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
@@ -2295,7 +2328,7 @@ def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
             "",
             "## Policy",
             "",
-            "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window.",
+            "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window or its cooldown state cannot be verified.",
             "",
         ]
     )
