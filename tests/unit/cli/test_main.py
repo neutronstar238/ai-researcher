@@ -122,7 +122,36 @@ def test_skill_evolve_creates_bounded_candidate_from_issue_ref(tmp_path: Path) -
     assert result.exit_code == 0, result.output
     assert "[OK] candidate_skill_id:" in result.stdout
     assert "[OK] rejected_edit_buffer:" in result.stdout
-    assert list((vault_root / "exploration" / "skills" / "candidates").glob("*.md"))
+    candidate_paths = list((vault_root / "exploration" / "skills" / "candidates").glob("*.md"))
+    assert candidate_paths
+
+    audit_output = tmp_path / "runs" / "skill-polish.json"
+    audit_result = CliRunner().invoke(
+        app,
+        [
+            "skill-polish-audit",
+            "--vault",
+            str(vault_root),
+            "--skill-id",
+            candidate_paths[0].stem,
+            "--peer-ref",
+            "https://github.com/LearnPrompt/luban-skill",
+            "--live-evidence-ref",
+            "runs/skill-polish/demo-validation.json",
+            "--install-ref",
+            ".opencode/skills/ai-researcher-evidence-gate/SKILL.md",
+            "--release-ref",
+            "autoresearch-vault/exploration/skills/rejected/demo_rejections.md",
+            "--output",
+            str(audit_output),
+        ],
+    )
+
+    assert audit_result.exit_code == 0, audit_result.output
+    assert "[OK] skill_polish_audit: passed" in audit_result.stdout
+    payload = json.loads(audit_output.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert (tmp_path / "runs" / "skill-polish.md").is_file()
 
 
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
@@ -270,6 +299,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
+    assert (commands_dir / "research" / "skill-polish-audit.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "evidence-gate.toml").is_file()
     assert (commands_dir / "research" / "session-claim.toml").is_file()
@@ -284,6 +314,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
+    assert "/research:skill-polish-audit" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
     assert "/research:evidence-gate" in list_result.stdout
     assert "/research:session-claim" in list_result.stdout
@@ -300,6 +331,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher publication-audit" in (
         commands_dir / "research" / "publication-audit.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher skill-polish-audit" in (
+        commands_dir / "research" / "skill-polish-audit.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher channels openclaw init" in (
         commands_dir / "research" / "openclaw-channels.toml"

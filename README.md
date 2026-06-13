@@ -69,6 +69,7 @@ AI-Researcher is designed as an evidence-first system rather than a clone of any
 - Long-horizon auto-research roadmaps and surveys such as [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) for evaluation pressure around hallucination, novelty checks, and reproducible artifacts.
 - [Horizon](https://github.com/Thysrael/Horizon) and daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled source discovery, scoring, digest, and delivery patterns.
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.
+- [Luban Skill](https://github.com/LearnPrompt/luban-skill) for the skill-polishing discipline of challenging a skill's premise, benchmarking peers, measuring real artifacts, keeping bounded edits, and preserving a follow-up loop. AI-Researcher implements this as a deterministic Obsidian `skill-polish-audit` gate rather than copying Luban's skill content.
 - [OpenClaw](https://github.com/openclaw/openclaw) for the operator experience of a self-hosted assistant that is configured once and then runs as an always-on local service.
 - [OpenCode](https://github.com/anomalyco/opencode) as the preferred direct external code-generation backend because it exposes non-interactive `run`, headless `serve`, ACP, permissions, project commands, and project skills. OpenCode may draft changes, but AI-Researcher keeps validation, dangerous-command approval, merge, rollback, and Obsidian logging authority.
 - [cc-switch](https://github.com/farion1231/cc-switch) for provider/profile management across coding CLIs. AI-Researcher keeps it as an optional legacy/bridge path for Claude Code provider routing when direct OpenCode integration is not the desired backend.
@@ -229,6 +230,19 @@ poetry run airesearcher skill-evolve \
 ```
 
 This is SkillOpt-inspired but conservative: it writes a candidate skill card and rejected-edit buffer under the Obsidian vault. It does not overwrite or promote the parent skill; promotion still needs held-out validation and human review.
+
+Before promotion or public release, run the Luban-inspired skill polish gate:
+
+```bash
+poetry run airesearcher skill-polish-audit \
+  --skill-id <candidate_skill_id> \
+  --peer-ref https://github.com/LearnPrompt/luban-skill \
+  --live-evidence-ref runs/skill-polish/demo-validation.json \
+  --install-ref .opencode/skills/ai-researcher-evidence-gate/SKILL.md \
+  --release-ref autoresearch-vault/exploration/skills/rejected/demo_rejections.md
+```
+
+The audit blocks promotion when a skill lacks peer positioning, real validation evidence, rollback/rejected-edit boundaries, an installable or shareable asset reference, or a follow-up observation loop.
 
 Online discovery commands:
 

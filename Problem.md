@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-033 - Local shell lacks `gh` for CI polling
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-06-13 13:56:00 +08:00
+- Source: CI verification after pushing task `97.1` and before task `98.1`.
+- Symptom: `gh run list --limit 5 --json databaseId,headSha,status,conclusion,workflowName,url,createdAt` failed because `gh` was not recognized in the active PowerShell session.
+- Impact: Local verification cannot rely on GitHub CLI for CI status in this shell, but CI can still be checked through the public GitHub Actions REST API.
+- Evidence: PowerShell returned `CommandNotFoundException` for `gh`.
+- Root cause: GitHub CLI is not installed or not on PATH in the current environment.
+- Workaround: Use `Invoke-RestMethod https://api.github.com/repos/neutronstar238/ai-researcher/actions/runs?...` to inspect Actions runs.
+- Next action: Install GitHub CLI or keep the REST API fallback in future CI checks.
+- Linked tasks: `97.1`, `98.1`
+- Resolution: Mitigated with the REST API fallback.
+- Verification: `Invoke-RestMethod -Uri "https://api.github.com/repos/neutronstar238/ai-researcher/actions/runs?branch=main&per_page=3" | ConvertTo-Json -Depth 6` returned run `27458374281` for commit `7038f4b7de4b263899d398b729ae0fea6eac57fa`.
+
 ### P-20260613-032 - Local environment lacks OpenCode CLI for live code-agent execution smoke
 
 - Status: Mitigated

@@ -54,6 +54,7 @@ Target version: `0.1.0`.
 - Run records now include reproduction command, Python version, dependency lock status, commit, config hash, and data hash as evidence for generated report claims.
 - `airesearcher skill-evolve` for creating SkillOpt-inspired bounded skill evolution candidates with issue/failure evidence refs, validation gates, rollback target, and rejected-edit buffer.
 - `/research:skill-evolve` slash command template for evidence-linked skill evolution candidates.
+- `airesearcher skill-polish-audit` and `/research:skill-polish-audit` for a Luban-inspired promotion gate over Obsidian skill cards, requiring peer positioning, live validation evidence, bounded edit/rollback records, installable/shareable asset refs, and follow-up observation refs.
 - `airesearcher serve` always-on runtime entry point with local dangerous-action approval queue.
 - `airesearcher runtime list` and `airesearcher runtime approve` for inspecting and approving pending runtime actions from local terminals or future chat-channel adapters.
 - `airesearcher channels openclaw init|list` for repository-tracked OpenClaw communication channel mount metadata.

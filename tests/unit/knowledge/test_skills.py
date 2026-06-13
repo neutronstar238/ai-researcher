@@ -9,6 +9,7 @@ from autoresearch.knowledge import (
     MarkdownKnowledgeStore,
     SkillRetrievalQuery,
     SuccessfulPatternExample,
+    audit_skill_polish_candidate,
     create_skill_evolution_candidate,
     extract_reusable_skill_card,
     retrieve_relevant_skills,
@@ -271,6 +272,77 @@ def test_create_skill_evolution_candidate_requires_evidence_and_validation(
             issue_refs=("projects/project_a/issues/issue",),
             proposed_actions=("do something",),
             validation_checks=(),
+        )
+
+
+def test_audit_skill_polish_candidate_passes_with_luban_style_evidence(
+    tmp_path: Path,
+) -> None:
+    parent = _write_baseline_skill(tmp_path)
+    candidate = create_skill_evolution_candidate(
+        vault_root=tmp_path,
+        parent_skill_id=parent.skill_id,
+        change_summary="Add held-out validation and peer positioning before promotion.",
+        issue_refs=("projects/project_a/issues/skill_missing_peer_positioning",),
+        proposed_actions=("compare peer skills before promotion",),
+        validation_checks=("held-out validation report passes",),
+    )
+
+    report = audit_skill_polish_candidate(
+        vault_root=tmp_path,
+        skill_id=candidate.candidate_skill_id,
+        peer_refs=("https://github.com/LearnPrompt/luban-skill",),
+        live_evidence_refs=("runs/skill-polish/demo-validation.json",),
+        install_refs=(".opencode/skills/ai-researcher-evidence-gate/SKILL.md",),
+        release_refs=("autoresearch-vault/exploration/skills/rejected/demo_rejections.md",),
+    )
+
+    assert report.passed
+    assert report.score_ratio == 1.0
+    assert {check.check_id for check in report.checks} == {
+        "material_challenge",
+        "peer_positioning",
+        "measurement_gate",
+        "bounded_edit",
+        "installable_asset",
+        "furnace_loop",
+    }
+    assert "LearnPrompt/luban-skill" in report.to_json_dict()["reference"]
+    assert "Skill polish audit" in report.to_markdown()
+
+
+def test_audit_skill_polish_candidate_blocks_missing_public_evidence(
+    tmp_path: Path,
+) -> None:
+    parent = _write_baseline_skill(tmp_path)
+    candidate = create_skill_evolution_candidate(
+        vault_root=tmp_path,
+        parent_skill_id=parent.skill_id,
+        change_summary="Add held-out validation and peer positioning before promotion.",
+        issue_refs=("projects/project_a/issues/skill_missing_peer_positioning",),
+        proposed_actions=("compare peer skills before promotion",),
+        validation_checks=("held-out validation report passes",),
+    )
+
+    report = audit_skill_polish_candidate(
+        vault_root=tmp_path,
+        skill_id=candidate.candidate_skill_id,
+        live_evidence_refs=("runs/skill-polish/demo-validation.json",),
+    )
+
+    assert not report.passed
+    failed = {check.check_id for check in report.checks if not check.passed}
+    assert {"peer_positioning", "installable_asset", "furnace_loop"}.issubset(failed)
+
+
+def test_audit_skill_polish_candidate_rejects_invalid_score(tmp_path: Path) -> None:
+    parent = _write_baseline_skill(tmp_path)
+
+    with pytest.raises(ValueError, match="min_score"):
+        audit_skill_polish_candidate(
+            vault_root=tmp_path,
+            skill_id=parent.skill_id,
+            min_score=1.5,
         )
 
 

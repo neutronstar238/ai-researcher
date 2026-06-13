@@ -28,6 +28,7 @@ AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸
 - [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) 等长程自动科研路线图：强调幻觉、创新性检验、可复现产物和评估压力。
 - [Horizon](https://github.com/Thysrael/Horizon) 和 [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日更新项目：启发定时联网抓取、来源评分、摘要分发和论文更新机制。
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。
+- [Luban Skill](https://github.com/LearnPrompt/luban-skill)：启发 skill 打磨流程：先挑战前提、再联网对标、用真实产物过尺、保持有界编辑、最后留下回炉观察。AI-Researcher 把它实现为确定性的 Obsidian `skill-polish-audit` 门禁，而不是复制 Luban 的 skill 内容。
 - [OpenClaw](https://github.com/openclaw/openclaw)：启发“配置一次、本地常驻”的操作者体验。
 - [OpenCode](https://github.com/anomalyco/opencode)：作为优先的直接外部代码生成后端参考，因为它提供非交互 `run`、常驻 `serve`、ACP、权限、项目 commands 和项目 skills。OpenCode 可以起草改动，但验证、危险命令审批、合并、回滚和 Obsidian 记录仍由 AI-Researcher 掌握。
 - [cc-switch](https://github.com/farion1231/cc-switch)：启发跨代码 CLI 的 provider/profile 管理。AI-Researcher 只把它保留为可选的遗留/桥接路径，用于确实需要 Claude Code 通过 cc-switch 做 provider 路由的场景。
@@ -168,6 +169,19 @@ poetry run airesearcher skill-evolve \
 ```
 
 这一步受 SkillOpt 启发，但实现上保持保守：它只会在 Obsidian vault 中写入候选 skill card 和 rejected-edit buffer，不会覆盖或提升父 skill。真正 promotion 仍需要 held-out validation 和人工审阅。
+
+promotion 或公开发布前，还要跑 Luban-inspired skill polish gate：
+
+```bash
+poetry run airesearcher skill-polish-audit \
+  --skill-id <candidate_skill_id> \
+  --peer-ref https://github.com/LearnPrompt/luban-skill \
+  --live-evidence-ref runs/skill-polish/demo-validation.json \
+  --install-ref .opencode/skills/ai-researcher-evidence-gate/SKILL.md \
+  --release-ref autoresearch-vault/exploration/skills/rejected/demo_rejections.md
+```
+
+如果 skill 缺少同类对标、真实验证证据、rollback/rejected-edit 边界、可安装或可传播资产引用，或下一轮回炉观察记录，该 audit 会阻断 promotion。
 
 联网发现命令：
 

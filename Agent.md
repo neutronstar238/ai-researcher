@@ -62,6 +62,49 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 14:02:03 +08:00 - Codex - Task 98.1 Luban skill polish audit
+
+- Request: Evaluate whether `github.com/LearnPrompt/luban-skill` can be integrated into AI-Researcher and continue strengthening self-updating/self-evolving skills.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-98-1-luban-skill-polish-audit.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Reviewed `LearnPrompt/luban-skill` as a MIT-licensed methodology reference for turning skills into installable, verifiable, shareable, and evolvable assets.
+  - Added deterministic `SkillPolishReport` and `audit_skill_polish_candidate` checks for material challenge evidence, peer positioning, measurement evidence, bounded edit discipline, installable/shareable assets, and follow-up observation loops.
+  - Added `airesearcher skill-polish-audit` and `/research:skill-polish-audit`, writing JSON and Markdown reports and blocking promotion by default when checks fail.
+  - Updated README, Chinese README, changelog, third-party notices, compliance tests, task plan, and Obsidian progress memory.
+  - Did not copy Luban skill text, examples, assets, plugin manifests, screenshots, or generated reports.
+- Verification:
+  - Web review: `https://github.com/LearnPrompt/luban-skill` is public, GitHub reports MIT license, README describes the five-action workflow, install path, evidence/validation claims, safety boundaries, and file structure.
+  - Focused tests: `poetry run pytest tests\unit\knowledge\test_skills.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py -q` passed with 51 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\knowledge\skills.py src\autoresearch\knowledge\__init__.py src\autoresearch\cli\main.py tests\unit\knowledge\test_skills.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\knowledge\skills.py src\autoresearch\knowledge\__init__.py src\autoresearch\cli\main.py` passed.
+  - Real local skill parent generation: a temporary Obsidian vault under `runs\manual-live\task98-luban-vault` was populated from task `95.1` and `96.1` evidence using `extract_reusable_skill_card`.
+  - Real CLI candidate generation: `poetry run airesearcher skill-evolve --vault runs\manual-live\task98-luban-vault --parent-skill-id skill_promotion_gate_before_claims --change-summary "Require Luban-style peer positioning and installable asset evidence before promoting a skill candidate." --issue-ref projects/ai_researcher_system/issues/P-20260613-033 --failure-ref projects/ai_researcher_system/issues/P-20260613-031 --proposed-action "record comparable skill references before promotion" --proposed-action "require live validation artifacts and a rejected-edit buffer" --validation-check "skill-polish-audit passes with peer, live evidence, install, and release refs"` passed and wrote candidate `skill_promotion_gate_before_claims_candidate_3c05134e`.
+  - Real skill polish audit: `poetry run airesearcher skill-polish-audit --vault runs\manual-live\task98-luban-vault --skill-id skill_promotion_gate_before_claims_candidate_3c05134e --peer-ref https://github.com/LearnPrompt/luban-skill --peer-ref https://github.com/microsoft/SkillOpt --live-evidence-ref runs/manual-live/task98-luban-vault/exploration/skills/candidates/skill_promotion_gate_before_claims_candidate_3c05134e.md --install-ref .opencode/skills/ai-researcher-evidence-gate/SKILL.md --release-ref runs/manual-live/task98-luban-vault/exploration/skills/rejected/skill_promotion_gate_before_claims_candidate_3c05134e_rejections.md --output runs\manual-live\task98-skill-polish\skill-polish-audit.json` passed with `score=60.0/60.0`.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed with no issues in 96 source files.
+  - Text checks: `rg -n "skill-polish-audit|LearnPrompt/luban-skill|SkillPolishReport|audit_skill_polish_candidate|98\.1|P-20260613-033|Luban" ...` confirmed source, tests, docs, notices, task plan, problem log, generated report, and vault note.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 408 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+- Problems:
+  - `P-20260613-033` added and mitigated.
+- Follow-up:
+  - Wire `skill-polish-audit` into an eventual promotion command so candidate skills cannot be promoted by an always-on loop unless this gate passes.
+  - Continue broadening inspiration/source discovery beyond academic APIs to news, forums, and Hugging Face datasets with source-quality gates.
+
 ### 2026-06-13 13:53:14 +08:00 - Codex - Task 97.1 OpenCode code-agent contract
 
 - Request: Replace the cc CLI / cc-switch-first code-agent plan with a direct OpenCode integration boundary while keeping AI-Researcher as the validator and release owner.

@@ -105,6 +105,94 @@ class SkillEvolutionCandidate:
 
 
 @dataclass(frozen=True)
+class SkillPolishCheck:
+    """One deterministic skill-polish gate check."""
+
+    check_id: str
+    label: str
+    passed: bool
+    score: float
+    max_score: float
+    evidence: tuple[str, ...]
+    missing: tuple[str, ...]
+
+    def to_json_dict(self) -> dict[str, object]:
+        """Return a stable JSON-serialisable representation."""
+
+        return {
+            "check_id": self.check_id,
+            "label": self.label,
+            "passed": self.passed,
+            "score": self.score,
+            "max_score": self.max_score,
+            "evidence": list(self.evidence),
+            "missing": list(self.missing),
+        }
+
+
+@dataclass(frozen=True)
+class SkillPolishReport:
+    """Luban-inspired skill-polish audit report for a skill card."""
+
+    skill_id: str
+    relative_path: str
+    min_score: float
+    score: float
+    max_score: float
+    score_ratio: float
+    passed: bool
+    checks: tuple[SkillPolishCheck, ...]
+    reference: str = "LearnPrompt/luban-skill methodology reference only"
+
+    def to_json_dict(self) -> dict[str, object]:
+        """Return a stable JSON-serialisable representation."""
+
+        return {
+            "skill_id": self.skill_id,
+            "relative_path": self.relative_path,
+            "min_score": self.min_score,
+            "score": self.score,
+            "max_score": self.max_score,
+            "score_ratio": self.score_ratio,
+            "passed": self.passed,
+            "reference": self.reference,
+            "checks": [check.to_json_dict() for check in self.checks],
+        }
+
+    def to_markdown(self) -> str:
+        """Render the report as Obsidian-friendly Markdown."""
+
+        status = "pass" if self.passed else "blocked"
+        lines = [
+            f"# Skill polish audit - {self.skill_id}",
+            "",
+            f"- Skill path: [[{self.relative_path.removesuffix('.md')}|{self.skill_id}]]",
+            f"- Status: `{status}`",
+            f"- Score: `{self.score:.1f}/{self.max_score:.1f}`",
+            f"- Minimum ratio: `{self.min_score:.2f}`",
+            f"- Score ratio: `{self.score_ratio:.2f}`",
+            f"- Reference: `{self.reference}`",
+            "",
+            "## Checks",
+            "",
+        ]
+        for check in self.checks:
+            check_status = "pass" if check.passed else "fail"
+            lines.extend(
+                [
+                    f"### {check.label}",
+                    "",
+                    f"- Status: `{check_status}`",
+                    f"- Score: `{check.score:.1f}/{check.max_score:.1f}`",
+                    f"- Evidence: {_inline_items(check.evidence)}",
+                    f"- Missing: {_inline_items(check.missing)}",
+                    "",
+                ]
+            )
+        return "\n".join(lines).rstrip() + "\n"
+
+
+@dataclass(frozen=True)
 class _SkillEntryRow:
     relative_path: str
     entry: KnowledgeEntry
@@ -371,6 +459,165 @@ def create_skill_evolution_candidate(
         validation_checks=checks,
         rejected_edit_buffer_path=buffer_path,
     )
+
+
+def audit_skill_polish_candidate(
+    *,
+    vault_root: Path | str,
+    skill_id: str,
+    peer_refs: tuple[str, ...] = (),
+    live_evidence_refs: tuple[str, ...] = (),
+    install_refs: tuple[str, ...] = (),
+    release_refs: tuple[str, ...] = (),
+    min_score: float = 0.8,
+) -> SkillPolishReport:
+    """Audit whether a skill card is ready for promotion or publication."""
+
+    if not 0 <= min_score <= 1:
+        msg = "min_score must be between 0 and 1"
+        raise ValueError(msg)
+    normalized_skill_id = _required_text(skill_id, "skill_id")
+    _validate_skill_id(normalized_skill_id)
+    relative_path, entry = _find_skill_by_id(Path(vault_root), normalized_skill_id)
+
+    body = entry.body
+    source_refs = _ordered_unique(entry.source_refs)
+    validation_checks = _section_bullets(body, "Validation Gate")
+    checks = (
+        _polish_check(
+            check_id="material_challenge",
+            label="1. Material challenge",
+            max_score=10.0,
+            requirements=(
+                ("skill card entry", entry.entry_type is KnowledgeEntryType.SKILL_CARD),
+                ("source evidence refs", bool(source_refs)),
+                (
+                    "issue or failure evidence",
+                    any(_looks_like_issue_or_failure(ref) for ref in source_refs),
+                ),
+            ),
+            evidence=[entry.entry_id, *source_refs],
+        ),
+        _polish_check(
+            check_id="peer_positioning",
+            label="2. Peer positioning",
+            max_score=10.0,
+            requirements=(
+                ("at least one peer reference", bool(peer_refs)),
+                ("peer references include URLs", any(_looks_like_url(ref) for ref in peer_refs)),
+            ),
+            evidence=peer_refs,
+        ),
+        _polish_check(
+            check_id="measurement_gate",
+            label="3. Measurement gate",
+            max_score=10.0,
+            requirements=(
+                ("validation gate section", "## Validation Gate" in body),
+                ("validation checks", bool(validation_checks)),
+                ("live or held-out evidence refs", bool(live_evidence_refs)),
+            ),
+            evidence=[*validation_checks, *live_evidence_refs],
+        ),
+        _polish_check(
+            check_id="bounded_edit",
+            label="4. Bounded edit discipline",
+            max_score=10.0,
+            requirements=(
+                ("bounded edit summary", "## Bounded Edit Summary" in body),
+                ("shadow evaluation status", "shadow_evaluation" in body),
+                ("rollback target", "Rollback target" in body),
+                ("rejected edit buffer", "Rejected edit buffer" in body),
+            ),
+            evidence=[relative_path],
+        ),
+        _polish_check(
+            check_id="installable_asset",
+            label="5. Installable or shareable asset",
+            max_score=10.0,
+            requirements=(
+                ("install or export refs", bool(install_refs)),
+                (
+                    "skill asset path",
+                    relative_path.endswith(".md") and "/skills/" in f"/{relative_path}",
+                ),
+            ),
+            evidence=[relative_path, *install_refs],
+        ),
+        _polish_check(
+            check_id="furnace_loop",
+            label="6. Furnace loop",
+            max_score=10.0,
+            requirements=(
+                ("shadow evaluation notes", "## Shadow Evaluation Notes" in body),
+                ("release or observation refs", bool(release_refs)),
+                ("rejected edit buffer stays linked", "rejected" in body.casefold()),
+            ),
+            evidence=[*release_refs, relative_path],
+        ),
+    )
+    score = sum(check.score for check in checks)
+    max_score = sum(check.max_score for check in checks)
+    ratio = score / max_score if max_score else 0.0
+    passed = ratio >= min_score and all(check.passed for check in checks)
+    return SkillPolishReport(
+        skill_id=normalized_skill_id,
+        relative_path=relative_path,
+        min_score=min_score,
+        score=score,
+        max_score=max_score,
+        score_ratio=ratio,
+        passed=passed,
+        checks=checks,
+    )
+
+
+def _polish_check(
+    *,
+    check_id: str,
+    label: str,
+    max_score: float,
+    requirements: tuple[tuple[str, bool], ...],
+    evidence: Iterable[str],
+) -> SkillPolishCheck:
+    satisfied = [name for name, passed in requirements if passed]
+    missing = [name for name, passed in requirements if not passed]
+    score = max_score * (len(satisfied) / len(requirements)) if requirements else 0.0
+    return SkillPolishCheck(
+        check_id=check_id,
+        label=label,
+        passed=not missing,
+        score=score,
+        max_score=max_score,
+        evidence=_ordered_unique(item for item in evidence if item),
+        missing=tuple(missing),
+    )
+
+
+def _section_bullets(body: str, heading: str) -> tuple[str, ...]:
+    lines = body.splitlines()
+    in_section = False
+    bullets: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped == f"## {heading}":
+            in_section = True
+            continue
+        if in_section and stripped.startswith("## "):
+            break
+        if in_section and stripped.startswith("- "):
+            bullets.append(stripped[2:].strip())
+    return _ordered_unique(bullets)
+
+
+def _looks_like_url(value: str) -> bool:
+    lowered = value.strip().casefold()
+    return lowered.startswith("http://") or lowered.startswith("https://")
+
+
+def _looks_like_issue_or_failure(value: str) -> bool:
+    lowered = value.casefold()
+    return "issue" in lowered or "failure" in lowered or "problem" in lowered
 
 
 def _validate_example(example: SuccessfulPatternExample) -> None:

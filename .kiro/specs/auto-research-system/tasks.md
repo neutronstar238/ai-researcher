@@ -1457,6 +1457,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to replace the cc CLI / cc-switch plan with direct OpenCode integration because the OpenCode ecosystem is more compatible; OpenCode docs for CLI, permissions, and skills._
     - _Verify: web review of OpenCode docs and repository/license metadata, `npm view opencode-ai version license repository --json`, focused OpenCode integration tests, focused CLI/compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, and CI._
 
+- [x] 98. Add Luban-inspired skill polish gate
+  - [x] 98.1 Audit skill candidates before promotion or public release
+    - Review `LearnPrompt/luban-skill`, its MIT license, installation path, five-action workflow, evidence/validation claims, and safety boundaries.
+    - Treat Luban as a methodology reference only; do not copy upstream skill text, examples, assets, plugin manifests, screenshots, or generated reports.
+    - Add a deterministic Obsidian skill-polish audit that checks material challenge evidence, peer positioning, real validation evidence, bounded edit/rollback records, installable/shareable asset refs, and follow-up observation refs.
+    - Add `airesearcher skill-polish-audit` plus `/research:skill-polish-audit` so skill candidates can be blocked before promotion when they lack public-quality evidence.
+    - Update README, Chinese README, changelog, third-party notices, compliance tests, and Obsidian progress memory.
+    - _References: user suggestion to evaluate `github.com/LearnPrompt/luban-skill`; Luban's "material check, peer visit, measurement, slow carving, furnace loop" workflow; SkillOpt task `23.1` and `skill-evolve`._
+    - _Verify: live web review of the Luban repository/license/README, focused skill/CLI/compliance tests, ruff, mypy, full smoke/unit tests, a real generated `skill-polish-audit` report over an Obsidian skill candidate, and CI._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1761,6 +1771,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 64,
       "tasks": ["97.1"]
+    },
+    {
+      "id": 65,
+      "tasks": ["98.1"]
     }
   ]
 }

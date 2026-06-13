@@ -24,6 +24,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "Thysrael/Horizon",
         "UltraClr/agent-arxiv-daily",
         "Microsoft SkillOpt",
+        "LearnPrompt/luban-skill",
         "OpenClaw",
         "farion1231/cc-switch",
         "anomalyco/opencode",

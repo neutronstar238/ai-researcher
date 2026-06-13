@@ -42,6 +42,7 @@ from autoresearch.knowledge import (
     KnowledgeEntryType,
     KnowledgeZone,
     MarkdownKnowledgeStore,
+    audit_skill_polish_candidate,
     create_obsidian_vault_assets,
     create_skill_evolution_candidate,
 )
@@ -189,6 +190,14 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher skill-evolve --parent-skill-id <skill_id> --issue-ref <issue> "
         "--change-summary \"...\" --proposed-action \"...\" --validation-check \"...\"`. "
         "Do not promote the candidate until held-out validation passes.",
+    ),
+    "research/skill-polish-audit.toml": (
+        "Audit whether a skill candidate is ready to promote or publish.",
+        "Run `airesearcher skill-polish-audit --skill-id <candidate_skill_id> "
+        "--peer-ref <url> --live-evidence-ref <artifact> --install-ref <asset> "
+        "--release-ref <observation>`. The Luban-inspired gate blocks promotion when "
+        "the skill lacks peer positioning, real validation evidence, rollback/rejected-edit "
+        "boundaries, installable/shareable assets, or follow-up observation refs.",
     ),
     "research/paper-build.toml": (
         "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
@@ -436,6 +445,83 @@ def skill_evolve(
     typer.echo(f"[OK] parent_skill_id: {candidate.parent_skill_id}")
     typer.echo(f"[OK] validation_checks: {len(candidate.validation_checks)}")
     typer.echo(f"[OK] rejected_edit_buffer: {candidate.rejected_edit_buffer_path}")
+
+
+@app.command("skill-polish-audit")
+def skill_polish_audit(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root containing skill cards."),
+    ] = Path("autoresearch-vault"),
+    skill_id: Annotated[
+        str,
+        typer.Option("--skill-id", help="Skill or candidate skill ID to audit."),
+    ] = "",
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Skill polish JSON report output path."),
+    ] = Path("runs/skill-polish/latest.json"),
+    peer_ref: Annotated[
+        list[str] | None,
+        typer.Option("--peer-ref", help="Peer skill or comparable project URL/ref. Repeat as needed."),
+    ] = None,
+    live_evidence_ref: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--live-evidence-ref",
+            help="Real validation, backtest, or live artifact ref. Repeat as needed.",
+        ),
+    ] = None,
+    install_ref: Annotated[
+        list[str] | None,
+        typer.Option("--install-ref", help="Install/export/shareable asset ref. Repeat as needed."),
+    ] = None,
+    release_ref: Annotated[
+        list[str] | None,
+        typer.Option("--release-ref", help="Release observation or follow-up ref. Repeat as needed."),
+    ] = None,
+    min_score: Annotated[
+        float,
+        typer.Option("--min-score", help="Minimum score ratio between 0 and 1."),
+    ] = 0.8,
+    fail_on_blocked: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-blocked/--no-fail-on-blocked",
+            help="Exit non-zero when the audit blocks promotion.",
+        ),
+    ] = True,
+) -> None:
+    """Run a Luban-inspired polish gate over an Obsidian skill card."""
+
+    try:
+        report = audit_skill_polish_candidate(
+            vault_root=vault,
+            skill_id=skill_id,
+            peer_refs=tuple(peer_ref or ()),
+            live_evidence_refs=tuple(live_evidence_ref or ()),
+            install_refs=tuple(install_ref or ()),
+            release_refs=tuple(release_ref or ()),
+            min_score=min_score,
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] skill_polish_audit: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report.to_json_dict(), indent=2, sort_keys=True), encoding="utf-8")
+    markdown_output = output.with_suffix(".md")
+    markdown_output.write_text(report.to_markdown(), encoding="utf-8")
+    status = "passed" if report.passed else "blocked"
+    typer.echo(f"[OK] skill_polish_audit: {status}")
+    typer.echo(f"[OK] score: {report.score:.1f}/{report.max_score:.1f}")
+    typer.echo(f"[OK] report: {output}")
+    typer.echo(f"[OK] markdown: {markdown_output}")
+    if not report.passed:
+        failed_checks = ", ".join(check.check_id for check in report.checks if not check.passed)
+        typer.echo(f"[FAIL] blocked_checks: {failed_checks}")
+        if fail_on_blocked:
+            raise typer.Exit(1)
 
 
 @app.command("deploy-setup")
