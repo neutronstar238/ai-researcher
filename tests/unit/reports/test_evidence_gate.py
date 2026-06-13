@@ -31,6 +31,8 @@ def test_evidence_gate_passes_when_all_required_artifacts_are_physical(
         "review": "pass",
         "ship": "pass",
     }
+    checks = {check["check_id"]: check["status"] for check in payload["checks"]}
+    assert checks["paper_quality_gate"] == "pass"
 
 
 def test_evidence_gate_blocks_missing_physical_artifact(tmp_path: Path) -> None:
@@ -85,6 +87,26 @@ def test_evidence_gate_blocks_missing_compiled_pdf(tmp_path: Path) -> None:
     checks = {check.check_id: check for check in report.checks}
     assert report.verdict is EvidenceGateVerdict.BLOCKED
     assert checks["paper_pdf_gate"].status.value == "fail"
+
+
+def test_evidence_gate_blocks_failed_paper_quality(tmp_path: Path) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(
+        tmp_path,
+        paper_status="compiled_with_quality_issues",
+        paper_quality_passed=False,
+    )
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["paper_pdf_gate"].status.value == "fail"
+    assert checks["paper_quality_gate"].status.value == "fail"
+    assert "section_depth" in checks["paper_quality_gate"].message
 
 
 def test_evidence_gate_blocks_missing_reproduction_rerun_artifact(
@@ -274,6 +296,7 @@ def _write_gate_cycle(
     *,
     publishable: bool = True,
     paper_status: str = "compiled",
+    paper_quality_passed: bool = True,
 ) -> tuple[Path, Path, Path]:
     cycle_dir = tmp_path / "runs" / "cycle-gate"
     experiment_dir = cycle_dir / "demo" / "benchmark"
@@ -351,13 +374,54 @@ def _write_gate_cycle(
         ),
         encoding="utf-8",
     )
-    if paper_status == "compiled":
+    if paper_status in {"compiled", "compiled_with_quality_issues"}:
         paper_pdf_path.write_text("%PDF-smoke\n", encoding="utf-8")
+    failures = [] if paper_quality_passed else ["page_count", "word_count", "section_depth"]
     paper_build_path.write_text(
         json.dumps(
             {
                 "status": paper_status,
-                "pdf_path": paper_pdf_path.as_posix() if paper_status == "compiled" else None,
+                "pdf_path": (
+                    paper_pdf_path.as_posix()
+                    if paper_status in {"compiled", "compiled_with_quality_issues"}
+                    else None
+                ),
+                "log_path": (paper_dir / "compile.log").as_posix(),
+                "paper_quality": {
+                    "passed": paper_quality_passed,
+                    "page_count": 8 if paper_quality_passed else 3,
+                    "min_pages": 6,
+                    "word_count": 3200 if paper_quality_passed else 900,
+                    "min_word_count": 2500,
+                    "technical_term_count": 18 if paper_quality_passed else 8,
+                    "min_technical_terms": 15,
+                    "section_word_counts": {
+                        "Abstract": 90 if paper_quality_passed else 20,
+                        "Introduction": 240 if paper_quality_passed else 40,
+                        "Related Work": 260 if paper_quality_passed else 30,
+                        "Method": 420 if paper_quality_passed else 50,
+                        "Experiments": 360 if paper_quality_passed else 20,
+                        "Results": 310 if paper_quality_passed else 30,
+                        "Limitations": 130 if paper_quality_passed else 20,
+                        "Conclusion": 130 if paper_quality_passed else 10,
+                    },
+                    "section_min_words": {
+                        "Abstract": 80,
+                        "Introduction": 180,
+                        "Related Work": 220,
+                        "Method": 260,
+                        "Experiments": 260,
+                        "Results": 220,
+                        "Limitations": 120,
+                        "Conclusion": 120,
+                    },
+                    "short_sections": [] if paper_quality_passed else ["Method"],
+                    "overfull_hbox_count": 0 if paper_quality_passed else 3,
+                    "max_overfull_hbox_count": 0,
+                    "max_overfull_hbox_points": 0.0 if paper_quality_passed else 225.4,
+                    "max_allowed_overfull_hbox_points": 0.0,
+                    "failures": failures,
+                },
             }
         ),
         encoding="utf-8",

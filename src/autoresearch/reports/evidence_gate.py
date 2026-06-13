@@ -735,7 +735,48 @@ def _paper_build_checks(
             ),
             None
             if compiled
-            else "Compile the selected LaTeX template to PDF before paper-level release.",
+            else (
+                "Compile the selected LaTeX template to PDF and resolve any paper quality "
+                "issues before paper-level release."
+            ),
+        )
+    )
+    quality = _dict(build_payload.get("paper_quality"))
+    quality_present = bool(quality)
+    quality_passed = quality.get("passed") is True
+    quality_ok = compiled and quality_present and quality_passed
+    quality_status = EvidenceGateCheckStatus.PASS if quality_ok else EvidenceGateCheckStatus.FAIL
+    if not require_paper_build and not quality_ok:
+        quality_status = EvidenceGateCheckStatus.WARNING
+    failures = ", ".join(_text_sequence(quality.get("failures"))) or "none"
+    checks.append(
+        EvidenceGateCheck(
+            "paper_quality_gate",
+            quality_status,
+            severity,
+            (
+                "Paper quality gate "
+                f"present={str(quality_present).lower()}, "
+                f"passed={str(quality_passed).lower()}, "
+                f"pages={quality.get('page_count', 'missing')}/"
+                f"{quality.get('min_pages', 'missing')}, "
+                f"words={quality.get('word_count', 'missing')}/"
+                f"{quality.get('min_word_count', 'missing')}, "
+                f"overfull_hbox={quality.get('overfull_hbox_count', 'missing')}/"
+                f"{quality.get('max_overfull_hbox_count', 'missing')}, "
+                f"failures={failures}."
+            ),
+            (
+                build_path.as_posix() if build_path is not None else "paper_build_path",
+                pdf_path.as_posix() if pdf_path is not None else "missing_pdf_path",
+                _path_text(build_payload.get("log_path")) or "missing_log_path",
+            ),
+            None
+            if quality_ok
+            else (
+                "Expand the manuscript, add evidence-backed technical detail, and fix LaTeX "
+                "layout overflow before claiming paper-ready output."
+            ),
         )
     )
     return checks
@@ -885,7 +926,7 @@ def _markdown(report: EvidenceGateReport) -> str:
         "- No release without a physical define -> plan -> build -> verify -> review -> ship trace.",
         "- No release without a fresh command-line reproduction rerun.",
         "- No paper-ready claim without a passing publication audit.",
-        "- No paper-level artifact claim without a compiled LaTeX PDF.",
+        "- No paper-level artifact claim without a compiled LaTeX PDF and passing paper quality gate.",
         "- Failed gates are blockers, not suggestions.",
         "",
         "## Lifecycle Trace",

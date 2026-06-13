@@ -1436,6 +1436,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement to optimize online search prompts, task `86.1`, task `87.1`, task `88.1`, and the real task 95 baseline cycle with 36 unknown similarity findings._
     - _Verify: focused similarity tests, ruff, mypy, full smoke/unit tests, and a real autopilot cycle showing structured queries in the similarity summary, 57 source-backed findings, 1 evidence-classified finding, and continued publication blocking because classified breadth is still below target._
 
+- [x] 96. Harden LaTeX paper artifact quality gates
+  - [x] 96.1 Add page-count, technical-depth, and layout-overflow checks
+    - Add deterministic `paper_quality` output to `paper-build.json` and `paper-build.md`.
+    - Require a minimum PDF page count, total manuscript word count, technical term coverage, and per-section word depth before a compiled paper can remain status `compiled`.
+    - Parse LaTeX compile logs for `Overfull \hbox` warnings and treat layout overflow as a paper-readiness blocker.
+    - Downgrade successfully compiled but thin or overflowing PDFs to `compiled_with_quality_issues` instead of allowing "PDF exists" to imply paper-ready output.
+    - Add `paper_quality_gate` to `evidence-gate` so paper-level release claims require both a compiled PDF and passing paper-quality evidence.
+    - _References: user review that the generated LaTeX paper had too few pages, insufficient technical detail, and visible layout overflow; task `89.1` SCALE-lite physical gate; task `95.1` real autopilot paper-build artifact._
+    - _Verify: focused paper-build/evidence-gate tests, ruff, mypy, full smoke/unit tests, a real `paper-build` rerun over the task `95.1` report showing `compiled_with_quality_issues`, and a real `evidence-gate` rerun showing `paper_quality_gate=fail`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1732,6 +1742,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 62,
       "tasks": ["95.1"]
+    },
+    {
+      "id": 63,
+      "tasks": ["96.1"]
     }
   ]
 }

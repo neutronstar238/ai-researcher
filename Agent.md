@@ -62,6 +62,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 13:39:40 +08:00 - Codex - Task 96.1 paper build quality gate
+
+- Request: Continue after user review that the generated LaTeX paper was too short, technically shallow, and visibly overflowed layout boundaries.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-96-1-paper-build-quality-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_paper_build.py`
+- Summary:
+  - Added deterministic `paper_quality` output to `paper-build.json` and `paper-build.md`.
+  - Added page count, manuscript word count, technical term coverage, per-section word-depth checks, and LaTeX `Overfull \hbox` parsing.
+  - Downgraded thin or overflowing compiled PDFs to `compiled_with_quality_issues`.
+  - Added CLI paper-quality output and `paper_quality_gate` to `evidence-gate`.
+  - Updated bilingual README, changelog, task plan, problem log, and Obsidian progress memory.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\reports\test_paper_build.py tests\unit\reports\test_evidence_gate.py -q` passed with 13 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\paper_build.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\__init__.py tests\unit\reports\test_paper_build.py tests\unit\reports\test_evidence_gate.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\paper_build.py src\autoresearch\reports\evidence_gate.py` passed.
+  - Real paper-build: `poetry run airesearcher paper-build runs\manual-live\autopilot-task95-structured-queries\cycle-20260613T044908Z\demo\pendigits-variance-calibrated-prototypes\report\report.md --output-dir runs\manual-live\paper-build-task96-quality --vault runs\manual-live\task96-paper-vault --project-id task96_paper_quality --no-fail-on-not-compiled` exited 0 and wrote `status=compiled_with_quality_issues`, `pages=3/6`, `words=314/2500`, `overfull_hbox=11/0`.
+  - Real evidence gate: `poetry run airesearcher evidence-gate runs\manual-live\autopilot-task95-structured-queries\cycle-20260613T044908Z\cycle-summary.json --publication-audit runs\manual-live\autopilot-task95-structured-queries\cycle-20260613T044908Z\publication-audit.json --paper-build-json runs\manual-live\paper-build-task96-quality\paper-build.json --output-dir runs\manual-live\evidence-gate-task96-paper-quality --vault runs\manual-live\task96-evidence-vault --project-id task96_paper_quality --no-fail-on-blocked` exited 0 and wrote `release_allowed=false`, `paper_pdf_gate=fail`, and `paper_quality_gate=fail`.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed with no issues in 95 source files.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 399 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+- Problems:
+  - `P-20260613-031` added and resolved.
+- Follow-up:
+  - Improve the manuscript generator so future papers add enough evidence-backed technical detail and layout-safe LaTeX structure, not merely fail the new gate. Next implementation tasks should address opencode integration, broader web/Hugging Face inspiration search, and skills self-evolution validation separately.
+
 ### 2026-06-13 12:50:49 +08:00 - Codex - Task 95.1 structured similarity queries
 
 - Request: Continue strict innovation gatekeeping by improving real online similarity-search prompts instead of weakening publication-readiness blockers.

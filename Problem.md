@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-031 - Compiled LaTeX PDFs could pass despite thin content and layout overflow
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 13:36:00 +08:00
+- Source: User review of the generated LaTeX paper artifact after the real task `95.1` autopilot cycle.
+- Symptom: `paper-build.json` reported `status=compiled` as soon as LaTeX produced a PDF, even when the manuscript was only 3 pages, all core sections were shallow, and the compile log contained visible `Overfull \hbox` layout warnings.
+- Impact: A paper-level release gate could mistake a syntactically compiled PDF for a technically adequate manuscript, weakening the CCF-B/Q3-style output-quality bar.
+- Evidence: Real artifact `runs/manual-live/autopilot-task95-structured-queries/cycle-20260613T044908Z/paper-build/main.pdf` had `Pages: 3`; its compile log contained overfull boxes up to `225.47295pt`. After task `96.1`, rerun artifact `runs/manual-live/paper-build-task96-quality/paper-build.json` records `status=compiled_with_quality_issues`, `page_count=3/6`, `word_count=314/2500`, `overfull_hbox_count=11/0`, and failures `page_count`, `word_count`, `section_depth`, `layout_overflow`.
+- Root cause: The original paper build gate checked required sections and LaTeX process success, but did not inspect PDF page count, manuscript depth, or LaTeX layout warnings.
+- Workaround: None needed after task `96.1`.
+- Next action: Expand the manuscript generator itself so future cycles can produce longer evidence-backed technical sections, not merely fail the quality gate.
+- Linked tasks: `96.1`
+- Resolution: Added deterministic `paper_quality` reporting to `paper-build`, downgraded thin/overflowing compiled PDFs to `compiled_with_quality_issues`, and added `paper_quality_gate` to `evidence-gate`.
+- Verification: Focused paper-build/evidence-gate tests, focused ruff, and focused mypy passed. Real `paper-build` over the task `95.1` report exited 0 with `--no-fail-on-not-compiled`, wrote `compiled_with_quality_issues`, and exposed page/word/section/layout failures. Real `evidence-gate` over the same cycle and new paper-build JSON exited 0 with `--no-fail-on-blocked`, wrote `release_allowed=false`, and reported `paper_quality_gate=fail`.
+
 ### P-20260613-030 - Real publication cycle still lacks enough classified similar-work evidence
 
 - Status: Mitigated

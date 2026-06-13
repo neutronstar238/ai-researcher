@@ -1114,6 +1114,17 @@ def paper_build(
     typer.echo(f"[OK] pdf: {artifact.pdf_path or 'none'}")
     typer.echo(f"[OK] report: {artifact.markdown_path}")
     typer.echo(f"[OK] json: {artifact.json_path}")
+    quality = getattr(artifact, "quality", None)
+    if quality is not None:
+        typer.echo(
+            "[OK] paper_quality: "
+            f"passed={str(quality.passed).lower()}, "
+            f"pages={quality.page_count or 'unknown'}/{quality.min_pages}, "
+            f"words={quality.word_count}/{quality.min_word_count}, "
+            f"overfull_hbox={quality.overfull_hbox_count}/{quality.max_overfull_hbox_count}"
+        )
+        if not quality.passed:
+            typer.echo("[FAIL] paper_quality: " + ", ".join(quality.failures), err=True)
     if artifact.vault_markdown_path:
         typer.echo(f"[OK] vault_paper: {artifact.vault_markdown_path}")
     if artifact.missing_sections:

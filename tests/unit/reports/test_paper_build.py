@@ -58,6 +58,9 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     assert artifact.status is LatexPaperBuildStatus.RENDERED
     assert artifact.reason == "compile_pdf disabled"
     assert artifact.missing_sections == ()
+    assert artifact.quality.passed is False
+    assert "page_count" in artifact.quality.failures
+    assert "word_count" in artifact.quality.failures
     assert artifact.tex_path is not None
     tex = Path(artifact.tex_path).read_text(encoding="utf-8")
     assert r"\title{Evidence-Bound Demo Paper}" in tex
@@ -65,7 +68,8 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     assert r"\section{References}" in tex
     assert artifact.vault_markdown_path is not None
     vault_summary = Path(artifact.vault_markdown_path).read_text(encoding="utf-8")
-    assert "The paper-level artifact is the compiled LaTeX PDF" in vault_summary
+    assert "release-ready only when status is `compiled`" in vault_summary
+    assert "Thin manuscripts" in vault_summary
 
 
 def test_build_latex_paper_from_markdown_blocks_missing_sections(
@@ -90,6 +94,9 @@ def test_build_latex_paper_from_markdown_compiles_pdf(tmp_path: Path) -> None:
 
     artifact = build_latex_paper_from_markdown(source, tmp_path / "paper")
 
-    assert artifact.status is LatexPaperBuildStatus.COMPILED
+    assert artifact.status is LatexPaperBuildStatus.COMPILED_WITH_QUALITY_ISSUES
     assert artifact.pdf_path is not None
     assert Path(artifact.pdf_path).is_file()
+    assert artifact.quality.passed is False
+    assert "page_count" in artifact.quality.failures
+    assert "word_count" in artifact.quality.failures

@@ -70,6 +70,7 @@ from .lint import (
 from .paper_build import (
     LatexPaperBuildArtifact,
     LatexPaperBuildStatus,
+    LatexPaperQualityReport,
     build_latex_paper_from_markdown,
 )
 from .publication_audit import (
@@ -136,6 +137,7 @@ __all__ = [
     "LatexTemplateSpec",
     "LatexPaperBuildArtifact",
     "LatexPaperBuildStatus",
+    "LatexPaperQualityReport",
     "MetricsTableArtifact",
     "MetricsTableInput",
     "PaperDraftVersion",

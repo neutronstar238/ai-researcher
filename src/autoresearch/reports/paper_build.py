@@ -30,17 +30,97 @@ REQUIRED_PAPER_SECTIONS = (
     "Conclusion",
     "References",
 )
+PAPER_MIN_PAGES = 6
+PAPER_MIN_WORDS = 2500
+PAPER_MIN_TECHNICAL_TERMS = 15
+PAPER_MAX_OVERFULL_HBOX_COUNT = 0
+PAPER_MAX_OVERFULL_HBOX_POINTS = 0.0
+PAPER_SECTION_MIN_WORDS = {
+    "Abstract": 80,
+    "Introduction": 180,
+    "Related Work": 220,
+    "Method": 260,
+    "Experiments": 260,
+    "Results": 220,
+    "Limitations": 120,
+    "Conclusion": 120,
+}
+PAPER_TECHNICAL_TERMS = {
+    "ablation",
+    "algorithm",
+    "artifact",
+    "baseline",
+    "benchmark",
+    "calibration",
+    "citation",
+    "claim",
+    "configuration",
+    "dataset",
+    "evidence",
+    "experiment",
+    "hash",
+    "hypothesis",
+    "metric",
+    "model",
+    "novelty",
+    "reproducibility",
+    "reproduction",
+    "robustness",
+    "statistical",
+    "validation",
+}
 
 
 class LatexPaperBuildStatus(str, Enum):
     """Outcome for a Markdown-to-LaTeX paper build."""
 
     COMPILED = "compiled"
+    COMPILED_WITH_QUALITY_ISSUES = "compiled_with_quality_issues"
     RENDERED = "rendered"
     MISSING_SECTIONS = "missing_sections"
     SOURCE_UNAVAILABLE = "source_unavailable"
     SKIPPED = "skipped"
     FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class LatexPaperQualityReport:
+    """Deterministic paper-level quality gate for compiled manuscripts."""
+
+    passed: bool
+    page_count: int | None
+    min_pages: int
+    word_count: int
+    min_word_count: int
+    technical_term_count: int
+    min_technical_terms: int
+    section_word_counts: dict[str, int]
+    section_min_words: dict[str, int]
+    short_sections: tuple[str, ...]
+    overfull_hbox_count: int
+    max_overfull_hbox_count: int
+    max_overfull_hbox_points: float
+    max_allowed_overfull_hbox_points: float
+    failures: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "passed": self.passed,
+            "page_count": self.page_count,
+            "min_pages": self.min_pages,
+            "word_count": self.word_count,
+            "min_word_count": self.min_word_count,
+            "technical_term_count": self.technical_term_count,
+            "min_technical_terms": self.min_technical_terms,
+            "section_word_counts": self.section_word_counts,
+            "section_min_words": self.section_min_words,
+            "short_sections": list(self.short_sections),
+            "overfull_hbox_count": self.overfull_hbox_count,
+            "max_overfull_hbox_count": self.max_overfull_hbox_count,
+            "max_overfull_hbox_points": self.max_overfull_hbox_points,
+            "max_allowed_overfull_hbox_points": self.max_allowed_overfull_hbox_points,
+            "failures": list(self.failures),
+        }
 
 
 @dataclass(frozen=True)
@@ -60,6 +140,7 @@ class LatexPaperBuildArtifact:
     missing_sections: tuple[str, ...]
     engine: str | None
     command: tuple[str, ...]
+    quality: LatexPaperQualityReport
     reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -77,6 +158,7 @@ class LatexPaperBuildArtifact:
             "missing_sections": list(self.missing_sections),
             "engine": self.engine,
             "command": list(self.command),
+            "paper_quality": self.quality.to_dict(),
             "reason": self.reason,
         }
 
@@ -154,6 +236,15 @@ def build_latex_paper_from_markdown(
                 command_list,
                 timeout_seconds=timeout_seconds,
             )
+    quality = _build_quality_report(
+        sections,
+        source_markdown,
+        pdf_path,
+        log_path,
+    )
+    if status is LatexPaperBuildStatus.COMPILED and not quality.passed:
+        status = LatexPaperBuildStatus.COMPILED_WITH_QUALITY_ISSUES
+        reason = "paper quality gate failed: " + ", ".join(quality.failures)
 
     artifact = LatexPaperBuildArtifact(
         status=status,
@@ -169,6 +260,7 @@ def build_latex_paper_from_markdown(
         missing_sections=missing_sections,
         engine=engine_name,
         command=command,
+        quality=quality,
         reason=reason,
     )
     summary_markdown = _render_build_markdown(artifact)
@@ -190,6 +282,7 @@ def build_latex_paper_from_markdown(
             missing_sections=artifact.missing_sections,
             engine=artifact.engine,
             command=artifact.command,
+            quality=artifact.quality,
             reason=artifact.reason,
         )
         summary_markdown = _render_build_markdown(artifact)
@@ -259,6 +352,8 @@ def _render_markdown_sections_as_latex(
         r"\title{" + _latex_escape(title) + "}",
         r"\author{" + _latex_escape(", ".join(authors)) + "}",
         r"\date{}",
+        r"\usepackage{url}",
+        r"\emergencystretch=3em",
         *template.preamble_lines,
         r"\begin{document}",
     ]
@@ -287,6 +382,102 @@ def _render_markdown_sections_as_latex(
         lines.append("")
     lines.extend([r"\end{document}", ""])
     return "\n".join(lines)
+
+
+def _build_quality_report(
+    sections: dict[str, str],
+    source_markdown: str,
+    pdf_path: Path | None,
+    log_path: Path,
+) -> LatexPaperQualityReport:
+    log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.exists() else ""
+    page_count = _pdf_page_count(pdf_path, log_text)
+    manuscript_text = "\n".join(
+        body for section, body in sections.items() if section != "References"
+    )
+    word_count = _word_count(manuscript_text)
+    technical_terms = _technical_terms(source_markdown)
+    section_word_counts = {
+        section: _word_count(sections.get(section, ""))
+        for section in PAPER_SECTION_MIN_WORDS
+    }
+    short_sections = tuple(
+        section
+        for section, min_words in PAPER_SECTION_MIN_WORDS.items()
+        if section_word_counts.get(section, 0) < min_words
+    )
+    overfull_points = _overfull_hbox_points(log_text)
+    overfull_count = len(overfull_points)
+    max_overfull_points = max(overfull_points) if overfull_points else 0.0
+    failures: list[str] = []
+    if page_count is None or page_count < PAPER_MIN_PAGES:
+        failures.append("page_count")
+    if word_count < PAPER_MIN_WORDS:
+        failures.append("word_count")
+    if len(technical_terms) < PAPER_MIN_TECHNICAL_TERMS:
+        failures.append("technical_depth")
+    if short_sections:
+        failures.append("section_depth")
+    if (
+        overfull_count > PAPER_MAX_OVERFULL_HBOX_COUNT
+        or max_overfull_points > PAPER_MAX_OVERFULL_HBOX_POINTS
+    ):
+        failures.append("layout_overflow")
+    return LatexPaperQualityReport(
+        passed=not failures,
+        page_count=page_count,
+        min_pages=PAPER_MIN_PAGES,
+        word_count=word_count,
+        min_word_count=PAPER_MIN_WORDS,
+        technical_term_count=len(technical_terms),
+        min_technical_terms=PAPER_MIN_TECHNICAL_TERMS,
+        section_word_counts=section_word_counts,
+        section_min_words=dict(PAPER_SECTION_MIN_WORDS),
+        short_sections=short_sections,
+        overfull_hbox_count=overfull_count,
+        max_overfull_hbox_count=PAPER_MAX_OVERFULL_HBOX_COUNT,
+        max_overfull_hbox_points=max_overfull_points,
+        max_allowed_overfull_hbox_points=PAPER_MAX_OVERFULL_HBOX_POINTS,
+        failures=tuple(failures),
+    )
+
+
+def _pdf_page_count(pdf_path: Path | None, log_text: str) -> int | None:
+    if pdf_path is not None and pdf_path.exists() and (pdfinfo := shutil.which("pdfinfo")):
+        try:
+            completed = subprocess.run(
+                [pdfinfo, pdf_path.as_posix()],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            completed = None
+        if completed is not None and completed.returncode == 0:
+            match = re.search(r"^Pages:\s*(\d+)\s*$", completed.stdout, flags=re.MULTILINE)
+            if match:
+                return int(match.group(1))
+    match = re.search(r"Output written on .+?\((\d+) pages?,", log_text)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _overfull_hbox_points(log_text: str) -> tuple[float, ...]:
+    return tuple(
+        float(match)
+        for match in re.findall(r"Overfull \\hbox \(([\d.]+)pt too wide\)", log_text)
+    )
+
+
+def _word_count(text: str) -> int:
+    return len(re.findall(r"\b[A-Za-z][A-Za-z0-9-]*\b", text))
+
+
+def _technical_terms(text: str) -> set[str]:
+    words = {word.casefold() for word in re.findall(r"\b[A-Za-z][A-Za-z0-9-]*\b", text)}
+    return words & PAPER_TECHNICAL_TERMS
 
 
 def _markdown_text_to_latex_lines(text: str) -> list[str]:
@@ -356,6 +547,18 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
         f"- JSON: `{artifact.json_path}`",
         f"- Vault copy: `{artifact.vault_markdown_path or 'not written'}`",
         f"- Reason: `{artifact.reason or 'None'}`",
+        f"- Quality passed: `{str(artifact.quality.passed).lower()}`",
+        f"- Page count: `{artifact.quality.page_count or 'unknown'}` / minimum `{artifact.quality.min_pages}`",
+        f"- Word count: `{artifact.quality.word_count}` / minimum `{artifact.quality.min_word_count}`",
+        (
+            f"- Technical terms: `{artifact.quality.technical_term_count}` / "
+            f"minimum `{artifact.quality.min_technical_terms}`"
+        ),
+        (
+            f"- Overfull hbox: `{artifact.quality.overfull_hbox_count}` / "
+            f"maximum `{artifact.quality.max_overfull_hbox_count}`; "
+            f"max width `{artifact.quality.max_overfull_hbox_points:.3f}pt`"
+        ),
         "",
         "## Missing Sections",
         "",
@@ -367,11 +570,36 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
     lines.extend(
         [
             "",
+            "## Quality Gate",
+            "",
+        ]
+    )
+    if artifact.quality.failures:
+        lines.extend(f"- `{failure}`" for failure in artifact.quality.failures)
+    else:
+        lines.append("- None")
+    if artifact.quality.short_sections:
+        lines.extend(
+            [
+                "",
+                "## Short Sections",
+                "",
+            ]
+        )
+        for section in artifact.quality.short_sections:
+            lines.append(
+                f"- `{section}`: `{artifact.quality.section_word_counts[section]}` / "
+                f"minimum `{artifact.quality.section_min_words[section]}` words"
+            )
+    lines.extend(
+        [
+            "",
             "## Policy",
             "",
             "- Process data and evidence summaries remain Markdown in the Obsidian vault.",
-            "- The paper-level artifact is the compiled LaTeX PDF when status is `compiled`.",
+            "- The paper-level artifact is release-ready only when status is `compiled` and quality passed is `true`.",
             "- Missing paper sections stop compilation instead of being filled with invented content.",
+            "- Thin manuscripts, shallow technical sections, or LaTeX overfull boxes are blockers, not polish notes.",
             "",
         ]
     )
