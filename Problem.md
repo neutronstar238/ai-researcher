@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-032 - Local environment lacks OpenCode CLI for live code-agent execution smoke
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-06-13 14:42:00 +08:00
+- Source: Task `97.1` verification while replacing the cc-switch-first code-agent plan with a direct OpenCode backend contract.
+- Symptom: `Get-Command opencode -ErrorAction SilentlyContinue | Format-List Source,Version` exited with code 1 and no detected command, so this workstation cannot launch `opencode run`, `opencode serve`, or `opencode acp` for a live execution smoke.
+- Impact: The repository can generate and test the OpenCode integration manifest, but it must not claim that OpenCode itself was executed end-to-end on this machine during task `97.1`.
+- Evidence: Official OpenCode docs reviewed during task `97.1` describe CLI `run`, `serve`, ACP, permission config, and project skills. `npm view opencode-ai version license repository --json` returned version `1.17.4` and `license=MIT`, but no local `opencode` binary was found.
+- Root cause: OpenCode is not installed on the local verification environment.
+- Workaround: Treat task `97.1` as a repository contract and CLI manifest task. Install OpenCode on the target operator machine before running the live code-agent smoke.
+- Next action: Add an opt-in live OpenCode smoke once OpenCode is installed, covering a bounded non-destructive `opencode run` in a disposable worktree with AI-Researcher diff capture and validation.
+- Linked tasks: `97.1`
+- Resolution: Repository-level mitigation added by task `97.1`: `airesearcher code-agents opencode init|list` can generate and inspect the direct OpenCode contract without requiring local OpenCode execution.
+- Verification: Focused OpenCode integration/CLI/compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, npm metadata lookup, and CI are required before closing task `97.1`.
+
 ### P-20260613-031 - Compiled LaTeX PDFs could pass despite thin content and layout overflow
 
 - Status: Resolved

@@ -29,7 +29,8 @@ AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸
 - [Horizon](https://github.com/Thysrael/Horizon) 和 [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日更新项目：启发定时联网抓取、来源评分、摘要分发和论文更新机制。
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。
 - [OpenClaw](https://github.com/openclaw/openclaw)：启发“配置一次、本地常驻”的操作者体验。
-- [cc-switch](https://github.com/farion1231/cc-switch)：启发跨代码 CLI 的 provider/profile 管理。AI-Researcher 只把 cc-switch 和 Claude Code 作为可选外部代码生成后端：Claude Code 可以起草改动，但验证、危险命令审批、合并、回滚和 Obsidian 记录仍由 AI-Researcher 掌握。
+- [OpenCode](https://github.com/anomalyco/opencode)：作为优先的直接外部代码生成后端参考，因为它提供非交互 `run`、常驻 `serve`、ACP、权限、项目 commands 和项目 skills。OpenCode 可以起草改动，但验证、危险命令审批、合并、回滚和 Obsidian 记录仍由 AI-Researcher 掌握。
+- [cc-switch](https://github.com/farion1231/cc-switch)：启发跨代码 CLI 的 provider/profile 管理。AI-Researcher 只把它保留为可选的遗留/桥接路径，用于确实需要 Claude Code 通过 cc-switch 做 provider 路由的场景。
 
 这些参考项目的许可证和署名状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。除非该文件明确写明已纳入代码或资产，否则它们只是设计启发，不是本仓库复制或 vendored 的第三方代码。
 
@@ -124,11 +125,13 @@ poetry run airesearcher runtime approve latest --state .airesearcher/runtime-app
 外部代码 Agent 后端契约：
 
 ```bash
+poetry run airesearcher code-agents opencode init
+poetry run airesearcher code-agents opencode list
 poetry run airesearcher code-agents cc-switch init
 poetry run airesearcher code-agents cc-switch list
 ```
 
-该命令会写入 `integrations/cc-switch/code-agent.json`，用于记录如何通过 cc-switch 的 provider 路由把 Claude Code 接成外部代码编写后端。它只是执行契约，不 vendor cc-switch 源码，也不是自动合并通道：Claude Code 生成的 diff 仍只是 proposal，必须由 AI-Researcher 捕获 diff、运行验证、对危险动作走 runtime approval、写入 `Agent.md`/Obsidian 记录，并在通过后创建聚焦 commit。
+优先路径会写入 `integrations/opencode/code-agent.json`，用于记录如何通过 `opencode run`、`opencode serve` 或 `opencode acp` 直接把 OpenCode 接成外部代码编写后端。它只是执行契约，不 vendor OpenCode 源码，也不是自动合并通道：OpenCode 生成的 diff 仍只是 proposal，必须由 AI-Researcher 捕获 diff、运行验证、对危险动作走 runtime approval、写入 `Agent.md`/Obsidian 记录，并在通过后创建聚焦 commit。cc-switch 命令仍保留给明确需要 Claude Code 通过 cc-switch 做 provider 路由的场景。
 
 Autopilot 一条命令常驻循环：
 

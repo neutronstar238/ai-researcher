@@ -26,12 +26,16 @@ from autoresearch.experiments import run_scientistbench_demo
 from autoresearch.integrations import (
     CCSwitchCodeAgentBackend,
     OpenClawChannelPlugin,
+    OpenCodeCodeAgentBackend,
     get_ccswitch_code_agent_backend,
     get_openclaw_channel_plugin,
+    get_opencode_code_agent_backend,
     iter_ccswitch_code_agent_backends,
     iter_openclaw_channel_plugins,
+    iter_opencode_code_agent_backends,
     write_ccswitch_code_agent_manifest,
     write_openclaw_channel_manifest,
+    write_opencode_code_agent_manifest,
 )
 from autoresearch.knowledge import (
     KnowledgeEntry,
@@ -97,6 +101,7 @@ channels_app = typer.Typer(help="Manage communication channel integration manife
 openclaw_channels_app = typer.Typer(help="Manage OpenClaw channel plugin manifests.")
 code_agents_app = typer.Typer(help="Manage external code-agent integration manifests.")
 ccswitch_code_agents_app = typer.Typer(help="Manage cc-switch / Claude Code backend manifests.")
+opencode_code_agents_app = typer.Typer(help="Manage OpenCode direct backend manifests.")
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
 app.add_typer(runtime_app, name="runtime")
@@ -105,6 +110,7 @@ app.add_typer(channels_app, name="channels")
 app.add_typer(code_agents_app, name="code-agents")
 channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
+code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
@@ -165,10 +171,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Review upstream permissions and secrets before installing any plugin.",
     ),
     "research/code-agent-backends.toml": (
-        "Write the cc-switch / Claude Code external code-agent backend contract.",
-        "Run `airesearcher code-agents cc-switch init --output integrations/cc-switch/code-agent.json` "
-        "to record how Claude Code can draft code through cc-switch provider routing while "
-        "AI-Researcher keeps validation, approval, merge, rollback, and Obsidian logging authority.",
+        "Write external code-agent backend contracts.",
+        "Prefer `airesearcher code-agents opencode init --output integrations/opencode/code-agent.json` "
+        "to record direct OpenCode run/serve/acp integration while AI-Researcher keeps validation, "
+        "approval, merge, rollback, and Obsidian logging authority. Use "
+        "`airesearcher code-agents cc-switch init --output integrations/cc-switch/code-agent.json` "
+        "only when Claude Code provider routing through cc-switch is explicitly needed.",
     ),
     "research/obsidian-setup.toml": (
         "Structure and style the Obsidian vault for readable research operations.",
@@ -1901,6 +1909,49 @@ def list_ccswitch_code_agents(
         typer.echo(
             f"[BACKEND] backend={code_backend.backend_id} runner={code_backend.runner_command} "
             f"provider={code_backend.provider_mode} validator=AI-Researcher"
+        )
+
+
+@opencode_code_agents_app.command("init")
+def init_opencode_code_agents(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="OpenCode code-agent manifest output path."),
+    ] = Path("integrations/opencode/code-agent.json"),
+) -> None:
+    """Write OpenCode direct backend metadata for AI-Researcher."""
+
+    manifest_path = write_opencode_code_agent_manifest(output)
+    backend_count = len(iter_opencode_code_agent_backends())
+    typer.echo(f"[OK] opencode_code_agent_backends: {backend_count}")
+    typer.echo(f"[OK] manifest: {manifest_path}")
+    typer.echo("[OK] validation_owner: AI-Researcher")
+
+
+@opencode_code_agents_app.command("list")
+def list_opencode_code_agents(
+    backend: Annotated[
+        str | None,
+        typer.Option("--backend", help="Optional OpenCode backend ID to show."),
+    ] = None,
+) -> None:
+    """List OpenCode direct code-agent backend metadata."""
+
+    backends: tuple[OpenCodeCodeAgentBackend, ...]
+    if backend:
+        try:
+            backends = (get_opencode_code_agent_backend(backend),)
+        except KeyError as exc:
+            typer.echo(f"[FAIL] {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+    else:
+        backends = iter_opencode_code_agent_backends()
+    typer.echo(f"[OK] opencode_code_agent_backends: {len(backends)}")
+    for code_backend in backends:
+        modes = ",".join(code_backend.execution_modes)
+        typer.echo(
+            f"[BACKEND] backend={code_backend.backend_id} runner={code_backend.runner_command} "
+            f"provider={code_backend.provider_mode} modes={modes} validator=AI-Researcher"
         )
 
 

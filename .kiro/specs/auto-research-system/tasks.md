@@ -1446,6 +1446,17 @@ A task can be checked only when all applicable items are true:
     - _References: user review that the generated LaTeX paper had too few pages, insufficient technical detail, and visible layout overflow; task `89.1` SCALE-lite physical gate; task `95.1` real autopilot paper-build artifact._
     - _Verify: focused paper-build/evidence-gate tests, ruff, mypy, full smoke/unit tests, a real `paper-build` rerun over the task `95.1` report showing `compiled_with_quality_issues`, and a real `evidence-gate` rerun showing `paper_quality_gate=fail`._
 
+- [x] 97. Add direct OpenCode code-agent backend boundary
+  - [x] 97.1 Prefer OpenCode direct integration over cc-switch for code drafting
+    - Review current OpenCode docs for CLI `run`, headless `serve`, ACP, permissions, project commands, and project skills.
+    - Add repository-tracked metadata for an `opencode-direct` external code-agent backend.
+    - Make the execution contract explicit: OpenCode may draft code through `run`/`serve`/ACP, but AI-Researcher owns diff capture, validation gates, dangerous-command approval, merge/rollback, Obsidian memory, and `Agent.md` logging.
+    - Add `airesearcher code-agents opencode init|list` and update `/research:code-agent-backends` so operators can generate and inspect the preferred direct contract without copying upstream code or secrets.
+    - Keep cc-switch available only as an optional Claude Code provider-routing bridge when that backend is explicitly required.
+    - Update README, Chinese README, changelog, third-party notices, and compliance tests to record OpenCode's MIT reference boundary and secret-handling rules.
+    - _References: user request to replace the cc CLI / cc-switch plan with direct OpenCode integration because the OpenCode ecosystem is more compatible; OpenCode docs for CLI, permissions, and skills._
+    - _Verify: web review of OpenCode docs and repository/license metadata, `npm view opencode-ai version license repository --json`, focused OpenCode integration tests, focused CLI/compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, and CI._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1746,6 +1757,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 63,
       "tasks": ["96.1"]
+    },
+    {
+      "id": 64,
+      "tasks": ["97.1"]
     }
   ]
 }

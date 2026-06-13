@@ -62,6 +62,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 13:53:14 +08:00 - Codex - Task 97.1 OpenCode code-agent contract
+
+- Request: Replace the cc CLI / cc-switch-first code-agent plan with a direct OpenCode integration boundary while keeping AI-Researcher as the validator and release owner.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-97-1-opencode-code-agent-contract.md`
+  - `integrations/opencode/code-agent.json`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/integrations/__init__.py`
+  - `src/autoresearch/integrations/opencode.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/integrations/test_opencode.py`
+- Summary:
+  - Reviewed current OpenCode docs for CLI `run`, headless `serve`, ACP, permissions, and project-local skills.
+  - Added `opencode-direct` backend metadata and `airesearcher code-agents opencode init|list`.
+  - Generated `integrations/opencode/code-agent.json`, recording OpenCode as a code-drafting backend while AI-Researcher owns diff capture, validation gates, dangerous-command approval, merge/rollback, Obsidian memory, and `Agent.md` logging.
+  - Updated slash command guidance so `/research:code-agent-backends` prefers OpenCode direct integration and leaves cc-switch as an optional Claude Code provider-routing bridge.
+  - Updated bilingual README, changelog, third-party notices, compliance tests, task plan, problem log, and Obsidian progress memory.
+- Verification:
+  - Web review: official OpenCode docs describe programmatic `opencode run`, `opencode serve`, `opencode acp`, permission actions `allow`/`ask`/`deny`, and project-local `.opencode/skills/<name>/SKILL.md`.
+  - License/package metadata: `npm view opencode-ai version license repository --json` returned version `1.17.4` and `license=MIT`.
+  - Local OpenCode availability check: `Get-Command opencode -ErrorAction SilentlyContinue | Format-List Source,Version` exited 1 with no command found; recorded as `P-20260613-032`.
+  - Focused tests: `poetry run pytest tests\unit\integrations\test_opencode.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py -q` passed with 46 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\integrations\opencode.py src\autoresearch\integrations\__init__.py src\autoresearch\cli\main.py tests\unit\integrations\test_opencode.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\integrations\opencode.py src\autoresearch\integrations\__init__.py src\autoresearch\cli\main.py` passed.
+  - Generated manifest: `poetry run airesearcher code-agents opencode init --output integrations\opencode\code-agent.json` passed and wrote the repository runbook.
+  - CLI inspection: `poetry run airesearcher code-agents opencode list` and `poetry run airesearcher code-agents opencode list --backend opencode-direct` passed and reported `validator=AI-Researcher`.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed with no issues in 96 source files.
+  - Text checks: `rg -n "opencode-direct|airesearcher code-agents opencode init|anomalyco/opencode|OpenCode direct|opencode run|opencode serve|opencode acp|P-20260613-032|97\.1" ...` confirmed source, tests, manifests, docs, notices, task plan, problem log, and vault progress note.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 405 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+- Problems:
+  - `P-20260613-032` added and mitigated.
+- Follow-up:
+  - Add an opt-in live OpenCode execution smoke after OpenCode is installed on the operator machine.
+  - Evaluate `LearnPrompt/luban-skill` as a reference for AI-Researcher's skill-polishing and self-evolution gates.
+
 ### 2026-06-13 13:39:40 +08:00 - Codex - Task 96.1 paper build quality gate
 
 - Request: Continue after user review that the generated LaTeX paper was too short, technically shallow, and visibly overflowed layout boundaries.

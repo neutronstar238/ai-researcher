@@ -304,6 +304,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher channels openclaw init" in (
         commands_dir / "research" / "openclaw-channels.toml"
     ).read_text(encoding="utf-8")
+    assert "airesearcher code-agents opencode init" in (
+        commands_dir / "research" / "code-agent-backends.toml"
+    ).read_text(encoding="utf-8")
     assert "airesearcher code-agents cc-switch init" in (
         commands_dir / "research" / "code-agent-backends.toml"
     ).read_text(encoding="utf-8")
@@ -1453,6 +1456,46 @@ def test_ccswitch_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
     assert "validator=AI-Researcher" in list_result.stdout
     assert backend_result.exit_code == 0, backend_result.output
     assert "[OK] ccswitch_code_agent_backends: 1" in backend_result.stdout
+
+
+def test_opencode_code_agent_manifest_cli_writes_validation_contract(tmp_path: Path) -> None:
+    output = tmp_path / "integrations" / "opencode" / "code-agent.json"
+    runner = CliRunner()
+
+    init_result = runner.invoke(
+        app,
+        ["code-agents", "opencode", "init", "--output", str(output)],
+    )
+    list_result = runner.invoke(app, ["code-agents", "opencode", "list"])
+    backend_result = runner.invoke(
+        app,
+        [
+            "code-agents",
+            "opencode",
+            "list",
+            "--backend",
+            "opencode-direct",
+        ],
+    )
+
+    assert init_result.exit_code == 0, init_result.output
+    assert "[OK] opencode_code_agent_backends: 1" in init_result.stdout
+    assert "[OK] validation_owner: AI-Researcher" in init_result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["execution_contract"]["generation_owner"] == "OpenCode direct"
+    assert payload["execution_contract"]["validation_owner"] == "AI-Researcher"
+    assert payload["opencode_project_contract"]["noninteractive_command"].startswith(
+        "opencode run"
+    )
+    assert payload["approval_bridge"]["approve_command"].startswith(
+        "airesearcher runtime approve latest"
+    )
+    assert payload["backends"][0]["runner_command"] == "opencode"
+    assert list_result.exit_code == 0, list_result.output
+    assert "[BACKEND] backend=opencode-direct" in list_result.stdout
+    assert "validator=AI-Researcher" in list_result.stdout
+    assert backend_result.exit_code == 0, backend_result.output
+    assert "[OK] opencode_code_agent_backends: 1" in backend_result.stdout
 
 
 def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> None:

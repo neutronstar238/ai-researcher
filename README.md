@@ -70,7 +70,8 @@ AI-Researcher is designed as an evidence-first system rather than a clone of any
 - [Horizon](https://github.com/Thysrael/Horizon) and daily literature-update projects such as [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) for scheduled source discovery, scoring, digest, and delivery patterns.
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt) for treating Markdown skill artifacts as optimizable external agent state with rollout evidence, bounded edits, validation gates, and deployable `best_skill.md` outputs.
 - [OpenClaw](https://github.com/openclaw/openclaw) for the operator experience of a self-hosted assistant that is configured once and then runs as an always-on local service.
-- [cc-switch](https://github.com/farion1231/cc-switch) for provider/profile management across coding CLIs. AI-Researcher treats cc-switch and Claude Code as an optional external code-generation backend: Claude Code may draft changes, but AI-Researcher keeps validation, dangerous-command approval, merge, rollback, and Obsidian logging authority.
+- [OpenCode](https://github.com/anomalyco/opencode) as the preferred direct external code-generation backend because it exposes non-interactive `run`, headless `serve`, ACP, permissions, project commands, and project skills. OpenCode may draft changes, but AI-Researcher keeps validation, dangerous-command approval, merge, rollback, and Obsidian logging authority.
+- [cc-switch](https://github.com/farion1231/cc-switch) for provider/profile management across coding CLIs. AI-Researcher keeps it as an optional legacy/bridge path for Claude Code provider routing when direct OpenCode integration is not the desired backend.
 
 The license and attribution status for these references is tracked in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). They are design inspirations unless that notice file explicitly says code or assets were incorporated.
 
@@ -185,11 +186,13 @@ poetry run airesearcher runtime approve latest --state .airesearcher/runtime-app
 External code-agent backend contract:
 
 ```bash
+poetry run airesearcher code-agents opencode init
+poetry run airesearcher code-agents opencode list
 poetry run airesearcher code-agents cc-switch init
 poetry run airesearcher code-agents cc-switch list
 ```
 
-This writes `integrations/cc-switch/code-agent.json`, a repository runbook for using cc-switch provider routing with Claude Code as an external code-writing backend. It is an execution contract, not a vendored copy of cc-switch and not an automatic merge path: generated diffs remain proposals until AI-Researcher captures the diff, runs focused validation, applies runtime approval to dangerous actions, writes `Agent.md`/Obsidian records, and creates a focused commit.
+The preferred path writes `integrations/opencode/code-agent.json`, a repository runbook for using OpenCode directly through `opencode run`, `opencode serve`, or `opencode acp`. It is an execution contract, not a vendored copy of OpenCode and not an automatic merge path: generated diffs remain proposals until AI-Researcher captures the diff, runs focused validation, applies runtime approval to dangerous actions, writes `Agent.md`/Obsidian records, and creates a focused commit. The cc-switch command remains available only when you explicitly want Claude Code provider routing through cc-switch.
 
 Autopilot one-command loop:
 
