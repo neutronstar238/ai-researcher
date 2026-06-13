@@ -62,6 +62,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 09:56:26 +08:00 - Codex - Task 78.1 Pendigits variance-calibrated prototype candidate
+
+- Request: Continue toward a real autonomous research loop by adding a positive-effect, executable method candidate while keeping publication claims blocked until strict novelty and review gates pass.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-78-1-pendigits-variance-calibrated-prototypes.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/demos.py`
+  - `tests/unit/experiments/test_demos.py`
+- Summary:
+  - Added task `78.1` to the executable task plan and dependency graph.
+  - Added the opt-in `pendigits_variance_calibrated_prototypes` demo using official UCI Pendigits train/test files, local source caching, a nearest-centroid baseline, a z-score centroid ablation, and a diagonal variance-calibrated prototype candidate.
+  - The generated experiment writes real source metadata, metrics, predictions, ablation evidence, validation artifacts, and `artifacts/innovation_evidence.json` with the proposed mechanism, variance shrinkage, candidate/baseline metrics, z-score ablation delta, and effect direction.
+  - Wired the new demo through `run-demo`, `autopilot`, report context, statistical checks, publication audit inputs, and reproduction rerun support.
+  - Updated README guidance, changelog, problem log, and Obsidian progress memory to state that this is a positive method-effect candidate, not a publishable CCF-B/Q3 result until broad novelty search and review pass.
+- Verification:
+  - `poetry run pytest tests\unit\experiments\test_demos.py -q`: passed, 10 tests.
+  - `poetry run ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_demos.py`: passed.
+  - `poetry run mypy src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py`: passed.
+  - `poetry run airesearcher run-demo --demo pendigits_variance_calibrated_prototypes --output-dir runs\manual-live\pendigits-variance-task78 --timeout-seconds 60`: passed on real cached/downloaded UCI Pendigits data with `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, `accuracy_delta_vs_baseline=0.045740423098913685`, `zscore_centroid_accuracy=0.7850200114351058`, `accuracy_delta_vs_zscore=0.038307604345340196`, and validation status `passed`.
+  - `poetry run airesearcher autopilot --vault runs\manual-live\task78-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-variance-task78 --state runs\manual-live\autopilot-variance-task78\scheduler-state.json --project-id task78_variance --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real cycle. It wrote `runs/manual-live/autopilot-variance-task78/cycle-20260613T015034Z/cycle-summary.json` with `reproduction_check.status=passed`, `method_innovation_evidence.status=pass`, `method_effect_evidence.status=pass`, and `evidence_gate.verdict=blocked`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 372 tests passed and 4 skipped.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+- Problems:
+  - Added `P-20260613-016` for the remaining gap between positive method-effect evidence and publishable novelty.
+  - Updated `P-20260613-004` with task `78.1` evidence showing positive effect gates can pass while the full publication gate still blocks smoke-sized cycles.
+- Follow-up:
+  - Run a full-width, review-enabled cycle for this demo after improving source stability and novelty breadth, then compare against adjacent Gaussian, prototype, and nearest-centroid calibration literature.
+  - Treat exploratory kNN results as a sanity check only; do not claim novelty from classic kNN baselines.
+
 ### 2026-06-13 09:37:36 +08:00 - Codex - Task 77.1 method-effect publication gate
 
 - Request: Continue strict innovation quality control so file-backed method artifacts cannot be treated as publishable empirical gain when the actual baseline delta is neutral or negative.

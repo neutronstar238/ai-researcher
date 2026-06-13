@@ -145,10 +145,11 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
 poetry run airesearcher run-demo --demo pendigits_prototype_shrinkage --timeout-seconds 60
+poetry run airesearcher run-demo --demo pendigits_variance_calibrated_prototypes --timeout-seconds 60
 poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --timeout-seconds 60
 ```
 
-`pendigits_centroid_baseline` 会在运行时下载 UCI Pen-Based Recognition of Handwritten Digits 的官方 train/test 文件，在 `runs/` 下写入本地合并 CSV，运行 nearest-centroid baseline 和 first-8-features ablation，并记录来源 URL、数据 hash、指标、置信区间和验证产物。`pendigits_prototype_shrinkage` 使用同一公开 train/test split，但会评估一个具体的 class-prototype shrinkage 方法候选，并把它和 baseline 对比，写出 `artifacts/innovation_evidence.json`，包含提出机制、prototype shift、baseline/candidate 指标和诚实解释。它可能提升、持平或低于 baseline；系统必须按真实 delta 记录，不能把负结果包装成发表级创新声明。这些 demo 比玩具 demo 更接近真实证据检查，但发表级声明仍必须通过文献广度、相似工作广度、方法创新证据、论文结构、评审门和物理 evidence gate。
+`pendigits_centroid_baseline` 会在运行时下载 UCI Pen-Based Recognition of Handwritten Digits 的官方 train/test 文件，在 `runs/` 下写入本地合并 CSV，运行 nearest-centroid baseline 和 first-8-features ablation，并记录来源 URL、数据 hash、指标、置信区间和验证产物。`pendigits_prototype_shrinkage` 使用同一公开 train/test split，但会评估一个具体的 class-prototype shrinkage 方法候选，并把它和 baseline 对比，写出 `artifacts/innovation_evidence.json`，包含提出机制、prototype shift、baseline/candidate 指标和诚实解释。它可能提升、持平或低于 baseline；系统必须按真实 delta 记录，不能把负结果包装成发表级创新声明。`pendigits_variance_calibrated_prototypes` 会评估 diagonal variance-calibrated prototype 候选；当前真实运行记录了正向方法效果 delta，可以让 `method_effect_evidence` 通过，但如果文献广度不足或 review 被跳过，发表级审计仍会阻断发布。这些 demo 比玩具 demo 更接近真实证据检查，但发表级声明仍必须通过文献广度、相似工作广度、方法创新证据、方法效果证据、论文结构、评审门和物理 evidence gate。
 
 Skill evolution 候选：
 
@@ -264,6 +265,8 @@ poetry run pytest tests/smoke/test_llm_live.py tests/smoke/test_literature_live.
 poetry run airesearcher doctor
 poetry run airesearcher run-demo --demo tabular_baseline
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
+poetry run airesearcher run-demo --demo pendigits_prototype_shrinkage --timeout-seconds 60
+poetry run airesearcher run-demo --demo pendigits_variance_calibrated_prototypes --timeout-seconds 60
 poetry run airesearcher validate-package --manifest <path>
 ```
 

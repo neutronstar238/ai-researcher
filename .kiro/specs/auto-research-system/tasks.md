@@ -1260,6 +1260,17 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that the system meet strict CCF-B/Q3-style evidence standards and not rely on prompt-only "AI self-discipline" for innovation claims._
     - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` over the task `76.1` negative-result cycle showing `method_innovation_evidence=pass` but `method_effect_evidence=fail`._
 
+- [x] 78. Add a positive-effect real method candidate path
+  - [x] 78.1 Implement UCI Pendigits variance-calibrated prototype candidate
+    - Add `pendigits_variance_calibrated_prototypes` as an opt-in public benchmark demo.
+    - Reuse official UCI Pendigits train/test files and local caching.
+    - Compare a nearest-centroid baseline, a z-score centroid ablation, and a diagonal variance-calibrated prototype candidate.
+    - Write `artifacts/innovation_evidence.json` with proposed mechanism, variance shrinkage, baseline/candidate accuracy, z-score ablation accuracy, deltas, support artifacts, and effect direction.
+    - Make `run-demo`, `autopilot`, validation, report generation, publication audit, and reproduction rerun consume the new demo.
+    - Keep the result framed as a real positive method-effect candidate, not as a complete CCF-B/Q3 paper until broad novelty search and LLM evidence review pass.
+    - _References: task `77.1` method-effect gate and the user requirement for real executable experiments with strict innovation-quality checks._
+    - _Verify: focused demo tests, ruff, mypy, full smoke/unit tests, real `run-demo`, and real `autopilot` showing `method_innovation_evidence=pass`, `method_effect_evidence=pass`, and `reproduction_check=passed`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1484,6 +1495,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 44,
       "tasks": ["77.1"]
+    },
+    {
+      "id": 45,
+      "tasks": ["78.1"]
     }
   ]
 }

@@ -12,10 +12,12 @@ from typing import Any
 from autoresearch.experiments.demos import (
     PENDIGITS_CENTROID_BASELINE_TASK_ID,
     PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
+    PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
     TABULAR_BASELINE_TASK_ID,
     TEXT_CLASSIFIER_STUB_TASK_ID,
     generate_pendigits_centroid_baseline_demo,
     generate_pendigits_prototype_shrinkage_demo,
+    generate_pendigits_variance_calibrated_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
 )
@@ -138,6 +140,11 @@ def _generate_demo(
             output_dir,
             timeout_seconds=timeout_seconds,
         )
+    if demo == PENDIGITS_VARIANCE_CALIBRATED_TASK_ID:
+        return generate_pendigits_variance_calibrated_demo(
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
     msg = f"unknown demo {demo!r}"
     raise ValueError(msg)
 
@@ -203,6 +210,21 @@ def _metric_bounds(demo: str) -> dict[str, tuple[float | None, float | None]]:
             "prototype_shift_l2_mean": (0.0, None),
             "shrinkage_alpha": (0.0, 1.0),
         }
+    if demo == PENDIGITS_VARIANCE_CALIBRATED_TASK_ID:
+        return {
+            "accuracy": (0.0, 1.0),
+            "macro_f1": (0.0, 1.0),
+            "baseline_accuracy": (0.0, 1.0),
+            "accuracy_delta_vs_baseline": (-1.0, 1.0),
+            "zscore_centroid_accuracy": (0.0, 1.0),
+            "accuracy_delta_vs_zscore": (-1.0, 1.0),
+            "test_rows": (1000.0, None),
+            "train_rows": (1000.0, None),
+            "dataset_rows": (1000.0, None),
+            "class_count": (2.0, None),
+            "accuracy_standard_error": (0.0, 1.0),
+            "variance_shrinkage": (0.0, 1.0),
+        }
     return {
         "accuracy": (0.0, 1.0),
         "test_rows": (1.0, None),
@@ -214,6 +236,7 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
     if demo not in {
         PENDIGITS_CENTROID_BASELINE_TASK_ID,
         PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
+        PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
     }:
         return []
     test_rows = int(float(bundle.metrics.get("test_rows", 0.0) or 0.0))
@@ -221,7 +244,11 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
     standard_error = float(bundle.metrics.get("accuracy_standard_error", 0.0) or 0.0)
     baseline_key = (
         "baseline_accuracy"
-        if demo == PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID
+        if demo
+        in {
+            PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
+            PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+        }
         else "ablation_accuracy_first8"
     )
     baseline_accuracy = float(bundle.metrics.get(baseline_key, 0.0) or 0.0)
@@ -323,6 +350,44 @@ def _report_context(
     output_dir: Path | str,
 ) -> ReportContext:
     command = f"airesearcher run-demo --demo {task.id} --output-dir {Path(output_dir)}"
+    if task.id == PENDIGITS_VARIANCE_CALIBRATED_TASK_ID:
+        return ReportContext(
+            title="UCI Pendigits Variance-Calibrated Prototype Report",
+            question=(
+                "Can AI-Researcher validate a positive-effect prototype-family "
+                "method candidate on a real public benchmark while keeping "
+                "publication claims gated by method-effect evidence?"
+            ),
+            literature_summary=(
+                "This is an opt-in real benchmark method-candidate check using "
+                "the UCI Pendigits train/test files fetched by the experiment "
+                "script. It still requires broad online related-work retrieval "
+                "and novelty comparison before publication claims."
+            ),
+            hypothesis=(
+                "Diagonal feature-variance calibration may give class prototypes "
+                "a better distance model than raw nearest-centroid classification. "
+                "The run must record the baseline-vs-candidate delta."
+            ),
+            experiment_design=task.description,
+            run=run,
+            results=bundle,
+            validation=validation,
+            evidence_edges=evidence_edges,
+            reproduction_command=command,
+            python_version=sys.version.split()[0],
+            dependency_lock_status=_dependency_lock_status(),
+            limitations=[
+                "Single public benchmark and one interpretable method candidate "
+                "only; positive effect evidence is necessary but still not enough "
+                "for publication without broader novelty and robustness checks.",
+            ],
+            next_steps=[
+                "Use similarity search to compare diagonal variance calibration "
+                "against Gaussian discriminant, prototype, and nearest-centroid "
+                "calibration literature before claiming novelty.",
+            ],
+        )
     if task.id == PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID:
         return ReportContext(
             title="UCI Pendigits Prototype Shrinkage Report",
