@@ -62,6 +62,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 21:11:19 +08:00 - Codex - README visual and user-guide refresh
+
+- Request: Improve the README so it is more attractive, illustrated, detailed for ordinary users, and focused on OpenCode integration, scheduled self-looping, self-evolution, push/approval workflows, and the Obsidian knowledge-base management mechanism.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/assets/readme/architecture.png`
+  - `docs/assets/readme/capability-overview.png`
+  - `docs/assets/readme/evidence-loop.png`
+  - `docs/assets/readme/install-flow.png`
+  - `docs/assets/readme/obsidian-vault.png`
+- Summary:
+  - Rewrote the English and Chinese README pages as user-facing guides instead of a dense architecture note.
+  - Added generated README illustrations for capability overview, installation flow, system architecture, evidence loop, and Obsidian vault management.
+  - Re-centered the README around automatic OpenCode backend connection, always-on `serve` / `autopilot`, OpenClaw-style push and approval flow, Obsidian as the canonical self-loop memory substrate, and controlled skill/strategy self-evolution.
+  - Added step-by-step ordinary-user install, configuration, demo, runtime approval, OpenCode, channel, vault, evidence-gate, and self-evolution command sections.
+  - Kept publication-readiness claims conservative and tied to publication audit plus physical evidence gate results.
+- Verification:
+  - `Test-Path README.md`, `README.zh-CN.md`, and all five `docs/assets/readme/*.png` assets: passed.
+  - `rg -n "OpenCode|Obsidian|Self-loop|Self-evolution|Push|serve --permission-mode|autopilot --watch|code-agents opencode|channels openclaw|evidence-gate" README.md README.zh-CN.md`: passed and confirmed the requested capability focus is present.
+  - PowerShell local Markdown link/image target check for `README.md` and `README.zh-CN.md`: passed with all local targets existing.
+  - `git diff --check -- README.md README.zh-CN.md docs\assets\readme`: passed with only Git LF-to-CRLF working-copy warnings.
+- Problems:
+  - None.
+- Follow-up:
+  - Optional: run a rendered Markdown preview in GitHub or a local viewer before publishing screenshots, since visual layout is best judged in the target renderer.
+
 ### 2026-06-13 21:09:56 +08:00 - Codex - Task 113.1 citation relevance and review-safe manuscript gate
 
 - Request: Continue toward a real self-running, publication-gated AI-Researcher loop; account for newly found `scipilot-figure-skill`, Research Architect / literature-review skills, and Nature Skills; ensure verified citations are actually relevant and generated papers survive real evidence review.
