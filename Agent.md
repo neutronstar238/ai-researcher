@@ -62,6 +62,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 09:12:40 +08:00 - Codex - Task 75.1 method innovation gate
+
+- Request: Continue output-quality hardening so generated papers are checked for real, evidence-backed innovation rather than paper-shaped baseline reports.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/release-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-75-1-method-innovation-gate.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added task `75.1` to the executable plan and dependency graph.
+  - Added `require_novel_contribution` to publication quality targets: enabled for `ccf-b` and `q3-journal`, disabled for `mvp-demo`.
+  - Added a high-severity `method_innovation_evidence` publication-audit check that fails baseline-only tasks unless the run record includes proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact.
+  - Updated publication-audit tests so a paper-style real-benchmark baseline remains `needs_revision`, while a fixture with contribution metadata and `artifacts/innovation_evidence.json` can pass.
+  - Updated README, Chinese README, changelog, release checklist, problem log, and Obsidian progress notes to document that baseline reproduction is not enough for publication-level claims.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_publication_audit.py -q`: passed, 5 tests.
+  - `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\publication_audit.py`: passed.
+  - Real audit command: `poetry run airesearcher publication-audit runs\manual-live\autopilot-reproduction-gate-task74\cycle-20260613T010218Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\publication-audit-task75 --vault runs\manual-live\task75-vault --project-id task75_innovation_gate --no-fail-on-not-publishable`: passed with exit code 0 and wrote `runs/manual-live/publication-audit-task75/publication-audit.json`.
+  - Real audit result: `verdict=fail`, `publishable=false`, `score=0.2742`, and `method_innovation_evidence.status=fail` with message `File-backed method innovation evidence is missing or baseline-only.`
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 95 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 367 passed and 4 skipped.
+  - `git diff --check`: passed with only CRLF conversion warnings.
+- Problems:
+  - Added `P-20260613-013`.
+  - Updated `P-20260613-004` with task `75.1` method-innovation gate evidence.
+- Follow-up:
+  - Future research-generation work should implement a real method change and write honest innovation/mechanism artifacts only when code and validation support the claimed contribution.
+
 ### 2026-06-13 09:04:20 +08:00 - Codex - Task 74.1 reproduction rerun gate
 
 - Request: Continue hardening the always-on AI-Researcher loop so agents cannot rely on self-reported test/research execution; add a SCALE-style physical reproduction proof before release claims.

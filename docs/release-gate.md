@@ -11,6 +11,7 @@ Use this checklist before tagging a release, publishing a demo, or claiming a wo
 - Migrations are reversible or have a documented rollback path. This includes schema changes, Obsidian vault layout changes, and persisted JSON/JSONL formats.
 - Changelog or release notes are complete for user-visible changes.
 - Automated research-cycle release claims require a physical evidence gate: cycle summary, live literature/similarity evidence, first run record, reproduction rerun record, reproduction validation report, publication audit, paper-build JSON, and compiled PDF must exist and pass the relevant gate.
+- Publication-level claims require file-backed method innovation evidence, not only baseline reproduction or a paper-shaped report.
 - Git tag is created only after the release candidate commit is verified.
 - The `autoresearch-vault/` self-loop memory remains readable as Markdown and keeps provenance links for experiments, failures, skills, and strategy changes.
 
@@ -25,5 +26,6 @@ Use this checklist before tagging a release, publishing a demo, or claiming a wo
 - migration 可逆，或有明确回滚路径；这包括 schema、Obsidian vault 目录结构、持久化 JSON/JSONL 格式。
 - 面向用户的变更已经写入 changelog 或 release notes。
 - 自动科研循环的发布声明必须通过物理 evidence gate：cycle summary、真实文献/相似工作证据、第一次 run record、复现实验 rerun record、复现实验 validation report、publication audit、paper-build JSON 和编译后的 PDF 都必须存在并通过对应门禁。
+- 发表级声明必须有文件支撑的方法创新证据，不能只靠 baseline reproduction 或论文格式完整的报告。
 - 只有在 release candidate commit 验证完成后，才能创建 git tag。
 - `autoresearch-vault/` 自循环记忆仍然保持 Markdown 可读，并保留实验、失败、技能和策略变更的 provenance 链接。

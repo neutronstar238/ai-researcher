@@ -52,6 +52,7 @@ class PublicationQualityTarget:
     require_baseline: bool
     require_ablation: bool
     require_statistical_sanity: bool
+    require_novel_contribution: bool
     min_llm_review_quality: float
 
 
@@ -111,6 +112,7 @@ class PublicationAuditReport:
                 "require_baseline": self.target.require_baseline,
                 "require_ablation": self.target.require_ablation,
                 "require_statistical_sanity": self.target.require_statistical_sanity,
+                "require_novel_contribution": self.target.require_novel_contribution,
                 "min_llm_review_quality": self.target.min_llm_review_quality,
             },
             "verdict": self.verdict.value,
@@ -140,6 +142,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_baseline=True,
         require_ablation=True,
         require_statistical_sanity=True,
+        require_novel_contribution=True,
         min_llm_review_quality=0.85,
     ),
     "q3-journal": PublicationQualityTarget(
@@ -156,6 +159,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_baseline=True,
         require_ablation=True,
         require_statistical_sanity=True,
+        require_novel_contribution=True,
         min_llm_review_quality=0.85,
     ),
     "mvp-demo": PublicationQualityTarget(
@@ -172,6 +176,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_baseline=False,
         require_ablation=False,
         require_statistical_sanity=False,
+        require_novel_contribution=False,
         min_llm_review_quality=0.85,
     ),
 }
@@ -488,6 +493,7 @@ def _script_and_data_checks(
     baseline_present = _has_baseline_evidence(run_record)
     ablation_present = _has_ablation_evidence(run_record)
     statistical_sanity = _has_statistical_sanity(run_record)
+    innovation_present = _has_innovation_evidence(run_record, experiment_dir)
 
     checks = [
         PublicationAuditCheck(
@@ -561,6 +567,18 @@ def _script_and_data_checks(
                 "Statistical sanity checks are present.",
                 "Statistical sanity checks are missing.",
                 "Add sample-size, variance/confidence, repeated-run, or significance checks.",
+                (run_record_path.as_posix(),),
+            ),
+            _boolean_requirement_check(
+                "method_innovation_evidence",
+                innovation_present or not target.require_novel_contribution,
+                "high",
+                "File-backed method innovation evidence is present.",
+                "File-backed method innovation evidence is missing or baseline-only.",
+                (
+                    "Record a proposed mechanism/contribution in task metadata and "
+                    "preserve an innovation/mechanism artifact before publication review."
+                ),
                 (run_record_path.as_posix(),),
             ),
         ]
@@ -978,6 +996,41 @@ def _has_statistical_sanity(run_record: dict[str, Any]) -> bool:
         return True
     text = json.dumps(run_record, sort_keys=True).casefold()
     return any(term in text for term in ("confidence interval", "p_value", "standard deviation"))
+
+
+def _has_innovation_evidence(
+    run_record: dict[str, Any],
+    experiment_dir: Path | None,
+) -> bool:
+    task_metadata = _dict(run_record.get("task_metadata"))
+    run = _dict(run_record.get("run"))
+    task_id = _text(run.get("task_id")).casefold()
+    explicit_baseline_only = task_metadata.get("baseline_only") is True
+    if explicit_baseline_only or task_id.endswith("baseline"):
+        return False
+
+    contribution_fields = (
+        "novel_contribution",
+        "proposed_method",
+        "method_contribution",
+        "mechanism",
+        "contribution",
+    )
+    has_contribution_metadata = any(
+        _text(task_metadata.get(field)).strip() for field in contribution_fields
+    )
+    if not has_contribution_metadata:
+        return False
+
+    artifact_paths = tuple(_text(path) for path in _list(run_record.get("artifacts")))
+    innovation_artifacts = tuple(
+        path_text
+        for path_text in artifact_paths
+        if any(term in path_text.casefold() for term in ("innovation", "mechanism", "contribution"))
+    )
+    if not innovation_artifacts:
+        return False
+    return _relative_paths_exist(experiment_dir, list(innovation_artifacts))
 
 
 def _relative_paths_exist(root: Path | None, paths: list[Any]) -> bool:

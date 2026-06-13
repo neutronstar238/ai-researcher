@@ -64,10 +64,11 @@ def test_publication_audit_accepts_real_benchmark_data_evidence_but_keeps_manusc
     assert checks["baseline_reproduction"].status.value == "pass"
     assert checks["ablation_coverage"].status.value == "pass"
     assert checks["statistical_sanity"].status.value == "pass"
+    assert checks["method_innovation_evidence"].status.value == "fail"
     assert checks["manuscript_structure"].status.value == "fail"
 
 
-def test_publication_audit_passes_manuscript_gate_for_paper_style_report(
+def test_publication_audit_keeps_baseline_only_paper_from_passing(
     tmp_path: Path,
 ) -> None:
     summary_path = _write_real_benchmark_cycle(tmp_path)
@@ -79,6 +80,23 @@ def test_publication_audit_passes_manuscript_gate_for_paper_style_report(
 
     checks = {check.check_id: check for check in report.checks}
     assert checks["manuscript_structure"].status.value == "pass"
+    assert checks["method_innovation_evidence"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
+
+
+def test_publication_audit_passes_when_method_innovation_has_file_evidence(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["method_innovation_evidence"].status.value == "pass"
     assert report.verdict is PublicationAuditVerdict.PASS
     assert report.publishable is True
 
@@ -275,9 +293,11 @@ def _paper_style_report() -> str:
     )
 
 
-def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
+def _write_real_benchmark_cycle(tmp_path: Path, *, novel_method: bool = False) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
-    experiment_dir = cycle_dir / "demo" / "pendigits-centroid-baseline"
+    task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
+    demo_slug = task_id.replace("_", "-")
+    experiment_dir = cycle_dir / "demo" / demo_slug
     (experiment_dir / "data").mkdir(parents=True)
     (experiment_dir / "artifacts").mkdir()
     (experiment_dir / "logs").mkdir()
@@ -288,7 +308,7 @@ def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
 
     run_py = experiment_dir / "run.py"
     run_py.write_text("print('ran pendigits')\n", encoding="utf-8")
-    data_path = experiment_dir / "data" / "pendigits_centroid_baseline.csv"
+    data_path = experiment_dir / "data" / f"{task_id}.csv"
     data_path.write_text("row_id,split,x0,label\n1,test,0,0\n", encoding="utf-8")
     metrics_path = experiment_dir / "metrics.json"
     metrics = {
@@ -316,6 +336,20 @@ def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
         json.dumps({"real_dataset": True, "sources": ["https://archive.ics.uci.edu/"]}),
         encoding="utf-8",
     )
+    innovation_artifacts = []
+    if novel_method:
+        innovation_path = experiment_dir / "artifacts" / "innovation_evidence.json"
+        innovation_path.write_text(
+            json.dumps(
+                {
+                    "proposed_method": "contrastive centroid calibration",
+                    "mechanism": "calibrates class centroids with evidence-bound ablation.",
+                    "baseline_comparison": "nearest centroid",
+                }
+            ),
+            encoding="utf-8",
+        )
+        innovation_artifacts.append("artifacts/innovation_evidence.json")
     (experiment_dir / "logs" / "run.log").write_text("ok\n", encoding="utf-8")
     validation_json = experiment_dir / "validation" / "validation-report.json"
     validation_json.write_text(
@@ -365,12 +399,22 @@ def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
             "dataset_realism": "real_public_benchmark",
             "baseline": "nearest centroid",
             "ablation": "first-8-features ablation",
+            "baseline_only": not novel_method,
+            **(
+                {
+                    "proposed_method": "contrastive centroid calibration",
+                    "novel_contribution": "calibration mechanism tested against baseline and ablation",
+                }
+                if novel_method
+                else {}
+            ),
         },
         "artifacts": [
             "artifacts/predictions.csv",
             "artifacts/summary.md",
             "artifacts/ablation.csv",
             "artifacts/dataset_sources.json",
+            *innovation_artifacts,
         ],
         "logs": ["logs/run.log"],
         "metrics": {
@@ -378,7 +422,7 @@ def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
             "values": metrics,
         },
         "reproducibility": {
-            "command": "airesearcher run-demo --demo pendigits_centroid_baseline",
+            "command": f"airesearcher run-demo --demo {task_id}",
             "commit_sha": "abc1234",
             "config_hash": "cfg",
             "data_hash": file_hash(data_path),
@@ -387,7 +431,7 @@ def _write_real_benchmark_cycle(tmp_path: Path) -> Path:
         },
         "run": {
             "id": "run_real",
-            "task_id": "pendigits_centroid_baseline",
+            "task_id": task_id,
             "project_id": "public-benchmark-pendigits",
             "status": "success",
             "exit_code": 0,

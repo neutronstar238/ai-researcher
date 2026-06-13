@@ -1228,6 +1228,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement to verify that scripts and data are actually run, plus SCALE-style "no evidence, no release" governance._
     - _Verify: focused reproduction/evidence-gate tests, ruff, mypy, full smoke/unit tests, and a real local single-cycle run showing fresh reproduction artifacts._
 
+- [x] 75. Harden publication-level innovation review
+  - [x] 75.1 Block baseline-only reports without file-backed method innovation evidence
+    - Add a publication-audit target requirement for method innovation evidence at CCF-B and Q3-journal levels.
+    - Require structured task metadata describing a proposed mechanism/contribution plus an existing innovation/mechanism/contribution artifact in the experiment outputs.
+    - Treat `baseline_only=true` or baseline-named tasks as insufficient for publication-level innovation claims, even when data, ablation, statistics, literature breadth, and manuscript sections pass.
+    - Keep `mvp-demo` exempt so basic loop checks can still verify runtime correctness without pretending to be publishable research.
+    - Record the failure as a high-severity audit check named `method_innovation_evidence` with a concrete next action.
+    - _References: user requirement that generated papers be checked for real innovation and evidence strong enough for CCF-B/Q3-style targets._
+    - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` run showing the method-innovation gate blocks a baseline-only cycle._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1440,6 +1450,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 41,
       "tasks": ["74.1"]
+    },
+    {
+      "id": 42,
+      "tasks": ["75.1"]
     }
   ]
 }

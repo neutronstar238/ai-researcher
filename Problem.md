@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-013 - Baseline-only paper-style reports could pass publication audit when other gates passed
+
+- Status: Mitigated
+- Severity: High
+- Discovered: 2026-06-13 09:18:00 +08:00
+- Source: Continuation review of publication-audit tests after the user required strict innovation and evidence checks at roughly CCF-B/Q3 quality.
+- Symptom: Before task `75.1`, a real-benchmark baseline fixture could pass `ccf-b` publication audit if literature, similarity, data size, ablation, statistics, review, and manuscript-section checks all passed.
+- Impact: A future cycle could package a baseline benchmark run as a paper-style PDF without file-backed evidence of a proposed mechanism or method contribution.
+- Evidence: `tests/unit/reports/test_publication_audit.py::test_publication_audit_passes_manuscript_gate_for_paper_style_report` expected a baseline-style real benchmark cycle to be publishable after adding paper sections.
+- Root cause: The audit checked evidence breadth and manuscript structure but did not distinguish baseline reproduction evidence from an actual method innovation artifact.
+- Workaround: None needed after task `75.1`; publication targets now require `method_innovation_evidence` unless the target is `mvp-demo`.
+- Next action: Teach future experiment generators to create honest method-contribution metadata and innovation/mechanism artifacts only when a real method change was implemented and validated.
+- Linked tasks: `75.1`
+- Resolution: Task `75.1` adds `require_novel_contribution` to publication targets, blocks `baseline_only=true` or baseline-named tasks, and requires both proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact.
+- Verification: Focused publication-audit tests passed. A real audit over `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, message `File-backed method innovation evidence is missing or baseline-only.`, and a concrete next action.
+
 ### P-20260613-012 - Cycle release evidence proved first execution but not a fresh rerun
 
 - Status: Mitigated
@@ -180,10 +196,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Additional evidence: Task `72.1` added `airesearcher evidence-gate` as a physical release gate. A real gate run over `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/cycle-summary.json` plus `runs/manual-live/paper-build-task71/paper-build.json` correctly reported `blocked`: the compiled PDF existed, but `publication_release_gate` failed because the publication audit remained `needs_revision`/`publishable=false`.
 - Additional evidence: Task `73.1` moved paper-build and evidence-gate execution into every `autopilot`/`serve` cycle. A real `autopilot --no-review` run at `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json` recorded `paper_build.status=compiled` and `evidence_gate.verdict=blocked`, confirming the PDF path exists while release remains blocked when review/publication gates fail.
 - Additional evidence: Task `74.1` adds a fresh command-line reproduction rerun before release gating. New cycle summaries include `reproduction_check` with command, exit code, fresh run-record paths, and fresh validation-report paths; the release gate now blocks cycles that lack this rerun evidence. This improves reproducibility proof but does not resolve publication novelty or source-stability gaps.
-- Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, and task `71.1` added final Markdown-to-LaTeX/PDF artifact building. The full system still lacks Semantic Scholar API stability, locally available Springer Nature `sn-jnl` class support, and method novelty beyond a baseline benchmark.
+- Additional evidence: Task `75.1` adds `method_innovation_evidence` to publication audit. A real audit over the task `74.1` cycle wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, explicitly blocking baseline-only publication claims.
+- Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, task `71.1` added final Markdown-to-LaTeX/PDF artifact building, task `74.1` added a real rerun gate, and task `75.1` blocks baseline-only publication claims. The full system still lacks Semantic Scholar API stability, locally available Springer Nature `sn-jnl` class support, and a genuinely novel method validated beyond a baseline benchmark.
 - Workaround: Treat `publication-audit` issue notes as self-loop tasks and keep generated reports labeled as demo evidence until stronger experiments exist.
 - Next action: Stabilize or key Semantic Scholar access, decide how source-error severity should interact with OpenAlex/ArXiv fallback, add/verify Springer Nature `sn-jnl` class support when license terms and local installation are clear, and add stronger method novelty beyond the Pendigits baseline.
-- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`, `74.1`
+- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`, `74.1`, `75.1`
 - Resolution: Not resolved; the new publication audit blocks publishable claims and writes Obsidian `review_note`/`issue_note` records for follow-up.
 - Verification: Real `airesearcher publication-audit` and real `airesearcher serve` runs wrote failed or needs-revision publication audits under `runs/manual-live/serve-full/`, `runs/manual-live/serve-quality/`, `runs/manual-live/serve-quality-4096/`, `runs/manual-live/serve-pendigits/`, `runs/manual-live/serve-pendigits-sha/`, `runs/manual-live/serve-query-floor/`, `runs/manual-live/serve-publication-defaults/`, and Obsidian project issue notes under `autoresearch-vault/projects/live_quality_4096_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_sha_20260613/issues/`, and `autoresearch-vault/projects/live_publication_defaults_20260613/issues/`.
 
