@@ -440,16 +440,15 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
         ),
         *doc_lines,
         (
-            "The similarity search is narrower and more adversarial. It queried the "
-            "candidate's method, dataset, baseline, and limitation context without this "
-            "manuscript restating the exact query templates as paper evidence. Exact "
-            "query strings, source responses, classification counts, and cache details "
-            "are stored in the similarity note and compact review context rather than "
-            "promoted into this paper prose. The distribution is a warning signal rather "
-            "than a novelty claim. When findings remain unknown, the safe interpretation "
-            "is that the system needs deeper abstract inspection and more adjacent-work "
-            "classification before any submission-quality originality statement can be "
-            "written."
+            "The similarity search is narrower and more adversarial than the broad "
+            "literature refresh, but this manuscript does not restate what the retriever "
+            "queried. Query strings, source responses, classification counts, cache "
+            "details, and source-specific errors are stored in the similarity note and "
+            "compact review context rather than promoted into this paper prose. The "
+            "retrieved distribution is a warning signal rather than a novelty claim. "
+            "When findings remain unknown, the safe interpretation is that the system "
+            "needs deeper abstract inspection and more adjacent-work classification "
+            "before any submission-quality originality statement can be written."
         ),
         *finding_lines,
         (
@@ -828,11 +827,11 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
 def _limitations(_evidence: _ManuscriptEvidence) -> list[str]:
     return [
         (
-            "The novelty boundary is still incomplete. The similarity stage has parsed "
-            "and classified part of the nearby-work trail, but current metadata rules "
-            "are not a substitute for source-backed abstract inspection and method "
-            "comparison. Until those comparisons are attached, the manuscript must not "
-            "claim that the contribution is new."
+            "The novelty boundary is still incomplete. The similarity stage records "
+            "a nearby-work trail, but the manuscript treats that trail as retrieval "
+            "evidence until source-backed abstracts, classification rationale, and "
+            "method comparisons are attached. Until those comparisons are attached, "
+            "the manuscript must not claim that the contribution is new."
         ),
         (
             "The experiment uses one public benchmark and one primary method candidate. "

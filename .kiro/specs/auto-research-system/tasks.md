@@ -1676,6 +1676,20 @@ A task can be checked only when all applicable items are true:
     - _References: task `113.1`; task `112.1`; task `111.1`; `P-20260613-049`; `P-20260613-050`; `P-20260613-051`; user requirement that publication output be evidence-backed to a CCF-B/Q3-style standard and checked by real API calls._
     - _Verify: focused CLI/manuscript/demo/publication-audit tests; full `tests/smoke tests/unit`; focused ruff; focused mypy; old-cycle audit proving `needs_revision` is now blocking; final real ACM `autopilot` at `runs/manual-live/task114-citation-context-cycle/cycle-20260613T144509Z/cycle-summary.json` with `review_status=passed`, reviewer `verdict=pass`, unsupported claims `[]`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks; real stability matrix at `runs/manual-live/task114-citation-context-stability/publication-stability.json` with `stable=true` and score `1.000`._
 
+- [x] 115. Require strict review-context freshness in publication stability matrices
+  - [x] 115.1 Add matrix-level strict context gates and regenerate stale release cells
+    - Add `require_strict_review_context` to the `ccf-b-matrix` stability target so release candidates cannot be counted from historical cycles that predate the final-manuscript review evidence window.
+    - Parse each cycle's `llm-review.json` and `review-evidence-context.json` in the publication-stability report, then record reviewer verdict, reviewer quality score, strict context path, and strict context status for every matrix cell.
+    - Require every release-allowed CCF-B/Q3 matrix cell to have reviewer `verdict=pass`, a present final-manuscript review evidence context, formal-reference citation metadata coverage, candidate `feature_count`, and passing paper-quality context.
+    - Keep the lighter `mvp-demo` stability target usable without strict review context so local scaffolding and early demos are not blocked by publication-grade checks.
+    - Run the current strict matrix gate against the old task `114.1` stability set and confirm it blocks stale Pendigits/Skin cells that lack `review-evidence-context.json`.
+    - Rerun real live `autopilot` cycles for Pendigits/generic and Skin/Springer using the current strict review context, real online literature retrieval, real LLM review, publication audit, paper build, and evidence gate.
+    - Tighten deterministic manuscript prose when live review detects unsupported wording about similarity query coverage or parsed/classified nearby-work trails.
+    - Rerun `publication-stability --target ccf-b-matrix` over fresh Pendigits/generic, current Letter/ACM, and fresh Skin/Springer cycles; require score `1.000`, three release-allowed real datasets, three LaTeX templates, at least one external conference template, at least one external journal template, and `strict_review_context_all_releases=pass`.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime outputs under `runs/manual-live/...` count as AI-Researcher-written vault evidence for this task.
+    - _References: task `114.1`; task `113.1`; task `112.1`; `P-20260613-052`; `P-20260613-053`; user requirement that stability claims be backed by current real API calls, real evidence, and strict CCF-B/Q3-style quality gates._
+    - _Verify: focused manuscript/stability tests; focused ruff; focused mypy; old real matrix at `runs/manual-live/task115-strict-context-old-matrix/publication-stability.json` blocked on missing strict review context; fresh Skin/Springer live cycle at `runs/manual-live/task115-skin-strict-v2-cycle/cycle-20260613T150624Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; fresh Pendigits/generic live cycle at `runs/manual-live/task115-pendigits-strict-v2-cycle/cycle-20260613T151155Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; final matrix at `runs/manual-live/task115-strict-context-current-matrix/publication-stability.json` with `stable=true`, score `1.000`, and `strict_review_context_all_releases=pass`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2048,6 +2062,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 81,
       "tasks": ["114.1"]
+    },
+    {
+      "id": 82,
+      "tasks": ["115.1"]
     }
   ]
 }

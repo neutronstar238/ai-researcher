@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-053 - Manuscript prose overstated similarity-stage evidence
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 23:05:00 +08:00
+- Source: Task `115.1` real Skin/Springer and Pendigits/generic autopilot cycles under the strict final-manuscript review context.
+- Symptom: Live review blocked manuscripts whose prose claimed the similarity search queried method/dataset/baseline/limitation context or had parsed and classified the nearby-work trail when the displayed evidence only supported recorded retrieval and source trails.
+- Impact: Publication-grade gates could fail, or worse, a manuscript could overstate what the local retrieval artifacts proved about related-work analysis.
+- Evidence: `runs/manual-live/task115-skin-strict-cycle/cycle-20260613T145904Z/cycle-summary.json` blocked on the unsupported query-coverage claim. `runs/manual-live/task115-pendigits-strict-cycle/cycle-20260613T150830Z/cycle-summary.json` blocked on the unsupported parsed/classified nearby-work claim.
+- Root cause: Deterministic manuscript wording summarized internal retrieval intent too strongly instead of treating similarity records as retrieval evidence until source-backed abstracts, classification rationale, and method comparisons are attached.
+- Workaround: None needed after the fix.
+- Next action: Keep final-manuscript prose conservative until source-backed abstract inspection and method-comparison evidence become first-class artifacts.
+- Linked tasks: `115.1`
+- Resolution: Tightened manuscript related-work and limitation wording so it no longer claims exact similarity query coverage or parsed/classified nearby-work evidence.
+- Verification: Focused manuscript/stability tests, ruff, and mypy passed. Fresh Skin/Springer cycle `runs/manual-live/task115-skin-strict-v2-cycle/cycle-20260613T150624Z/cycle-summary.json` and fresh Pendigits/generic cycle `runs/manual-live/task115-pendigits-strict-v2-cycle/cycle-20260613T151155Z/cycle-summary.json` both passed live review, publication audit, and evidence gate.
+
+### P-20260613-052 - Publication stability matrix accepted stale strict-review evidence
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 22:55:00 +08:00
+- Source: Task `115.1` follow-up to task `114.1` stability evidence.
+- Symptom: The CCF-B/Q3 stability matrix could report `stable=true` by combining one current strict-review cycle with older release-allowed cycles that predated `review-evidence-context.json`.
+- Impact: The matrix overstated broad publication readiness because historical cells had not been revalidated with the newest final-manuscript review evidence window.
+- Evidence: The task `114.1` matrix passed using old Pendigits and Skin cycles. Re-running those same cycle summaries under the new gate at `runs/manual-live/task115-strict-context-old-matrix/publication-stability.json` correctly blocks on `strict_review_context_all_releases` because the old Pendigits and Skin cycles lack strict review context.
+- Root cause: Publication stability summarized publication audit and evidence-gate outcomes but did not require every release-allowed cycle to carry the latest strict LLM review context and reviewer verdict artifacts.
+- Workaround: None needed after the fix.
+- Next action: Regenerate any future matrix cells after changes to strict review context, citation, paper-quality, or evidence-gate semantics.
+- Linked tasks: `114.1`, `115.1`
+- Resolution: Added `require_strict_review_context` to the `ccf-b-matrix` target, parsed per-cycle reviewer and review-context artifacts, and blocked release-allowed matrix cells missing strict context, reviewer `verdict=pass`, formal-reference metadata coverage, candidate `feature_count`, or paper-quality context.
+- Verification: The old matrix is blocked at `runs/manual-live/task115-strict-context-old-matrix/publication-stability.json`. The regenerated matrix at `runs/manual-live/task115-strict-context-current-matrix/publication-stability.json` passes with `stable=true`, score `1.000`, three release-allowed real datasets, three templates, external conference and journal coverage, and `strict_review_context_all_releases=pass`.
+
 ### P-20260613-051 - Pendigits variance demo omitted contracted feature-count metric
 
 - Status: Resolved

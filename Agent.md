@@ -62,6 +62,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 23:15:02 +08:00 - Codex - Task 115.1 strict publication-stability review context
+
+- Request: Continue real API/data-backed quality control until the system can defend CCF-B/Q3-style output; also check whether the user's README changes still need a separate commit.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/stability.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_stability.py`
+- Summary:
+  - Confirmed `git diff -- README.md README.zh-CN.md README-cn.md` and `git diff --cached --stat` were empty; there was no new README change to commit beyond existing commit `73416fe docs: refresh README user guide`.
+  - Added a `require_strict_review_context` stability-target flag and enabled it for `ccf-b-matrix`.
+  - Extended publication-stability cycle records with reviewer verdict, reviewer quality score, review artifact path, review-context artifact path, and strict context status.
+  - Required all release-allowed CCF-B/Q3 matrix cells to carry strict final-manuscript review context, reviewer `verdict=pass`, formal-reference citation metadata coverage, candidate `feature_count`, and passing paper-quality context.
+  - Kept `mvp-demo` stability checks unblocked by strict review-context requirements.
+  - Tightened deterministic manuscript prose after live review caught unsupported claims about similarity query coverage and parsed/classified nearby-work evidence.
+  - Marked task `115.1` complete.
+- Verification:
+  - `git diff -- README.md README.zh-CN.md README-cn.md`: no README diff to commit.
+  - `git log --oneline --max-count=5 -- README.md README.zh-CN.md README-cn.md`: latest README commit is `73416fe docs: refresh README user guide`.
+  - `poetry run python -m autoresearch.cli.main publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task114-citation-context-cycle\cycle-20260613T144509Z\cycle-summary.json runs\manual-live\task110-venue-cycle\cycle-20260613T114041Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task115-strict-context-old-matrix --vault runs\manual-live\task114-citation-context-vault --project-id task115_strict_context_matrix --no-fail-on-unstable`: completed and correctly blocked the old matrix on missing strict review context for stale release cells.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task115-skin-strict-v2-vault --cache runs\manual-live\task115-skin-strict-v2-cache --output-dir runs\manual-live\task115-skin-strict-v2-cycle --state runs\manual-live\task115-skin-strict-v2-state.json --project-id task115_skin_strict_cycle_v2 --demo skin_variance_calibrated_prototypes --paper-template-id springer-nature-sn-jnl --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed source preflight, live review, publication audit, evidence gate, and 0 follow-up tasks at `cycle-20260613T150624Z`.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task115-pendigits-strict-v2-vault --cache runs\manual-live\task115-pendigits-strict-v2-cache --output-dir runs\manual-live\task115-pendigits-strict-v2-cycle --state runs\manual-live\task115-pendigits-strict-v2-state.json --project-id task115_pendigits_strict_cycle_v2 --demo pendigits_variance_calibrated_prototypes --paper-template-id generic-article-one-column --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed source preflight, live review, publication audit, evidence gate, and 0 follow-up tasks at `cycle-20260613T151155Z`.
+  - `poetry run python -m autoresearch.cli.main publication-stability runs\manual-live\task115-pendigits-strict-v2-cycle\cycle-20260613T151155Z\cycle-summary.json runs\manual-live\task114-citation-context-cycle\cycle-20260613T144509Z\cycle-summary.json runs\manual-live\task115-skin-strict-v2-cycle\cycle-20260613T150624Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task115-strict-context-current-matrix --vault runs\manual-live\task115-strict-context-vault --project-id task115_strict_context_matrix`: passed with `stable=true`, score `1.000`, three release-allowed real datasets, three templates, external ACM conference coverage, external Springer/Nature journal coverage, and `strict_review_context_all_releases=pass`.
+  - `poetry run pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_stability.py -q`: passed, 9 tests.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 448 tests and 4 live smoke tests skipped.
+  - `poetry run ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\stability.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_stability.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\stability.py`: passed with the existing pyproject unused-override note.
+  - `git diff --check -- .kiro\specs\auto-research-system\tasks.md Agent.md Problem.md src\autoresearch\reports\manuscript.py src\autoresearch\reports\stability.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_stability.py`: passed; Git only printed expected LF-to-CRLF working-copy warnings.
+- Problems:
+  - `P-20260613-052` added and resolved for stale strict-review evidence in publication-stability matrices.
+  - `P-20260613-053` added and resolved for similarity-stage manuscript overclaims caught by live review.
+- Follow-up:
+  - The system still needs stronger source-backed abstract inspection and method-comparison artifacts before the generated manuscripts should be treated as directly submittable rather than strict-loop evidence packages.
+
 ### 2026-06-13 22:54:01 +08:00 - Codex - Task 114.1 strict review evidence window
 
 - Request: Continue the real self-running AI-Researcher loop until strict CCF-B/Q3-style review gates are evidence-backed; commit the user's README work; keep output quality controlled by real API calls and data evidence.

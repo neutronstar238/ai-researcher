@@ -47,6 +47,7 @@ class PublicationStabilityTarget:
     min_external_conference_templates: int
     min_external_journal_templates: int
     max_warnings_per_cycle: int
+    require_strict_review_context: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,12 @@ class CycleStabilityRecord:
     paper_template_source_kind: str
     paper_template_venue_kind: str
     paper_quality_passed: bool
+    review_verdict: str
+    review_quality_score: float | None
+    review_path: str | None
+    review_evidence_context_path: str | None
+    strict_review_context_passed: bool
+    strict_review_context_status: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -110,6 +117,12 @@ class CycleStabilityRecord:
             "paper_template_source_kind": self.paper_template_source_kind,
             "paper_template_venue_kind": self.paper_template_venue_kind,
             "paper_quality_passed": self.paper_quality_passed,
+            "review_verdict": self.review_verdict,
+            "review_quality_score": self.review_quality_score,
+            "review_path": self.review_path,
+            "review_evidence_context_path": self.review_evidence_context_path,
+            "strict_review_context_passed": self.strict_review_context_passed,
+            "strict_review_context_status": self.strict_review_context_status,
         }
 
 
@@ -155,6 +168,7 @@ class PublicationStabilityReport:
                 "min_external_conference_templates": self.target.min_external_conference_templates,
                 "min_external_journal_templates": self.target.min_external_journal_templates,
                 "max_warnings_per_cycle": self.target.max_warnings_per_cycle,
+                "require_strict_review_context": self.target.require_strict_review_context,
             },
             "verdict": self.verdict.value,
             "stable": self.stable,
@@ -181,6 +195,7 @@ STABILITY_TARGETS = {
         min_external_conference_templates=1,
         min_external_journal_templates=1,
         max_warnings_per_cycle=2,
+        require_strict_review_context=True,
     ),
     "mvp-matrix": PublicationStabilityTarget(
         name="mvp-matrix",
@@ -288,6 +303,13 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
     template = paper_build.get("template", {}) if isinstance(paper_build, dict) else {}
     paper_template = _text(template.get("id") or paper_build.get("template_id") or "unknown")
     paper_template_source_kind = _text(template.get("source_kind") or paper_build.get("template_source_kind") or "unknown")
+    review, review_path = _review_artifact(summary, base_dir, publication)
+    review_context, review_context_path = _review_context_artifact(summary, base_dir)
+    strict_context_passed, strict_context_status = _strict_review_context_status(
+        review,
+        review_context,
+        paper_quality=paper_quality,
+    )
     return CycleStabilityRecord(
         cycle_summary_path=summary_path.as_posix(),
         cycle_id=_text(summary.get("cycle_id") or summary_path.parent.name),
@@ -305,6 +327,14 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
         paper_template_source_kind=paper_template_source_kind,
         paper_template_venue_kind=_template_venue_kind(template, template_id=paper_template, source_kind=paper_template_source_kind),
         paper_quality_passed=bool(paper_quality.get("passed")),
+        review_verdict=_review_verdict(review),
+        review_quality_score=_review_quality_score(review),
+        review_path=review_path.as_posix() if review_path is not None else None,
+        review_evidence_context_path=review_context_path.as_posix()
+        if review_context_path is not None
+        else None,
+        strict_review_context_passed=strict_context_passed,
+        strict_review_context_status=strict_context_status,
     )
 
 
@@ -425,6 +455,7 @@ def _stability_checks(
         ),
         _failed_cycle_check(failed_cycles),
         _paper_quality_check(release_allowed),
+        _strict_review_context_check(release_allowed, target),
         _warning_budget_check(warning_over_budget, target),
     ]
     return tuple(checks)
@@ -524,6 +555,36 @@ def _warning_budget_check(
     )
 
 
+def _strict_review_context_check(
+    release_allowed: tuple[CycleStabilityRecord, ...],
+    target: PublicationStabilityTarget,
+) -> PublicationStabilityCheck:
+    if not target.require_strict_review_context:
+        return PublicationStabilityCheck(
+            "strict_review_context_all_releases",
+            PublicationStabilityCheckStatus.PASS,
+            "blocking",
+            "Strict review-context evidence is not required for this target.",
+        )
+    failed = tuple(cycle for cycle in release_allowed if not cycle.strict_review_context_passed)
+    status = PublicationStabilityCheckStatus.PASS if not failed else PublicationStabilityCheckStatus.FAIL
+    message = (
+        "Every release-allowed cycle has strict final-manuscript review context and reviewer verdict evidence."
+        if not failed
+        else f"{len(failed)} release-allowed cycles lack strict final-manuscript review-context evidence."
+    )
+    return PublicationStabilityCheck(
+        "strict_review_context_all_releases",
+        status,
+        "blocking",
+        message,
+        tuple(cycle.cycle_summary_path for cycle in failed),
+        None
+        if status is PublicationStabilityCheckStatus.PASS
+        else "Rerun stale cycles with the latest strict review evidence context before claiming stable CCF-B/Q3 output.",
+    )
+
+
 def _artifact_json(summary: dict[str, Any], base_dir: Path, key: str) -> dict[str, Any]:
     value = summary.get(key, {})
     if not isinstance(value, dict):
@@ -574,6 +635,94 @@ def _run_record(summary: dict[str, Any], base_dir: Path) -> dict[str, Any]:
     return {}
 
 
+def _review_artifact(
+    summary: dict[str, Any],
+    base_dir: Path,
+    publication: dict[str, Any],
+) -> tuple[dict[str, Any], Path | None]:
+    for raw_path in (
+        publication.get("review_path"),
+        summary.get("publication_audit", {}).get("review_path")
+        if isinstance(summary.get("publication_audit"), dict)
+        else None,
+        summary.get("evidence_gate", {}).get("review_path")
+        if isinstance(summary.get("evidence_gate"), dict)
+        else None,
+        summary.get("review", {}).get("json_path")
+        if isinstance(summary.get("review"), dict)
+        else None,
+        base_dir / "llm-review.json",
+    ):
+        path = _optional_path(raw_path, base_dir)
+        if path is not None and path.is_file():
+            return _read_json(path), path
+    review = summary.get("review")
+    return (review if isinstance(review, dict) else {}), None
+
+
+def _review_context_artifact(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> tuple[dict[str, Any], Path | None]:
+    for raw_path in (
+        summary.get("review_evidence_context", {}).get("json_path")
+        if isinstance(summary.get("review_evidence_context"), dict)
+        else None,
+        summary.get("review_context_path"),
+        base_dir / "review-evidence-context.json",
+    ):
+        path = _optional_path(raw_path, base_dir)
+        if path is not None and path.is_file():
+            return _read_json(path), path
+    return {}, None
+
+
+def _strict_review_context_status(
+    review: dict[str, Any],
+    review_context: dict[str, Any],
+    *,
+    paper_quality: dict[str, Any],
+) -> tuple[bool, str]:
+    verdict = _review_verdict(review)
+    if verdict != "pass":
+        return False, f"review_verdict={verdict}"
+    if not review_context:
+        return False, "missing_review_evidence_context"
+    audit_summary = _mapping(review_context.get("audit_summary"))
+    if not audit_summary:
+        return False, "missing_audit_summary"
+    formal_references = _mapping(
+        _mapping(_mapping(audit_summary.get("citations")).get("formal_references"))
+    )
+    if formal_references.get("citation_metadata_status") != "all_displayed_keys_present":
+        return False, "formal_reference_metadata_not_fully_present"
+    if int(formal_references.get("displayed_count") or 0) <= 0:
+        return False, "no_displayed_formal_references"
+    candidate = _mapping(audit_summary.get("candidate"))
+    metrics = _mapping(candidate.get("recorded_metrics"))
+    if "feature_count" not in metrics:
+        return False, "missing_recorded_feature_count"
+    context_quality = _mapping(_mapping(audit_summary.get("paper_build")).get("paper_quality"))
+    if not bool(context_quality.get("passed") or paper_quality.get("passed")):
+        return False, "paper_quality_not_passed_in_context"
+    return True, "strict_review_context_present"
+
+
+def _review_verdict(review: dict[str, Any]) -> str:
+    quality = _mapping(review.get("quality"))
+    parsed = _mapping(quality.get("parsed_output"))
+    return _text(review.get("verdict") or parsed.get("verdict"))
+
+
+def _review_quality_score(review: dict[str, Any]) -> float | None:
+    quality = _mapping(review.get("quality"))
+    return _float_or_none(quality.get("score") or review.get("quality_score"))
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def _warning_count(publication: dict[str, Any]) -> int:
     checks = publication.get("checks", [])
     if not isinstance(checks, list):
@@ -588,6 +737,14 @@ def _resolve_path(raw_path: str, base_dir: Path) -> Path:
     if path.exists():
         return path
     return base_dir / path
+
+
+def _optional_path(raw_path: Any, base_dir: Path) -> Path | None:
+    if isinstance(raw_path, Path):
+        return raw_path if raw_path.is_absolute() else _resolve_path(raw_path.as_posix(), base_dir)
+    if isinstance(raw_path, str) and raw_path:
+        return _resolve_path(raw_path, base_dir)
+    return None
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -653,11 +810,12 @@ def _markdown(report: PublicationStabilityReport) -> str:
         f"- Minimum external conference templates: `{report.target.min_external_conference_templates}`",
         f"- Minimum external journal templates: `{report.target.min_external_journal_templates}`",
         f"- Maximum publication warnings per cycle: `{report.target.max_warnings_per_cycle}`",
+        f"- Require strict final-manuscript review context: `{str(report.target.require_strict_review_context).lower()}`",
         "",
         "## Cycles",
         "",
-        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Venue kind | Warnings |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
+        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Venue kind | Reviewer | Strict context | Warnings |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
     ]
     for cycle in report.cycles:
         lines.append(
@@ -666,6 +824,7 @@ def _markdown(report: PublicationStabilityReport) -> str:
             f"`{str(cycle.release_allowed).lower()}` | `{cycle.paper_template}` | "
             f"`{cycle.paper_template_source_kind}` | "
             f"`{cycle.paper_template_venue_kind}` | "
+            f"`{cycle.review_verdict}` | `{cycle.strict_review_context_status}` | "
             f"`{cycle.publication_warning_count}` |"
         )
     lines.extend(

@@ -41,6 +41,8 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "Retrieved record 1:" not in manuscript
     assert "was classified as" not in manuscript
     assert "candidate title, the method-plus-dataset phrase" not in manuscript
+    assert "queried the candidate's method, dataset, baseline" not in manuscript
+    assert "parsed and classified part of the nearby-work trail" not in manuscript
     assert "records how many findings were classified" not in manuscript
     assert "Representative similarity findings are retained" in manuscript
     assert "Prototype Calibration for Digits was retrieved" not in manuscript
