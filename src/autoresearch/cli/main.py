@@ -73,6 +73,7 @@ from autoresearch.reports import (
     build_latex_paper_from_markdown,
     compose_publication_manuscript,
     generate_bibtex,
+    inspect_related_work,
     run_evidence_gate,
     validate_reproducibility_package,
 )
@@ -2454,6 +2455,13 @@ def _run_autopilot_cycle(
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
+    related_work_inspection = inspect_related_work(
+        cycle_summary_path=summary_path,
+        output_dir=cycle_dir / "related-work",
+    )
+    summary["related_work_inspection"] = related_work_inspection.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
     paper_manuscript = compose_publication_manuscript(
         cycle_summary_path=summary_path,
         output_dir=cycle_dir / "paper-manuscript",
@@ -2486,6 +2494,7 @@ def _run_autopilot_cycle(
         "literature": summary["literature"],
         "similarity": summary["similarity"],
         "citations": summary["citations"],
+        "related_work_inspection": summary["related_work_inspection"],
         "demo": summary["demo"],
         "reproduction_check": reproduction_check,
         "paper_manuscript": paper_manuscript.to_dict(),
@@ -2508,6 +2517,8 @@ def _run_autopilot_cycle(
         getattr(literature_report, "summary_path", None),
         citations.get("metadata_path"),
         citations.get("bib_path"),
+        summary["related_work_inspection"].get("json_path"),
+        summary["related_work_inspection"].get("markdown_path"),
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
         reproduction_check.get("json_path"),
@@ -2593,6 +2604,7 @@ def _autopilot_review_audit_summary(
     literature = mapping(summary.get("literature"))
     similarity = mapping(summary.get("similarity"))
     citations = mapping(summary.get("citations"))
+    related_work = mapping(summary.get("related_work_inspection"))
     paper_manuscript = mapping(summary.get("paper_manuscript"))
     paper_quality = mapping(paper_build.get("paper_quality"))
     formal_references = _autopilot_formal_reference_summary(
@@ -2618,6 +2630,15 @@ def _autopilot_review_audit_summary(
             "metadata_path": citations.get("metadata_path"),
             "bib_path": citations.get("bib_path"),
             "formal_references": formal_references,
+        },
+        "related_work_inspection": {
+            "json_path": related_work.get("json_path"),
+            "markdown_path": related_work.get("markdown_path"),
+            "inspected_count": related_work.get("inspected_count"),
+            "source_backed_count": related_work.get("source_backed_count"),
+            "abstract_backed_count": related_work.get("abstract_backed_count"),
+            "direct_method_count": related_work.get("direct_method_count"),
+            "contextual_count": related_work.get("contextual_count"),
         },
         "reproduction_check": {
             "status": reproduction_check.get("status"),

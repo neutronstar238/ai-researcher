@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from autoresearch.reports import PublicationAuditVerdict, audit_publication_quality
+from autoresearch.reports import (
+    PublicationAuditVerdict,
+    audit_publication_quality,
+    inspect_related_work,
+)
 from autoresearch.schemas import file_hash
 
 
@@ -209,6 +213,25 @@ def test_publication_audit_blocks_generic_recognition_citations_without_direct_m
     assert checks["verified_citation_breadth"].status.value == "pass"
     assert checks["citation_directness_breadth"].status.value == "fail"
     assert "Directly relevant verified citations: 0" in checks["citation_directness_breadth"].message
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_missing_related_work_inspection_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary.pop("related_work_inspection")
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["citation_package"].status.value == "pass"
+    assert checks["related_work_inspection_package"].status.value == "fail"
+    assert checks["related_work_inspection_breadth"].status.value == "fail"
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
@@ -1015,5 +1038,11 @@ def _write_real_benchmark_cycle(
         },
     }
     summary_path = cycle_dir / "cycle-summary.json"
+    summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")
+    related_work = inspect_related_work(
+        cycle_summary_path=summary_path,
+        output_dir=cycle_dir / "related-work",
+    )
+    cycle_summary["related_work_inspection"] = related_work.to_dict()
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")
     return summary_path

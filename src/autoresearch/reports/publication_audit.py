@@ -59,6 +59,9 @@ class PublicationQualityTarget:
     min_verified_citations: int
     min_relevant_verified_citations: int
     min_direct_verified_citations: int
+    min_related_work_inspections: int
+    min_related_work_abstract_evidence: int
+    min_related_work_direct_method_candidates: int
     max_blocked_citations: int
 
 
@@ -125,6 +128,13 @@ class PublicationAuditReport:
                 "min_verified_citations": self.target.min_verified_citations,
                 "min_relevant_verified_citations": self.target.min_relevant_verified_citations,
                 "min_direct_verified_citations": self.target.min_direct_verified_citations,
+                "min_related_work_inspections": self.target.min_related_work_inspections,
+                "min_related_work_abstract_evidence": (
+                    self.target.min_related_work_abstract_evidence
+                ),
+                "min_related_work_direct_method_candidates": (
+                    self.target.min_related_work_direct_method_candidates
+                ),
                 "max_blocked_citations": self.target.max_blocked_citations,
             },
             "verdict": self.verdict.value,
@@ -161,6 +171,9 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_verified_citations=8,
         min_relevant_verified_citations=6,
         min_direct_verified_citations=4,
+        min_related_work_inspections=8,
+        min_related_work_abstract_evidence=6,
+        min_related_work_direct_method_candidates=4,
         max_blocked_citations=0,
     ),
     "q3-journal": PublicationQualityTarget(
@@ -183,6 +196,9 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_verified_citations=10,
         min_relevant_verified_citations=8,
         min_direct_verified_citations=5,
+        min_related_work_inspections=10,
+        min_related_work_abstract_evidence=8,
+        min_related_work_direct_method_candidates=5,
         max_blocked_citations=0,
     ),
     "mvp-demo": PublicationQualityTarget(
@@ -205,6 +221,9 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_verified_citations=0,
         min_relevant_verified_citations=0,
         min_direct_verified_citations=0,
+        min_related_work_inspections=0,
+        min_related_work_abstract_evidence=0,
+        min_related_work_direct_method_candidates=0,
         max_blocked_citations=999,
     ),
 }
@@ -339,6 +358,7 @@ def audit_publication_quality(
     checks = (
         *_literature_checks(summary, target_config),
         *_citation_checks(summary, summary_path.parent, target_config),
+        *_related_work_inspection_checks(summary, summary_path.parent, target_config),
         *_similarity_checks(summary, summary_path.parent, target_config),
         *_script_and_data_checks(summary, summary_path.parent, target_config),
         *_review_checks(
@@ -626,6 +646,113 @@ def _citation_checks(
         )
     )
     return checks
+
+
+def _related_work_inspection_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+    target: PublicationQualityTarget,
+) -> list[PublicationAuditCheck]:
+    related_work = _dict(summary.get("related_work_inspection"))
+    json_path = _resolve_path(related_work.get("json_path"), base_dir)
+    markdown_path = _resolve_path(related_work.get("markdown_path"), base_dir)
+    payload = _read_json_if_exists(json_path)
+    if not payload:
+        payload = related_work
+    if target.min_related_work_inspections <= 0 and not payload:
+        return [
+            PublicationAuditCheck(
+                "related_work_inspection_package",
+                PublicationAuditCheckStatus.PASS,
+                "info",
+                "Related-work inspection is not required for this publication target.",
+                ("cycle_summary.related_work_inspection",),
+            )
+        ]
+
+    package_ok = bool(
+        payload
+        and json_path is not None
+        and json_path.exists()
+        and markdown_path is not None
+        and markdown_path.exists()
+    )
+    inspected_count = _int(payload.get("inspected_count"))
+    abstract_backed_count = _int(payload.get("abstract_backed_count"))
+    direct_method_count = _int(payload.get("direct_method_count"))
+    return [
+        PublicationAuditCheck(
+            "related_work_inspection_package",
+            PublicationAuditCheckStatus.PASS if package_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Related-work inspection package "
+                f"json={'present' if json_path and json_path.exists() else 'missing'}, "
+                f"markdown={'present' if markdown_path and markdown_path.exists() else 'missing'}."
+            ),
+            (
+                json_path.as_posix()
+                if json_path is not None
+                else "cycle_summary.related_work_inspection.json_path",
+                markdown_path.as_posix()
+                if markdown_path is not None
+                else "cycle_summary.related_work_inspection.markdown_path",
+            ),
+            None
+            if package_ok
+            else (
+                "Generate a source-backed related-work inspection artifact from citation "
+                "metadata before publication audit."
+            ),
+        ),
+        _threshold_check(
+            "related_work_inspection_breadth",
+            inspected_count,
+            target.min_related_work_inspections,
+            "blocking",
+            (
+                f"Related-work inspected records: {inspected_count}; target requires at "
+                f"least {target.min_related_work_inspections}."
+            ),
+            "Inspect enough DOI/URL-backed records before treating the related-work trail as screened evidence.",
+            ("cycle_summary.related_work_inspection",),
+        ),
+        _threshold_check(
+            "related_work_abstract_evidence",
+            abstract_backed_count,
+            target.min_related_work_abstract_evidence,
+            "blocking",
+            (
+                f"Abstract-backed related-work records: {abstract_backed_count}; target "
+                f"requires at least {target.min_related_work_abstract_evidence}."
+            ),
+            "Attach source abstracts or source-backed bibliographic summaries before paper-level related-work claims.",
+            (
+                json_path.as_posix()
+                if json_path is not None
+                else "cycle_summary.related_work_inspection.json_path",
+            ),
+        ),
+        _threshold_check(
+            "related_work_direct_method_candidates",
+            direct_method_count,
+            target.min_related_work_direct_method_candidates,
+            "blocking",
+            (
+                f"Direct method related-work candidates: {direct_method_count}; target "
+                f"requires at least {target.min_related_work_direct_method_candidates}."
+            ),
+            (
+                "Find and inspect directly comparable method-family papers before the "
+                "manuscript can claim submission-level positioning."
+            ),
+            (
+                json_path.as_posix()
+                if json_path is not None
+                else "cycle_summary.related_work_inspection.json_path",
+            ),
+        ),
+    ]
 
 
 def _relevant_verified_citations(
@@ -1529,6 +1656,7 @@ def _markdown(report: PublicationAuditReport) -> str:
         f"- Minimum score: `{report.target.min_score}`",
         f"- Literature: `{report.target.min_literature_queries}` queries, `{report.target.min_literature_documents}` documents, `{report.target.min_successful_sources}` successful sources",
         f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, `{report.target.min_relevant_verified_citations}` relevant verified citations, `{report.target.min_direct_verified_citations}` directly relevant verified citations, max `{report.target.max_blocked_citations}` blocked citations",
+        f"- Related-work inspection: `{report.target.min_related_work_inspections}` inspected records, `{report.target.min_related_work_abstract_evidence}` abstract-backed records, `{report.target.min_related_work_direct_method_candidates}` direct method candidates",
         f"- Similarity: `{report.target.min_similarity_queries}` queries, `{report.target.min_similarity_findings}` findings, `{report.target.min_successful_sources}` successful sources",
         f"- Data: at least `{report.target.min_test_rows}` validated test rows; real dataset required: `{str(report.target.require_real_dataset).lower()}`",
         f"- Experiment: baseline `{report.target.require_baseline}`, ablation `{report.target.require_ablation}`, statistical sanity `{report.target.require_statistical_sanity}`",

@@ -96,6 +96,9 @@ class CycleStabilityRecord:
     review_quality_score: float | None
     review_path: str | None
     review_evidence_context_path: str | None
+    related_work_inspection_path: str | None
+    related_work_abstract_backed_count: int
+    related_work_direct_method_count: int
     strict_review_context_passed: bool
     strict_review_context_status: str
 
@@ -121,6 +124,9 @@ class CycleStabilityRecord:
             "review_quality_score": self.review_quality_score,
             "review_path": self.review_path,
             "review_evidence_context_path": self.review_evidence_context_path,
+            "related_work_inspection_path": self.related_work_inspection_path,
+            "related_work_abstract_backed_count": self.related_work_abstract_backed_count,
+            "related_work_direct_method_count": self.related_work_direct_method_count,
             "strict_review_context_passed": self.strict_review_context_passed,
             "strict_review_context_status": self.strict_review_context_status,
         }
@@ -305,6 +311,11 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
     paper_template_source_kind = _text(template.get("source_kind") or paper_build.get("template_source_kind") or "unknown")
     review, review_path = _review_artifact(summary, base_dir, publication)
     review_context, review_context_path = _review_context_artifact(summary, base_dir)
+    related_work = _artifact_json(summary, base_dir, "related_work_inspection")
+    related_work_path = _optional_path(
+        _mapping(summary.get("related_work_inspection")).get("json_path"),
+        base_dir,
+    )
     strict_context_passed, strict_context_status = _strict_review_context_status(
         review,
         review_context,
@@ -333,6 +344,11 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
         review_evidence_context_path=review_context_path.as_posix()
         if review_context_path is not None
         else None,
+        related_work_inspection_path=(
+            related_work_path.as_posix() if related_work_path is not None else None
+        ),
+        related_work_abstract_backed_count=int(related_work.get("abstract_backed_count") or 0),
+        related_work_direct_method_count=int(related_work.get("direct_method_count") or 0),
         strict_review_context_passed=strict_context_passed,
         strict_review_context_status=strict_context_status,
     )
@@ -702,6 +718,13 @@ def _strict_review_context_status(
     metrics = _mapping(candidate.get("recorded_metrics"))
     if "feature_count" not in metrics:
         return False, "missing_recorded_feature_count"
+    related_work = _mapping(audit_summary.get("related_work_inspection"))
+    if int(related_work.get("inspected_count") or 0) <= 0:
+        return False, "missing_related_work_inspection"
+    if int(related_work.get("abstract_backed_count") or 0) <= 0:
+        return False, "missing_related_work_abstract_evidence"
+    if int(related_work.get("direct_method_count") or 0) <= 0:
+        return False, "missing_related_work_direct_method_candidates"
     context_quality = _mapping(_mapping(audit_summary.get("paper_build")).get("paper_quality"))
     if not bool(context_quality.get("passed") or paper_quality.get("passed")):
         return False, "paper_quality_not_passed_in_context"
@@ -814,8 +837,8 @@ def _markdown(report: PublicationStabilityReport) -> str:
         "",
         "## Cycles",
         "",
-        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Venue kind | Reviewer | Strict context | Warnings |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
+        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Venue kind | Reviewer | Strict context | Related work | Warnings |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
     ]
     for cycle in report.cycles:
         lines.append(
@@ -825,6 +848,7 @@ def _markdown(report: PublicationStabilityReport) -> str:
             f"`{cycle.paper_template_source_kind}` | "
             f"`{cycle.paper_template_venue_kind}` | "
             f"`{cycle.review_verdict}` | `{cycle.strict_review_context_status}` | "
+            f"`abstract={cycle.related_work_abstract_backed_count}; direct={cycle.related_work_direct_method_count}` | "
             f"`{cycle.publication_warning_count}` |"
         )
     lines.extend(

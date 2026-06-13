@@ -52,6 +52,8 @@ def test_publication_stability_passes_multi_dataset_matrix(tmp_path: Path) -> No
     assert payload["cycles"][2]["paper_template_venue_kind"] == "journal"
     assert payload["cycles"][2]["review_verdict"] == "pass"
     assert payload["cycles"][2]["strict_review_context_passed"] is True
+    assert payload["cycles"][2]["related_work_abstract_backed_count"] == 8
+    assert payload["cycles"][2]["related_work_direct_method_count"] == 5
 
 
 def test_publication_stability_blocks_stale_cycle_without_strict_review_context(
@@ -251,7 +253,8 @@ def _write_cycle(
     publication_dir = cycle_dir / "publication-audit"
     evidence_dir = cycle_dir / "evidence-gate"
     paper_dir = cycle_dir / "paper-build"
-    for path in (run_dir, publication_dir, evidence_dir, paper_dir):
+    related_work_dir = cycle_dir / "related-work"
+    for path in (run_dir, publication_dir, evidence_dir, paper_dir, related_work_dir):
         path.mkdir(parents=True)
 
     run_record_path = run_dir / "run-record.json"
@@ -301,12 +304,35 @@ def _write_cycle(
                                 "displayed_count": 3,
                             }
                         },
+                        "related_work_inspection": {
+                            "inspected_count": 10,
+                            "abstract_backed_count": 8,
+                            "direct_method_count": 5,
+                        },
                         "paper_build": {"paper_quality": {"passed": release_allowed}},
                     }
                 }
             ),
             encoding="utf-8",
         )
+    related_work_path = related_work_dir / "related-work-inspection.json"
+    related_work_markdown_path = related_work_dir / "related-work-inspection.md"
+    related_work_path.write_text(
+        json.dumps(
+            {
+                "json_path": related_work_path.as_posix(),
+                "markdown_path": related_work_markdown_path.as_posix(),
+                "inspected_count": 10,
+                "source_backed_count": 10,
+                "abstract_backed_count": 8,
+                "direct_method_count": 5,
+                "contextual_count": 9,
+                "records": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    related_work_markdown_path.write_text("# Related Work Inspection\n", encoding="utf-8")
     checks = [{"check_id": "ok", "status": "pass"}]
     checks.extend(
         {"check_id": f"warning_{index}", "status": "warning"}
@@ -375,6 +401,15 @@ def _write_cycle(
                 "publication_audit": {"json_path": publication_path.as_posix()},
                 "evidence_gate": {"json_path": evidence_path.as_posix()},
                 "paper_build": {"json_path": summary_paper_path.as_posix()},
+                "related_work_inspection": {
+                    "json_path": related_work_path.as_posix(),
+                    "markdown_path": related_work_markdown_path.as_posix(),
+                    "inspected_count": 10,
+                    "source_backed_count": 10,
+                    "abstract_backed_count": 8,
+                    "direct_method_count": 5,
+                    "contextual_count": 9,
+                },
                 "review_evidence_context": {
                     "json_path": review_context_path.as_posix()
                     if review_context_path is not None

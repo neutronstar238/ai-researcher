@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-055 - Manuscript overclaimed system-design contribution during live review
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 23:34:00 +08:00
+- Source: Task `116.1` first real Letter/ACM autopilot cycle after adding related-work inspection.
+- Symptom: Live LLM review returned `needs_revision` because manuscript prose promoted system-design controls and implementation boundaries as stronger contributions than the local experiment and evidence artifacts supported.
+- Impact: Publication-grade output could pass deterministic evidence gates while still overstating the paper contribution, especially when the actual empirical result is a conservative method-evaluation artifact.
+- Evidence: `runs/manual-live/task116-related-work-letter-cycle/cycle-20260613T153029Z/cycle-summary.json` reached `review_status=passed` but `publication_audit=needs_revision` because `review_verdict_strength` blocked reviewer verdict `needs_revision`.
+- Root cause: The deterministic manuscript composer reused product-system language such as self-looping refinement, implementation boundary, complete inspectable artifacts, and publication-audit framing in a method paper where those claims were not direct empirical contributions.
+- Workaround: None needed after the fix.
+- Next action: Keep manuscript wording conservative and treat system controls as evidence boundaries unless a later task evaluates AI-Researcher itself as the research object.
+- Linked tasks: `116.1`
+- Resolution: Rewrote the affected manuscript sections to remove overclaiming phrases and present failed gates, evidence controls, and future changes as audit records rather than paper contributions.
+- Verification: The next real Letter/ACM cycle at `runs/manual-live/task116-related-work-letter-v2-cycle/cycle-20260613T153611Z/cycle-summary.json` passed live review with reviewer `verdict=pass`, `publication_audit=pass`, and `evidence_gate=pass`.
+
+### P-20260613-054 - Publication audit lacked source-backed related-work inspection
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 23:25:00 +08:00
+- Source: Task `116.1` follow-up to citation relevance and strict-review gates.
+- Symptom: CCF-B/Q3 publication audit could accept a cycle with verified and relevant citations without requiring a per-source related-work inspection artifact that records abstract evidence, overlap terms, and direct-method candidates.
+- Impact: A paper could claim broad literature grounding from DOI/URL and relevance metadata while still lacking an auditable source-backed comparison table for adjacent methods and datasets.
+- Evidence: Historical cycles from tasks `114.1` and `115.1` contained citation packages and strict review context but no `related-work/related-work-inspection.json` artifact. Re-running the old task `115.1` release cycle under task `116.1` audit at `runs/manual-live/task116-related-work-old-audit/publication-audit.json` correctly blocked missing related-work inspection.
+- Root cause: Citation package and relevance gates checked formal reference integrity and topical overlap, but did not force a separate inspection pass over abstracts/source snippets and method-comparison status.
+- Workaround: None needed after the fix.
+- Next action: Future novelty gates should build on this artifact with deeper source-backed comparison summaries instead of replacing it with prompt-only reviewer judgment.
+- Linked tasks: `112.1`, `113.1`, `116.1`
+- Resolution: Added related-work inspection JSON/Markdown generation, attached it to autopilot review context and evidence paths, added CCF-B/Q3 publication-audit thresholds, and required strict publication-stability cells to include nonzero inspected, abstract-backed, and direct-method counts.
+- Verification: Old matrix `runs/manual-live/task116-related-work-old-matrix/publication-stability.json` now blocks all three old cells with `missing_related_work_inspection`. Refreshed real matrix `runs/manual-live/task116-related-work-current-matrix/publication-stability.json` passes with `stable=true`, score `1.000`, and related-work inspection counts in every release cell.
+
 ### P-20260613-053 - Manuscript prose overstated similarity-stage evidence
 
 - Status: Resolved

@@ -62,6 +62,52 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 23:43:32 +08:00 - Codex - Task 116.1 source-backed related-work inspection
+
+- Request: Continue real API/data-backed quality control until the system can defend CCF-B/Q3-style output; add source-backed related-work cross-checking; also commit the user's README work if any README diff exists.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/reports/related_work.py`
+  - `src/autoresearch/reports/stability.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/reports/test_related_work.py`
+  - `tests/unit/reports/test_stability.py`
+- Summary:
+  - Confirmed there is no current README diff or staged README change to commit; the latest README commit remains `73416fe docs: refresh README user guide`.
+  - Added related-work inspection artifacts generated from real citation metadata: JSON plus Markdown, per-citation evidence basis, abstract snippet, overlap terms, comparison status, source-backed flags, and aggregate counts.
+  - Wired related-work inspection into autopilot cycle summaries, review evidence paths, compact review context, manuscript evidence references, and publication-audit summaries.
+  - Added CCF-B/Q3 publication-audit gates for related-work inspection package presence, inspected-record breadth, abstract-backed evidence breadth, and direct-method candidate breadth while leaving MVP demo gates unblocked.
+  - Extended publication-stability strict context so release-allowed CCF-B/Q3 matrix cells must carry related-work inspection counts.
+  - Tightened deterministic manuscript wording after real live review caught unsupported system-design contribution framing.
+  - Marked task `116.1` complete.
+- Verification:
+  - `git diff -- README.md README.zh-CN.md README-cn.md`: no README diff to commit.
+  - `git diff --cached --stat`: no staged README change.
+  - `git log --oneline --decorate -5 -- README.md README.zh-CN.md README-cn.md`: latest README commit is `73416fe docs: refresh README user guide`.
+  - `poetry run python -m autoresearch.cli.main publication-audit runs\manual-live\task115-pendigits-strict-v2-cycle\cycle-20260613T151155Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\task116-related-work-old-audit --no-fail-on-not-publishable`: completed and correctly blocked the old cycle without related-work inspection.
+  - `poetry run python -m autoresearch.cli.main publication-stability runs\manual-live\task115-pendigits-strict-v2-cycle\cycle-20260613T151155Z\cycle-summary.json runs\manual-live\task114-citation-context-cycle\cycle-20260613T144509Z\cycle-summary.json runs\manual-live\task115-skin-strict-v2-cycle\cycle-20260613T150624Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task116-related-work-old-matrix --vault runs\manual-live\task116-related-work-matrix-vault --project-id task116_related_work_matrix --no-fail-on-unstable`: completed and correctly blocked all three old cells with `missing_related_work_inspection`.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task116-related-work-letter-vault --cache runs\manual-live\task116-related-work-letter-cache --output-dir runs\manual-live\task116-related-work-letter-cycle --state runs\manual-live\task116-related-work-letter-state.json --project-id task116_related_work_letter_cycle --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: completed with live review status `passed` but correctly blocked release because reviewer verdict was `needs_revision`.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task116-related-work-letter-v2-vault --cache runs\manual-live\task116-related-work-letter-v2-cache --output-dir runs\manual-live\task116-related-work-letter-v2-cycle --state runs\manual-live\task116-related-work-letter-v2-state.json --project-id task116_related_work_letter_cycle_v2 --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed source preflight, live review, publication audit, evidence gate, paper quality, and 0 follow-up tasks at `cycle-20260613T153611Z`; related-work inspection counted 54 inspected records, 51 abstract-backed records, and 11 direct-method candidates.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task116-related-work-pendigits-vault --cache runs\manual-live\task116-related-work-pendigits-cache --output-dir runs\manual-live\task116-related-work-pendigits-cycle --state runs\manual-live\task116-related-work-pendigits-state.json --project-id task116_related_work_pendigits_cycle --demo pendigits_variance_calibrated_prototypes --paper-template-id generic-article-one-column --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed source preflight, live review, publication audit, evidence gate, and 0 follow-up tasks at `cycle-20260613T154024Z`.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task116-related-work-skin-vault --cache runs\manual-live\task116-related-work-skin-cache --output-dir runs\manual-live\task116-related-work-skin-cycle --state runs\manual-live\task116-related-work-skin-state.json --project-id task116_related_work_skin_cycle --demo skin_variance_calibrated_prototypes --paper-template-id springer-nature-sn-jnl --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed source preflight, live review, publication audit, evidence gate, and 0 follow-up tasks at `cycle-20260613T154125Z`.
+  - `poetry run python -m autoresearch.cli.main publication-stability runs\manual-live\task116-related-work-pendigits-cycle\cycle-20260613T154024Z\cycle-summary.json runs\manual-live\task116-related-work-letter-v2-cycle\cycle-20260613T153611Z\cycle-summary.json runs\manual-live\task116-related-work-skin-cycle\cycle-20260613T154125Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task116-related-work-current-matrix --vault runs\manual-live\task116-related-work-matrix-vault --project-id task116_related_work_matrix`: passed with `stable=true`, score `1.000`, three release-allowed datasets, three templates, external conference and journal coverage, and `strict_review_context_all_releases=pass`; related-work abstract/direct counts were 59/22, 51/11, and 53/8 across the three cells.
+  - `poetry run pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_stability.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 30 tests.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 450 tests and 4 live smoke tests skipped by default.
+  - `poetry run ruff check src\autoresearch\reports\related_work.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\manuscript.py src\autoresearch\reports\stability.py src\autoresearch\cli\main.py tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_stability.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\related_work.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\manuscript.py src\autoresearch\reports\stability.py src\autoresearch\cli\main.py`: passed with the existing pyproject unused-override note.
+- Problems:
+  - `P-20260613-054` added and resolved for missing source-backed related-work inspection in CCF-B/Q3 release gates.
+  - `P-20260613-055` added and resolved for manuscript system-design overclaims caught by live review.
+- Follow-up:
+  - The related-work inspection is still a screening artifact. A later task should add deeper source-backed comparison synthesis and reviewer-facing novelty tables before treating generated manuscripts as directly submission-ready.
+
 ### 2026-06-13 23:15:02 +08:00 - Codex - Task 115.1 strict publication-stability review context
 
 - Request: Continue real API/data-backed quality control until the system can defend CCF-B/Q3-style output; also check whether the user's README changes still need a separate commit.

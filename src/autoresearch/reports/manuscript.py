@@ -191,6 +191,7 @@ class _ManuscriptEvidence:
     literature_docs: tuple[dict[str, str], ...]
     similarity_findings: tuple[dict[str, str], ...]
     citations: tuple[dict[str, Any], ...]
+    related_work_inspection_path: Path | None
     evidence_refs: tuple[str, ...]
 
 
@@ -253,6 +254,9 @@ def _load_manuscript_evidence(summary_path: Path) -> _ManuscriptEvidence:
     citations = _dict(summary.get("citations"))
     citation_metadata_path = _resolve_path(citations.get("metadata_path"), base_dir)
     citation_bib_path = _resolve_path(citations.get("bib_path"), base_dir)
+    related_work = _dict(summary.get("related_work_inspection"))
+    related_work_json_path = _resolve_path(related_work.get("json_path"), base_dir)
+    related_work_markdown_path = _resolve_path(related_work.get("markdown_path"), base_dir)
     evidence_refs = tuple(
         path.as_posix()
         for path in (
@@ -263,6 +267,8 @@ def _load_manuscript_evidence(summary_path: Path) -> _ManuscriptEvidence:
             literature_path,
             citation_metadata_path,
             citation_bib_path,
+            related_work_json_path,
+            related_work_markdown_path,
             similarity_path,
         )
         if path is not None and path.exists()
@@ -279,6 +285,7 @@ def _load_manuscript_evidence(summary_path: Path) -> _ManuscriptEvidence:
         literature_docs=_parse_literature_docs(literature_path),
         similarity_findings=_parse_similarity_findings(similarity_path),
         citations=_parse_citations(citation_metadata_path, fallback=citations),
+        related_work_inspection_path=related_work_json_path,
         evidence_refs=evidence_refs,
     )
 
@@ -450,6 +457,7 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "needs deeper abstract inspection and more adjacent-work classification "
             "before any submission-quality originality statement can be written."
         ),
+        _related_work_inspection_sentence(evidence),
         *finding_lines,
         (
             "This related-work section is intentionally conservative. It does not state "
@@ -484,6 +492,25 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "from an author's memory."
         ),
     ]
+
+
+def _related_work_inspection_sentence(evidence: _ManuscriptEvidence) -> str:
+    if (
+        evidence.related_work_inspection_path is None
+        or not evidence.related_work_inspection_path.exists()
+    ):
+        return (
+            "No related-work inspection artifact was attached to this manuscript. The "
+            "paper therefore treats retrieved sources as unscreened retrieval evidence, "
+            "not as source-backed related-work comparisons."
+        )
+    return (
+        "A related-work inspection artifact is attached as local evidence. It records "
+        "which citation rows have source-backed abstracts, which method or dataset terms "
+        "overlap the executed candidate, and which rows remain unrelated or metadata-only. "
+        "This manuscript still treats that artifact as screening evidence rather than as "
+        "proof that the contribution is novel."
+    )
 
 
 def _method(evidence: _ManuscriptEvidence) -> list[str]:
@@ -553,35 +580,26 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "templates, because visual polish can otherwise hide a thin evidence model."
         ),
         (
-            "The implementation-level invariants are therefore part of the contribution. "
-            "Input data must be discoverable from recorded source metadata; the feature "
-            "pipeline must be represented in the executable script rather than only in "
-            "prose; metrics must be written before any publication audit reads them; and "
-            "paper generation must consume the audited cycle summary rather than a private "
-            "language-model transcript. These invariants make the method section longer "
-            "than a minimal algorithm sketch, but they are the checks that allow later "
-            "agents to rerun, reject, or extend the claim without guessing what happened."
+            "Implementation-level constraints are reported only when they are present in "
+            "local artifacts. Input data must be discoverable from recorded source "
+            "metadata; the feature pipeline must be represented in the executable script "
+            "rather than only in prose; and metrics must be written before any publication "
+            "audit reads them. These constraints are evidence controls for this run, not "
+            "an additional algorithmic contribution."
         ),
         (
-            "The design also supports self-looping refinement. If the publication audit "
-            "finds that novelty evidence is thin, the system can schedule a retrieval "
-            "task without rewriting the experiment result. If the paper-quality gate "
-            "finds that a section is short, the manuscript composer can regenerate from "
-            "new evidence without changing metrics. If a future strategy proposes a "
-            "different search prompt or a different baseline, that proposal must be "
-            "evaluated in shadow mode before promotion. In short, the method is coupled "
-            "to evidence, and the surrounding workflow is coupled to rollback."
+            "When a gate fails, the manuscript does not rewrite the experiment outcome. "
+            "It leaves the failed check, source path, and next action in the run artifacts "
+            "so that a later cycle can decide whether to rerun retrieval, add a baseline, "
+            "or revise the paper from new evidence. This paragraph describes the current "
+            "record-keeping policy rather than claiming a new scientific result."
         ),
         (
-            "The implementation boundary is also part of the method. The experiment "
-            "agent may generate or execute code, but the acceptance path is owned by "
-            "validators that read artifacts after execution. A metric is not accepted "
-            "because the code agent says it ran; it is accepted only when the metrics "
-            "file exists, the validation report reads it, the evidence map binds it to "
-            "a claim, and the cycle summary keeps the path reachable. This separation "
-            "prevents the manuscript composer from becoming a second, uncontrolled "
-            "source of truth. It can explain the evidence, but it cannot manufacture a "
-            "new score, silently change a baseline, or erase a failed audit check."
+            "The experiment record separates execution from interpretation. A metric is "
+            "used in this manuscript only after the metrics file exists, the validation "
+            "report reads it, the evidence map binds it to a claim, and the cycle summary "
+            "keeps the path reachable. The manuscript can explain those artifacts, but it "
+            "does not introduce new scores, new baselines, or new audit outcomes."
         ),
         (
             "The method is also organized around an evidence-to-claim map. Dataset claims "
@@ -594,14 +612,10 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "auditable research workflow."
         ),
         (
-            "The same map prevents self-evolution from corrupting the scientific record. "
-            "A future skill can propose better retrieval prompts, stronger baselines, or "
-            "a more detailed manuscript composer, but those changes must improve the "
-            "gate evidence rather than overwrite the old run. The old cycle remains a "
-            "frozen datum: its metrics, source coverage, and review status stay available "
-            "for comparison. Self-improvement is therefore expressed as a new strategy "
-            "candidate with validation evidence, not as retroactive editing of the "
-            "reported result."
+            "Future changes to prompts, baselines, or manuscript templates should be "
+            "recorded as new runs rather than retroactive edits to this result. The old "
+            "cycle remains a fixed datum: its metrics, source coverage, and review status "
+            "stay available for comparison."
         ),
     ]
 
@@ -650,14 +664,10 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "must produce a new run record and validation report."
         ),
         (
-            "This protocol is stricter than a typical demonstration script because it is "
-            "designed for autonomous operation. A human author can remember which cached "
-            "file was used, why a warning was harmless, or which failed experiment was "
-            "discarded. A long-running research agent cannot rely on that memory. The "
-            "experiment section therefore records enough operational detail for the next "
-            "cycle to distinguish an empirical weakness from a missing-artifact weakness. "
-            "If the same method later runs on another benchmark, the matrix can compare "
-            "release gates across cycles instead of comparing prose descriptions."
+            "The experiment section records operational detail because the later audit "
+            "needs to distinguish empirical weakness from missing-artifact weakness. If "
+            "the same method later runs on another benchmark, the matrix should compare "
+            "release gates across cycle artifacts instead of comparing prose descriptions."
         ),
         (
             f"Validation status is {_clean_text(_text(validation.get('status')))}. The "
@@ -781,16 +791,13 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
             "or rejected by the next loop, not a polished unsupported success story."
         ),
         (
-            "The evidence pattern is more valuable than the absolute score at this stage. "
-            "A baseline, comparison evidence, a candidate delta, a standard error, a reproduction "
-            "record, and a publication audit are all present in the same cycle. That "
-            "combination lets the next iteration decide what kind of work is missing. "
-            "If the score is promising but related work is unresolved, the next action "
-            "is retrieval and classification. If related work is strong but the score "
-            "is weak, the next action is method redesign. If both are strong but the "
-            "paper build fails, the next action is manuscript and layout repair. The "
-            "result section therefore reports not just performance, but also the control "
-            "signals that keep the autonomous loop from overclaiming."
+            "The result section therefore reports both performance and the release "
+            "signals attached to the same cycle. A baseline, comparison evidence, a "
+            "candidate delta, a standard error, a reproduction record, and a publication "
+            "audit are present together. If related work remains unresolved, the next "
+            "action is retrieval and classification. If related work is strong but the "
+            "score is weak, the next action is method redesign. If both are strong but "
+            "the paper build fails, the next action is manuscript and layout repair."
         ),
         (
             "A second result is negative but operationally important: manuscript and "
@@ -905,9 +912,8 @@ def _conclusion(evidence: _ManuscriptEvidence) -> list[str]:
             "publication-ready."
         ),
         (
-            "That boundary is the main contribution of the generated artifact: it gives "
-            "future agents a complete, inspectable starting point while keeping rejection "
-            "paths explicit."
+            "That boundary makes the generated artifact useful for follow-up work because "
+            "it keeps the current evidence and rejection paths explicit."
         ),
         (
             "The practical next step is to rerun the same evidence chain under multiple "
@@ -928,6 +934,7 @@ def _references(evidence: _ManuscriptEvidence) -> list[str]:
         "- [Evidence map] Metric-to-evidence binding record generated by the experiment pipeline.",
         "- [Literature refresh] Runtime Obsidian summary of online ArXiv and OpenAlex retrieval.",
         "- [Citation package] DOI/URL-verified BibTeX and citation metadata when present.",
+        "- [Related-work inspection] Source-backed abstract and method-overlap screening artifact when present.",
         "- [Similarity check] Runtime Obsidian summary of project-start novelty and adjacent-work search.",
         "- [Reproduction check] Command-line rerun record generated inside the cycle directory.",
         "- [Publication audit] Deterministic publication-readiness gate when present in the cycle.",

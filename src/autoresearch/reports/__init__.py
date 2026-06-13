@@ -85,6 +85,11 @@ from .publication_audit import (
     PublicationQualityTarget,
     audit_publication_quality,
 )
+from .related_work import (
+    RelatedWorkInspectionArtifact,
+    RelatedWorkInspectionRecord,
+    inspect_related_work,
+)
 from .reproducibility import (
     ExcludedReproducibilityArtifact,
     ReproducibilityArtifactInput,
@@ -163,6 +168,8 @@ __all__ = [
     "PublicationAuditVerdict",
     "PublicationQualityTarget",
     "PublicationManuscriptArtifact",
+    "RelatedWorkInspectionArtifact",
+    "RelatedWorkInspectionRecord",
     "PublicationStabilityCheck",
     "PublicationStabilityCheckStatus",
     "PublicationStabilityReport",
@@ -211,6 +218,7 @@ __all__ = [
     "generate_metric_bar_figure",
     "generate_method_comparison_table",
     "generate_latex_skeleton",
+    "inspect_related_work",
     "external_latex_templates",
     "generic_latex_templates",
     "lint_metric_consistency",

@@ -1205,6 +1205,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "validation-report.json",
             "references.metadata.json",
             "references.bib",
+            "related-work-inspection.json",
+            "related-work-inspection.md",
             "paper-build.json",
         } <= evidence_names
         return {"status": "skipped"}
@@ -1259,6 +1261,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["citations"]["verified_count"] == 1
     assert Path(payload["citations"]["metadata_path"]).name == "references.metadata.json"
     assert Path(payload["citations"]["bib_path"]).name == "references.bib"
+    assert Path(payload["related_work_inspection"]["json_path"]).name == (
+        "related-work-inspection.json"
+    )
+    assert payload["related_work_inspection"]["inspected_count"] == 1
+    assert payload["related_work_inspection"]["source_backed_count"] == 1
     citation_metadata = json.loads(
         Path(payload["citations"]["metadata_path"]).read_text(encoding="utf-8")
     )
@@ -1287,6 +1294,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert candidate_summary["recorded_metrics"]["feature_count"] == 12.0
     assert candidate_summary["recorded_metrics"]["variance_shrinkage"] == 1.0
     assert review_context["audit_summary"]["citations"]["additional_verified_record_count"] == 2
+    assert review_context["audit_summary"]["related_work_inspection"]["inspected_count"] == 1
+    assert review_context["audit_summary"]["related_work_inspection"]["source_backed_count"] == 1
     formal_references = review_context["audit_summary"]["citations"]["formal_references"]
     assert formal_references["displayed_count"] == 1
     assert formal_references["citation_metadata_key_count"] == 1

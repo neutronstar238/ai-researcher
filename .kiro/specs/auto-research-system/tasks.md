@@ -1690,6 +1690,22 @@ A task can be checked only when all applicable items are true:
     - _References: task `114.1`; task `113.1`; task `112.1`; `P-20260613-052`; `P-20260613-053`; user requirement that stability claims be backed by current real API calls, real evidence, and strict CCF-B/Q3-style quality gates._
     - _Verify: focused manuscript/stability tests; focused ruff; focused mypy; old real matrix at `runs/manual-live/task115-strict-context-old-matrix/publication-stability.json` blocked on missing strict review context; fresh Skin/Springer live cycle at `runs/manual-live/task115-skin-strict-v2-cycle/cycle-20260613T150624Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; fresh Pendigits/generic live cycle at `runs/manual-live/task115-pendigits-strict-v2-cycle/cycle-20260613T151155Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; final matrix at `runs/manual-live/task115-strict-context-current-matrix/publication-stability.json` with `stable=true`, score `1.000`, and `strict_review_context_all_releases=pass`._
 
+- [x] 116. Require source-backed related-work inspection before CCF-B/Q3 release
+  - [x] 116.1 Add related-work inspection artifacts, audit gates, and refreshed strict matrix
+    - Generate a first-class `related-work/related-work-inspection.json` and `related-work/related-work-inspection.md` artifact from live citation metadata in every non-blocked autopilot cycle.
+    - Record per-citation inspection fields including citation status, BibTeX key, title, source locator, evidence basis, abstract snippet, method/dataset/baseline overlap terms, comparison status, and whether the comparison is source-backed or only metadata-backed.
+    - Treat the inspection as a screening artifact, not proof of novelty: label direct method candidates, benchmark/baseline context, method-term context, metadata-only rows, blocked rows, and unrelated rows without inventing conclusions beyond local source evidence.
+    - Add CCF-B/Q3 publication-audit gates for related-work inspection package presence, minimum inspected records, minimum abstract-backed records, and minimum direct method candidates; keep `mvp-demo` unblocked by these publication-grade thresholds.
+    - Add the related-work inspection summary and artifact paths into autopilot review context, review evidence paths, manuscript evidence references, and publication-audit summary.
+    - Extend publication-stability strict context so release-allowed CCF-B/Q3 matrix cells must include related-work inspection evidence with nonzero inspected, abstract-backed, and direct-method counts.
+    - Tighten deterministic manuscript wording after live review rejected system-design overclaims, so manuscripts describe implementation controls as evidence boundaries rather than standalone contributions.
+    - Run an old-cycle publication audit and old three-cycle matrix to prove historical release evidence without source-backed related-work inspection is blocked under the new gate.
+    - Rerun real live `autopilot` cycles for Pendigits/generic, Letter/ACM, and Skin/Springer with live ArXiv/OpenAlex retrieval, generated citation packages, related-work inspection artifacts, real LLM review, publication audit, LaTeX build, paper quality, evidence gate, and 0 follow-up tasks.
+    - Rerun `publication-stability --target ccf-b-matrix` over the three refreshed cycles and require score `1.000`, three release-allowed real datasets, three LaTeX templates, external conference and journal coverage, paper-quality pass, strict review context pass, and related-work inspection counts in every matrix cell.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime outputs under `runs/manual-live/...` count as AI-Researcher-written vault evidence for this task.
+    - _References: task `115.1`; task `114.1`; task `113.1`; `P-20260613-054`; `P-20260613-055`; user requirement that generated papers use real online literature, source-backed cross-checking, conservative claims, and strict CCF-B/Q3-style quality gates._
+    - _Verify: focused related-work/publication-audit/stability/manuscript/CLI tests; focused ruff; focused mypy; old real audit at `runs/manual-live/task116-related-work-old-audit/publication-audit.json` blocked on missing related-work inspection; old real matrix at `runs/manual-live/task116-related-work-old-matrix/publication-stability.json` blocked with `missing_related_work_inspection`; fresh Pendigits/generic cycle at `runs/manual-live/task116-related-work-pendigits-cycle/cycle-20260613T154024Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; fresh Letter/ACM cycle at `runs/manual-live/task116-related-work-letter-v2-cycle/cycle-20260613T153611Z/cycle-summary.json` with 54 inspected related-work records, 51 abstract-backed records, 11 direct-method candidates, `review_status=passed`, `publication_audit=pass`, and `evidence_gate=pass`; fresh Skin/Springer cycle at `runs/manual-live/task116-related-work-skin-cycle/cycle-20260613T154125Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; final matrix at `runs/manual-live/task116-related-work-current-matrix/publication-stability.json` with `stable=true`, score `1.000`, `strict_review_context_all_releases=pass`, and related-work abstract/direct counts present for every release cell._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2066,6 +2082,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 82,
       "tasks": ["115.1"]
+    },
+    {
+      "id": 83,
+      "tasks": ["116.1"]
     }
   ]
 }
