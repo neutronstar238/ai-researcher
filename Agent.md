@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:38:30 +08:00 - Codex - Task 88.1 classified similarity breadth gate
+
+- Request: Continue strict novelty quality control so CCF-B/Q3-style publication audits cannot satisfy similar-work breadth with raw `unknown` findings.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-88-1-classified-similarity-breadth.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added `similarity_classified_finding_breadth` as a blocking publication-audit check for targets that require a novel contribution.
+  - Counted only non-`unknown` similarity classifications toward novelty-positioning breadth, while keeping raw `similarity_finding_breadth` as retrieval-volume evidence.
+  - Updated publication-audit tests so manuscript/method gate fixtures explicitly provide enough classified similar-work evidence, and unknown-only or sparse-classified cycles fail publishability.
+  - Updated bilingual README claims, changelog, executable tasks, problem log, and Obsidian progress memory.
+- Verification:
+  - Initial focused test `poetry run pytest tests\unit\reports\test_publication_audit.py -q` failed four verdict assertions because the new blocking gate intentionally moved sparse-classified cases from `needs_revision` to `fail`; fixed in task `88.1` and recorded as `P-20260613-026`.
+  - Focused test after fix: `poetry run pytest tests\unit\reports\test_publication_audit.py -q` passed with 8 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\publication_audit.py` passed.
+  - Real CLI: `poetry run airesearcher publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\publication-audit-task88 --vault runs\manual-live\task88-publication-vault --project-id task88_classified_breadth` exited 1 as expected for a non-publication-ready real cycle, wrote audit artifacts, and reported `similarity_classified_finding_breadth=fail`, `similarity_classification_coverage=fail`, `publishable=false`, score `0.493`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 388 passed and 4 skipped.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked earlier in `Problem.md`.
+- Problems added or updated:
+  - Added and resolved `P-20260613-026` for the expected verdict-severity change after adding the classified breadth gate.
+- Follow-up work:
+  - Add a SCALE-inspired evidence gate manifest so future self-loop cycles can produce one machine-checkable requirements-plan-code-test-review-release evidence packet before publication or deployment handoff.
+
 ### 2026-06-13 11:30:28 +08:00 - Codex - Task 87.1 similarity token-overlap classifier
 
 - Request: Continue improving innovation quality control by reducing avoidable `unknown` similarity classifications only when source metadata provides evidence, while keeping weak live hits as `unknown`.

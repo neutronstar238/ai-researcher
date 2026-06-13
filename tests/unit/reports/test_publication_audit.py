@@ -51,7 +51,10 @@ def test_publication_audit_writes_vault_review_and_issue_for_failed_audit(
 def test_publication_audit_accepts_real_benchmark_data_evidence_but_keeps_manuscript_gate(
     tmp_path: Path,
 ) -> None:
-    summary_path = _write_real_benchmark_cycle(tmp_path)
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        similarity_classification="adjacent_work",
+    )
 
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
@@ -71,7 +74,10 @@ def test_publication_audit_accepts_real_benchmark_data_evidence_but_keeps_manusc
 def test_publication_audit_keeps_baseline_only_paper_from_passing(
     tmp_path: Path,
 ) -> None:
-    summary_path = _write_real_benchmark_cycle(tmp_path)
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        similarity_classification="adjacent_work",
+    )
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     report_path = Path(summary["demo"]["report_path"])
     report_path.write_text(_paper_style_report(), encoding="utf-8")
@@ -118,8 +124,30 @@ def test_publication_audit_blocks_unknown_only_similarity_classifications(
 
     checks = {check.check_id: check for check in report.checks}
     assert checks["similarity_classification_coverage"].status.value == "fail"
+    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
     assert "unknown" in checks["similarity_classification_coverage"].message
-    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_sparse_classified_similarity_findings(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        similarity_classifications=("adjacent_work", *("unknown" for _ in range(9))),
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
+    assert checks["similarity_classification_coverage"].status.value == "pass"
+    assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
 
@@ -343,6 +371,7 @@ def _write_real_benchmark_cycle(
     novel_method: bool = False,
     method_delta: float | None = 0.03,
     similarity_classification: str | None = None,
+    similarity_classifications: tuple[str, ...] | None = None,
 ) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
@@ -511,15 +540,16 @@ def _write_real_benchmark_cycle(
     classification = similarity_classification or (
         "adjacent_work" if novel_method else "unknown"
     )
+    classifications = similarity_classifications or tuple(classification for _ in range(10))
     similarity_summary.write_text(
         "\n".join(
             [
                 "## Findings",
                 "",
                 *[
-                    f"### Source {index}\n\n- Classification: `{classification}`\n"
+                    f"### Source {index}\n\n- Classification: `{classifications[index]}`\n"
                     f"- Source URL/DOI: `https://arxiv.org/abs/0000.{index:05d}` / `unknown`"
-                    for index in range(10)
+                    for index in range(len(classifications))
                 ],
             ]
         ),

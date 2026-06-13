@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-026 - Classified similarity breadth changed audit verdict severity
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 11:35:00 +08:00
+- Source: Focused publication-audit verification for task `88.1`.
+- Symptom: After adding `similarity_classified_finding_breadth`, four publication-audit tests expected `needs_revision` but received `fail`.
+- Impact: The implementation was intentionally stricter, but existing tests had to distinguish cases that should isolate manuscript/method gates from cases that should fail because classified similar-work breadth is below target.
+- Evidence: `poetry run pytest tests\unit\reports\test_publication_audit.py -q` initially failed four assertions where `report.verdict` became `PublicationAuditVerdict.FAIL`.
+- Root cause: The new check is blocking for CCF-B/Q3-style targets. Fixtures with unknown-only or sparse-classified similarity findings now correctly fail instead of merely needing revision.
+- Workaround: None needed after task `88.1`.
+- Next action: Keep publication-audit fixtures explicit about whether similarity classifications are part of the behavior under test.
+- Linked tasks: `88.1`
+- Resolution: Updated tests that isolate manuscript/method gates to provide sufficient `adjacent_work` classifications, and updated unknown-only/sparse-classified tests to expect `fail`.
+- Verification: Reran `poetry run pytest tests\unit\reports\test_publication_audit.py -q`, `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py`, and `poetry run mypy src\autoresearch\reports\publication_audit.py`; all passed.
+
 ### P-20260613-025 - Similarity token-overlap classifier initially lost to benchmark-gap priority
 
 - Status: Resolved

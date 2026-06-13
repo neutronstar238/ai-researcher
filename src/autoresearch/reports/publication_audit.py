@@ -408,6 +408,18 @@ def _similarity_checks(
                 ("cycle_summary.similarity.fetches",),
             )
         )
+    if target.require_novel_contribution:
+        checks.append(
+            _threshold_check(
+                "similarity_classified_finding_breadth",
+                classified_findings,
+                target.min_similarity_findings,
+                "blocking",
+                f"Evidence-classified similarity findings: {classified_findings}; target requires at least {target.min_similarity_findings}.",
+                "Classify enough source-backed similar-work findings before using similarity breadth as novelty support.",
+                ("cycle_summary.similarity.summary_path",),
+            )
+        )
     if target.require_novel_contribution and finding_count > 0 and classified_findings <= 0:
         checks.append(
             PublicationAuditCheck(

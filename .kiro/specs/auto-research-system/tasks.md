@@ -1358,6 +1358,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `86.1` follow-up and user requirement that novelty checks be broad and strict enough for CCF-B/Q3-style claims._
     - _Verify: focused similarity tests for positive token-overlap classification and weak-overlap unknown behavior, ruff, mypy, full smoke/unit tests, and a real `similarity-check` CLI run against live sources showing irrelevant real hits remain `unknown` rather than being over-classified._
 
+- [x] 88. Tighten publication audit around classified similar-work breadth
+  - [x] 88.1 Require enough non-unknown similarity findings for publication targets
+    - Add `similarity_classified_finding_breadth` to publication audit for targets requiring a novel contribution.
+    - Count only non-`unknown` similarity classifications toward the target finding breadth.
+    - Keep raw `similarity_finding_breadth` for retrieval volume, but do not let unknown findings satisfy novelty-positioning breadth.
+    - Block CCF-B/Q3 publishability when classified similar-work evidence is below target, even if raw finding count is high.
+    - _References: task `86.1`, task `87.1`, and user requirement that cross-search breadth be strong enough for CCF-B/Q3-style claims._
+    - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` CLI run showing `similarity_classified_finding_breadth=fail` on a real cycle whose findings remain unknown._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1622,6 +1631,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 54,
       "tasks": ["87.1"]
+    },
+    {
+      "id": 55,
+      "tasks": ["88.1"]
     }
   ]
 }

@@ -100,6 +100,7 @@ Target version: `0.1.0`.
 - Publication-level documentation now treats negative or neutral method-candidate deltas as blocking evidence for empirical-gain claims rather than paper-writing material to smooth over.
 - Publication-readiness now also fails `method_effect_evidence` when innovation artifacts are neutral, negative, or missing an explicit method-effect delta.
 - Publication-readiness now also fails `similarity_classification_coverage` when similar-work findings are all `unknown` or unclassified, so raw finding count cannot substitute for evidence-backed novelty positioning.
+- Publication-readiness now requires `similarity_classified_finding_breadth`: only non-`unknown` similar-work classifications count toward CCF-B/Q3 novelty-positioning breadth.
 - `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.
