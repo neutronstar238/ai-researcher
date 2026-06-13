@@ -892,6 +892,34 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert "Gaussian" in candidate.metadata["limitation"]
 
 
+def test_autopilot_skin_demo_uses_method_aligned_search_contract() -> None:
+    seeds = cli_main._autopilot_literature_seed_queries(
+        "skin_variance_calibrated_prototypes"
+    )
+    assert len(seeds) == cli_main.PUBLICATION_SEARCH_QUERIES
+    assert any("Skin Segmentation" in seed for seed in seeds)
+    assert any("Gaussian" in seed for seed in seeds)
+
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="A Source Paper",
+        source_uri="https://example.test/source",
+    )
+    candidate = cli_main._autopilot_candidate_from_literature(
+        SimpleNamespace(documents=(seed_document,)),
+        project_id="project_1",
+        demo="skin_variance_calibrated_prototypes",
+        now=datetime(2026, 6, 13, 2, 30, tzinfo=timezone.utc),
+    )
+
+    assert candidate.title == "Variance-calibrated prototype classifiers for UCI Skin Segmentation"
+    assert candidate.metadata["demo"] == "skin_variance_calibrated_prototypes"
+    assert candidate.metadata["dataset"] == "UCI Skin Segmentation"
+    assert "variance-calibrated prototypes" in candidate.metadata["method"]
+    assert "RGB color" in candidate.metadata["baseline"]
+    assert "skin-color" in candidate.metadata["limitation"]
+
+
 def test_autopilot_literature_clients_share_persistent_circuit_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -8,6 +8,7 @@ from autoresearch.experiments import (
     create_pendigits_centroid_baseline_task,
     create_pendigits_prototype_shrinkage_task,
     create_pendigits_variance_calibrated_task,
+    create_skin_variance_calibrated_task,
     create_spambase_variance_calibrated_task,
     create_tabular_baseline_task,
     create_text_classifier_stub_task,
@@ -16,6 +17,7 @@ from autoresearch.experiments import (
     generate_pendigits_centroid_baseline_demo,
     generate_pendigits_prototype_shrinkage_demo,
     generate_pendigits_variance_calibrated_demo,
+    generate_skin_variance_calibrated_demo,
     generate_spambase_variance_calibrated_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
@@ -498,6 +500,36 @@ def test_spambase_variance_calibrated_runs_with_cached_uci_format_data(
     assert bundle.metrics["variance_shrinkage"] == 0.1
 
 
+def test_create_skin_variance_calibrated_task_defines_method_contract() -> None:
+    task = create_skin_variance_calibrated_task(timeout_seconds=30)
+
+    assert task.id == "skin_variance_calibrated_prototypes"
+    assert task.status is TaskStatus.READY
+    assert task.resource_budget["gpu_hours"] == 0.0
+    assert task.metadata["dataset"] == "Skin Segmentation"
+    assert task.metadata["real_dataset"] is True
+    assert task.metadata["baseline_only"] is False
+    assert task.metadata["method_contribution"] == "heteroscedastic prototype distance calibration"
+    assert task.metadata["split_policy"] == "deterministic 75/25 shuffled split with seed 238"
+
+
+def test_skin_variance_calibrated_runs_with_cached_uci_format_data(
+    tmp_path: Path,
+) -> None:
+    experiment_dir, task = generate_skin_variance_calibrated_demo(
+        tmp_path,
+        timeout_seconds=20,
+    )
+    _write_cached_skin_file(experiment_dir / "data" / "Skin_NonSkin.txt")
+
+    bundle = _run_and_validate_uci_variance_demo(experiment_dir, task)
+
+    assert bundle.metrics["train_rows"] == 3450.0
+    assert bundle.metrics["test_rows"] == 1150.0
+    assert bundle.metrics["class_count"] == 2.0
+    assert bundle.metrics["variance_shrinkage"] == 1.0
+
+
 def _run_and_validate_uci_variance_demo(experiment_dir: Path, task) -> object:
     run = execute_experiment_task(experiment_dir, task, entrypoint="run.py")
     run = run.model_copy(
@@ -592,4 +624,14 @@ def _write_cached_spambase_file(path: Path) -> None:
         base = 6 if label == "1" else 1
         features = [str(base + ((row_index + feature_index) % 3)) for feature_index in range(57)]
         lines.append(",".join([*features, label]))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_cached_skin_file(path: Path) -> None:
+    lines = []
+    for row_index in range(4600):
+        label = "1" if row_index % 2 else "2"
+        base = 220 if label == "1" else 30
+        features = [str(base + ((row_index + feature_index) % 4)) for feature_index in range(3)]
+        lines.append(" ".join([*features, label]))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -1584,6 +1584,21 @@ A task can be checked only when all applicable items are true:
     - _References: task `105.1`; `P-20260613-040`; user requirement that LaTeX template compatibility be tested, first with generic templates and later with venue templates._
     - _Verify: focused CLI tests, focused ruff, focused mypy, real two-column Letter `autopilot`, and real three-cycle `publication-stability` rerun with template diversity passing._
 
+- [x] 109. Add third strong real-dataset release cycle for the stability matrix
+  - [x] 109.1 Add UCI Skin Segmentation and repair domain similarity classification
+    - Add `skin_variance_calibrated_prototypes` as a `run-demo` and `autopilot --demo` selector.
+    - Extend the shared UCI variance demo runner to parse both comma-delimited and whitespace-delimited UCI source files without hand-edited run artifacts.
+    - Download the real public UCI Skin Segmentation `Skin_NonSkin.txt` file at run time unless cached under the run directory.
+    - Compare a z-score nearest-centroid RGB baseline against diagonal variance-calibrated skin/non-skin prototypes.
+    - Record source URL, byte count, SHA256, split policy, data hash, validation report, evidence map, run record, ablation, predictions, and innovation evidence.
+    - Add demo-aligned autopilot literature seeds and candidate metadata for Skin Segmentation so live search targets skin detection, RGB prototype classification, Gaussian/Bayesian segmentation, and skin-color prior work.
+    - Add conservative similarity classifier support for skin-color and skin-segmentation adjacent work while keeping broad `skin color` social-media usage and unrelated segmentation tasks unknown.
+    - Run a real Skin autonomous cycle and require publication audit, LLM evidence review, reproduction check, LaTeX paper quality, and evidence gate to pass.
+    - Rerun the `ccf-b-matrix` over release-allowed Pendigits, Letter, and Skin cycles and require stable output to pass with 3 distinct real datasets and at least 2 LaTeX templates.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime-selected vault outputs under `runs/manual-live/...` count as system-written evidence for this task.
+    - _References: task `105.1`; task `108.1`; `P-20260613-040`; `P-20260613-043`; user requirement for strict CCF-B/Q3 quality gates, real scripts/data, real API calls, and no fabricated results._
+    - _Verify: focused demo/CLI/similarity tests, focused ruff, focused mypy, real UCI Skin `run-demo`, first real Skin `autopilot` blocked by classified-similarity breadth, fixed classifier, second real Skin `autopilot` passing publication/evidence gates, real `publication-stability --target ccf-b-matrix` passing with score `1.000`, then full ruff, mypy, and smoke/unit tests._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1932,6 +1947,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 75,
       "tasks": ["108.1"]
+    },
+    {
+      "id": 76,
+      "tasks": ["109.1"]
     }
   ]
 }

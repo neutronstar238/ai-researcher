@@ -14,6 +14,7 @@ from autoresearch.experiments.demos import (
     PENDIGITS_CENTROID_BASELINE_TASK_ID,
     PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
     PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
+    SKIN_VARIANCE_CALIBRATED_TASK_ID,
     SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
     TABULAR_BASELINE_TASK_ID,
     TEXT_CLASSIFIER_STUB_TASK_ID,
@@ -21,6 +22,7 @@ from autoresearch.experiments.demos import (
     generate_pendigits_centroid_baseline_demo,
     generate_pendigits_prototype_shrinkage_demo,
     generate_pendigits_variance_calibrated_demo,
+    generate_skin_variance_calibrated_demo,
     generate_spambase_variance_calibrated_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
@@ -159,6 +161,11 @@ def _generate_demo(
             output_dir,
             timeout_seconds=timeout_seconds,
         )
+    if demo == SKIN_VARIANCE_CALIBRATED_TASK_ID:
+        return generate_skin_variance_calibrated_demo(
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
     msg = f"unknown demo {demo!r}"
     raise ValueError(msg)
 
@@ -228,6 +235,7 @@ def _metric_bounds(demo: str) -> dict[str, tuple[float | None, float | None]]:
         PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
         LETTER_VARIANCE_CALIBRATED_TASK_ID,
         SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+        SKIN_VARIANCE_CALIBRATED_TASK_ID,
     }:
         return {
             "accuracy": (0.0, 1.0),
@@ -257,6 +265,7 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
         PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
         LETTER_VARIANCE_CALIBRATED_TASK_ID,
         SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+        SKIN_VARIANCE_CALIBRATED_TASK_ID,
     }:
         return []
     test_rows = int(float(bundle.metrics.get("test_rows", 0.0) or 0.0))
@@ -270,6 +279,7 @@ def _statistical_checks(demo: str, bundle: Any) -> list[StatisticalCheck]:
             PENDIGITS_VARIANCE_CALIBRATED_TASK_ID,
             LETTER_VARIANCE_CALIBRATED_TASK_ID,
             SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+            SKIN_VARIANCE_CALIBRATED_TASK_ID,
         }
         else "ablation_accuracy_first8"
     )
@@ -375,6 +385,7 @@ def _report_context(
     if task.id in {
         LETTER_VARIANCE_CALIBRATED_TASK_ID,
         SPAMBASE_VARIANCE_CALIBRATED_TASK_ID,
+        SKIN_VARIANCE_CALIBRATED_TASK_ID,
     }:
         dataset = str(task.metadata.get("dataset", task.id))
         return ReportContext(

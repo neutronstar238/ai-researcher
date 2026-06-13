@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-043 - Skin Segmentation similarity breadth was initially underclassified
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 19:24:00 +08:00
+- Source: Task `109.1` first real `autopilot` run over `skin_variance_calibrated_prototypes`.
+- Symptom: The Skin Segmentation autonomous cycle completed live literature search, real UCI experiment execution, LLM review, reproduction check, and LaTeX paper build, but publication audit failed because only 8 source-backed similarity findings were classified against a target of 10.
+- Impact: The system correctly blocked evidence release, but the similarity classifier underused clearly relevant skin detection, skin-color classifier, RGB color-model, and skin-image segmentation prior work during novelty breadth checks.
+- Evidence: `runs/manual-live/task109-skin-cycle/cycle-20260613T112254Z/publication-audit.json` reported `similarity_classified_finding_breadth=fail`, with 8 non-unknown and 38 unknown findings; the cycle summary reported `publication_audit=fail`, `evidence_gate=blocked`, and `followup_tasks=2`.
+- Root cause: The method-family classifier covered prototype/centroid, Mahalanobis, and clustering families, but did not yet include bounded skin-color/skin-segmentation terminology.
+- Workaround: None needed after the fix; the classifier now has a bounded skin-color/segmentation family and exact Skin Segmentation aliases.
+- Next action: Keep adding negative fixtures when live search reveals a new false positive or false unknown class.
+- Linked tasks: `109.1`
+- Resolution: Added conservative skin-color/skin-segmentation method-family rules plus a regression that classifies skin detection and skin-image segmentation while keeping unrelated emoji skin-color usage unknown.
+- Verification: `poetry run pytest tests\unit\research\test_similarity.py::test_project_similarity_classifies_skin_color_family_without_broad_skin_color_overlap tests\unit\research\test_similarity.py::test_project_similarity_classifies_query_backed_method_family_overlap tests\unit\research\test_similarity.py::test_project_similarity_keeps_weak_token_overlap_unknown -q` passed. A second real `autopilot` run wrote `runs/manual-live/task109-skin-pass-cycle/cycle-20260613T112641Z/publication-audit.json` with 17 non-unknown similarity findings, `publication_audit=pass`, `evidence_gate=pass`, and `followup_tasks=0`.
+
 ### P-20260613-042 - Spambase variance-calibrated prototype effect is positive but small
 
 - Status: Mitigated
@@ -66,19 +82,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-040 - Single-cycle release pass does not prove stable cross-topic publication output
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 19:45:00 +08:00
 - Source: Task `104.1` real CCF-B publication-audit and evidence-gate rerun over the task `101.1` Pendigits cycle.
 - Symptom: One real Pendigits cycle can now pass publication audit and the physical evidence gate after similarity classification, optional-source policy, and manuscript generation fixes, but this does not yet prove stable CCF-B/Q3-level output across topics, datasets, templates, or multiple autonomous cycles.
-- Impact: The system could overstate general readiness if a single benchmark success is treated as a stable publication pipeline. Task `105.1` now blocks that claim, but the underlying cross-topic stability evidence is still missing.
-- Evidence: `runs/manual-live/task104-similarity-classification/publication-audit/publication-audit.json` passed with score `0.9615` and `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` passed with `release_allowed=true`; `runs/manual-live/task105-stability-matrix/publication-stability.json` correctly blocked stable CCF-B/Q3 claims because the matrix had 1 cycle, 1 release-allowed cycle, 1 distinct real dataset, and 1 LaTeX template. Task `108.1` later proved template diversity through a real two-column Letter cycle, but `runs/manual-live/task108-template-cycle/stability-matrix/publication-stability.json` still blocked stable claims because release-allowed cycles covered only 2 distinct real public datasets.
-- Root cause: Current evidence covers one controlled Pendigits method-candidate cycle and a generic LaTeX template build, not a statistically meaningful portfolio of cycles, datasets, or venue templates.
-- Workaround: Run `airesearcher publication-stability ... --target ccf-b-matrix` before any stable-output claim; it now fails closed when the matrix is too small.
-- Next action: Add at least one more strong, release-allowed public benchmark cycle on a third distinct real dataset; then rerun `publication-stability --target ccf-b-matrix`.
-- Linked tasks: `104.1`, `105.1`, `107.1`, `108.1`
-- Resolution: Mitigated by task `105.1`, not resolved. Stable output still requires additional real cycles and template diversity.
-- Verification: `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task105-stability-matrix --vault runs\manual-live\task105-stability-vault --project-id task105_stability_matrix --no-fail-on-unstable` returned `verdict=blocked`, `stable=false`, and `score=0.500`. After task `108.1`, `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task107-letter-cycle\cycle-20260613T105702Z\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task108-template-cycle\stability-matrix --vault runs\manual-live\task108-template-vault --project-id task108_template_cycle --no-fail-on-unstable` returned `verdict=blocked`, `stable=false`, `score=0.875`; `paper_template_diversity=pass`, `release_allowed_cycles=pass`, and `distinct_real_datasets=fail`.
+- Impact: The system could overstate general readiness if a single benchmark success is treated as a stable publication pipeline. Task `105.1` blocked that claim until the matrix included enough real release-allowed cycles, datasets, and template diversity.
+- Evidence: `runs/manual-live/task104-similarity-classification/publication-audit/publication-audit.json` passed with score `0.9615` and `runs/manual-live/task104-similarity-classification/evidence-gate/evidence-gate.json` passed with `release_allowed=true`; `runs/manual-live/task105-stability-matrix/publication-stability.json` correctly blocked stable CCF-B/Q3 claims because the matrix had 1 cycle, 1 release-allowed cycle, 1 distinct real dataset, and 1 LaTeX template. Task `108.1` later proved template diversity through a real two-column Letter cycle, but `runs/manual-live/task108-template-cycle/stability-matrix/publication-stability.json` still blocked stable claims because release-allowed cycles covered only 2 distinct real public datasets. Task `109.1` added a release-allowed UCI Skin Segmentation cycle and `runs/manual-live/task109-stability-matrix/publication-stability.json` passed the `ccf-b-matrix`.
+- Root cause: Earlier evidence covered too few independent real public benchmark cycles and template variants.
+- Workaround: Keep using `airesearcher publication-stability ... --target ccf-b-matrix` before any stable-output claim; this gate now has a passing reference matrix but still evaluates the provided cycles each time.
+- Next action: Extend beyond the reference matrix with additional datasets, stronger related-work comparison, and venue-template builds before claiming a specific final paper is ready for submission.
+- Linked tasks: `104.1`, `105.1`, `107.1`, `108.1`, `109.1`
+- Resolution: Task `109.1` added the third release-allowed real dataset cycle and reran the stability matrix over Pendigits, Letter Recognition, and Skin Segmentation.
+- Verification: `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json runs\manual-live\task109-skin-pass-cycle\cycle-20260613T112641Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task109-stability-matrix --vault runs\manual-live\task109-skin-pass-vault --project-id task109_skin_pass_cycle --no-fail-on-unstable` returned `verdict=pass`, `stable=true`, `score=1.000`, 3 release-allowed cycles, 3 distinct real datasets, and 2 LaTeX templates.
 
 ### P-20260613-039 - Similarity classifier overclassified broad method-family word matches during breadth repair
 

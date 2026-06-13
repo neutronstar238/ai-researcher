@@ -55,6 +55,12 @@ RISK_QUERY_PHRASES = (
     "gaussian",
     "nearest centroid",
     "prototype",
+    "skin color",
+    "skin colour",
+    "skin detection",
+    "skin segmentation",
+    "bayesian",
+    "illumination",
 )
 DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
@@ -165,6 +171,36 @@ METHOD_FAMILIES = (
         name="clustering_classifier",
         terms=("clustering", "cluster", "clusters", "k means", "k-means", "prototype based"),
         supporting_terms=("classification", "classifier", "classifiers"),
+    ),
+    _MethodFamily(
+        name="skin_color_segmentation",
+        terms=(
+            "human skin detection",
+            "skin detection",
+            "skin segmentation",
+            "skin image segmentation",
+            "skin lesion segmentation",
+            "skin color classifier",
+            "skin colour classifier",
+            "skin color model",
+            "skin colour model",
+            "rgb ratio",
+            "hybrid color space",
+            "hybrid colour space",
+        ),
+        supporting_terms=(
+            "classification",
+            "classifier",
+            "classifiers",
+            "color",
+            "colour",
+            "detection",
+            "hsv",
+            "rgb",
+            "segmentation",
+            "ycbcr",
+        ),
+        min_supporting_terms=1,
     ),
 )
 
@@ -637,6 +673,16 @@ def _dataset_aliases(candidate: ResearchCandidate) -> tuple[str, ...]:
                 "handwritten digit",
                 "handwritten digits",
                 "digit recognition",
+            ]
+        )
+    if "skin segmentation" in raw_text or "skin non skin" in raw_text:
+        aliases.extend(
+            [
+                "skin segmentation",
+                "uci skin segmentation",
+                "skin image segmentation",
+                "skin non skin",
+                "skin nonskin",
             ]
         )
     return tuple(dict.fromkeys(_match_text(alias) for alias in aliases if _match_text(alias)))

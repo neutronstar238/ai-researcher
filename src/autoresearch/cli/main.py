@@ -2781,6 +2781,13 @@ def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:
             "diagonal Gaussian prototype classification spam filtering",
             "prototype classifier variance normalization email classification",
         )
+    if demo == "skin_variance_calibrated_prototypes":
+        return (
+            "UCI Skin Segmentation variance calibrated prototype classifier",
+            "Skin Segmentation nearest centroid RGB classifier",
+            "diagonal Gaussian prototype classification skin detection",
+            "Bayesian Gaussian skin color segmentation variance normalization",
+        )
     if demo == "pendigits_variance_calibrated_prototypes":
         return (
             "UCI Pendigits variance calibrated prototype classifier",
@@ -2895,6 +2902,45 @@ def _autopilot_candidate_from_literature(
                 "limitation": (
                     "single public email benchmark and small effect size; claims require "
                     "statistical caution plus spam-filtering related-work checks"
+                ),
+            },
+        )
+    if demo == "skin_variance_calibrated_prototypes":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Variance-calibrated prototype classifiers for UCI Skin Segmentation",
+            description=(
+                "Evaluate whether diagonal per-class RGB variance calibration improves a "
+                "z-score nearest-prototype skin/non-skin classifier on the UCI Skin "
+                "Segmentation benchmark."
+            ),
+            research_gap=(
+                "Skin Segmentation adds a large real pixel-level benchmark for the same "
+                "interpretable prototype mechanism, but publication claims require checking "
+                "classic skin-color, Bayesian, Gaussian, and illumination-robust segmentation "
+                "prior work."
+            ),
+            novelty_score=0.4,
+            feasibility_score=0.9,
+            impact_score=0.5,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+                "dataset": "UCI Skin Segmentation",
+                "benchmark": "UCI Skin Segmentation",
+                "baseline": "z-score nearest centroid classifier over RGB color features",
+                "limitation": (
+                    "single public color segmentation benchmark; adjacent Bayesian, "
+                    "Gaussian, skin-color, and illumination-robust segmentation methods "
+                    "may already cover the mechanism"
                 ),
             },
         )

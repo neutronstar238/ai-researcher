@@ -62,6 +62,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 19:30:27 +08:00 - Codex - Task 109.1 UCI Skin stability cycle
+
+- Request: Continue toward a fully autonomous, evidence-gated research loop that can pass the CCF-B/Q3 stability matrix with real scripts, real data, real online search, real LLM review, and runtime-written vault evidence only.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Added `skin_variance_calibrated_prototypes` as a real UCI Skin Segmentation demo and autopilot selector.
+  - Extended the shared UCI variance demo runner to parse comma-delimited and whitespace-delimited source files.
+  - Added Skin Segmentation autopilot seed queries and candidate metadata aligned to skin detection, RGB color features, Gaussian/Bayesian segmentation, and skin-color prior work.
+  - Added a bounded skin-color/skin-segmentation similarity family so novelty checks classify source-backed skin detection and skin-image segmentation work while leaving broad emoji skin-color usage unknown.
+  - Verified the first real Skin cycle was correctly blocked by similarity-classified breadth, then fixed the classifier and reran a passing real cycle.
+  - Reran the CCF-B stability matrix over Pendigits, Letter Recognition, and Skin Segmentation; it passed with 3 release-allowed cycles, 3 distinct real public datasets, 2 LaTeX templates, and score `1.000`.
+  - Used only runtime-selected vault outputs under `runs/manual-live/...`; did not hand-write root `autoresearch-vault/projects/.../progress` notes.
+- Verification:
+  - `poetry run pytest tests\unit\experiments\test_demos.py::test_create_skin_variance_calibrated_task_defines_method_contract tests\unit\experiments\test_demos.py::test_skin_variance_calibrated_runs_with_cached_uci_format_data tests\unit\cli\test_main.py::test_autopilot_skin_demo_uses_method_aligned_search_contract -q`: passed with 3 tests.
+  - `poetry run ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py src\autoresearch\cli\main.py tests\unit\experiments\test_demos.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run airesearcher run-demo --demo skin_variance_calibrated_prototypes --output-dir runs\manual-live\task109-skin-demo --timeout-seconds 120`: passed with real UCI download; metrics recorded `accuracy=0.923692`, `baseline_accuracy=0.821693`, `delta=0.102000`, `accuracy_standard_error=0.001073`, `test_rows=61265`, and source SHA256 `e30c0a845385dcc95a45c45ed263465674a49638e98ef740afd520769c7714a4`.
+  - First real `autopilot` Skin run at `runs/manual-live/task109-skin-cycle/cycle-20260613T112254Z/cycle-summary.json`: completed live search, LLM review, reproduction, experiment, and PDF build, but correctly blocked release because publication audit had `similarity_classified_finding_breadth=fail` with 8 classified findings.
+  - `poetry run pytest tests\unit\research\test_similarity.py::test_project_similarity_classifies_skin_color_family_without_broad_skin_color_overlap tests\unit\research\test_similarity.py::test_project_similarity_classifies_query_backed_method_family_overlap tests\unit\research\test_similarity.py::test_project_similarity_keeps_weak_token_overlap_unknown -q`: passed with 3 tests after the classifier repair.
+  - `poetry run ruff check src\autoresearch\research\similarity.py tests\unit\research\test_similarity.py`: passed.
+  - `poetry run mypy src\autoresearch\research\similarity.py`: passed.
+  - Second real `autopilot` Skin run: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task109-skin-pass-vault --cache runs\manual-live\task109-skin-cache --output-dir runs\manual-live\task109-skin-pass-cycle --state runs\manual-live\task109-skin-pass-state.json --project-id task109_skin_pass_cycle --demo skin_variance_calibrated_prototypes --paper-template-id generic-article-two-column --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed with `publication_audit=pass`, `evidence_gate=pass`, and `followup_tasks=0`.
+  - `runs/manual-live/task109-skin-pass-cycle/cycle-20260613T112641Z/publication-audit.json`: inspected; `publishable=true`, score `0.9766`, 17 classified similarity findings, no source errors, method effect `95.09` standard errors, and LLM evidence review score `1.000`.
+  - `runs/manual-live/task109-skin-pass-cycle/cycle-20260613T112641Z/paper-build/paper-build.json`: inspected; compiled with `generic-article-two-column`, `paper_quality.passed=true`, `page_count=8`, `word_count=3012`, and `overfull_hbox_count=0`.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json runs\manual-live\task109-skin-pass-cycle\cycle-20260613T112641Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task109-stability-matrix --vault runs\manual-live\task109-skin-pass-vault --project-id task109_skin_pass_cycle --no-fail-on-unstable`: passed with `verdict=pass`, `stable=true`, score `1.000`, 3 release-allowed cycles, 3 distinct real datasets, and 2 templates.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 438 tests and 4 skipped.
+- Problems:
+  - `P-20260613-043` added and resolved for the first Skin cycle's underclassified similarity breadth.
+  - `P-20260613-040` resolved by the passing three-dataset CCF-B stability matrix.
+- Follow-up:
+  - Extend the passing reference matrix with additional datasets and venue templates before treating a specific generated paper as submission-ready.
+
 ### 2026-06-13 21:35:00 +08:00 - Codex - Task 108.1 autonomous template selection
 
 - Request: Continue toward stable CCF-B/Q3-level publication output by moving LaTeX template diversity into the autonomous cycle instead of hand-built artifacts.

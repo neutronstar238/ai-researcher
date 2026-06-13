@@ -432,6 +432,83 @@ def test_project_similarity_classifies_query_backed_method_family_overlap(
     assert len([finding for finding in report.findings if finding.classification != "unknown"]) == 3
 
 
+def test_project_similarity_classifies_skin_color_family_without_broad_skin_color_overlap(
+    tmp_path: Path,
+) -> None:
+    candidate = ResearchCandidate(
+        id="skin_candidate",
+        title="Variance-calibrated prototype classifiers for UCI Skin Segmentation",
+        description=(
+            "Evaluate diagonal RGB variance calibration for skin/non-skin prototypes."
+        ),
+        research_gap=(
+            "Publication claims require checking classic skin-color, Bayesian, "
+            "Gaussian, and illumination-robust segmentation prior work."
+        ),
+        novelty_score=0.4,
+        feasibility_score=0.9,
+        impact_score=0.5,
+        evidence_refs=["doc_1"],
+        related_document_ids=["doc_1"],
+        status=CandidateStatus.READY_FOR_REVIEW,
+        metadata={
+            "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+            "dataset": "UCI Skin Segmentation",
+            "benchmark": "UCI Skin Segmentation",
+            "baseline": "z-score nearest centroid classifier over RGB color features",
+            "limitation": (
+                "single public color segmentation benchmark; adjacent Bayesian, "
+                "Gaussian, skin-color, and illumination-robust segmentation methods "
+                "may already cover the mechanism"
+            ),
+        },
+    )
+    skin_detection = AcademicPaper(
+        title="Human Skin Detection Using RGB, HSV and YCbCr Color Models",
+        abstract=(
+            "A human skin detection classifier compares RGB, HSV, and YCbCr color "
+            "models for image segmentation."
+        ),
+        url="https://example.com/skin-detection",
+        source="openalex",
+    )
+    skin_segmentation = AcademicPaper(
+        title="Fitzpatrick Thresholding for Skin Image Segmentation",
+        abstract="Skin image segmentation with color thresholding for image analysis.",
+        url="https://example.com/skin-segmentation",
+        source="openalex",
+    )
+    broad_color = AcademicPaper(
+        title="Self-Representation on Twitter Using Emoji Skin Color Modifiers",
+        abstract="A social media study of emoji skin color modifiers and identity.",
+        url="https://example.com/emoji-skin-color",
+        source="openalex",
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={
+            "openalex": _QueryAwareFakeClient(
+                {"skin segmentation": [skin_detection, skin_segmentation, broad_color]},
+                1.0,
+            )
+        },
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=3),
+    )
+
+    classifications = {finding.title: finding.classification for finding in report.findings}
+    assert classifications[skin_detection.title] == "supporting_prior_work"
+    assert classifications[skin_segmentation.title] == "adjacent_work"
+    assert classifications[broad_color.title] == "unknown"
+    assert all(
+        any("skin_color_segmentation" in basis for basis in finding.classification_basis)
+        for finding in report.findings
+        if finding.title in {skin_detection.title, skin_segmentation.title}
+    )
+
+
 def test_project_similarity_keeps_weak_token_overlap_unknown(tmp_path: Path) -> None:
     candidate = ResearchCandidate(
         id="weak_overlap_candidate",

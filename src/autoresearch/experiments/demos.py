@@ -22,6 +22,8 @@ LETTER_VARIANCE_CALIBRATED_TASK_ID = "letter_variance_calibrated_prototypes"
 LETTER_VARIANCE_CALIBRATED_DIR = "letter-variance-calibrated-prototypes"
 SPAMBASE_VARIANCE_CALIBRATED_TASK_ID = "spambase_variance_calibrated_prototypes"
 SPAMBASE_VARIANCE_CALIBRATED_DIR = "spambase-variance-calibrated-prototypes"
+SKIN_VARIANCE_CALIBRATED_TASK_ID = "skin_variance_calibrated_prototypes"
+SKIN_VARIANCE_CALIBRATED_DIR = "skin-variance-calibrated-prototypes"
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class _UciVarianceDemoSpec:
     dataset_source: str
     source_file: str
     source_url: str
+    delimiter: str
     feature_count: int
     label_position: str
     split_policy: str
@@ -64,6 +67,7 @@ _LETTER_VARIANCE_SPEC = _UciVarianceDemoSpec(
         "https://archive.ics.uci.edu/ml/machine-learning-databases/"
         "letter-recognition/letter-recognition.data"
     ),
+    delimiter="comma",
     feature_count=16,
     label_position="first",
     split_policy="first 16000 rows for training and remaining 4000 rows for testing",
@@ -96,6 +100,7 @@ _SPAMBASE_VARIANCE_SPEC = _UciVarianceDemoSpec(
     dataset_source="https://archive.ics.uci.edu/ml/datasets/spambase",
     source_file="spambase.data",
     source_url="https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data",
+    delimiter="comma",
     feature_count=57,
     label_position="last",
     split_policy="deterministic 75/25 shuffled split with seed 238",
@@ -115,6 +120,39 @@ _SPAMBASE_VARIANCE_SPEC = _UciVarianceDemoSpec(
     limitation=(
         "single public email benchmark and a small effect size; significance and "
         "related-work positioning must be checked before publication claims"
+    ),
+)
+
+_SKIN_VARIANCE_SPEC = _UciVarianceDemoSpec(
+    task_id=SKIN_VARIANCE_CALIBRATED_TASK_ID,
+    directory=SKIN_VARIANCE_CALIBRATED_DIR,
+    project_id="public-benchmark-skin-segmentation",
+    hypothesis_id="hypothesis_skin_variance_calibrated",
+    name="UCI Skin Segmentation variance-calibrated prototype candidate",
+    dataset="Skin Segmentation",
+    dataset_source="https://archive.ics.uci.edu/dataset/229/skin+segmentation",
+    source_file="Skin_NonSkin.txt",
+    source_url="https://archive.ics.uci.edu/ml/machine-learning-databases/00229/Skin_NonSkin.txt",
+    delimiter="whitespace",
+    feature_count=3,
+    label_position="last",
+    split_policy="deterministic 75/25 shuffled split with seed 238",
+    split_mode="fraction_shuffle",
+    train_rows=None,
+    train_fraction=0.75,
+    shuffle_seed=238,
+    variance_shrinkage=1.0,
+    min_test_rows=1000,
+    class_count=2,
+    baseline="z-score nearest-centroid classifier over RGB color features",
+    proposed_method="diagonal variance-calibrated skin/non-skin prototypes",
+    novel_contribution=(
+        "Evaluate whether per-class RGB variance calibration improves an "
+        "interpretable prototype classifier on a large real segmentation benchmark."
+    ),
+    limitation=(
+        "single color segmentation benchmark; classic skin-color, Bayesian, Gaussian, "
+        "and illumination-robust segmentation methods require broad related-work checks"
     ),
 )
 
@@ -687,6 +725,40 @@ def generate_spambase_variance_calibrated_demo(
     )
 
 
+def create_skin_variance_calibrated_task(
+    *,
+    project_id: str = _SKIN_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _SKIN_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> ExperimentTask:
+    """Return the UCI Skin Segmentation variance-calibrated benchmark task."""
+
+    return _create_uci_variance_task(
+        _SKIN_VARIANCE_SPEC,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def generate_skin_variance_calibrated_demo(
+    root: Path | str,
+    *,
+    project_id: str = _SKIN_VARIANCE_SPEC.project_id,
+    hypothesis_id: str = _SKIN_VARIANCE_SPEC.hypothesis_id,
+    timeout_seconds: int = 60,
+) -> tuple[Path, ExperimentTask]:
+    """Create the UCI Skin Segmentation variance-calibrated experiment."""
+
+    return _generate_uci_variance_demo(
+        _SKIN_VARIANCE_SPEC,
+        root,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+
+
 def _create_uci_variance_task(
     spec: _UciVarianceDemoSpec,
     *,
@@ -852,6 +924,7 @@ def _uci_variance_run_py(spec: _UciVarianceDemoSpec) -> str:
         DATASET_SOURCE = {spec.dataset_source!r}
         SOURCE_FILE = {spec.source_file!r}
         SOURCE_URL = {spec.source_url!r}
+        DELIMITER = {spec.delimiter!r}
         FEATURE_COUNT = {spec.feature_count!r}
         LABEL_POSITION = {spec.label_position!r}
         SPLIT_POLICY = {spec.split_policy!r}
@@ -1044,10 +1117,10 @@ def _uci_variance_run_py(spec: _UciVarianceDemoSpec) -> str:
                 stripped = line.strip()
                 if not stripped:
                     continue
-                parts = [piece.strip() for piece in stripped.split(",")]
+                parts = _split_source_line(stripped)
                 if len(parts) != FEATURE_COUNT + 1:
                     raise ValueError(
-                        f"{{path.name}}:{{row_index + 1}} expected {{FEATURE_COUNT + 1}} comma values, "
+                        f"{{path.name}}:{{row_index + 1}} expected {{FEATURE_COUNT + 1}} {{DELIMITER}} values, "
                         f"got {{len(parts)}}"
                     )
                 if LABEL_POSITION == "first":
@@ -1066,6 +1139,14 @@ def _uci_variance_run_py(spec: _UciVarianceDemoSpec) -> str:
                     }}
                 )
             return rows
+
+
+        def _split_source_line(stripped: str) -> list[str]:
+            if DELIMITER == "comma":
+                return [piece.strip() for piece in stripped.split(",")]
+            if DELIMITER == "whitespace":
+                return stripped.split()
+            raise ValueError(f"unknown DELIMITER {{DELIMITER!r}}")
 
 
         def _split_rows(rows: list[dict[str, object]]) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
