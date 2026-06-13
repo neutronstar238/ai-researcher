@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-036 - Real task101 full cycle is functional but not directly publishable
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-06-13 17:25:00 +08:00
+- Source: Task `101.1` real full-cycle and self-evolution acceptance audit.
+- Symptom: `airesearcher serve --once` completed a real end-to-end cycle with source preflight, online search, UCI Pendigits execution, live LLM review, reproduction rerun, paper build, and evidence gate, but publication audit failed and evidence gate blocked release.
+- Impact: The system can run the autonomous loop and self-evolution support path, but the current research output must not be claimed as CCF-B/Q3 publication-ready or directly publishable.
+- Evidence: `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json` recorded `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `publication-audit.json` scored `0.8485` but failed source-error and similarity-classification gates; `paper-build.json` recorded `compiled_with_quality_issues`.
+- Root cause: Semantic Scholar returned HTTP 429/circuit-breaker errors, only 1 of 57 similar-work findings was evidence-classified against a target of 10, and the compiled PDF was only 3 pages / 314 words with 12 overfull hbox warnings.
+- Workaround: The generated issue notes and scheduler follow-up tasks preserve the blockers for another cycle; the self-evolution candidate remains in shadow evaluation.
+- Next action: Improve Semantic Scholar API-key/rate-limit handling, classify more similar-work findings using source-backed abstracts/metadata, and expand the manuscript generator with evidence-backed technical detail before rerunning publication/evidence gates.
+- Linked tasks: `101.1`
+- Resolution: Not resolved. This is the correct fail-closed outcome for the current output.
+- Verification: `poetry run airesearcher issue-followups --vault runs\manual-live\task101-vault --project-id task101_full_cycle --output runs\manual-live\task101-followups.json --state runs\manual-live\task101-scheduler-state.json` wrote 2 open follow-up tasks; `skill-evolve` wrote `runs/manual-live/task101-vault/exploration/skills/candidates/skill_publication_evidence_recovery_task101_candidate.md`; `skill-polish-audit` passed 60/60 for the candidate using the real task101 evidence refs.
+
 ### P-20260613-035 - Springer template dependency recovery needed template-specific amsmath preamble
 
 - Status: Resolved

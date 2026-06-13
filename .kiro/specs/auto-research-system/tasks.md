@@ -1489,6 +1489,17 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement to test installed OpenCode; user requirement that LaTeX missing packages/classes should be automatically downloaded or explicitly reported, not silently ignored; task `96.1` paper-quality gate._
     - _Verify: OpenCode real smoke writes `opencode-smoke.txt`; focused LaTeX/paper-build/CLI tests; ruff; mypy; live Springer Nature official archive fetch with `sn-jnl.cls` extraction and PDF compile; real Springer paper-build over the prior live Pendigits report showing dependency recovery succeeded but quality gate still blocked publishability._
 
+- [x] 101. Run real full-cycle and self-evolution acceptance audit
+  - [x] 101.1 Verify the autonomous loop, Obsidian issue loop, and SkillOpt-style evolution gate
+    - Run `airesearcher serve --once` with real online literature/similarity search, real UCI Pendigits experiment execution, real LLM evidence review from `.env`, reproduction rerun, publication audit, LaTeX paper build, evidence gate, and Obsidian vault outputs.
+    - Inspect the generated publication audit, evidence gate, paper build, metrics, review, reproduction, and source preflight artifacts instead of relying on console success lines.
+    - Run `issue-followups` over the generated Obsidian issue notes and confirm the scheduler state receives follow-up tasks from the blocked publication/evidence gates.
+    - Create a temporary parent skill card from the full-cycle evidence, run `skill-evolve` from the generated issue notes, and confirm the candidate remains in shadow evaluation with a rejected-edit buffer instead of mutating the parent skill.
+    - Run `skill-polish-audit` over the candidate with real run evidence, peer methodology reference, install/share refs, and release/follow-up refs.
+    - Write an Obsidian-readable acceptance review summarizing whether the loop ran, whether self-evolution is implemented, and whether the output meets a CCF-B/Q3 publication bar.
+    - _References: user requirement to run the real full chain, verify self-evolution, and strictly judge whether the output is directly publishable._
+    - _Verify: real `serve --once` returns `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `issue-followups` writes 2 open tasks; `skill-evolve` writes a shadow candidate and rejected buffer; `skill-polish-audit` passes 60/60; Obsidian acceptance review records that the current paper is not directly publishable._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1805,6 +1816,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 67,
       "tasks": ["100.1"]
+    },
+    {
+      "id": 68,
+      "tasks": ["101.1"]
     }
   ]
 }

@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 17:33:00 +08:00 - Codex - Task 101.1 full-cycle and self-evolution acceptance audit
+
+- Request: Run a real full-chain autonomous cycle, verify whether self-evolution is actually implemented, and strictly judge whether the generated output is directly publishable.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-101-1-full-cycle-self-evolution-audit.md`
+- Summary:
+  - Added task `101.1` for the real full-cycle and self-evolution acceptance audit.
+  - Recorded the full-cycle result in `Problem.md` as a fail-closed quality blocker rather than a success claim.
+  - Added an Obsidian progress note summarizing the actual cycle evidence, experiment metrics, publication blockers, and self-evolution verdict.
+  - Did not change quality thresholds or mark the paper as publishable.
+- Verification:
+  - `poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_variance_calibrated_prototypes --output-dir runs\manual-live\task101-full-cycle --vault runs\manual-live\task101-vault --cache runs\manual-live\task101-literature-cache --state runs\manual-live\task101-scheduler-state.json --approvals-state runs\manual-live\task101-approvals.json --project-id task101_full_cycle --timeout-seconds 120 --max-tokens 4096 --max-queries 4 --max-results-per-source 10 --review --env-path .env`: passed as a cycle run; console reported `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`, `followup_tasks=2`.
+  - Structured summary read from `runs/manual-live/task101-full-cycle/cycle-20260613T091517Z/cycle-summary.json`: passed; confirmed `publication_verdict=fail`, `paper_status=compiled_with_quality_issues`, and `release_allowed=false`.
+  - Publication audit inspection: confirmed 65 normalized literature documents, 57 similarity findings, positive method effect, but failed Semantic Scholar source-error gates and `similarity_classified_finding_breadth=1/10`.
+  - Paper build inspection: confirmed PDF exists, but paper quality failed with pages `3/6`, words `314/2500`, overfull hbox `12/0`, and failures `page_count`, `word_count`, `section_depth`, `layout_overflow`.
+  - Metrics inspection: confirmed candidate accuracy `0.823327615780446`, baseline accuracy `0.7775871926815323`, delta vs baseline `0.045740423098913685`, delta vs z-score ablation `0.038307604345340196`, and test rows `3498`.
+  - `poetry run airesearcher issue-followups --vault runs\manual-live\task101-vault --project-id task101_full_cycle --output runs\manual-live\task101-followups.json --state runs\manual-live\task101-scheduler-state.json`: passed, wrote 2 open follow-up tasks.
+  - Python call to `extract_reusable_skill_card(...)` over task101 evidence: passed, wrote parent skill `runs/manual-live/task101-vault/exploration/skills/skill_publication_evidence_recovery.md`.
+  - `poetry run airesearcher skill-evolve --vault runs\manual-live\task101-vault --parent-skill-id skill_publication_evidence_recovery ... --candidate-skill-id skill_publication_evidence_recovery_task101_candidate`: passed, wrote the shadow candidate and rejected-edit buffer.
+  - `poetry run airesearcher skill-polish-audit --vault runs\manual-live\task101-vault --skill-id skill_publication_evidence_recovery_task101_candidate --output runs\manual-live\task101-skill-polish.json ... --no-fail-on-blocked`: passed, score `60.0/60.0`.
+- Problems:
+  - `P-20260613-036` added and left open because the current output is functional but not directly publishable.
+- Follow-up:
+  - Improve Semantic Scholar API-key/rate-limit handling, source-backed similarity classification breadth, and evidence-backed manuscript generation before rerunning the publication/evidence gates.
+
 ### 2026-06-13 17:16:00 +08:00 - Codex - Task 100.1 OpenCode smoke and LaTeX dependency recovery
 
 - Request: Verify the newly installed OpenCode CLI, then test whether the system can run real LaTeX template recovery and keep paper-quality gates strict instead of silently ignoring missing packages/classes.
