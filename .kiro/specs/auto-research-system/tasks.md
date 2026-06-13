@@ -1478,6 +1478,17 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that project-start and cross-check search should not be limited to local data or academic databases; Hugging Face Hub API/rate limits; Hacker News Algolia Search API._
     - _Verify: focused inspiration/CLI/compliance tests, ruff, mypy, full smoke/unit tests, a real `inspiration-refresh` run against live Hugging Face/Hacker News sources, and CI._
 
+- [x] 100. Harden external execution and LaTeX dependency recovery evidence
+  - [x] 100.1 Verify OpenCode locally and recover missing LaTeX template classes
+    - Run a disposable local OpenCode CLI smoke after the operator installs OpenCode, using a bounded write-only task and recording the version, model, output file, and session evidence.
+    - Add structured LaTeX template dependency resolution fields so compatibility reports and paper-build artifacts show whether a class was already available, installed by TeX Live, downloaded from an official archive, skipped, or unavailable.
+    - Configure external templates with explicit TeX Live package names or official archive URLs without vendoring upstream template files in the repository.
+    - Make missing external template classes trigger recorded recovery before compile, and fail closed with the recovery reason when recovery cannot prove the class is available.
+    - Expose `paper-build --timeout-seconds` and print dependency-recovery status in the CLI so long downloads/compiles are configurable and visible.
+    - Keep paper-readiness quality gates strict: a successfully compiled PDF remains `compiled_with_quality_issues` when page count, word count, section depth, or layout checks fail.
+    - _References: user requirement to test installed OpenCode; user requirement that LaTeX missing packages/classes should be automatically downloaded or explicitly reported, not silently ignored; task `96.1` paper-quality gate._
+    - _Verify: OpenCode real smoke writes `opencode-smoke.txt`; focused LaTeX/paper-build/CLI tests; ruff; mypy; live Springer Nature official archive fetch with `sn-jnl.cls` extraction and PDF compile; real Springer paper-build over the prior live Pendigits report showing dependency recovery succeeded but quality gate still blocked publishability._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1790,6 +1801,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 66,
       "tasks": ["99.1"]
+    },
+    {
+      "id": 67,
+      "tasks": ["100.1"]
     }
   ]
 }

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-035 - Springer template dependency recovery needed template-specific amsmath preamble
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 17:01:00 +08:00
+- Source: Task `100.1` live Springer Nature LaTeX template compatibility verification.
+- Symptom: After `sn-jnl.cls` was downloaded from the official Springer Nature archive, `pdflatex` still failed with `Undefined control sequence` at `\allowdisplaybreaks` during `\begin{document}`.
+- Impact: The dependency recovery layer was working, but the Springer smoke manuscript could not prove end-to-end template compatibility until the template-specific preamble loaded the expected math package.
+- Evidence: `runs/manual-live/task100-latex-dependency/springer-nature-sn-jnl/compile.log` showed the undefined `\allowdisplaybreaks` error while `dependency_status=downloaded`.
+- Root cause: The official `sn-jnl.cls` class uses `\allowdisplaybreaks`, which requires `amsmath`; the generated smoke document did not load it.
+- Workaround: None needed after the template registry fix.
+- Next action: Keep venue/publisher template specs allowed to carry minimal template-specific preamble lines, and verify each real template with a live compile rather than assuming generic smoke manuscripts are enough.
+- Linked tasks: `100.1`
+- Resolution: Added `\usepackage{amsmath}` to the Springer Nature template spec while still avoiding vendoring the upstream template file.
+- Verification: `runs/manual-live/task100-latex-dependency-rerun/latex-template-compatibility.json` recorded `source_http=200`, `dependency_status=downloaded`, `status=compiled`, and a PDF at `runs/manual-live/task100-latex-dependency-rerun/springer-nature-sn-jnl/main.pdf`.
+
 ### P-20260613-034 - Inspiration focused gate initially failed on Python 3.10 import and brittle test assertion
 
 - Status: Resolved
@@ -66,7 +82,7 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-032 - Local environment lacks OpenCode CLI for live code-agent execution smoke
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 14:42:00 +08:00
 - Source: Task `97.1` verification while replacing the cc-switch-first code-agent plan with a direct OpenCode backend contract.
@@ -74,11 +90,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Impact: The repository can generate and test the OpenCode integration manifest, but it must not claim that OpenCode itself was executed end-to-end on this machine during task `97.1`.
 - Evidence: Official OpenCode docs reviewed during task `97.1` describe CLI `run`, `serve`, ACP, permission config, and project skills. `npm view opencode-ai version license repository --json` returned version `1.17.4` and `license=MIT`, but no local `opencode` binary was found.
 - Root cause: OpenCode is not installed on the local verification environment.
-- Workaround: Treat task `97.1` as a repository contract and CLI manifest task. Install OpenCode on the target operator machine before running the live code-agent smoke.
-- Next action: Add an opt-in live OpenCode smoke once OpenCode is installed, covering a bounded non-destructive `opencode run` in a disposable worktree with AI-Researcher diff capture and validation.
+- Workaround: Not needed after the operator installed OpenCode locally.
+- Next action: Keep future code-agent acceptance tests bounded to disposable worktrees and keep AI-Researcher as the validation/merge owner.
 - Linked tasks: `97.1`
-- Resolution: Repository-level mitigation added by task `97.1`: `airesearcher code-agents opencode init|list` can generate and inspect the direct OpenCode contract without requiring local OpenCode execution.
-- Verification: Focused OpenCode integration/CLI/compliance tests, ruff, mypy, full smoke/unit tests, generated manifest inspection, npm metadata lookup, and CI are required before closing task `97.1`.
+- Resolution: Task `100.1` verified the installed local `opencode` CLI with a disposable bounded live smoke.
+- Verification: `opencode --version` returned `1.17.4`; `opencode models` listed `opencode/deepseek-v4-flash-free`; `opencode run --model opencode/deepseek-v4-flash-free --format json --dir runs\manual-live\task100-opencode-smoke --dangerously-skip-permissions "Create a file named opencode-smoke.txt in the current directory containing exactly: opencode smoke ok"` exited 0 and wrote `runs\manual-live\task100-opencode-smoke\opencode-smoke.txt` with exactly `opencode smoke ok`.
 
 ### P-20260613-031 - Compiled LaTeX PDFs could pass despite thin content and layout overflow
 

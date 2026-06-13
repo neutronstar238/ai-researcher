@@ -485,6 +485,7 @@ def test_paper_build_command_reports_compiled_artifact(
         assert kwargs["authors"] == ("Ada", "Grace")
         assert kwargs["vault_root"] == tmp_path / "vault"
         assert kwargs["project_id"] == "demo_project"
+        assert kwargs["timeout_seconds"] == 120
         return SimpleNamespace(
             status=cli_main.LatexPaperBuildStatus.COMPILED,
             template=SimpleNamespace(id="generic-article-two-column"),
@@ -494,6 +495,12 @@ def test_paper_build_command_reports_compiled_artifact(
             json_path="runs/paper/paper-build.json",
             vault_markdown_path="vault/projects/demo_project/paper/paper-build.md",
             missing_sections=(),
+            dependency_resolution=SimpleNamespace(
+                status=SimpleNamespace(value="not_required"),
+                class_file="article.cls",
+                artifact_path=None,
+                message="built-in generic templates do not require external class recovery",
+            ),
         )
 
     monkeypatch.setattr(
@@ -515,6 +522,8 @@ def test_paper_build_command_reports_compiled_artifact(
             "Ada",
             "--author",
             "Grace",
+            "--timeout-seconds",
+            "120",
             "--vault",
             str(tmp_path / "vault"),
             "--project-id",
@@ -525,6 +534,7 @@ def test_paper_build_command_reports_compiled_artifact(
     assert result.exit_code == 0, result.output
     assert "[OK] paper_build: compiled" in result.stdout
     assert "[OK] pdf: runs/paper/main.pdf" in result.stdout
+    assert "[OK] latex_dependency: status=not_required" in result.stdout
     assert "[OK] vault_paper: vault/projects/demo_project/paper/paper-build.md" in result.stdout
 
 

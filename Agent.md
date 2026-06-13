@@ -62,6 +62,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 17:16:00 +08:00 - Codex - Task 100.1 OpenCode smoke and LaTeX dependency recovery
+
+- Request: Verify the newly installed OpenCode CLI, then test whether the system can run real LaTeX template recovery and keep paper-quality gates strict instead of silently ignoring missing packages/classes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-100-1-opencode-latex-dependency-recovery.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/latex_templates.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_latex_templates.py`
+  - `tests/unit/reports/test_paper_build.py`
+- Summary:
+  - Added structured LaTeX template dependency resolution to compatibility reports and final paper-build artifacts.
+  - Configured external templates with TeX Live package names or official archive recovery metadata without vendoring upstream template files.
+  - Made missing external classes trigger recorded recovery through `kpsewhich`, optional `tlmgr`, or official ZIP extraction before failing closed.
+  - Added the Springer Nature official archive recovery path for `sn-jnl.cls` and the required `amsmath` preamble discovered by a real compile.
+  - Exposed `paper-build --timeout-seconds` and printed LaTeX dependency recovery status/messages in CLI output.
+  - Kept paper-readiness gates strict: the real Springer paper-build produced a PDF but stayed `compiled_with_quality_issues` because the manuscript is still too short and has layout overflow.
+- Verification:
+  - `opencode --version`: passed, returned `1.17.4`.
+  - `opencode models`: passed, included `opencode/deepseek-v4-flash-free`.
+  - `opencode run --model opencode/deepseek-v4-flash-free --format json --dir runs\manual-live\task100-opencode-smoke --dangerously-skip-permissions "Create a file named opencode-smoke.txt in the current directory containing exactly: opencode smoke ok"`: passed, wrote the expected file with exactly `opencode smoke ok`.
+  - `poetry run pytest tests\unit\cli\test_main.py::test_paper_build_command_reports_compiled_artifact tests\unit\reports\test_latex_templates.py tests\unit\reports\test_paper_build.py -q`: passed, 15 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py src\autoresearch\reports\latex_templates.py src\autoresearch\reports\paper_build.py src\autoresearch\reports\__init__.py tests\unit\cli\test_main.py tests\unit\reports\test_latex_templates.py tests\unit\reports\test_paper_build.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\latex_templates.py src\autoresearch\reports\paper_build.py src\autoresearch\cli\main.py`: passed; mypy still reports the pre-existing unused section note for `langchain.*` and `langgraph.*`.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 415 passed and 4 skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 97 source files.
+  - Live Springer template compatibility rerun: passed, `runs/manual-live/task100-latex-dependency-rerun/latex-template-compatibility.json` records `source_http=200`, `dependency_status=downloaded`, `status=compiled`, and PDF `runs/manual-live/task100-latex-dependency-rerun/springer-nature-sn-jnl/main.pdf`.
+  - Real `paper-build` over prior live Pendigits report with `--template-id springer-nature-sn-jnl --timeout-seconds 120 --no-fail-on-not-compiled`: passed with exit code 0 and visible dependency recovery output; artifact status is `compiled_with_quality_issues`, pages `3/6`, words `314/2500`, overfull hbox `5/0`, failures `page_count`, `word_count`, `section_depth`, `layout_overflow`.
+- Problems:
+  - `P-20260613-032` resolved after local OpenCode live smoke.
+  - `P-20260613-035` added and resolved after the first real Springer compile exposed the missing `amsmath` preamble.
+- Follow-up:
+  - Run a fresh real autonomous cycle, self-evolution verification, and publication-level audit without lowering CCF-B/Q3 quality gates.
+
 ### 2026-06-13 14:19:42 +08:00 - Codex - Task 99.1 broad inspiration discovery
 
 - Request: Continue toward a fully self-looping AI-Researcher that searches beyond academic databases by adding real online dataset/community/news inspiration sources without weakening publication evidence gates.

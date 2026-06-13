@@ -13,8 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from .latex_templates import (
+    LatexTemplateDependencyResolution,
+    LatexTemplateDependencyStatus,
     LatexTemplateSourceKind,
     LatexTemplateSpec,
+    ensure_latex_template_class_available,
     external_latex_templates,
     generic_latex_templates,
 )
@@ -140,6 +143,7 @@ class LatexPaperBuildArtifact:
     missing_sections: tuple[str, ...]
     engine: str | None
     command: tuple[str, ...]
+    dependency_resolution: LatexTemplateDependencyResolution
     quality: LatexPaperQualityReport
     reason: str | None = None
 
@@ -158,6 +162,7 @@ class LatexPaperBuildArtifact:
             "missing_sections": list(self.missing_sections),
             "engine": self.engine,
             "command": list(self.command),
+            "dependency_resolution": self.dependency_resolution.to_dict(),
             "paper_quality": self.quality.to_dict(),
             "reason": self.reason,
         }
@@ -208,34 +213,41 @@ def build_latex_paper_from_markdown(
     pdf_path: Path | None = None
     command: tuple[str, ...] = ()
     engine_name: str | None = None
+    dependency_resolution = _default_dependency_resolution(template)
     if missing_sections and require_complete_sections:
         status = LatexPaperBuildStatus.MISSING_SECTIONS
         reason = "missing required paper sections: " + ", ".join(missing_sections)
-        log_path.write_text(reason + "\n", encoding="utf-8")
-    elif template.source_kind is LatexTemplateSourceKind.EXTERNAL_FETCHED and not _template_class_available(template):
-        status = LatexPaperBuildStatus.SOURCE_UNAVAILABLE
-        reason = f"template class {template.class_file or template.document_class + '.cls'} is unavailable"
         log_path.write_text(reason + "\n", encoding="utf-8")
     elif not compile_pdf:
         status = LatexPaperBuildStatus.RENDERED
         reason = "compile_pdf disabled"
         log_path.write_text(reason + "\n", encoding="utf-8")
     else:
-        engine = _select_latex_engine()
-        if engine is None:
-            status = LatexPaperBuildStatus.SKIPPED
-            reason = "no LaTeX engine found on PATH"
+        dependency_resolution = ensure_latex_template_class_available(
+            template,
+            root,
+            timeout_seconds=timeout_seconds,
+        )
+        if dependency_resolution.status is LatexTemplateDependencyStatus.UNAVAILABLE:
+            status = LatexPaperBuildStatus.SOURCE_UNAVAILABLE
+            reason = dependency_resolution.message
             log_path.write_text(reason + "\n", encoding="utf-8")
         else:
-            command_list = _compile_command(engine, tex_path)
-            command = tuple(command_list)
-            engine_name = Path(engine).name
-            status, pdf_path, reason = _compile_latex(
-                tex_path,
-                log_path,
-                command_list,
-                timeout_seconds=timeout_seconds,
-            )
+            engine = _select_latex_engine()
+            if engine is None:
+                status = LatexPaperBuildStatus.SKIPPED
+                reason = "no LaTeX engine found on PATH"
+                log_path.write_text(reason + "\n", encoding="utf-8")
+            else:
+                command_list = _compile_command(engine, tex_path)
+                command = tuple(command_list)
+                engine_name = Path(engine).name
+                status, pdf_path, reason = _compile_latex(
+                    tex_path,
+                    log_path,
+                    command_list,
+                    timeout_seconds=timeout_seconds,
+                )
     quality = _build_quality_report(
         sections,
         source_markdown,
@@ -260,6 +272,7 @@ def build_latex_paper_from_markdown(
         missing_sections=missing_sections,
         engine=engine_name,
         command=command,
+        dependency_resolution=dependency_resolution,
         quality=quality,
         reason=reason,
     )
@@ -282,6 +295,7 @@ def build_latex_paper_from_markdown(
             missing_sections=artifact.missing_sections,
             engine=artifact.engine,
             command=artifact.command,
+            dependency_resolution=artifact.dependency_resolution,
             quality=artifact.quality,
             reason=artifact.reason,
         )
@@ -301,6 +315,23 @@ def _template_by_id(template_id: str) -> LatexTemplateSpec:
             return template
     msg = f"unknown LaTeX template id: {template_id}"
     raise ValueError(msg)
+
+
+def _default_dependency_resolution(template: LatexTemplateSpec) -> LatexTemplateDependencyResolution:
+    class_file = template.class_file or f"{template.document_class}.cls"
+    if template.source_kind is LatexTemplateSourceKind.BUILT_IN_GENERIC:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.NOT_REQUIRED,
+            checked_at=datetime.now(timezone.utc).isoformat(),
+            class_file=class_file,
+            message="built-in generic templates do not require external class recovery",
+        )
+    return LatexTemplateDependencyResolution(
+        status=LatexTemplateDependencyStatus.SKIPPED,
+        checked_at=datetime.now(timezone.utc).isoformat(),
+        class_file=class_file,
+        message="paper-build did not reach the external template dependency gate",
+    )
 
 
 def _extract_markdown_title(markdown: str) -> str | None:
@@ -546,6 +577,10 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
         f"- Log: `{artifact.log_path}`",
         f"- JSON: `{artifact.json_path}`",
         f"- Vault copy: `{artifact.vault_markdown_path or 'not written'}`",
+        f"- Dependency recovery: `{artifact.dependency_resolution.status.value}`",
+        f"- Dependency class: `{artifact.dependency_resolution.class_file or 'none'}`",
+        f"- Dependency message: `{artifact.dependency_resolution.message}`",
+        f"- Dependency artifact: `{artifact.dependency_resolution.artifact_path or 'none'}`",
         f"- Reason: `{artifact.reason or 'None'}`",
         f"- Quality passed: `{str(artifact.quality.passed).lower()}`",
         f"- Page count: `{artifact.quality.page_count or 'unknown'}` / minimum `{artifact.quality.min_pages}`",
@@ -599,6 +634,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             "- Process data and evidence summaries remain Markdown in the Obsidian vault.",
             "- The paper-level artifact is release-ready only when status is `compiled` and quality passed is `true`.",
             "- Missing paper sections stop compilation instead of being filled with invented content.",
+            "- Missing external LaTeX classes trigger recorded TeX Live or official archive recovery before the build is blocked.",
             "- Thin manuscripts, shallow technical sections, or LaTeX overfull boxes are blockers, not polish notes.",
             "",
         ]

@@ -3,8 +3,11 @@ from pathlib import Path
 
 import pytest
 
+import autoresearch.reports.paper_build as paper_build
 from autoresearch.reports import (
     LatexPaperBuildStatus,
+    LatexTemplateDependencyResolution,
+    LatexTemplateDependencyStatus,
     build_latex_paper_from_markdown,
 )
 
@@ -58,6 +61,7 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     assert artifact.status is LatexPaperBuildStatus.RENDERED
     assert artifact.reason == "compile_pdf disabled"
     assert artifact.missing_sections == ()
+    assert artifact.dependency_resolution.status is LatexTemplateDependencyStatus.NOT_REQUIRED
     assert artifact.quality.passed is False
     assert "page_count" in artifact.quality.failures
     assert "word_count" in artifact.quality.failures
@@ -69,6 +73,7 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     assert artifact.vault_markdown_path is not None
     vault_summary = Path(artifact.vault_markdown_path).read_text(encoding="utf-8")
     assert "release-ready only when status is `compiled`" in vault_summary
+    assert "Dependency recovery: `not_required`" in vault_summary
     assert "Thin manuscripts" in vault_summary
 
 
@@ -85,6 +90,45 @@ def test_build_latex_paper_from_markdown_blocks_missing_sections(
     assert artifact.pdf_path is None
     assert artifact.reason is not None
     assert "missing required paper sections" in artifact.reason
+
+
+def test_build_latex_paper_external_template_records_dependency_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_ensure_dependency(
+        _: object,
+        __: Path,
+        *,
+        timeout_seconds: int,
+    ) -> LatexTemplateDependencyResolution:
+        assert timeout_seconds > 0
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at="2026-06-13T00:00:00+00:00",
+            class_file="sn-jnl.cls",
+            message="automatic LaTeX dependency recovery failed for sn-jnl.cls",
+        )
+
+    monkeypatch.setattr(
+        paper_build,
+        "ensure_latex_template_class_available",
+        fake_ensure_dependency,
+    )
+    source = tmp_path / "report.md"
+    source.write_text(_complete_markdown(), encoding="utf-8")
+
+    artifact = build_latex_paper_from_markdown(
+        source,
+        tmp_path / "paper",
+        template_id="springer-nature-sn-jnl",
+    )
+
+    assert artifact.status is LatexPaperBuildStatus.SOURCE_UNAVAILABLE
+    assert artifact.dependency_resolution.status is LatexTemplateDependencyStatus.UNAVAILABLE
+    assert artifact.reason == "automatic LaTeX dependency recovery failed for sn-jnl.cls"
+    summary = Path(artifact.markdown_path).read_text(encoding="utf-8")
+    assert "Dependency recovery: `unavailable`" in summary
 
 
 @pytest.mark.skipif(shutil.which("pdflatex") is None, reason="pdflatex is unavailable")

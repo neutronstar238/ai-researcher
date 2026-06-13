@@ -9,6 +9,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -42,6 +43,17 @@ class LatexTemplateSourceFetchStatus(str, Enum):
     FAILED = "failed"
 
 
+class LatexTemplateDependencyStatus(str, Enum):
+    """Dependency recovery outcome for a LaTeX template class."""
+
+    NOT_REQUIRED = "not_required"
+    AVAILABLE = "available"
+    INSTALLED = "installed"
+    DOWNLOADED = "downloaded"
+    SKIPPED = "skipped"
+    UNAVAILABLE = "unavailable"
+
+
 @dataclass(frozen=True)
 class LatexTemplateSpec:
     """One LaTeX paper template target."""
@@ -55,6 +67,9 @@ class LatexTemplateSpec:
     preamble_lines: tuple[str, ...] = ()
     abstract_before_maketitle: bool = False
     source_url: str | None = None
+    texlive_package: str | None = None
+    source_archive_url: str | None = None
+    source_archive_member: str | None = None
     license_note: str = "Built-in generic LaTeX article smoke template."
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,6 +83,9 @@ class LatexTemplateSpec:
             "preamble_lines": list(self.preamble_lines),
             "abstract_before_maketitle": self.abstract_before_maketitle,
             "source_url": self.source_url,
+            "texlive_package": self.texlive_package,
+            "source_archive_url": self.source_archive_url,
+            "source_archive_member": self.source_archive_member,
             "license_note": self.license_note,
         }
 
@@ -93,6 +111,36 @@ class LatexTemplateSourceMetadata:
 
 
 @dataclass(frozen=True)
+class LatexTemplateDependencyResolution:
+    """Structured record of a template dependency check or recovery attempt."""
+
+    status: LatexTemplateDependencyStatus
+    checked_at: str
+    class_file: str | None
+    message: str
+    command: tuple[str, ...] = ()
+    returncode: int | None = None
+    artifact_path: str | None = None
+    stdout_tail: str | None = None
+    stderr_tail: str | None = None
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status.value,
+            "checked_at": self.checked_at,
+            "class_file": self.class_file,
+            "message": self.message,
+            "command": list(self.command),
+            "returncode": self.returncode,
+            "artifact_path": self.artifact_path,
+            "stdout_tail": self.stdout_tail,
+            "stderr_tail": self.stderr_tail,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True)
 class LatexTemplateCompatibilityResult:
     """Compatibility result for one template."""
 
@@ -104,6 +152,7 @@ class LatexTemplateCompatibilityResult:
     engine: str | None
     command: tuple[str, ...]
     source_metadata: LatexTemplateSourceMetadata
+    dependency_resolution: LatexTemplateDependencyResolution
     reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -116,6 +165,7 @@ class LatexTemplateCompatibilityResult:
             "engine": self.engine,
             "command": list(self.command),
             "source_metadata": self.source_metadata.to_dict(),
+            "dependency_resolution": self.dependency_resolution.to_dict(),
             "reason": self.reason,
         }
 
@@ -175,6 +225,7 @@ def external_latex_templates() -> tuple[LatexTemplateSpec, ...]:
             class_options=("conference",),
             class_file="IEEEtran.cls",
             source_url="https://ctan.org/pkg/IEEEtran",
+            texlive_package="ieeetran",
             license_note="External IEEEtran class from CTAN/TeX distribution; not vendored by AI-Researcher.",
         ),
         LatexTemplateSpec(
@@ -192,6 +243,7 @@ def external_latex_templates() -> tuple[LatexTemplateSpec, ...]:
             ),
             abstract_before_maketitle=True,
             source_url="https://ctan.org/pkg/acmart",
+            texlive_package="acmart",
             license_note="External ACM acmart class from CTAN/TeX distribution; not vendored by AI-Researcher.",
         ),
         LatexTemplateSpec(
@@ -201,7 +253,13 @@ def external_latex_templates() -> tuple[LatexTemplateSpec, ...]:
             document_class="sn-jnl",
             class_options=("sn-mathphys",),
             class_file="sn-jnl.cls",
+            preamble_lines=(r"\usepackage{amsmath}",),
             source_url="https://www.springernature.com/gp/authors/campaigns/latex-author-support",
+            source_archive_url=(
+                "https://cms-resources.apps.public.k8s.springernature.io/"
+                "springer-cms/rest/v1/content/18782940/data/v12"
+            ),
+            source_archive_member="sn-jnl.cls",
             license_note="External Springer Nature authoring template; not vendored by AI-Researcher.",
         ),
     )
@@ -342,6 +400,80 @@ def render_latex_template_smoke(
     return "\n".join(lines)
 
 
+def ensure_latex_template_class_available(
+    template: LatexTemplateSpec,
+    work_dir: Path | str,
+    *,
+    timeout_seconds: int = 120,
+) -> LatexTemplateDependencyResolution:
+    """Ensure an external template class is available, recording every recovery path."""
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+    class_file = template.class_file or f"{template.document_class}.cls"
+    if template.source_kind is LatexTemplateSourceKind.BUILT_IN_GENERIC:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.NOT_REQUIRED,
+            checked_at=checked_at,
+            class_file=class_file,
+            message="built-in generic templates do not require external class recovery",
+        )
+
+    root = Path(work_dir).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    local_class = root / class_file
+    if local_class.exists():
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.AVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message="template class already exists in the build directory",
+            artifact_path=local_class.as_posix(),
+        )
+    if _template_class_available(template):
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.AVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message="template class is available through kpsewhich",
+        )
+
+    recovery_notes: list[str] = []
+    install_result = _try_texlive_package_install(
+        template,
+        checked_at=checked_at,
+        timeout_seconds=timeout_seconds,
+    )
+    if install_result is not None:
+        if _template_class_available(template):
+            return install_result
+        recovery_notes.append(install_result.message)
+
+    archive_result = _try_source_archive_download(
+        template,
+        root,
+        checked_at=checked_at,
+        timeout_seconds=timeout_seconds,
+    )
+    if archive_result is not None:
+        if archive_result.status is LatexTemplateDependencyStatus.DOWNLOADED:
+            return archive_result
+        recovery_notes.append(archive_result.message)
+
+    if not template.texlive_package:
+        recovery_notes.append("no TeX Live package is configured")
+    if not template.source_archive_url:
+        recovery_notes.append("no official source archive URL is configured")
+    return LatexTemplateDependencyResolution(
+        status=LatexTemplateDependencyStatus.UNAVAILABLE,
+        checked_at=checked_at,
+        class_file=class_file,
+        message=(
+            f"automatic LaTeX dependency recovery failed for {class_file}: "
+            + "; ".join(dict.fromkeys(recovery_notes))
+        ),
+    )
+
+
 def _run_template_smoke(
     root: Path,
     template: LatexTemplateSpec,
@@ -355,6 +487,7 @@ def _run_template_smoke(
     tex_path = template_dir / "main.tex"
     log_path = template_dir / "compile.log"
     tex_path.write_text(render_latex_template_smoke(template), encoding="utf-8")
+    dependency_resolution = _default_dependency_resolution(template, "compile_pdf disabled")
     if source_metadata.status is LatexTemplateSourceFetchStatus.FAILED:
         reason = f"source metadata fetch failed: {source_metadata.error}"
         log_path.write_text(reason + "\n", encoding="utf-8")
@@ -366,19 +499,7 @@ def _run_template_smoke(
             None,
             (),
             source_metadata,
-            reason,
-        )
-    if template.source_kind is LatexTemplateSourceKind.EXTERNAL_FETCHED and not _template_class_available(template):
-        reason = f"template class {template.class_file or template.document_class + '.cls'} is unavailable"
-        log_path.write_text(reason + "\n", encoding="utf-8")
-        return _compatibility_result(
-            template,
-            LatexTemplateCompatibilityStatus.SOURCE_UNAVAILABLE,
-            tex_path,
-            log_path,
-            None,
-            (),
-            source_metadata,
+            dependency_resolution,
             reason,
         )
     if not compile_pdf:
@@ -392,6 +513,26 @@ def _run_template_smoke(
             None,
             (),
             source_metadata,
+            dependency_resolution,
+            reason,
+        )
+    dependency_resolution = ensure_latex_template_class_available(
+        template,
+        template_dir,
+        timeout_seconds=timeout_seconds,
+    )
+    if dependency_resolution.status is LatexTemplateDependencyStatus.UNAVAILABLE:
+        reason = dependency_resolution.message
+        log_path.write_text(reason + "\n", encoding="utf-8")
+        return _compatibility_result(
+            template,
+            LatexTemplateCompatibilityStatus.SOURCE_UNAVAILABLE,
+            tex_path,
+            log_path,
+            None,
+            (),
+            source_metadata,
+            dependency_resolution,
             reason,
         )
     engine = _select_latex_engine()
@@ -406,6 +547,7 @@ def _run_template_smoke(
             None,
             (),
             source_metadata,
+            dependency_resolution,
             reason,
         )
     command = _compile_command(engine, tex_path)
@@ -428,6 +570,7 @@ def _run_template_smoke(
             None,
             tuple(command),
             source_metadata,
+            dependency_resolution,
             f"compile timed out after {timeout_seconds}s",
         )
     log_path.write_text(
@@ -444,6 +587,7 @@ def _run_template_smoke(
             pdf_path,
             tuple(command),
             source_metadata,
+            dependency_resolution,
             None,
         )
     return _compatibility_result(
@@ -454,6 +598,7 @@ def _run_template_smoke(
         None,
         tuple(command),
         source_metadata,
+        dependency_resolution,
         f"LaTeX compile failed with exit code {completed.returncode}",
     )
 
@@ -466,6 +611,7 @@ def _compatibility_result(
     pdf_path: Path | None,
     command: tuple[str, ...],
     source_metadata: LatexTemplateSourceMetadata,
+    dependency_resolution: LatexTemplateDependencyResolution,
     reason: str | None,
 ) -> LatexTemplateCompatibilityResult:
     engine = Path(command[0]).name if command else None
@@ -478,6 +624,7 @@ def _compatibility_result(
         engine=engine,
         command=command,
         source_metadata=source_metadata,
+        dependency_resolution=dependency_resolution,
         reason=reason,
     )
 
@@ -500,10 +647,13 @@ def _render_compatibility_markdown(
         "",
         "## Results",
         "",
-        "| Template | Source kind | Source | Source check | HTTP | Status | Engine | PDF | Log | Reason |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Template | Source kind | Source | Source check | Dependency | HTTP | Status | Engine | PDF | Log | Reason |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for result in report.results:
+        dependency_cell = f"`{result.dependency_resolution.status.value}`"
+        if result.dependency_resolution.message:
+            dependency_cell += f"<br>{_table_escape(result.dependency_resolution.message)}"
         lines.append(
             "| "
             + " | ".join(
@@ -517,6 +667,7 @@ def _render_compatibility_markdown(
                         if result.source_metadata.checked_at
                         else ""
                     ),
+                    dependency_cell,
                     f"`{result.source_metadata.http_status or 'n/a'}`",
                     f"`{result.status.value}`",
                     f"`{result.engine or 'none'}`",
@@ -610,6 +761,201 @@ def _fetch_template_source_metadata(
         http_status=http_status,
         cache_path=cache_path.as_posix(),
     )
+
+
+def _default_dependency_resolution(
+    template: LatexTemplateSpec,
+    message: str,
+) -> LatexTemplateDependencyResolution:
+    class_file = template.class_file or f"{template.document_class}.cls"
+    if template.source_kind is LatexTemplateSourceKind.BUILT_IN_GENERIC:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.NOT_REQUIRED,
+            checked_at=datetime.now(timezone.utc).isoformat(),
+            class_file=class_file,
+            message="built-in generic templates do not require external class recovery",
+        )
+    return LatexTemplateDependencyResolution(
+        status=LatexTemplateDependencyStatus.SKIPPED,
+        checked_at=datetime.now(timezone.utc).isoformat(),
+        class_file=class_file,
+        message=message,
+    )
+
+
+def _try_texlive_package_install(
+    template: LatexTemplateSpec,
+    *,
+    checked_at: str,
+    timeout_seconds: int,
+) -> LatexTemplateDependencyResolution | None:
+    if not template.texlive_package:
+        return None
+    class_file = template.class_file or f"{template.document_class}.cls"
+    tlmgr = shutil.which("tlmgr") or shutil.which("tlmgr.bat")
+    if tlmgr is None:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message=f"tlmgr is not on PATH; cannot install TeX Live package {template.texlive_package}",
+        )
+    command = [tlmgr, "install", template.texlive_package]
+    if Path(tlmgr).suffix.casefold() in {".bat", ".cmd"}:
+        command = ["cmd", "/c", tlmgr, "install", template.texlive_package]
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message=(
+                f"tlmgr install {template.texlive_package} timed out after "
+                f"{timeout_seconds}s"
+            ),
+            command=tuple(command),
+            stdout_tail=_tail_text(exc.stdout),
+            stderr_tail=_tail_text(exc.stderr),
+            error=str(exc),
+        )
+    except OSError as exc:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message=f"tlmgr install {template.texlive_package} could not start: {exc}",
+            command=tuple(command),
+            error=str(exc),
+        )
+    status = (
+        LatexTemplateDependencyStatus.INSTALLED
+        if completed.returncode == 0
+        else LatexTemplateDependencyStatus.UNAVAILABLE
+    )
+    message = (
+        f"tlmgr install {template.texlive_package} completed; kpsewhich will verify {class_file}"
+        if completed.returncode == 0
+        else f"tlmgr install {template.texlive_package} failed with exit code {completed.returncode}"
+    )
+    return LatexTemplateDependencyResolution(
+        status=status,
+        checked_at=checked_at,
+        class_file=class_file,
+        message=message,
+        command=tuple(command),
+        returncode=completed.returncode,
+        stdout_tail=_tail_text(completed.stdout),
+        stderr_tail=_tail_text(completed.stderr),
+    )
+
+
+def _try_source_archive_download(
+    template: LatexTemplateSpec,
+    work_dir: Path,
+    *,
+    checked_at: str,
+    timeout_seconds: int,
+) -> LatexTemplateDependencyResolution | None:
+    if not template.source_archive_url:
+        return None
+    class_file = template.class_file or f"{template.document_class}.cls"
+    archive_dir = work_dir / "template-source"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"{_safe_filename(template.id)}.zip"
+    if not archive_path.exists():
+        request = urllib.request.Request(
+            template.source_archive_url,
+            headers={"User-Agent": "AI-Researcher latex-dependency-recovery/0.1"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                payload = response.read(128 * 1024 * 1024 + 1)
+        except urllib.error.HTTPError as exc:
+            return LatexTemplateDependencyResolution(
+                status=LatexTemplateDependencyStatus.UNAVAILABLE,
+                checked_at=checked_at,
+                class_file=class_file,
+                message=f"official template archive returned HTTP {exc.code}",
+                artifact_path=archive_path.as_posix(),
+                error=str(exc),
+            )
+        except (OSError, TimeoutError, urllib.error.URLError) as exc:
+            return LatexTemplateDependencyResolution(
+                status=LatexTemplateDependencyStatus.UNAVAILABLE,
+                checked_at=checked_at,
+                class_file=class_file,
+                message=f"official template archive download failed: {exc}",
+                artifact_path=archive_path.as_posix(),
+                error=str(exc),
+            )
+        if len(payload) > 128 * 1024 * 1024:
+            return LatexTemplateDependencyResolution(
+                status=LatexTemplateDependencyStatus.UNAVAILABLE,
+                checked_at=checked_at,
+                class_file=class_file,
+                message="official template archive exceeded the 128 MiB recovery limit",
+                artifact_path=archive_path.as_posix(),
+            )
+        archive_path.write_bytes(payload)
+    wanted_member = (template.source_archive_member or class_file).replace("\\", "/")
+    try:
+        with zipfile.ZipFile(archive_path) as archive:
+            member = _find_archive_member(archive.namelist(), wanted_member)
+            if member is None:
+                return LatexTemplateDependencyResolution(
+                    status=LatexTemplateDependencyStatus.UNAVAILABLE,
+                    checked_at=checked_at,
+                    class_file=class_file,
+                    message=f"official template archive does not contain {wanted_member}",
+                    artifact_path=archive_path.as_posix(),
+                )
+            target = work_dir / class_file
+            target.write_bytes(archive.read(member))
+    except (OSError, zipfile.BadZipFile) as exc:
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at=checked_at,
+            class_file=class_file,
+            message=f"official template archive could not be read: {exc}",
+            artifact_path=archive_path.as_posix(),
+            error=str(exc),
+        )
+    return LatexTemplateDependencyResolution(
+        status=LatexTemplateDependencyStatus.DOWNLOADED,
+        checked_at=checked_at,
+        class_file=class_file,
+        message=f"downloaded {class_file} from the official template archive",
+        artifact_path=target.as_posix(),
+    )
+
+
+def _find_archive_member(members: list[str], wanted_member: str) -> str | None:
+    for member in members:
+        normalized = member.replace("\\", "/")
+        if normalized == wanted_member or normalized.endswith(f"/{wanted_member}"):
+            return member
+    return None
+
+
+def _tail_text(value: str | bytes | None, *, max_chars: int = 1200) -> str | None:
+    if value is None:
+        return None
+    text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+    if len(text) <= max_chars:
+        return text
+    return text[-max_chars:]
+
+
+def _safe_filename(value: str) -> str:
+    safe = "".join(character if character.isalnum() else "-" for character in value)
+    return safe.strip("-") or "template"
 
 
 def _template_class_available(template: LatexTemplateSpec) -> bool:

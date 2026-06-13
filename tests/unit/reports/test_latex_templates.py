@@ -1,4 +1,5 @@
 import shutil
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -6,9 +7,12 @@ import pytest
 import autoresearch.reports.latex_templates as latex_templates
 from autoresearch.reports import (
     LatexTemplateCompatibilityStatus,
+    LatexTemplateDependencyResolution,
+    LatexTemplateDependencyStatus,
     LatexTemplateSourceFetchStatus,
     LatexTemplateSourceKind,
     LatexTemplateSourceMetadata,
+    LatexTemplateSpec,
     external_latex_templates,
     generic_latex_templates,
     render_latex_template_smoke,
@@ -59,7 +63,12 @@ def test_external_latex_templates_record_source_urls_and_license_boundaries() ->
     assert all(template.source_kind is LatexTemplateSourceKind.EXTERNAL_FETCHED for template in templates)
     assert all(template.source_url for template in templates)
     assert all("not vendored" in template.license_note for template in templates)
+    assert external_latex_templates()[0].texlive_package == "ieeetran"
     assert external_latex_templates()[1].preamble_lines
+    assert external_latex_templates()[1].texlive_package == "acmart"
+    assert r"\usepackage{amsmath}" in external_latex_templates()[2].preamble_lines
+    assert external_latex_templates()[2].source_archive_url is not None
+    assert external_latex_templates()[2].source_archive_member == "sn-jnl.cls"
 
 
 def test_run_latex_template_compatibility_can_skip_compile_and_write_vault_markdown(
@@ -80,6 +89,10 @@ def test_run_latex_template_compatibility_can_skip_compile_and_write_vault_markd
         LatexTemplateCompatibilityStatus.SKIPPED
     }
     assert all(result.reason == "compile_pdf disabled" for result in report.results)
+    assert all(
+        result.dependency_resolution.status is LatexTemplateDependencyStatus.NOT_REQUIRED
+        for result in report.results
+    )
     markdown = Path(report.markdown_path).read_text(encoding="utf-8")
     vault_markdown = Path(report.vault_markdown_path).read_text(encoding="utf-8")
     assert "Final paper-level delivery requires a template-specific LaTeX build" in markdown
@@ -105,7 +118,25 @@ def test_run_latex_template_compatibility_marks_missing_external_class_source_un
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(latex_templates, "_template_class_available", lambda _: False)
+    def fake_ensure_dependency(
+        _: object,
+        __: Path,
+        *,
+        timeout_seconds: int,
+    ) -> LatexTemplateDependencyResolution:
+        assert timeout_seconds > 0
+        return LatexTemplateDependencyResolution(
+            status=LatexTemplateDependencyStatus.UNAVAILABLE,
+            checked_at="2026-06-13T00:00:00+00:00",
+            class_file="sn-jnl.cls",
+            message="automatic LaTeX dependency recovery failed for sn-jnl.cls",
+        )
+
+    monkeypatch.setattr(
+        latex_templates,
+        "ensure_latex_template_class_available",
+        fake_ensure_dependency,
+    )
 
     report = run_latex_template_compatibility(
         tmp_path / "compat",
@@ -114,7 +145,36 @@ def test_run_latex_template_compatibility_marks_missing_external_class_source_un
 
     [result] = report.results
     assert result.status is LatexTemplateCompatibilityStatus.SOURCE_UNAVAILABLE
-    assert result.reason == "template class sn-jnl.cls is unavailable"
+    assert result.dependency_resolution.status is LatexTemplateDependencyStatus.UNAVAILABLE
+    assert result.reason == "automatic LaTeX dependency recovery failed for sn-jnl.cls"
+
+
+def test_ensure_latex_template_class_downloads_source_archive(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(latex_templates, "_template_class_available", lambda _: False)
+    archive_path = tmp_path / "springer.zip"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("SpringerNature_LaTeX_Template/sn-jnl.cls", "% class")
+    template = LatexTemplateSpec(
+        id="source-archive-template",
+        display_name="Source Archive Template",
+        source_kind=LatexTemplateSourceKind.EXTERNAL_FETCHED,
+        document_class="sn-jnl",
+        class_file="sn-jnl.cls",
+        source_archive_url=archive_path.as_uri(),
+        source_archive_member="sn-jnl.cls",
+    )
+
+    result = latex_templates.ensure_latex_template_class_available(
+        template,
+        tmp_path / "work",
+    )
+
+    assert result.status is LatexTemplateDependencyStatus.DOWNLOADED
+    assert result.artifact_path is not None
+    assert Path(result.artifact_path).read_text(encoding="utf-8") == "% class"
 
 
 def test_run_latex_template_compatibility_records_fetched_source_metadata(
@@ -152,6 +212,7 @@ def test_run_latex_template_compatibility_records_fetched_source_metadata(
 
     [result] = report.results
     assert result.source_metadata.status is LatexTemplateSourceFetchStatus.FETCHED
+    assert result.dependency_resolution.status is LatexTemplateDependencyStatus.SKIPPED
     assert result.source_metadata.http_status == 200
     assert result.source_metadata.checked_at == "2026-06-13T00:00:00+00:00"
     markdown = Path(report.markdown_path).read_text(encoding="utf-8")
@@ -172,6 +233,7 @@ def test_run_latex_template_compatibility_compiles_generic_templates(
         assert result.pdf_path is not None
         assert Path(result.pdf_path).is_file()
         assert Path(result.log_path).is_file()
+        assert result.dependency_resolution.status is LatexTemplateDependencyStatus.NOT_REQUIRED
 
 
 @pytest.mark.skipif(
@@ -188,3 +250,7 @@ def test_run_latex_template_compatibility_compiles_available_external_templates(
         LatexTemplateCompatibilityStatus.COMPILED
     }
     assert all(result.pdf_path and Path(result.pdf_path).is_file() for result in report.results)
+    assert all(
+        result.dependency_resolution.status is LatexTemplateDependencyStatus.AVAILABLE
+        for result in report.results
+    )

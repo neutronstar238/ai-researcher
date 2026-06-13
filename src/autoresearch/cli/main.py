@@ -1237,6 +1237,14 @@ def paper_build(
         bool,
         typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the generated TeX into PDF."),
     ] = True,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option(
+            "--timeout-seconds",
+            min=1,
+            help="Timeout for LaTeX dependency recovery and PDF compilation.",
+        ),
+    ] = 60,
     vault: Annotated[
         Path | None,
         typer.Option("--vault", help="Optional Obsidian vault root for paper-build summary."),
@@ -1264,6 +1272,7 @@ def paper_build(
         compile_pdf=compile_pdf,
         vault_root=vault,
         project_id=project_id,
+        timeout_seconds=timeout_seconds,
     )
     typer.echo(f"[OK] paper_build: {artifact.status.value}")
     typer.echo(f"[OK] template: {artifact.template.id}")
@@ -1271,6 +1280,16 @@ def paper_build(
     typer.echo(f"[OK] pdf: {artifact.pdf_path or 'none'}")
     typer.echo(f"[OK] report: {artifact.markdown_path}")
     typer.echo(f"[OK] json: {artifact.json_path}")
+    dependency = getattr(artifact, "dependency_resolution", None)
+    if dependency is not None:
+        dependency_status = getattr(dependency.status, "value", str(dependency.status))
+        typer.echo(
+            "[OK] latex_dependency: "
+            f"status={dependency_status}, "
+            f"class={dependency.class_file or 'none'}, "
+            f"artifact={dependency.artifact_path or 'none'}"
+        )
+        typer.echo(f"[OK] latex_dependency_message: {dependency.message}")
     quality = getattr(artifact, "quality", None)
     if quality is not None:
         typer.echo(
