@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 09:29:13 +08:00 - Codex - Task 76.1 Pendigits prototype shrinkage candidate
+
+- Request: Continue implementing the always-on research loop with strict innovation quality control, real executable experiments, and SCALE-inspired physical evidence gates rather than prompt-only self-discipline.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/release-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-76-1-pendigits-prototype-shrinkage.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/demos.py`
+  - `tests/unit/experiments/test_demos.py`
+- Summary:
+  - Added task `76.1` to the executable plan and dependency graph.
+  - Added the opt-in `pendigits_prototype_shrinkage` demo using official UCI Pendigits train/test files, local source caching, a nearest-centroid baseline, a first-8-feature ablation, and a class-prototype shrinkage candidate.
+  - The demo writes `artifacts/innovation_evidence.json` with proposed mechanism, shrinkage alpha, prototype shift, baseline/candidate metrics, deltas, support artifacts, and an honest gain/tie/underperformance interpretation.
+  - Wired the demo into `run-demo`, `autopilot`, metric bounds, statistical sanity checks, report context, and public experiment exports.
+  - Updated README, changelog, release-gate checklist, Problem log, and Obsidian progress memory to distinguish file-backed method evidence from actual empirical improvement.
+  - Reviewed the current SCALE Engine repository as a design reference and kept only the lightweight lesson: physical evidence and review gates decide release claims; the full governance stack was not copied or vendored.
+- Verification:
+  - `poetry run pytest tests\unit\experiments\test_demos.py -q`: passed, 8 tests.
+  - `poetry run ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_demos.py`: passed.
+  - `poetry run mypy src\autoresearch\experiments\demos.py src\autoresearch\experiments\demo_workflow.py src\autoresearch\experiments\__init__.py`: passed.
+  - `poetry run airesearcher run-demo --demo pendigits_prototype_shrinkage --output-dir runs\manual-live\pendigits-shrinkage-task76 --timeout-seconds 60`: passed. It wrote `metrics.json` with `accuracy=0.7764436821040595`, `baseline_accuracy=0.7775871926815323`, `accuracy_delta_vs_baseline=-0.0011435105774728616`, `test_rows=3498`, and validation status `passed`.
+  - `poetry run airesearcher autopilot --vault runs\manual-live\task76-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-shrinkage-task76 --state runs\manual-live\autopilot-shrinkage-task76\scheduler-state.json --project-id task76_shrinkage --demo pendigits_prototype_shrinkage --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a cycle run. It wrote `runs/manual-live/autopilot-shrinkage-task76/cycle-20260613T012402Z/cycle-summary.json`, `reproduction_check.status=passed`, `method_innovation_evidence.status=pass`, `publication_audit.verdict=fail`, and `evidence_gate.verdict=blocked` because review was skipped and literature/similarity breadth was smoke-sized.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 369 tests passed and 4 skipped.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+- Problems:
+  - Added `P-20260613-014` for the first method-candidate demo underperforming the Pendigits baseline.
+  - Updated `P-20260613-004` with task `76.1` evidence showing innovation artifacts can be present while publication readiness remains blocked.
+- Follow-up:
+  - Stabilize Semantic Scholar access or severity policy for source errors.
+  - Search for stronger method candidates and validate them on real public benchmarks with ablations, reruns, and broad related-work checks.
+  - Run a full review-enabled cycle after broader source retrieval is stable so the physical evidence gate can assess review output rather than intentionally skipped review.
+
 ### 2026-06-13 09:12:40 +08:00 - Codex - Task 75.1 method innovation gate
 
 - Request: Continue output-quality hardening so generated papers are checked for real, evidence-backed innovation rather than paper-shaped baseline reports.

@@ -13,6 +13,8 @@ TEXT_CLASSIFIER_STUB_TASK_ID = "text_classifier_stub"
 TEXT_CLASSIFIER_STUB_DIR = "text-classifier-stub"
 PENDIGITS_CENTROID_BASELINE_TASK_ID = "pendigits_centroid_baseline"
 PENDIGITS_CENTROID_BASELINE_DIR = "pendigits-centroid-baseline"
+PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID = "pendigits_prototype_shrinkage"
+PENDIGITS_PROTOTYPE_SHRINKAGE_DIR = "pendigits-prototype-shrinkage"
 
 
 def create_tabular_baseline_task(
@@ -281,6 +283,123 @@ def generate_pendigits_centroid_baseline_demo(
     return experiment_dir, task
 
 
+def create_pendigits_prototype_shrinkage_task(
+    *,
+    project_id: str = "public-benchmark-pendigits",
+    hypothesis_id: str = "hypothesis_pendigits_prototype_shrinkage",
+    timeout_seconds: int = 60,
+) -> ExperimentTask:
+    """Return a real public benchmark method-candidate task definition."""
+
+    return ExperimentTask(
+        id=PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        name="UCI Pendigits prototype shrinkage candidate",
+        description=(
+            "Download the public UCI Pendigits train/test files, compare a "
+            "nearest-centroid baseline against a class-prototype shrinkage "
+            "candidate, run a feature-subset ablation, and emit metrics, logs, "
+            "statistical inputs, source artifacts, and method-innovation evidence."
+        ),
+        entrypoint=f"experiments/{PENDIGITS_PROTOTYPE_SHRINKAGE_DIR}/run.py",
+        config_path=f"experiments/{PENDIGITS_PROTOTYPE_SHRINKAGE_DIR}/config.yaml",
+        metrics=[
+            "accuracy",
+            "macro_f1",
+            "baseline_accuracy",
+            "accuracy_delta_vs_baseline",
+            "test_rows",
+            "train_rows",
+            "dataset_rows",
+            "class_count",
+            "ablation_accuracy_first8",
+            "accuracy_delta_vs_ablation",
+            "accuracy_standard_error",
+            "prototype_shift_l2_mean",
+            "shrinkage_alpha",
+        ],
+        resource_budget={
+            "cpu_time_seconds": min(timeout_seconds, 60),
+            "memory_mb": 256,
+            "gpu_hours": 0.0,
+            "storage_mb": 64,
+        },
+        timeout_seconds=timeout_seconds,
+        expected_outputs=[
+            "metrics.json",
+            "logs/run.log",
+            "artifacts/summary.md",
+            "artifacts/predictions.csv",
+            "artifacts/ablation.csv",
+            "artifacts/dataset_sources.json",
+            "artifacts/innovation_evidence.json",
+        ],
+        dependencies=["python>=3.10"],
+        priority=3,
+        status=TaskStatus.READY,
+        metadata={
+            "bench_suite": "UCI ML Repository",
+            "demo_task": PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
+            "dataset": "Pen-Based Recognition of Handwritten Digits",
+            "dataset_source": (
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/"
+            ),
+            "dataset_license": "CC BY 4.0",
+            "dataset_rows_expected": 10992,
+            "real_dataset": True,
+            "dataset_realism": "real_public_benchmark",
+            "split_policy": "official UCI pendigits.tra train and pendigits.tes test split",
+            "baseline": "nearest-centroid classifier using all 16 pen trajectory features",
+            "ablation": "nearest-centroid classifier using only the first 8 trajectory features",
+            "proposed_method": "class prototype shrinkage toward the global feature mean",
+            "novel_contribution": (
+                "Evaluate whether global-mean shrinkage makes nearest-centroid "
+                "prototypes more stable on the public Pendigits benchmark."
+            ),
+            "method_contribution": "prototype shrinkage calibration",
+            "baseline_only": False,
+            "baseline_metric": {"accuracy": "computed from official test split"},
+            "validation_checks": [
+                "metrics.json exists",
+                "accuracy is between 0 and 1",
+                "macro_f1 is between 0 and 1",
+                "baseline_accuracy is between 0 and 1",
+                "test_rows is at least 1000 on the official split",
+                "dataset_sources.json records source URLs and byte counts",
+                "artifacts/ablation.csv exists",
+                "artifacts/innovation_evidence.json exists",
+                "validation report includes statistical sanity notes",
+            ],
+        },
+    )
+
+
+def generate_pendigits_prototype_shrinkage_demo(
+    root: Path | str,
+    *,
+    project_id: str = "public-benchmark-pendigits",
+    hypothesis_id: str = "hypothesis_pendigits_prototype_shrinkage",
+    timeout_seconds: int = 60,
+) -> tuple[Path, ExperimentTask]:
+    """Create the UCI Pendigits method-candidate experiment directory."""
+
+    task = create_pendigits_prototype_shrinkage_task(
+        project_id=project_id,
+        hypothesis_id=hypothesis_id,
+        timeout_seconds=timeout_seconds,
+    )
+    experiment_dir = Path(root) / PENDIGITS_PROTOTYPE_SHRINKAGE_DIR
+    (experiment_dir / "data").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "logs").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+
+    _write(experiment_dir / "README.md", _pendigits_shrinkage_readme())
+    _write(experiment_dir / "config.yaml", _pendigits_shrinkage_config_yaml(task))
+    _write(experiment_dir / "run.py", _pendigits_prototype_shrinkage_run_py())
+    return experiment_dir, task
+
+
 def _readme() -> str:
     return textwrap.dedent(
         """\
@@ -348,6 +467,36 @@ def _pendigits_readme() -> str:
     )
 
 
+def _pendigits_shrinkage_readme() -> str:
+    return textwrap.dedent(
+        """\
+        # UCI Pendigits: prototype shrinkage candidate
+
+        This opt-in demo runs on the real public UCI Pen-Based Recognition of
+        Handwritten Digits benchmark. The runner downloads the official
+        `pendigits.tra` and `pendigits.tes` files when they are not already
+        present under `data/`, writes a merged CSV, evaluates a nearest-centroid
+        baseline, then evaluates a class-prototype shrinkage candidate.
+
+        The method candidate shrinks each class centroid toward the global
+        feature mean before classification. This is intentionally small and
+        interpretable: it gives the autonomous loop a real method artifact to
+        test, not a paper-ready claim. The output records whether the candidate
+        improves, ties, or hurts the baseline.
+
+        ## Expected Outputs
+
+        - `metrics.json`
+        - `logs/run.log`
+        - `artifacts/summary.md`
+        - `artifacts/predictions.csv`
+        - `artifacts/ablation.csv`
+        - `artifacts/dataset_sources.json`
+        - `artifacts/innovation_evidence.json`
+        """
+    )
+
+
 def _config_yaml(task: ExperimentTask) -> str:
     return textwrap.dedent(
         f"""\
@@ -404,6 +553,39 @@ def _pendigits_config_yaml(task: ExperimentTask) -> str:
           - ablation_accuracy_first8
           - accuracy_delta_vs_ablation
           - accuracy_standard_error
+        """
+    )
+
+
+def _pendigits_shrinkage_config_yaml(task: ExperimentTask) -> str:
+    return textwrap.dedent(
+        f"""\
+        task_id: {task.id}
+        project_id: {task.project_id}
+        hypothesis_id: {task.hypothesis_id}
+        dataset_path: data/pendigits_prototype_shrinkage.csv
+        train_source_url: https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra
+        test_source_url: https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tes
+        target: label
+        split_policy: official UCI train/test split
+        baseline: nearest centroid over 16 features
+        proposed_method: class-prototype shrinkage toward the global feature mean
+        shrinkage_alpha: 0.10
+        ablation: nearest centroid over first 8 features
+        metrics:
+          - accuracy
+          - macro_f1
+          - baseline_accuracy
+          - accuracy_delta_vs_baseline
+          - test_rows
+          - train_rows
+          - dataset_rows
+          - class_count
+          - ablation_accuracy_first8
+          - accuracy_delta_vs_ablation
+          - accuracy_standard_error
+          - prototype_shift_l2_mean
+          - shrinkage_alpha
         """
     )
 
@@ -1051,6 +1233,513 @@ def _pendigits_run_py() -> str:
                 f"- Accuracy delta vs ablation: {float(baseline['accuracy']) - float(ablation['accuracy']):.6f}\\n",
                 encoding="utf-8",
             )
+
+
+        if __name__ == "__main__":
+            sys.exit(main())
+        """
+    )
+
+
+def _pendigits_prototype_shrinkage_run_py() -> str:
+    return textwrap.dedent(
+        """\
+        from __future__ import annotations
+
+        import csv
+        import hashlib
+        import json
+        import math
+        import sys
+        from collections import defaultdict
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from urllib.request import urlopen
+
+
+        FEATURE_COUNT = 16
+        SHRINKAGE_ALPHA = 0.10
+        SOURCE_FILES = {
+            "train": (
+                "pendigits.tra",
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra",
+            ),
+            "test": (
+                "pendigits.tes",
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tes",
+            ),
+        }
+
+
+        def main() -> int:
+            root = Path(__file__).resolve().parent
+            data_dir = root / "data"
+            logs_dir = root / "logs"
+            artifacts_dir = root / "artifacts"
+            data_dir.mkdir(exist_ok=True)
+            logs_dir.mkdir(exist_ok=True)
+            artifacts_dir.mkdir(exist_ok=True)
+            log_path = logs_dir / "run.log"
+            metrics_path = root / "metrics.json"
+            merged_csv_path = data_dir / "pendigits_prototype_shrinkage.csv"
+            predictions_path = artifacts_dir / "predictions.csv"
+            ablation_path = artifacts_dir / "ablation.csv"
+            summary_path = artifacts_dir / "summary.md"
+            sources_path = artifacts_dir / "dataset_sources.json"
+            innovation_path = artifacts_dir / "innovation_evidence.json"
+
+            try:
+                source_records = _ensure_raw_files(data_dir)
+                rows = _load_rows(data_dir)
+                train_rows = [row for row in rows if row["split"] == "train"]
+                test_rows = [row for row in rows if row["split"] == "test"]
+                if len(test_rows) < 1000:
+                    raise ValueError(
+                        f"Pendigits official test split is unexpectedly small: {len(test_rows)}"
+                    )
+                _write_merged_csv(merged_csv_path, rows)
+
+                baseline = _evaluate(train_rows, test_rows, feature_count=16)
+                ablation = _evaluate(train_rows, test_rows, feature_count=8)
+                global_mean = _global_mean(train_rows, feature_count=16)
+                baseline_centroids = _centroids(train_rows, feature_count=16)
+                shrinkage_centroids = _shrink_centroids(
+                    baseline_centroids,
+                    global_mean,
+                    alpha=SHRINKAGE_ALPHA,
+                )
+                shrinkage = _evaluate_with_centroids(test_rows, shrinkage_centroids)
+                accuracy = shrinkage["accuracy"]
+                baseline_accuracy = baseline["accuracy"]
+                ablation_accuracy = ablation["accuracy"]
+                accuracy_standard_error = math.sqrt(
+                    max(accuracy * (1.0 - accuracy), 0.0) / len(test_rows)
+                )
+                prototype_shift = _mean_l2_shift(baseline_centroids, shrinkage_centroids)
+
+                _write_predictions(predictions_path, shrinkage["predictions"])
+                _write_ablation(
+                    ablation_path,
+                    baseline=baseline,
+                    shrinkage=shrinkage,
+                    ablation=ablation,
+                    test_rows=len(test_rows),
+                )
+                _write_summary(
+                    summary_path,
+                    source_records,
+                    train_rows=len(train_rows),
+                    test_rows=len(test_rows),
+                    baseline=baseline,
+                    shrinkage=shrinkage,
+                    ablation=ablation,
+                    accuracy_standard_error=accuracy_standard_error,
+                    prototype_shift=prototype_shift,
+                )
+                sources_path.write_text(
+                    json.dumps(
+                        {
+                            "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+                            "license": "CC BY 4.0",
+                            "real_dataset": True,
+                            "split_policy": "official pendigits.tra / pendigits.tes split",
+                            "sources": source_records,
+                            "merged_csv": merged_csv_path.as_posix(),
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+                innovation_payload = {
+                    "proposed_method": "class prototype shrinkage toward global mean",
+                    "mechanism": (
+                        "Each class centroid is moved by alpha toward the global "
+                        "feature mean before nearest-centroid classification."
+                    ),
+                    "shrinkage_alpha": SHRINKAGE_ALPHA,
+                    "prototype_shift_l2_mean": prototype_shift,
+                    "baseline_accuracy": baseline_accuracy,
+                    "candidate_accuracy": accuracy,
+                    "accuracy_delta_vs_baseline": accuracy - baseline_accuracy,
+                    "accuracy_delta_vs_ablation": accuracy - ablation_accuracy,
+                    "interpretation": _innovation_interpretation(accuracy - baseline_accuracy),
+                    "support_artifacts": [
+                        "metrics.json",
+                        "artifacts/predictions.csv",
+                        "artifacts/ablation.csv",
+                        "artifacts/summary.md",
+                    ],
+                }
+                innovation_path.write_text(
+                    json.dumps(innovation_payload, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+                payload = {
+                    "status": "success",
+                    "task_id": "pendigits_prototype_shrinkage",
+                    "metrics": {
+                        "accuracy": accuracy,
+                        "macro_f1": shrinkage["macro_f1"],
+                        "baseline_accuracy": baseline_accuracy,
+                        "accuracy_delta_vs_baseline": accuracy - baseline_accuracy,
+                        "test_rows": float(len(test_rows)),
+                        "train_rows": float(len(train_rows)),
+                        "dataset_rows": float(len(rows)),
+                        "class_count": float(len({row["label"] for row in rows})),
+                        "ablation_accuracy_first8": ablation_accuracy,
+                        "accuracy_delta_vs_ablation": accuracy - ablation_accuracy,
+                        "accuracy_standard_error": accuracy_standard_error,
+                        "prototype_shift_l2_mean": prototype_shift,
+                        "shrinkage_alpha": SHRINKAGE_ALPHA,
+                    },
+                    "metadata": {
+                        "dataset": "UCI Pendigits",
+                        "dataset_license": "CC BY 4.0",
+                        "real_dataset": True,
+                        "source_urls": [record["url"] for record in source_records],
+                        "split_policy": "official train/test split",
+                        "baseline": "nearest centroid over 16 features",
+                        "ablation": "nearest centroid over first 8 features",
+                        "proposed_method": "class prototype shrinkage toward global mean",
+                        "novel_contribution": "prototype shrinkage calibration",
+                        "innovation_artifact": innovation_path.as_posix(),
+                    },
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                metrics_path.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+                log_path.write_text(
+                    "pendigits prototype shrinkage completed successfully\\n"
+                    f"train_rows={len(train_rows)} test_rows={len(test_rows)} "
+                    f"accuracy={accuracy:.6f} baseline_accuracy={baseline_accuracy:.6f} "
+                    f"delta={accuracy - baseline_accuracy:.6f}\\n",
+                    encoding="utf-8",
+                )
+                return 0
+            except Exception as exc:
+                payload = {
+                    "status": "failed",
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                    "metrics": {},
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                metrics_path.write_text(
+                    json.dumps(payload, indent=2, sort_keys=True),
+                    encoding="utf-8",
+                )
+                log_path.write_text(
+                    f"pendigits prototype shrinkage failed: {type(exc).__name__}: {exc}\\n",
+                    encoding="utf-8",
+                )
+                return 1
+
+
+        def _ensure_raw_files(data_dir: Path) -> list[dict[str, object]]:
+            records = []
+            for split, (filename, url) in SOURCE_FILES.items():
+                path = data_dir / filename
+                if path.exists():
+                    status = "cached"
+                else:
+                    with urlopen(url, timeout=30) as response:
+                        payload = response.read()
+                    path.write_bytes(payload)
+                    status = "downloaded"
+                records.append(
+                    {
+                        "split": split,
+                        "filename": filename,
+                        "url": url,
+                        "path": path.as_posix(),
+                        "status": status,
+                        "bytes": path.stat().st_size,
+                        "sha256": _file_sha256(path),
+                    }
+                )
+            return records
+
+
+        def _load_rows(data_dir: Path) -> list[dict[str, object]]:
+            rows = []
+            for split, (filename, _url) in SOURCE_FILES.items():
+                path = data_dir / filename
+                for row_index, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    parts = [int(piece.strip()) for piece in stripped.split(",") if piece.strip()]
+                    if len(parts) != FEATURE_COUNT + 1:
+                        raise ValueError(
+                            f"{filename}:{row_index + 1} expected 17 comma values, got {len(parts)}"
+                        )
+                    rows.append(
+                        {
+                            "row_id": f"{split}_{row_index + 1}",
+                            "split": split,
+                            "features": [float(value) for value in parts[:FEATURE_COUNT]],
+                            "label": int(parts[-1]),
+                        }
+                    )
+            return rows
+
+
+        def _file_sha256(path: Path) -> str:
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            return digest.hexdigest()
+
+
+        def _write_merged_csv(path: Path, rows: list[dict[str, object]]) -> None:
+            fieldnames = ["row_id", "split", *[f"x{index}" for index in range(FEATURE_COUNT)], "label"]
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in rows:
+                    features = _features(row)
+                    writer.writerow(
+                        {
+                            "row_id": row["row_id"],
+                            "split": row["split"],
+                            **{f"x{index}": features[index] for index in range(FEATURE_COUNT)},
+                            "label": row["label"],
+                        }
+                    )
+
+
+        def _evaluate(
+            train_rows: list[dict[str, object]],
+            test_rows: list[dict[str, object]],
+            *,
+            feature_count: int,
+        ) -> dict[str, object]:
+            return _evaluate_with_centroids(
+                test_rows,
+                _centroids(train_rows, feature_count=feature_count),
+            ) | {"feature_count": feature_count}
+
+
+        def _evaluate_with_centroids(
+            test_rows: list[dict[str, object]],
+            centroids: dict[int, list[float]],
+        ) -> dict[str, object]:
+            predictions = []
+            correct = 0
+            feature_count = len(next(iter(centroids.values())))
+            for row in test_rows:
+                label = int(row["label"])
+                prediction = _predict(_features(row)[:feature_count], centroids)
+                correct += int(prediction == label)
+                predictions.append(
+                    {
+                        "row_id": row["row_id"],
+                        "label": label,
+                        "prediction": prediction,
+                        "correct": int(prediction == label),
+                    }
+                )
+            accuracy = correct / len(test_rows)
+            macro_f1 = _macro_f1(
+                [int(row["label"]) for row in test_rows],
+                [int(row["prediction"]) for row in predictions],
+            )
+            return {
+                "accuracy": accuracy,
+                "macro_f1": macro_f1,
+                "feature_count": feature_count,
+                "predictions": predictions,
+            }
+
+
+        def _centroids(
+            rows: list[dict[str, object]],
+            *,
+            feature_count: int,
+        ) -> dict[int, list[float]]:
+            sums: dict[int, list[float]] = defaultdict(lambda: [0.0] * feature_count)
+            counts: dict[int, int] = defaultdict(int)
+            for row in rows:
+                label = int(row["label"])
+                counts[label] += 1
+                for index, value in enumerate(_features(row)[:feature_count]):
+                    sums[label][index] += value
+            return {
+                label: [value / counts[label] for value in sums[label]]
+                for label in sorted(sums)
+            }
+
+
+        def _global_mean(
+            rows: list[dict[str, object]],
+            *,
+            feature_count: int,
+        ) -> list[float]:
+            sums = [0.0] * feature_count
+            for row in rows:
+                for index, value in enumerate(_features(row)[:feature_count]):
+                    sums[index] += value
+            return [value / len(rows) for value in sums]
+
+
+        def _shrink_centroids(
+            centroids: dict[int, list[float]],
+            global_mean: list[float],
+            *,
+            alpha: float,
+        ) -> dict[int, list[float]]:
+            return {
+                label: [
+                    (1.0 - alpha) * value + alpha * global_mean[index]
+                    for index, value in enumerate(centroid)
+                ]
+                for label, centroid in centroids.items()
+            }
+
+
+        def _mean_l2_shift(
+            original: dict[int, list[float]],
+            shifted: dict[int, list[float]],
+        ) -> float:
+            distances = []
+            for label, centroid in original.items():
+                shifted_centroid = shifted[label]
+                distances.append(
+                    math.sqrt(
+                        sum(
+                            (value - shifted_centroid[index]) ** 2
+                            for index, value in enumerate(centroid)
+                        )
+                    )
+                )
+            return sum(distances) / len(distances)
+
+
+        def _predict(features: list[float], centroids: dict[int, list[float]]) -> int:
+            best_label = None
+            best_distance = None
+            for label, centroid in centroids.items():
+                distance = sum((value - centroid[index]) ** 2 for index, value in enumerate(features))
+                if best_distance is None or distance < best_distance:
+                    best_label = label
+                    best_distance = distance
+            if best_label is None:
+                raise ValueError("no centroid available")
+            return best_label
+
+
+        def _macro_f1(labels: list[int], predictions: list[int]) -> float:
+            classes = sorted(set(labels) | set(predictions))
+            scores = []
+            for klass in classes:
+                tp = sum(1 for label, pred in zip(labels, predictions, strict=True) if label == klass and pred == klass)
+                fp = sum(1 for label, pred in zip(labels, predictions, strict=True) if label != klass and pred == klass)
+                fn = sum(1 for label, pred in zip(labels, predictions, strict=True) if label == klass and pred != klass)
+                precision = tp / (tp + fp) if tp + fp else 0.0
+                recall = tp / (tp + fn) if tp + fn else 0.0
+                f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+                scores.append(f1)
+            return sum(scores) / len(scores)
+
+
+        def _features(row: dict[str, object]) -> list[float]:
+            features = row["features"]
+            if not isinstance(features, list):
+                raise TypeError("row features must be a list")
+            return [float(value) for value in features]
+
+
+        def _write_predictions(path: Path, predictions: list[dict[str, object]]) -> None:
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["row_id", "label", "prediction", "correct"],
+                )
+                writer.writeheader()
+                writer.writerows(predictions)
+
+
+        def _write_ablation(
+            path: Path,
+            *,
+            baseline: dict[str, object],
+            shrinkage: dict[str, object],
+            ablation: dict[str, object],
+            test_rows: int,
+        ) -> None:
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["model", "features_used", "accuracy", "macro_f1", "test_rows"],
+                )
+                writer.writeheader()
+                for model, result in (
+                    ("baseline_full16", baseline),
+                    ("prototype_shrinkage_full16", shrinkage),
+                    ("ablation_first8", ablation),
+                ):
+                    writer.writerow(
+                        {
+                            "model": model,
+                            "features_used": result["feature_count"],
+                            "accuracy": f"{float(result['accuracy']):.6f}",
+                            "macro_f1": f"{float(result['macro_f1']):.6f}",
+                            "test_rows": test_rows,
+                        }
+                    )
+
+
+        def _write_summary(
+            path: Path,
+            source_records: list[dict[str, object]],
+            *,
+            train_rows: int,
+            test_rows: int,
+            baseline: dict[str, object],
+            shrinkage: dict[str, object],
+            ablation: dict[str, object],
+            accuracy_standard_error: float,
+            prototype_shift: float,
+        ) -> None:
+            urls = "\\n".join(f"- {record['url']} ({record['status']})" for record in source_records)
+            delta = float(shrinkage["accuracy"]) - float(baseline["accuracy"])
+            path.write_text(
+                "# UCI Pendigits Prototype Shrinkage Summary\\n\\n"
+                "## Dataset\\n\\n"
+                "- Name: UCI Pen-Based Recognition of Handwritten Digits\\n"
+                "- Split: official `pendigits.tra` train and `pendigits.tes` test\\n"
+                f"- Train rows: {train_rows}\\n"
+                f"- Test rows: {test_rows}\\n"
+                f"{urls}\\n\\n"
+                "## Method Candidate\\n\\n"
+                "- Proposed method: class prototype shrinkage toward the global feature mean\\n"
+                f"- Shrinkage alpha: {SHRINKAGE_ALPHA:.2f}\\n"
+                f"- Mean prototype shift L2: {prototype_shift:.6f}\\n\\n"
+                "## Results\\n\\n"
+                f"- Candidate accuracy: {float(shrinkage['accuracy']):.6f}\\n"
+                f"- Candidate macro F1: {float(shrinkage['macro_f1']):.6f}\\n"
+                f"- Baseline accuracy: {float(baseline['accuracy']):.6f}\\n"
+                f"- Accuracy delta vs baseline: {delta:.6f}\\n"
+                f"- Accuracy standard error: {accuracy_standard_error:.6f}\\n\\n"
+                "## Ablation\\n\\n"
+                f"- First-8-features accuracy: {float(ablation['accuracy']):.6f}\\n"
+                f"- Accuracy delta vs ablation: {float(shrinkage['accuracy']) - float(ablation['accuracy']):.6f}\\n\\n"
+                "## Interpretation\\n\\n"
+                f"- {_innovation_interpretation(delta)}\\n",
+                encoding="utf-8",
+            )
+
+
+        def _innovation_interpretation(delta: float) -> str:
+            if delta > 0:
+                return "The method candidate improved accuracy over the baseline in this run."
+            if delta < 0:
+                return "The method candidate underperformed the baseline in this run."
+            return "The method candidate tied the baseline in this run; do not claim empirical gain."
 
 
         if __name__ == "__main__":

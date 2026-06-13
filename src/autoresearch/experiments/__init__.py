@@ -20,10 +20,13 @@ from .costs import (
 from .demo_workflow import DemoWorkflowResult, run_scientistbench_demo
 from .demos import (
     PENDIGITS_CENTROID_BASELINE_TASK_ID,
+    PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID,
     create_pendigits_centroid_baseline_task,
+    create_pendigits_prototype_shrinkage_task,
     create_tabular_baseline_task,
     create_text_classifier_stub_task,
     generate_pendigits_centroid_baseline_demo,
+    generate_pendigits_prototype_shrinkage_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
 )
@@ -140,6 +143,7 @@ __all__ = [
     "GoldenTestResult",
     "NetworkDecision",
     "PENDIGITS_CENTROID_BASELINE_TASK_ID",
+    "PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID",
     "ProjectBudget",
     "ProjectCostReport",
     "ProjectCostUsage",
@@ -175,6 +179,7 @@ __all__ = [
     "classify_failure_category",
     "collect_result_bundle",
     "create_pendigits_centroid_baseline_task",
+    "create_pendigits_prototype_shrinkage_task",
     "create_tabular_baseline_task",
     "create_text_classifier_stub_task",
     "default_network_policy",
@@ -184,6 +189,7 @@ __all__ = [
     "evaluate_golden_suite",
     "evaluate_strategy_rollback",
     "generate_pendigits_centroid_baseline_demo",
+    "generate_pendigits_prototype_shrinkage_demo",
     "generate_tabular_baseline_demo",
     "generate_text_classifier_stub_demo",
     "generate_experiment_directory",

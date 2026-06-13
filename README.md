@@ -205,10 +205,11 @@ Real benchmark opt-in:
 
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
+poetry run airesearcher run-demo --demo pendigits_prototype_shrinkage --timeout-seconds 60
 poetry run airesearcher serve --once --permission-mode allow-all --demo pendigits_centroid_baseline --review --timeout-seconds 60
 ```
 
-The `pendigits_centroid_baseline` demo downloads the UCI Pen-Based Recognition of Handwritten Digits train/test files at run time, writes a local merged CSV under `runs/`, evaluates a nearest-centroid baseline and first-8-features ablation, and records source URLs, data hash, metrics, confidence interval, and validation artifacts. It is a stronger evidence check than the toy demos, but it is still only a baseline benchmark run; the publication audit must still pass literature breadth, similar-work breadth, manuscript structure, and reviewer gates before any publication-level claim.
+The `pendigits_centroid_baseline` demo downloads the UCI Pen-Based Recognition of Handwritten Digits train/test files at run time, writes a local merged CSV under `runs/`, evaluates a nearest-centroid baseline and first-8-features ablation, and records source URLs, data hash, metrics, confidence interval, and validation artifacts. The `pendigits_prototype_shrinkage` demo uses the same public train/test split but evaluates a concrete class-prototype shrinkage method candidate against the baseline and writes `artifacts/innovation_evidence.json` with the proposed mechanism, prototype shift, baseline/candidate metrics, and an honest interpretation. It may improve, tie, or underperform the baseline; the system must report that result as measured and must not convert a negative delta into a publication claim. These demos are stronger evidence checks than the toy demos, but publication-level claims still require literature breadth, similar-work breadth, method novelty evidence, manuscript structure, reviewer gates, and the physical evidence gate.
 
 Skill evolution candidates:
 

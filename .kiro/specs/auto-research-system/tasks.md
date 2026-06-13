@@ -1238,6 +1238,18 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that generated papers be checked for real innovation and evidence strong enough for CCF-B/Q3-style targets._
     - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` run showing the method-innovation gate blocks a baseline-only cycle._
 
+- [x] 76. Add a real non-baseline method candidate demo
+  - [x] 76.1 Implement UCI Pendigits prototype-shrinkage candidate with honest innovation evidence
+    - Add `pendigits_prototype_shrinkage` as an opt-in public benchmark demo.
+    - Reuse official UCI Pendigits train/test files and local caching.
+    - Compare a nearest-centroid full-feature baseline, a first-8-feature ablation, and a class-prototype shrinkage candidate.
+    - Write `artifacts/innovation_evidence.json` with proposed mechanism, alpha, prototype shift, baseline/candidate accuracy, deltas, support artifacts, and honest interpretation.
+    - Keep empirical gain claims bounded; zero or negative delta must be recorded as no gain or underperformance, not hidden.
+    - Make `run-demo`, `autopilot`, validation, report generation, and publication audit consume the new demo.
+    - Use the SCALE-inspired gate lesson narrowly: evidence files and review gates decide publishability, not prompt-only self-discipline or the presence of a paper-shaped PDF.
+    - _References: user requirement for real executable experiments, publication-quality innovation checks, and lightweight physical gates inspired by SCALE Engine._
+    - _Verify: focused demo tests, ruff, mypy, full smoke/unit tests, real `run-demo`, and real `autopilot`/publication audit showing innovation evidence exists, is checked, and does not mask a negative result._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1454,6 +1466,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 42,
       "tasks": ["75.1"]
+    },
+    {
+      "id": 43,
+      "tasks": ["76.1"]
     }
   ]
 }
