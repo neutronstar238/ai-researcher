@@ -9,6 +9,7 @@ from .clients import (
     RateLimiter,
     RetryConfig,
     SemanticScholarClient,
+    SourceCircuitStateLockError,
     SourceRateLimitError,
 )
 from .models import AcademicPaper, deduplicate_papers, normalize_doi, normalize_title
@@ -38,6 +39,7 @@ __all__ = [
     "RetrievalCacheRecord",
     "RetryConfig",
     "SemanticScholarClient",
+    "SourceCircuitStateLockError",
     "SourceRateLimitError",
     "SourceFetchRecord",
     "deduplicate_papers",

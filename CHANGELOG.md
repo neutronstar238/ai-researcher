@@ -113,6 +113,7 @@ Target version: `0.1.0`.
 
 ### Fixed
 
+- Persisted source circuit-breaker read-modify-write updates now use a local `.lock` file; active locks become structured `state_locked` source-preflight blockers with JSON/Markdown evidence and Obsidian issue notes instead of unhandled runtime failures.
 - Persisted source circuit-breaker writes now use same-directory temporary files and atomic replacement, preserving the previous valid cooldown state if replacement fails and cleaning temporary files after the attempt.
 - Persisted source circuit-breaker state is read with UTF-8 BOM tolerance so operator-created JSON files do not silently bypass source preflight gates.
 - GitHub Actions `pytest tests/smoke tests/unit` collection failure on Python 3.10 caused by runtime use of `logging.LoggerAdapter[...]`.

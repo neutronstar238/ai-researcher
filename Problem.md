@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-023 - Source cooldown state updates were not serialized across processes
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 11:09:51 +08:00
+- Source: Follow-up after task `84.1` made writes atomic but still left read-modify-write updates vulnerable to last-writer-wins races when multiple workers share one cache root.
+- Symptom: Two long-running processes could read the same `source-circuit-breakers.json`, update different source keys, and atomically replace the target in sequence, with the later writer dropping the earlier writer's cooldown entry.
+- Impact: A 24h deployment with multiple workers could lose source cooldown evidence and accidentally retry an API that another worker had just rate-limited, weakening source-politeness and publication novelty coverage gates.
+- Evidence: Before task `85.1`, `_set_persistent_open()` and `_clear_persistent_open()` performed read-modify-write without an inter-process lock. The first focused pytest run for task `85.1` also failed because the new lock tests called `mkdir(parents=True)` on an existing `tmp_path`; this was a test fixture issue, fixed by adding `exist_ok=True`.
+- Root cause: Task `84.1` guarded the final file replacement but not the larger read-modify-write critical section.
+- Workaround: None needed after task `85.1`.
+- Next action: Monitor whether active source-state locks appear in real deployments. If they persist, investigate stuck workers before increasing lock timeouts.
+- Linked tasks: `85.1`
+- Resolution: Task `85.1` adds a local exclusive `.lock` around persisted source-state mutations, clears stale locks before writing, raises `SourceCircuitStateLockError` on active lock timeout, and maps active locks to `state_locked` source-preflight blockers in `autopilot`/`serve`.
+- Verification: The initial `poetry run pytest tests\unit\literature\test_clients.py -q` failed on the test fixture directory setup and was fixed. `poetry run pytest tests\unit\literature\test_clients.py tests\unit\cli\test_main.py -q`, `poetry run ruff check src\autoresearch\literature\clients.py src\autoresearch\literature\__init__.py src\autoresearch\cli\main.py tests\unit\literature\test_clients.py tests\unit\cli\test_main.py`, and `poetry run mypy src\autoresearch\literature\clients.py src\autoresearch\literature\__init__.py src\autoresearch\cli\main.py` passed. `poetry run ruff check src tests`, `poetry run mypy src`, `git diff --check`, and `poetry run pytest tests\smoke tests\unit -q` also passed; pytest reported 384 passed and 4 skipped, and `git diff --check` only emitted LF-to-CRLF warnings. A real CLI run `poetry run airesearcher autopilot --vault runs\manual-live\task85-locked-state-vault --cache runs\manual-live\task85-locked-state-cache --output-dir runs\manual-live\autopilot-locked-source-state-task85 --state runs\manual-live\autopilot-locked-source-state-task85\scheduler-state.json --project-id task85_locked_state --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review` with an active `source-circuit-breakers.json.lock` printed `[BLOCKED] source_preflight: blocked`, wrote `runs/manual-live/autopilot-locked-source-state-task85/cycle-20260613T030942Z/cycle-summary.json`, recorded `state_locked` for Semantic Scholar and OpenAlex, skipped review, queued one follow-up, and wrote an Obsidian issue note with related task `85.1`.
+
 ### P-20260613-022 - Source cooldown writes could leave partial state files
 
 - Status: Resolved
@@ -43,9 +59,9 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: Before task `84.1`, `_write_state()` called `self.state_path.write_text(...)` directly. The new focused test simulates an atomic replacement failure and confirms the previous valid JSON state remains unchanged.
 - Root cause: The first persisted-state implementation optimized for simple durable cooldowns and did not yet use same-directory temporary writes plus replace.
 - Workaround: None needed after task `84.1`.
-- Next action: If multiple long-running deployments intentionally share one cache root, add an inter-process lock around read-modify-write so last-writer-wins state races are also serialized.
-- Linked tasks: `84.1`
-- Resolution: Task `84.1` writes state to a same-directory temporary file, atomically replaces the target, and removes temporary files after both successful and failed replacement attempts.
+- Next action: Done in task `85.1`; monitor real deployments for repeated `state_locked` blockers.
+- Linked tasks: `84.1`, `85.1`
+- Resolution: Task `84.1` writes state to a same-directory temporary file, atomically replaces the target, and removes temporary files after both successful and failed replacement attempts. Task `85.1` adds a lock around the read-modify-write critical section.
 - Verification: `poetry run pytest tests\unit\literature\test_clients.py -q`, `poetry run ruff check src\autoresearch\literature\clients.py tests\unit\literature\test_clients.py`, and `poetry run mypy src\autoresearch\literature\clients.py` passed. `poetry run ruff check src tests`, `poetry run mypy src`, `git diff --check`, and `poetry run pytest tests\smoke tests\unit -q` also passed; pytest reported 381 passed and 4 skipped, and `git diff --check` only emitted LF-to-CRLF warnings. A real CLI run `poetry run airesearcher autopilot --vault runs\manual-live\task84-atomic-vault --cache runs\manual-live\task84-atomic-cache --output-dir runs\manual-live\autopilot-atomic-source-state-task84 --state runs\manual-live\autopilot-atomic-source-state-task84\scheduler-state.json --project-id task84_atomic_state --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review` wrote `runs/manual-live/autopilot-atomic-source-state-task84/cycle-20260613T030125Z/cycle-summary.json`, kept source preflight at `pass`, left `source-circuit-breakers.json` as valid JSON, and left no `.source-circuit-breakers.json.*.tmp` files in the cache directory.
 
 ### P-20260613-021 - Malformed source cooldown state would have failed open after BOM fix

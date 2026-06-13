@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import Mapping
 from io import BytesIO
 from pathlib import Path
@@ -14,6 +15,7 @@ from autoresearch.literature import (
     RateLimiter,
     RetryConfig,
     SemanticScholarClient,
+    SourceCircuitStateLockError,
     SourceRateLimitError,
 )
 
@@ -300,6 +302,7 @@ def test_rate_limit_circuit_breaker_persists_open_state(tmp_path) -> None:
     payload = json.loads(state_path.read_text(encoding="utf-8"))
     assert set(payload) == {"semantic_scholar"}
     assert list(tmp_path.glob(".source-circuit-breakers.json.*.tmp")) == []
+    assert not state_path.with_name(f"{state_path.name}.lock").exists()
 
 
 def test_rate_limit_circuit_breaker_keeps_previous_state_when_atomic_replace_fails(
@@ -348,3 +351,46 @@ def test_rate_limit_circuit_breaker_reads_bom_state_file(tmp_path) -> None:
 
     with pytest.raises(CircuitBreakerOpenError, match="30.0s"):
         breaker.raise_if_open()
+
+
+def test_rate_limit_circuit_breaker_blocks_when_state_lock_is_active(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "source-circuit-breakers.json"
+    lock_path = state_path.with_name(f"{state_path.name}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text("active lock", encoding="utf-8")
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        wall_clock=lambda: 1000.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+        state_lock_timeout_seconds=0.0,
+    )
+
+    with pytest.raises(SourceCircuitStateLockError, match="source circuit state is locked"):
+        breaker.record_rate_limit(retry_after_seconds=5)
+
+    assert lock_path.exists()
+    assert not state_path.exists()
+
+
+def test_rate_limit_circuit_breaker_clears_stale_state_lock(tmp_path: Path) -> None:
+    state_path = tmp_path / "source-circuit-breakers.json"
+    lock_path = state_path.with_name(f"{state_path.name}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text("stale lock", encoding="utf-8")
+    os.utime(lock_path, (1.0, 1.0))
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        wall_clock=lambda: 1000.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+        state_stale_lock_seconds=10.0,
+    )
+
+    breaker.record_rate_limit(retry_after_seconds=5)
+
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    assert set(payload) == {"semantic_scholar"}
+    assert not lock_path.exists()

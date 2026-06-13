@@ -47,6 +47,7 @@ from autoresearch.literature import (
     LiteratureSearchClient,
     OpenAlexClient,
     SemanticScholarClient,
+    SourceCircuitStateLockError,
     run_daily_literature_refresh,
 )
 from autoresearch.llm import (
@@ -2153,10 +2154,11 @@ def _run_source_preflight_gate(
     output_path = cycle_dir / "source-preflight.json"
     markdown_path = cycle_dir / "source-preflight.md"
     checks = [_source_preflight_check(source, client) for source, client in clients.items()]
+    blocking_statuses = {"cooling_down", "state_error", "state_locked"}
     blocked_sources = [
         str(check["source"])
         for check in checks
-        if str(check["status"]) in {"cooling_down", "state_error"}
+        if str(check["status"]) in blocking_statuses
     ]
     blocked = bool(blocked_sources)
     report: dict[str, Any] = {
@@ -2195,6 +2197,15 @@ def _source_preflight_check(source: str, client: LiteratureSearchClient) -> dict
         }
     raw_state_path = getattr(breaker, "state_path", None)
     state_path = _path_text(raw_state_path)
+    lock_error = _source_state_lock_error(raw_state_path, breaker)
+    if lock_error is not None:
+        return {
+            "source": source,
+            "status": "state_locked",
+            "remaining_seconds": 0.0,
+            "state_path": state_path,
+            "message": f"Persisted source cooldown state is locked: {lock_error}",
+        }
     state_error = _source_state_file_error(raw_state_path)
     if state_error is not None:
         return {
@@ -2207,7 +2218,16 @@ def _source_preflight_check(source: str, client: LiteratureSearchClient) -> dict
     remaining_seconds = 0.0
     remaining = getattr(breaker, "remaining_seconds", None)
     if callable(remaining):
-        remaining_seconds = max(0.0, float(remaining()))
+        try:
+            remaining_seconds = max(0.0, float(remaining()))
+        except SourceCircuitStateLockError as exc:
+            return {
+                "source": source,
+                "status": "state_locked",
+                "remaining_seconds": 0.0,
+                "state_path": state_path,
+                "message": f"Persisted source cooldown state is locked: {exc}",
+            }
     status = "cooling_down" if remaining_seconds > 0 else "ready"
     return {
         "source": source,
@@ -2235,11 +2255,13 @@ def _write_source_preflight_issue(
     source_lines = [
         f"- `{check['source']}`: {check['message']}"
         for check in report["checks"]
-        if str(check["status"]) in {"cooling_down", "state_error"}
+        if str(check["status"]) in {"cooling_down", "state_error", "state_locked"}
     ]
     related_task_ids = ["82.1"]
     if any(str(check["status"]) == "state_error" for check in report["checks"]):
         related_task_ids.append("83.1")
+    if any(str(check["status"]) == "state_locked" for check in report["checks"]):
+        related_task_ids.append("85.1")
     body = "\n".join(
         [
             "# Source Preflight Blocker",
@@ -2253,7 +2275,7 @@ def _write_source_preflight_issue(
             "",
             "## Reason",
             "",
-            "The cycle was stopped before literature refresh, experiment execution, live review, and paper build because at least one required online source has an active persisted rate-limit cooldown or an unreadable cooldown state file.",
+            "The cycle was stopped before literature refresh, experiment execution, live review, and paper build because at least one required online source has an active persisted rate-limit cooldown, a locked cooldown state file, or an unreadable cooldown state file.",
             "",
             "## Source Status",
             "",
@@ -2261,7 +2283,7 @@ def _write_source_preflight_issue(
             "",
             "## Next Action",
             "",
-            "Wait for the cooldown to expire, fix or remove malformed cooldown state, configure an appropriate source API key if available, or reduce/schedule source usage before rerunning publication-level novelty checks.",
+            "Wait for the cooldown or state lock to clear, fix or remove malformed cooldown state, configure an appropriate source API key if available, or reduce/schedule source usage before rerunning publication-level novelty checks.",
         ]
     )
     entry = KnowledgeEntry(
@@ -2306,6 +2328,23 @@ def _source_state_file_error(path_value: object) -> str | None:
     return None
 
 
+def _source_state_lock_error(path_value: object, breaker: object) -> str | None:
+    if path_value is None or not isinstance(path_value, str | Path):
+        return None
+    path = Path(path_value)
+    lock_path = path.with_name(f"{path.name}.lock")
+    if not lock_path.exists():
+        return None
+    stale_after = float(getattr(breaker, "state_stale_lock_seconds", 300.0))
+    if stale_after > 0:
+        try:
+            if time.time() - lock_path.stat().st_mtime > stale_after:
+                return None
+        except FileNotFoundError:
+            return None
+    return lock_path.as_posix()
+
+
 def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
     lines = [
         "# Source Preflight Gate",
@@ -2328,7 +2367,7 @@ def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
             "",
             "## Policy",
             "",
-            "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window or its cooldown state cannot be verified.",
+            "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window, while its cooldown state is locked by another process, or while its cooldown state cannot be verified.",
             "",
         ]
     )

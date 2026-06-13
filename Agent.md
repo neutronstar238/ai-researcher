@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:09:51 +08:00 - Codex - Task 85.1 source state mutation lock
+
+- Request: Continue SCALE-lite hard-gate work by preventing concurrent source-state read-modify-write races in long-running deployments.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-85-1-source-state-mutation-lock.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Added task `85.1` to the executable task plan and dependency graph.
+  - Added an exclusive same-directory `.lock` file around persisted source cooldown read-modify-write updates.
+  - Added stale-lock cleanup and a `SourceCircuitStateLockError` when active locks cannot be acquired within the configured timeout.
+  - Made `autopilot` and `serve` source preflight treat active state locks as `state_locked` blockers, writing JSON/Markdown evidence and Obsidian issue notes instead of crashing or continuing.
+  - Updated README, changelog, Problem log, and Obsidian progress memory.
+- Verification:
+  - Initial `poetry run pytest tests\unit\literature\test_clients.py -q`: failed because the new tests tried to create an already existing `tmp_path` parent without `exist_ok=True`; fixed the test fixture and reran.
+  - `poetry run pytest tests\unit\literature\test_clients.py -q`: passed, 14 tests.
+  - `poetry run pytest tests\unit\literature\test_clients.py tests\unit\cli\test_main.py -q`: passed, 49 tests.
+  - `poetry run ruff check src\autoresearch\literature\clients.py src\autoresearch\literature\__init__.py src\autoresearch\cli\main.py tests\unit\literature\test_clients.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\literature\clients.py src\autoresearch\literature\__init__.py src\autoresearch\cli\main.py`: passed.
+  - `$cache='runs\manual-live\task85-locked-state-cache'; $vault='runs\manual-live\task85-locked-state-vault'; $out='runs\manual-live\autopilot-locked-source-state-task85'; New-Item -ItemType Directory -Force -Path $cache | Out-Null; Set-Content -Path "$cache\source-circuit-breakers.json" -Value '{}' -Encoding UTF8; Set-Content -Path "$cache\source-circuit-breakers.json.lock" -Value 'active lock' -Encoding UTF8; poetry run airesearcher autopilot --vault $vault --cache $cache --output-dir $out --state "$out\scheduler-state.json" --project-id task85_locked_state --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real CLI gate run. It printed `[BLOCKED] source_preflight: blocked`, wrote `runs/manual-live/autopilot-locked-source-state-task85/cycle-20260613T030942Z/cycle-summary.json`, recorded `state_locked` for Semantic Scholar and OpenAlex, skipped review, queued one follow-up, and generated an Obsidian issue note with related task `85.1`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 384 tests passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260613-023` for un-serialized source cooldown read-modify-write updates.
+  - Updated `P-20260613-022` to point from atomic writes to the new mutation lock.
+- Follow-up:
+  - Watch for repeated `state_locked` source-preflight blockers in real deployments; persistent locks likely mean a stuck worker or shared cache misuse.
+
 ### 2026-06-13 11:02:03 +08:00 - Codex - Task 84.1 atomic source cooldown state writes
 
 - Request: Continue SCALE-lite hard-gate work by reducing self-created malformed source cooldown state during long-running deployments.

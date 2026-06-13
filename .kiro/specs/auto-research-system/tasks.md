@@ -1330,6 +1330,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-021` follow-up and the SCALE-lite requirement that source-politeness gates should be enforced by evidence files and filesystem behavior, not prompt-only care._
     - _Verify: focused literature-client tests for successful cleanup and replacement failure, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run that touches persisted source state while leaving no temporary state files behind._
 
+- [x] 85. Serialize persisted source-state mutations
+  - [x] 85.1 Add a local lock around source circuit state read-modify-write
+    - Guard persisted source cooldown read-modify-write operations with an exclusive same-directory `.lock` file.
+    - Fail closed with `SourceCircuitStateLockError` if another process holds the lock past the configured timeout.
+    - Clear stale state locks before writing so a crashed process does not permanently block source-state updates.
+    - Treat active source-state locks as `state_locked` source preflight blockers in `autopilot` and `serve`, with JSON/Markdown evidence and Obsidian issue notes.
+    - Tag locked-state issue notes with task `85.1` so follow-up records point to the concurrency gate.
+    - _References: task `84.1` follow-up and the SCALE-lite multi-agent/source-politeness requirement that concurrent workers must not silently overwrite shared evidence state._
+    - _Verify: focused literature-client and CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with an active `source-circuit-breakers.json.lock` showing `[BLOCKED] source_preflight: blocked`, `state_locked` checks, skipped review, and a queued Obsidian issue follow-up._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1582,6 +1592,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 51,
       "tasks": ["84.1"]
+    },
+    {
+      "id": 52,
+      "tasks": ["85.1"]
     }
   ]
 }

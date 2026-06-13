@@ -1037,6 +1037,70 @@ def test_autopilot_source_preflight_blocks_malformed_state_file(
     assert "83.1" in issue_text
 
 
+def test_autopilot_source_preflight_blocks_locked_state_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    cache_root = tmp_path / "cache"
+    state_path = cache_root / "source-circuit-breakers.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text("{}", encoding="utf-8")
+    lock_path = state_path.with_name(f"{state_path.name}.lock")
+    lock_path.write_text("active lock", encoding="utf-8")
+
+    breaker = SimpleNamespace(
+        remaining_seconds=lambda: 0.0,
+        state_path=state_path,
+        state_stale_lock_seconds=300.0,
+    )
+    shared_clients = {
+        "arxiv": object(),
+        "semantic_scholar": SimpleNamespace(circuit_breaker=breaker),
+        "openalex": object(),
+    }
+
+    def fail_if_called(**_kwargs: object) -> SimpleNamespace:
+        raise AssertionError("state-locked cycle should not run costly work")
+
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(cache_root),
+            "--output-dir",
+            str(output_dir),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] source_preflight: blocked" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    semantic_check = [
+        check
+        for check in payload["source_preflight"]["checks"]
+        if check["source"] == "semantic_scholar"
+    ][0]
+    assert semantic_check["status"] == "state_locked"
+    assert "locked" in semantic_check["message"]
+    issue_text = Path(payload["source_preflight"]["issue_path"]).read_text(encoding="utf-8")
+    assert "85.1" in issue_text
+
+
 def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monkeypatch) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     literature_summary.parent.mkdir(parents=True, exist_ok=True)

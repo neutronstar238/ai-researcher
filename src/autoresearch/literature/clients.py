@@ -10,8 +10,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Mapping
-from contextlib import suppress
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -39,6 +39,10 @@ class CircuitBreakerOpenError(RuntimeError):
     """Raised when a source circuit breaker is open after rate limiting."""
 
 
+class SourceCircuitStateLockError(RuntimeError):
+    """Raised when persisted source circuit state cannot be locked."""
+
+
 class RateLimitCircuitBreaker:
     """Short-circuit repeated requests after explicit source rate limits."""
 
@@ -51,6 +55,8 @@ class RateLimitCircuitBreaker:
         wall_clock: Callable[[], float] = time.time,
         state_path: Path | str | None = None,
         state_key: str = "default",
+        state_lock_timeout_seconds: float = 5.0,
+        state_stale_lock_seconds: float = 300.0,
     ) -> None:
         if failure_threshold < 1:
             msg = "failure_threshold must be at least 1"
@@ -58,12 +64,20 @@ class RateLimitCircuitBreaker:
         if reset_after_seconds < 0:
             msg = "reset_after_seconds must be non-negative"
             raise ValueError(msg)
+        if state_lock_timeout_seconds < 0:
+            msg = "state_lock_timeout_seconds must be non-negative"
+            raise ValueError(msg)
+        if state_stale_lock_seconds < 0:
+            msg = "state_stale_lock_seconds must be non-negative"
+            raise ValueError(msg)
         self.failure_threshold = failure_threshold
         self.reset_after_seconds = reset_after_seconds
         self.clock = clock
         self.wall_clock = wall_clock
         self.state_path = Path(state_path) if state_path is not None else None
         self.state_key = state_key
+        self.state_lock_timeout_seconds = state_lock_timeout_seconds
+        self.state_stale_lock_seconds = state_stale_lock_seconds
         self._failures = 0
         self._opened_until: float | None = None
 
@@ -110,18 +124,20 @@ class RateLimitCircuitBreaker:
     def _set_persistent_open(self, cooldown_seconds: float) -> None:
         if self.state_path is None:
             return
-        state = self._read_state()
-        state[self.state_key] = self.wall_clock() + cooldown_seconds
-        self._write_state(state)
+        with self._state_file_lock():
+            state = self._read_state()
+            state[self.state_key] = self.wall_clock() + cooldown_seconds
+            self._write_state(state)
 
     def _clear_persistent_open(self) -> None:
         if self.state_path is None:
             return
-        state = self._read_state()
-        if self.state_key not in state:
-            return
-        state.pop(self.state_key, None)
-        self._write_state(state)
+        with self._state_file_lock():
+            state = self._read_state()
+            if self.state_key not in state:
+                return
+            state.pop(self.state_key, None)
+            self._write_state(state)
 
     def _read_state(self) -> dict[str, float]:
         if self.state_path is None or not self.state_path.exists():
@@ -152,6 +168,52 @@ class RateLimitCircuitBreaker:
         finally:
             with suppress(FileNotFoundError):
                 temp_path.unlink()
+
+    @contextmanager
+    def _state_file_lock(self) -> Iterator[None]:
+        if self.state_path is None:
+            yield
+            return
+        lock_path = self.state_path.with_name(f"{self.state_path.name}.lock")
+        deadline = time.monotonic() + self.state_lock_timeout_seconds
+        acquired = False
+        while not acquired:
+            try:
+                lock_path.parent.mkdir(parents=True, exist_ok=True)
+                fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                try:
+                    payload = json.dumps(
+                        {"created_at": self.wall_clock(), "pid": os.getpid()},
+                        sort_keys=True,
+                    )
+                    os.write(fd, payload.encode("utf-8"))
+                finally:
+                    os.close(fd)
+                acquired = True
+            except FileExistsError as exc:
+                if self._state_lock_is_stale(lock_path):
+                    with suppress(FileNotFoundError):
+                        lock_path.unlink()
+                    continue
+                if time.monotonic() >= deadline:
+                    msg = f"source circuit state is locked: {lock_path}"
+                    raise SourceCircuitStateLockError(msg) from exc
+                time.sleep(min(0.05, max(deadline - time.monotonic(), 0.0)))
+
+        try:
+            yield
+        finally:
+            with suppress(FileNotFoundError):
+                lock_path.unlink()
+
+    def _state_lock_is_stale(self, lock_path: Path) -> bool:
+        if self.state_stale_lock_seconds <= 0:
+            return False
+        try:
+            age_seconds = self.wall_clock() - lock_path.stat().st_mtime
+        except FileNotFoundError:
+            return False
+        return age_seconds > self.state_stale_lock_seconds
 
 
 class RateLimiter:
