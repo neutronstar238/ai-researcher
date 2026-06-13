@@ -970,6 +970,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         id="doc_seed",
         title="Evidence Graphs for Autonomous Research",
         source_uri="https://example.test/paper",
+        authors=["A. Researcher"],
+        publication_date=datetime(2026, 6, 13, tzinfo=timezone.utc),
+        venue="ExampleConf",
+        doi="10.1234/example",
     )
     fetch = SimpleNamespace(
         source="semantic_scholar",
@@ -1149,6 +1153,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "report.md",
             "run-record.json",
             "validation-report.json",
+            "references.metadata.json",
+            "references.bib",
         } <= evidence_names
         return {"status": "skipped"}
 
@@ -1198,6 +1204,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["candidate"]["related_document_ids"] == ["doc_seed"]
     assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["literature"]["document_count"] == 1
+    assert payload["citations"]["status"] == "generated"
+    assert payload["citations"]["verified_count"] == 1
+    assert Path(payload["citations"]["metadata_path"]).name == "references.metadata.json"
+    assert Path(payload["citations"]["bib_path"]).name == "references.bib"
     assert payload["similarity"]["finding_count"] == 1
     assert payload["inspiration"]["item_count"] == 1
     assert payload["inspiration"]["evidence_policy"] == (

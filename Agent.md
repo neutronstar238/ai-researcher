@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 20:43:24 +08:00 - Codex - Task 112.1 citation-package publication gate
+
+- Request: Continue toward stable CCF-B/Q3-submission-grade output, keep real online/API verification, and account for newly mentioned external skill references (`scipilot-figure-skill`, Research Architect skill, and Nature skill) as future gate candidates rather than copied content.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added autopilot citation-package generation from live literature `DocumentRecord` objects via the existing BibTeX/citation validator.
+  - Recorded citation status, verified count, blocked count, BibTeX path, metadata path, blocked document IDs, and per-citation metadata in `cycle-summary.json`.
+  - Added citation package artifacts to the compact review context and LLM review evidence bundle.
+  - Added CCF-B/Q3 publication-audit gates for citation package presence, verified DOI/URL citation breadth, and blocked citation count.
+  - Updated the manuscript references section so local run/audit artifacts remain separate from formal literature references, and formal references come only from verified citation metadata.
+  - Added regressions for missing citation packages, blocked citations, manuscript verified-reference rendering, and autopilot citation bundle creation.
+  - Verified the newly mentioned external skills on the public web at a high level: `scipilot-figure-skill` and `nature-skills` are MIT-licensed GitHub repositories, and Research Architect appears as an MIT-licensed systematic-review/PRISMA prompt library. They were not copied or vendored; the next implementation should turn their ideas into auditable figure, research-design, and venue-style gates.
+  - Did not hand-write canonical root `autoresearch-vault/projects/.../progress` notes; runtime evidence used for verification was written under `runs/manual-live/...`.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_citations.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed with 20 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\manuscript.py tests\unit\cli\test_main.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_manuscript.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\manuscript.py`: passed; mypy still notes unused config override sections for `langchain.*` and `langgraph.*`.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 443 tests and 4 skipped opt-in live API smoke tests.
+  - First old-cycle audit attempt: `poetry run airesearcher publication-audit runs\manual-live\task111-acm-review-cycle-v8\cycle-20260613T122156Z\cycle-summary.json --output-dir runs\manual-live\task112-citation-gate-old-cycle-audit --no-fail-on-blocked` failed because the CLI option is `--no-fail-on-not-publishable`.
+  - Correct old-cycle audit: `poetry run airesearcher publication-audit runs\manual-live\task111-acm-review-cycle-v8\cycle-20260613T122156Z\cycle-summary.json --output-dir runs\manual-live\task112-citation-gate-old-cycle-audit --no-fail-on-not-publishable` completed and correctly wrote `publication_audit=fail`, `publishable=false`, `citation_package=fail`, `verified_citation_breadth=fail`, and `blocked_citation_count=pass`.
+  - New real full-cycle verification: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task112-citation-vault --cache runs\manual-live\task112-citation-cache --output-dir runs\manual-live\task112-citation-cycle --state runs\manual-live\task112-citation-state.json --project-id task112_citation_cycle --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed with `source_preflight=pass`, `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks.
+  - `runs/manual-live/task112-citation-cycle/cycle-20260613T124028Z/cycle-summary.json`: inspected; citations `status=generated`, `verified_count=54`, `blocked_count=0`; paper build compiled with paper quality `passed=true`, 6 pages, 4101 words, and 0 overfull hboxes; publication audit passed with score `0.9803`; evidence gate released.
+  - `runs/manual-live/task112-citation-cycle/cycle-20260613T124028Z/publication-audit.json`: inspected; `citation_package=pass`, `verified_citation_breadth=pass`, and `blocked_citation_count=pass`.
+  - `runs/manual-live/task112-citation-cycle/cycle-20260613T124028Z/paper-manuscript/manuscript.md`: inspected; references include `Citation package` and `Verified literature references` entries sourced from citation metadata.
+- Problems:
+  - `P-20260613-048` added and resolved for citation validation not being enforced in the publication loop.
+- Follow-up:
+  - Add a related-work relevance gate next: verified DOI/URL metadata proves source identity, not source relevance. The new external skill references are best used there and in figure/venue-style quality gates, after license/notice boundaries are recorded.
+
 ### 2026-06-13 20:26:11 +08:00 - Codex - Task 111.1 conference/journal template matrix and final-manuscript review
 
 - Request: Continue toward strict CCF-B/Q3-level output with real API/retrieval evidence, real LaTeX template runs, final-paper quality review, and no hand-written root Obsidian progress notes from the coding agent.

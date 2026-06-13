@@ -72,6 +72,7 @@ from autoresearch.reports import (
     audit_publication_stability,
     build_latex_paper_from_markdown,
     compose_publication_manuscript,
+    generate_bibtex,
     run_evidence_gate,
     validate_reproducibility_package,
 )
@@ -2395,6 +2396,10 @@ def _run_autopilot_cycle(
         demo=demo,
         timeout_seconds=timeout_seconds,
     )
+    citations = _generate_cycle_citations(
+        literature_report=literature_report,
+        cycle_dir=cycle_dir,
+    )
 
     summary: dict[str, Any] = {
         "cycle_id": cycle_id,
@@ -2427,6 +2432,7 @@ def _run_autopilot_cycle(
             "summary_path": _path_text(getattr(inspiration_report, "summary_path", None)),
             "evidence_policy": "dataset/community/news signals only; not scholarly evidence",
         },
+        "citations": citations,
         "demo": {
             "demo": demo_result.demo,
             "run_id": demo_result.run_id,
@@ -2464,6 +2470,7 @@ def _run_autopilot_cycle(
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
+        "citations": summary["citations"],
         "demo": summary["demo"],
         "reproduction_check": reproduction_check,
         "paper_manuscript": paper_manuscript.to_dict(),
@@ -2484,11 +2491,13 @@ def _run_autopilot_cycle(
     ]
     for optional_path in (
         getattr(literature_report, "summary_path", None),
+        citations.get("metadata_path"),
+        citations.get("bib_path"),
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
         reproduction_check.get("json_path"),
     ):
-        if optional_path:
+        if isinstance(optional_path, str | Path):
             review_evidence_paths.append(optional_path)
     review_result = _run_autopilot_review(
         enabled=review,
@@ -2544,6 +2553,25 @@ def _run_autopilot_cycle(
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
+
+
+def _generate_cycle_citations(*, literature_report: object, cycle_dir: Path) -> dict[str, object]:
+    documents = list(getattr(literature_report, "documents", ()) or ())
+    if not documents:
+        return {
+            "status": "skipped",
+            "reason": "no_literature_documents",
+            "verified_count": 0,
+            "blocked_count": 0,
+        }
+    artifact = generate_bibtex(documents, cycle_dir / "citations")
+    payload = artifact.to_dict()
+    return {
+        "status": "generated",
+        "verified_count": len(documents) - len(artifact.blocked_document_ids),
+        "blocked_count": len(artifact.blocked_document_ids),
+        **payload,
+    }
 
 
 def _autopilot_inspiration_queries(candidate: ResearchCandidate, *, demo: str) -> tuple[str, ...]:

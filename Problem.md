@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-048 - Citation validation existed but was not enforced in the publication loop
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 20:40:00 +08:00
+- Source: Task `112.1` follow-up to the final-manuscript review and citation-quality gap in `P-20260613-047`.
+- Symptom: The repository had a deterministic BibTeX/citation validator, but autopilot did not generate a citation package from live literature records and publication audit did not require verified DOI/URL citations before CCF-B/Q3 paper claims.
+- Impact: A manuscript could pass retrieval breadth and paper-quality gates while its formal references were still generic local artifact references or unverified title-level hits.
+- Evidence: Rerunning `publication-audit` over the previously passing real ACM cycle at `runs/manual-live/task111-acm-review-cycle-v8/cycle-20260613T122156Z/cycle-summary.json` now correctly fails `citation_package` and `verified_citation_breadth` because the old cycle lacks citation metadata and BibTeX.
+- Root cause: Task `17.2` implemented citation validation as a helper, but the later autopilot, manuscript, and publication-audit paths did not consume or require its artifacts.
+- Workaround: None needed after the fix; new autopilot cycles generate `citations/references.bib` and `citations/references.metadata.json` automatically.
+- Next action: Add a related-work relevance gate so verified DOI/URL metadata is not mistaken for evidence that each citation is directly relevant to the manuscript's novelty claim.
+- Linked tasks: `17.2`, `103.1`, `111.1`, `112.1`
+- Resolution: Autopilot now writes citation packages from live `DocumentRecord` objects, final manuscripts list formal references only from verified citation metadata, and CCF-B/Q3 publication audit blocks missing citation packages, low verified-citation breadth, and any blocked citations.
+- Verification: The first attempted live old-cycle audit used the wrong option `--no-fail-on-blocked` and failed with a CLI usage error; rerunning with `--no-fail-on-not-publishable` succeeded and wrote a failing audit with `citation_package=fail`, `verified_citation_breadth=fail`, and `blocked_citation_count=pass`. A new real ACM autopilot cycle at `runs/manual-live/task112-citation-cycle/cycle-20260613T124028Z/cycle-summary.json` produced 54 verified citations, 0 blocked citations, `review_status=passed`, `publication_audit=pass`, `paper_quality=true`, and `evidence_gate=pass`.
+
 ### P-20260613-047 - Final-manuscript live review repeatedly caught unsupported prose overclaims
 
 - Status: Resolved

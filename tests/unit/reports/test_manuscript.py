@@ -29,6 +29,8 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "accuracy delta of 0.0400" in manuscript
     assert "The next system action should not be to submit the paper" in manuscript
     assert "Representative retrieved records are retained" in manuscript
+    assert "[Verified literature references]" in manuscript
+    assert "[source2026] Verified Prototype Source" in manuscript
     assert "not a submission claim" in manuscript
     assert "Current finding classifications are:" not in manuscript
     assert "Retrieved record 1:" not in manuscript
@@ -93,6 +95,35 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "- Source database: `arxiv`",
                 "- Classification basis: pending verification",
             ]
+        ),
+        encoding="utf-8",
+    )
+    citations_dir = cycle_dir / "citations"
+    citations_dir.mkdir(parents=True)
+    citation_bib_path = citations_dir / "references.bib"
+    citation_metadata_path = citations_dir / "references.metadata.json"
+    citation_bib_path.write_text(
+        "@article{source2026,\n  title = {Verified Prototype Source}\n}\n",
+        encoding="utf-8",
+    )
+    citation_metadata_path.write_text(
+        json.dumps(
+            {
+                "bib_path": citation_bib_path.as_posix(),
+                "metadata_path": citation_metadata_path.as_posix(),
+                "blocked_document_ids": [],
+                "citations": [
+                    {
+                        "document_id": "doc_verified",
+                        "title": "Verified Prototype Source",
+                        "status": "verified_doi",
+                        "bibtex_key": "source2026",
+                        "doi": "10.1234/verified",
+                        "url": "https://example.test/verified",
+                        "reason": None,
+                    }
+                ],
+            }
         ),
         encoding="utf-8",
     )
@@ -179,6 +210,14 @@ def _write_cycle(tmp_path: Path) -> Path:
                 {"source": "openalex", "paper_count": 10, "error": None},
             ],
             "summary_path": literature_path.as_posix(),
+        },
+        "citations": {
+            "status": "generated",
+            "verified_count": 1,
+            "blocked_count": 0,
+            "bib_path": citation_bib_path.as_posix(),
+            "metadata_path": citation_metadata_path.as_posix(),
+            "blocked_document_ids": [],
         },
         "similarity": {
             "finding_count": 2,

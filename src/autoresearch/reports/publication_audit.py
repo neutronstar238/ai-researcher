@@ -56,6 +56,8 @@ class PublicationQualityTarget:
     require_novel_contribution: bool
     min_llm_review_quality: float
     min_method_effect_standard_errors: float
+    min_verified_citations: int
+    max_blocked_citations: int
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,8 @@ class PublicationAuditReport:
                 "require_novel_contribution": self.target.require_novel_contribution,
                 "min_llm_review_quality": self.target.min_llm_review_quality,
                 "min_method_effect_standard_errors": self.target.min_method_effect_standard_errors,
+                "min_verified_citations": self.target.min_verified_citations,
+                "max_blocked_citations": self.target.max_blocked_citations,
             },
             "verdict": self.verdict.value,
             "publishable": self.publishable,
@@ -150,6 +154,8 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_novel_contribution=True,
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=2.0,
+        min_verified_citations=8,
+        max_blocked_citations=0,
     ),
     "q3-journal": PublicationQualityTarget(
         name="q3-journal",
@@ -168,6 +174,8 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_novel_contribution=True,
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=2.0,
+        min_verified_citations=10,
+        max_blocked_citations=0,
     ),
     "mvp-demo": PublicationQualityTarget(
         name="mvp-demo",
@@ -186,6 +194,8 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_novel_contribution=False,
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=0.0,
+        min_verified_citations=0,
+        max_blocked_citations=999,
     ),
 }
 
@@ -221,6 +231,7 @@ def audit_publication_quality(
 
     checks = (
         *_literature_checks(summary, target_config),
+        *_citation_checks(summary, summary_path.parent, target_config),
         *_similarity_checks(summary, summary_path.parent, target_config),
         *_script_and_data_checks(summary, summary_path.parent, target_config),
         *_review_checks(
@@ -365,6 +376,107 @@ def _literature_checks(
                 ("cycle_summary.literature.fetches",),
             )
         )
+    return checks
+
+
+def _citation_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+    target: PublicationQualityTarget,
+) -> list[PublicationAuditCheck]:
+    citations = _dict(summary.get("citations"))
+    metadata_path = _resolve_path(citations.get("metadata_path"), base_dir)
+    bib_path = _resolve_path(citations.get("bib_path"), base_dir)
+    metadata = _read_json_if_exists(metadata_path)
+    if not metadata:
+        metadata = citations
+    rows = _dict_list(metadata.get("citations"))
+    verified = [
+        row
+        for row in rows
+        if _text(row.get("status")) in {"verified_doi", "verified_url"}
+    ]
+    blocked_ids = tuple(
+        str(value)
+        for value in _list(
+            metadata.get("blocked_document_ids") or citations.get("blocked_document_ids")
+        )
+    )
+    blocked = [row for row in rows if _text(row.get("status")) == "blocked"]
+    blocked_count = max(len(blocked), len(blocked_ids), _int(citations.get("blocked_count")))
+    artifact_ok = bool(
+        rows
+        and metadata_path is not None
+        and metadata_path.exists()
+        and bib_path is not None
+        and bib_path.exists()
+    )
+    if target.min_verified_citations <= 0 and not rows:
+        return [
+            PublicationAuditCheck(
+                "citation_package",
+                PublicationAuditCheckStatus.PASS,
+                "info",
+                "Citation package is not required for this publication target.",
+                ("cycle_summary.citations",),
+            )
+        ]
+
+    checks = [
+        PublicationAuditCheck(
+            "citation_package",
+            PublicationAuditCheckStatus.PASS if artifact_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Citation package "
+                f"metadata={'present' if metadata_path and metadata_path.exists() else 'missing'}, "
+                f"bibtex={'present' if bib_path and bib_path.exists() else 'missing'}."
+            ),
+            (
+                metadata_path.as_posix()
+                if metadata_path is not None
+                else "cycle_summary.citations.metadata_path",
+                bib_path.as_posix() if bib_path is not None else "cycle_summary.citations.bib_path",
+            ),
+            None
+            if artifact_ok
+            else (
+                "Generate references.bib and citation metadata from retrieved literature "
+                "documents before publication audit."
+            ),
+        ),
+        _threshold_check(
+            "verified_citation_breadth",
+            len(verified),
+            target.min_verified_citations,
+            "blocking",
+            (
+                f"Verified DOI/URL citations: {len(verified)}; target requires at least "
+                f"{target.min_verified_citations}."
+            ),
+            (
+                "Attach enough DOI- or URL-backed literature records before using "
+                "the manuscript references as publication evidence."
+            ),
+            ("cycle_summary.citations",),
+        ),
+    ]
+    blocked_ok = blocked_count <= target.max_blocked_citations
+    checks.append(
+        PublicationAuditCheck(
+            "blocked_citation_count",
+            PublicationAuditCheckStatus.PASS if blocked_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            f"Blocked citations: {blocked_count}; target allows at most {target.max_blocked_citations}.",
+            ("cycle_summary.citations",),
+            None
+            if blocked_ok
+            else (
+                "Remove or repair citations without DOI/URL metadata before "
+                "publication-level claims."
+            ),
+        )
+    )
     return checks
 
 
@@ -1010,6 +1122,7 @@ def _markdown(report: PublicationAuditReport) -> str:
         "",
         f"- Minimum score: `{report.target.min_score}`",
         f"- Literature: `{report.target.min_literature_queries}` queries, `{report.target.min_literature_documents}` documents, `{report.target.min_successful_sources}` successful sources",
+        f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, max `{report.target.max_blocked_citations}` blocked citations",
         f"- Similarity: `{report.target.min_similarity_queries}` queries, `{report.target.min_similarity_findings}` findings, `{report.target.min_successful_sources}` successful sources",
         f"- Data: at least `{report.target.min_test_rows}` validated test rows; real dataset required: `{str(report.target.require_real_dataset).lower()}`",
         f"- Experiment: baseline `{report.target.require_baseline}`, ablation `{report.target.require_ablation}`, statistical sanity `{report.target.require_statistical_sanity}`",

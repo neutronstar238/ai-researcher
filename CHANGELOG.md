@@ -81,6 +81,8 @@ Target version: `0.1.0`.
 - The `ccf-b-matrix` stability target now also requires at least one release-allowed external fetched venue or publisher LaTeX template, preventing generic article templates from being counted as venue-readiness evidence.
 - The `ccf-b-matrix` stability target now separately requires at least one release-allowed external conference template and at least one release-allowed external journal template before stable CCF-B/Q3 output claims can pass.
 - Autopilot now writes a compact `review-evidence-context.json` bundle and runs evidence-constrained LLM review against the final `paper-manuscript/manuscript.md` instead of the thinner demo report.
+- Autopilot now generates a citation package (`references.bib` plus `references.metadata.json`) from source-backed literature `DocumentRecord` objects and records verified/blocked citation counts in `cycle-summary.json`.
+- Publication audit now enforces DOI/URL-verified citation breadth for CCF-B/Q3 targets and blocks missing citation packages or any blocked citations.
 - `airesearcher autopilot` and `airesearcher serve` now accept `--paper-template-id`, allowing autonomous cycles to compile generic one-column, generic two-column, and future venue templates without manual artifact edits.
 - Real `ccf-b-matrix` verification now passes over three release-allowed public benchmark cycles: UCI Pendigits, UCI Letter Recognition, and UCI Skin Segmentation, with two generic LaTeX templates and paper-quality gates passing.
 - Real `ccf-b-matrix` verification now also has a passing conference-plus-journal reference matrix over a generic cycle, an ACM `acmart` conference-template cycle, and a Springer Nature journal-template cycle.
@@ -123,6 +125,7 @@ Target version: `0.1.0`.
 - Autopilot and serve cycles now automatically run the LaTeX paper build and physical evidence gate after publication audit, then record `paper_build` and `evidence_gate` in `cycle-summary.json`.
 - Publication audit and evidence gate standalone review binding now prefer the final paper manuscript, require run-record coverage, and fall back to the demo report only for older summaries without `paper_manuscript` metadata.
 - The manuscript composer now avoids promoting title-level retrieved records, per-paper similarity classifications, audit/build pre-announcements, ablation labels, and script-step reconstructions into unsupported publication prose.
+- The manuscript references section now separates local run/audit artifacts from formal literature references and lists formal references only from verified citation metadata.
 - Autopilot and serve cycles now record `reproduction_check` in `cycle-summary.json`; the physical evidence gate blocks release when the rerun command fails or does not produce a fresh run record plus validation report.
 - Publication-readiness now blocks baseline-only reports through `method_innovation_evidence`, even when benchmark data, ablations, statistics, literature breadth, and manuscript structure otherwise pass.
 - Publication-level documentation now treats negative or neutral method-candidate deltas as blocking evidence for empirical-gain claims rather than paper-writing material to smooth over.

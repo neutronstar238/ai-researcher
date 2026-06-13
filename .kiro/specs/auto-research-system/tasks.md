@@ -1632,6 +1632,21 @@ A task can be checked only when all applicable items are true:
     - _References: task `103.1`; task `108.1`; task `110.1`; `P-20260613-045`; `P-20260613-046`; `P-20260613-047`; user requirement that CCF-B/Q3 claims use real conference/journal LaTeX templates, real API review, strict evidence gates, and no manually fabricated Obsidian progress notes._
     - _Verify: focused manuscript/LLM/CLI/publication-audit/evidence-gate/stability tests, focused ruff, focused mypy, real ACM and IEEE preflight `paper-build` runs passing quality, repeated real ACM `autopilot` runs until live LLM/evidence feedback was resolved, final real ACM `autopilot` with `evidence_gate=pass` and 0 follow-up tasks, and real three-cycle `ccf-b-matrix` passing with score `1.000`._
 
+- [x] 112. Require verified citation packages before CCF-B/Q3 paper claims
+  - [x] 112.1 Add autopilot citation-package generation and publication-audit citation gates
+    - Generate `references.bib` and `references.metadata.json` from the real `DocumentRecord` objects returned by online literature refresh inside every non-blocked autopilot cycle.
+    - Record citation package status, verified count, blocked count, BibTeX path, metadata path, blocked document IDs, and per-citation status in `cycle-summary.json`.
+    - Add citation package artifacts to the compact review context and LLM review evidence bundle.
+    - Update the publication manuscript references section so formal literature references come only from DOI/URL-verified citation metadata, while local run/audit artifacts remain separate evidence references.
+    - Extend `ccf-b` and `q3-journal` publication-audit targets with minimum verified citation counts and maximum blocked citation counts; keep `mvp-demo` unblocked by citation package requirements.
+    - Block CCF-B/Q3 publication audit when citation metadata or BibTeX is missing, when verified DOI/URL citation breadth is too low, or when any citation remains blocked.
+    - Add regressions proving missing citation packages and blocked citations fail CCF-B/Q3 audit, while valid citation packages pass.
+    - Run a real old-cycle audit to prove historical cycles without citation packages are no longer treated as publishable.
+    - Run a new real ACM `autopilot` cycle with live literature retrieval, generated citation package, final-manuscript LLM review, publication audit, paper build, and evidence gate all passing.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime outputs under `runs/manual-live/...` count as AI-Researcher-written vault evidence for this task.
+    - _References: task `17.2`; task `103.1`; task `111.1`; `P-20260613-047`; `P-20260613-048`; user requirement that publication-grade claims use real online sources and must not fabricate citations or results._
+    - _Verify: focused citation/publication-audit/manuscript/CLI tests, focused ruff, focused mypy, old real ACM cycle blocked on missing citation package, new real ACM `autopilot` producing 54 verified citations and 0 blocked citations with `review_status=passed`, `publication_audit=pass`, `paper_quality=true`, and `evidence_gate=pass`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1992,6 +2007,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 78,
       "tasks": ["111.1"]
+    },
+    {
+      "id": 79,
+      "tasks": ["112.1"]
     }
   ]
 }

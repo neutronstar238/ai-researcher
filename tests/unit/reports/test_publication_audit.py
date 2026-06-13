@@ -126,6 +126,45 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert report.publishable is True
 
 
+def test_publication_audit_blocks_missing_citation_package_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary.pop("citations")
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["citation_package"].status.value == "fail"
+    assert checks["verified_citation_breadth"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_unverifiable_citations_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        blocked_citations=1,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["citation_package"].status.value == "pass"
+    assert checks["verified_citation_breadth"].status.value == "pass"
+    assert checks["blocked_citation_count"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
 def test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings(
     tmp_path: Path,
 ) -> None:
@@ -577,6 +616,58 @@ def _paper_style_report() -> str:
     )
 
 
+def _write_citation_package(cycle_dir: Path, *, verified: int = 10, blocked: int = 0) -> dict:
+    citations_dir = cycle_dir / "citations"
+    citations_dir.mkdir(parents=True, exist_ok=True)
+    bib_path = citations_dir / "references.bib"
+    metadata_path = citations_dir / "references.metadata.json"
+    rows = [
+        {
+            "document_id": f"doc_{index}",
+            "title": f"Verified Source {index}",
+            "status": "verified_url",
+            "bibtex_key": f"source{index}",
+            "doi": None,
+            "url": f"https://example.test/source/{index}",
+            "reason": None,
+        }
+        for index in range(verified)
+    ]
+    rows.extend(
+        {
+            "document_id": f"blocked_{index}",
+            "title": f"Blocked Source {index}",
+            "status": "blocked",
+            "bibtex_key": None,
+            "doi": None,
+            "url": None,
+            "reason": "citation lacks DOI or URL",
+        }
+        for index in range(blocked)
+    )
+    bib_path.write_text(
+        "\n".join(
+            f"@misc{{source{index}, title={{Verified Source {index}}}}}"
+            for index in range(verified)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    metadata = {
+        "bib_path": bib_path.as_posix(),
+        "metadata_path": metadata_path.as_posix(),
+        "blocked_document_ids": [f"blocked_{index}" for index in range(blocked)],
+        "citations": rows,
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    return {
+        "status": "generated",
+        "verified_count": verified,
+        "blocked_count": blocked,
+        **metadata,
+    }
+
+
 def _write_real_benchmark_cycle(
     tmp_path: Path,
     *,
@@ -584,6 +675,7 @@ def _write_real_benchmark_cycle(
     method_delta: float | None = 0.03,
     similarity_classification: str | None = None,
     similarity_classifications: tuple[str, ...] | None = None,
+    blocked_citations: int = 0,
 ) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
@@ -767,6 +859,7 @@ def _write_real_benchmark_cycle(
         ),
         encoding="utf-8",
     )
+    citations = _write_citation_package(cycle_dir, blocked=blocked_citations)
     cycle_summary = {
         "cycle_id": "cycle-real",
         "project_id": "project_1",
@@ -778,6 +871,7 @@ def _write_real_benchmark_cycle(
                 {"source": "openalex", "query": "q1", "paper_count": 10, "error": None},
             ],
         },
+        "citations": citations,
         "similarity": {
             "finding_count": 10,
             "summary_path": similarity_summary.as_posix(),
