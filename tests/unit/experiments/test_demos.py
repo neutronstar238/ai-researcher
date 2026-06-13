@@ -344,8 +344,10 @@ def test_create_pendigits_variance_calibrated_task_defines_method_contract() -> 
     assert task.metadata["real_dataset"] is True
     assert task.metadata["baseline_only"] is False
     assert task.metadata["method_contribution"] == "heteroscedastic prototype distance calibration"
+    assert task.metadata["feature_count"] == 16
     assert "accuracy_delta_vs_baseline" in task.metrics
     assert "zscore_centroid_accuracy" in task.metrics
+    assert "feature_count" in task.metrics
     assert task.expected_outputs == [
         "metrics.json",
         "logs/run.log",
@@ -467,6 +469,7 @@ def test_letter_variance_calibrated_runs_with_cached_uci_format_data(
     assert bundle.metrics["train_rows"] == 16000.0
     assert bundle.metrics["test_rows"] == 4000.0
     assert bundle.metrics["class_count"] == 26.0
+    assert bundle.metrics["feature_count"] == 16.0
     assert bundle.metrics["variance_shrinkage"] == 1.0
 
 
@@ -497,6 +500,7 @@ def test_spambase_variance_calibrated_runs_with_cached_uci_format_data(
     assert bundle.metrics["train_rows"] == 3450.0
     assert bundle.metrics["test_rows"] == 1150.0
     assert bundle.metrics["class_count"] == 2.0
+    assert bundle.metrics["feature_count"] == 57.0
     assert bundle.metrics["variance_shrinkage"] == 0.1
 
 
@@ -527,6 +531,7 @@ def test_skin_variance_calibrated_runs_with_cached_uci_format_data(
     assert bundle.metrics["train_rows"] == 3450.0
     assert bundle.metrics["test_rows"] == 1150.0
     assert bundle.metrics["class_count"] == 2.0
+    assert bundle.metrics["feature_count"] == 3.0
     assert bundle.metrics["variance_shrinkage"] == 1.0
 
 
@@ -554,6 +559,7 @@ def _run_and_validate_uci_variance_demo(experiment_dir: Path, task) -> object:
             "test_rows": (1000.0, None),
             "train_rows": (1000.0, None),
             "dataset_rows": (1000.0, None),
+            "feature_count": (1.0, None),
             "accuracy_standard_error": (0.0, 1.0),
             "variance_shrinkage": (0.0, 1.0),
         },

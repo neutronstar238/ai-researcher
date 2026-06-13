@@ -1057,9 +1057,33 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         validation_path = experiment_dir / "validation" / "validation-report.json"
         evidence_path = experiment_dir / "evidence" / "evidence-map.json"
         run_record_path = experiment_dir / "run" / "run-record.json"
-        for path in (report_path, validation_path, evidence_path, run_record_path):
+        for path in (report_path, validation_path, evidence_path):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("{}", encoding="utf-8")
+        run_record_path.parent.mkdir(parents=True, exist_ok=True)
+        run_record_path.write_text(
+            json.dumps(
+                {
+                    "metrics": {
+                        "values": {
+                            "accuracy": 0.82,
+                            "baseline_accuracy": 0.78,
+                            "accuracy_delta_vs_baseline": 0.04,
+                            "feature_count": 12.0,
+                            "variance_shrinkage": 1.0,
+                        }
+                    },
+                    "task_metadata": {
+                        "proposed_method": "evidence graph verifier",
+                        "dataset": "Example benchmark",
+                        "baseline": "local baseline",
+                        "split_policy": "deterministic split",
+                        "feature_count": 12,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
         return SimpleNamespace(
             demo="tabular_baseline",
             experiment_dir=experiment_dir,
@@ -1085,7 +1109,31 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert Path(kwargs["cycle_summary_path"]).name == "cycle-summary.json"
         output_path = Path(kwargs["output_dir"]) / "manuscript.md"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("# Manuscript\n\n## Abstract\n\nEvidence.\n", encoding="utf-8")
+        output_path.write_text(
+            "\n".join(
+                [
+                    "# Manuscript",
+                    "",
+                    "## Abstract",
+                    "",
+                    "Evidence.",
+                    "",
+                    "## References",
+                    "",
+                    (
+                        "- [researcher2026] Evidence graphs for autonomous research. "
+                        "DOI/URL evidence: 10.1234/example."
+                    ),
+                    (
+                        "- [Citation package note] 2 additional verified record(s) remain in "
+                        "citation metadata but were omitted from formal references because "
+                        "their direct method or benchmark support was weaker."
+                    ),
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
         return SimpleNamespace(
             markdown_path=output_path.as_posix(),
             to_dict=lambda: {
@@ -1157,6 +1205,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "validation-report.json",
             "references.metadata.json",
             "references.bib",
+            "paper-build.json",
         } <= evidence_names
         return {"status": "skipped"}
 
@@ -1225,6 +1274,33 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
     assert Path(payload["review_context_path"]).name == "review-evidence-context.json"
+    review_context = json.loads(
+        Path(payload["review_context_path"]).read_text(encoding="utf-8")
+    )
+    assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
+    assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
+    candidate_summary = review_context["audit_summary"]["candidate"]
+    assert candidate_summary["title"].startswith("Evidence-bound self-evolving research loop")
+    assert "durable evidence memory" in candidate_summary["research_gap"]
+    assert candidate_summary["metadata"]["method"] == "evidence-bound autonomous research loop"
+    assert candidate_summary["task_metadata"]["proposed_method"] == "evidence graph verifier"
+    assert candidate_summary["recorded_metrics"]["feature_count"] == 12.0
+    assert candidate_summary["recorded_metrics"]["variance_shrinkage"] == 1.0
+    assert review_context["audit_summary"]["citations"]["additional_verified_record_count"] == 2
+    formal_references = review_context["audit_summary"]["citations"]["formal_references"]
+    assert formal_references["displayed_count"] == 1
+    assert formal_references["citation_metadata_key_count"] == 1
+    assert formal_references["citation_metadata_keys"] == ["researcher2026"]
+    assert formal_references["citation_metadata_status"] == "all_displayed_keys_present"
+    assert formal_references["omitted_verified_count"] == 2
+    assert formal_references["displayed_references"][0]["key"] == "researcher2026"
+    assert formal_references["displayed_references"][0]["citation_metadata_status"] == (
+        "verified_doi"
+    )
+    assert (
+        "Evidence graphs for autonomous research"
+        in formal_references["displayed_references"][0]["title"]
+    )
     assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"

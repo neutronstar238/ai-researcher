@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-051 - Pendigits variance demo omitted contracted feature-count metric
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 22:34:00 +08:00
+- Source: Full `poetry run pytest tests\smoke tests\unit -q` after task `114.1` evidence-context changes.
+- Symptom: The full smoke/unit gate failed because `test_create_pendigits_variance_calibrated_task_defines_method_contract` expected task metadata `feature_count=16`, and `test_pendigits_variance_calibrated_runs_with_method_effect_evidence` failed validation because `feature_count` was listed as an expected metric but was missing from the generated Pendigits `metrics.json`.
+- Impact: Publication review context could omit the executed feature dimensionality for Pendigits-style runs, weakening method evidence and breaking broad test gates.
+- Evidence: Pytest reported `KeyError: 'feature_count'` for task metadata and `missing metric feature_count` for the Pendigits variance-calibrated validation report.
+- Root cause: New reviewer evidence requirements added `feature_count` to the task contract before the older Pendigits variance-calibrated run script emitted the same metric.
+- Workaround: None needed after the fix.
+- Next action: Keep demo task metadata, expected metrics, generated metrics, and manuscript evidence summaries in sync whenever reviewer-context fields are added.
+- Linked tasks: `114.1`
+- Resolution: Added `feature_count` to Pendigits variance-calibrated task metadata, metrics metadata, and generated metric values; retained the same field across the newer generic UCI variance demos.
+- Verification: `poetry run pytest tests\unit\experiments\test_demos.py::test_create_pendigits_variance_calibrated_task_defines_method_contract tests\unit\experiments\test_demos.py::test_pendigits_variance_calibrated_runs_with_method_effect_evidence -q` passed. Full `poetry run pytest tests\smoke tests\unit -q` passed with 446 tests and 4 live smoke tests skipped.
+
+### P-20260613-050 - Strict live review needed compact manuscript support evidence
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 21:48:00 +08:00
+- Source: Task `114.1` real ACM autopilot cycles after task `113.1` made citation relevance mandatory.
+- Symptom: A live review could return `status=passed` and a high quality score while the reviewer verdict remained `needs_revision`; later live runs also blocked because review excerpts did not expose candidate metadata, feature count, method parameters, citation metadata provenance, or because manuscript prose implied exact similarity query templates and counts beyond the displayed evidence.
+- Impact: CCF-B/Q3 release gates could accept weak reviewer verdicts or make the LLM reviewer reject a manuscript whose support artifacts existed but were not visible in the compact review context.
+- Evidence: The old real cycle `runs/manual-live/task113-relevance-cycle-livecheck2/cycle-20260613T141526Z/cycle-summary.json` had `publication_audit=pass` but `evidence_gate=blocked` while the LLM review verdict was `needs_revision`. Subsequent task `114.1` live cycles blocked until the context exposed candidate/run/citation evidence and manuscript wording was tightened. The final real cycle at `runs/manual-live/task114-citation-context-cycle/cycle-20260613T144509Z/cycle-summary.json` passed review, publication audit, and evidence gate.
+- Root cause: Publication audit trusted the structured review status more than the reviewer verdict for strict targets, and the compact review context underrepresented the manuscript's actual support artifacts.
+- Workaround: None needed after the fix; strict targets now require reviewer `verdict=pass` and the review context includes compact support summaries.
+- Next action: Regenerate all matrix cycles under the newest strict evidence-window gate before claiming broad template-stability evidence beyond the current ACM cycle plus historical passing cycles.
+- Linked tasks: `111.1`, `112.1`, `113.1`, `114.1`
+- Resolution: Added strict `review_verdict_strength` blocking for CCF-B/Q3 targets, moved review context creation after final paper artifacts, added candidate/run/formal-reference/citation metadata summaries, and tightened manuscript method/results/related-work prose to keep claims evidence-bound.
+- Verification: Old-cycle audit now reports `publication_audit=needs_revision` when reviewer verdict is not `pass`. Final real ACM autopilot at `runs/manual-live/task114-citation-context-cycle/cycle-20260613T144509Z/cycle-summary.json` passed with `review_status=passed`, reviewer `verdict=pass`, unsupported claims `[]`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks. `poetry run airesearcher publication-stability ... --target ccf-b-matrix ...` wrote `runs/manual-live/task114-citation-context-stability/publication-stability.json` with `stable=true` and score `1.000`.
+
 ### P-20260613-049 - Verified citations did not prove topical relevance
 
 - Status: Resolved

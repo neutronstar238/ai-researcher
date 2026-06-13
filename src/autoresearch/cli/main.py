@@ -1089,7 +1089,7 @@ def llm_review(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="Maximum output tokens for the review request."),
-    ] = 4096,
+    ] = 8192,
     vault: Annotated[
         Path,
         typer.Option("--vault", help="Obsidian vault root for optional project review memory."),
@@ -1537,7 +1537,7 @@ def autopilot(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 4096,
+    ] = 8192,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -1680,7 +1680,7 @@ def serve(
     max_tokens: Annotated[
         int,
         typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 4096,
+    ] = 8192,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -2463,8 +2463,23 @@ def _run_autopilot_cycle(
     summary["paper_manuscript"] = paper_manuscript.to_dict()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
+    paper_build = build_latex_paper_from_markdown(
+        markdown_path=Path(paper_manuscript.markdown_path),
+        output_dir=cycle_dir / "paper-build",
+        template_id=paper_template_id,
+        vault_root=vault,
+        project_id=project_id,
+    )
+    summary["paper_build"] = paper_build.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
     review_context_path = cycle_dir / "review-evidence-context.json"
     review_context = {
+        "audit_summary": _autopilot_review_audit_summary(
+            summary=summary,
+            reproduction_check=reproduction_check,
+            paper_build=paper_build.to_dict(),
+        ),
         "cycle_id": cycle_id,
         "project_id": project_id,
         "candidate": summary["candidate"],
@@ -2496,6 +2511,8 @@ def _run_autopilot_cycle(
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
         reproduction_check.get("json_path"),
+        paper_build.to_dict().get("json_path"),
+        paper_build.to_dict().get("markdown_path"),
     ):
         if isinstance(optional_path, str | Path):
             review_evidence_paths.append(optional_path)
@@ -2523,16 +2540,6 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["publication_audit"] = publication_audit.to_dict()
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-
-    paper_build = build_latex_paper_from_markdown(
-        markdown_path=Path(paper_manuscript.markdown_path),
-        output_dir=cycle_dir / "paper-build",
-        template_id=paper_template_id,
-        vault_root=vault,
-        project_id=project_id,
-    )
-    summary["paper_build"] = paper_build.to_dict()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     evidence_gate = run_evidence_gate(
@@ -2572,6 +2579,267 @@ def _generate_cycle_citations(*, literature_report: object, cycle_dir: Path) -> 
         "blocked_count": len(artifact.blocked_document_ids),
         **payload,
     }
+
+
+def _autopilot_review_audit_summary(
+    *,
+    summary: dict[str, Any],
+    reproduction_check: dict[str, Any],
+    paper_build: dict[str, Any],
+) -> dict[str, Any]:
+    def mapping(value: object) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    literature = mapping(summary.get("literature"))
+    similarity = mapping(summary.get("similarity"))
+    citations = mapping(summary.get("citations"))
+    paper_manuscript = mapping(summary.get("paper_manuscript"))
+    paper_quality = mapping(paper_build.get("paper_quality"))
+    formal_references = _autopilot_formal_reference_summary(
+        paper_manuscript.get("markdown_path"),
+        citation_metadata_path=citations.get("metadata_path"),
+    )
+    return {
+        "candidate": _autopilot_candidate_review_summary(summary),
+        "literature": {
+            "query_count": literature.get("query_count"),
+            "document_count": literature.get("document_count"),
+            "summary_path": literature.get("summary_path"),
+        },
+        "similarity": {
+            "finding_count": similarity.get("finding_count"),
+            "summary_path": similarity.get("summary_path"),
+            "project_path": similarity.get("project_path"),
+        },
+        "citations": {
+            "additional_verified_record_count": formal_references.get("omitted_verified_count"),
+            "verified_count": citations.get("verified_count"),
+            "blocked_count": citations.get("blocked_count"),
+            "metadata_path": citations.get("metadata_path"),
+            "bib_path": citations.get("bib_path"),
+            "formal_references": formal_references,
+        },
+        "reproduction_check": {
+            "status": reproduction_check.get("status"),
+            "exit_code": reproduction_check.get("exit_code"),
+            "json_path": reproduction_check.get("json_path"),
+            "run_record_paths": reproduction_check.get("run_record_paths", []),
+            "validation_json_paths": reproduction_check.get("validation_json_paths", []),
+        },
+        "paper_build": {
+            "status": paper_build.get("status"),
+            "json_path": paper_build.get("json_path"),
+            "pdf_path": paper_build.get("pdf_path"),
+            "paper_quality": {
+                "passed": paper_quality.get("passed"),
+                "page_count": paper_quality.get("page_count"),
+                "word_count": paper_quality.get("word_count"),
+                "overfull_hbox_count": paper_quality.get("overfull_hbox_count"),
+                "failures": paper_quality.get("failures", []),
+            },
+        },
+    }
+
+
+def _autopilot_candidate_review_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    """Keep manuscript candidate claims near the start of review evidence."""
+
+    def mapping(value: object) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    candidate = mapping(summary.get("candidate"))
+    metadata = mapping(candidate.get("metadata"))
+    run_record = _autopilot_read_run_record(summary)
+    task_metadata = mapping(run_record.get("task_metadata"))
+    metrics = mapping(mapping(run_record.get("metrics")).get("values"))
+    metric_keys = (
+        "accuracy",
+        "baseline_accuracy",
+        "accuracy_delta_vs_baseline",
+        "zscore_centroid_accuracy",
+        "accuracy_delta_vs_zscore",
+        "macro_f1",
+        "test_rows",
+        "train_rows",
+        "dataset_rows",
+        "class_count",
+        "feature_count",
+        "accuracy_standard_error",
+        "variance_shrinkage",
+    )
+    metadata_keys = (
+        "method",
+        "benchmark",
+        "dataset",
+        "baseline",
+        "limitation",
+        "demo",
+    )
+    task_metadata_keys = (
+        "proposed_method",
+        "method_contribution",
+        "dataset",
+        "baseline",
+        "split_policy",
+        "feature_count",
+        "real_dataset",
+    )
+    return {
+        "title": candidate.get("title"),
+        "description": candidate.get("description"),
+        "research_gap": candidate.get("research_gap"),
+        "metadata": _autopilot_selected_mapping(metadata, metadata_keys),
+        "task_metadata": _autopilot_selected_mapping(task_metadata, task_metadata_keys),
+        "recorded_metrics": _autopilot_selected_mapping(metrics, metric_keys),
+        "run_record_path": mapping(summary.get("demo")).get("run_record_path"),
+    }
+
+
+def _autopilot_selected_mapping(
+    payload: dict[str, Any],
+    keys: tuple[str, ...],
+) -> dict[str, Any]:
+    return {key: payload[key] for key in keys if key in payload}
+
+
+def _autopilot_read_run_record(summary: dict[str, Any]) -> dict[str, Any]:
+    def mapping(value: object) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    run_record_path = mapping(summary.get("demo")).get("run_record_path")
+    path = _autopilot_existing_path(run_record_path, summary)
+    if path is None:
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _autopilot_existing_path(path_value: object, summary: dict[str, Any]) -> Path | None:
+    if not isinstance(path_value, str | Path):
+        return None
+    path = Path(path_value)
+    candidates = [path]
+    summary_path = summary.get("summary_path")
+    if isinstance(summary_path, str | Path):
+        summary_parent = Path(summary_path).parent
+        if not path.is_absolute():
+            candidates.append(summary_parent / path)
+    if not path.is_absolute():
+        candidates.append(Path.cwd() / path)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _autopilot_formal_reference_summary(
+    manuscript_path: object,
+    *,
+    citation_metadata_path: object = None,
+) -> dict[str, Any]:
+    """Return the exact verified references rendered in the final manuscript."""
+
+    citation_metadata = _autopilot_citation_metadata_by_key(citation_metadata_path)
+    path = Path(manuscript_path) if isinstance(manuscript_path, str | Path) else None
+    if path is None or not path.exists():
+        return {
+            "status": "missing",
+            "displayed_count": 0,
+            "displayed_references": [],
+            "citation_metadata_key_count": 0,
+            "citation_metadata_keys": [],
+            "omitted_verified_count": None,
+        }
+
+    displayed: list[dict[str, Any]] = []
+    omitted_verified_count: int | None = None
+    in_references = False
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if line == "## References":
+            in_references = True
+            continue
+        if in_references and line.startswith("## "):
+            break
+        if not in_references:
+            continue
+        if line.startswith("- [Citation package note]"):
+            omitted_verified_count = _first_integer(line)
+            continue
+        if not line.startswith("- [") or "] " not in line:
+            continue
+        marker = ". DOI/URL evidence: "
+        if marker not in line:
+            continue
+        key, tail = line[3:].split("] ", 1)
+        clean_key = key.strip()
+        title, locator = tail.split(marker, 1)
+        metadata_row = citation_metadata.get(clean_key, {})
+        displayed.append(
+            {
+                "key": clean_key,
+                "title": title.strip(),
+                "doi_or_url_evidence": locator.rstrip(".").strip(),
+                "manuscript_line": line,
+                "citation_metadata_status": metadata_row.get("status"),
+                "citation_metadata_document_id": metadata_row.get("document_id"),
+                "citation_metadata_locator": (
+                    metadata_row.get("doi")
+                    or metadata_row.get("url")
+                    or metadata_row.get("source_uri")
+                ),
+            }
+        )
+    citation_metadata_keys = [
+        row["key"] for row in displayed if row["key"] in citation_metadata
+    ]
+    return {
+        "status": "present",
+        "displayed_count": len(displayed),
+        "citation_metadata_key_count": len(citation_metadata_keys),
+        "citation_metadata_keys": citation_metadata_keys,
+        "citation_metadata_status": (
+            "all_displayed_keys_present"
+            if len(citation_metadata_keys) == len(displayed)
+            else "some_displayed_keys_missing"
+        ),
+        "displayed_references": displayed,
+        "omitted_verified_count": omitted_verified_count,
+    }
+
+
+def _autopilot_citation_metadata_by_key(path_value: object) -> dict[str, dict[str, Any]]:
+    path = Path(path_value) if isinstance(path_value, str | Path) else None
+    if path is None or not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    citations = payload.get("citations") if isinstance(payload, dict) else None
+    if not isinstance(citations, list):
+        return {}
+    rows: dict[str, dict[str, Any]] = {}
+    for citation in citations:
+        if not isinstance(citation, dict):
+            continue
+        key = citation.get("bibtex_key")
+        if isinstance(key, str) and key:
+            rows[key] = citation
+    return rows
+
+
+def _first_integer(text: str) -> int | None:
+    digits = ""
+    for char in text:
+        if char.isdigit():
+            digits += char
+        elif digits:
+            return int(digits)
+    return int(digits) if digits else None
 
 
 def _autopilot_inspiration_queries(candidate: ResearchCandidate, *, demo: str) -> tuple[str, ...]:

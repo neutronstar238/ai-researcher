@@ -22,6 +22,135 @@ REQUIRED_MANUSCRIPT_SECTIONS = (
     "References",
 )
 
+REFERENCE_DIRECT_METHOD_TOKENS = frozenset(
+    {
+        "calibrated",
+        "calibration",
+        "centroid",
+        "diagonal",
+        "gaussian",
+        "heteroscedastic",
+        "mahalanobi",
+        "mahalanobis",
+        "nearest",
+        "prototype",
+        "shrinkage",
+        "variance",
+        "zscore",
+    }
+)
+
+REFERENCE_SUPPORT_TOKENS = frozenset(
+    {
+        "classifier",
+        "classification",
+        "distance",
+        "metric",
+        "recognition",
+    }
+)
+
+REFERENCE_GENERIC_TOKENS = frozenset(
+    {
+        "also",
+        "already",
+        "and",
+        "any",
+        "are",
+        "artifact",
+        "artifacts",
+        "as",
+        "at",
+        "aware",
+        "benchmark",
+        "between",
+        "broad",
+        "but",
+        "by",
+        "can",
+        "character",
+        "checking",
+        "claim",
+        "class",
+        "classes",
+        "classification",
+        "classifier",
+        "computed",
+        "contribution",
+        "cover",
+        "count",
+        "cycle",
+        "data",
+        "dataset",
+        "demo",
+        "document",
+        "documents",
+        "each",
+        "evaluate",
+        "evidence",
+        "family",
+        "feature",
+        "file",
+        "for",
+        "from",
+        "give",
+        "include",
+        "included",
+        "includes",
+        "improve",
+        "image",
+        "learning",
+        "may",
+        "mechanism",
+        "method",
+        "model",
+        "more",
+        "out",
+        "over",
+        "paper",
+        "per",
+        "positioning",
+        "prior",
+        "publication",
+        "public",
+        "real",
+        "recognition",
+        "record",
+        "related",
+        "relevance",
+        "remaining",
+        "require",
+        "report",
+        "research",
+        "result",
+        "results",
+        "retrieved",
+        "run",
+        "same",
+        "scene",
+        "score",
+        "second",
+        "semantic",
+        "single",
+        "split",
+        "source",
+        "sources",
+        "still",
+        "study",
+        "system",
+        "tabular",
+        "that",
+        "the",
+        "this",
+        "using",
+        "whether",
+        "was",
+        "with",
+        "without",
+        "work",
+    }
+)
+
 
 @dataclass(frozen=True)
 class PublicationManuscriptArtifact:
@@ -61,7 +190,7 @@ class _ManuscriptEvidence:
     evidence_map: dict[str, Any]
     literature_docs: tuple[dict[str, str], ...]
     similarity_findings: tuple[dict[str, str], ...]
-    citations: tuple[dict[str, str], ...]
+    citations: tuple[dict[str, Any], ...]
     evidence_refs: tuple[str, ...]
 
 
@@ -312,14 +441,15 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
         *doc_lines,
         (
             "The similarity search is narrower and more adversarial. It queried the "
-            "candidate title, the method-plus-dataset phrase, the baseline-plus-dataset "
-            "phrase, and the limitation-risk phrase. Exact classification counts, "
-            "source responses, and cache details are stored in the "
-            "similarity note and compact review context rather than promoted into this "
-            "paper prose. The distribution is a warning signal rather than a novelty "
-            "claim. When findings remain unknown, the safe interpretation is that the "
-            "system needs deeper abstract inspection and more adjacent-work classification "
-            "before any submission-quality originality statement can be written."
+            "candidate's method, dataset, baseline, and limitation context without this "
+            "manuscript restating the exact query templates as paper evidence. Exact "
+            "query strings, source responses, classification counts, and cache details "
+            "are stored in the similarity note and compact review context rather than "
+            "promoted into this paper prose. The distribution is a warning signal rather "
+            "than a novelty claim. When findings remain unknown, the safe interpretation "
+            "is that the system needs deeper abstract inspection and more adjacent-work "
+            "classification before any submission-quality originality statement can be "
+            "written."
         ),
         *finding_lines,
         (
@@ -346,23 +476,26 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
         ),
         (
             "The current manuscript therefore treats source classification as a research "
-            "object. It records how many findings were classified, how many remain "
-            "unknown, which databases responded, and which query families produced "
-            "evidence. This is a stronger artifact than a generic survey paragraph "
-            "because it tells the next autonomous loop exactly where the literature "
-            "model is weak. If a later reviewer asks why a baseline is missing, the "
-            "answer should be recoverable from the similarity findings and follow-up "
-            "tasks rather than from an author's memory."
+            "object. The runtime similarity artifacts, not this prose paragraph, retain "
+            "the finding list, classification statuses, responding databases, and query "
+            "provenance. This is stronger than a generic survey paragraph because it "
+            "tells the next autonomous loop where the literature model is weak. If a "
+            "later reviewer asks why a baseline is missing, the answer should be "
+            "recoverable from the similarity findings and follow-up tasks rather than "
+            "from an author's memory."
         ),
     ]
 
 
 def _method(evidence: _ManuscriptEvidence) -> list[str]:
     metadata = _task_metadata(evidence)
+    metrics = _metrics(evidence)
     method = _method_name(evidence)
     baseline = _baseline_name(evidence)
     dataset = _dataset(evidence)
     split_policy = _clean_text(_text(metadata.get("split_policy"))) or "the recorded data split"
+    feature_count = _metric(metrics, "feature_count")
+    variance_shrinkage = _metric(metrics, "variance_shrinkage")
     return [
         (
             f"The executed method is described in the run metadata as {method}. In this "
@@ -382,7 +515,9 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             f"method does not sample hidden private data and does not rely on an "
             f"unverifiable benchmark. The run record stores the data hash, configuration "
             f"hash, commit identifier, metrics path, artifact directory, and command used "
-            f"for reproduction. These provenance fields are more important than prose "
+            f"for reproduction. The recorded metrics expose {_fmt(feature_count)} input "
+            f"features and a variance_shrinkage parameter of {_fmt(variance_shrinkage)} "
+            f"for this cycle. These provenance fields are more important than prose "
             f"style because they let a later validator decide whether the same data and "
             f"code path produced the reported numbers."
         ),
@@ -600,6 +735,7 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
     train_rows = _metric(metrics, "train_rows")
     dataset_rows = _metric(metrics, "dataset_rows")
     class_count = _metric(metrics, "class_count")
+    feature_count = _metric(metrics, "feature_count")
     standard_error = _metric(metrics, "accuracy_standard_error")
     return [
         (
@@ -609,7 +745,8 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
             f"{_fmt(delta)}. The z-score centroid comparison is {_fmt(zscore)}, with "
             f"a candidate-minus-z-score delta of {_fmt(zscore_delta)}. The full dataset "
             f"metadata records {_fmt(train_rows)} train rows, {_fmt(test_rows)} test rows, "
-            f"{_fmt(dataset_rows)} total rows, and {_fmt(class_count)} classes."
+            f"{_fmt(dataset_rows)} total rows, {_fmt(class_count)} classes, and "
+            f"{_fmt(feature_count)} input features."
         ),
         (
             f"The accuracy standard error is {_fmt(standard_error)}. The validation report "
@@ -712,10 +849,10 @@ def _limitations(_evidence: _ManuscriptEvidence) -> list[str]:
             "being filled by plausible-sounding text."
         ),
         (
-            "The current LLM review, when present, is bound to the experiment report and "
-            "evidence artifacts. A later release-quality process should also review this "
-            "expanded manuscript and verify that every new sentence is supported by the "
-            "same artifacts or by newly attached sources."
+            "The current LLM review, when present, is bound to the final manuscript and "
+            "evidence artifacts. A later release-quality process should continue to "
+            "verify that every new sentence is supported by the same artifacts or by "
+            "newly attached sources."
         ),
         (
             "Venue coverage is also incomplete until both conference-style and "
@@ -797,23 +934,200 @@ def _references(evidence: _ManuscriptEvidence) -> list[str]:
         "- [Publication audit] Deterministic publication-readiness gate when present in the cycle.",
         "- [Paper build] LaTeX and PDF build quality gate when present in the cycle.",
     ]
+    context = _reference_context(evidence)
+    ranked_verified = sorted(
+        [
+            citation
+            for citation in evidence.citations
+            if citation.get("status") in {"verified_doi", "verified_url"}
+        ],
+        key=lambda citation: _reference_sort_key(citation, context),
+        reverse=True,
+    )
     verified = [
         citation
-        for citation in evidence.citations
-        if citation.get("status") in {"verified_doi", "verified_url"}
-    ]
+        for citation in ranked_verified
+        if _reference_row_is_direct(citation, context)
+    ] or ranked_verified
     if not verified:
         lines.append(
             "- [Verified literature references] Pending: no DOI/URL-verified citation package was attached to this cycle."
         )
         return lines
-    lines.append("- [Verified literature references] The following entries came from citation metadata:")
+    lines.append("- [Verified literature references] The following entries are selected verified references recorded by the cycle:")
     for citation in verified[:12]:
         key = citation.get("bibtex_key") or citation.get("document_id") or "unknown-key"
         title = citation.get("title") or "untitled source"
         locator = citation.get("doi") or citation.get("url") or "verified metadata"
         lines.append(f"- [{key}] {title}. DOI/URL evidence: {locator}.")
+    omitted = len(ranked_verified) - min(len(verified), 12)
+    if omitted > 0 and len(verified) < len(ranked_verified):
+        lines.append(
+            f"- [Citation package note] {omitted} additional verified record(s) remain in citation metadata but were omitted from formal references because their direct method or benchmark support was weaker."
+        )
     return lines
+
+
+def _reference_context(
+    evidence: _ManuscriptEvidence,
+) -> tuple[set[str], set[str], set[str]]:
+    candidate_metadata = _dict(evidence.candidate.get("metadata"))
+    task_metadata = _task_metadata(evidence)
+    run = _dict(evidence.run_record.get("run"))
+    primary_fields = (
+        "method",
+        "proposed_method",
+        "method_contribution",
+        "mechanism",
+        "dataset",
+        "benchmark",
+        "baseline",
+        "ablation",
+        "demo",
+        "task_id",
+    )
+    secondary_fields = (
+        "title",
+        "description",
+        "research_gap",
+        "limitation",
+        "novel_contribution",
+        "contribution",
+        "seed_document_title",
+    )
+    texts = []
+    texts.extend(
+        _reference_context_values(
+            evidence.candidate,
+            fields=secondary_fields,
+        )
+    )
+    for payload in (candidate_metadata, task_metadata):
+        texts.extend(_reference_context_values(payload, fields=primary_fields))
+        texts.extend(_reference_context_values(payload, fields=secondary_fields))
+    texts.extend(_reference_context_values(run, fields=("task_id",)))
+    all_tokens = set(_semantic_tokens(" ".join(texts)))
+    method_tokens = all_tokens & (REFERENCE_DIRECT_METHOD_TOKENS | REFERENCE_SUPPORT_TOKENS)
+    domain_tokens = all_tokens - method_tokens - REFERENCE_GENERIC_TOKENS
+    return method_tokens, domain_tokens, all_tokens
+
+
+def _reference_context_values(
+    payload: dict[str, Any],
+    *,
+    fields: tuple[str, ...] | None = None,
+) -> list[str]:
+    values: list[str] = []
+    source_values = (
+        (payload.get(field) for field in fields)
+        if fields is not None
+        else payload.values()
+    )
+    for value in source_values:
+        if isinstance(value, dict):
+            values.extend(_text(item) for item in value.values())
+            continue
+        if isinstance(value, list | tuple | set):
+            values.extend(_text(item) for item in value)
+            continue
+        text = _text(value).strip()
+        if text:
+            values.append(text)
+    return values
+
+
+def _reference_sort_key(
+    citation: dict[str, Any],
+    context: tuple[set[str], set[str], set[str]],
+) -> tuple[int, int, str]:
+    method_tokens, domain_tokens, all_tokens = context
+    citation_tokens = set(_semantic_tokens(_citation_reference_text(citation)))
+    strong = citation_tokens & method_tokens & REFERENCE_DIRECT_METHOD_TOKENS
+    support = citation_tokens & REFERENCE_SUPPORT_TOKENS
+    domain = citation_tokens & domain_tokens
+    context_overlap = citation_tokens & all_tokens
+    direct_score = 0
+    if len(strong) >= 2:
+        direct_score += 200
+    if strong and domain:
+        direct_score += 150
+    if strong and support:
+        direct_score += 100
+    if {"nearest", "centroid"} <= citation_tokens:
+        direct_score += 120
+    if {"prototype", "classifier"} <= citation_tokens:
+        direct_score += 120
+    score = (
+        direct_score
+        + 20 * len(strong)
+        + 6 * len(domain)
+        + 3 * len(context_overlap)
+        + (2 if citation.get("doi") else 1)
+    )
+    return (score, len(citation_tokens), _clean_text(_text(citation.get("title"))))
+
+
+def _reference_row_is_direct(
+    citation: dict[str, Any],
+    context: tuple[set[str], set[str], set[str]],
+) -> bool:
+    method_tokens, domain_tokens, _all_tokens = context
+    citation_tokens = set(_semantic_tokens(_citation_reference_text(citation)))
+    if not citation_tokens:
+        return False
+    strong = citation_tokens & method_tokens & REFERENCE_DIRECT_METHOD_TOKENS
+    domain = citation_tokens & domain_tokens
+    if len(strong) >= 2:
+        return True
+    if strong and domain:
+        return True
+    title_tag_tokens = set(_semantic_tokens(_citation_reference_title_tag_text(citation)))
+    if {"nearest", "centroid"} <= title_tag_tokens:
+        return True
+    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
+        return True
+    return False
+
+
+def _citation_reference_text(citation: dict[str, Any]) -> str:
+    parts = [
+        _text(citation.get("title")),
+        _text(citation.get("abstract")),
+        _text(citation.get("venue")),
+        _text(citation.get("source_uri")),
+        " ".join(_text(author) for author in _list(citation.get("authors"))),
+        " ".join(_text(tag) for tag in _list(citation.get("tags"))),
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def _citation_reference_title_tag_text(citation: dict[str, Any]) -> str:
+    parts = [
+        _text(citation.get("title")),
+        " ".join(_text(tag) for tag in _list(citation.get("tags"))),
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def _semantic_tokens(text: str) -> tuple[str, ...]:
+    tokens: list[str] = []
+    for raw_token in re.findall(r"[a-z0-9]+", text.casefold().replace("_", " ")):
+        if len(raw_token) < 3:
+            continue
+        token = _normalise_reference_token(raw_token)
+        if token:
+            tokens.append(token)
+    return tuple(tokens)
+
+
+def _normalise_reference_token(token: str) -> str:
+    if token.endswith("ies") and len(token) > 5:
+        return f"{token[:-3]}y"
+    if token.endswith("ss"):
+        return token
+    if token.endswith("s") and len(token) > 4:
+        return token[:-1]
+    return token
 
 
 def _write_vault_manuscript(
@@ -882,11 +1196,11 @@ def _parse_citations(
     path: Path | None,
     *,
     fallback: dict[str, Any],
-) -> tuple[dict[str, str], ...]:
+) -> tuple[dict[str, Any], ...]:
     payload = _read_json_if_exists(path) if path is not None else {}
     if not payload:
         payload = fallback
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Any]] = []
     for row in _dict_list(payload.get("citations")):
         rows.append(
             {
@@ -896,6 +1210,11 @@ def _parse_citations(
                 "bibtex_key": _clean_text(_text(row.get("bibtex_key"))),
                 "doi": _clean_text(_text(row.get("doi"))),
                 "url": _clean_text(_text(row.get("url"))),
+                "abstract": _clean_text(_text(row.get("abstract"))),
+                "venue": _clean_text(_text(row.get("venue"))),
+                "source_uri": _clean_text(_text(row.get("source_uri"))),
+                "authors": [_clean_text(_text(author)) for author in _list(row.get("authors"))],
+                "tags": [_clean_text(_text(tag)) for tag in _list(row.get("tags"))],
             }
         )
     return tuple(rows)

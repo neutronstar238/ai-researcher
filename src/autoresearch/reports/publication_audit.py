@@ -58,6 +58,7 @@ class PublicationQualityTarget:
     min_method_effect_standard_errors: float
     min_verified_citations: int
     min_relevant_verified_citations: int
+    min_direct_verified_citations: int
     max_blocked_citations: int
 
 
@@ -123,6 +124,7 @@ class PublicationAuditReport:
                 "min_method_effect_standard_errors": self.target.min_method_effect_standard_errors,
                 "min_verified_citations": self.target.min_verified_citations,
                 "min_relevant_verified_citations": self.target.min_relevant_verified_citations,
+                "min_direct_verified_citations": self.target.min_direct_verified_citations,
                 "max_blocked_citations": self.target.max_blocked_citations,
             },
             "verdict": self.verdict.value,
@@ -158,6 +160,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_method_effect_standard_errors=2.0,
         min_verified_citations=8,
         min_relevant_verified_citations=6,
+        min_direct_verified_citations=4,
         max_blocked_citations=0,
     ),
     "q3-journal": PublicationQualityTarget(
@@ -179,6 +182,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_method_effect_standard_errors=2.0,
         min_verified_citations=10,
         min_relevant_verified_citations=8,
+        min_direct_verified_citations=5,
         max_blocked_citations=0,
     ),
     "mvp-demo": PublicationQualityTarget(
@@ -200,6 +204,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_method_effect_standard_errors=0.0,
         min_verified_citations=0,
         min_relevant_verified_citations=0,
+        min_direct_verified_citations=0,
         max_blocked_citations=999,
     ),
 }
@@ -227,8 +232,16 @@ CITATION_RELEVANCE_STOPWORDS = frozenset(
         "based",
         "benchmark",
         "benchmarks",
+        "character",
+        "characters",
         "citation",
         "citations",
+        "class",
+        "classes",
+        "classification",
+        "classifications",
+        "classifier",
+        "classifiers",
         "claim",
         "claims",
         "cycle",
@@ -260,6 +273,7 @@ CITATION_RELEVANCE_STOPWORDS = frozenset(
         "over",
         "paper",
         "public",
+        "recognition",
         "research",
         "result",
         "results",
@@ -273,6 +287,34 @@ CITATION_RELEVANCE_STOPWORDS = frozenset(
         "the",
         "using",
         "with",
+    }
+)
+
+CITATION_DIRECT_METHOD_TOKENS = frozenset(
+    {
+        "calibrated",
+        "calibration",
+        "centroid",
+        "diagonal",
+        "gaussian",
+        "heteroscedastic",
+        "mahalanobi",
+        "mahalanobis",
+        "nearest",
+        "prototype",
+        "shrinkage",
+        "variance",
+        "zscore",
+    }
+)
+
+CITATION_DIRECT_SUPPORT_TOKENS = frozenset(
+    {
+        "classifier",
+        "classification",
+        "distance",
+        "metric",
+        "recognition",
     }
 )
 
@@ -475,6 +517,7 @@ def _citation_checks(
         verified,
         metadata_path=metadata_path,
     )
+    direct = _direct_verified_citations(summary, base_dir, verified, metadata_path=metadata_path)
     artifact_ok = bool(
         rows
         and metadata_path is not None
@@ -548,6 +591,23 @@ def _citation_checks(
             ),
             relevance_evidence,
         ),
+        _threshold_check(
+            "citation_directness_breadth",
+            len(direct),
+            target.min_direct_verified_citations,
+            "blocking",
+            (
+                f"Directly relevant verified citations: {len(direct)}; target requires at least "
+                f"{target.min_direct_verified_citations}. Direct citations need strong method anchors "
+                "such as prototype, centroid, variance calibration, nearest-centroid, Mahalanobis, "
+                "or adjacent metric/classifier evidence, not only generic recognition wording."
+            ),
+            (
+                "Rerun related-work search with direct method-family, benchmark, and baseline "
+                "queries; then screen references before treating them as formal related work."
+            ),
+            relevance_evidence,
+        ),
     ]
     blocked_ok = blocked_count <= target.max_blocked_citations
     checks.append(
@@ -592,6 +652,31 @@ def _relevant_verified_citations(
     return relevant, evidence_refs, anchor_terms
 
 
+def _direct_verified_citations(
+    summary: dict[str, Any],
+    base_dir: Path,
+    rows: list[dict[str, Any]],
+    *,
+    metadata_path: Path | None,
+) -> list[dict[str, Any]]:
+    primary_texts, secondary_texts, _ = _citation_relevance_context(
+        summary,
+        base_dir,
+        metadata_path=metadata_path,
+    )
+    primary_tokens = _citation_anchor_tokens(primary_texts)
+    all_context_tokens = _citation_anchor_tokens((*primary_texts, *secondary_texts))
+    method_tokens = primary_tokens & (
+        CITATION_DIRECT_METHOD_TOKENS | CITATION_DIRECT_SUPPORT_TOKENS
+    )
+    domain_tokens = primary_tokens - method_tokens - CITATION_RELEVANCE_STOPWORDS
+    return [
+        row
+        for row in rows
+        if _citation_row_is_direct(row, method_tokens, domain_tokens, all_context_tokens)
+    ]
+
+
 def _citation_relevance_context(
     summary: dict[str, Any],
     base_dir: Path,
@@ -617,7 +702,6 @@ def _citation_relevance_context(
         "ablation",
         "demo",
         "task_id",
-        "project_id",
     )
     secondary_fields = (
         "title",
@@ -630,7 +714,7 @@ def _citation_relevance_context(
     )
     primary_texts = _context_values(candidate_metadata, primary_fields)
     primary_texts += _context_values(task_metadata, primary_fields)
-    primary_texts += _context_values(run, ("task_id", "project_id"))
+    primary_texts += _context_values(run, ("task_id",))
     primary_texts += _context_values(demo, ("demo",))
 
     secondary_texts = _context_values(candidate, secondary_fields)
@@ -722,6 +806,33 @@ def _citation_row_is_relevant(
     return any(phrase in normalized_text for phrase in phrases)
 
 
+def _citation_row_is_direct(
+    row: dict[str, Any],
+    method_tokens: set[str],
+    domain_tokens: set[str],
+    _all_context_tokens: set[str],
+) -> bool:
+    citation_tokens = set(_semantic_tokens(_citation_row_text(row)))
+    if not citation_tokens:
+        return False
+    strong_method_overlap = (
+        citation_tokens
+        & method_tokens
+        & CITATION_DIRECT_METHOD_TOKENS
+    )
+    domain_overlap = citation_tokens & domain_tokens
+    if len(strong_method_overlap) >= 2:
+        return True
+    if strong_method_overlap and domain_overlap:
+        return True
+    title_tag_tokens = set(_semantic_tokens(_citation_row_title_tag_text(row)))
+    if {"nearest", "centroid"} <= title_tag_tokens:
+        return True
+    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
+        return True
+    return False
+
+
 def _citation_row_text(row: dict[str, Any]) -> str:
     parts = [
         _text(row.get("title")),
@@ -729,6 +840,14 @@ def _citation_row_text(row: dict[str, Any]) -> str:
         _text(row.get("venue")),
         _text(row.get("source_uri")),
         " ".join(_text(author) for author in _list(row.get("authors"))),
+        " ".join(_text(tag) for tag in _list(row.get("tags"))),
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def _citation_row_title_tag_text(row: dict[str, Any]) -> str:
+    parts = [
+        _text(row.get("title")),
         " ".join(_text(tag) for tag in _list(row.get("tags"))),
     ]
     return "\n".join(part for part in parts if part)
@@ -1096,6 +1215,7 @@ def _review_checks(
             None if passed else "Run evidence-constrained LLM review and fix unsupported claims before publication audit.",
         )
     ]
+    strict_review_verdict = target.name in {"ccf-b", "q3-journal"}
     if verdict not in {"pass", "needs_revision"}:
         checks.append(
             PublicationAuditCheck(
@@ -1105,6 +1225,17 @@ def _review_checks(
                 f"Reviewer verdict is `{verdict or 'missing'}`, not publication-ready.",
                 (review_source,),
                 "Treat fail/missing reviewer verdicts as blockers.",
+            )
+        )
+    elif strict_review_verdict and verdict != "pass":
+        checks.append(
+            PublicationAuditCheck(
+                "review_verdict_strength",
+                PublicationAuditCheckStatus.FAIL,
+                "high",
+                f"Reviewer verdict is `{verdict}`, not ready for {target.name} publication audit.",
+                (review_source,),
+                "Resolve reviewer revision items before CCF-B/Q3 publication audit can pass.",
             )
         )
     else:
@@ -1397,7 +1528,7 @@ def _markdown(report: PublicationAuditReport) -> str:
         "",
         f"- Minimum score: `{report.target.min_score}`",
         f"- Literature: `{report.target.min_literature_queries}` queries, `{report.target.min_literature_documents}` documents, `{report.target.min_successful_sources}` successful sources",
-        f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, `{report.target.min_relevant_verified_citations}` relevant verified citations, max `{report.target.max_blocked_citations}` blocked citations",
+        f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, `{report.target.min_relevant_verified_citations}` relevant verified citations, `{report.target.min_direct_verified_citations}` directly relevant verified citations, max `{report.target.max_blocked_citations}` blocked citations",
         f"- Similarity: `{report.target.min_similarity_queries}` queries, `{report.target.min_similarity_findings}` findings, `{report.target.min_successful_sources}` successful sources",
         f"- Data: at least `{report.target.min_test_rows}` validated test rows; real dataset required: `{str(report.target.require_real_dataset).lower()}`",
         f"- Experiment: baseline `{report.target.require_baseline}`, ablation `{report.target.require_ablation}`, statistical sanity `{report.target.require_statistical_sanity}`",

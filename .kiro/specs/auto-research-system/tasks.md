@@ -1661,6 +1661,21 @@ A task can be checked only when all applicable items are true:
     - _References: task `112.1`; task `111.1`; `P-20260613-047`; `P-20260613-048`; `P-20260613-049`; SciPilot Figure Skill, Nature Skills, and Research Architect repositories as reference-only quality-gate ideas._
     - _Verify: focused citation/publication-audit/manuscript/CLI tests, focused ruff, focused mypy, real old-cycle audit at `runs/manual-live/task113-relevance-old-cycle-audit-v3` passing relevance over the existing citation cycle, first real task `113.1` cycle blocked by live LLM `needs_revision`, and final real ACM `autopilot` at `runs/manual-live/task113-relevance-cycle-v2/cycle-20260613T130219Z/cycle-summary.json` with 54 verified citations, 46 relevant verified citations, 0 blocked citations, `review_status=passed`, reviewer `verdict=pass`, unsupported claims `[]`, `publication_audit=pass`, paper PDF compiled with 6 pages / 4095 words / 0 overfull hboxes, and `evidence_gate=pass`._
 
+- [x] 114. Align strict live reviewer evidence windows with CCF-B/Q3 release gates
+  - [x] 114.1 Block weak reviewer verdicts and expose compact manuscript support evidence
+    - Treat strict CCF-B/Q3 live-review `verdict=needs_revision` as a blocking publication-audit result even when the structured review status field is `passed`.
+    - Build the autopilot review evidence context after final manuscript and paper-build artifacts exist, so the LLM reviewer sees the actual manuscript, paper quality, citation package, audit summary, candidate metadata, selected run record, task metadata, and formal-reference provenance.
+    - Add compact candidate, method, research-gap, run-metric, and citation-metadata summaries to `review-evidence-context.json` without embedding secrets or unrelated full artifacts.
+    - Record `feature_count` and key method parameters such as `variance_shrinkage` in variance-calibrated UCI demos, run records, task metadata, and manuscript method/results prose.
+    - Weaken manuscript wording that implied exact similarity query templates or classified-result counts unless those statements are directly present in local artifacts.
+    - Add regression tests proving strict reviewer verdicts block CCF-B audit and that review context exposes candidate, metric, formal-reference, and citation-metadata evidence needed by live review.
+    - Fix the full smoke/unit regression where Pendigits variance-calibrated demo metrics omitted `feature_count` even though the task contract required it.
+    - Run a real ACM `autopilot` cycle with live ArXiv/OpenAlex retrieval, real LLM review, generated citations, paper build, publication audit, and evidence gate all passing under the stricter evidence window.
+    - Rerun a real `publication-stability --target ccf-b-matrix` over the current passing ACM cycle plus historical passing template cycles; record that the current cycle has the newest strict evidence-window fix.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime outputs under `runs/manual-live/...` count as AI-Researcher-written vault evidence for this task.
+    - _References: task `113.1`; task `112.1`; task `111.1`; `P-20260613-049`; `P-20260613-050`; `P-20260613-051`; user requirement that publication output be evidence-backed to a CCF-B/Q3-style standard and checked by real API calls._
+    - _Verify: focused CLI/manuscript/demo/publication-audit tests; full `tests/smoke tests/unit`; focused ruff; focused mypy; old-cycle audit proving `needs_revision` is now blocking; final real ACM `autopilot` at `runs/manual-live/task114-citation-context-cycle/cycle-20260613T144509Z/cycle-summary.json` with `review_status=passed`, reviewer `verdict=pass`, unsupported claims `[]`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks; real stability matrix at `runs/manual-live/task114-citation-context-stability/publication-stability.json` with `stable=true` and score `1.000`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2029,6 +2044,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 80,
       "tasks": ["113.1"]
+    },
+    {
+      "id": 81,
+      "tasks": ["114.1"]
     }
   ]
 }

@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 22:54:01 +08:00 - Codex - Task 114.1 strict review evidence window
+
+- Request: Continue the real self-running AI-Researcher loop until strict CCF-B/Q3-style review gates are evidence-backed; commit the user's README work; keep output quality controlled by real API calls and data evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Committed the README visual/user-guide refresh separately as `73416fe docs: refresh README user guide`.
+  - Added strict CCF-B/Q3 publication-audit handling so live LLM reviewer `verdict=needs_revision` blocks even when structured review status is `passed`.
+  - Moved and enriched autopilot review context so the live reviewer sees the final manuscript, paper-build/audit summary, candidate metadata, task metadata, selected run metrics, formal references, and citation metadata provenance.
+  - Added candidate/run/citation compact summaries without embedding secrets or unrelated full artifacts.
+  - Added `feature_count` to UCI variance demo contracts and generated metrics, including the older Pendigits variance-calibrated demo that the full test gate exposed.
+  - Updated manuscript method/results/limitations/related-work wording so feature count and `variance_shrinkage` are explicit while exact similarity-query/count claims stay in artifacts unless directly supported.
+  - Added regressions for strict review verdict blocking, review-context evidence summaries, manuscript parameter disclosure, and demo feature-count metrics.
+  - Marked task `114.1` complete.
+- Verification:
+  - `poetry run python -m autoresearch.cli.main publication-audit runs\manual-live\task113-relevance-cycle-livecheck2\cycle-20260613T141526Z\cycle-summary.json --output-dir runs\manual-live\task114-review-verdict-old-audit --no-fail-on-not-publishable`: passed and now reports strict `publication_audit=needs_revision` for reviewer `verdict=needs_revision`.
+  - `poetry run python -m autoresearch.cli.main autopilot --config config.yaml --env-path .env --vault runs\manual-live\task114-citation-context-vault --cache runs\manual-live\task114-citation-context-cache --output-dir runs\manual-live\task114-citation-context-cycle --state runs\manual-live\task114-citation-context-state.json --project-id task114_citation_context_cycle --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --min-quality-score 0.85 --max-tokens 8192`: passed with source preflight, real LLM review, publication audit, evidence gate, and 0 follow-up tasks.
+  - `poetry run python -m autoresearch.cli.main publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task114-citation-context-cycle\cycle-20260613T144509Z\cycle-summary.json runs\manual-live\task110-venue-cycle\cycle-20260613T114041Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task114-citation-context-stability --vault runs\manual-live\task114-citation-context-vault --project-id task114_citation_context_cycle --no-fail-on-unstable`: passed with `stable=true` and score `1.000`.
+  - `poetry run pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\reports\test_manuscript.py::test_compose_publication_manuscript_writes_evidence_bound_draft tests\unit\experiments\test_demos.py::test_create_letter_variance_calibrated_task_defines_method_contract tests\unit\experiments\test_demos.py::test_letter_variance_calibrated_runs_with_cached_uci_format_data tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_ccfb_when_reviewer_needs_revision -q`: passed.
+  - `poetry run pytest tests\unit\experiments\test_demos.py::test_create_pendigits_variance_calibrated_task_defines_method_contract tests\unit\experiments\test_demos.py::test_pendigits_variance_calibrated_runs_with_method_effect_evidence -q`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 446 tests and 4 live smoke tests skipped.
+  - `poetry run ruff check src\autoresearch\cli\main.py src\autoresearch\reports\manuscript.py src\autoresearch\experiments\demos.py src\autoresearch\reports\publication_audit.py tests\unit\cli\test_main.py tests\unit\reports\test_manuscript.py tests\unit\experiments\test_demos.py tests\unit\reports\test_publication_audit.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py src\autoresearch\reports\manuscript.py src\autoresearch\experiments\demos.py src\autoresearch\reports\publication_audit.py`: passed with the existing pyproject unused-override note.
+- Problems:
+  - `P-20260613-050` added and resolved for strict live review context/verdict handling.
+  - `P-20260613-051` added and resolved for the Pendigits feature-count metric contract gap.
+- Follow-up:
+  - Regenerate every stability-matrix cycle under the newest task `114.1` strict evidence-window gate before claiming broader template-family stability beyond the current ACM cycle plus historical passing cycles.
+
 ### 2026-06-13 21:11:19 +08:00 - Codex - README visual and user-guide refresh
 
 - Request: Improve the README so it is more attractive, illustrated, detailed for ordinary users, and focused on OpenCode integration, scheduled self-looping, self-evolution, push/approval workflows, and the Obsidian knowledge-base management mechanism.

@@ -123,6 +123,7 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert checks["method_innovation_evidence"].status.value == "pass"
     assert checks["method_effect_evidence"].status.value == "pass"
     assert checks["citation_relevance_breadth"].status.value == "pass"
+    assert checks["citation_directness_breadth"].status.value == "pass"
     assert report.verdict is PublicationAuditVerdict.PASS
     assert report.publishable is True
 
@@ -183,7 +184,31 @@ def test_publication_audit_blocks_verified_but_irrelevant_citations_for_ccfb(
     assert checks["citation_package"].status.value == "pass"
     assert checks["verified_citation_breadth"].status.value == "pass"
     assert checks["citation_relevance_breadth"].status.value == "fail"
+    assert checks["citation_directness_breadth"].status.value == "fail"
     assert "Relevant verified citations: 0" in checks["citation_relevance_breadth"].message
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_generic_recognition_citations_without_direct_method_anchor(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        relevant_citations=10,
+        direct_citations=0,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["citation_package"].status.value == "pass"
+    assert checks["verified_citation_breadth"].status.value == "pass"
+    assert checks["citation_directness_breadth"].status.value == "fail"
+    assert "Directly relevant verified citations: 0" in checks["citation_directness_breadth"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
@@ -358,6 +383,28 @@ def test_publication_audit_blocks_standalone_review_for_different_subject(
     assert checks["review_artifact_binding"].status.value == "fail"
     assert "subject_match=false" in checks["review_artifact_binding"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_ccfb_when_reviewer_needs_revision(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["review"] = {
+        "status": "passed",
+        "quality_score": 1.0,
+        "verdict": "needs_revision",
+    }
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["llm_evidence_review"].status.value == "pass"
+    assert checks["review_verdict_strength"].status.value == "fail"
+    assert "not ready for ccf-b" in checks["review_verdict_strength"].message
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
     assert report.publishable is False
 
 
@@ -645,27 +692,39 @@ def _write_citation_package(
     verified: int = 10,
     blocked: int = 0,
     relevant: int | None = None,
+    direct: int | None = None,
 ) -> dict:
     citations_dir = cycle_dir / "citations"
     citations_dir.mkdir(parents=True, exist_ok=True)
     bib_path = citations_dir / "references.bib"
     metadata_path = citations_dir / "references.metadata.json"
     relevant_count = verified if relevant is None else relevant
+    direct_count = relevant_count if direct is None else direct
     rows = []
     for index in range(verified):
-        is_relevant = index < relevant_count
-        title = (
-            f"UCI Pendigits nearest centroid prototype classifier source {index}"
-            if is_relevant
-            else f"Transformer protein folding architecture source {index}"
-        )
-        abstract = (
-            "Compares prototype and nearest centroid classifiers on the UCI "
-            "Pendigits handwritten digit recognition benchmark."
-            if is_relevant
-            else "Studies protein structure prediction with transformer attention and "
-            "biomedical sequence data."
-        )
+        is_direct = index < direct_count
+        is_relevant = is_direct or index < relevant_count
+        if is_direct:
+            title = f"UCI Pendigits nearest centroid prototype classifier source {index}"
+            abstract = (
+                "Compares prototype and nearest centroid classifiers on the UCI "
+                "Pendigits handwritten digit recognition benchmark."
+            )
+            tags = ["pendigits", "nearest-centroid", "prototype-classifier"]
+        elif is_relevant:
+            title = f"Generic visual recognition classifier source {index}"
+            abstract = (
+                "Studies broad image recognition classes and supervised classifier "
+                "accuracy across visual datasets."
+            )
+            tags = ["recognition", "classifier"]
+        else:
+            title = f"Transformer protein folding architecture source {index}"
+            abstract = (
+                "Studies protein structure prediction with transformer attention and "
+                "biomedical sequence data."
+            )
+            tags = ["protein-folding", "transformer"]
         rows.append(
             {
                 "document_id": f"doc_{index}",
@@ -679,11 +738,7 @@ def _write_citation_package(
                 "venue": "ExampleConf",
                 "source_uri": f"https://example.test/source/{index}",
                 "authors": [f"Author {index}"],
-                "tags": (
-                    ["pendigits", "nearest-centroid", "prototype-classifier"]
-                    if is_relevant
-                    else ["protein-folding", "transformer"]
-                ),
+                "tags": tags,
             }
         )
     rows.extend(
@@ -735,6 +790,7 @@ def _write_real_benchmark_cycle(
     similarity_classifications: tuple[str, ...] | None = None,
     blocked_citations: int = 0,
     relevant_citations: int | None = None,
+    direct_citations: int | None = None,
 ) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
@@ -922,6 +978,7 @@ def _write_real_benchmark_cycle(
         cycle_dir,
         blocked=blocked_citations,
         relevant=relevant_citations,
+        direct=direct_citations,
     )
     cycle_summary = {
         "cycle_id": "cycle-real",

@@ -31,10 +31,17 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "Representative retrieved records are retained" in manuscript
     assert "[Verified literature references]" in manuscript
     assert "[source2026] Verified Prototype Source" in manuscript
+    assert "[generic2026] Generic Visual Recognition Source" not in manuscript
+    assert "additional verified record(s) remain in citation metadata" in manuscript
     assert "not a submission claim" in manuscript
+    assert "12.0000 input features" in manuscript
+    assert "variance_shrinkage parameter of 0.0500" in manuscript
+    assert "bound to the final manuscript" in manuscript
     assert "Current finding classifications are:" not in manuscript
     assert "Retrieved record 1:" not in manuscript
     assert "was classified as" not in manuscript
+    assert "candidate title, the method-plus-dataset phrase" not in manuscript
+    assert "records how many findings were classified" not in manuscript
     assert "Representative similarity findings are retained" in manuscript
     assert "Prototype Calibration for Digits was retrieved" not in manuscript
     assert "pendigits_variance_calibrated_prototypes" not in manuscript
@@ -114,6 +121,20 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "blocked_document_ids": [],
                 "citations": [
                     {
+                        "document_id": "doc_generic",
+                        "title": "Generic Visual Recognition Source",
+                        "status": "verified_doi",
+                        "bibtex_key": "generic2026",
+                        "doi": "10.1234/generic",
+                        "url": "https://example.test/generic",
+                        "reason": None,
+                        "abstract": "Broad image recognition benchmark paper for generic visual categories.",
+                        "venue": "GenericConf",
+                        "source_uri": "https://example.test/generic",
+                        "authors": ["G. Generic"],
+                        "tags": ["recognition"],
+                    },
+                    {
                         "document_id": "doc_verified",
                         "title": "Verified Prototype Source",
                         "status": "verified_doi",
@@ -121,6 +142,11 @@ def _write_cycle(tmp_path: Path) -> Path:
                         "doi": "10.1234/verified",
                         "url": "https://example.test/verified",
                         "reason": None,
+                        "abstract": "Nearest centroid prototype classifier evidence for UCI Pendigits.",
+                        "venue": "MethodConf",
+                        "source_uri": "https://example.test/verified",
+                        "authors": ["V. Source"],
+                        "tags": ["pendigits", "nearest-centroid", "prototype-classifier"],
                     }
                 ],
             }
@@ -168,7 +194,9 @@ def _write_cycle(tmp_path: Path) -> Path:
                         "train_rows": 7494,
                         "dataset_rows": 10992,
                         "class_count": 10,
+                        "feature_count": 12,
                         "accuracy_standard_error": 0.006,
+                        "variance_shrinkage": 0.05,
                     }
                 },
                 "task_metadata": {
