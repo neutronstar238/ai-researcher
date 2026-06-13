@@ -117,10 +117,26 @@ def test_publication_audit_accepts_standalone_review_json(
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
     report_path.write_text(_paper_style_report(), encoding="utf-8")
+    validation_path = Path(summary["demo"]["validation_json_path"])
+    evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     review_path = tmp_path / "llm-review.json"
     review_path.write_text(
         json.dumps(
             {
+                "subject_path": report_path.as_posix(),
+                "subject_sha256": file_hash(report_path),
+                "evidence": [
+                    {
+                        "evidence_id": "evidence_1",
+                        "path": validation_path.as_posix(),
+                        "sha256": file_hash(validation_path),
+                    },
+                    {
+                        "evidence_id": "evidence_2",
+                        "path": evidence_map_path.as_posix(),
+                        "sha256": file_hash(evidence_map_path),
+                    },
+                ],
                 "quality": {
                     "score": 1.0,
                     "parsed_output": {
@@ -149,12 +165,71 @@ def test_publication_audit_accepts_standalone_review_json(
     assert report.review_path == review_path.as_posix()
     assert checks["llm_evidence_review"].status.value == "pass"
     assert checks["review_verdict_strength"].status.value == "pass"
+    assert checks["review_artifact_binding"].status.value == "pass"
     assert checks["llm_evidence_review"].evidence_refs == (review_path.as_posix(),)
     assert report.verdict is PublicationAuditVerdict.PASS
     assert report.publishable is True
     assert f"Review artifact: `{review_path.as_posix()}`" in Path(
         report.markdown_path
     ).read_text(encoding="utf-8")
+
+
+def test_publication_audit_blocks_standalone_review_for_different_subject(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["review"] = {"status": "skipped", "quality_score": 0.0, "verdict": "missing"}
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    validation_path = Path(summary["demo"]["validation_json_path"])
+    evidence_map_path = Path(summary["demo"]["evidence_map_path"])
+    unrelated_subject = tmp_path / "unrelated-report.md"
+    unrelated_subject.write_text("# Different paper\n", encoding="utf-8")
+    review_path = tmp_path / "llm-review.json"
+    review_path.write_text(
+        json.dumps(
+            {
+                "subject_path": unrelated_subject.as_posix(),
+                "subject_sha256": file_hash(unrelated_subject),
+                "evidence": [
+                    {
+                        "evidence_id": "evidence_1",
+                        "path": validation_path.as_posix(),
+                        "sha256": file_hash(validation_path),
+                    },
+                    {
+                        "evidence_id": "evidence_2",
+                        "path": evidence_map_path.as_posix(),
+                        "sha256": file_hash(evidence_map_path),
+                    },
+                ],
+                "quality": {
+                    "score": 1.0,
+                    "parsed_output": {
+                        "verdict": "pass",
+                        "findings": [{"issue": "No blocker.", "evidence_refs": ["evidence_1"]}],
+                        "unsupported_claims": [],
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = audit_publication_quality(
+        cycle_summary_path=summary_path,
+        target="ccf-b",
+        review_path=review_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["llm_evidence_review"].status.value == "pass"
+    assert checks["review_artifact_binding"].status.value == "fail"
+    assert "subject_match=false" in checks["review_artifact_binding"].message
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
 
 
 def test_publication_audit_blocks_unknown_only_similarity_classifications(

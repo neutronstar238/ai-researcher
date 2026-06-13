@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from autoresearch.reports import EvidenceGateVerdict, run_evidence_gate
+from autoresearch.schemas import file_hash
 
 
 def test_evidence_gate_passes_when_all_required_artifacts_are_physical(
@@ -134,9 +135,26 @@ def test_evidence_gate_accepts_explicit_review_json_for_skipped_cycle(
     summary["review"] = {"status": "skipped"}
     summary_path.write_text(json.dumps(summary), encoding="utf-8")
     review_override = summary_path.parent / "manual-llm-review.json"
+    report_path = Path(summary["demo"]["report_path"])
+    validation_path = Path(summary["demo"]["validation_json_path"])
+    evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     review_override.write_text(
         json.dumps(
             {
+                "subject_path": report_path.as_posix(),
+                "subject_sha256": file_hash(report_path),
+                "evidence": [
+                    {
+                        "evidence_id": "evidence_1",
+                        "path": validation_path.as_posix(),
+                        "sha256": file_hash(validation_path),
+                    },
+                    {
+                        "evidence_id": "evidence_2",
+                        "path": evidence_map_path.as_posix(),
+                        "sha256": file_hash(evidence_map_path),
+                    },
+                ],
                 "quality": {
                     "score": 1.0,
                     "parsed_output": {
@@ -164,7 +182,64 @@ def test_evidence_gate_accepts_explicit_review_json_for_skipped_cycle(
     assert checks["review_gate"].status.value == "pass"
     assert checks["review_gate"].evidence_refs == (review_override.as_posix(),)
     assert checks["review_artifact"].status.value == "pass"
+    assert checks["review_artifact_binding"].status.value == "pass"
     assert trace["review"].status.value == "pass"
+
+
+def test_evidence_gate_blocks_explicit_review_json_for_different_subject(
+    tmp_path: Path,
+) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["review"] = {"status": "skipped"}
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    review_override = summary_path.parent / "manual-llm-review.json"
+    validation_path = Path(summary["demo"]["validation_json_path"])
+    evidence_map_path = Path(summary["demo"]["evidence_map_path"])
+    unrelated_subject = tmp_path / "unrelated-report.md"
+    unrelated_subject.write_text("# Different report\n", encoding="utf-8")
+    review_override.write_text(
+        json.dumps(
+            {
+                "subject_path": unrelated_subject.as_posix(),
+                "subject_sha256": file_hash(unrelated_subject),
+                "evidence": [
+                    {
+                        "evidence_id": "evidence_1",
+                        "path": validation_path.as_posix(),
+                        "sha256": file_hash(validation_path),
+                    },
+                    {
+                        "evidence_id": "evidence_2",
+                        "path": evidence_map_path.as_posix(),
+                        "sha256": file_hash(evidence_map_path),
+                    },
+                ],
+                "quality": {
+                    "score": 1.0,
+                    "parsed_output": {
+                        "verdict": "pass",
+                        "findings": [{"evidence_refs": ["evidence_1"]}],
+                        "unsupported_claims": [],
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        review_path=review_override,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["review_gate"].status.value == "pass"
+    assert checks["review_artifact_binding"].status.value == "fail"
+    assert "subject_match=false" in checks["review_artifact_binding"].message
 
 
 def test_evidence_gate_writes_obsidian_review_and_issue_for_blocked_gate(

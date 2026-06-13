@@ -1418,6 +1418,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `92.1`, task `91.1`, and real publication-audit run showing a valid post-hoc review artifact could not previously clear publication-audit review checks._
     - _Verify: focused publication-audit/CLI tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit --review-json` run over a real cycle showing review checks pass while literature/similarity blockers remain blocking._
 
+- [x] 94. Bind standalone review artifacts to cycle evidence
+  - [x] 94.1 Require explicit review artifacts to match the audited cycle
+    - Add blocking `review_artifact_binding` checks to `publication-audit` and `evidence-gate`.
+    - Verify explicit `llm-review.json` subject hash or path matches the cycle `demo.report_path`.
+    - Verify the review evidence bundle covers the cycle validation report and evidence map by hash or path.
+    - Block unrelated passing review artifacts so post-hoc review cannot be reused across cycles.
+    - _References: task `92.1`, task `93.1`, SCALE Engine physical gate lesson, and user request to prevent prompt-only or fake evidence._
+    - _Verify: focused report tests, ruff, mypy, full smoke/unit tests, and real publication-audit/evidence-gate runs showing binding pass for the real DeepSeek review artifact while release remains blocked by publication-audit quality._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1706,6 +1715,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 60,
       "tasks": ["93.1"]
+    },
+    {
+      "id": 61,
+      "tasks": ["94.1"]
     }
   ]
 }

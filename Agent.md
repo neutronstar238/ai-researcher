@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 12:39:43 +08:00 - Codex - Task 94.1 review artifact binding
+
+- Request: Continue strict innovation and output-quality gatekeeping by preventing standalone post-hoc review artifacts from being reused across unrelated cycles.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-94-1-review-artifact-binding.md`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added blocking `review_artifact_binding` checks to both `publication-audit` and `evidence-gate` when `--review-json` is used.
+  - Required standalone review subject hash/path to match the audited cycle report.
+  - Required standalone review evidence bundles to cover the audited cycle validation report and evidence map by hash or path.
+  - Added regression tests proving unrelated passing review artifacts are blocked.
+  - Updated user docs, changelog, task plan, and Obsidian progress notes with the new physical binding rule.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py -q` passed with 19 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\publication_audit.py src\autoresearch\reports\evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\publication_audit.py src\autoresearch\reports\evidence_gate.py` passed.
+  - Real publication audit: `poetry run airesearcher publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --review-json runs\manual-live\llm-review-task91-with-run-record.json --target ccf-b --output-dir runs\manual-live\publication-audit-task94-review-binding --vault runs\manual-live\task94-audit-vault --project-id task94_review_binding --no-fail-on-not-publishable` exited 0, wrote `publication-audit.json`, kept `publishable=false`, and reported `review_artifact_binding=pass` with `subject_match=true` and `covered_required_evidence=2/2`.
+  - Real evidence gate: `poetry run airesearcher evidence-gate runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --review-json runs\manual-live\llm-review-task91-with-run-record.json --publication-audit runs\manual-live\publication-audit-task94-review-binding\publication-audit.json --paper-build-json runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\paper-build\paper-build.json --output-dir runs\manual-live\evidence-gate-task94-review-binding --vault runs\manual-live\task94-evidence-vault --project-id task94_review_binding --no-fail-on-blocked` exited 0, kept `release_allowed=false`, and reported `review_artifact_binding=pass` while `publication_release_gate` remained blocking.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 397 passed and 4 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue real online novelty and publication readiness work: broaden literature queries, recover source cooldowns without hammering APIs, classify similar-work findings with evidence, and keep the publication gate strict until CCF-B/Q3-level evidence is actually present.
+
 ### 2026-06-13 12:29:35 +08:00 - Codex - Task 93.1 publication-audit review override
 
 - Request: Continue strict SCALE-lite research quality gates by letting `publication-audit` consume a real post-hoc LLM review artifact without weakening literature, similarity, novelty, or method-effect blockers.

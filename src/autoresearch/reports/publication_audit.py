@@ -693,7 +693,83 @@ def _review_checks(
                 None if verdict == "pass" else "Resolve reviewer revision items before submission.",
             )
         )
+    if review_path is not None:
+        checks.append(_review_artifact_binding_check(summary, base_dir, review, review_source))
     return checks
+
+
+def _review_artifact_binding_check(
+    summary: dict[str, Any],
+    base_dir: Path,
+    review: dict[str, Any],
+    review_source: str,
+) -> PublicationAuditCheck:
+    demo = _dict(summary.get("demo"))
+    report_path = _resolve_path(demo.get("report_path"), base_dir)
+    if report_path is None or not report_path.exists():
+        return PublicationAuditCheck(
+            "review_artifact_binding",
+            PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            "Standalone review artifact cannot be bound because the cycle report is missing.",
+            (review_source, "cycle_summary.demo.report_path"),
+            "Regenerate the cycle report before using a standalone review artifact.",
+        )
+
+    subject_ok = _review_subject_matches_report(review, report_path, base_dir)
+    required_paths = tuple(
+        path
+        for path in (
+            _resolve_path(demo.get("validation_json_path"), base_dir),
+            _resolve_path(demo.get("evidence_map_path"), base_dir),
+        )
+        if path is not None and path.exists()
+    )
+    covered_paths = tuple(
+        path for path in required_paths if _review_evidence_covers_path(review, path, base_dir)
+    )
+    required_ok = bool(required_paths) and len(covered_paths) == len(required_paths)
+    passed = subject_ok and required_ok
+    return PublicationAuditCheck(
+        "review_artifact_binding",
+        PublicationAuditCheckStatus.PASS if passed else PublicationAuditCheckStatus.FAIL,
+        "blocking",
+        (
+            "Standalone review artifact binding "
+            f"subject_match={str(subject_ok).lower()}, "
+            f"covered_required_evidence={len(covered_paths)}/{len(required_paths)}."
+        ),
+        (review_source, report_path.as_posix(), *(path.as_posix() for path in required_paths)),
+        None
+        if passed
+        else (
+            "Rerun llm-review against this cycle's report plus validation and evidence-map "
+            "artifacts before publication audit."
+        ),
+    )
+
+
+def _review_subject_matches_report(
+    review: dict[str, Any],
+    report_path: Path,
+    base_dir: Path,
+) -> bool:
+    subject_sha = _text(review.get("subject_sha256"))
+    if subject_sha:
+        return file_hash(report_path) == subject_sha
+    subject_path = _resolve_path(review.get("subject_path"), base_dir)
+    return subject_path is not None and _same_file(subject_path, report_path)
+
+
+def _review_evidence_covers_path(review: dict[str, Any], required_path: Path, base_dir: Path) -> bool:
+    required_hash = file_hash(required_path)
+    for evidence in _dict_list(review.get("evidence")):
+        if _text(evidence.get("sha256")) == required_hash:
+            return True
+        evidence_path = _resolve_path(evidence.get("path"), base_dir)
+        if evidence_path is not None and _same_file(evidence_path, required_path):
+            return True
+    return False
 
 
 def _review_artifact_path(
@@ -735,6 +811,9 @@ def _review_gate_info(
         "verdict": verdict,
         "quality_score": quality_score,
         "output_path": _path_text(explicit_path),
+        "subject_path": payload.get("subject_path"),
+        "subject_sha256": payload.get("subject_sha256"),
+        "evidence": _dict_list(payload.get("evidence")),
     }
 
 
@@ -1331,6 +1410,13 @@ def _path_text(value: object) -> str | None:
     if not text:
         return None
     return Path(text).as_posix()
+
+
+def _same_file(left: Path, right: Path) -> bool:
+    try:
+        return left.resolve() == right.resolve() or left.samefile(right)
+    except OSError:
+        return left.resolve() == right.resolve()
 
 
 def _int(value: object, *, default: int = 0) -> int:
