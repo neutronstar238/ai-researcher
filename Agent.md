@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 21:15:00 +08:00 - Codex - Task 107.1 uncertainty-aware method-effect gate
+
+- Request: Continue toward stable CCF-B/Q3-level publication output by preventing weak positive benchmark deltas from passing publication and stability gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added `min_method_effect_standard_errors` to publication quality targets.
+  - Required CCF-B and Q3 journal targets to reject method-effect deltas smaller than 2.0 standard errors when uncertainty evidence is present.
+  - Made `method_effect_evidence` combine innovation artifact deltas with run-record metric uncertainty such as `accuracy_standard_error`.
+  - Kept MVP demo publication audits free of the standard-error threshold so local loop-correctness checks remain usable.
+  - Added a regression test for a weak positive method effect.
+  - Used only runtime-selected vault outputs under `runs/manual-live/...`; did not hand-write root `autoresearch-vault/projects/.../progress` notes.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_publication_audit.py -q`: passed with 13 tests.
+  - `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\publication_audit.py`: passed.
+  - `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task107-spambase-vault --cache runs\manual-live\task107-spambase-cache --output-dir runs\manual-live\task107-spambase-cycle --state runs\manual-live\task107-spambase-state.json --project-id task107_spambase_cycle --demo spambase_variance_calibrated_prototypes --timeout-seconds 60 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed as a real loop; `publication_audit=fail`, `evidence_gate=blocked`, and `followup_tasks=2`.
+  - `runs/manual-live/task107-spambase-cycle/cycle-20260613T110305Z/publication-audit.json`: inspected; `method_effect_evidence` failed because `delta=0.006950` was only `0.76` standard errors against a `>=2.00` target.
+  - `poetry run airesearcher publication-audit runs\manual-live\task104-similarity-classification\cycle-summary.json --target ccf-b --output-dir runs\manual-live\task107-effect-gate\pendigits-publication-audit --vault runs\manual-live\task107-effect-gate-vault --project-id task107_effect_gate --no-fail-on-not-publishable`: passed with `publishable=true` and score `0.962`.
+  - `poetry run airesearcher publication-audit runs\manual-live\task107-letter-cycle\cycle-20260613T105702Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\task107-effect-gate\letter-publication-audit --vault runs\manual-live\task107-effect-gate-vault --project-id task107_effect_gate --no-fail-on-not-publishable`: passed with `publishable=true` and score `0.977`.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task107-letter-cycle\cycle-20260613T105702Z\cycle-summary.json runs\manual-live\task107-spambase-cycle\cycle-20260613T110305Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task107-effect-gate\stability-matrix --vault runs\manual-live\task107-effect-gate-vault --project-id task107_effect_gate --no-fail-on-unstable`: passed as a blocked gate with `stable=false`, score `0.375`, 3 cycles, 2 release-allowed cycles, and only 1 LaTeX template among release-allowed cycles.
+- Problems:
+  - `P-20260613-042` mitigated; Spambase remains weak evidence, but the system now blocks it from publication/stability release.
+- Follow-up:
+  - Add at least one more strong release-allowed real dataset cycle and add a second LaTeX template path to the autonomous cycle before the `ccf-b-matrix` can pass.
+
 ### 2026-06-13 20:58:00 +08:00 - Codex - Task 106.1 UCI benchmark demo expansion
 
 - Request: Continue toward a real multi-cycle publication stability matrix by adding additional public datasets that can be executed through the existing `run-demo` and `autopilot --demo` surfaces.

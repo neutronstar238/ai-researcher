@@ -1557,6 +1557,20 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-040`; task `105.1`; user request to run real scripts/data and build a multi-cycle, multi-dataset stability bar._
     - _Verify: focused demo/acceptance tests, ruff, mypy, real `run-demo` over UCI Letter Recognition and UCI Spambase with downloaded source files, positive recorded deltas, validation reports passing, and run records preserving real dataset metadata._
 
+- [x] 107. Tighten publication evidence against weak positive effects
+  - [x] 107.1 Require uncertainty-aware method-effect strength for CCF-B/Q3 gates
+    - Add a publication-audit target parameter for the minimum baseline-vs-candidate delta measured in standard errors.
+    - Require CCF-B and Q3 journal targets to reject positive method deltas that are smaller than 2.0 standard errors when uncertainty evidence is available.
+    - Read uncertainty evidence from run-record metrics such as `accuracy_standard_error` as well as innovation artifacts such as `accuracy_delta_standard_error`.
+    - Keep MVP demo targets usable for local loop correctness by not applying the standard-error threshold there.
+    - Add a regression test showing that a weak positive delta fails publication audit instead of becoming a publishable claim.
+    - Run a real Spambase autonomous cycle and confirm the system completes the loop but blocks publication/evidence release because the positive delta is only 0.76 standard errors.
+    - Rerun publication audit on the stronger Pendigits and Letter cycles and confirm they still pass.
+    - Rerun the cross-cycle CCF-B stability matrix over Pendigits, Letter, and Spambase and confirm stable-output claims remain blocked.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime-selected vault outputs under `runs/manual-live/...` count as system-written evidence for this task.
+    - _References: `P-20260613-042`; task `105.1`; task `106.1`; user requirement for strict CCF-B/Q3 quality gates and real data/API validation._
+    - _Verify: focused publication-audit tests, focused ruff, focused mypy, real Spambase `autopilot` with live search/LLM review/paper build/evidence gate, real Pendigits and Letter publication-audit reruns, and real three-cycle `publication-stability` rerun._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1897,6 +1911,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 73,
       "tasks": ["106.1"]
+    },
+    {
+      "id": 74,
+      "tasks": ["107.1"]
     }
   ]
 }

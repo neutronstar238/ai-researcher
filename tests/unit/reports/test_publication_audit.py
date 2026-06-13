@@ -354,6 +354,27 @@ def test_publication_audit_blocks_underperforming_method_candidate(
     assert report.publishable is False
 
 
+def test_publication_audit_blocks_weak_positive_method_effect(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        method_delta=0.003,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["method_effect_evidence"].status.value == "fail"
+    assert "standard errors" in checks["method_effect_evidence"].message
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
+
+
 def _write_toy_cycle(tmp_path: Path) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-test"
     experiment_dir = cycle_dir / "demo" / "tabular-baseline"

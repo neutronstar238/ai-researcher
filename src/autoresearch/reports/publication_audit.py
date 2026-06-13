@@ -55,6 +55,7 @@ class PublicationQualityTarget:
     require_statistical_sanity: bool
     require_novel_contribution: bool
     min_llm_review_quality: float
+    min_method_effect_standard_errors: float
 
 
 @dataclass(frozen=True)
@@ -116,6 +117,7 @@ class PublicationAuditReport:
                 "require_statistical_sanity": self.target.require_statistical_sanity,
                 "require_novel_contribution": self.target.require_novel_contribution,
                 "min_llm_review_quality": self.target.min_llm_review_quality,
+                "min_method_effect_standard_errors": self.target.min_method_effect_standard_errors,
             },
             "verdict": self.verdict.value,
             "publishable": self.publishable,
@@ -147,6 +149,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_statistical_sanity=True,
         require_novel_contribution=True,
         min_llm_review_quality=0.85,
+        min_method_effect_standard_errors=2.0,
     ),
     "q3-journal": PublicationQualityTarget(
         name="q3-journal",
@@ -164,6 +167,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_statistical_sanity=True,
         require_novel_contribution=True,
         min_llm_review_quality=0.85,
+        min_method_effect_standard_errors=2.0,
     ),
     "mvp-demo": PublicationQualityTarget(
         name="mvp-demo",
@@ -181,6 +185,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         require_statistical_sanity=False,
         require_novel_contribution=False,
         min_llm_review_quality=0.85,
+        min_method_effect_standard_errors=0.0,
     ),
 }
 
@@ -1307,17 +1312,51 @@ def _method_effect_check(
             "Preserve a JSON innovation artifact with baseline and candidate metrics before publication review.",
         )
 
+    metrics_payload = _dict(_dict(run_record.get("metrics")).get("values"))
     for path in resolved_paths:
         payload = _read_json_if_exists(path)
-        delta = _method_effect_delta(payload)
+        evidence_payload = {**metrics_payload, **payload}
+        delta = _method_effect_delta(evidence_payload)
         if delta is None:
             continue
         if delta > 0:
+            standard_error = _method_effect_standard_error(evidence_payload)
+            min_standard_errors = target.min_method_effect_standard_errors
+            if min_standard_errors > 0:
+                if standard_error is None or standard_error <= 0:
+                    return PublicationAuditCheck(
+                        "method_effect_evidence",
+                        PublicationAuditCheckStatus.FAIL,
+                        "high",
+                        (
+                            "Method candidate has a positive delta but no positive standard-error "
+                            "evidence for the configured publication target."
+                        ),
+                        refs,
+                        "Record an uncertainty estimate such as accuracy_standard_error before publication review.",
+                    )
+                standard_error_ratio = delta / standard_error
+                if standard_error_ratio < min_standard_errors:
+                    return PublicationAuditCheck(
+                        "method_effect_evidence",
+                        PublicationAuditCheckStatus.FAIL,
+                        "high",
+                        (
+                            f"Method candidate improved by delta={delta:.6f}, but this is only "
+                            f"{standard_error_ratio:.2f} standard errors; target requires "
+                            f">={min_standard_errors:.2f}."
+                        ),
+                        refs,
+                        (
+                            "Treat the result as weak evidence; rerun with stronger statistical "
+                            "support or a more robust method candidate."
+                        ),
+                    )
             return PublicationAuditCheck(
                 "method_effect_evidence",
                 PublicationAuditCheckStatus.PASS,
                 "high",
-                f"Method candidate improved over baseline with recorded delta={delta:.6f}.",
+                _method_effect_pass_message(delta, standard_error, min_standard_errors),
                 refs,
             )
         relation = "tied" if delta == 0 else "underperformed"
@@ -1379,6 +1418,34 @@ def _method_effect_delta(payload: dict[str, Any]) -> float | None:
     if candidate is not None and baseline is not None:
         return candidate - baseline
     return None
+
+
+def _method_effect_standard_error(payload: dict[str, Any]) -> float | None:
+    for key in (
+        "accuracy_delta_standard_error",
+        "delta_standard_error",
+        "metric_delta_standard_error",
+        "accuracy_standard_error",
+        "standard_error",
+        "metric_standard_error",
+    ):
+        standard_error = _float_or_none(payload.get(key))
+        if standard_error is not None:
+            return standard_error
+    return None
+
+
+def _method_effect_pass_message(
+    delta: float,
+    standard_error: float | None,
+    min_standard_errors: float,
+) -> str:
+    if min_standard_errors <= 0 or standard_error is None or standard_error <= 0:
+        return f"Method candidate improved over baseline with recorded delta={delta:.6f}."
+    return (
+        f"Method candidate improved over baseline with recorded delta={delta:.6f}, "
+        f"which is {delta / standard_error:.2f} standard errors."
+    )
 
 
 def _relative_paths_exist(root: Path | None, paths: list[Any]) -> bool:

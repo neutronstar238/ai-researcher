@@ -34,19 +34,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-042 - Spambase variance-calibrated prototype effect is positive but small
 
-- Status: Open
+- Status: Mitigated
 - Severity: Medium
 - Discovered: 2026-06-13 20:55:00 +08:00
 - Source: Task `106.1` real `run-demo` over UCI Spambase.
 - Symptom: The Spambase demo recorded a positive accuracy delta, but the effect size is smaller than one accuracy standard error.
-- Impact: The cycle is useful as a real public non-image benchmark, but it should not be treated as strong publication evidence without additional statistical checks, related-work positioning, and possibly a more robust method variant.
+- Impact: The cycle is useful as a real public non-image benchmark, but it should not be treated as strong publication evidence without additional statistical checks, related-work positioning, and possibly a more robust method variant. Task `107.1` now prevents this weak positive effect from passing the CCF-B/Q3 publication gate.
 - Evidence: `runs/manual-live/task106-benchmark-demos/spambase-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.8922675933970461`, `baseline_accuracy=0.8853171155516942`, `accuracy_delta_vs_baseline=0.0069504778453518545`, `accuracy_standard_error=0.009138671763868286`, and `test_rows=1151`.
 - Root cause: The diagonal variance correction only gives a small improvement on this deterministic 75/25 Spambase split.
 - Workaround: Keep the demo as a real benchmark coverage path, but require publication audit, evidence gate, and stability matrix checks before using it in any CCF-B/Q3 claim.
-- Next action: Add stronger significance/effect-size gates or rerun with repeated deterministic splits before treating Spambase as a release-allowed publication cycle.
-- Linked tasks: `106.1`
-- Resolution: Not resolved.
-- Verification: Real UCI Spambase run completed and validation passed; the effect-size caution remains.
+- Next action: Find a stronger method variant, add repeated deterministic splits, or use another dataset before Spambase can contribute to the release-allowed stability matrix.
+- Linked tasks: `106.1`, `107.1`
+- Resolution: Mitigated by task `107.1`; the publication audit now requires CCF-B/Q3 method-effect deltas to be at least 2.0 standard errors when uncertainty evidence is available.
+- Verification: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task107-spambase-vault --cache runs\manual-live\task107-spambase-cache --output-dir runs\manual-live\task107-spambase-cycle --state runs\manual-live\task107-spambase-state.json --project-id task107_spambase_cycle --demo spambase_variance_calibrated_prototypes --timeout-seconds 60 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85` completed the real loop but wrote `publication_audit=fail`, `evidence_gate=blocked`; `method_effect_evidence` reported `delta=0.006950`, `0.76 standard errors`, and target `>=2.00`.
 
 ### P-20260613-041 - Publication stability gate initially read a stale paper-build path from the cycle summary
 
