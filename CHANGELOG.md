@@ -28,6 +28,7 @@ Target version: `0.1.0`.
 - AutoResearchClaw is now tracked as a MIT-licensed design reference for one-command/OpenClaw-style operation, HITL modes, multi-source literature workflow, claim verification, and skill-learning direction.
 - First-deploy CLI setup for provider-agnostic model configuration, `.env` secret storage, WeChat/Feishu channel wiring, and project slash command templates.
 - Real online discovery CLI entry points for daily literature refresh and project-start similarity checks, including guarded Obsidian summaries and visible per-source fetch errors.
+- Broad inspiration discovery through `airesearcher inspiration-refresh`, currently searching Hugging Face dataset metadata and Hacker News stories as non-scholarly dataset/community signals with guarded Obsidian summaries and non-scoring autopilot cycle context.
 - Live `llm-smoke` CLI for OpenAI-compatible model calls, structured output checks, API-key leak checks, and quality report artifacts.
 - `llm-smoke` now retries once with deterministic repair instructions when critical smoke output checks fail, and records `attempts` in CLI/JSON output.
 - `llm-review` now records `attempts` and performs one bounded repair attempt for critical local-evidence review JSON failures without weakening citation gates.

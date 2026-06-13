@@ -32,6 +32,8 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "Tencent/openclaw-weixin",
         "WecomTeam/wecom-openclaw-plugin",
         "OpenClaw official channel plugins",
+        "Hugging Face Hub public API",
+        "Hacker News Search API powered by Algolia",
         "UCI Pen-Based Recognition of Handwritten Digits",
         "OpenAlex",
         "IEEEtran",

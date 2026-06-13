@@ -1467,6 +1467,17 @@ A task can be checked only when all applicable items are true:
     - _References: user suggestion to evaluate `github.com/LearnPrompt/luban-skill`; Luban's "material check, peer visit, measurement, slow carving, furnace loop" workflow; SkillOpt task `23.1` and `skill-evolve`._
     - _Verify: live web review of the Luban repository/license/README, focused skill/CLI/compliance tests, ruff, mypy, full smoke/unit tests, a real generated `skill-polish-audit` report over an Obsidian skill candidate, and CI._
 
+- [x] 99. Add broad non-scholarly inspiration discovery
+  - [x] 99.1 Search dataset/community/news signals without weakening evidence gates
+    - Review Hugging Face Hub API/rate-limit guidance and Hacker News Algolia Search API availability before implementation.
+    - Add `airesearcher inspiration-refresh` and `/research:inspiration-refresh` for real online discovery outside academic databases.
+    - Search public Hugging Face dataset metadata and Hacker News stories as initial dataset/community signals, with explicit per-source fetch records, conservative one-second default request spacing, and visible source errors.
+    - Write Obsidian summaries under `autoresearch-vault/exploration/inspiration/` that state these items are inspiration only and cannot be cited as scholarly evidence without separate validation.
+    - Wire the broad inspiration refresh into each non-blocked `autopilot`/`serve` cycle as a non-scoring context artifact, while keeping publication audit and evidence gate based on academic sources, executed experiments, review evidence, and compiled paper quality.
+    - Update README, Chinese README, changelog, third-party notices, compliance tests, and Obsidian progress memory.
+    - _References: user requirement that project-start and cross-check search should not be limited to local data or academic databases; Hugging Face Hub API/rate limits; Hacker News Algolia Search API._
+    - _Verify: focused inspiration/CLI/compliance tests, ruff, mypy, full smoke/unit tests, a real `inspiration-refresh` run against live Hugging Face/Hacker News sources, and CI._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1775,6 +1786,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 65,
       "tasks": ["98.1"]
+    },
+    {
+      "id": 66,
+      "tasks": ["99.1"]
     }
   ]
 }

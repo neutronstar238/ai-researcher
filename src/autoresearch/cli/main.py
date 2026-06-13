@@ -23,6 +23,7 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.inspiration import InspirationRefreshConfig, run_inspiration_refresh
 from autoresearch.integrations import (
     CCSwitchCodeAgentBackend,
     OpenClawChannelPlugin,
@@ -125,6 +126,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher literature-refresh --live --vault autoresearch-vault --cache .cache/literature` "
         "and summarize source-backed new papers only. Do not infer paper results, code "
         "availability, or benchmark scores unless the fetched source explicitly provides them.",
+    ),
+    "research/inspiration-refresh.toml": (
+        "Search broad non-scholarly inspiration sources without treating them as paper evidence.",
+        "Run `airesearcher inspiration-refresh --query \"{{args}}\" --vault autoresearch-vault "
+        "--output runs/inspiration/latest.json`. Results from Hugging Face datasets and Hacker News "
+        "are dataset/community signals only; validate them separately before using them as research evidence.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
@@ -770,6 +777,62 @@ def literature_refresh(
     typer.echo(f"[OK] documents: {len(report.documents)}")
     if report.summary_path is not None:
         typer.echo(f"[OK] summary: {report.summary_path}")
+
+
+@app.command("inspiration-refresh")
+def inspiration_refresh(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to update."),
+    ] = Path("autoresearch-vault"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="JSON report output path."),
+    ] = Path("runs/inspiration/latest.json"),
+    query: Annotated[
+        list[str] | None,
+        typer.Option("--query", "-q", help="Inspiration query. Repeat for multiple queries."),
+    ] = None,
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum broad-source queries to run."),
+    ] = 3,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum items per source/query."),
+    ] = 5,
+) -> None:
+    """Search broad dataset/community sources and write an Obsidian-safe summary."""
+
+    try:
+        report = run_inspiration_refresh(
+            vault_root=vault,
+            queries=tuple(query or ()),
+            config=InspirationRefreshConfig(
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+            ),
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] inspiration refresh failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report.to_json_dict(), indent=2, sort_keys=True), encoding="utf-8")
+    for fetch in report.fetches:
+        error = f" error={fetch.error}" if fetch.error else ""
+        typer.echo(
+            f"[FETCH] source={fetch.source} type={fetch.source_type} query={fetch.query!r} "
+            f"items={fetch.result_count}{error}"
+        )
+    typer.echo(f"[OK] queries: {len(report.queries)}")
+    typer.echo(f"[OK] inspiration_items: {len(report.items)}")
+    typer.echo(f"[OK] report: {output}")
+    if report.summary_path is not None:
+        typer.echo(f"[OK] summary: {report.summary_path}")
+    if not report.items:
+        typer.echo("[FAIL] inspiration refresh returned no source-backed items", err=True)
+        raise typer.Exit(code=1)
 
 
 @app.command("similarity-check")
@@ -2200,6 +2263,15 @@ def _run_autopilot_cycle(
             project_id=project_id,
         )
 
+    inspiration_report = run_inspiration_refresh(
+        vault_root=vault,
+        queries=_autopilot_inspiration_queries(candidate, demo=demo),
+        config=InspirationRefreshConfig(
+            max_queries=max_queries,
+            max_results_per_source=max_results_per_source,
+        ),
+    )
+
     demo_result = run_scientistbench_demo(
         demo=demo,
         output_dir=cycle_dir / "demo",
@@ -2249,6 +2321,15 @@ def _run_autopilot_cycle(
             "finding_count": len(getattr(similarity_report, "findings", ())),
             "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
             "project_path": _path_text(similarity_project_path),
+        },
+        "inspiration": {
+            "query_count": len(getattr(inspiration_report, "queries", ())),
+            "fetches": _serialise_inspiration_fetches(
+                getattr(inspiration_report, "fetches", ())
+            ),
+            "item_count": len(getattr(inspiration_report, "items", ())),
+            "summary_path": _path_text(getattr(inspiration_report, "summary_path", None)),
+            "evidence_policy": "dataset/community/news signals only; not scholarly evidence",
         },
         "demo": {
             "demo": demo_result.demo,
@@ -2308,6 +2389,16 @@ def _run_autopilot_cycle(
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
+
+
+def _autopilot_inspiration_queries(candidate: ResearchCandidate, *, demo: str) -> tuple[str, ...]:
+    """Seed broad inspiration search without making it publication evidence."""
+
+    return (
+        candidate.title,
+        candidate.research_gap,
+        f"{demo} open datasets and research tools",
+    )
 
 
 def _run_source_preflight_gate(
@@ -2898,6 +2989,20 @@ def _serialise_fetches(fetches: Iterable[object]) -> list[dict[str, object]]:
             "query": getattr(fetch, "query", "unknown"),
             "paper_count": getattr(fetch, "paper_count", 0),
             "cache_hit": getattr(fetch, "cache_hit", False),
+            "rate_limit_seconds": getattr(fetch, "rate_limit_seconds", 0.0),
+            "error": getattr(fetch, "error", None),
+        }
+        for fetch in fetches
+    ]
+
+
+def _serialise_inspiration_fetches(fetches: Iterable[object]) -> list[dict[str, object]]:
+    return [
+        {
+            "source": getattr(fetch, "source", "unknown"),
+            "source_type": getattr(fetch, "source_type", "unknown"),
+            "query": getattr(fetch, "query", "unknown"),
+            "result_count": getattr(fetch, "result_count", 0),
             "rate_limit_seconds": getattr(fetch, "rate_limit_seconds", 0.0),
             "error": getattr(fetch, "error", None),
         }

@@ -10,6 +10,11 @@ import autoresearch.cli.main as cli_main
 from autoresearch import __version__
 from autoresearch.cli.main import app
 from autoresearch.config import ConfigParser, SystemConfig
+from autoresearch.inspiration import (
+    InspirationFetchRecord,
+    InspirationItem,
+    InspirationRefreshReport,
+)
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -154,6 +159,64 @@ def test_skill_evolve_creates_bounded_candidate_from_issue_ref(tmp_path: Path) -
     assert (tmp_path / "runs" / "skill-polish.md").is_file()
 
 
+def test_inspiration_refresh_command_writes_report(tmp_path: Path, monkeypatch) -> None:
+    vault_path = tmp_path / "vault"
+    output = tmp_path / "runs" / "inspiration.json"
+    summary_path = vault_path / "exploration" / "inspiration" / "summary.md"
+
+    def fake_run_inspiration_refresh(*, vault_root, queries, config):
+        assert vault_root == vault_path
+        assert config.max_queries == 3
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text("# Summary\n", encoding="utf-8")
+        return InspirationRefreshReport(
+            queries=tuple(queries),
+            fetches=(
+                InspirationFetchRecord(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    query=queries[0],
+                    result_count=1,
+                    rate_limit_seconds=1.0,
+                ),
+            ),
+            items=(
+                InspirationItem(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    title="Research agent thread",
+                    url="https://news.ycombinator.com/item?id=123",
+                    query=queries[0],
+                    summary="Community signal only.",
+                    score=3.0,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+            ),
+            summary_path=summary_path,
+        )
+
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_run_inspiration_refresh)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "inspiration-refresh",
+            "--vault",
+            str(vault_path),
+            "--query",
+            "research agents",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] inspiration_items: 1" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["items"][0]["source_type"] == "forum_signal"
+    assert payload["summary_path"] == summary_path.as_posix()
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -289,6 +352,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
+    assert (commands_dir / "research" / "inspiration-refresh.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
@@ -319,6 +383,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:evidence-gate" in list_result.stdout
     assert "/research:session-claim" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
+    assert "/research:inspiration-refresh" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
     assert "airesearcher autopilot" in autopilot_template
@@ -331,6 +396,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher publication-audit" in (
         commands_dir / "research" / "publication-audit.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher inspiration-refresh" in (
+        commands_dir / "research" / "inspiration-refresh.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher skill-polish-audit" in (
         commands_dir / "research" / "skill-polish-audit.toml"
@@ -777,8 +845,9 @@ def test_autopilot_literature_clients_share_persistent_circuit_state(
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, project_similarity):
+    for path in (literature_summary, similarity_summary, inspiration_summary, project_similarity):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -827,6 +896,38 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     def fake_link_similarity_report_to_project(**_kwargs: object) -> Path:
         return project_similarity
+
+    def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
+        config = kwargs["config"]
+        queries = tuple(kwargs["queries"])
+        assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        assert any("Evidence-bound self-evolving research" in query for query in queries)
+        return InspirationRefreshReport(
+            queries=queries[:1],
+            fetches=(
+                InspirationFetchRecord(
+                    source="huggingface_datasets",
+                    source_type="dataset_signal",
+                    query=queries[0],
+                    result_count=1,
+                    rate_limit_seconds=1.0,
+                ),
+            ),
+            items=(
+                InspirationItem(
+                    source="huggingface_datasets",
+                    source_type="dataset_signal",
+                    title="example/research-dataset",
+                    url="https://huggingface.co/datasets/example/research-dataset",
+                    query=queries[0],
+                    summary="Dataset signal only.",
+                    score=1.0,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+            ),
+            summary_path=inspiration_summary,
+        )
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
         output_dir = Path(kwargs["output_dir"])
@@ -908,6 +1009,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
@@ -948,6 +1050,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["literature"]["document_count"] == 1
     assert payload["similarity"]["finding_count"] == 1
+    assert payload["inspiration"]["item_count"] == 1
+    assert payload["inspiration"]["evidence_policy"] == (
+        "dataset/community/news signals only; not scholarly evidence"
+    )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"

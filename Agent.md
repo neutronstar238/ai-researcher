@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 14:19:42 +08:00 - Codex - Task 99.1 broad inspiration discovery
+
+- Request: Continue toward a fully self-looping AI-Researcher that searches beyond academic databases by adding real online dataset/community/news inspiration sources without weakening publication evidence gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-99-1-broad-inspiration-discovery.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/inspiration.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/test_inspiration.py`
+- Summary:
+  - Added `src/autoresearch/inspiration.py` with source-backed `InspirationItem`, fetch provenance, Hugging Face dataset search, Hacker News Search, conservative per-source rate limiting, JSON reports, and Obsidian-safe summaries.
+  - Added `airesearcher inspiration-refresh` and `/research:inspiration-refresh`.
+  - Wired broad inspiration refresh into each non-blocked `autopilot`/`serve` cycle as a non-scoring `inspiration` context artifact.
+  - Kept the evidence boundary explicit: dataset/community/news signals can feed ideas and follow-up work, but they do not count as scholarly evidence, novelty evidence, or publication-gate support without later validation.
+  - Updated README, Chinese README, changelog, third-party notices, compliance tests, task plan, and Obsidian progress memory.
+- Verification:
+  - Web review: `https://github.com/LearnPrompt/luban-skill` remains a MIT-licensed methodology reference for task `98.1`; Hugging Face Hub API/rate-limit docs and Hacker News Algolia Search API docs were reviewed for task `99.1` source boundaries.
+  - Focused tests: `poetry run pytest tests\unit\test_inspiration.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py -q` passed with 46 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\inspiration.py src\autoresearch\cli\main.py tests\unit\test_inspiration.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\inspiration.py src\autoresearch\cli\main.py` passed.
+  - Real live research-agent query: `poetry run airesearcher inspiration-refresh --vault runs\manual-live\task99-inspiration-vault --query "autonomous research agents datasets" --max-queries 1 --max-results-per-source 2 --output runs\manual-live\task99-inspiration\inspiration-refresh.json` passed; Hugging Face returned 0 dataset items, Hacker News returned 2 forum/news items, and the Obsidian note marked them as non-scholarly inspiration only.
+  - Real live Hugging Face control query: `poetry run airesearcher inspiration-refresh --vault runs\manual-live\task99-inspiration-hf-vault --query "mnist" --max-queries 1 --max-results-per-source 1 --output runs\manual-live\task99-inspiration-hf\inspiration-refresh.json` passed; Hugging Face returned `ylecun/mnist` and Hacker News returned 1 item.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed with no issues in 97 source files.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 413 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and pre-existing dirty files.
+- Problems:
+  - `P-20260613-034` added and resolved.
+- Follow-up:
+  - Add more opt-in broad sources later, such as curated RSS/news sources, GitHub repository search, Papers with Code, and dataset registries, but keep each source's evidence class separate from scholarly novelty support.
+
 ### 2026-06-13 14:02:03 +08:00 - Codex - Task 98.1 Luban skill polish audit
 
 - Request: Evaluate whether `github.com/LearnPrompt/luban-skill` can be integrated into AI-Researcher and continue strengthening self-updating/self-evolving skills.

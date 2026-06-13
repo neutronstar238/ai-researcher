@@ -93,7 +93,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:publication-audit`、`/research:paper-build`、`/research:evidence-gate`、`/research:session-claim`、`/research:approve`、`/research:openclaw-channels`、`/research:code-agent-backends`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:inspiration-refresh`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:publication-audit`、`/research:paper-build`、`/research:evidence-gate`、`/research:session-claim`、`/research:approve`、`/research:openclaw-channels`、`/research:code-agent-backends`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
 
 常驻运行入口：
 
@@ -140,7 +140,7 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会先执行来源冷却 preflight gate，再执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、命令行复现实验 rerun、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录、reproduction-check 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会先执行来源冷却 preflight gate，再执行真实文献刷新、来源支撑的相似工作检查、广义非学术灵感刷新、本地 demo 或公开 benchmark 实验、命令行复现实验 rerun、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录、reproduction-check 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
 
 真实 benchmark 可选运行：
 
@@ -187,10 +187,13 @@ poetry run airesearcher skill-polish-audit \
 
 ```bash
 poetry run airesearcher literature-refresh --vault autoresearch-vault --cache .cache/literature --max-queries 1 --max-results-per-source 1
+poetry run airesearcher inspiration-refresh --vault autoresearch-vault --query "autonomous research agents datasets" --max-queries 1 --max-results-per-source 2
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-这两个命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。项目启动检索现在会优先使用短结构化查询，而不是把长段落直接塞给搜索 API；research-gap、negative-result 和 vault-context 查询仍作为扩展广度保留。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
+文献刷新和相似工作检查命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。项目启动检索现在会优先使用短结构化查询，而不是把长段落直接塞给搜索 API；research-gap、negative-result 和 vault-context 查询仍作为扩展广度保留。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
+
+`inspiration-refresh` 会调用真实的广义联网来源，但它们不是学术数据库。当前内置来源是 Hugging Face 公开 dataset 元数据和 Hacker News Search。结果适合用于发现数据集线索、工具想法、工程约束、社区痛点和相邻项目；生成的 Obsidian 笔记会明确标注这些只是 dataset/community/news signals。它们不能直接算作文献证据、创新性证据或发表门禁支撑，除非后续再用 primary source、代码、data card 或真实实验验证。
 
 真实 LLM smoke 与输出质量门：
 

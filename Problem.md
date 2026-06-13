@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-034 - Inspiration focused gate initially failed on Python 3.10 import and brittle test assertion
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 14:10:00 +08:00
+- Source: Focused verification for task `99.1`.
+- Symptom: `poetry run pytest tests\unit\test_inspiration.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py -q` first failed during collection because `Protocol` was imported from `collections.abc`, then failed once more because the autopilot unit test expected an exact candidate query string that did not match the generated candidate title.
+- Impact: The new inspiration module and autopilot wiring could not be marked complete until Python 3.10 import compatibility and the unit-test contract were fixed.
+- Evidence: Pytest reported `ImportError: cannot import name 'Protocol' from 'collections.abc'`; mypy reported `Module "collections.abc" has no attribute "Protocol"`; the autopilot test reported an assertion mismatch over the generated inspiration query tuple.
+- Root cause: `Protocol` belongs in `typing` for this supported Python version, and the first autopilot test assertion coupled to an exact string instead of the core generated research-topic phrase.
+- Workaround: None needed after the code and test fixes.
+- Next action: Keep Python 3.10 compatibility checks in focused tests and prefer robust contract assertions for generated prompts/queries.
+- Linked tasks: `99.1`
+- Resolution: Moved `Protocol` to `typing`, tightened the default client typing, used test parameters explicitly, and changed the autopilot test to assert that at least one inspiration query contains the core generated research-topic phrase.
+- Verification: Focused inspiration/CLI/compliance tests passed with 46 tests; targeted ruff and mypy passed; full `poetry run pytest tests\smoke tests\unit -q` passed with 413 passed and 4 skipped.
+
 ### P-20260613-033 - Local shell lacks `gh` for CI polling
 
 - Status: Mitigated
