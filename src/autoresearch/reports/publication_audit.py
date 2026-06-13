@@ -87,6 +87,7 @@ class PublicationAuditReport:
     score: float
     checks: tuple[PublicationAuditCheck, ...]
     cycle_summary_path: str
+    review_path: str | None
     output_path: str
     markdown_path: str
     vault_review_path: str | None = None
@@ -120,6 +121,7 @@ class PublicationAuditReport:
             "score": self.score,
             "checks": [check.to_dict() for check in self.checks],
             "cycle_summary_path": self.cycle_summary_path,
+            "review_path": self.review_path,
             "output_path": self.output_path,
             "markdown_path": self.markdown_path,
             "vault_review_path": self.vault_review_path,
@@ -198,6 +200,7 @@ def audit_publication_quality(
     *,
     cycle_summary_path: Path | str,
     target: str = "ccf-b",
+    review_path: Path | str | None = None,
     output_dir: Path | str | None = None,
     vault_root: Path | str | None = None,
     project_id: str | None = None,
@@ -214,7 +217,12 @@ def audit_publication_quality(
         *_literature_checks(summary, target_config),
         *_similarity_checks(summary, summary_path.parent, target_config),
         *_script_and_data_checks(summary, summary_path.parent, target_config),
-        *_review_checks(summary, target_config),
+        *_review_checks(
+            summary,
+            summary_path.parent,
+            target_config,
+            review_path=review_path,
+        ),
         *_manuscript_checks(summary, summary_path.parent),
     )
     verdict = _verdict(checks, target_config)
@@ -228,6 +236,7 @@ def audit_publication_quality(
         score=score,
         checks=tuple(checks),
         cycle_summary_path=summary_path.as_posix(),
+        review_path=_path_text(_review_artifact_path(summary, review_path)),
         output_path=output_path.as_posix(),
         markdown_path=markdown_path.as_posix(),
     )
@@ -242,6 +251,7 @@ def audit_publication_quality(
             score=report.score,
             checks=report.checks,
             cycle_summary_path=report.cycle_summary_path,
+            review_path=report.review_path,
             output_path=report.output_path,
             markdown_path=report.markdown_path,
             vault_review_path=review_path.as_posix(),
@@ -632,9 +642,18 @@ def _script_and_data_checks(
 
 def _review_checks(
     summary: dict[str, Any],
+    base_dir: Path,
     target: PublicationQualityTarget,
+    *,
+    review_path: Path | str | None,
 ) -> list[PublicationAuditCheck]:
-    review = _dict(summary.get("review"))
+    review = _review_gate_info(
+        summary,
+        review_path,
+        base_dir,
+        min_quality=target.min_llm_review_quality,
+    )
+    review_source = _path_text(_review_artifact_path(summary, review_path)) or "cycle_summary.review"
     quality = float(review.get("quality_score", 0.0) or 0.0)
     status = _text(review.get("status"))
     verdict = _text(review.get("verdict"))
@@ -648,7 +667,7 @@ def _review_checks(
                 f"LLM evidence review status={status or 'missing'}, verdict={verdict or 'missing'}, "
                 f"quality_score={quality:.3f}; target requires >= {target.min_llm_review_quality:.2f}."
             ),
-            ("cycle_summary.review",),
+            (review_source,),
             None if passed else "Run evidence-constrained LLM review and fix unsupported claims before publication audit.",
         )
     ]
@@ -659,7 +678,7 @@ def _review_checks(
                 PublicationAuditCheckStatus.FAIL,
                 "high",
                 f"Reviewer verdict is `{verdict or 'missing'}`, not publication-ready.",
-                ("cycle_summary.review.verdict",),
+                (review_source,),
                 "Treat fail/missing reviewer verdicts as blockers.",
             )
         )
@@ -670,11 +689,53 @@ def _review_checks(
                 PublicationAuditCheckStatus.PASS if verdict == "pass" else PublicationAuditCheckStatus.WARNING,
                 "medium",
                 f"Reviewer verdict is `{verdict}`.",
-                ("cycle_summary.review.verdict",),
+                (review_source,),
                 None if verdict == "pass" else "Resolve reviewer revision items before submission.",
             )
         )
     return checks
+
+
+def _review_artifact_path(
+    summary: dict[str, Any],
+    explicit_path: Path | str | None,
+) -> Path | str | None:
+    if explicit_path is not None:
+        return explicit_path
+    review = _dict(summary.get("review"))
+    return review.get("output_path")
+
+
+def _review_gate_info(
+    summary: dict[str, Any],
+    explicit_path: Path | str | None,
+    base_dir: Path,
+    *,
+    min_quality: float,
+) -> dict[str, Any]:
+    if explicit_path is None:
+        return _dict(summary.get("review"))
+
+    resolved_path = _resolve_path(explicit_path, base_dir)
+    payload, error = _read_json_with_error(resolved_path or explicit_path)
+    if error:
+        return {"status": "unreadable", "output_path": _path_text(explicit_path), "error": error}
+
+    quality = _dict(payload.get("quality"))
+    parsed = _dict(quality.get("parsed_output"))
+    quality_score = quality.get("score")
+    if not isinstance(quality_score, int | float):
+        quality_score = payload.get("quality_score")
+    status = _text(payload.get("status"))
+    if not status and isinstance(quality_score, int | float):
+        status = "passed" if quality_score >= min_quality else "below_threshold"
+    verdict = _text(payload.get("verdict")) or _text(parsed.get("verdict"))
+    return {
+        "status": status,
+        "verdict": verdict,
+        "quality_score": quality_score,
+        "output_path": _path_text(explicit_path),
+    }
 
 
 def _manuscript_checks(
@@ -809,6 +870,7 @@ def _markdown(report: PublicationAuditReport) -> str:
         f"- Publishable: `{str(report.publishable).lower()}`",
         f"- Score: `{report.score:.3f}`",
         f"- Cycle summary: `{report.cycle_summary_path}`",
+        f"- Review artifact: `{report.review_path or 'cycle_summary.review'}`",
         f"- JSON: `{report.output_path}`",
         f"- Vault review: `{report.vault_review_path or 'not written'}`",
         f"- Vault issue: `{report.vault_issue_path or 'not written'}`",
@@ -871,7 +933,16 @@ def _write_vault_audit(
         title=f"Publication audit {slug}",
         tags=["publication-audit", report.verdict.value],
         keywords=["publication-audit", report.target.name, report.verdict.value],
-        source_refs=[report.cycle_summary_path, report.output_path, report.markdown_path],
+        source_refs=[
+            ref
+            for ref in (
+                report.cycle_summary_path,
+                report.review_path,
+                report.output_path,
+                report.markdown_path,
+            )
+            if ref
+        ],
         related_task_ids=["publication-audit"],
         body=_markdown(report),
         created_at=now,
@@ -892,7 +963,9 @@ def _write_vault_audit(
             title=f"Publication audit blockers {slug}",
             tags=["open", "publication-audit", report.verdict.value],
             keywords=["publication-audit", "quality-gate", report.target.name],
-            source_refs=[report.output_path, report.markdown_path],
+            source_refs=[
+                ref for ref in (report.review_path, report.output_path, report.markdown_path) if ref
+            ],
             links=[review_entry.entry_id],
             related_task_ids=["publication-audit"],
             body=_issue_body(report, review_entry.entry_id, failed_checks),
@@ -1207,6 +1280,16 @@ def _read_json_if_exists(path_value: object) -> dict[str, Any]:
         return {}
 
 
+def _read_json_with_error(path_value: object) -> tuple[dict[str, Any], str | None]:
+    path = Path(_text(path_value))
+    if not path.exists():
+        return {}, f"{path.as_posix()} does not exist"
+    try:
+        return _read_json(path), None
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {}, str(exc)
+
+
 def _resolve_path(path_value: object, base_dir: Path) -> Path | None:
     text = _text(path_value)
     if not text:
@@ -1241,6 +1324,13 @@ def _text(value: object) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _path_text(value: object) -> str | None:
+    text = _text(value)
+    if not text:
+        return None
+    return Path(text).as_posix()
 
 
 def _int(value: object, *, default: int = 0) -> int:

@@ -146,9 +146,10 @@ DEFAULT_SLASH_COMMANDS = {
     ),
     "research/publication-audit.toml": (
         "Audit whether a completed cycle meets CCF-B/Q3 publication-readiness gates.",
-        "Run `airesearcher publication-audit <cycle-summary.json> --target ccf-b` before "
-        "claiming the output is publishable. Treat `fail` or `needs_revision` as blockers, "
-        "not cosmetic polish.",
+        "Run `airesearcher publication-audit <cycle-summary.json> --target ccf-b "
+        "[--review-json runs/llm-review/latest.json]` before claiming the output is publishable. "
+        "A standalone review can satisfy review checks only; treat `fail` or `needs_revision` "
+        "as blockers, not cosmetic polish.",
     ),
     "research/approve.toml": (
         "Approve the latest pending dangerous runtime action.",
@@ -1004,6 +1005,13 @@ def publication_audit(
         Path | None,
         typer.Option("--output-dir", help="Directory for publication-audit.json and .md."),
     ] = None,
+    review_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--review-json",
+            help="Optional standalone llm-review.json overriding cycle_summary.review.",
+        ),
+    ] = None,
     vault: Annotated[
         Path | None,
         typer.Option("--vault", help="Optional Obsidian vault root for audit review/issue notes."),
@@ -1025,6 +1033,7 @@ def publication_audit(
     report = audit_publication_quality(
         cycle_summary_path=cycle_summary_path,
         target=target,
+        review_path=review_path,
         output_dir=output_dir,
         vault_root=vault,
         project_id=project_id,
@@ -1034,6 +1043,8 @@ def publication_audit(
     typer.echo(f"[OK] score: {report.score:.3f}")
     typer.echo(f"[OK] report: {report.markdown_path}")
     typer.echo(f"[OK] json: {report.output_path}")
+    if report.review_path:
+        typer.echo(f"[OK] review: {report.review_path}")
     if report.vault_review_path:
         typer.echo(f"[OK] vault_review: {report.vault_review_path}")
     if report.vault_issue_path:

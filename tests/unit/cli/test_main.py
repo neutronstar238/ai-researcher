@@ -324,16 +324,19 @@ def test_publication_audit_command_reports_and_can_fail_gate(
 ) -> None:
     summary_path = tmp_path / "cycle-summary.json"
     summary_path.write_text("{}", encoding="utf-8")
-    captured: dict[str, object] = {}
+    review_path = tmp_path / "llm-review.json"
+    review_path.write_text("{}", encoding="utf-8")
+    calls: list[dict[str, object]] = []
 
     def fake_audit(**kwargs: object) -> SimpleNamespace:
-        captured.update(kwargs)
+        calls.append(dict(kwargs))
         return SimpleNamespace(
             verdict=SimpleNamespace(value="fail"),
             publishable=False,
             score=0.25,
             markdown_path="audit.md",
             output_path="audit.json",
+            review_path=str(kwargs.get("review_path") or ""),
             vault_review_path=None,
             vault_issue_path="vault/issues/publication-audit.md",
         )
@@ -347,6 +350,8 @@ def test_publication_audit_command_reports_and_can_fail_gate(
             str(summary_path),
             "--target",
             "ccf-b",
+            "--review-json",
+            str(review_path),
             "--no-fail-on-not-publishable",
         ],
     )
@@ -354,10 +359,12 @@ def test_publication_audit_command_reports_and_can_fail_gate(
 
     assert ok_result.exit_code == 0, ok_result.output
     assert "[OK] publication_audit: fail" in ok_result.stdout
+    assert f"[OK] review: {review_path}" in ok_result.stdout
     assert "[OK] vault_issue: vault/issues/publication-audit.md" in ok_result.stdout
     assert fail_result.exit_code == 1
-    assert captured["cycle_summary_path"] == summary_path
-    assert captured["target"] == "ccf-b"
+    assert calls[0]["cycle_summary_path"] == summary_path
+    assert calls[0]["target"] == "ccf-b"
+    assert calls[0]["review_path"] == review_path
 
 
 def test_paper_build_command_reports_compiled_artifact(

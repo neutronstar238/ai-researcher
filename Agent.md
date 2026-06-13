@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 12:29:35 +08:00 - Codex - Task 93.1 publication-audit review override
+
+- Request: Continue strict SCALE-lite research quality gates by letting `publication-audit` consume a real post-hoc LLM review artifact without weakening literature, similarity, novelty, or method-effect blockers.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-93-1-publication-audit-review-override.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added `review_path` to publication-audit reports and JSON/Markdown output.
+  - Added `review_path` support to `audit_publication_quality` and `--review-json` to `airesearcher publication-audit`.
+  - Parsed standalone `llm-review.json` artifacts from deterministic `quality.score` and `quality.parsed_output.verdict` fields.
+  - Wired explicit review artifacts into review checks, CLI output, slash command guidance, Obsidian audit source refs, and bilingual README guidance.
+  - Added focused tests proving a skipped cycle review can be satisfied by a standalone review artifact while the rest of the publication audit remains independent.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py -q` passed with 44 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py` passed.
+  - Real gate: `poetry run airesearcher publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --review-json runs\manual-live\llm-review-task91-with-run-record.json --target ccf-b --output-dir runs\manual-live\publication-audit-task93-review-override --vault runs\manual-live\task93-audit-vault --project-id task93_review_override --no-fail-on-not-publishable` exited 0 and wrote a failed publication audit with `llm_evidence_review=pass`, `review_verdict_strength=pass`, `publishable=false`, score `0.574`, and remaining literature/similarity/source/novelty blockers.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files and the pre-existing dirty `.gitignore`.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 395 passed and 4 skipped.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue improving real online novelty coverage: enough query breadth, source cooldown recovery, classified similar-work evidence, and broad adjacent/duplicate/contradictory findings before claiming CCF-B/Q3-level publishability.
+
 ### 2026-06-13 12:13:10 +08:00 - Codex - Task 92.1 evidence-gate review override
 
 - Request: Continue strict release gating by allowing a real post-hoc LLM review artifact to satisfy the evidence-gate review stage without rerunning an entire historical cycle.

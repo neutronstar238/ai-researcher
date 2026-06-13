@@ -206,9 +206,12 @@ poetry run airesearcher llm-review `
 ```bash
 poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json `
   --target ccf-b `
+  --review-json runs/llm-review/latest.json `
   --vault autoresearch-vault `
   --project-id demo_project
 ```
+
+如果历史 cycle 当时跳过了 review，`--review-json` 可以指向后续真实补跑的 `llm-review.json`。这只能让 `llm_evidence_review` 和 `review_verdict_strength` 使用该评审证据通过；联网文献广度、相似工作广度、来源错误、novelty 分类、方法效果和论文章节门禁仍会独立阻断，不能被 review 结果覆盖。
 
 这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，baseline、ablation、统计 sanity 是否有证据，以及提出的方法是否有文件支撑的创新性证据。对 CCF-B/三区期刊目标，baseline-only 任务或 `baseline_only=true` 元数据即使章节完整也不能通过发表级审计；run record 必须包含 proposed mechanism/contribution 元数据，并且实验产物里必须有实际存在的 innovation/mechanism/contribution artifact。该 artifact 还必须为经验增益声明提供正向 baseline-vs-candidate delta；中性、负向或缺失的方法效果证据会让 `method_effect_evidence` 失败，只能作为负结果证据或下一轮更强实验的任务来源。相似工作检索结果也必须有证据支撑的分类：如果所有 similarity finding 都仍是 `unknown` 或未分类，`similarity_classification_coverage` 会失败；只有非 `unknown` 分类才计入 `similarity_classified_finding_breadth`，系统不能只凭 raw finding 数量把它当成 novelty 支撑。当前生成的 Markdown 报告已经包含论文式章节，同时保留指标到 evidence edge 的绑定，并保持 Obsidian 可读；过程数据、总结、证据 note 和最终 cycle summary 仍应以 Markdown 写入 `autoresearch-vault/`。真正的论文级最终产物不是 Markdown 证据稿，而是由对应 LaTeX 模板编译出的 PDF；通用单栏/双栏 `article` 模板 smoke 已经能在本地 LaTeX 引擎可用时编译。外部兼容性矩阵会抓取 IEEEtran、ACM `acmart` 和 Springer Nature 的当前来源页面；当本地安装了对应 class 时会编译 IEEEtran/ACM smoke PDF，若缺少 Springer Nature `sn-jnl.cls`，则记录为 `source_unavailable`，不会虚构兼容通过。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、来源覆盖、模板兼容性、方法创新证据、方法效果证据、已分类相似工作广度或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
 

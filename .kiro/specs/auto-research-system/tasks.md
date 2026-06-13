@@ -1408,6 +1408,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `89.1`, task `91.1`, and real evidence-gate run showing a valid post-hoc review artifact could not previously clear the review stage._
     - _Verify: focused evidence-gate/CLI tests, ruff, mypy, full smoke/unit tests, and a real `evidence-gate --review-json` run over a real cycle showing review/lifecycle pass while publication audit remains blocking._
 
+- [x] 93. Allow post-hoc review evidence in publication audit
+  - [x] 93.1 Add explicit review artifact override to `publication-audit`
+    - Add `--review-json` to `airesearcher publication-audit`.
+    - Let `audit_publication_quality` accept a standalone `llm-review.json` artifact when `cycle_summary.review` is missing or skipped.
+    - Parse standalone review artifacts from deterministic `quality.score` and `quality.parsed_output.verdict` fields.
+    - Include the explicit review path in JSON/Markdown reports, Obsidian review notes, Obsidian issue notes, and review check evidence refs.
+    - Keep literature breadth, similar-work breadth, source error, classified novelty, method-effect, manuscript, and paper-build gates independent; a post-hoc passing review cannot make weak external-search evidence publication-ready.
+    - _References: task `92.1`, task `91.1`, and real publication-audit run showing a valid post-hoc review artifact could not previously clear publication-audit review checks._
+    - _Verify: focused publication-audit/CLI tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit --review-json` run over a real cycle showing review checks pass while literature/similarity blockers remain blocking._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1692,6 +1702,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 59,
       "tasks": ["92.1"]
+    },
+    {
+      "id": 60,
+      "tasks": ["93.1"]
     }
   ]
 }

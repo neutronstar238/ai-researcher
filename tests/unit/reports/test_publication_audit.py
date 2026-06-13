@@ -108,6 +108,55 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert report.publishable is True
 
 
+def test_publication_audit_accepts_standalone_review_json(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["review"] = {"status": "skipped", "quality_score": 0.0, "verdict": "missing"}
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    review_path = tmp_path / "llm-review.json"
+    review_path.write_text(
+        json.dumps(
+            {
+                "quality": {
+                    "score": 1.0,
+                    "parsed_output": {
+                        "verdict": "pass",
+                        "findings": [
+                            {
+                                "issue": "No blocker.",
+                                "evidence_refs": ["evidence_1"],
+                            }
+                        ],
+                        "unsupported_claims": [],
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = audit_publication_quality(
+        cycle_summary_path=summary_path,
+        target="ccf-b",
+        review_path=review_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.review_path == review_path.as_posix()
+    assert checks["llm_evidence_review"].status.value == "pass"
+    assert checks["review_verdict_strength"].status.value == "pass"
+    assert checks["llm_evidence_review"].evidence_refs == (review_path.as_posix(),)
+    assert report.verdict is PublicationAuditVerdict.PASS
+    assert report.publishable is True
+    assert f"Review artifact: `{review_path.as_posix()}`" in Path(
+        report.markdown_path
+    ).read_text(encoding="utf-8")
+
+
 def test_publication_audit_blocks_unknown_only_similarity_classifications(
     tmp_path: Path,
 ) -> None:
