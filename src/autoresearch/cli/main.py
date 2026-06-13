@@ -1911,11 +1911,12 @@ def list_slash_commands(
         typer.echo(f"/{name}")
 
 
-def _autopilot_literature_clients() -> dict[str, LiteratureSearchClient]:
+def _autopilot_literature_clients(cache_root: Path) -> dict[str, LiteratureSearchClient]:
+    circuit_state_path = cache_root / "source-circuit-breakers.json"
     return {
         "arxiv": ArxivClient(),
-        "semantic_scholar": SemanticScholarClient(),
-        "openalex": OpenAlexClient(),
+        "semantic_scholar": SemanticScholarClient(circuit_state_path=circuit_state_path),
+        "openalex": OpenAlexClient(circuit_state_path=circuit_state_path),
     }
 
 
@@ -1940,7 +1941,7 @@ def _run_autopilot_cycle(
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
-    literature_clients = _autopilot_literature_clients()
+    literature_clients = _autopilot_literature_clients(cache)
 
     literature_report = run_daily_literature_refresh(
         vault_root=vault,

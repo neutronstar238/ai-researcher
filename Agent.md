@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 10:30:19 +08:00 - Codex - Task 81.1 persistent source cooldowns across autopilot cycles
+
+- Request: Continue hardening real online research execution by making external-source cooldowns survive across autopilot processes and scheduled cycles.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-81-1-persistent-source-cooldowns.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Added task `81.1` to the executable task plan and dependency graph.
+  - Added optional on-disk circuit-breaker state to source clients so Semantic Scholar and OpenAlex cooldowns persist under the autopilot cache root as `source-circuit-breakers.json`.
+  - Wired `autopilot` and `serve` cycles to create source clients with the shared persistent state path.
+  - Added focused unit coverage for persistent circuit state and CLI source-client wiring.
+  - Updated README, changelog, Problem log, and Obsidian progress memory with the cross-cycle source-politeness behavior and remaining publication blocker.
+- Verification:
+  - `poetry run pytest tests\unit\literature\test_clients.py tests\unit\cli\test_main.py -q`: passed, 42 tests.
+  - `poetry run ruff check src\autoresearch\literature\clients.py src\autoresearch\cli\main.py tests\unit\literature\test_clients.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\literature\clients.py src\autoresearch\cli\main.py`: passed.
+  - `$env:SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS='10'; $env:SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS='300'; poetry run airesearcher autopilot --vault runs\manual-live\task81-persistent-vault --cache runs\manual-live\task81-persistent-cache --output-dir runs\manual-live\autopilot-persistent-task81-a --state runs\manual-live\autopilot-persistent-task81-a\scheduler-state.json --project-id task81_persistent_a --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real online cycle. It wrote `runs/manual-live/autopilot-persistent-task81-a/cycle-20260613T022556Z/cycle-summary.json`; Semantic Scholar first returned `SourceRateLimitError` and the later similarity phase saw `CircuitBreakerOpenError`.
+  - `$env:SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS='10'; $env:SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS='300'; poetry run airesearcher autopilot --vault runs\manual-live\task81-persistent-vault --cache runs\manual-live\task81-persistent-cache --output-dir runs\manual-live\autopilot-persistent-task81-b --state runs\manual-live\autopilot-persistent-task81-b\scheduler-state.json --project-id task81_persistent_b --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a second real online cycle. It wrote `runs/manual-live/autopilot-persistent-task81-b/cycle-20260613T022616Z/cycle-summary.json`; Semantic Scholar was blocked immediately by the persisted circuit before another HTTP request.
+  - `Get-Content runs\manual-live\task81-persistent-cache\source-circuit-breakers.json`: confirmed persisted Semantic Scholar cooldown state.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 377 tests passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260613-019` for external-source cooldowns being process-local.
+  - Updated `P-20260613-016`; Semantic Scholar source coverage still blocks publication-level novelty claims until an API key, longer cooldown, or better source budgeting avoids 429.
+- Follow-up:
+  - Add per-source query budgeting or preflight source health reporting so full publication cycles do not spend reviewer tokens while a required source is already cooling down.
+  - Rerun an aligned review-enabled Pendigits cycle after Semantic Scholar access is stabilized.
+
 ### 2026-06-13 10:20:11 +08:00 - Codex - Task 80.1 shared source clients inside autopilot cycles
 
 - Request: Continue hardening real online research execution by making Semantic Scholar rate-limit/circuit state persist across the literature-refresh and similarity-check phases of one autopilot cycle.

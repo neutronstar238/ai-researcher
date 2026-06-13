@@ -1291,6 +1291,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `79.1` aligned real cycle showing Semantic Scholar 429 remains the current novelty-coverage blocker._
     - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot` cycle showing Semantic Scholar 429 opens once in literature refresh and similarity receives only circuit-open errors from the shared breaker._
 
+- [x] 81. Persist source cooldowns across autopilot cycles
+  - [x] 81.1 Add optional on-disk 429 circuit state for literature clients
+    - Add optional state-file support to `RateLimitCircuitBreaker` using wall-clock expiry times so cooldowns survive process restarts.
+    - Let Semantic Scholar and OpenAlex clients accept a circuit-state path while preserving default in-memory behavior for ordinary unit tests and direct client use.
+    - Store autopilot/serve source circuit state under `<cache-root>/source-circuit-breakers.json`.
+    - Clear expired or successful source entries so stale cooldowns do not permanently disable a source.
+    - Keep source failures visible in publication audit; persistent cooldown avoids repeated hammering but does not convert failed source coverage into publication-ready evidence.
+    - _References: task `80.1` follow-up and user requirement for a 24h loop that respects real API access limits._
+    - _Verify: focused client/CLI tests, ruff, mypy, full smoke/unit tests, and two consecutive real no-review `autopilot` cycles sharing a cache root where the second cycle starts Semantic Scholar as `CircuitBreakerOpenError` rather than another immediate 429._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1527,6 +1537,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 47,
       "tasks": ["80.1"]
+    },
+    {
+      "id": 48,
+      "tasks": ["81.1"]
     }
   ]
 }

@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Any, cast
 
 import certifi
@@ -46,6 +47,9 @@ class RateLimitCircuitBreaker:
         failure_threshold: int = 1,
         reset_after_seconds: float = 60.0,
         clock: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], float] = time.time,
+        state_path: Path | str | None = None,
+        state_key: str = "default",
     ) -> None:
         if failure_threshold < 1:
             msg = "failure_threshold must be at least 1"
@@ -56,6 +60,9 @@ class RateLimitCircuitBreaker:
         self.failure_threshold = failure_threshold
         self.reset_after_seconds = reset_after_seconds
         self.clock = clock
+        self.wall_clock = wall_clock
+        self.state_path = Path(state_path) if state_path is not None else None
+        self.state_key = state_key
         self._failures = 0
         self._opened_until: float | None = None
 
@@ -73,15 +80,71 @@ class RateLimitCircuitBreaker:
             return
         cooldown = max(self.reset_after_seconds, retry_after_seconds or 0.0)
         self._opened_until = self.clock() + cooldown
+        self._set_persistent_open(cooldown)
 
     def record_success(self) -> None:
         self._failures = 0
         self._opened_until = None
+        self._clear_persistent_open()
 
     def remaining_seconds(self) -> float:
+        persistent_remaining = self._persistent_remaining_seconds()
         if self._opened_until is None:
+            return persistent_remaining
+        return max(persistent_remaining, max(0.0, self._opened_until - self.clock()))
+
+    def _persistent_remaining_seconds(self) -> float:
+        if self.state_path is None:
             return 0.0
-        return max(0.0, self._opened_until - self.clock())
+        state = self._read_state()
+        value = state.get(self.state_key)
+        if not isinstance(value, int | float):
+            return 0.0
+        remaining = float(value) - self.wall_clock()
+        if remaining <= 0:
+            self._clear_persistent_open()
+            return 0.0
+        return remaining
+
+    def _set_persistent_open(self, cooldown_seconds: float) -> None:
+        if self.state_path is None:
+            return
+        state = self._read_state()
+        state[self.state_key] = self.wall_clock() + cooldown_seconds
+        self._write_state(state)
+
+    def _clear_persistent_open(self) -> None:
+        if self.state_path is None:
+            return
+        state = self._read_state()
+        if self.state_key not in state:
+            return
+        state.pop(self.state_key, None)
+        self._write_state(state)
+
+    def _read_state(self) -> dict[str, float]:
+        if self.state_path is None or not self.state_path.exists():
+            return {}
+        try:
+            payload = json.loads(self.state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        if not isinstance(payload, dict):
+            return {}
+        return {
+            str(key): float(value)
+            for key, value in payload.items()
+            if isinstance(value, int | float)
+        }
+
+    def _write_state(self, state: Mapping[str, float]) -> None:
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        self.state_path.write_text(
+            json.dumps(dict(sorted(state.items())), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
 
 
 class RateLimiter:
@@ -183,6 +246,7 @@ class SemanticScholarClient:
         api_key: str | None = None,
         api_key_env: str = "SEMANTIC_SCHOLAR_API_KEY",
         circuit_breaker: RateLimitCircuitBreaker | None = None,
+        circuit_state_path: Path | str | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.http_get = http_get
@@ -193,7 +257,9 @@ class SemanticScholarClient:
         )
         self.retry = retry
         self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker(
-            reset_after_seconds=_float_env("SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS", 60.0)
+            reset_after_seconds=_float_env("SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS", 60.0),
+            state_path=circuit_state_path,
+            state_key="semantic_scholar",
         )
         self.sleep = sleep
 
@@ -260,6 +326,7 @@ class OpenAlexClient:
         mailto: str | None = None,
         mailto_env: str = "OPENALEX_MAILTO",
         circuit_breaker: RateLimitCircuitBreaker | None = None,
+        circuit_state_path: Path | str | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.http_get = http_get
@@ -270,7 +337,9 @@ class OpenAlexClient:
         )
         self.retry = retry
         self.circuit_breaker = circuit_breaker or RateLimitCircuitBreaker(
-            reset_after_seconds=_float_env("OPENALEX_CIRCUIT_RESET_SECONDS", 60.0)
+            reset_after_seconds=_float_env("OPENALEX_CIRCUIT_RESET_SECONDS", 60.0),
+            state_path=circuit_state_path,
+            state_key="openalex",
         )
         self.sleep = sleep
 

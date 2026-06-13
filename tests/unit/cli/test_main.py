@@ -716,6 +716,20 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert "Gaussian" in candidate.metadata["limitation"]
 
 
+def test_autopilot_literature_clients_share_persistent_circuit_state(
+    tmp_path: Path,
+) -> None:
+    clients = cli_main._autopilot_literature_clients(tmp_path / "cache")
+
+    semantic = clients["semantic_scholar"]
+    openalex = clients["openalex"]
+
+    assert semantic.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"
+    assert semantic.circuit_breaker.state_key == "semantic_scholar"
+    assert openalex.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"
+    assert openalex.circuit_breaker.state_key == "openalex"
+
+
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
@@ -850,7 +864,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
-    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda: shared_clients)
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
     monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)

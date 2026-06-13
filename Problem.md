@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-019 - Source cooldowns did not survive process or cycle boundaries
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 10:25:00 +08:00
+- Source: Follow-up after task `80.1` showed in-cycle sharing worked but a later process/cycle could still start with an empty circuit breaker.
+- Symptom: A long-running or restarted deployment could hit Semantic Scholar 429 in one cycle, then retry the same source immediately in a later cycle because the circuit state only lived in memory.
+- Impact: The system was less polite to public literature APIs than required for 24h operation and could repeatedly generate source-error evidence instead of respecting cooldowns.
+- Evidence: Before task `81.1`, `RateLimitCircuitBreaker` stored `_opened_until` only in memory. There was no source cooldown file under the literature cache root.
+- Root cause: Circuit breaker state used monotonic process time only, which is correct inside one process but cannot survive restarts or separate cycles.
+- Workaround: None needed after task `81.1`; autopilot/serve clients now persist source circuit state under the selected cache root.
+- Next action: Monitor whether persistent cooldown plus optional API keys are enough for full-width review-enabled runs; if not, add per-source query budgeting or source scheduling.
+- Linked tasks: `81.1`
+- Resolution: Task `81.1` adds optional wall-clock state-file support to `RateLimitCircuitBreaker` and wires Semantic Scholar/OpenAlex clients in autopilot/serve to `<cache-root>/source-circuit-breakers.json`.
+- Verification: Two consecutive real no-review cycles sharing `runs/manual-live/task81-persistent-cache` showed the first cycle recorded `SourceRateLimitError: Semantic Scholar HTTP 429...`, while the second cycle's first Semantic Scholar literature fetch was `CircuitBreakerOpenError: rate-limit circuit is open...`. The state file existed at `runs/manual-live/task81-persistent-cache/source-circuit-breakers.json`.
+
 ### P-20260613-018 - Autopilot rebuilt source clients after a source circuit opened
 
 - Status: Resolved
@@ -72,11 +88,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Real task `78.1` UCI Pendigits variance-calibrated prototype run and autopilot cycle.
 - Symptom: The new method candidate has a positive measured effect over the nearest-centroid baseline, but the full publication audit still fails when literature breadth is smoke-sized and LLM evidence review is skipped.
 - Impact: The system now has a real positive-effect method path, but must not present it as a CCF-B/Q3-ready paper until novelty search, related-work breadth, review, and manuscript gates all pass.
-- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review. Task `80.1` improved in-cycle source politeness but did not make the Semantic Scholar source coverage pass.
+- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review. Tasks `80.1` and `81.1` improved in-cycle and cross-cycle source politeness but did not make the Semantic Scholar source coverage pass.
 - Root cause: Positive method effect is necessary but not sufficient; the method still needs broad cross-literature novelty checks without source failures, plus a passing review-enabled cycle on the aligned candidate. The remaining source failure likely requires an API key or longer cooldown beyond an individual cycle.
 - Workaround: Keep the result as a positive method-candidate evidence note, not as a publication-ready claim.
 - Next action: Provide or configure a Semantic Scholar API key/cooldown that avoids 429, then rerun a review-enabled aligned cycle and compare against adjacent Gaussian/prototype/nearest-centroid calibration literature.
-- Linked tasks: `78.1`, `79.1`, `80.1`
+- Linked tasks: `78.1`, `79.1`, `80.1`, `81.1`
 - Resolution: Not resolved; task `78.1` creates the positive-effect candidate path and leaves publication readiness blocked by the broader gates.
 - Verification: Real `run-demo`, review-enabled `autopilot`, and aligned no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` completed. The aligned cycle reported `literature.query_count=4`, `reproduction_check.status=passed`, `publication_audit.verdict=needs_revision`, and `evidence_gate.verdict=blocked`.
 

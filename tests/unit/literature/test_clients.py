@@ -272,3 +272,29 @@ def test_semantic_scholar_429_opens_circuit_breaker_without_hammering() -> None:
         client.search("trusted", limit=1)
 
     assert calls == 1
+
+
+def test_rate_limit_circuit_breaker_persists_open_state(tmp_path) -> None:
+    state_path = tmp_path / "source-circuit-breakers.json"
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        clock=lambda: 100.0,
+        wall_clock=lambda: 1000.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+    )
+
+    breaker.record_rate_limit(retry_after_seconds=5)
+
+    reopened = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        clock=lambda: 200.0,
+        wall_clock=lambda: 1010.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+    )
+    with pytest.raises(CircuitBreakerOpenError, match="20.0s"):
+        reopened.raise_if_open()
+
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    assert set(payload) == {"semantic_scholar"}

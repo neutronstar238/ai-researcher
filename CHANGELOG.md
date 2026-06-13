@@ -33,6 +33,7 @@ Target version: `0.1.0`.
 - Semantic Scholar online discovery now supports optional `SEMANTIC_SCHOLAR_API_KEY`, conservative unauthenticated rate limiting, exponential backoff, and HTTP 429 circuit breaking.
 - OpenAlex is now a default third academic metadata source for literature refresh and project-start similarity checks, with optional `OPENALEX_API_KEY`, `OPENALEX_MAILTO`, request-spacing, and 429 circuit-breaker settings.
 - Autopilot now shares one ArXiv/Semantic Scholar/OpenAlex client set across literature refresh and similarity checks so rate-limit and 429 circuit-breaker state persists for the whole cycle.
+- Optional on-disk source circuit-breaker state under the literature cache root so Semantic Scholar/OpenAlex cooldowns can survive autopilot process restarts and consecutive cycles.
 - `llm-review` CLI for live LLM-as-reviewer checks constrained to local evidence artifacts and deterministic citation quality gates.
 - Project-level Obsidian `review/` memory for evidence-constrained LLM review notes.
 - Automatic Obsidian `issue_note` creation from actionable evidence-constrained LLM review findings.
