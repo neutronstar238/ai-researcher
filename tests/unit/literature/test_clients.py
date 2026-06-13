@@ -1,6 +1,7 @@
 import json
 from collections.abc import Mapping
 from io import BytesIO
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 
 import pytest
@@ -298,6 +299,40 @@ def test_rate_limit_circuit_breaker_persists_open_state(tmp_path) -> None:
 
     payload = json.loads(state_path.read_text(encoding="utf-8"))
     assert set(payload) == {"semantic_scholar"}
+    assert list(tmp_path.glob(".source-circuit-breakers.json.*.tmp")) == []
+
+
+def test_rate_limit_circuit_breaker_keeps_previous_state_when_atomic_replace_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_path = tmp_path / "source-circuit-breakers.json"
+    state_path.write_text('{"semantic_scholar": 9999.0}', encoding="utf-8")
+    original_replace = Path.replace
+
+    def fail_state_replace(self: Path, target: str | Path) -> Path:
+        if (
+            self.name.startswith(f".{state_path.name}.")
+            and Path(target) == state_path
+        ):
+            raise OSError("replace failed")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_state_replace)
+    breaker = RateLimitCircuitBreaker(
+        reset_after_seconds=30,
+        wall_clock=lambda: 1000.0,
+        state_path=state_path,
+        state_key="semantic_scholar",
+    )
+
+    with pytest.raises(OSError, match="replace failed"):
+        breaker.record_rate_limit(retry_after_seconds=5)
+
+    assert json.loads(state_path.read_text(encoding="utf-8")) == {
+        "semantic_scholar": 9999.0
+    }
+    assert list(tmp_path.glob(".source-circuit-breakers.json.*.tmp")) == []
 
 
 def test_rate_limit_circuit_breaker_reads_bom_state_file(tmp_path) -> None:

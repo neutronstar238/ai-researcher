@@ -11,6 +11,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -141,10 +142,16 @@ class RateLimitCircuitBreaker:
         if self.state_path is None:
             return
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        self.state_path.write_text(
-            json.dumps(dict(sorted(state.items())), indent=2, sort_keys=True),
-            encoding="utf-8",
+        payload = json.dumps(dict(sorted(state.items())), indent=2, sort_keys=True)
+        temp_path = self.state_path.with_name(
+            f".{self.state_path.name}.{os.getpid()}.{time.time_ns()}.tmp"
         )
+        try:
+            temp_path.write_text(payload, encoding="utf-8")
+            temp_path.replace(self.state_path)
+        finally:
+            with suppress(FileNotFoundError):
+                temp_path.unlink()
 
 
 class RateLimiter:

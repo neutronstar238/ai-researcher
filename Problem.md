@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-022 - Source cooldown writes could leave partial state files
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 11:02:03 +08:00
+- Source: Follow-up after tasks `82.1` and `83.1` made source preflight depend on persisted `source-circuit-breakers.json` evidence.
+- Symptom: `RateLimitCircuitBreaker._write_state()` wrote `source-circuit-breakers.json` directly. A process interruption, failed filesystem write, or concurrent deployment sharing a cache root could leave a partial JSON file.
+- Impact: Task `83.1` would correctly fail closed on the next cycle, but the system could still manufacture its own malformed state file and force unnecessary blocked cycles or manual cleanup.
+- Evidence: Before task `84.1`, `_write_state()` called `self.state_path.write_text(...)` directly. The new focused test simulates an atomic replacement failure and confirms the previous valid JSON state remains unchanged.
+- Root cause: The first persisted-state implementation optimized for simple durable cooldowns and did not yet use same-directory temporary writes plus replace.
+- Workaround: None needed after task `84.1`.
+- Next action: If multiple long-running deployments intentionally share one cache root, add an inter-process lock around read-modify-write so last-writer-wins state races are also serialized.
+- Linked tasks: `84.1`
+- Resolution: Task `84.1` writes state to a same-directory temporary file, atomically replaces the target, and removes temporary files after both successful and failed replacement attempts.
+- Verification: `poetry run pytest tests\unit\literature\test_clients.py -q`, `poetry run ruff check src\autoresearch\literature\clients.py tests\unit\literature\test_clients.py`, and `poetry run mypy src\autoresearch\literature\clients.py` passed. `poetry run ruff check src tests`, `poetry run mypy src`, `git diff --check`, and `poetry run pytest tests\smoke tests\unit -q` also passed; pytest reported 381 passed and 4 skipped, and `git diff --check` only emitted LF-to-CRLF warnings. A real CLI run `poetry run airesearcher autopilot --vault runs\manual-live\task84-atomic-vault --cache runs\manual-live\task84-atomic-cache --output-dir runs\manual-live\autopilot-atomic-source-state-task84 --state runs\manual-live\autopilot-atomic-source-state-task84\scheduler-state.json --project-id task84_atomic_state --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review` wrote `runs/manual-live/autopilot-atomic-source-state-task84/cycle-20260613T030125Z/cycle-summary.json`, kept source preflight at `pass`, left `source-circuit-breakers.json` as valid JSON, and left no `.source-circuit-breakers.json.*.tmp` files in the cache directory.
+
 ### P-20260613-021 - Malformed source cooldown state would have failed open after BOM fix
 
 - Status: Resolved
@@ -43,9 +59,9 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: A real CLI run with `runs\manual-live\task83-malformed-state-cache\source-circuit-breakers.json` containing `{not-json` was used to exercise the new fail-closed behavior. The verified run at `runs/manual-live/autopilot-malformed-source-state-task83-v2/cycle-20260613T024745Z/cycle-summary.json` recorded `state_error` for Semantic Scholar and OpenAlex and skipped review.
 - Root cause: Task `82.1` made valid BOM-bearing JSON readable, but preflight still needed an explicit validation step that treats malformed cooldown state as blocking evidence.
 - Workaround: None needed after task `83.1`.
-- Next action: Consider atomic writes or file locking for source cooldown state if concurrent deployments edit the same cache root.
-- Linked tasks: `83.1`
-- Resolution: Task `83.1` validates persisted source cooldown state in preflight and blocks on unreadable JSON, non-object payloads, or non-numeric expiry values.
+- Next action: Atomic writes were added in task `84.1`; inter-process locking remains a future option only if multiple deployments intentionally share one cache root.
+- Linked tasks: `83.1`, `84.1`
+- Resolution: Task `83.1` validates persisted source cooldown state in preflight and blocks on unreadable JSON, non-object payloads, or non-numeric expiry values. Task `84.1` reduces self-created malformed-state risk by writing persisted state atomically.
 - Verification: `poetry run pytest tests\unit\cli\test_main.py -q`, `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`, and `poetry run mypy src\autoresearch\cli\main.py` passed. The real CLI run `poetry run airesearcher autopilot --vault runs\manual-live\task83-malformed-state-vault-v2 --cache runs\manual-live\task83-malformed-state-cache-v2 --output-dir runs\manual-live\autopilot-malformed-source-state-task83-v2 --state runs\manual-live\autopilot-malformed-source-state-task83-v2\scheduler-state.json --project-id task83_malformed_state_v2 --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review` printed `[BLOCKED] source_preflight: blocked` and generated an Obsidian issue with related task IDs `82.1` and `83.1`.
 
 ### P-20260613-020 - Source cooldown preflight could be bypassed by operator-written BOM state

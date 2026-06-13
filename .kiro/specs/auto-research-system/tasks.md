@@ -1321,6 +1321,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `82.1` follow-up and `P-20260613-020` recommendation to avoid fail-open behavior for operator-edited state files._
     - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with malformed `source-circuit-breakers.json` showing `[BLOCKED] source_preflight: blocked`, `state_error` checks for Semantic Scholar/OpenAlex, skipped review, and a queued Obsidian issue follow-up._
 
+- [x] 84. Harden persisted source-state writes
+  - [x] 84.1 Write source circuit-breaker state atomically
+    - Replace direct writes to `source-circuit-breakers.json` with same-directory temporary-file writes followed by atomic replace.
+    - Preserve the previous valid state file if the replacement step fails.
+    - Clean temporary state files after both successful and failed replacement attempts.
+    - Keep task `83.1` fail-closed behavior as the fallback if a state file is still externally corrupted or manually edited into an invalid form.
+    - _References: `P-20260613-021` follow-up and the SCALE-lite requirement that source-politeness gates should be enforced by evidence files and filesystem behavior, not prompt-only care._
+    - _Verify: focused literature-client tests for successful cleanup and replacement failure, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run that touches persisted source state while leaving no temporary state files behind._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1569,6 +1578,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 50,
       "tasks": ["83.1"]
+    },
+    {
+      "id": 51,
+      "tasks": ["84.1"]
     }
   ]
 }

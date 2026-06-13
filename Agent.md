@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:02:03 +08:00 - Codex - Task 84.1 atomic source cooldown state writes
+
+- Request: Continue SCALE-lite hard-gate work by reducing self-created malformed source cooldown state during long-running deployments.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-84-1-atomic-source-state-writes.md`
+  - `src/autoresearch/literature/clients.py`
+  - `tests/unit/literature/test_clients.py`
+- Summary:
+  - Added task `84.1` to the executable task plan and dependency graph.
+  - Changed persisted source circuit-breaker writes from direct target-file writes to same-directory temporary-file writes followed by atomic replacement.
+  - Preserved the previous valid state file when the replacement step fails and cleaned temporary files after both success and failure paths.
+  - Kept task `83.1` fail-closed preflight as the fallback for externally corrupted or manually edited invalid state.
+  - Updated README, changelog, Problem log, and Obsidian progress memory.
+- Verification:
+  - `poetry run pytest tests\unit\literature\test_clients.py -q`: passed, 12 tests.
+  - `poetry run ruff check src\autoresearch\literature\clients.py tests\unit\literature\test_clients.py`: passed.
+  - `poetry run mypy src\autoresearch\literature\clients.py`: passed.
+  - `$cache='runs\manual-live\task84-atomic-cache'; $vault='runs\manual-live\task84-atomic-vault'; $out='runs\manual-live\autopilot-atomic-source-state-task84'; New-Item -ItemType Directory -Force -Path $cache | Out-Null; Set-Content -Path "$cache\source-circuit-breakers.json" -Value '{"semantic_scholar":1,"openalex":1}' -Encoding UTF8; poetry run airesearcher autopilot --vault $vault --cache $cache --output-dir $out --state "$out\scheduler-state.json" --project-id task84_atomic_state --demo pendigits_variance_calibrated_prototypes --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --no-review; Get-Content "$cache\source-circuit-breakers.json"; Get-ChildItem -Path $cache -Filter '.source-circuit-breakers.json.*.tmp' -Force`: passed as a real CLI run. It wrote `runs/manual-live/autopilot-atomic-source-state-task84/cycle-20260613T030125Z/cycle-summary.json`, reported `source_preflight=pass`, left `source-circuit-breakers.json` as valid JSON, and left no temporary state files behind. `publication_audit=fail` and `evidence_gate=blocked` remained correct because this run was not publication-ready.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 381 tests passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260613-022` for direct source cooldown writes possibly leaving partial state files.
+  - Updated `P-20260613-021` to point from malformed-state fail-closed handling to the new atomic-write hardening.
+- Follow-up:
+  - Add an inter-process lock around source state read-modify-write only if future deployments intentionally share one cache root across multiple long-running processes.
+
 ### 2026-06-13 10:50:03 +08:00 - Codex - Task 83.1 malformed source state fail-closed gate
 
 - Request: Continue SCALE-lite hard-gate work by preventing unverifiable source cooldown state from failing open.
