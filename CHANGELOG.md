@@ -72,6 +72,7 @@ Target version: `0.1.0`.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
 - `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
 - `evidence-gate` now emits a structured `lifecycle_trace` manifest for `define -> plan -> build -> verify -> review -> ship`, including plan/config/code/test/review/release artifact coverage.
+- `evidence-gate --review-json` for post-hoc standalone `llm-review.json` artifacts when a historical cycle skipped review but should still be physically gated without rerunning the full cycle.
 - `airesearcher sessions claim|list|release` for lightweight local coordination of concurrent agent file/path scopes.
 - Automatic cycle reproduction checks that rerun the selected experiment demo from a real command-line entry point and record fresh run-record/validation artifacts before release gating.
 - `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:session-claim`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.

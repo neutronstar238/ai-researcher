@@ -86,6 +86,7 @@ class EvidenceGateReport:
     cycle_summary_path: str
     output_path: str
     markdown_path: str
+    review_path: str | None
     publication_audit_path: str | None
     paper_build_path: str | None
     lifecycle_trace: tuple[EvidenceLifecycleStage, ...] = ()
@@ -106,6 +107,7 @@ class EvidenceGateReport:
             "release_allowed": self.release_allowed,
             "failed_check_count": self.failed_check_count,
             "cycle_summary_path": self.cycle_summary_path,
+            "review_path": self.review_path,
             "publication_audit_path": self.publication_audit_path,
             "paper_build_path": self.paper_build_path,
             "lifecycle_trace": [stage.to_dict() for stage in self.lifecycle_trace],
@@ -121,6 +123,7 @@ def run_evidence_gate(
     *,
     cycle_summary_path: Path | str,
     output_dir: Path | str | None = None,
+    review_path: Path | str | None = None,
     publication_audit_path: Path | str | None = None,
     paper_build_path: Path | str | None = None,
     vault_root: Path | str | None = None,
@@ -166,10 +169,12 @@ def run_evidence_gate(
             _review_checks(
                 summary,
                 base_dir,
+                review_path=review_path,
                 require_review_pass=require_review_pass,
             )
         )
 
+    resolved_review_path = _review_artifact_path(summary, review_path)
     audit_path = _publication_audit_path(summary, publication_audit_path)
     checks.extend(
         _publication_audit_checks(
@@ -194,6 +199,7 @@ def run_evidence_gate(
             base_dir,
             publication_audit_path=audit_path,
             paper_build_path=build_path,
+            review_path=review_path,
             require_review_pass=require_review_pass,
             require_publication_pass=require_publication_pass,
             require_paper_build=require_paper_build,
@@ -207,6 +213,7 @@ def run_evidence_gate(
         cycle_summary_path=summary_path.as_posix(),
         output_path=output_path.as_posix(),
         markdown_path=markdown_path.as_posix(),
+        review_path=_path_text(resolved_review_path),
         publication_audit_path=_path_text(audit_path),
         paper_build_path=_path_text(build_path),
         lifecycle_trace=lifecycle_trace,
@@ -219,6 +226,7 @@ def run_evidence_gate(
             cycle_summary_path=report.cycle_summary_path,
             output_path=report.output_path,
             markdown_path=report.markdown_path,
+            review_path=report.review_path,
             publication_audit_path=report.publication_audit_path,
             paper_build_path=report.paper_build_path,
             lifecycle_trace=report.lifecycle_trace,
@@ -335,9 +343,11 @@ def _review_checks(
     summary: dict[str, Any],
     base_dir: Path,
     *,
+    review_path: Path | str | None,
     require_review_pass: bool,
 ) -> list[EvidenceGateCheck]:
-    review = _dict(summary.get("review"))
+    review = _review_gate_info(summary, review_path, base_dir)
+    review_source = _path_text(_review_artifact_path(summary, review_path)) or "cycle_summary.review"
     status = _text(review.get("status"))
     verdict = _text(review.get("verdict"))
     quality = review.get("quality_score")
@@ -356,13 +366,13 @@ def _review_checks(
                 f"status={status or 'missing'}, verdict={verdict or 'missing'}, "
                 f"quality_score={quality if quality is not None else 'missing'}."
             ),
-            ("cycle_summary.review",),
+            (review_source,),
             None
             if passed
             else "Run an evidence-constrained review and resolve fail/needs_revision verdicts.",
         )
     ]
-    output_path = review.get("output_path")
+    output_path = _review_artifact_path(summary, review_path)
     if status == "passed" or require_review_pass:
         checks.append(_artifact_check("review_artifact", output_path, base_dir))
     return checks
@@ -374,6 +384,7 @@ def _lifecycle_trace(
     *,
     publication_audit_path: Path | str | None,
     paper_build_path: Path | str | None,
+    review_path: Path | str | None,
     require_review_pass: bool,
     require_publication_pass: bool,
     require_paper_build: bool,
@@ -381,9 +392,9 @@ def _lifecycle_trace(
     demo = _dict(summary.get("demo"))
     literature = _dict(summary.get("literature"))
     similarity = _dict(summary.get("similarity"))
-    review = _dict(summary.get("review"))
     reproduction = _dict(summary.get("reproduction_check"))
     experiment_dir = _resolve_path(_nested(summary, ("demo", "experiment_dir")), base_dir)
+    review_artifact_path = _review_artifact_path(summary, review_path)
     paper_pdf_path = _paper_pdf_path(paper_build_path, base_dir)
 
     stage_specs: tuple[tuple[str, str, bool, tuple[tuple[object, str], ...]], ...] = (
@@ -427,7 +438,7 @@ def _lifecycle_trace(
             "Review and publication audit evidence",
             require_review_pass or require_publication_pass,
             (
-                (review.get("output_path"), "LLM evidence review"),
+                (review_artifact_path, "LLM evidence review"),
                 (publication_audit_path, "publication audit"),
             ),
         ),
@@ -697,6 +708,46 @@ def _publication_audit_path(
     return audit.get("output_path")
 
 
+def _review_artifact_path(
+    summary: dict[str, Any],
+    explicit_path: Path | str | None,
+) -> Path | str | None:
+    if explicit_path is not None:
+        return explicit_path
+    review = _dict(summary.get("review"))
+    return review.get("output_path")
+
+
+def _review_gate_info(
+    summary: dict[str, Any],
+    explicit_path: Path | str | None,
+    base_dir: Path,
+) -> dict[str, Any]:
+    if explicit_path is None:
+        return _dict(summary.get("review"))
+
+    resolved_path = _resolve_path(explicit_path, base_dir)
+    payload, error = _read_json_if_exists(resolved_path or explicit_path)
+    if error:
+        return {"status": "unreadable", "output_path": _path_text(explicit_path), "error": error}
+
+    quality = _dict(payload.get("quality"))
+    parsed = _dict(quality.get("parsed_output"))
+    quality_score = quality.get("score")
+    if not isinstance(quality_score, int | float):
+        quality_score = payload.get("quality_score")
+    status = _text(payload.get("status"))
+    if not status and isinstance(quality_score, int | float):
+        status = "passed" if quality_score >= 0.85 else "below_threshold"
+    verdict = _text(payload.get("verdict")) or _text(parsed.get("verdict"))
+    return {
+        "status": status,
+        "verdict": verdict,
+        "quality_score": quality_score,
+        "output_path": _path_text(explicit_path),
+    }
+
+
 def _paper_build_path(
     summary: dict[str, Any],
     explicit_path: Path | str | None,
@@ -741,6 +792,7 @@ def _markdown(report: EvidenceGateReport) -> str:
         f"- Release allowed: `{str(report.release_allowed).lower()}`",
         f"- Failed checks: `{report.failed_check_count}`",
         f"- Cycle summary: `{report.cycle_summary_path}`",
+        f"- Review: `{report.review_path or 'not provided'}`",
         f"- Publication audit: `{report.publication_audit_path or 'not provided'}`",
         f"- Paper build: `{report.paper_build_path or 'not provided'}`",
         f"- JSON: `{report.output_path}`",
@@ -826,6 +878,7 @@ def _write_vault_gate(
             ref
             for ref in (
                 report.cycle_summary_path,
+                report.review_path,
                 report.publication_audit_path,
                 report.paper_build_path,
                 report.output_path,

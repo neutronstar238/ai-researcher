@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 12:13:10 +08:00 - Codex - Task 92.1 evidence-gate review override
+
+- Request: Continue strict release gating by allowing a real post-hoc LLM review artifact to satisfy the evidence-gate review stage without rerunning an entire historical cycle.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-92-1-evidence-gate-review-override.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+- Summary:
+  - Added `review_path` to evidence-gate reports and JSON/Markdown output.
+  - Added `review_path` support to `run_evidence_gate` and `--review-json` to the CLI.
+  - Added parsing for standalone `llm-review.json` artifacts using `quality.score` and `quality.parsed_output.verdict`.
+  - Wired explicit review artifacts into review checks, Obsidian gate source refs, and the lifecycle trace review stage.
+  - Added focused evidence-gate coverage for skipped cycle reviews repaired by an explicit standalone review artifact.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\reports\test_evidence_gate.py tests\unit\cli\test_main.py -q` passed with 43 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\evidence_gate.py src\autoresearch\cli\main.py tests\unit\reports\test_evidence_gate.py tests\unit\cli\test_main.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\evidence_gate.py src\autoresearch\cli\main.py` passed.
+  - Full ruff: `poetry run ruff check src tests` passed.
+  - Full mypy: `poetry run mypy src` passed.
+  - Full smoke/unit tests: `poetry run pytest tests\smoke tests\unit -q` passed with 394 passed and 4 skipped.
+  - `git diff --check` reported no whitespace errors; Git only warned about LF-to-CRLF conversion for touched files.
+  - Real gate: `poetry run airesearcher evidence-gate runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --review-json runs\manual-live\llm-review-task91-with-run-record.json --publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\publication-audit.json --paper-build-json runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\paper-build\paper-build.json --output-dir runs\manual-live\evidence-gate-task92-review-override --vault runs\manual-live\task92-evidence-vault --project-id task92_review_override --no-fail-on-blocked` exited 0 and wrote a blocked gate with `review_gate=pass`, `lifecycle_trace_gate=pass`, every lifecycle stage `pass`, and only `publication_release_gate` failing.
+- Problems:
+  - None.
+- Follow-up:
+  - Continue with publication-audit blockers; the historical cycle now has enough review evidence, but remains non-publishable.
+
 ### 2026-06-13 12:04:13 +08:00 - Codex - Task 91.1 LLM review repair gate
 
 - Request: Continue strict output-quality governance by extending bounded repair and physical evidence checks from `llm-smoke` to `llm-review`.

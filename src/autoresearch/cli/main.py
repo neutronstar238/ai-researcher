@@ -1122,6 +1122,13 @@ def evidence_gate(
         Path | None,
         typer.Option("--output-dir", help="Directory for evidence-gate.json and .md."),
     ] = None,
+    review_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--review-json",
+            help="Optional llm-review.json path overriding cycle_summary.review.",
+        ),
+    ] = None,
     publication_audit_path: Annotated[
         Path | None,
         typer.Option(
@@ -1178,6 +1185,7 @@ def evidence_gate(
     report = run_evidence_gate(
         cycle_summary_path=cycle_summary_path,
         output_dir=output_dir,
+        review_path=review_path,
         publication_audit_path=publication_audit_path,
         paper_build_path=paper_build_path,
         vault_root=vault,

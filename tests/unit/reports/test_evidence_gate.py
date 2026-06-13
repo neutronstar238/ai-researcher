@@ -126,6 +126,47 @@ def test_evidence_gate_blocks_missing_lifecycle_code_artifact(
     assert "build=fail" in checks["lifecycle_trace_gate"].message
 
 
+def test_evidence_gate_accepts_explicit_review_json_for_skipped_cycle(
+    tmp_path: Path,
+) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["review"] = {"status": "skipped"}
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    review_override = summary_path.parent / "manual-llm-review.json"
+    review_override.write_text(
+        json.dumps(
+            {
+                "quality": {
+                    "score": 1.0,
+                    "parsed_output": {
+                        "verdict": "pass",
+                        "findings": [{"evidence_refs": ["evidence_1"]}],
+                        "unsupported_claims": [],
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        review_path=review_override,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    trace = {stage.stage_id: stage for stage in report.lifecycle_trace}
+    assert report.verdict is EvidenceGateVerdict.PASS
+    assert report.review_path == review_override.as_posix()
+    assert checks["review_gate"].status.value == "pass"
+    assert checks["review_gate"].evidence_refs == (review_override.as_posix(),)
+    assert checks["review_artifact"].status.value == "pass"
+    assert trace["review"].status.value == "pass"
+
+
 def test_evidence_gate_writes_obsidian_review_and_issue_for_blocked_gate(
     tmp_path: Path,
 ) -> None:

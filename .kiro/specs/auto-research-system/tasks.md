@@ -1398,6 +1398,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `44.1`, task `90.1`, and user requirement that output quality and evidence support be physically checked rather than trusted to prompt self-discipline._
     - _Verify: focused LLM/CLI tests, ruff, mypy, full smoke/unit tests, and real DeepSeek `llm-review` calls showing incomplete evidence is blocked while a complete local evidence bundle can pass._
 
+- [x] 92. Allow post-hoc review evidence in the physical release gate
+  - [x] 92.1 Add explicit review artifact override to `evidence-gate`
+    - Add `--review-json` to `airesearcher evidence-gate`.
+    - Let `run_evidence_gate` accept a standalone `llm-review.json` artifact when `cycle_summary.review` is missing or skipped.
+    - Parse standalone review artifacts from their deterministic `quality.score` and `quality.parsed_output.verdict` fields.
+    - Include the explicit review path in JSON/Markdown reports, Obsidian gate notes, review checks, and the `lifecycle_trace` review stage.
+    - Keep publication-audit and paper-build gates independent; a post-hoc passing review cannot make a non-publishable cycle release-ready.
+    - _References: task `89.1`, task `91.1`, and real evidence-gate run showing a valid post-hoc review artifact could not previously clear the review stage._
+    - _Verify: focused evidence-gate/CLI tests, ruff, mypy, full smoke/unit tests, and a real `evidence-gate --review-json` run over a real cycle showing review/lifecycle pass while publication audit remains blocking._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1678,6 +1688,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 58,
       "tasks": ["91.1"]
+    },
+    {
+      "id": 59,
+      "tasks": ["92.1"]
     }
   ]
 }
