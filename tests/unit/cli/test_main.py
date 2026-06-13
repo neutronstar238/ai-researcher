@@ -403,6 +403,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher publication-stability" in (
         commands_dir / "research" / "publication-stability.toml"
     ).read_text(encoding="utf-8")
+    assert "external venue/publisher template" in (
+        commands_dir / "research" / "publication-stability.toml"
+    ).read_text(encoding="utf-8")
     assert "airesearcher inspiration-refresh" in (
         commands_dir / "research" / "inspiration-refresh.toml"
     ).read_text(encoding="utf-8")

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-044 - Generic-template stability matrix did not prove venue-template readiness
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 19:42:00 +08:00
+- Source: Task `110.1` follow-up after the task `109.1` CCF-B stability matrix passed with only built-in generic article templates.
+- Symptom: The previous `ccf-b-matrix` required multiple LaTeX template IDs but did not distinguish built-in generic article templates from fetched venue or publisher templates.
+- Impact: A stable-output claim could pass across datasets while still lacking direct evidence that the generated manuscript compiles and passes quality gates under a real conference or journal-style template.
+- Evidence: `runs/manual-live/task110-generic-only-stability/publication-stability.json` now shows the same Pendigits, Letter, and Skin cycles passing cycle count, release pass rate, distinct datasets, and template diversity, but blocking on `external_template_coverage` with 0 external templates.
+- Root cause: `CycleStabilityRecord` preserved `paper_template` but not `paper_build.template.source_kind`, so the stability target could count generic template diversity without venue-template provenance.
+- Workaround: None needed after the fix; `ccf-b-matrix` now requires at least one release-allowed `external_fetched` template.
+- Next action: Add more real external templates, especially ACM/IEEE-style conference builds, before claiming readiness for a specific venue.
+- Linked tasks: `105.1`, `108.1`, `109.1`, `110.1`
+- Resolution: Added `paper_template_source_kind` to stability cycle records, added `min_external_templates=1` to `ccf-b-matrix`, and added `external_template_coverage` as a blocking stability check while keeping `mvp-matrix` at 0.
+- Verification: Focused stability and CLI tests passed. A generic-only real matrix blocked with `external_template_coverage=fail`. A real Springer Nature `sn-jnl` preflight paper build compiled after downloading `sn-jnl.cls`, passed paper quality with 8 pages, 3012 words, and 0 overfull hboxes. A full real Skin Segmentation `autopilot` cycle with `--paper-template-id springer-nature-sn-jnl` passed source preflight, live search, LLM review, publication audit, reproduction, paper quality, and evidence gate. The final real `ccf-b-matrix` passed with `external_template_coverage=pass`, 3 release-allowed cycles, 3 real datasets, 3 templates, 1 external template, and score `1.000`.
+
 ### P-20260613-043 - Skin Segmentation similarity breadth was initially underclassified
 
 - Status: Resolved

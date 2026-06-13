@@ -62,6 +62,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 19:42:04 +08:00 - Codex - Task 110.1 external venue-template stability gate
+
+- Request: Continue toward strict CCF-B/Q3-quality output, but keep Obsidian project progress notes runtime-owned rather than hand-written by the coding agent.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/stability.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_stability.py`
+- Summary:
+  - Added `paper_template_source_kind` to publication-stability cycle records and JSON/Markdown summaries.
+  - Added `min_external_templates` to stability targets, with `ccf-b-matrix` requiring one release-allowed `external_fetched` venue/publisher template and `mvp-matrix` remaining at zero.
+  - Added blocking `external_template_coverage` so generic article template diversity cannot satisfy venue-template readiness.
+  - Updated `/research:publication-stability` text to state the external venue/publisher template requirement.
+  - Added regressions for generic-only matrix blocking and external-template matrix passing.
+  - Verified the old generic-only real matrix now blocks, then ran a real Springer Nature template preflight and a full real Springer-template autopilot cycle that passed publication/evidence gates.
+  - Did not hand-write root `autoresearch-vault/projects/.../progress` notes; vault review/paper outputs used for this task were written by `airesearcher` commands under `runs/manual-live/...`.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_stability.py tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed with 6 tests.
+  - `poetry run ruff check src\autoresearch\reports\stability.py tests\unit\reports\test_stability.py src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\stability.py`: passed.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json runs\manual-live\task109-skin-pass-cycle\cycle-20260613T112641Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task110-generic-only-stability --no-fail-on-unstable`: blocked as expected with `external_template_coverage=fail`, 0 external templates, and score `0.889`.
+  - `poetry run airesearcher paper-build runs\manual-live\task109-skin-pass-cycle\cycle-20260613T112641Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task110-springer-preflight-paper-build --template-id springer-nature-sn-jnl --timeout-seconds 120 --vault runs\manual-live\task110-springer-preflight-vault --project-id task110_springer_preflight`: passed; downloaded `sn-jnl.cls`, compiled PDF, and recorded `paper_quality.passed=true`, 8 pages, 3012 words, and 0 overfull hboxes.
+  - `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task110-venue-vault --cache runs\manual-live\task109-skin-cache --output-dir runs\manual-live\task110-venue-cycle --state runs\manual-live\task110-venue-state.json --project-id task110_venue_cycle --demo skin_variance_calibrated_prototypes --paper-template-id springer-nature-sn-jnl --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed with `source_preflight=pass`, `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks.
+  - `runs/manual-live/task110-venue-cycle/cycle-20260613T114041Z/paper-build/paper-build.json`: inspected; template `springer-nature-sn-jnl`, `source_kind=external_fetched`, `status=compiled`, `paper_quality.passed=true`, 8 pages, 3012 words, and 0 overfull hboxes.
+  - `runs/manual-live/task110-venue-cycle/cycle-20260613T114041Z/publication-audit.json`: inspected; `publishable=true`, verdict `pass`, score `0.9766`, 60 normalized literature documents, successful ArXiv/OpenAlex source breadth, 50 similarity findings, 17 classified findings, and method effect `95.09` standard errors.
+  - `runs/manual-live/task110-venue-cycle/cycle-20260613T114041Z/evidence-gate/evidence-gate.json`: inspected; `release_allowed=true`, `failed_check_count=0`, paper PDF gate passed, paper quality gate passed, and lifecycle trace stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all passed.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json runs\manual-live\task110-venue-cycle\cycle-20260613T114041Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task110-venue-stability-matrix --vault runs\manual-live\task110-venue-vault --project-id task110_venue_cycle --no-fail-on-unstable`: passed with `stable=true`, score `1.000`, 3 release-allowed cycles, 3 real datasets, 3 templates, and `external_template_coverage=pass`.
+- Problems:
+  - `P-20260613-044` added and resolved for generic-template matrix overclaim risk.
+- Follow-up:
+  - Add at least one ACM or IEEE external-template full cycle before claiming readiness for a specific CCF-B conference format.
+
 ### 2026-06-13 19:30:27 +08:00 - Codex - Task 109.1 UCI Skin stability cycle
 
 - Request: Continue toward a fully autonomous, evidence-gated research loop that can pass the CCF-B/Q3 stability matrix with real scripts, real data, real online search, real LLM review, and runtime-written vault evidence only.

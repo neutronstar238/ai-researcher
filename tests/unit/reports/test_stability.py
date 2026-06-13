@@ -8,7 +8,13 @@ def test_publication_stability_passes_multi_dataset_matrix(tmp_path: Path) -> No
     cycles = (
         _write_cycle(tmp_path, "cycle-a", dataset="UCI Pendigits", template="generic-article-one-column"),
         _write_cycle(tmp_path, "cycle-b", dataset="UCI Letter Recognition", template="generic-article-two-column"),
-        _write_cycle(tmp_path, "cycle-c", dataset="UCI Optical Digits", template="generic-article-one-column"),
+        _write_cycle(
+            tmp_path,
+            "cycle-c",
+            dataset="UCI Optical Digits",
+            template="springer-nature-sn-jnl",
+            template_source_kind="external_fetched",
+        ),
     )
 
     report = audit_publication_stability(
@@ -23,8 +29,33 @@ def test_publication_stability_passes_multi_dataset_matrix(tmp_path: Path) -> No
     assert checks["cycle_count"].status.value == "pass"
     assert checks["distinct_real_datasets"].status.value == "pass"
     assert checks["paper_template_diversity"].status.value == "pass"
+    assert checks["external_template_coverage"].status.value == "pass"
+    assert report.cycles[2].paper_template_source_kind == "external_fetched"
     assert Path(report.output_path).is_file()
     assert Path(report.markdown_path).is_file()
+    payload = json.loads(Path(report.output_path).read_text(encoding="utf-8"))
+    assert payload["target"]["min_external_templates"] == 1
+    assert payload["cycles"][2]["paper_template_source_kind"] == "external_fetched"
+
+
+def test_publication_stability_blocks_generic_template_only_overclaim(tmp_path: Path) -> None:
+    cycles = (
+        _write_cycle(tmp_path, "cycle-a", dataset="UCI Pendigits", template="generic-article-one-column"),
+        _write_cycle(tmp_path, "cycle-b", dataset="UCI Letter Recognition", template="generic-article-two-column"),
+        _write_cycle(tmp_path, "cycle-c", dataset="UCI Optical Digits", template="generic-article-one-column"),
+    )
+
+    report = audit_publication_stability(
+        cycle_summary_paths=cycles,
+        target="ccf-b-matrix",
+        output_dir=tmp_path / "matrix",
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is PublicationStabilityVerdict.BLOCKED
+    assert checks["paper_template_diversity"].status.value == "pass"
+    assert checks["external_template_coverage"].status.value == "fail"
+    assert checks["external_template_coverage"].next_action
 
 
 def test_publication_stability_blocks_single_cycle_overclaim(tmp_path: Path) -> None:
@@ -107,6 +138,7 @@ def _write_cycle(
     *,
     dataset: str,
     template: str,
+    template_source_kind: str = "built_in_generic",
     release_allowed: bool = True,
     warning_count: int = 1,
     stale_summary_paper_quality: bool | None = None,
@@ -156,7 +188,7 @@ def _write_cycle(
         json.dumps(
             {
                 "status": "compiled",
-                "template": {"id": template},
+                "template": {"id": template, "source_kind": template_source_kind},
                 "paper_quality": {"passed": release_allowed},
             }
         ),
@@ -182,7 +214,7 @@ def _write_cycle(
             json.dumps(
                 {
                     "status": "compiled_with_quality_issues",
-                    "template": {"id": template},
+                    "template": {"id": template, "source_kind": template_source_kind},
                     "paper_quality": {"passed": stale_summary_paper_quality},
                 }
             ),

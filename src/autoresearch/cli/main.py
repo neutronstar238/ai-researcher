@@ -174,8 +174,8 @@ DEFAULT_SLASH_COMMANDS = {
         "Gate stable publication-output claims across multiple completed cycles.",
         "Run `airesearcher publication-stability <cycle-summary.json> ... --target ccf-b-matrix` "
         "after several complete cycles. The matrix requires multiple release-allowed cycles, "
-        "distinct real public datasets, and LaTeX template diversity before stable CCF-B/Q3 "
-        "claims are allowed.",
+        "distinct real public datasets, LaTeX template diversity, and at least one fetched "
+        "external venue/publisher template before stable CCF-B/Q3 claims are allowed.",
     ),
     "research/approve.toml": (
         "Approve the latest pending dangerous runtime action.",

@@ -1599,6 +1599,21 @@ A task can be checked only when all applicable items are true:
     - _References: task `105.1`; task `108.1`; `P-20260613-040`; `P-20260613-043`; user requirement for strict CCF-B/Q3 quality gates, real scripts/data, real API calls, and no fabricated results._
     - _Verify: focused demo/CLI/similarity tests, focused ruff, focused mypy, real UCI Skin `run-demo`, first real Skin `autopilot` blocked by classified-similarity breadth, fixed classifier, second real Skin `autopilot` passing publication/evidence gates, real `publication-stability --target ccf-b-matrix` passing with score `1.000`, then full ruff, mypy, and smoke/unit tests._
 
+- [x] 110. Require venue-template evidence for stable CCF-B/Q3 claims
+  - [x] 110.1 Add external venue-template coverage to the publication stability matrix
+    - Extend publication-stability cycle records to preserve the paper-build template source kind, not only the template ID.
+    - Require the `ccf-b-matrix` target to include at least one release-allowed cycle compiled with an external fetched venue or publisher template.
+    - Keep the lighter `mvp-matrix` usable without an external template requirement.
+    - Add a regression test proving three release-allowed generic-template cycles are blocked even when dataset and template-count diversity pass.
+    - Add a regression test proving a matrix with an external fetched template passes the new coverage check.
+    - Update `/research:publication-stability` wording so operators know generic article templates do not satisfy the venue-template bar.
+    - Run a real external-template paper build first to catch missing LaTeX packages or layout failures.
+    - Run a real autonomous cycle with an external venue or publisher template and require publication audit, LLM evidence review, reproduction check, paper quality, and evidence gate to pass.
+    - Rerun `publication-stability --target ccf-b-matrix` with at least one external-template release cycle and require `external_template_coverage` to pass.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime-selected vault outputs under `runs/manual-live/...` count as system-written evidence for this task.
+    - _References: task `100.1`; task `105.1`; task `108.1`; task `109.1`; `P-20260613-044`; user requirement that final paper-level output use LaTeX templates compatible with real venues or journals._
+    - _Verify: focused stability/CLI tests, focused ruff, focused mypy, real generic-only `publication-stability` blocking on `external_template_coverage`, real Springer Nature `paper-build` preflight downloading `sn-jnl.cls` and passing paper quality, real Skin Segmentation `autopilot` with `springer-nature-sn-jnl` passing publication/evidence gates, and real three-cycle `ccf-b-matrix` passing with 1 external fetched template._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1951,6 +1966,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 76,
       "tasks": ["109.1"]
+    },
+    {
+      "id": 77,
+      "tasks": ["110.1"]
     }
   ]
 }
