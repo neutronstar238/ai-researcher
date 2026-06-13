@@ -240,7 +240,7 @@ poetry run airesearcher sessions claim `
   --path src/autoresearch/runtime
 ```
 
-`sessions claim` 是轻量“多 Agent 交警”。它把活跃声明写入 `.airesearcher/agent-sessions.json`，当另一个活跃 session 声明同一文件、同一目录或父子路径时会默认以非零退出码阻断。用 `airesearcher sessions list` 查看当前声明，用 `airesearcher sessions release <session-id>` 在任务完成后释放范围，避免多个 Agent 同时覆盖同一片代码。
+`sessions claim` 是轻量“多 Agent 交警”。它把活跃声明写入 `.airesearcher/agent-sessions.json`，当另一个活跃 session 声明同一文件、同一目录或父子路径时会默认以非零退出码阻断。claim/release 写状态时会使用本地 `.lock` 文件，避免两个 Agent 同时读到空状态后一起放行。用 `airesearcher sessions list` 查看当前声明，用 `airesearcher sessions release <session-id>` 在任务完成后释放范围，避免多个 Agent 同时覆盖同一片代码。
 
 运行本地质量门：
 

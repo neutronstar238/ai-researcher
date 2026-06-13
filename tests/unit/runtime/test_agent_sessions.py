@@ -1,7 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from autoresearch.runtime import (
+    AgentSessionError,
     AgentSessionStatus,
     claim_agent_session,
     list_agent_sessions,
@@ -90,3 +93,22 @@ def test_agent_session_claim_normalizes_paths_and_updates_same_session(
     assert second.session is not None
     assert second.session.claimed_paths == ("src/autoresearch/runtime/sessions.py",)
     assert list_agent_sessions(state)[0].task_id == "72.2b"
+
+
+def test_agent_session_claim_times_out_when_state_lock_is_active(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "agent-sessions.json"
+    lock_path = state.with_name(f"{state.name}.lock")
+    lock_path.parent.mkdir(parents=True)
+    lock_path.write_text("active lock", encoding="utf-8")
+
+    with pytest.raises(AgentSessionError, match="agent session state is locked"):
+        claim_agent_session(
+            state_path=state,
+            session_id="session_a",
+            agent_name="Codex A",
+            task_id="72.3",
+            claimed_paths=("src/autoresearch/runtime",),
+            lock_timeout_seconds=0.0,
+        )
+
+    assert lock_path.exists()

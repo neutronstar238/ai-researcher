@@ -62,6 +62,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 08:42:33 +08:00 - Codex - Task 72.3 locked session state mutations
+
+- Request: Continue SCALE-inspired governance hardening after task `72.2` by preventing simultaneous session claims from racing through the local JSON gate.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-72-2-agent-sessions.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-72-3-session-lock.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/runtime/sessions.py`
+  - `tests/unit/runtime/test_agent_sessions.py`
+- Summary:
+  - Added a local `.lock` file around `claim_agent_session()` and `release_agent_session()` mutations.
+  - The lock uses exclusive creation, timeout-based waiting, stale-lock cleanup, and best-effort cleanup on exit.
+  - Added CLI `--lock-timeout-seconds` for `airesearcher sessions claim` and `airesearcher sessions release`.
+  - Added a unit test proving an active lock blocks a claim without removing the lock or mutating session state.
+  - Updated tasks, README pages, changelog, problem log, and Obsidian progress notes for the locked session gate.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\runtime\test_agent_sessions.py tests\unit\cli\test_main.py::test_sessions_cli_blocks_overlapping_claim_until_release -q`: passed with 5 tests.
+  - Focused ruff initially failed with `SIM105`, then passed after using `contextlib.suppress(FileNotFoundError)` for lock cleanup.
+  - Focused mypy: `poetry run mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed with no issues in 4 source files.
+  - Real locked-state demo: with `runs\manual-live\session-gate-task72-lock\agent-sessions.json.lock` pre-created, `poetry run airesearcher sessions claim --state runs\manual-live\session-gate-task72-lock\agent-sessions.json --session-id lock-demo --agent-name Codex-Lock --task-id 72.3 --path src/autoresearch/runtime --lock-timeout-seconds 0` exited 1 with `agent session state is locked`, and `Test-Path runs\manual-live\session-gate-task72-lock\agent-sessions.json` returned `False`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 365 passed and 4 skipped.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems added or updated:
+  - Updated `P-20260613-009` with local lock-file serialization and real locked-state demo evidence.
+  - Added and resolved `P-20260613-010` for the focused ruff `SIM105` cleanup issue.
+- Follow-up work:
+  - Wire `sessions claim` into future worker launch scripts or slash wrappers so the lock is invoked automatically before any spawned worker edits files.
+
 ### 2026-06-13 08:33:57 +08:00 - Codex - Task 72.2 lightweight agent session coordination
 
 - Request: Continue implementing SCALE-inspired hard governance by adding a lightweight multi-agent traffic gate for overlapping file edits without adopting a heavyweight full lifecycle system.

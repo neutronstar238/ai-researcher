@@ -1662,6 +1662,14 @@ def claim_session(
             help="Exit with code 1 when another active session overlaps the claimed paths.",
         ),
     ] = True,
+    lock_timeout_seconds: Annotated[
+        float,
+        typer.Option(
+            "--lock-timeout-seconds",
+            min=0.0,
+            help="Seconds to wait for the local session state lock.",
+        ),
+    ] = 10.0,
 ) -> None:
     """Claim file paths for a concurrent agent session."""
 
@@ -1672,6 +1680,7 @@ def claim_session(
             agent_name=agent_name,
             task_id=task_id,
             claimed_paths=tuple(path or ()),
+            lock_timeout_seconds=lock_timeout_seconds,
         )
     except AgentSessionError as exc:
         typer.echo(f"[FAIL] session claim failed: {exc}", err=True)
@@ -1726,11 +1735,23 @@ def release_session(
         Path,
         typer.Option("--state", help="Local agent session coordination JSON file."),
     ] = DEFAULT_AGENT_SESSIONS_PATH,
+    lock_timeout_seconds: Annotated[
+        float,
+        typer.Option(
+            "--lock-timeout-seconds",
+            min=0.0,
+            help="Seconds to wait for the local session state lock.",
+        ),
+    ] = 10.0,
 ) -> None:
     """Release a session claim so other agents may edit its paths."""
 
     try:
-        session = release_agent_session(state, session_id)
+        session = release_agent_session(
+            state,
+            session_id,
+            lock_timeout_seconds=lock_timeout_seconds,
+        )
     except AgentSessionError as exc:
         typer.echo(f"[FAIL] session release failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc

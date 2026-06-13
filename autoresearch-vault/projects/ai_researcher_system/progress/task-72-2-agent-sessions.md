@@ -8,7 +8,7 @@
 
 ## Result
 
-`airesearcher sessions claim|list|release` adds a lightweight local traffic gate for concurrent coding or research agents. It records active file or directory claims in a JSON state file and blocks a second active claim when the requested scope overlaps the same path or a parent/child path.
+`airesearcher sessions claim|list|release` adds a lightweight local traffic gate for concurrent coding or research agents. It records active file or directory claims in a JSON state file and blocks a second active claim when the requested scope overlaps the same path or a parent/child path. Claim/release mutations use a local `.lock` file so simultaneous agents cannot both read stale state and pass the gate.
 
 This is intentionally smaller than a full lifecycle engine: no central service, database, ticket system, or heavy workflow orchestration. It is a physical pre-edit gate that helps keep `Agent.md`, git commits, and verification evidence attributable when multiple agents work near the same files.
 
@@ -25,6 +25,8 @@ The live CLI demo used `runs/manual-live/session-gate-task72/agent-sessions.json
 | 5 | list with released sessions | one released session and one active session |
 
 The final state file contains `task72-a` as `released` and `task72-b` as `active`.
+
+Task `72.3` added the lock-file hardening after the first session gate landed. A fail-fast demo with a pre-existing lock correctly blocked `sessions claim --lock-timeout-seconds 0` without modifying the session state.
 
 ## Operator Pattern
 
@@ -48,7 +50,8 @@ For slash-command style operation, `/research:session-claim` points to the same 
 - Focused ruff: `poetry run ruff check src\autoresearch\runtime\sessions.py src\autoresearch\runtime\__init__.py src\autoresearch\cli\main.py tests\unit\runtime\test_agent_sessions.py tests\unit\cli\test_main.py`: passed.
 - Focused mypy: `poetry run mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed.
 - Real CLI demo: claim/block/release/claim/list over `runs/manual-live/session-gate-task72/agent-sessions.json`: passed.
+- Real locked-state demo: `sessions claim --lock-timeout-seconds 0` with a pre-existing `.lock` file returned a locked-state failure as expected.
 
 ## Follow-Up
 
-If AI-Researcher later launches multiple workers automatically, the worker launcher or slash-command wrapper should call `sessions claim` before editing and `sessions release` after verification/commit. This keeps the feature light while making the gate harder to forget.
+If AI-Researcher later launches multiple workers automatically, the worker launcher or slash-command wrapper should call `sessions claim` before editing and `sessions release` after verification/commit. This keeps the feature light while making the locked gate harder to forget.

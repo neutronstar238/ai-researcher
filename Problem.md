@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-010 - Ruff flagged lock-file cleanup as SIM105
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 08:38:00 +08:00
+- Source: `poetry run ruff check src\autoresearch\runtime\sessions.py src\autoresearch\runtime\__init__.py src\autoresearch\cli\main.py tests\unit\runtime\test_agent_sessions.py tests\unit\cli\test_main.py` while verifying task `72.3`.
+- Symptom: Ruff reported `SIM105 Use contextlib.suppress(FileNotFoundError)` for two lock-file cleanup blocks.
+- Impact: The lock implementation worked in tests, but the focused lint gate blocked task completion.
+- Evidence: Ruff reported `SIM105` at `src\autoresearch\runtime\sessions.py:322:17` and `src\autoresearch\runtime\sessions.py:335:9`.
+- Root cause: The first lock implementation used explicit `try`/`except FileNotFoundError: pass` cleanup blocks.
+- Workaround: None needed after replacing the cleanup blocks with `contextlib.suppress(FileNotFoundError)`.
+- Next action: Continue running focused ruff before broad tests for runtime hardening tasks.
+- Linked tasks: `72.3`
+- Resolution: Imported `suppress` from `contextlib` and used it for stale-lock and release cleanup.
+- Verification: Focused ruff passed after the fix; full `poetry run ruff check src tests` also passed.
+
 ### P-20260613-008 - Prompt-only release discipline is insufficient for autonomous research claims
 
 - Status: Mitigated
@@ -54,15 +70,15 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Severity: Medium
 - Discovered: 2026-06-13 08:28:00 +08:00
 - Source: User asked to borrow SCALE Engine's multi-agent traffic-control idea while keeping the small-team prototype lightweight.
-- Symptom: Before task `72.2`, AI-Researcher documented commit and evidence discipline, but there was no executable local check that prevented two active agents from claiming the same file or parent/child directory scope.
+- Symptom: Before task `72.2`, AI-Researcher documented commit and evidence discipline, but there was no executable local check that prevented two active agents from claiming the same file or parent/child directory scope. Before task `72.3`, the new JSON state gate also needed a local mutation lock to avoid simultaneous read/write races.
 - Impact: Concurrent coding or research agents could overwrite each other's work, confuse `Agent.md` ownership, or make verification evidence ambiguous.
-- Evidence: A real task `72.2` CLI demo wrote `runs/manual-live/session-gate-task72/agent-sessions.json`; `task72-a` claimed `src/autoresearch/runtime`, `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`, and after `task72-a` was released, `task72-b` was allowed.
-- Root cause: The repository relied on human/agent prompt discipline for workspace coordination instead of a local state file that active agents can check before editing.
+- Evidence: A real task `72.2` CLI demo wrote `runs/manual-live/session-gate-task72/agent-sessions.json`; `task72-a` claimed `src/autoresearch/runtime`, `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`, and after `task72-a` was released, `task72-b` was allowed. Task `72.3` added a local `.lock` file around claim/release mutations and a fail-fast locked-state CLI demo.
+- Root cause: The repository relied on human/agent prompt discipline for workspace coordination instead of a local state file and mutation lock that active agents can check before editing.
 - Workaround: Agents should run `airesearcher sessions claim --task-id <task> --agent-name <agent> --path <scope>` before editing shared code or docs, then `airesearcher sessions release <session-id>` when finished.
-- Next action: If multiple long-running workers are later spawned, integrate `sessions claim` into worker launch scripts or slash-command wrappers so the gate is automatic.
-- Linked tasks: `72.2`
-- Resolution: Task `72.2` added the local session coordinator, CLI commands, slash template, docs, and focused tests.
-- Verification: Focused runtime/CLI tests and a real claim/block/release/claim/list CLI demo were run for task `72.2`; broader verification is recorded in `Agent.md`.
+- Next action: If multiple long-running workers are later spawned, integrate `sessions claim` into worker launch scripts or slash-command wrappers so the locked gate is automatic.
+- Linked tasks: `72.2`, `72.3`
+- Resolution: Task `72.2` added the local session coordinator, CLI commands, slash template, docs, and focused tests. Task `72.3` added local lock-file serialization with configurable CLI timeout.
+- Verification: Focused runtime/CLI tests, a real claim/block/release/claim/list CLI demo, and a real fail-fast locked-state CLI demo were run; broader verification is recorded in `Agent.md`.
 
 ### P-20260613-007 - cc-switch code-agent integration must not bypass AI-Researcher validation
 

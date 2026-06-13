@@ -301,7 +301,7 @@ poetry run airesearcher sessions claim \
   --path src/autoresearch/runtime
 ```
 
-`sessions claim` is the lightweight multi-agent traffic gate. It records active claims in `.airesearcher/agent-sessions.json` and blocks another active session that claims the same path or a parent/child path. Use `airesearcher sessions list` to inspect active claims and `airesearcher sessions release <session-id>` when an agent finishes so later work can proceed.
+`sessions claim` is the lightweight multi-agent traffic gate. It records active claims in `.airesearcher/agent-sessions.json` and blocks another active session that claims the same path or a parent/child path. Claim/release mutations use a local `.lock` file so simultaneous agents cannot both read an empty state and pass the gate. Use `airesearcher sessions list` to inspect active claims and `airesearcher sessions release <session-id>` when an agent finishes so later work can proceed.
 
 Run the local quality gate:
 

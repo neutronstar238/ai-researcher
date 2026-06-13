@@ -94,6 +94,7 @@ Target version: `0.1.0`.
 - Paper-level builds now stop on missing required manuscript sections instead of filling unsupported content; generated TeX/PDF/log artifacts stay under ignored run directories while the Obsidian vault receives only `paper-build.md`.
 - Release-readiness now has a physical evidence gate: prompt-only assurances cannot override missing artifacts, failed review, non-publishable audit results, or missing compiled PDFs.
 - Concurrent agent work now has a local session gate: overlapping active file or directory claims block by default until the earlier session is released.
+- Session gate claim/release mutations now use a local lock file, so simultaneous agents cannot both pass by reading stale session state.
 
 ### Fixed
 

@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
+
+DEFAULT_SESSION_LOCK_TIMEOUT_SECONDS = 10.0
+DEFAULT_SESSION_STALE_LOCK_SECONDS = 300.0
 
 
 class AgentSessionStatus(str, Enum):
@@ -69,57 +76,59 @@ def claim_agent_session(
     claimed_paths: tuple[str, ...] | list[str],
     session_id: str | None = None,
     claimed_at: datetime | None = None,
+    lock_timeout_seconds: float = DEFAULT_SESSION_LOCK_TIMEOUT_SECONDS,
 ) -> AgentSessionClaim:
     """Claim file paths for an active agent session, blocking overlapping sessions."""
 
     normalized_paths = _normalise_claimed_paths(claimed_paths)
-    sessions = load_agent_sessions(state_path, include_released=True)
-    resolved_session_id = session_id or f"agent_session_{uuid4().hex}"
-    now = _normalise_datetime(claimed_at)
-    conflicts = _find_conflicts(
-        sessions,
-        session_id=resolved_session_id,
-        claimed_paths=normalized_paths,
-    )
-    if conflicts:
-        return AgentSessionClaim(
-            allowed=False,
-            session=None,
-            conflicts=tuple(conflicts),
-            message="claimed paths overlap with active agent sessions",
-        )
-
-    existing_index = _find_session_index(sessions, resolved_session_id)
-    if existing_index is None:
-        session = AgentSession(
+    with _session_state_lock(state_path, timeout_seconds=lock_timeout_seconds):
+        sessions = load_agent_sessions(state_path, include_released=True)
+        resolved_session_id = session_id or f"agent_session_{uuid4().hex}"
+        now = _normalise_datetime(claimed_at)
+        conflicts = _find_conflicts(
+            sessions,
             session_id=resolved_session_id,
-            agent_name=agent_name.strip(),
-            task_id=task_id.strip(),
             claimed_paths=normalized_paths,
-            started_at=now,
-            updated_at=now,
         )
-        sessions.append(session)
-    else:
-        previous = sessions[existing_index]
-        session = previous.model_copy(
-            update={
-                "agent_name": agent_name.strip(),
-                "task_id": task_id.strip(),
-                "claimed_paths": normalized_paths,
-                "status": AgentSessionStatus.ACTIVE,
-                "updated_at": now,
-                "released_at": None,
-            }
+        if conflicts:
+            return AgentSessionClaim(
+                allowed=False,
+                session=None,
+                conflicts=tuple(conflicts),
+                message="claimed paths overlap with active agent sessions",
+            )
+
+        existing_index = _find_session_index(sessions, resolved_session_id)
+        if existing_index is None:
+            session = AgentSession(
+                session_id=resolved_session_id,
+                agent_name=agent_name.strip(),
+                task_id=task_id.strip(),
+                claimed_paths=normalized_paths,
+                started_at=now,
+                updated_at=now,
+            )
+            sessions.append(session)
+        else:
+            previous = sessions[existing_index]
+            session = previous.model_copy(
+                update={
+                    "agent_name": agent_name.strip(),
+                    "task_id": task_id.strip(),
+                    "claimed_paths": normalized_paths,
+                    "status": AgentSessionStatus.ACTIVE,
+                    "updated_at": now,
+                    "released_at": None,
+                }
+            )
+            sessions[existing_index] = session
+        write_agent_sessions(state_path, sessions)
+        return AgentSessionClaim(
+            allowed=True,
+            session=session,
+            conflicts=(),
+            message="session claim accepted",
         )
-        sessions[existing_index] = session
-    write_agent_sessions(state_path, sessions)
-    return AgentSessionClaim(
-        allowed=True,
-        session=session,
-        conflicts=(),
-        message="session claim accepted",
-    )
 
 
 def release_agent_session(
@@ -127,28 +136,30 @@ def release_agent_session(
     session_id: str,
     *,
     released_at: datetime | None = None,
+    lock_timeout_seconds: float = DEFAULT_SESSION_LOCK_TIMEOUT_SECONDS,
 ) -> AgentSession:
     """Mark an agent session as released so its claimed paths stop blocking others."""
 
-    sessions = load_agent_sessions(state_path, include_released=True)
-    index = _find_session_index(sessions, session_id)
-    if index is None:
-        msg = f"agent session not found: {session_id}"
-        raise AgentSessionError(msg)
-    session = sessions[index]
-    if session.status is AgentSessionStatus.RELEASED:
-        return session
-    now = _normalise_datetime(released_at)
-    released = session.model_copy(
-        update={
-            "status": AgentSessionStatus.RELEASED,
-            "updated_at": now,
-            "released_at": now,
-        }
-    )
-    sessions[index] = released
-    write_agent_sessions(state_path, sessions)
-    return released
+    with _session_state_lock(state_path, timeout_seconds=lock_timeout_seconds):
+        sessions = load_agent_sessions(state_path, include_released=True)
+        index = _find_session_index(sessions, session_id)
+        if index is None:
+            msg = f"agent session not found: {session_id}"
+            raise AgentSessionError(msg)
+        session = sessions[index]
+        if session.status is AgentSessionStatus.RELEASED:
+            return session
+        now = _normalise_datetime(released_at)
+        released = session.model_copy(
+            update={
+                "status": AgentSessionStatus.RELEASED,
+                "updated_at": now,
+                "released_at": now,
+            }
+        )
+        sessions[index] = released
+        write_agent_sessions(state_path, sessions)
+        return released
 
 
 def list_agent_sessions(
@@ -278,3 +289,61 @@ def _normalise_datetime(value: datetime | None) -> datetime:
     if timestamp.tzinfo is None:
         return timestamp.replace(tzinfo=timezone.utc)
     return timestamp.astimezone(timezone.utc)
+
+
+@contextmanager
+def _session_state_lock(
+    state_path: Path | str,
+    *,
+    timeout_seconds: float,
+    stale_after_seconds: float = DEFAULT_SESSION_STALE_LOCK_SECONDS,
+) -> Iterator[None]:
+    lock_path = _session_lock_path(state_path)
+    deadline = time.monotonic() + max(timeout_seconds, 0.0)
+    acquired = False
+    while not acquired:
+        try:
+            lock_path.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            try:
+                payload = json.dumps(
+                    {
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "pid": os.getpid(),
+                    },
+                    sort_keys=True,
+                )
+                os.write(fd, payload.encode("utf-8"))
+            finally:
+                os.close(fd)
+            acquired = True
+        except FileExistsError as exc:
+            if _lock_file_is_stale(lock_path, stale_after_seconds):
+                with suppress(FileNotFoundError):
+                    lock_path.unlink()
+                continue
+            if time.monotonic() >= deadline:
+                msg = f"agent session state is locked: {lock_path}"
+                raise AgentSessionError(msg) from exc
+            time.sleep(min(0.05, max(deadline - time.monotonic(), 0.0)))
+
+    try:
+        yield
+    finally:
+        with suppress(FileNotFoundError):
+            lock_path.unlink()
+
+
+def _session_lock_path(state_path: Path | str) -> Path:
+    path = Path(state_path)
+    return path.with_name(f"{path.name}.lock")
+
+
+def _lock_file_is_stale(lock_path: Path, stale_after_seconds: float) -> bool:
+    if stale_after_seconds <= 0:
+        return False
+    try:
+        age_seconds = time.time() - lock_path.stat().st_mtime
+    except FileNotFoundError:
+        return False
+    return age_seconds > stale_after_seconds

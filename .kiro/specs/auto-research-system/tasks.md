@@ -1200,6 +1200,14 @@ A task can be checked only when all applicable items are true:
     - _References: user request to borrow SCALE's multi-agent traffic-control idea without adopting the whole heavyweight lifecycle._
     - _Verify: focused runtime/CLI tests, ruff, mypy, full smoke/unit tests, and a real session claim/release conflict demo._
 
+  - [x] 72.3 Add a local lock around session state mutations
+    - Serialize `sessions claim` and `sessions release` state mutations with a local lock file so simultaneous agents cannot both read an empty state and pass the gate.
+    - Keep the lock file local, short-lived, and stale-lock tolerant; do not introduce a daemon, database, or remote coordinator.
+    - Expose a CLI `--lock-timeout-seconds` option so automation can choose fail-fast or wait behavior.
+    - Add tests for an active lock blocking a claim without corrupting the state file.
+    - _References: user request to convert multi-agent prompt discipline into physical governance gates._
+    - _Verify: focused runtime lock tests, CLI tests, ruff, mypy, full smoke/unit tests, and a real fail-fast locked-state CLI demo._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1403,7 +1411,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 39,
-      "tasks": ["72.1", "72.2"]
+      "tasks": ["72.1", "72.2", "72.3"]
     }
   ]
 }
