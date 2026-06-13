@@ -152,7 +152,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
+This creates project-scoped TOML templates under `.airesearcher/commands/`, including `/research:refresh-literature`, `/research:similarity-check`, `/research:run-demo`, `/research:autopilot`, `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:session-claim`, `/research:approve`, `/research:openclaw-channels`, `/research:code-agent-backends`, `/research:obsidian-setup`, `/research:issue-followups`, and `/research:status`.
 
 Always-on runtime:
 
@@ -290,6 +290,18 @@ poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.js
 ```
 
 `evidence-gate` is the SCALE-inspired lightweight hard gate for AI-Researcher. It checks that the cycle summary, literature summary, similarity summary, experiment report, validation report, evidence map, run record, review artifact, publication audit, and compiled paper PDF physically exist. By default it exits non-zero unless the evidence-constrained review passes, `publication-audit` reports `publishable=true`, and `paper-build` reports a compiled PDF. A blocked gate writes JSON/Markdown evidence plus Obsidian review and issue notes, so the self-loop can continue from concrete blockers instead of prompt-only reminders.
+
+Coordinate concurrent agent file scopes before editing:
+
+```bash
+poetry run airesearcher sessions claim \
+  --session-id codex-task-72-2 \
+  --agent-name Codex \
+  --task-id 72.2 \
+  --path src/autoresearch/runtime
+```
+
+`sessions claim` is the lightweight multi-agent traffic gate. It records active claims in `.airesearcher/agent-sessions.json` and blocks another active session that claims the same path or a parent/child path. Use `airesearcher sessions list` to inspect active claims and `airesearcher sessions release <session-id>` when an agent finishes so later work can proceed.
 
 Run the local quality gate:
 

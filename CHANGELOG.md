@@ -60,7 +60,8 @@ Target version: `0.1.0`.
 - External LaTeX template compatibility matrix for IEEEtran, ACM `acmart`, and Springer Nature `sn-jnl`, including rate-limited source-page fetch metadata, cached source checks, source timestamps, HTTP status, compile logs, PDF paths, and `source_unavailable` results when a class is absent.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
 - `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
-- `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
+- `airesearcher sessions claim|list|release` for lightweight local coordination of concurrent agent file/path scopes.
+- `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:session-claim`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
 
@@ -92,6 +93,7 @@ Target version: `0.1.0`.
 - External template compatibility does not vendor upstream template packages; it fetches source metadata, uses locally installed LaTeX classes when available, and records missing classes as explicit unavailable sources.
 - Paper-level builds now stop on missing required manuscript sections instead of filling unsupported content; generated TeX/PDF/log artifacts stay under ignored run directories while the Obsidian vault receives only `paper-build.md`.
 - Release-readiness now has a physical evidence gate: prompt-only assurances cannot override missing artifacts, failed review, non-publishable audit results, or missing compiled PDFs.
+- Concurrent agent work now has a local session gate: overlapping active file or directory claims block by default until the earlier session is released.
 
 ### Fixed
 

@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 08:33:57 +08:00 - Codex - Task 72.2 lightweight agent session coordination
+
+- Request: Continue implementing SCALE-inspired hard governance by adding a lightweight multi-agent traffic gate for overlapping file edits without adopting a heavyweight full lifecycle system.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-72-2-agent-sessions.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/runtime/sessions.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/runtime/test_agent_sessions.py`
+- Summary:
+  - Added a deterministic local agent session coordinator backed by `.airesearcher/agent-sessions.json`.
+  - Added active path claims, overlap detection for exact paths and parent/child scopes, release semantics, state loading/writing, and invalid-state tolerance.
+  - Added `airesearcher sessions claim`, `airesearcher sessions list`, and `airesearcher sessions release`.
+  - Added `/research:session-claim` and README/Chinese README guidance for pre-edit path claims.
+  - Added focused runtime and CLI tests for blocking an overlapping claim until the earlier session is released.
+  - Recorded the task in `CHANGELOG.md`, `Problem.md`, and an Obsidian project progress note.
+- Verification:
+  - Focused tests: `poetry run pytest tests\unit\runtime\test_agent_sessions.py tests\unit\cli\test_main.py::test_sessions_cli_blocks_overlapping_claim_until_release tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed with 5 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\runtime\sessions.py src\autoresearch\runtime\__init__.py src\autoresearch\cli\main.py tests\unit\runtime\test_agent_sessions.py tests\unit\cli\test_main.py`: passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed.
+  - Real CLI demo: `task72-a` claimed `src/autoresearch/runtime`; `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`; after `task72-a` was released, `task72-b` claimed the file successfully; `sessions list --include-released` showed one released session and one active session in `runs/manual-live/session-gate-task72/agent-sessions.json`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 364 passed and 4 skipped.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems added or updated:
+  - Added `P-20260613-009` for concurrent agents overlapping file edits without a local claim gate; marked mitigated by task `72.2`.
+  - Updated `P-20260613-008` so the next action now points to using both `evidence-gate` and `sessions claim`.
+- Follow-up work:
+  - Integrate `sessions claim` into future worker launch scripts or slash-command wrappers if the project starts spawning multiple long-running workers automatically.
+
 ### 2026-06-13 08:20:19 +08:00 - Codex - Task 72.1 physical evidence release gate
 
 - Request: Continue implementation with SCALE-inspired hard gates so AI-Researcher does not rely on prompt-only agent self-discipline; add innovation/quality control that blocks unsupported release or paper-ready claims.

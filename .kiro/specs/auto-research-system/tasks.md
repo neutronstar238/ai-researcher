@@ -1190,6 +1190,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to incorporate SCALE-style "no evidence, no release" physical gates without dragging a small-team prototype into a heavyweight full lifecycle._
     - _Verify: web review of SCALE Engine repository/license, focused evidence-gate and CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real `evidence-gate` run over the latest live cycle and paper build._
 
+  - [x] 72.2 Add lightweight agent session coordination for overlapping file edits
+    - Add a local JSON session coordinator so concurrent coding/research agents can claim file or directory scopes before editing.
+    - Detect exact and parent/child path overlaps against active sessions and block the second claim with a non-zero CLI exit by default.
+    - Support session release so completed agents stop blocking later work.
+    - Add `airesearcher sessions claim|list|release` and `/research:session-claim`.
+    - Keep the feature local, deterministic, and lightweight; do not introduce a central server, database, or heavyweight lifecycle orchestration.
+    - Record real session-claim evidence showing one session claim allowed, a second overlapping claim blocked, and the second claim allowed after release.
+    - _References: user request to borrow SCALE's multi-agent traffic-control idea without adopting the whole heavyweight lifecycle._
+    - _Verify: focused runtime/CLI tests, ruff, mypy, full smoke/unit tests, and a real session claim/release conflict demo._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1393,7 +1403,7 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 39,
-      "tasks": ["72.1"]
+      "tasks": ["72.1", "72.2"]
     }
   ]
 }

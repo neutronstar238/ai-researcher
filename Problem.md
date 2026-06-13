@@ -43,10 +43,26 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: The latest real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` has a compiled PDF through task `71.1`, but its publication audit remains `needs_revision` because Semantic Scholar source errors still reduce novelty confidence.
 - Root cause: The project relied on separate evidence-producing commands and documentation discipline rather than one release decision command that fails closed.
 - Workaround: Use `airesearcher evidence-gate` before any release or paper-ready claim.
-- Next action: Add lightweight session/workspace conflict detection in a later task if multiple coding/research agents start running concurrently.
-- Linked tasks: `72.1`
+- Next action: Use `evidence-gate` for release claims and `sessions claim` before concurrent agents edit overlapping file scopes.
+- Linked tasks: `72.1`, `72.2`
 - Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries.
 - Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`.
+
+### P-20260613-009 - Concurrent agents can overlap file edits without a local claim gate
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-06-13 08:28:00 +08:00
+- Source: User asked to borrow SCALE Engine's multi-agent traffic-control idea while keeping the small-team prototype lightweight.
+- Symptom: Before task `72.2`, AI-Researcher documented commit and evidence discipline, but there was no executable local check that prevented two active agents from claiming the same file or parent/child directory scope.
+- Impact: Concurrent coding or research agents could overwrite each other's work, confuse `Agent.md` ownership, or make verification evidence ambiguous.
+- Evidence: A real task `72.2` CLI demo wrote `runs/manual-live/session-gate-task72/agent-sessions.json`; `task72-a` claimed `src/autoresearch/runtime`, `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`, and after `task72-a` was released, `task72-b` was allowed.
+- Root cause: The repository relied on human/agent prompt discipline for workspace coordination instead of a local state file that active agents can check before editing.
+- Workaround: Agents should run `airesearcher sessions claim --task-id <task> --agent-name <agent> --path <scope>` before editing shared code or docs, then `airesearcher sessions release <session-id>` when finished.
+- Next action: If multiple long-running workers are later spawned, integrate `sessions claim` into worker launch scripts or slash-command wrappers so the gate is automatic.
+- Linked tasks: `72.2`
+- Resolution: Task `72.2` added the local session coordinator, CLI commands, slash template, docs, and focused tests.
+- Verification: Focused runtime/CLI tests and a real claim/block/release/claim/list CLI demo were run for task `72.2`; broader verification is recorded in `Agent.md`.
 
 ### P-20260613-007 - cc-switch code-agent integration must not bypass AI-Researcher validation
 

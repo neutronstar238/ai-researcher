@@ -55,12 +55,16 @@ from autoresearch.research import (
     run_project_similarity_check,
 )
 from autoresearch.runtime import (
+    AgentSessionError,
     RuntimeActionRisk,
     RuntimeApprovalError,
     RuntimePermissionMode,
     approve_runtime_request,
+    claim_agent_session,
     ensure_runtime_approval,
+    list_agent_sessions,
     list_runtime_approval_requests,
+    release_agent_session,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
 from autoresearch.schemas import CandidateStatus, ResearchCandidate, ValidationStatus
@@ -72,6 +76,7 @@ app = typer.Typer(
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
+sessions_app = typer.Typer(help="Coordinate concurrent agent file claims.")
 channels_app = typer.Typer(help="Manage communication channel integration manifests.")
 openclaw_channels_app = typer.Typer(help="Manage OpenClaw channel plugin manifests.")
 code_agents_app = typer.Typer(help="Manage external code-agent integration manifests.")
@@ -79,6 +84,7 @@ ccswitch_code_agents_app = typer.Typer(help="Manage cc-switch / Claude Code back
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
 app.add_typer(runtime_app, name="runtime")
+app.add_typer(sessions_app, name="sessions")
 app.add_typer(channels_app, name="channels")
 app.add_typer(code_agents_app, name="code-agents")
 channels_app.add_typer(openclaw_channels_app, name="openclaw")
@@ -86,6 +92,7 @@ code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
+DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
 
@@ -169,6 +176,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher evidence-gate <cycle-summary.json> --publication-audit <publication-audit.json> "
         "--paper-build-json <paper-build.json> --vault autoresearch-vault --project-id <project_id>`. "
         "Blocked gates are release blockers; do not override them with prompt-only assurances.",
+    ),
+    "research/session-claim.toml": (
+        "Claim file paths before a concurrent agent starts editing.",
+        "Run `airesearcher sessions claim --task-id <task_id> --agent-name <agent> --path {{args}}` "
+        "before starting a coding/research subtask. A blocked claim means another active session owns an "
+        "overlapping file or directory and the agent should wait, release, or narrow its path scope.",
     ),
     "research/status.toml": (
         "Check local installation and release-readiness gates.",
@@ -1618,6 +1631,111 @@ def approve_runtime(
         raise typer.Exit(code=1) from exc
     typer.echo(f"[OK] approved: {request.request_id}")
     typer.echo(f"[OK] action_id: {request.action_id}")
+
+
+@sessions_app.command("claim")
+def claim_session(
+    task_id: Annotated[
+        str,
+        typer.Option("--task-id", help="Task or subtask ID this agent is starting."),
+    ],
+    path: Annotated[
+        list[str] | None,
+        typer.Option("--path", help="File or directory path to claim. Repeat as needed."),
+    ] = None,
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local agent session coordination JSON file."),
+    ] = DEFAULT_AGENT_SESSIONS_PATH,
+    session_id: Annotated[
+        str | None,
+        typer.Option("--session-id", help="Optional stable session ID to update or reuse."),
+    ] = None,
+    agent_name: Annotated[
+        str,
+        typer.Option("--agent-name", help="Agent identity recorded in the session claim."),
+    ] = "Codex",
+    fail_on_conflict: Annotated[
+        bool,
+        typer.Option(
+            "--fail-on-conflict/--no-fail-on-conflict",
+            help="Exit with code 1 when another active session overlaps the claimed paths.",
+        ),
+    ] = True,
+) -> None:
+    """Claim file paths for a concurrent agent session."""
+
+    try:
+        result = claim_agent_session(
+            state_path=state,
+            session_id=session_id,
+            agent_name=agent_name,
+            task_id=task_id,
+            claimed_paths=tuple(path or ()),
+        )
+    except AgentSessionError as exc:
+        typer.echo(f"[FAIL] session claim failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    status = "allowed" if result.allowed else "blocked"
+    typer.echo(f"[OK] session_claim: {status}")
+    if result.session is not None:
+        typer.echo(f"[OK] session_id: {result.session.session_id}")
+        typer.echo(f"[OK] claimed_paths: {', '.join(result.session.claimed_paths)}")
+    typer.echo(f"[OK] conflicts: {len(result.conflicts)}")
+    for conflict in result.conflicts:
+        typer.echo(
+            f"[CONFLICT] session_id={conflict.session_id} task_id={conflict.task_id} "
+            f"agent={conflict.agent_name} claimed={conflict.claimed_path} "
+            f"existing={conflict.conflicting_path}"
+        )
+    if fail_on_conflict and not result.allowed:
+        typer.echo("[FAIL] session claim overlaps an active agent session", err=True)
+        raise typer.Exit(code=1)
+
+
+@sessions_app.command("list")
+def list_sessions(
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local agent session coordination JSON file."),
+    ] = DEFAULT_AGENT_SESSIONS_PATH,
+    include_released: Annotated[
+        bool,
+        typer.Option("--include-released", help="Include released sessions."),
+    ] = False,
+) -> None:
+    """List active agent sessions."""
+
+    sessions = list_agent_sessions(state, include_released=include_released)
+    typer.echo(f"[OK] agent_sessions: {len(sessions)}")
+    for session in sessions:
+        typer.echo(
+            f"[SESSION] status={session.status.value} session_id={session.session_id} "
+            f"agent={session.agent_name} task_id={session.task_id} "
+            f"paths={','.join(session.claimed_paths)}"
+        )
+
+
+@sessions_app.command("release")
+def release_session(
+    session_id: Annotated[
+        str,
+        typer.Argument(help="Agent session ID to release."),
+    ],
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local agent session coordination JSON file."),
+    ] = DEFAULT_AGENT_SESSIONS_PATH,
+) -> None:
+    """Release a session claim so other agents may edit its paths."""
+
+    try:
+        session = release_agent_session(state, session_id)
+    except AgentSessionError as exc:
+        typer.echo(f"[FAIL] session release failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"[OK] released: {session.session_id}")
+    typer.echo(f"[OK] status: {session.status.value}")
 
 
 @openclaw_channels_app.command("init")

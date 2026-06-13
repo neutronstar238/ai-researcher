@@ -13,8 +13,25 @@ from .approval import (
     load_runtime_approval_requests,
     write_runtime_approval_requests,
 )
+from .sessions import (
+    AgentSession,
+    AgentSessionClaim,
+    AgentSessionConflict,
+    AgentSessionError,
+    AgentSessionStatus,
+    claim_agent_session,
+    list_agent_sessions,
+    load_agent_sessions,
+    release_agent_session,
+    write_agent_sessions,
+)
 
 __all__ = [
+    "AgentSession",
+    "AgentSessionClaim",
+    "AgentSessionConflict",
+    "AgentSessionError",
+    "AgentSessionStatus",
     "RuntimeActionRisk",
     "RuntimeApprovalDecision",
     "RuntimeApprovalError",
@@ -22,8 +39,13 @@ __all__ = [
     "RuntimeApprovalStatus",
     "RuntimePermissionMode",
     "approve_runtime_request",
+    "claim_agent_session",
     "ensure_runtime_approval",
+    "list_agent_sessions",
     "list_runtime_approval_requests",
+    "load_agent_sessions",
     "load_runtime_approval_requests",
+    "release_agent_session",
+    "write_agent_sessions",
     "write_runtime_approval_requests",
 ]

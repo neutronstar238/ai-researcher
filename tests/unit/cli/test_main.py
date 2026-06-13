@@ -271,6 +271,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "evidence-gate.toml").is_file()
+    assert (commands_dir / "research" / "session-claim.toml").is_file()
     assert (commands_dir / "research" / "issue-followups.toml").is_file()
     assert (commands_dir / "research" / "status.toml").is_file()
     assert list_result.exit_code == 0, list_result.output
@@ -284,6 +285,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
     assert "/research:evidence-gate" in list_result.stdout
+    assert "/research:session-claim" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
@@ -309,6 +311,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher evidence-gate" in (
         commands_dir / "research" / "evidence-gate.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher sessions claim" in (
+        commands_dir / "research" / "session-claim.toml"
     ).read_text(encoding="utf-8")
 
 
@@ -1000,6 +1005,81 @@ def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) 
     assert list_all_result.exit_code == 0, list_all_result.output
     assert "[OK] runtime_approval_requests: 1" in list_all_result.stdout
     assert "[REQUEST] status=approved" in list_all_result.stdout
+
+
+def test_sessions_cli_blocks_overlapping_claim_until_release(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "agent-sessions.json"
+    runner = CliRunner()
+
+    first = runner.invoke(
+        app,
+        [
+            "sessions",
+            "claim",
+            "--state",
+            str(state),
+            "--session-id",
+            "session_a",
+            "--agent-name",
+            "Codex A",
+            "--task-id",
+            "72.2",
+            "--path",
+            "src/autoresearch/runtime",
+        ],
+    )
+    blocked = runner.invoke(
+        app,
+        [
+            "sessions",
+            "claim",
+            "--state",
+            str(state),
+            "--session-id",
+            "session_b",
+            "--agent-name",
+            "Codex B",
+            "--task-id",
+            "72.2",
+            "--path",
+            "src/autoresearch/runtime/sessions.py",
+            "--no-fail-on-conflict",
+        ],
+    )
+    list_active = runner.invoke(app, ["sessions", "list", "--state", str(state)])
+    release = runner.invoke(
+        app,
+        ["sessions", "release", "session_a", "--state", str(state)],
+    )
+    second = runner.invoke(
+        app,
+        [
+            "sessions",
+            "claim",
+            "--state",
+            str(state),
+            "--session-id",
+            "session_b",
+            "--agent-name",
+            "Codex B",
+            "--task-id",
+            "72.2",
+            "--path",
+            "src/autoresearch/runtime/sessions.py",
+        ],
+    )
+
+    assert first.exit_code == 0, first.output
+    assert "[OK] session_claim: allowed" in first.stdout
+    assert blocked.exit_code == 0, blocked.output
+    assert "[OK] session_claim: blocked" in blocked.stdout
+    assert "[CONFLICT] session_id=session_a" in blocked.stdout
+    assert list_active.exit_code == 0, list_active.output
+    assert "[OK] agent_sessions: 1" in list_active.stdout
+    assert release.exit_code == 0, release.output
+    assert "[OK] released: session_a" in release.stdout
+    assert second.exit_code == 0, second.output
+    assert "[OK] session_claim: allowed" in second.stdout
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:

@@ -91,7 +91,7 @@ poetry run airesearcher slash-commands init
 poetry run airesearcher slash-commands list
 ```
 
-默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:publication-audit`、`/research:paper-build`、`/research:evidence-gate`、`/research:approve`、`/research:openclaw-channels`、`/research:code-agent-backends`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
+默认生成 `.airesearcher/commands/` 下的 TOML 模板，包括 `/research:refresh-literature`、`/research:similarity-check`、`/research:run-demo`、`/research:autopilot`、`/research:serve`、`/research:publication-audit`、`/research:paper-build`、`/research:evidence-gate`、`/research:session-claim`、`/research:approve`、`/research:openclaw-channels`、`/research:code-agent-backends`、`/research:obsidian-setup`、`/research:issue-followups` 和 `/research:status`。
 
 常驻运行入口：
 
@@ -229,6 +229,18 @@ poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.js
 ```
 
 `evidence-gate` 是受 SCALE 思路启发的轻量硬门禁。它会检查 cycle summary、文献摘要、相似工作摘要、实验报告、validation report、evidence map、run record、review artifact、publication audit 和编译后的论文 PDF 是否真实存在。默认情况下，review 未通过、`publication-audit` 不是 `publishable=true`，或 `paper-build` 没有编译出 PDF，命令都会以非零退出码阻断发布声明。被阻断时会写出 JSON/Markdown 证据，并在 Obsidian 中写入 review/issue note，让自循环从具体 blocker 继续，而不是靠提示词提醒。
+
+并发 Agent 编辑前先声明文件范围：
+
+```bash
+poetry run airesearcher sessions claim `
+  --session-id codex-task-72-2 `
+  --agent-name Codex `
+  --task-id 72.2 `
+  --path src/autoresearch/runtime
+```
+
+`sessions claim` 是轻量“多 Agent 交警”。它把活跃声明写入 `.airesearcher/agent-sessions.json`，当另一个活跃 session 声明同一文件、同一目录或父子路径时会默认以非零退出码阻断。用 `airesearcher sessions list` 查看当前声明，用 `airesearcher sessions release <session-id>` 在任务完成后释放范围，避免多个 Agent 同时覆盖同一片代码。
 
 运行本地质量门：
 
