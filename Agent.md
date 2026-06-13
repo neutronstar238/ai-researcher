@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 09:04:20 +08:00 - Codex - Task 74.1 reproduction rerun gate
+
+- Request: Continue hardening the always-on AI-Researcher loop so agents cannot rely on self-reported test/research execution; add a SCALE-style physical reproduction proof before release claims.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/release-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-74-1-reproduction-rerun-gate.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+- Summary:
+  - Added task `74.1` to the executable plan and dependency graph.
+  - Added `_run_cycle_reproduction_check()` to rerun the selected demo through `python -m autoresearch.cli.main run-demo` into `cycle_dir/reproduction-check/rerun`.
+  - Stored `reproduction_check` in `cycle-summary.json` with command, exit code, output directory, stdout/stderr tails, JSON/Markdown report paths, rerun run-record paths, and rerun validation-report paths.
+  - Extended `run_evidence_gate()` with blocking `reproduction_report`, `reproduction_markdown`, and `reproduction_rerun_gate` checks.
+  - Updated README, Chinese README, changelog, release checklist, problem log, and Obsidian progress note so release claims require a real command-line rerun, not prompt-only assurance.
+- Verification:
+  - `poetry run pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\reports\test_evidence_gate.py -q`: passed, 7 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py src\autoresearch\reports\evidence_gate.py tests\unit\cli\test_main.py tests\unit\reports\test_evidence_gate.py`: passed after replacing a tuple `isinstance` form with `list | tuple`.
+  - `poetry run mypy src\autoresearch\cli\main.py src\autoresearch\reports\evidence_gate.py`: passed.
+  - Real single-cycle command: `poetry run airesearcher autopilot --vault runs\manual-live\task74-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-reproduction-gate-task74 --state runs\manual-live\autopilot-reproduction-gate-task74\scheduler-state.json --project-id task74_reproduction_gate --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review`: passed with exit code 0.
+  - Real cycle summary `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json`: `reproduction_check.status=passed`, `exit_code=0`, one rerun run record, one rerun validation report, `paper_build.status=compiled`, `evidence_gate.verdict=blocked`, `release_allowed=false`.
+  - Real evidence gate `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/evidence-gate/evidence-gate.json`: `reproduction_report`, `reproduction_markdown`, and `reproduction_rerun_gate` all passed; the overall gate remained blocked because review was skipped and the toy run failed publication readiness.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 95 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 366 passed and 4 skipped.
+  - `git diff --check`: passed with only CRLF conversion warnings.
+- Problems:
+  - Added `P-20260613-012`.
+  - Updated `P-20260613-004` with task `74.1` reproduction evidence.
+- Follow-up:
+  - Automatic reproduction proof is now stronger, but current toy/baseline cycles remain not publication-ready. Continue work on stronger research methods, wider novelty checks, Semantic Scholar stability, and cost-aware rerun policy for heavier benchmarks.
+
 ### 2026-06-13 08:50:58 +08:00 - Codex - Task 73.1 automatic cycle paper build and evidence gate
 
 - Request: Continue toward the one-command always-on research system by removing the manual `paper-build` plus `evidence-gate` chain from completed `autopilot`/`serve` cycles.

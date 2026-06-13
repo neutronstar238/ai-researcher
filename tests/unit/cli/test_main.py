@@ -775,6 +775,31 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             }
         )
 
+    def fake_reproduction_check(**kwargs: object) -> dict[str, object]:
+        assert kwargs["demo"] == "tabular_baseline"
+        check_dir = Path(kwargs["cycle_dir"]) / "reproduction-check"
+        run_record_path = check_dir / "rerun" / "tabular-baseline" / "run" / "run-record.json"
+        validation_path = (
+            check_dir
+            / "rerun"
+            / "tabular-baseline"
+            / "validation"
+            / "validation-report.json"
+        )
+        report_path = check_dir / "reproduction-check.json"
+        markdown_path = check_dir / "reproduction-check.md"
+        for path in (run_record_path, validation_path, report_path, markdown_path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}", encoding="utf-8")
+        return {
+            "status": "passed",
+            "exit_code": 0,
+            "json_path": report_path.as_posix(),
+            "markdown_path": markdown_path.as_posix(),
+            "run_record_paths": [run_record_path.as_posix()],
+            "validation_json_paths": [validation_path.as_posix()],
+        }
+
     def fake_evidence_gate(**kwargs: object) -> SimpleNamespace:
         assert Path(kwargs["cycle_summary_path"]).name == "cycle-summary.json"
         assert Path(kwargs["output_dir"]).name == "evidence-gate"
@@ -792,6 +817,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
     monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)
     monkeypatch.setattr(cli_main, "build_latex_paper_from_markdown", fake_paper_build)
+    monkeypatch.setattr(cli_main, "_run_cycle_reproduction_check", fake_reproduction_check)
     monkeypatch.setattr(cli_main, "run_evidence_gate", fake_evidence_gate)
 
     output_dir = tmp_path / "runs" / "autopilot"
@@ -828,6 +854,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["demo"]["run_id"] == "run_autopilot_test"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
+    assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 

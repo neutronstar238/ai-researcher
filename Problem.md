@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-012 - Cycle release evidence proved first execution but not a fresh rerun
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-06-13 09:24:00 +08:00
+- Source: User emphasized that the system must verify scripts really execute and must not rely on AI self-reporting tests or research runs.
+- Symptom: Before task `74.1`, `autopilot`/`serve` cycle summaries contained the first experiment run record and validation report, but the physical release gate did not require a fresh command-line rerun inside the completed cycle.
+- Impact: A future release claim could prove that one experiment ran once, but not that the chosen experiment can be rerun from the CLI and regenerate validation artifacts.
+- Evidence: Task `73.1` wrote `paper_build` and `evidence_gate` into `cycle-summary.json`, but `run_evidence_gate()` only checked the first `demo.run_record_path` plus validation artifacts.
+- Root cause: Reproduction proof existed inside individual run records, but the always-on cycle did not run a second command-line check after the first run and before release gating.
+- Workaround: None needed after task `74.1`; older cycle summaries without `reproduction_check` will now fail the stricter release gate instead of being treated as release-ready.
+- Next action: For heavier benchmarks, monitor runtime cost of the automatic rerun and consider an explicit evidence-preserving cache only if it still proves a fresh command invocation and data hash.
+- Linked tasks: `74.1`
+- Resolution: Task `74.1` adds `_run_cycle_reproduction_check()` to rerun the selected demo via `python -m autoresearch.cli.main run-demo`, records command/exit code/stdout/stderr tails plus fresh run-record and validation paths, and makes `reproduction_rerun_gate` a blocking evidence-gate check.
+- Verification: Focused CLI/evidence-gate tests passed. A real `autopilot --no-review` single-cycle run wrote `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` with `reproduction_check.status=passed`, `exit_code=0`, one fresh rerun run record, one fresh rerun validation report, and `reproduction_rerun_gate` passed inside `evidence-gate.json`.
+
 ### P-20260613-011 - Always-on loop still required manual paper-build and evidence-gate chaining
 
 - Status: Mitigated
@@ -163,10 +179,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Additional evidence: Task `71.1` added `airesearcher paper-build` and ran it against the live `serve-paper-structure` Markdown report. The command compiled `runs/manual-live/paper-build-task71/main.pdf`, wrote `runs/manual-live/paper-build-task71/paper-build.json`, and mirrored the human-readable summary to `autoresearch-vault/projects/ai_researcher_system/paper/paper-build.md` with no missing sections.
 - Additional evidence: Task `72.1` added `airesearcher evidence-gate` as a physical release gate. A real gate run over `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/cycle-summary.json` plus `runs/manual-live/paper-build-task71/paper-build.json` correctly reported `blocked`: the compiled PDF existed, but `publication_release_gate` failed because the publication audit remained `needs_revision`/`publishable=false`.
 - Additional evidence: Task `73.1` moved paper-build and evidence-gate execution into every `autopilot`/`serve` cycle. A real `autopilot --no-review` run at `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json` recorded `paper_build.status=compiled` and `evidence_gate.verdict=blocked`, confirming the PDF path exists while release remains blocked when review/publication gates fail.
+- Additional evidence: Task `74.1` adds a fresh command-line reproduction rerun before release gating. New cycle summaries include `reproduction_check` with command, exit code, fresh run-record paths, and fresh validation-report paths; the release gate now blocks cycles that lack this rerun evidence. This improves reproducibility proof but does not resolve publication novelty or source-stability gaps.
 - Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, and task `71.1` added final Markdown-to-LaTeX/PDF artifact building. The full system still lacks Semantic Scholar API stability, locally available Springer Nature `sn-jnl` class support, and method novelty beyond a baseline benchmark.
 - Workaround: Treat `publication-audit` issue notes as self-loop tasks and keep generated reports labeled as demo evidence until stronger experiments exist.
 - Next action: Stabilize or key Semantic Scholar access, decide how source-error severity should interact with OpenAlex/ArXiv fallback, add/verify Springer Nature `sn-jnl` class support when license terms and local installation are clear, and add stronger method novelty beyond the Pendigits baseline.
-- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`
+- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`, `74.1`
 - Resolution: Not resolved; the new publication audit blocks publishable claims and writes Obsidian `review_note`/`issue_note` records for follow-up.
 - Verification: Real `airesearcher publication-audit` and real `airesearcher serve` runs wrote failed or needs-revision publication audits under `runs/manual-live/serve-full/`, `runs/manual-live/serve-quality/`, `runs/manual-live/serve-quality-4096/`, `runs/manual-live/serve-pendigits/`, `runs/manual-live/serve-pendigits-sha/`, `runs/manual-live/serve-query-floor/`, `runs/manual-live/serve-publication-defaults/`, and Obsidian project issue notes under `autoresearch-vault/projects/live_quality_4096_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_sha_20260613/issues/`, and `autoresearch-vault/projects/live_publication_defaults_20260613/issues/`.
 

@@ -78,6 +78,24 @@ def test_evidence_gate_blocks_missing_compiled_pdf(tmp_path: Path) -> None:
     assert checks["paper_pdf_gate"].status.value == "fail"
 
 
+def test_evidence_gate_blocks_missing_reproduction_rerun_artifact(
+    tmp_path: Path,
+) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["reproduction_check"]["run_record_paths"][0]).unlink()
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["reproduction_rerun_gate"].status.value == "fail"
+
+
 def test_evidence_gate_writes_obsidian_review_and_issue_for_blocked_gate(
     tmp_path: Path,
 ) -> None:
@@ -132,6 +150,19 @@ def _write_gate_cycle(
     review_path = cycle_dir / "llm-review.json"
     publication_audit_path = cycle_dir / "publication-audit.json"
     publication_audit_md = cycle_dir / "publication-audit.md"
+    reproduction_dir = cycle_dir / "reproduction-check"
+    reproduction_report_path = reproduction_dir / "reproduction-check.json"
+    reproduction_markdown_path = reproduction_dir / "reproduction-check.md"
+    reproduction_run_record = (
+        reproduction_dir / "rerun" / "tabular-baseline" / "run" / "run-record.json"
+    )
+    reproduction_validation = (
+        reproduction_dir
+        / "rerun"
+        / "tabular-baseline"
+        / "validation"
+        / "validation-report.json"
+    )
     paper_dir = cycle_dir / "paper"
     paper_dir.mkdir(parents=True)
     paper_build_path = paper_dir / "paper-build.json"
@@ -145,6 +176,22 @@ def _write_gate_cycle(
     evidence_map_path.write_text('{"evidence_edges": []}', encoding="utf-8")
     run_record_path.write_text('{"run": {"status": "success"}}', encoding="utf-8")
     review_path.write_text('{"quality": {"score": 1.0}}', encoding="utf-8")
+    reproduction_run_record.parent.mkdir(parents=True, exist_ok=True)
+    reproduction_validation.parent.mkdir(parents=True, exist_ok=True)
+    reproduction_run_record.write_text('{"run": {"status": "success"}}', encoding="utf-8")
+    reproduction_validation.write_text('{"status": "passed"}', encoding="utf-8")
+    reproduction_report_path.write_text(
+        json.dumps(
+            {
+                "status": "passed",
+                "exit_code": 0,
+                "run_record_paths": [reproduction_run_record.as_posix()],
+                "validation_json_paths": [reproduction_validation.as_posix()],
+            }
+        ),
+        encoding="utf-8",
+    )
+    reproduction_markdown_path.write_text("# Reproduction Check\n", encoding="utf-8")
     publication_audit_md.write_text("# Publication Audit\n", encoding="utf-8")
     publication_audit_path.write_text(
         json.dumps(
@@ -186,6 +233,14 @@ def _write_gate_cycle(
                     "verdict": "pass",
                     "quality_score": 1.0,
                     "output_path": review_path.as_posix(),
+                },
+                "reproduction_check": {
+                    "status": "passed",
+                    "exit_code": 0,
+                    "json_path": reproduction_report_path.as_posix(),
+                    "markdown_path": reproduction_markdown_path.as_posix(),
+                    "run_record_paths": [reproduction_run_record.as_posix()],
+                    "validation_json_paths": [reproduction_validation.as_posix()],
                 },
                 "publication_audit": {
                     "output_path": publication_audit_path.as_posix(),

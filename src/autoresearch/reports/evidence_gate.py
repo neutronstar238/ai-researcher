@@ -206,7 +206,7 @@ def _cycle_artifact_checks(
     if not _text(run_record) and _text(experiment_dir):
         run_record = Path(_text(experiment_dir)) / "run" / "run-record.json"
 
-    return [
+    checks = [
         _artifact_check("candidate_record", summary.get("candidate_path"), base_dir),
         _artifact_check("literature_summary", literature.get("summary_path"), base_dir),
         _artifact_check("similarity_summary", similarity.get("summary_path"), base_dir),
@@ -216,6 +216,81 @@ def _cycle_artifact_checks(
         _artifact_check("evidence_map", demo.get("evidence_map_path"), base_dir),
         _artifact_check("run_record", run_record, base_dir),
     ]
+    checks.extend(_reproduction_checks(summary, base_dir))
+    return checks
+
+
+def _reproduction_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> list[EvidenceGateCheck]:
+    reproduction = _dict(summary.get("reproduction_check"))
+    checks = [
+        _artifact_check("reproduction_report", reproduction.get("json_path"), base_dir),
+        _artifact_check("reproduction_markdown", reproduction.get("markdown_path"), base_dir),
+    ]
+    status_text = _text(reproduction.get("status"))
+    exit_code = reproduction.get("exit_code")
+    run_records = tuple(
+        _resolve_path(path_text, base_dir)
+        for path_text in _text_sequence(reproduction.get("run_record_paths"))
+    )
+    validation_reports = tuple(
+        _resolve_path(path_text, base_dir)
+        for path_text in _text_sequence(reproduction.get("validation_json_paths"))
+    )
+    run_records_ok = bool(run_records) and all(
+        path is not None and path.exists() and path.is_file() for path in run_records
+    )
+    validation_reports_ok = bool(validation_reports) and all(
+        path is not None and path.exists() and path.is_file() for path in validation_reports
+    )
+    passed = (
+        status_text == "passed"
+        and exit_code == 0
+        and run_records_ok
+        and validation_reports_ok
+    )
+    evidence_refs = tuple(
+        ref
+        for ref in (
+            _path_text(reproduction.get("json_path")) or "cycle_summary.reproduction_check",
+            *[
+                path.as_posix() if path is not None else "missing_reproduction_run_record"
+                for path in run_records
+            ],
+            *[
+                path.as_posix()
+                if path is not None
+                else "missing_reproduction_validation_report"
+                for path in validation_reports
+            ],
+        )
+        if ref
+    )
+    checks.append(
+        EvidenceGateCheck(
+            "reproduction_rerun_gate",
+            EvidenceGateCheckStatus.PASS if passed else EvidenceGateCheckStatus.FAIL,
+            "blocking",
+            (
+                "Reproduction rerun gate "
+                f"status={status_text or 'missing'}, exit_code={exit_code}, "
+                f"run_records={len(run_records)}, "
+                f"validation_reports={len(validation_reports)}, "
+                f"run_records_exist={str(run_records_ok).lower()}, "
+                f"validation_reports_exist={str(validation_reports_ok).lower()}."
+            ),
+            evidence_refs,
+            None
+            if passed
+            else (
+                "Rerun the experiment from a command-line entry point and preserve "
+                "fresh run-record and validation-report artifacts before release."
+            ),
+        )
+    )
+    return checks
 
 
 def _review_checks(
@@ -476,6 +551,7 @@ def _markdown(report: EvidenceGateReport) -> str:
         "## Policy",
         "",
         "- No release without local evidence artifacts.",
+        "- No release without a fresh command-line reproduction rerun.",
         "- No paper-ready claim without a passing publication audit.",
         "- No paper-level artifact claim without a compiled LaTeX PDF.",
         "- Failed gates are blockers, not suggestions.",
@@ -532,7 +608,7 @@ def _write_vault_gate(
             )
             if ref
         ],
-        related_task_ids=["72.1"],
+        related_task_ids=["72.1", "74.1"],
         body=_markdown(report),
         created_at=now,
         updated_at=now,
@@ -552,7 +628,7 @@ def _write_vault_gate(
             keywords=["evidence-gate", "release-blocker", "quality-gate"],
             source_refs=[report.output_path, report.markdown_path],
             links=[review_entry.entry_id],
-            related_task_ids=["72.1"],
+            related_task_ids=["72.1", "74.1"],
             body=_issue_body(report, review_entry.entry_id, failed_checks),
             created_at=now,
             updated_at=now,
@@ -654,6 +730,12 @@ def _text(value: object) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _text_sequence(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list | tuple):
+        return ()
+    return tuple(text for item in value if (text := _text(item)))
 
 
 def _path_text(value: object) -> str | None:

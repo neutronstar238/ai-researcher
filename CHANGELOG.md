@@ -61,6 +61,7 @@ Target version: `0.1.0`.
 - `airesearcher paper-build` for converting evidence-bound Markdown reports into registered-template LaTeX artifacts, compiling PDFs when possible, writing JSON/Markdown build summaries, and mirroring the human-readable summary into the Obsidian project vault.
 - `airesearcher evidence-gate` for a SCALE-inspired physical release gate that requires local evidence artifacts, a passing evidence review, a publishable publication audit, and a compiled LaTeX PDF before release or paper-ready claims.
 - `airesearcher sessions claim|list|release` for lightweight local coordination of concurrent agent file/path scopes.
+- Automatic cycle reproduction checks that rerun the selected experiment demo from a real command-line entry point and record fresh run-record/validation artifacts before release gating.
 - `/research:serve`, `/research:publication-audit`, `/research:paper-build`, `/research:evidence-gate`, `/research:session-claim`, `/research:approve`, `/research:openclaw-channels`, and `/research:code-agent-backends` slash command templates.
 
 ### Changed
@@ -85,6 +86,7 @@ Target version: `0.1.0`.
 - README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.
 - Autopilot cycles now run a strict publication-readiness audit after the evidence review and before self-loop follow-up task discovery, so toy-data cycles are recorded as not publishable rather than being mistaken for CCF-B/Q3-ready papers.
 - Autopilot and serve cycles now automatically run the LaTeX paper build and physical evidence gate after publication audit, then record `paper_build` and `evidence_gate` in `cycle-summary.json`.
+- Autopilot and serve cycles now record `reproduction_check` in `cycle-summary.json`; the physical evidence gate blocks release when the rerun command fails or does not produce a fresh run record plus validation report.
 - `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.
@@ -93,7 +95,7 @@ Target version: `0.1.0`.
 - Generic paper-template smoke now produces a PDF when `pdflatex` or another supported LaTeX engine is available, and otherwise records a structured skipped result.
 - External template compatibility does not vendor upstream template packages; it fetches source metadata, uses locally installed LaTeX classes when available, and records missing classes as explicit unavailable sources.
 - Paper-level builds now stop on missing required manuscript sections instead of filling unsupported content; generated TeX/PDF/log artifacts stay under ignored run directories while the Obsidian vault receives only `paper-build.md`.
-- Release-readiness now has a physical evidence gate: prompt-only assurances cannot override missing artifacts, failed review, non-publishable audit results, or missing compiled PDFs.
+- Release-readiness now has a physical evidence gate: prompt-only assurances cannot override missing artifacts, failed command-line reproduction, failed review, non-publishable audit results, or missing compiled PDFs.
 - Concurrent agent work now has a local session gate: overlapping active file or directory claims block by default until the earlier session is released.
 - Session gate claim/release mutations now use a local lock file, so simultaneous agents cannot both pass by reading stale session state.
 

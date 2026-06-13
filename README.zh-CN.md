@@ -136,7 +136,7 @@ Autopilot 一条命令常驻循环：
 poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
-完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
+完成 `deploy-setup` 后，该命令可直接让本地循环持续运行。每一轮会执行真实文献刷新、来源支撑的相似工作检查、本地 demo 或公开 benchmark 实验、命令行复现实验 rerun、可选真实 LLM 证据评审、发表级质量审计、自动 LaTeX 论文构建、物理 evidence gate、Obsidian review/issue 写入，以及本地 follow-up state 合并。离线演练可加 `--no-review`，只跑一轮则不要加 `--watch`。当前循环能产出可复现、带证据、paper-build 记录、reproduction-check 记录和评审轨迹的报告；发表级审计和 evidence gate 会刻意严格地拦截玩具数据循环，不允许把它声称为 CCF-B/三区期刊可发表成果。
 
 真实 benchmark 可选运行：
 
@@ -228,7 +228,7 @@ poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.js
   --project-id demo_project
 ```
 
-`evidence-gate` 是受 SCALE 思路启发的轻量硬门禁。它会检查 cycle summary、文献摘要、相似工作摘要、实验报告、validation report、evidence map、run record、review artifact、publication audit 和编译后的论文 PDF 是否真实存在。默认情况下，review 未通过、`publication-audit` 不是 `publishable=true`，或 `paper-build` 没有编译出 PDF，命令都会以非零退出码阻断发布声明。`autopilot` 和 `serve` 会在自动 paper build 后自动运行这个门禁，并把 verdict 写入 `cycle-summary.json`；blocked gate 对常驻循环本身不致命，而是写出 JSON/Markdown 证据和 Obsidian review/issue note，让自循环从具体 blocker 继续。
+`evidence-gate` 是受 SCALE 思路启发的轻量硬门禁。它会检查 cycle summary、文献摘要、相似工作摘要、实验报告、validation report、evidence map、第一次 run record、reproduction-check JSON/Markdown、复现实验 rerun 的 run record、复现实验 rerun 的 validation report、review artifact、publication audit 和编译后的论文 PDF 是否真实存在。默认情况下，复现实验不是由真实命令行调用通过、review 未通过、`publication-audit` 不是 `publishable=true`，或 `paper-build` 没有编译出 PDF，命令都会以非零退出码阻断发布声明。`autopilot` 和 `serve` 会在自动 paper build 后自动运行这个门禁，并把 verdict 写入 `cycle-summary.json`；blocked gate 对常驻循环本身不致命，而是写出 JSON/Markdown 证据和 Obsidian review/issue note，让自循环从具体 blocker 继续。
 
 并发 Agent 编辑前先声明文件范围：
 

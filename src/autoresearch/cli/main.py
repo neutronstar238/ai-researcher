@@ -1,6 +1,7 @@
 """Minimal Typer CLI for the AI-Researcher Phase 0 scaffold."""
 
 import json
+import subprocess
 import sys
 import time
 from collections.abc import Iterable
@@ -1982,6 +1983,11 @@ def _run_autopilot_cycle(
         max_tokens=max_tokens,
         min_quality_score=min_quality_score,
     )
+    reproduction_check = _run_cycle_reproduction_check(
+        cycle_dir=cycle_dir,
+        demo=demo,
+        timeout_seconds=timeout_seconds,
+    )
 
     summary: dict[str, Any] = {
         "cycle_id": cycle_id,
@@ -2013,6 +2019,7 @@ def _run_autopilot_cycle(
             "evidence_map_path": Path(demo_result.evidence_map_path).as_posix(),
         },
         "review": review_result,
+        "reproduction_check": reproduction_check,
         "followups": {
             "state_path": state.as_posix(),
             "task_count": 0,
@@ -2162,6 +2169,96 @@ def _run_autopilot_review(
     review_info["vault_review"] = review_note.as_posix()
     review_info["vault_issues"] = [path.as_posix() for path in issue_notes]
     return review_info
+
+
+def _run_cycle_reproduction_check(
+    *,
+    cycle_dir: Path,
+    demo: str,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    check_dir = cycle_dir / "reproduction-check"
+    reproduction_output_dir = check_dir / "rerun"
+    check_dir.mkdir(parents=True, exist_ok=True)
+    command = [
+        sys.executable,
+        "-m",
+        "autoresearch.cli.main",
+        "run-demo",
+        "--demo",
+        demo,
+        "--output-dir",
+        str(reproduction_output_dir),
+        "--timeout-seconds",
+        str(timeout_seconds),
+    ]
+    started_at = datetime.now(timezone.utc)
+    timeout = max(timeout_seconds + 60, 60)
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        exit_code = completed.returncode
+        stdout = completed.stdout
+        stderr = completed.stderr
+        error = None
+    except subprocess.TimeoutExpired as exc:
+        exit_code = None
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+        error = f"reproduction command timed out after {timeout} seconds"
+
+    completed_at = datetime.now(timezone.utc)
+    run_records = sorted(reproduction_output_dir.rglob("run-record.json"))
+    validation_reports = sorted(reproduction_output_dir.rglob("validation-report.json"))
+    passed = exit_code == 0 and bool(run_records) and bool(validation_reports)
+    result: dict[str, Any] = {
+        "status": "passed" if passed else "failed",
+        "started_at": started_at.isoformat(),
+        "completed_at": completed_at.isoformat(),
+        "command": command,
+        "timeout_seconds": timeout,
+        "exit_code": exit_code,
+        "output_dir": reproduction_output_dir.as_posix(),
+        "run_record_paths": [path.as_posix() for path in run_records],
+        "validation_json_paths": [path.as_posix() for path in validation_reports],
+        "stdout_tail": stdout[-4000:],
+        "stderr_tail": stderr[-4000:],
+        "error": error,
+    }
+    json_path = check_dir / "reproduction-check.json"
+    markdown_path = check_dir / "reproduction-check.md"
+    result["json_path"] = json_path.as_posix()
+    result["markdown_path"] = markdown_path.as_posix()
+    json_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+    markdown_path.write_text(_render_reproduction_check_markdown(result), encoding="utf-8")
+    return result
+
+
+def _render_reproduction_check_markdown(result: dict[str, Any]) -> str:
+    command = " ".join(str(part) for part in result["command"])
+    return "\n".join(
+        [
+            "# Cycle Reproduction Check",
+            "",
+            f"- Status: `{result['status']}`",
+            f"- Exit code: `{result['exit_code']}`",
+            f"- Command: `{command}`",
+            f"- Output directory: `{result['output_dir']}`",
+            f"- Run records: `{len(result['run_record_paths'])}`",
+            f"- Validation reports: `{len(result['validation_json_paths'])}`",
+            f"- JSON: `{result['json_path']}`",
+            "",
+            "## Policy",
+            "",
+            "A cycle is not release-ready unless its experiment can be rerun from a command-line entry point and produces a fresh run record plus validation report.",
+            "",
+        ]
+    )
 
 
 def _issue_followup_records(vault: Path, project_id: str) -> list[dict[str, object]]:

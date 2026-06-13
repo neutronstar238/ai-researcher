@@ -1218,6 +1218,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement for a one-command 24h system where paper-level outputs and quality gates are automatic, not manually chained._
     - _Verify: focused autopilot CLI test, ruff, mypy, full smoke/unit tests, and a real local single-cycle run showing `paper_build` plus `evidence_gate` in `cycle-summary.json`._
 
+- [x] 74. Add command-line reproduction proof to the release gate
+  - [x] 74.1 Rerun each cycle experiment from a command-line entry point
+    - After the first experiment run, rerun the selected demo into `cycle_dir/reproduction-check/rerun`.
+    - Store `reproduction_check` in `cycle-summary.json` with command, exit code, output directory, run-record paths, validation-report paths, stdout/stderr tails, and JSON/Markdown report paths.
+    - Require `reproduction_check.status=passed`, exit code `0`, a fresh `run-record.json`, and a fresh `validation-report.json` in the physical evidence gate before release.
+    - Keep this as a real subprocess command invocation, not a mocked metadata check.
+    - Write the reproduction evidence into ignored run artifacts while preserving a summary path in the cycle summary for later Obsidian review/issue records.
+    - _References: user requirement to verify that scripts and data are actually run, plus SCALE-style "no evidence, no release" governance._
+    - _Verify: focused reproduction/evidence-gate tests, ruff, mypy, full smoke/unit tests, and a real local single-cycle run showing fresh reproduction artifacts._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1426,6 +1436,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 40,
       "tasks": ["73.1"]
+    },
+    {
+      "id": 41,
+      "tasks": ["74.1"]
     }
   ]
 }
