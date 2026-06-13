@@ -57,6 +57,7 @@ class PublicationQualityTarget:
     min_llm_review_quality: float
     min_method_effect_standard_errors: float
     min_verified_citations: int
+    min_relevant_verified_citations: int
     max_blocked_citations: int
 
 
@@ -121,6 +122,7 @@ class PublicationAuditReport:
                 "min_llm_review_quality": self.target.min_llm_review_quality,
                 "min_method_effect_standard_errors": self.target.min_method_effect_standard_errors,
                 "min_verified_citations": self.target.min_verified_citations,
+                "min_relevant_verified_citations": self.target.min_relevant_verified_citations,
                 "max_blocked_citations": self.target.max_blocked_citations,
             },
             "verdict": self.verdict.value,
@@ -155,6 +157,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=2.0,
         min_verified_citations=8,
+        min_relevant_verified_citations=6,
         max_blocked_citations=0,
     ),
     "q3-journal": PublicationQualityTarget(
@@ -175,6 +178,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=2.0,
         min_verified_citations=10,
+        min_relevant_verified_citations=8,
         max_blocked_citations=0,
     ),
     "mvp-demo": PublicationQualityTarget(
@@ -195,6 +199,7 @@ TARGETS: dict[str, PublicationQualityTarget] = {
         min_llm_review_quality=0.85,
         min_method_effect_standard_errors=0.0,
         min_verified_citations=0,
+        min_relevant_verified_citations=0,
         max_blocked_citations=999,
     ),
 }
@@ -209,6 +214,66 @@ REQUIRED_PAPER_SECTIONS = (
     "limitations",
     "conclusion",
     "references",
+)
+
+CITATION_RELEVANCE_STOPWORDS = frozenset(
+    {
+        "about",
+        "across",
+        "agent",
+        "agents",
+        "analysis",
+        "approach",
+        "based",
+        "benchmark",
+        "benchmarks",
+        "citation",
+        "citations",
+        "claim",
+        "claims",
+        "cycle",
+        "cycles",
+        "data",
+        "dataset",
+        "datasets",
+        "demo",
+        "evidence",
+        "experiment",
+        "experiments",
+        "for",
+        "from",
+        "generated",
+        "generating",
+        "generation",
+        "feature",
+        "features",
+        "image",
+        "images",
+        "improve",
+        "improves",
+        "improving",
+        "learning",
+        "method",
+        "methods",
+        "model",
+        "models",
+        "over",
+        "paper",
+        "public",
+        "research",
+        "result",
+        "results",
+        "source",
+        "sources",
+        "study",
+        "system",
+        "systems",
+        "task",
+        "tasks",
+        "the",
+        "using",
+        "with",
+    }
 )
 
 
@@ -404,6 +469,12 @@ def _citation_checks(
     )
     blocked = [row for row in rows if _text(row.get("status")) == "blocked"]
     blocked_count = max(len(blocked), len(blocked_ids), _int(citations.get("blocked_count")))
+    relevant, relevance_evidence, anchor_terms = _relevant_verified_citations(
+        summary,
+        base_dir,
+        verified,
+        metadata_path=metadata_path,
+    )
     artifact_ok = bool(
         rows
         and metadata_path is not None
@@ -460,6 +531,23 @@ def _citation_checks(
             ),
             ("cycle_summary.citations",),
         ),
+        _threshold_check(
+            "citation_relevance_breadth",
+            len(relevant),
+            target.min_relevant_verified_citations,
+            "blocking",
+            (
+                f"Relevant verified citations: {len(relevant)}; target requires at least "
+                f"{target.min_relevant_verified_citations}. "
+                f"Anchor terms: {', '.join(anchor_terms[:12]) or 'none'}."
+            ),
+            (
+                "Rerun literature search with method-, dataset-, benchmark-, and baseline-aligned "
+                "seed queries; then regenerate citation metadata with titles, abstracts, venues, "
+                "tags, DOI/URL, and source URIs."
+            ),
+            relevance_evidence,
+        ),
     ]
     blocked_ok = blocked_count <= target.max_blocked_citations
     checks.append(
@@ -478,6 +566,193 @@ def _citation_checks(
         )
     )
     return checks
+
+
+def _relevant_verified_citations(
+    summary: dict[str, Any],
+    base_dir: Path,
+    rows: list[dict[str, Any]],
+    *,
+    metadata_path: Path | None,
+) -> tuple[list[dict[str, Any]], tuple[str, ...], tuple[str, ...]]:
+    primary_texts, secondary_texts, evidence_refs = _citation_relevance_context(
+        summary,
+        base_dir,
+        metadata_path=metadata_path,
+    )
+    primary_tokens = _citation_anchor_tokens(primary_texts)
+    all_tokens = _citation_anchor_tokens((*primary_texts, *secondary_texts))
+    phrases = _citation_anchor_phrases(primary_texts)
+    relevant = [
+        row
+        for row in rows
+        if _citation_row_is_relevant(row, primary_tokens, all_tokens, phrases)
+    ]
+    anchor_terms = tuple(sorted(primary_tokens))[:24]
+    return relevant, evidence_refs, anchor_terms
+
+
+def _citation_relevance_context(
+    summary: dict[str, Any],
+    base_dir: Path,
+    *,
+    metadata_path: Path | None,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    candidate = _dict(summary.get("candidate"))
+    candidate_metadata = _dict(candidate.get("metadata"))
+    demo = _dict(summary.get("demo"))
+    run_record_path = _run_record_path(summary, base_dir)
+    run_record = _read_json_if_exists(run_record_path)
+    task_metadata = _dict(run_record.get("task_metadata"))
+    run = _dict(run_record.get("run"))
+
+    primary_fields = (
+        "method",
+        "proposed_method",
+        "method_contribution",
+        "mechanism",
+        "dataset",
+        "benchmark",
+        "baseline",
+        "ablation",
+        "demo",
+        "task_id",
+        "project_id",
+    )
+    secondary_fields = (
+        "title",
+        "description",
+        "research_gap",
+        "limitation",
+        "novel_contribution",
+        "contribution",
+        "seed_document_title",
+    )
+    primary_texts = _context_values(candidate_metadata, primary_fields)
+    primary_texts += _context_values(task_metadata, primary_fields)
+    primary_texts += _context_values(run, ("task_id", "project_id"))
+    primary_texts += _context_values(demo, ("demo",))
+
+    secondary_texts = _context_values(candidate, secondary_fields)
+    secondary_texts += _context_values(candidate_metadata, secondary_fields)
+    secondary_texts += _context_values(task_metadata, secondary_fields)
+
+    refs = ["cycle_summary.candidate", "cycle_summary.demo"]
+    if metadata_path is not None:
+        refs.append(metadata_path.as_posix())
+    if run_record_path is not None:
+        refs.append(run_record_path.as_posix())
+    return tuple(primary_texts), tuple(secondary_texts), tuple(refs)
+
+
+def _run_record_path(summary: dict[str, Any], base_dir: Path) -> Path | None:
+    demo = _dict(summary.get("demo"))
+    explicit = _resolve_path(demo.get("run_record_path"), base_dir)
+    if explicit is not None and explicit.exists():
+        return explicit
+    experiment_dir = _resolve_path(demo.get("experiment_dir"), base_dir)
+    if experiment_dir is None:
+        return explicit
+    candidate = experiment_dir / "run" / "run-record.json"
+    if candidate.exists():
+        return candidate
+    return explicit
+
+
+def _context_values(payload: dict[str, Any], fields: tuple[str, ...]) -> tuple[str, ...]:
+    values: list[str] = []
+    for field in fields:
+        value = payload.get(field)
+        if isinstance(value, dict):
+            values.extend(_text(item) for item in value.values())
+            continue
+        if isinstance(value, list | tuple | set):
+            values.extend(_text(item) for item in value)
+            continue
+        text = _text(value).strip()
+        if text:
+            values.append(text)
+    return tuple(values)
+
+
+def _citation_anchor_tokens(texts: tuple[str, ...]) -> set[str]:
+    return {
+        token
+        for text in texts
+        for token in _semantic_tokens(text)
+        if token not in CITATION_RELEVANCE_STOPWORDS
+    }
+
+
+def _citation_anchor_phrases(texts: tuple[str, ...]) -> tuple[str, ...]:
+    phrases: set[str] = set()
+    for text in texts:
+        tokens = [
+            token
+            for token in _semantic_tokens(text)
+            if token not in CITATION_RELEVANCE_STOPWORDS
+        ]
+        for size in (2, 3):
+            for index in range(0, max(0, len(tokens) - size + 1)):
+                phrase = " ".join(tokens[index : index + size])
+                if phrase:
+                    phrases.add(phrase)
+    return tuple(sorted(phrases))
+
+
+def _citation_row_is_relevant(
+    row: dict[str, Any],
+    primary_tokens: set[str],
+    all_tokens: set[str],
+    phrases: tuple[str, ...],
+) -> bool:
+    if not primary_tokens:
+        return False
+    citation_text = _citation_row_text(row)
+    citation_tokens = set(_semantic_tokens(citation_text))
+    if not citation_tokens:
+        return False
+    primary_overlap = citation_tokens & primary_tokens
+    all_overlap = citation_tokens & all_tokens
+    if len(primary_overlap) >= 2:
+        return True
+    if primary_overlap and len(all_overlap) >= 3:
+        return True
+    normalized_text = " ".join(_semantic_tokens(citation_text))
+    return any(phrase in normalized_text for phrase in phrases)
+
+
+def _citation_row_text(row: dict[str, Any]) -> str:
+    parts = [
+        _text(row.get("title")),
+        _text(row.get("abstract")),
+        _text(row.get("venue")),
+        _text(row.get("source_uri")),
+        " ".join(_text(author) for author in _list(row.get("authors"))),
+        " ".join(_text(tag) for tag in _list(row.get("tags"))),
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def _semantic_tokens(text: str) -> tuple[str, ...]:
+    tokens: list[str] = []
+    for raw_token in re.findall(r"[a-z0-9]+", text.casefold().replace("_", " ")):
+        if len(raw_token) < 3:
+            continue
+        token = _normalise_token(raw_token)
+        if token:
+            tokens.append(token)
+    return tuple(tokens)
+
+
+def _normalise_token(token: str) -> str:
+    if token.endswith("ies") and len(token) > 5:
+        return f"{token[:-3]}y"
+    if token.endswith("ss"):
+        return token
+    if token.endswith("s") and len(token) > 4:
+        return token[:-1]
+    return token
 
 
 def _similarity_checks(
@@ -1122,7 +1397,7 @@ def _markdown(report: PublicationAuditReport) -> str:
         "",
         f"- Minimum score: `{report.target.min_score}`",
         f"- Literature: `{report.target.min_literature_queries}` queries, `{report.target.min_literature_documents}` documents, `{report.target.min_successful_sources}` successful sources",
-        f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, max `{report.target.max_blocked_citations}` blocked citations",
+        f"- Citations: `{report.target.min_verified_citations}` verified DOI/URL citations, `{report.target.min_relevant_verified_citations}` relevant verified citations, max `{report.target.max_blocked_citations}` blocked citations",
         f"- Similarity: `{report.target.min_similarity_queries}` queries, `{report.target.min_similarity_findings}` findings, `{report.target.min_successful_sources}` successful sources",
         f"- Data: at least `{report.target.min_test_rows}` validated test rows; real dataset required: `{str(report.target.require_real_dataset).lower()}`",
         f"- Experiment: baseline `{report.target.require_baseline}`, ablation `{report.target.require_ablation}`, statistical sanity `{report.target.require_statistical_sanity}`",

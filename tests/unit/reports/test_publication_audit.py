@@ -122,6 +122,7 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     checks = {check.check_id: check for check in report.checks}
     assert checks["method_innovation_evidence"].status.value == "pass"
     assert checks["method_effect_evidence"].status.value == "pass"
+    assert checks["citation_relevance_breadth"].status.value == "pass"
     assert report.verdict is PublicationAuditVerdict.PASS
     assert report.publishable is True
 
@@ -161,6 +162,28 @@ def test_publication_audit_blocks_unverifiable_citations_for_ccfb(
     assert checks["citation_package"].status.value == "pass"
     assert checks["verified_citation_breadth"].status.value == "pass"
     assert checks["blocked_citation_count"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_verified_but_irrelevant_citations_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        relevant_citations=0,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["citation_package"].status.value == "pass"
+    assert checks["verified_citation_breadth"].status.value == "pass"
+    assert checks["citation_relevance_breadth"].status.value == "fail"
+    assert "Relevant verified citations: 0" in checks["citation_relevance_breadth"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
@@ -616,23 +639,53 @@ def _paper_style_report() -> str:
     )
 
 
-def _write_citation_package(cycle_dir: Path, *, verified: int = 10, blocked: int = 0) -> dict:
+def _write_citation_package(
+    cycle_dir: Path,
+    *,
+    verified: int = 10,
+    blocked: int = 0,
+    relevant: int | None = None,
+) -> dict:
     citations_dir = cycle_dir / "citations"
     citations_dir.mkdir(parents=True, exist_ok=True)
     bib_path = citations_dir / "references.bib"
     metadata_path = citations_dir / "references.metadata.json"
-    rows = [
-        {
-            "document_id": f"doc_{index}",
-            "title": f"Verified Source {index}",
-            "status": "verified_url",
-            "bibtex_key": f"source{index}",
-            "doi": None,
-            "url": f"https://example.test/source/{index}",
-            "reason": None,
-        }
-        for index in range(verified)
-    ]
+    relevant_count = verified if relevant is None else relevant
+    rows = []
+    for index in range(verified):
+        is_relevant = index < relevant_count
+        title = (
+            f"UCI Pendigits nearest centroid prototype classifier source {index}"
+            if is_relevant
+            else f"Transformer protein folding architecture source {index}"
+        )
+        abstract = (
+            "Compares prototype and nearest centroid classifiers on the UCI "
+            "Pendigits handwritten digit recognition benchmark."
+            if is_relevant
+            else "Studies protein structure prediction with transformer attention and "
+            "biomedical sequence data."
+        )
+        rows.append(
+            {
+                "document_id": f"doc_{index}",
+                "title": title,
+                "status": "verified_url",
+                "bibtex_key": f"source{index}",
+                "doi": None,
+                "url": f"https://example.test/source/{index}",
+                "reason": None,
+                "abstract": abstract,
+                "venue": "ExampleConf",
+                "source_uri": f"https://example.test/source/{index}",
+                "authors": [f"Author {index}"],
+                "tags": (
+                    ["pendigits", "nearest-centroid", "prototype-classifier"]
+                    if is_relevant
+                    else ["protein-folding", "transformer"]
+                ),
+            }
+        )
     rows.extend(
         {
             "document_id": f"blocked_{index}",
@@ -642,12 +695,17 @@ def _write_citation_package(cycle_dir: Path, *, verified: int = 10, blocked: int
             "doi": None,
             "url": None,
             "reason": "citation lacks DOI or URL",
+            "abstract": None,
+            "venue": None,
+            "source_uri": None,
+            "authors": [],
+            "tags": [],
         }
         for index in range(blocked)
     )
     bib_path.write_text(
         "\n".join(
-            f"@misc{{source{index}, title={{Verified Source {index}}}}}"
+            f"@misc{{source{index}, title={{{rows[index]['title']}}}}}"
             for index in range(verified)
         )
         + "\n",
@@ -676,6 +734,7 @@ def _write_real_benchmark_cycle(
     similarity_classification: str | None = None,
     similarity_classifications: tuple[str, ...] | None = None,
     blocked_citations: int = 0,
+    relevant_citations: int | None = None,
 ) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
@@ -859,7 +918,11 @@ def _write_real_benchmark_cycle(
         ),
         encoding="utf-8",
     )
-    citations = _write_citation_package(cycle_dir, blocked=blocked_citations)
+    citations = _write_citation_package(
+        cycle_dir,
+        blocked=blocked_citations,
+        relevant=relevant_citations,
+    )
     cycle_summary = {
         "cycle_id": "cycle-real",
         "project_id": "project_1",

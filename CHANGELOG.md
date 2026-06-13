@@ -83,6 +83,7 @@ Target version: `0.1.0`.
 - Autopilot now writes a compact `review-evidence-context.json` bundle and runs evidence-constrained LLM review against the final `paper-manuscript/manuscript.md` instead of the thinner demo report.
 - Autopilot now generates a citation package (`references.bib` plus `references.metadata.json`) from source-backed literature `DocumentRecord` objects and records verified/blocked citation counts in `cycle-summary.json`.
 - Publication audit now enforces DOI/URL-verified citation breadth for CCF-B/Q3 targets and blocks missing citation packages or any blocked citations.
+- Citation metadata now preserves abstracts, venues, source URIs, authors, and tags, allowing publication audit to require topically relevant verified citations instead of counting DOI/URL presence alone.
 - `airesearcher autopilot` and `airesearcher serve` now accept `--paper-template-id`, allowing autonomous cycles to compile generic one-column, generic two-column, and future venue templates without manual artifact edits.
 - Real `ccf-b-matrix` verification now passes over three release-allowed public benchmark cycles: UCI Pendigits, UCI Letter Recognition, and UCI Skin Segmentation, with two generic LaTeX templates and paper-quality gates passing.
 - Real `ccf-b-matrix` verification now also has a passing conference-plus-journal reference matrix over a generic cycle, an ACM `acmart` conference-template cycle, and a Springer Nature journal-template cycle.
@@ -119,12 +120,14 @@ Target version: `0.1.0`.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 - README now documents design inspirations from AI-Researcher, AutoResearchClaw, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.
+- Third-party notices now track SciPilot Figure Skill, Nature Skills, and Research Architect literature-review skills as reference-only future quality-gate candidates rather than vendored dependencies.
 - LLM reviewer instructions now distinguish report-internal metric evidence edge IDs from the outer evidence artifact IDs required in reviewer JSON findings.
 - README now positions `airesearcher serve --permission-mode approve-dangerous` as the preferred 24h operator entry point, while keeping `autopilot` available as the direct loop command.
 - Autopilot cycles now run a strict publication-readiness audit after the evidence review and before self-loop follow-up task discovery, so toy-data cycles are recorded as not publishable rather than being mistaken for CCF-B/Q3-ready papers.
 - Autopilot and serve cycles now automatically run the LaTeX paper build and physical evidence gate after publication audit, then record `paper_build` and `evidence_gate` in `cycle-summary.json`.
 - Publication audit and evidence gate standalone review binding now prefer the final paper manuscript, require run-record coverage, and fall back to the demo report only for older summaries without `paper_manuscript` metadata.
 - The manuscript composer now avoids promoting title-level retrieved records, per-paper similarity classifications, audit/build pre-announcements, ablation labels, and script-step reconstructions into unsupported publication prose.
+- The manuscript composer now also avoids unsupported implementation-detail, artifact-name, metric-file, and ablation-wording overclaims that live final-manuscript review can reject.
 - The manuscript references section now separates local run/audit artifacts from formal literature references and lists formal references only from verified citation metadata.
 - Autopilot and serve cycles now record `reproduction_check` in `cycle-summary.json`; the physical evidence gate blocks release when the rerun command fails or does not produce a fresh run record plus validation report.
 - Publication-readiness now blocks baseline-only reports through `method_innovation_evidence`, even when benchmark data, ablations, statistics, literature breadth, and manuscript structure otherwise pass.
@@ -132,6 +135,7 @@ Target version: `0.1.0`.
 - Publication-readiness now also fails `method_effect_evidence` when innovation artifacts are neutral, negative, or missing an explicit method-effect delta.
 - Publication-readiness now also fails `similarity_classification_coverage` when similar-work findings are all `unknown` or unclassified, so raw finding count cannot substitute for evidence-backed novelty positioning.
 - Publication-readiness now requires `similarity_classified_finding_breadth`: only non-`unknown` similar-work classifications count toward CCF-B/Q3 novelty-positioning breadth.
+- Publication-readiness now requires `citation_relevance_breadth`: verified citations count toward CCF-B/Q3 reference breadth only when their metadata overlaps with method, dataset, benchmark, baseline, or task anchors.
 - `airesearcher run-demo`, `autopilot`, and `serve` now describe `--demo` as a local demo or public benchmark selector because real benchmark demos can be opt-in.
 - The publication audit now treats run-record `real_dataset` metadata as evidence for dataset realism and can recognize ablation artifacts/metadata, while still rejecting real benchmark cycles when literature breadth, source coverage, similarity query breadth, or manuscript structure are below target.
 - `airesearcher autopilot` and `airesearcher serve` now default to publication-gate search breadth: 4 generated queries and up to 10 papers per source/query. Lower limits remain available for explicit smoke or cost-control runs.

@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import urlparse
 
 from autoresearch.literature.models import normalize_doi
@@ -26,6 +26,14 @@ class CitationGenerationError(RuntimeError):
     """Raised when citations cannot be validated or written."""
 
 
+class _CitationMetadata(TypedDict):
+    abstract: str | None
+    venue: str | None
+    source_uri: str | None
+    authors: tuple[str, ...]
+    tags: tuple[str, ...]
+
+
 @dataclass(frozen=True)
 class CitationValidation:
     """Citation verification result for one document."""
@@ -37,6 +45,11 @@ class CitationValidation:
     doi: str | None = None
     url: str | None = None
     reason: str | None = None
+    abstract: str | None = None
+    venue: str | None = None
+    source_uri: str | None = None
+    authors: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -47,6 +60,11 @@ class CitationValidation:
             "doi": self.doi,
             "url": self.url,
             "reason": self.reason,
+            "abstract": self.abstract,
+            "venue": self.venue,
+            "source_uri": self.source_uri,
+            "authors": list(self.authors),
+            "tags": list(self.tags),
         }
 
 
@@ -86,6 +104,7 @@ def validate_citations(documents: list[DocumentRecord]) -> list[CitationValidati
     for document in documents:
         doi = normalize_doi(document.doi)
         url = _document_url(document)
+        metadata = _citation_metadata(document)
         if doi is not None:
             validations.append(
                 CitationValidation(
@@ -95,6 +114,7 @@ def validate_citations(documents: list[DocumentRecord]) -> list[CitationValidati
                     bibtex_key=keys[document.id],
                     doi=doi,
                     url=url,
+                    **metadata,
                 )
             )
             continue
@@ -106,6 +126,7 @@ def validate_citations(documents: list[DocumentRecord]) -> list[CitationValidati
                     status=CitationStatus.VERIFIED_URL,
                     bibtex_key=keys[document.id],
                     url=url,
+                    **metadata,
                 )
             )
             continue
@@ -116,6 +137,7 @@ def validate_citations(documents: list[DocumentRecord]) -> list[CitationValidati
                 status=CitationStatus.BLOCKED,
                 bibtex_key=None,
                 reason="citation lacks DOI or URL",
+                **metadata,
             )
         )
     return validations
@@ -231,3 +253,20 @@ def _publication_year(document: DocumentRecord) -> str | None:
 
 def _bibtex_escape(value: str) -> str:
     return value.replace("\\", r"\textbackslash{}").replace("{", r"\{").replace("}", r"\}")
+
+
+def _citation_metadata(document: DocumentRecord) -> _CitationMetadata:
+    return {
+        "abstract": _optional_text(getattr(document, "abstract", None)),
+        "venue": _optional_text(getattr(document, "venue", None)),
+        "source_uri": _optional_text(getattr(document, "source_uri", None)),
+        "authors": tuple(str(author) for author in getattr(document, "authors", ()) or ()),
+        "tags": tuple(str(tag) for tag in getattr(document, "tags", ()) or ()),
+    }
+
+
+def _optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None

@@ -62,6 +62,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 21:09:56 +08:00 - Codex - Task 113.1 citation relevance and review-safe manuscript gate
+
+- Request: Continue toward a real self-running, publication-gated AI-Researcher loop; account for newly found `scipilot-figure-skill`, Research Architect / literature-review skills, and Nature Skills; ensure verified citations are actually relevant and generated papers survive real evidence review.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/reports/citations.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_citations.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Preserved citation abstracts, venues, source URIs, authors, and tags in citation metadata.
+  - Added `citation_relevance_breadth` to publication audit so CCF-B/Q3 targets require relevant verified references, not only DOI/URL-verified references.
+  - Added relevance anchors from candidate metadata, demo metadata, task metadata, and run records.
+  - Added regressions for verified but irrelevant citations failing CCF-B audit.
+  - Tightened manuscript wording so implementation details, artifact names, ablation wording, and metric-file interpretations stay bounded to local evidence.
+  - Registered SciPilot Figure Skill, Nature Skills, and Research Architect literature-review skills as reference-only MIT projects in third-party notices; no upstream code or prompt text was copied.
+  - Marked task `113.1` complete with real full-cycle verification.
+- Verification:
+  - Raw upstream license checks: `Invoke-WebRequest` against the three GitHub raw `LICENSE` files confirmed MIT license text for Haojae/scipilot-figure-skill, Yuan1z0825/nature-skills, and 5ak3t/literature-review-skills.
+  - `poetry run pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_citations.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 21 tests.
+  - `poetry run ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\citations.py src\autoresearch\reports\publication_audit.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_citations.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\citations.py src\autoresearch\reports\publication_audit.py`: passed.
+  - `poetry run airesearcher publication-audit runs\manual-live\task112-citation-cycle\cycle-20260613T124028Z\cycle-summary.json --output-dir runs\manual-live\task113-relevance-old-cycle-audit-v3 --no-fail-on-not-publishable`: passed with `publishable=true`.
+  - First real full cycle `runs\manual-live\task113-relevance-cycle\cycle-20260613T125723Z\cycle-summary.json`: completed but evidence gate correctly blocked because live LLM review returned `verdict=needs_revision` for over-specific manuscript prose.
+  - Final real full cycle: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task113-relevance-vault-v2 --cache runs\manual-live\task113-relevance-cache-v2 --output-dir runs\manual-live\task113-relevance-cycle-v2 --state runs\manual-live\task113-relevance-state-v2.json --project-id task113_relevance_cycle_v2 --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed source preflight, review, publication audit, paper build, and evidence gate.
+  - Final real cycle evidence: 54 verified citations, 46 relevant verified citations, 0 blocked citations, DeepSeek `verdict=pass`, unsupported claims `[]`, publication audit score `0.9812`, PDF compiled with 6 pages, 4095 words, and 0 overfull hboxes, evidence gate `release_allowed=true`.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 444 tests and 4 skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 99 source files.
+  - `git diff --check`: passed; only non-failing CRLF warnings were printed.
+- Problems:
+  - Added and resolved `P-20260613-049`.
+- Follow-up:
+  - Future work can add semantic ranking or UI-assisted source screening, but the deterministic relevance gate and final-manuscript evidence review should remain blocking for CCF-B/Q3 claims.
+
 ### 2026-06-13 20:43:24 +08:00 - Codex - Task 112.1 citation-package publication gate
 
 - Request: Continue toward stable CCF-B/Q3-submission-grade output, keep real online/API verification, and account for newly mentioned external skill references (`scipilot-figure-skill`, Research Architect skill, and Nature skill) as future gate candidates rather than copied content.

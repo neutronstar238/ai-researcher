@@ -1647,6 +1647,20 @@ A task can be checked only when all applicable items are true:
     - _References: task `17.2`; task `103.1`; task `111.1`; `P-20260613-047`; `P-20260613-048`; user requirement that publication-grade claims use real online sources and must not fabricate citations or results._
     - _Verify: focused citation/publication-audit/manuscript/CLI tests, focused ruff, focused mypy, old real ACM cycle blocked on missing citation package, new real ACM `autopilot` producing 54 verified citations and 0 blocked citations with `review_status=passed`, `publication_audit=pass`, `paper_quality=true`, and `evidence_gate=pass`._
 
+- [x] 113. Require related-work relevance before CCF-B/Q3 paper claims
+  - [x] 113.1 Add citation relevance metadata, audit gates, and evidence-review-safe manuscript wording
+    - Preserve abstract, venue, source URI, authors, and tags in citation metadata so publication audit can inspect source context instead of only DOI/URL presence.
+    - Extend `ccf-b` and `q3-journal` publication targets with minimum relevant verified citation counts while keeping `mvp-demo` unblocked by relevance requirements.
+    - Build relevance anchors from candidate metadata, demo metadata, task metadata, and the executed run record; count only verified citations whose title, abstract, venue, source URI, authors, or tags overlap with method, dataset, benchmark, baseline, or task anchors.
+    - Add regression tests proving DOI/URL-verified but topically unrelated references fail `citation_relevance_breadth`.
+    - Tighten the deterministic manuscript composer so it does not promote implementation details, ablation wording, artifact names, or metric-file interpretations beyond the attached run script, metrics, validation report, and evidence map.
+    - Treat SciPilot Figure Skill, Nature Skills, and Research Architect / literature-review skills as reference-only future quality-gate candidates unless a later task explicitly installs or adapts them under their licenses.
+    - Run a real old-cycle publication audit and require relevant verified citation breadth to pass only when metadata supports the research topic.
+    - Run a new real ACM `autopilot` cycle with live ArXiv/OpenAlex retrieval, generated citation metadata, final-manuscript DeepSeek review, publication audit, paper build, and evidence gate all passing.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; only runtime outputs under `runs/manual-live/...` count as AI-Researcher-written vault evidence for this task.
+    - _References: task `112.1`; task `111.1`; `P-20260613-047`; `P-20260613-048`; `P-20260613-049`; SciPilot Figure Skill, Nature Skills, and Research Architect repositories as reference-only quality-gate ideas._
+    - _Verify: focused citation/publication-audit/manuscript/CLI tests, focused ruff, focused mypy, real old-cycle audit at `runs/manual-live/task113-relevance-old-cycle-audit-v3` passing relevance over the existing citation cycle, first real task `113.1` cycle blocked by live LLM `needs_revision`, and final real ACM `autopilot` at `runs/manual-live/task113-relevance-cycle-v2/cycle-20260613T130219Z/cycle-summary.json` with 54 verified citations, 46 relevant verified citations, 0 blocked citations, `review_status=passed`, reviewer `verdict=pass`, unsupported claims `[]`, `publication_audit=pass`, paper PDF compiled with 6 pages / 4095 words / 0 overfull hboxes, and `evidence_gate=pass`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2011,6 +2025,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 79,
       "tasks": ["112.1"]
+    },
+    {
+      "id": 80,
+      "tasks": ["113.1"]
     }
   ]
 }

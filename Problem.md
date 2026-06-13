@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-049 - Verified citations did not prove topical relevance
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 21:02:00 +08:00
+- Source: Task `113.1` follow-up after task `112.1` made DOI/URL citation packages mandatory.
+- Symptom: Citation packages could prove that sources had DOI/URL evidence, but the publication audit did not yet verify that enough formal references were topically aligned with the executed method, dataset, benchmark, or baseline. The first real task `113.1` full cycle also showed live LLM review blocking over-specific manuscript prose about implementation details and metrics wording.
+- Impact: A paper could appear to satisfy reference breadth with verified but weakly related sources, and a generated manuscript could still make evidence-adjacent claims that were too strong for the attached artifacts.
+- Evidence: The new regression `test_publication_audit_blocks_verified_but_irrelevant_citations_for_ccfb` fails CCF-B audit when all verified references are unrelated. The first real `task113-relevance-cycle` completed publication audit but the evidence gate blocked because DeepSeek review returned `verdict=needs_revision` for manuscript claims such as implementation-detail and metric-file wording. The final real cycle at `runs/manual-live/task113-relevance-cycle-v2/cycle-20260613T130219Z/cycle-summary.json` passed with `citation_relevance_breadth=pass`, 46 relevant verified citations, reviewer `verdict=pass`, unsupported claims `[]`, and `evidence_gate=pass`.
+- Root cause: Citation validation was originally binary around DOI/URL availability, and the deterministic manuscript composer still contained some ablation/implementation phrasing inherited from earlier report templates.
+- Workaround: None needed after the fix; relevance is now a blocking audit check for CCF-B/Q3 targets, and manuscript wording was tightened to keep executable artifacts as the source of implementation truth.
+- Next action: Future tasks can add stronger semantic relevance ranking and source-screening UIs, but must keep the deterministic relevance gate and LLM evidence review as hard blockers.
+- Linked tasks: `112.1`, `113.1`
+- Resolution: Citation metadata now preserves abstract, venue, source URI, authors, and tags; publication audit counts relevant verified citations against method/dataset/benchmark/baseline anchors; and the manuscript composer now avoids unsupported implementation-detail, ablation-label, artifact-name, and metric-file overclaims.
+- Verification: `poetry run pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_citations.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` passed with 21 tests. Focused ruff and mypy passed. `poetry run airesearcher publication-audit runs\manual-live\task112-citation-cycle\cycle-20260613T124028Z\cycle-summary.json --output-dir runs\manual-live\task113-relevance-old-cycle-audit-v3 --no-fail-on-not-publishable` passed with `publishable=true`. `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task113-relevance-vault-v2 --cache runs\manual-live\task113-relevance-cache-v2 --output-dir runs\manual-live\task113-relevance-cycle-v2 --state runs\manual-live\task113-relevance-state-v2.json --project-id task113_relevance_cycle_v2 --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85` passed source preflight, review, publication audit, paper build, and evidence gate.
+
 ### P-20260613-048 - Citation validation existed but was not enforced in the publication loop
 
 - Status: Resolved

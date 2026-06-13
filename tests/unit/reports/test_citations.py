@@ -26,6 +26,10 @@ def test_validate_citations_reports_doi_url_and_blocked_statuses() -> None:
     assert validations[0].doi == "10.1234/example"
     assert validations[1].url == "https://example.com/url-paper"
     assert validations[2].reason == "citation lacks DOI or URL"
+    assert validations[0].abstract == "Evidence-bound autonomous research loop."
+    assert validations[0].venue == "AutoResearch Workshop"
+    assert validations[0].authors == ("A. Researcher",)
+    assert validations[0].tags == ("evidence", "research-loop")
 
 
 def test_generate_bibtex_writes_verified_entries_and_blocked_metadata(
@@ -44,6 +48,11 @@ def test_generate_bibtex_writes_verified_entries_and_blocked_metadata(
     assert "% BLOCKED doc_blocked: citation lacks DOI or URL" in bibtex
     assert artifact.blocked_document_ids == ("doc_blocked",)
     assert metadata["blocked_document_ids"] == ["doc_blocked"]
+    assert metadata["citations"][0]["abstract"] == "Evidence-bound autonomous research loop."
+    assert metadata["citations"][0]["venue"] == "AutoResearch Workshop"
+    assert metadata["citations"][0]["source_uri"] == "https://example.com/doi-paper"
+    assert metadata["citations"][0]["authors"] == ["A. Researcher"]
+    assert metadata["citations"][0]["tags"] == ["evidence", "research-loop"]
     assert [citation["status"] for citation in metadata["citations"]] == [
         "verified_doi",
         "verified_url",
@@ -64,9 +73,11 @@ def _documents() -> list[DocumentRecord]:
             title="Evidence First Research",
             source_uri="https://example.com/doi-paper",
             authors=["A. Researcher"],
+            abstract="Evidence-bound autonomous research loop.",
             publication_date=publication_date,
             venue="AutoResearch Workshop",
             doi="DOI:10.1234/EXAMPLE",
+            tags=["evidence", "research-loop"],
         ),
         DocumentRecord(
             id="doc_url",
