@@ -24,7 +24,7 @@ AI-Researcher 不是复刻某一个项目，而是在证据优先的约束下吸
 
 - [HKUDS AI-Researcher](https://github.com/HKUDS/AI-Researcher)：端到端科研流水线目标和 Scientist-Bench 式评测压力。本仓库只把它作为概念参考；AI-Researcher 的重点是 Obsidian 驱动的自循环记忆底座、带权限审批的常驻运行、证据图、真实运行记录，以及在论文声明前先通过发表级审计。
 - [AutoResearchClaw](https://github.com/aiming-lab/AutoResearchClaw)：可参考其 MIT 许可下的一句话启动/OpenClaw 式操作者体验、23 阶段科研流水线、human-in-the-loop 模式、多源文献检索、claim verification 和 skill-learning 方向。本项目的差异点是把 Obsidian 兼容 vault 固定为可审计记忆底座，在论文声明前先用更硬的发表级审计阻断不充分证据，并保持 provider-agnostic 本地部署和权限化常驻运行。
-- [SCALE Engine](https://github.com/hongmaple0820/scale-engine)：启发“不要只靠提示词自律，而要用可执行 workflow gate 和证据文件做物理门禁”的治理思路。AI-Researcher 只吸收轻量版：缺少证据文件、review 未通过、publication audit 不可发表或没有编译出的 PDF 时，发布声明会被硬阻断。
+- [SCALE Engine](https://github.com/hongmaple0820/scale-engine)：启发“不要只靠提示词自律，而要用可执行 workflow gate 和证据文件做物理门禁”的治理思路。AI-Researcher 只吸收轻量版：缺少证据文件、缺少 define/plan/build/verify/review/ship 生命周期物理证据链、review 未通过、publication audit 不可发表或没有编译出的 PDF 时，发布声明会被硬阻断。
 - [AI for Auto-Research](https://worldbench.github.io/awesome-ai-auto-research/) 等长程自动科研路线图：强调幻觉、创新性检验、可复现产物和评估压力。
 - [Horizon](https://github.com/Thysrael/Horizon) 和 [agent-arxiv-daily](https://github.com/UltraClr/agent-arxiv-daily) 等每日更新项目：启发定时联网抓取、来源评分、摘要分发和论文更新机制。
 - [Microsoft SkillOpt](https://github.com/microsoft/SkillOpt)：把 Markdown skill 当作可优化的外部 Agent 状态，通过 rollout 证据、有界编辑、验证门和 `best_skill.md` 产物来稳定进化技能。
@@ -232,7 +232,7 @@ poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.js
   --project-id demo_project
 ```
 
-`evidence-gate` 是受 SCALE 思路启发的轻量硬门禁。它会检查 cycle summary、文献摘要、相似工作摘要、实验报告、validation report、evidence map、第一次 run record、reproduction-check JSON/Markdown、复现实验 rerun 的 run record、复现实验 rerun 的 validation report、review artifact、publication audit 和编译后的论文 PDF 是否真实存在。默认情况下，复现实验不是由真实命令行调用通过、review 未通过、`publication-audit` 不是 `publishable=true`，或 `paper-build` 没有编译出 PDF，命令都会以非零退出码阻断发布声明。`autopilot` 和 `serve` 会在自动 paper build 后自动运行这个门禁，并把 verdict 写入 `cycle-summary.json`；blocked gate 对常驻循环本身不致命，而是写出 JSON/Markdown 证据和 Obsidian review/issue note，让自循环从具体 blocker 继续。
+`evidence-gate` 是受 SCALE 思路启发的轻量硬门禁。它会检查 cycle summary、文献摘要、相似工作摘要、实验报告、validation report、evidence map、第一次 run record、reproduction-check JSON/Markdown、复现实验 rerun 的 run record、复现实验 rerun 的 validation report、review artifact、publication audit 和编译后的论文 PDF 是否真实存在。它的 JSON/Markdown 还会写出 `lifecycle_trace`，覆盖 `define -> plan -> build -> verify -> review -> ship`：`plan` 必须有实验 README/config，`build` 必须有可运行的 `run.py` 入口，`review`/`ship` 必须有 review、audit、paper-build 和 PDF 证据。默认情况下，生命周期证据链不完整、复现实验不是由真实命令行调用通过、review 未通过、`publication-audit` 不是 `publishable=true`，或 `paper-build` 没有编译出 PDF，命令都会以非零退出码阻断发布声明。`autopilot` 和 `serve` 会在自动 paper build 后自动运行这个门禁，并把 verdict 写入 `cycle-summary.json`；blocked gate 对常驻循环本身不致命，而是写出 JSON/Markdown 证据和 Obsidian review/issue note，让自循环从具体 blocker 继续。
 
 并发 Agent 编辑前先声明文件范围：
 

@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:47:29 +08:00 - Codex - Task 89.1 lifecycle trace evidence gate
+
+- Request: Continue SCALE-lite physical gate work so AI-Researcher cannot rely on prompt-only discipline; add a concrete requirements/plan/code/test/review/release evidence trace to the release gate.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-89-1-lifecycle-trace-evidence-gate.md`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+- Summary:
+  - Added `EvidenceLifecycleStage` and a structured `lifecycle_trace` to evidence-gate JSON/Markdown output.
+  - Added a blocking `lifecycle_trace_gate` over `define -> plan -> build -> verify -> review -> ship`.
+  - Mapped `define` to candidate, literature, and similarity evidence; `plan` to experiment README/config; `build` to runnable `run.py`; `verify` to validation/evidence-map/reproduction evidence; `review` to LLM evidence review and publication audit; and `ship` to paper-build JSON plus compiled PDF.
+  - Updated evidence-gate tests, bilingual README guidance, changelog, executable tasks, problem log, and Obsidian progress memory.
+- Verification:
+  - Focused test: `poetry run pytest tests\unit\reports\test_evidence_gate.py -q` passed with 7 tests.
+  - Initial focused ruff: `poetry run ruff check src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\__init__.py tests\unit\reports\test_evidence_gate.py` failed on import/export order after adding `EvidenceLifecycleStage`; fixed in task `89.1` and recorded as `P-20260613-027`.
+  - Focused ruff after fix: `poetry run ruff check src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\__init__.py tests\unit\reports\test_evidence_gate.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\__init__.py` passed.
+  - Real CLI: `poetry run airesearcher evidence-gate runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\publication-audit.json --paper-build-json runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\paper-build\paper-build.json --output-dir runs\manual-live\evidence-gate-task89 --vault runs\manual-live\task89-evidence-vault --project-id task89_lifecycle_trace --no-fail-on-blocked` passed as a real gate run and correctly reported `evidence_gate=blocked`, `release_allowed=false`, `define=pass`, `plan=pass`, `build=pass`, `verify=pass`, `review=fail`, and `ship=pass`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 389 passed and 4 skipped.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked earlier in `Problem.md`.
+- Problems added or updated:
+  - Added and resolved `P-20260613-027` for the ruff import/export ordering failure after adding the lifecycle stage export.
+- Follow-up work:
+  - Run a review-enabled real cycle once source cooldowns allow broad retrieval, then use the lifecycle trace to separate true review blockers from missing implementation or release artifacts.
+
 ### 2026-06-13 11:38:30 +08:00 - Codex - Task 88.1 classified similarity breadth gate
 
 - Request: Continue strict novelty quality control so CCF-B/Q3-style publication audits cannot satisfy similar-work breadth with raw `unknown` findings.

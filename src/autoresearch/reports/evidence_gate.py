@@ -56,6 +56,28 @@ class EvidenceGateCheck:
 
 
 @dataclass(frozen=True)
+class EvidenceLifecycleStage:
+    """One SCALE-lite lifecycle stage backed by physical artifacts."""
+
+    stage_id: str
+    label: str
+    status: EvidenceGateCheckStatus
+    required: bool
+    evidence_refs: tuple[str, ...] = ()
+    missing_refs: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stage_id": self.stage_id,
+            "label": self.label,
+            "status": self.status.value,
+            "required": self.required,
+            "evidence_refs": list(self.evidence_refs),
+            "missing_refs": list(self.missing_refs),
+        }
+
+
+@dataclass(frozen=True)
 class EvidenceGateReport:
     """Physical evidence gate output."""
 
@@ -66,6 +88,7 @@ class EvidenceGateReport:
     markdown_path: str
     publication_audit_path: str | None
     paper_build_path: str | None
+    lifecycle_trace: tuple[EvidenceLifecycleStage, ...] = ()
     vault_review_path: str | None = None
     vault_issue_path: str | None = None
 
@@ -85,6 +108,7 @@ class EvidenceGateReport:
             "cycle_summary_path": self.cycle_summary_path,
             "publication_audit_path": self.publication_audit_path,
             "paper_build_path": self.paper_build_path,
+            "lifecycle_trace": [stage.to_dict() for stage in self.lifecycle_trace],
             "output_path": self.output_path,
             "markdown_path": self.markdown_path,
             "vault_review_path": self.vault_review_path,
@@ -163,6 +187,18 @@ def run_evidence_gate(
             require_paper_build=require_paper_build,
         )
     )
+    lifecycle_trace: tuple[EvidenceLifecycleStage, ...] = ()
+    if not summary_error:
+        lifecycle_trace = _lifecycle_trace(
+            summary,
+            base_dir,
+            publication_audit_path=audit_path,
+            paper_build_path=build_path,
+            require_review_pass=require_review_pass,
+            require_publication_pass=require_publication_pass,
+            require_paper_build=require_paper_build,
+        )
+        checks.append(_lifecycle_trace_check(lifecycle_trace))
 
     verdict = _gate_verdict(checks)
     report = EvidenceGateReport(
@@ -173,6 +209,7 @@ def run_evidence_gate(
         markdown_path=markdown_path.as_posix(),
         publication_audit_path=_path_text(audit_path),
         paper_build_path=_path_text(build_path),
+        lifecycle_trace=lifecycle_trace,
     )
     if vault_root is not None and project_id:
         review_path, issue_path = _vault_gate_paths(report, Path(vault_root), project_id)
@@ -184,6 +221,7 @@ def run_evidence_gate(
             markdown_path=report.markdown_path,
             publication_audit_path=report.publication_audit_path,
             paper_build_path=report.paper_build_path,
+            lifecycle_trace=report.lifecycle_trace,
             vault_review_path=review_path.as_posix(),
             vault_issue_path=issue_path.as_posix() if issue_path is not None else None,
         )
@@ -328,6 +366,157 @@ def _review_checks(
     if status == "passed" or require_review_pass:
         checks.append(_artifact_check("review_artifact", output_path, base_dir))
     return checks
+
+
+def _lifecycle_trace(
+    summary: dict[str, Any],
+    base_dir: Path,
+    *,
+    publication_audit_path: Path | str | None,
+    paper_build_path: Path | str | None,
+    require_review_pass: bool,
+    require_publication_pass: bool,
+    require_paper_build: bool,
+) -> tuple[EvidenceLifecycleStage, ...]:
+    demo = _dict(summary.get("demo"))
+    literature = _dict(summary.get("literature"))
+    similarity = _dict(summary.get("similarity"))
+    review = _dict(summary.get("review"))
+    reproduction = _dict(summary.get("reproduction_check"))
+    experiment_dir = _resolve_path(_nested(summary, ("demo", "experiment_dir")), base_dir)
+    paper_pdf_path = _paper_pdf_path(paper_build_path, base_dir)
+
+    stage_specs: tuple[tuple[str, str, bool, tuple[tuple[object, str], ...]], ...] = (
+        (
+            "define",
+            "Requirements and novelty context",
+            True,
+            (
+                (summary.get("candidate_path"), "candidate record"),
+                (literature.get("summary_path"), "literature summary"),
+                (similarity.get("summary_path"), "similarity summary"),
+            ),
+        ),
+        (
+            "plan",
+            "Experiment plan and configuration",
+            True,
+            (
+                (_experiment_child(experiment_dir, "README.md"), "experiment README"),
+                (_experiment_child(experiment_dir, "config.yaml"), "experiment config"),
+            ),
+        ),
+        (
+            "build",
+            "Runnable experiment code",
+            True,
+            ((_experiment_child(experiment_dir, "run.py"), "experiment entrypoint"),),
+        ),
+        (
+            "verify",
+            "Test and validation evidence",
+            True,
+            (
+                (demo.get("validation_json_path"), "validation report"),
+                (demo.get("evidence_map_path"), "evidence map"),
+                (reproduction.get("json_path"), "reproduction report"),
+            ),
+        ),
+        (
+            "review",
+            "Review and publication audit evidence",
+            require_review_pass or require_publication_pass,
+            (
+                (review.get("output_path"), "LLM evidence review"),
+                (publication_audit_path, "publication audit"),
+            ),
+        ),
+        (
+            "ship",
+            "Release and paper artifact evidence",
+            require_paper_build,
+            (
+                (paper_build_path, "paper build JSON"),
+                (paper_pdf_path, "compiled paper PDF"),
+            ),
+        ),
+    )
+
+    return tuple(
+        _lifecycle_stage(stage_id, label, required, specs, base_dir)
+        for stage_id, label, required, specs in stage_specs
+    )
+
+
+def _lifecycle_stage(
+    stage_id: str,
+    label: str,
+    required: bool,
+    specs: tuple[tuple[object, str], ...],
+    base_dir: Path,
+) -> EvidenceLifecycleStage:
+    evidence_refs: list[str] = []
+    missing_refs: list[str] = []
+    for path_value, description in specs:
+        resolved = _resolve_path(path_value, base_dir)
+        ref = _path_text(path_value) or description
+        if resolved is not None and resolved.exists() and resolved.is_file() and resolved.stat().st_size > 0:
+            evidence_refs.append(resolved.as_posix())
+        else:
+            missing_refs.append(ref)
+    if not missing_refs:
+        status = EvidenceGateCheckStatus.PASS
+    elif required:
+        status = EvidenceGateCheckStatus.FAIL
+    else:
+        status = EvidenceGateCheckStatus.WARNING
+    return EvidenceLifecycleStage(
+        stage_id=stage_id,
+        label=label,
+        status=status,
+        required=required,
+        evidence_refs=tuple(evidence_refs),
+        missing_refs=tuple(missing_refs),
+    )
+
+
+def _lifecycle_trace_check(
+    stages: tuple[EvidenceLifecycleStage, ...],
+) -> EvidenceGateCheck:
+    missing_required = tuple(
+        stage for stage in stages if stage.required and stage.status is EvidenceGateCheckStatus.FAIL
+    )
+    warning_stages = tuple(
+        stage for stage in stages if stage.status is EvidenceGateCheckStatus.WARNING
+    )
+    if missing_required:
+        status = EvidenceGateCheckStatus.FAIL
+        severity = "blocking"
+    elif warning_stages:
+        status = EvidenceGateCheckStatus.WARNING
+        severity = "medium"
+    else:
+        status = EvidenceGateCheckStatus.PASS
+        severity = "blocking"
+    stage_summary = "; ".join(
+        f"{stage.stage_id}={stage.status.value}"
+        + (f" missing({', '.join(stage.missing_refs)})" if stage.missing_refs else "")
+        for stage in stages
+    )
+    evidence_refs = tuple(ref for stage in stages for ref in stage.evidence_refs)
+    return EvidenceGateCheck(
+        "lifecycle_trace_gate",
+        status,
+        severity,
+        f"SCALE-lite lifecycle trace: {stage_summary}.",
+        evidence_refs,
+        None
+        if status is EvidenceGateCheckStatus.PASS
+        else (
+            "Restore the missing define/plan/build/verify/review/ship evidence files "
+            "before release or paper-ready claims."
+        ),
+    )
 
 
 def _publication_audit_checks(
@@ -518,6 +707,16 @@ def _paper_build_path(
     return paper_build.get("json_path") or paper_build.get("output_path")
 
 
+def _paper_pdf_path(path_value: Path | str | None, base_dir: Path) -> Path | str | None:
+    build_path = _resolve_path(path_value, base_dir)
+    if build_path is None or not build_path.exists():
+        return None
+    payload, error = _read_json_if_exists(build_path)
+    if error:
+        return None
+    return payload.get("pdf_path")
+
+
 def _gate_verdict(checks: list[EvidenceGateCheck]) -> EvidenceGateVerdict:
     hard_fail = any(
         check.status is EvidenceGateCheckStatus.FAIL and check.severity == "blocking"
@@ -551,16 +750,42 @@ def _markdown(report: EvidenceGateReport) -> str:
         "## Policy",
         "",
         "- No release without local evidence artifacts.",
+        "- No release without a physical define -> plan -> build -> verify -> review -> ship trace.",
         "- No release without a fresh command-line reproduction rerun.",
         "- No paper-ready claim without a passing publication audit.",
         "- No paper-level artifact claim without a compiled LaTeX PDF.",
         "- Failed gates are blockers, not suggestions.",
         "",
+        "## Lifecycle Trace",
+        "",
+        "| Stage | Status | Required | Evidence | Missing |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for stage in report.lifecycle_trace:
+        evidence = ", ".join(f"`{ref}`" for ref in stage.evidence_refs) or "`none`"
+        missing = ", ".join(f"`{ref}`" for ref in stage.missing_refs) or "`none`"
+        lines.append(
+            "| "
+            + " | ".join(
+                (
+                    f"`{stage.stage_id}`",
+                    f"`{stage.status.value}`",
+                    f"`{str(stage.required).lower()}`",
+                    evidence,
+                    missing,
+                )
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
         "## Checks",
         "",
         "| Check | Status | Severity | Evidence | Message | Next action |",
         "| --- | --- | --- | --- | --- | --- |",
-    ]
+        ]
+    )
     for check in report.checks:
         evidence = ", ".join(f"`{ref}`" for ref in check.evidence_refs) or "`none`"
         lines.append(
@@ -720,6 +945,12 @@ def _nested(payload: dict[str, Any], keys: tuple[str, ...]) -> object:
             return None
         value = value.get(key)
     return value
+
+
+def _experiment_child(experiment_dir: Path | None, name: str) -> Path | None:
+    if experiment_dir is None:
+        return None
+    return experiment_dir / name
 
 
 def _dict(value: object) -> dict[str, Any]:

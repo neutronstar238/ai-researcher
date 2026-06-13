@@ -29,6 +29,7 @@ from .evidence_gate import (
     EvidenceGateCheckStatus,
     EvidenceGateReport,
     EvidenceGateVerdict,
+    EvidenceLifecycleStage,
     run_evidence_gate,
 )
 from .evolution import (
@@ -119,6 +120,7 @@ __all__ = [
     "EvidenceGateCheckStatus",
     "EvidenceGateReport",
     "EvidenceGateVerdict",
+    "EvidenceLifecycleStage",
     "FigureArtifact",
     "FigureGenerationError",
     "LatexCompilationError",

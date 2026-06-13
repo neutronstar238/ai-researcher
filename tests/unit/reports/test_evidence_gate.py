@@ -22,6 +22,14 @@ def test_evidence_gate_passes_when_all_required_artifacts_are_physical(
     assert Path(report.markdown_path).is_file()
     payload = json.loads(Path(report.output_path).read_text(encoding="utf-8"))
     assert payload["release_allowed"] is True
+    assert {stage["stage_id"]: stage["status"] for stage in payload["lifecycle_trace"]} == {
+        "define": "pass",
+        "plan": "pass",
+        "build": "pass",
+        "verify": "pass",
+        "review": "pass",
+        "ship": "pass",
+    }
 
 
 def test_evidence_gate_blocks_missing_physical_artifact(tmp_path: Path) -> None:
@@ -94,6 +102,28 @@ def test_evidence_gate_blocks_missing_reproduction_rerun_artifact(
     checks = {check.check_id: check for check in report.checks}
     assert report.verdict is EvidenceGateVerdict.BLOCKED
     assert checks["reproduction_rerun_gate"].status.value == "fail"
+
+
+def test_evidence_gate_blocks_missing_lifecycle_code_artifact(
+    tmp_path: Path,
+) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["experiment_dir"], "run.py").unlink()
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    trace = {stage.stage_id: stage for stage in report.lifecycle_trace}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert trace["build"].status.value == "fail"
+    assert "run.py" in trace["build"].missing_refs[0]
+    assert checks["lifecycle_trace_gate"].status.value == "fail"
+    assert "build=fail" in checks["lifecycle_trace_gate"].message
 
 
 def test_evidence_gate_writes_obsidian_review_and_issue_for_blocked_gate(
@@ -171,6 +201,9 @@ def _write_gate_cycle(
     candidate_path.write_text('{"id": "candidate_1"}', encoding="utf-8")
     literature_summary.write_text("# Literature\n", encoding="utf-8")
     similarity_summary.write_text("# Similarity\n", encoding="utf-8")
+    (experiment_dir / "README.md").write_text("# Experiment Plan\n", encoding="utf-8")
+    (experiment_dir / "config.yaml").write_text("demo: tabular_baseline\n", encoding="utf-8")
+    (experiment_dir / "run.py").write_text("print('run')\n", encoding="utf-8")
     report_path.write_text("# Report\n\n## Results\n\nEvidence.", encoding="utf-8")
     validation_path.write_text('{"status": "passed"}', encoding="utf-8")
     evidence_map_path.write_text('{"evidence_edges": []}', encoding="utf-8")

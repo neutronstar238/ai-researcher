@@ -1367,6 +1367,19 @@ A task can be checked only when all applicable items are true:
     - _References: task `86.1`, task `87.1`, and user requirement that cross-search breadth be strong enough for CCF-B/Q3-style claims._
     - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` CLI run showing `similarity_classified_finding_breadth=fail` on a real cycle whose findings remain unknown._
 
+- [x] 89. Add SCALE-lite lifecycle trace evidence to the release gate
+  - [x] 89.1 Require physical define/plan/build/verify/review/ship evidence
+    - Extend `evidence-gate` JSON/Markdown output with a structured `lifecycle_trace`.
+    - Map `define` to candidate, literature, and similarity evidence.
+    - Map `plan` to experiment `README.md` and `config.yaml` evidence.
+    - Map `build` to the runnable experiment entrypoint evidence.
+    - Map `verify` to validation, evidence map, and reproduction-check evidence.
+    - Map `review` to LLM evidence review and publication-audit evidence.
+    - Map `ship` to paper-build JSON and compiled PDF evidence.
+    - Add a blocking `lifecycle_trace_gate` so missing required lifecycle stages cannot be overridden by prompt-only assurances.
+    - _References: task `72.1`, task `74.1`, SCALE Engine design review, and user requirement to borrow the lightweight "no evidence, no release" gate without adopting a heavyweight lifecycle._
+    - _Verify: focused evidence-gate tests, ruff, mypy, full smoke/unit tests, and a real `evidence-gate` CLI run over a real cycle showing lifecycle stages and blocking the missing review stage._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1635,6 +1648,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 55,
       "tasks": ["88.1"]
+    },
+    {
+      "id": 56,
+      "tasks": ["89.1"]
     }
   ]
 }

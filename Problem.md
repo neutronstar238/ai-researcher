@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-027 - Evidence lifecycle stage export import order failed ruff
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-13 11:48:00 +08:00
+- Source: Focused ruff verification for task `89.1`.
+- Symptom: `poetry run ruff check src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\__init__.py tests\unit\reports\test_evidence_gate.py` failed with `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/reports/__init__.py`.
+- Impact: The lifecycle trace implementation and focused tests were valid, but the lint gate blocked completion until the public export order matched ruff/isort expectations.
+- Evidence: Ruff reported one fixable `I001` error after exporting `EvidenceLifecycleStage`.
+- Root cause: `EvidenceLifecycleStage` was inserted between `EvidenceGateCheckStatus` and `EvidenceGateReport` instead of the sorted import/export order.
+- Workaround: None needed after task `89.1`.
+- Next action: Keep ruff focused checks in the task verification loop after changing package exports.
+- Linked tasks: `89.1`
+- Resolution: Reordered the `evidence_gate` import and `__all__` entries in `src/autoresearch/reports/__init__.py`.
+- Verification: Reran the focused ruff command; it passed.
+
 ### P-20260613-026 - Classified similarity breadth changed audit verdict severity
 
 - Status: Resolved
