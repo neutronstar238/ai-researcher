@@ -737,9 +737,15 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         rate_limit_seconds=3.0,
         error=None,
     )
+    shared_clients = {
+        "arxiv": object(),
+        "semantic_scholar": object(),
+        "openalex": object(),
+    }
 
     def fake_literature_refresh(**kwargs: object) -> SimpleNamespace:
         config = kwargs["config"]
+        assert kwargs["clients"] is shared_clients
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         assert len(config.seed_queries) == cli_main.PUBLICATION_SEARCH_QUERIES
@@ -752,6 +758,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     def fake_similarity_check(**kwargs: object) -> SimpleNamespace:
         config = kwargs["config"]
+        assert kwargs["clients"] is shared_clients
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         return SimpleNamespace(
@@ -843,6 +850,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
     monkeypatch.setattr(cli_main, "audit_publication_quality", fake_publication_audit)

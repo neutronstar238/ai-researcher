@@ -34,7 +34,14 @@ from autoresearch.integrations import (
     write_openclaw_channel_manifest,
 )
 from autoresearch.knowledge import create_obsidian_vault_assets, create_skill_evolution_candidate
-from autoresearch.literature import LiteratureRefreshConfig, run_daily_literature_refresh
+from autoresearch.literature import (
+    ArxivClient,
+    LiteratureRefreshConfig,
+    LiteratureSearchClient,
+    OpenAlexClient,
+    SemanticScholarClient,
+    run_daily_literature_refresh,
+)
 from autoresearch.llm import (
     LLMClientError,
     run_llm_evidence_review,
@@ -1904,6 +1911,14 @@ def list_slash_commands(
         typer.echo(f"/{name}")
 
 
+def _autopilot_literature_clients() -> dict[str, LiteratureSearchClient]:
+    return {
+        "arxiv": ArxivClient(),
+        "semantic_scholar": SemanticScholarClient(),
+        "openalex": OpenAlexClient(),
+    }
+
+
 def _run_autopilot_cycle(
     *,
     config_path: Path,
@@ -1925,10 +1940,12 @@ def _run_autopilot_cycle(
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
+    literature_clients = _autopilot_literature_clients()
 
     literature_report = run_daily_literature_refresh(
         vault_root=vault,
         cache_root=cache,
+        clients=literature_clients,
         now=now,
         config=LiteratureRefreshConfig(
             max_queries=max_queries,
@@ -1949,6 +1966,7 @@ def _run_autopilot_cycle(
         candidate=candidate,
         vault_root=vault,
         cache_root=cache,
+        clients=literature_clients,
         now=now,
         config=SimilarityCheckConfig(
             max_queries=max_queries,

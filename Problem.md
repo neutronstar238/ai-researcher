@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-018 - Autopilot rebuilt source clients after a source circuit opened
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 10:16:00 +08:00
+- Source: Follow-up review after task `79.1` real aligned cycle.
+- Symptom: Literature refresh and similarity checking each created their own ArXiv/Semantic Scholar/OpenAlex clients when `autopilot` did not pass an explicit client mapping. If Semantic Scholar opened a 429 circuit during literature refresh, similarity checking could create a fresh Semantic Scholar client and try the same source again in the same cycle.
+- Impact: The system preserved errors correctly, but source politeness and evidence integrity were weaker than needed for a long-running 24h research loop.
+- Evidence: Task `79.1` showed repeated Semantic Scholar source failures across both retrieval phases in one cycle. The code path called `run_daily_literature_refresh()` and `run_project_similarity_check()` without shared clients.
+- Root cause: Source clients were owned by each retrieval function rather than by the enclosing autopilot cycle.
+- Workaround: None needed after task `80.1`; the enclosing cycle now creates and passes one shared client mapping to both phases.
+- Next action: Add a durable on-disk source cooldown only if future multi-process or multi-cycle runs keep hitting 429 even with shared in-cycle clients.
+- Linked tasks: `80.1`
+- Resolution: Task `80.1` adds `_autopilot_literature_clients()` and passes the same mapping into literature refresh and similarity checking.
+- Verification: A real task `80.1` cycle at `runs/manual-live/autopilot-shared-sources-task80/cycle-20260613T021650Z/cycle-summary.json` showed one `SourceRateLimitError` in literature refresh followed by `CircuitBreakerOpenError` entries in later literature and similarity Semantic Scholar fetches.
+
 ### P-20260613-017 - Autopilot novelty search could drift away from the executed demo
 
 - Status: Resolved
@@ -56,11 +72,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Real task `78.1` UCI Pendigits variance-calibrated prototype run and autopilot cycle.
 - Symptom: The new method candidate has a positive measured effect over the nearest-centroid baseline, but the full publication audit still fails when literature breadth is smoke-sized and LLM evidence review is skipped.
 - Impact: The system now has a real positive-effect method path, but must not present it as a CCF-B/Q3-ready paper until novelty search, related-work breadth, review, and manuscript gates all pass.
-- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review.
-- Root cause: Positive method effect is necessary but not sufficient; the method still needs broad cross-literature novelty checks without source failures, plus a passing review-enabled cycle on the aligned candidate.
+- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review. Task `80.1` improved in-cycle source politeness but did not make the Semantic Scholar source coverage pass.
+- Root cause: Positive method effect is necessary but not sufficient; the method still needs broad cross-literature novelty checks without source failures, plus a passing review-enabled cycle on the aligned candidate. The remaining source failure likely requires an API key or longer cooldown beyond an individual cycle.
 - Workaround: Keep the result as a positive method-candidate evidence note, not as a publication-ready claim.
 - Next action: Provide or configure a Semantic Scholar API key/cooldown that avoids 429, then rerun a review-enabled aligned cycle and compare against adjacent Gaussian/prototype/nearest-centroid calibration literature.
-- Linked tasks: `78.1`, `79.1`
+- Linked tasks: `78.1`, `79.1`, `80.1`
 - Resolution: Not resolved; task `78.1` creates the positive-effect candidate path and leaves publication readiness blocked by the broader gates.
 - Verification: Real `run-demo`, review-enabled `autopilot`, and aligned no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` completed. The aligned cycle reported `literature.query_count=4`, `reproduction_check.status=passed`, `publication_audit.verdict=needs_revision`, and `evidence_gate.verdict=blocked`.
 

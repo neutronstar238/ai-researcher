@@ -1282,6 +1282,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `78.1` real positive-effect candidate, the user requirement for broad cross-checking before paper claims, and the task `79` full-width cycle showing query breadth collapsed to one and candidate/experiment topic mismatch._
     - _Verify: focused literature/CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` showing `literature.query_count=4`, demo-aligned candidate metadata, real source fetches, and publication gating still blocks unresolved Semantic Scholar 429/review evidence._
 
+- [x] 80. Make source rate-limit state persist across one autopilot cycle
+  - [x] 80.1 Share literature clients between refresh and similarity checks
+    - Create one source-client mapping per `autopilot`/`serve` cycle and pass it to both daily literature refresh and project similarity checking.
+    - Preserve per-source rate limiter and 429 circuit-breaker state across both retrieval phases.
+    - Prevent the similarity phase from rebuilding a fresh Semantic Scholar client immediately after the literature phase has opened a 429 circuit.
+    - Keep source failures visible in publication audit; this change improves source politeness and evidence integrity, not publishability.
+    - _References: task `79.1` aligned real cycle showing Semantic Scholar 429 remains the current novelty-coverage blocker._
+    - _Verify: focused CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot` cycle showing Semantic Scholar 429 opens once in literature refresh and similarity receives only circuit-open errors from the shared breaker._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1514,6 +1523,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 46,
       "tasks": ["79.1"]
+    },
+    {
+      "id": 47,
+      "tasks": ["80.1"]
     }
   ]
 }

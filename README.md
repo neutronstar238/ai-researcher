@@ -201,6 +201,8 @@ After `deploy-setup`, this keeps the local loop running directly. Each cycle per
 
 By default, `autopilot` and `serve` use 4 generated queries and up to 10 papers per source/query for publication-gate evidence breadth. Known demos also inject method-aligned seed queries and candidate metadata so online novelty checks target the same method, dataset, benchmark, and baseline as the executed experiment. Pass lower `--max-queries` or `--max-results-per-source` values only for explicit smoke or cost-control runs.
 
+Within one `autopilot` or `serve` cycle, literature refresh and similarity checking share the same source clients. If Semantic Scholar opens a 429 circuit in the refresh phase, the similarity phase inherits that circuit-open state instead of rebuilding a fresh client and hammering the same source again.
+
 Real benchmark opt-in:
 
 ```bash

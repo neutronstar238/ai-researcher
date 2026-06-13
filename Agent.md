@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 10:20:11 +08:00 - Codex - Task 80.1 shared source clients inside autopilot cycles
+
+- Request: Continue hardening real online research execution by making Semantic Scholar rate-limit/circuit state persist across the literature-refresh and similarity-check phases of one autopilot cycle.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-80-1-shared-source-clients.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added task `80.1` to the executable task plan and dependency graph.
+  - Added `_autopilot_literature_clients()` so each `autopilot`/`serve` cycle owns one ArXiv, Semantic Scholar, and OpenAlex client mapping.
+  - Passed the shared client mapping into both `run_daily_literature_refresh()` and `run_project_similarity_check()`.
+  - Preserved source failures as publication-audit blockers while avoiding a fresh Semantic Scholar client immediately after a 429 circuit opens in the same cycle.
+  - Updated README, changelog, Problem log, and Obsidian progress memory with the source-politeness behavior and remaining Semantic Scholar blocker.
+- Verification:
+  - `poetry run pytest tests\unit\cli\test_main.py -q`: passed, 31 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py`: passed.
+  - `$env:SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS='10'; $env:SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS='120'; poetry run airesearcher autopilot --vault runs\manual-live\task80-shared-source-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-shared-sources-task80 --state runs\manual-live\autopilot-shared-sources-task80\scheduler-state.json --project-id task80_shared_sources --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 1 --timeout-seconds 60 --no-review`: passed as a real online cycle. It wrote `runs/manual-live/autopilot-shared-sources-task80/cycle-20260613T021650Z/cycle-summary.json`, with one Semantic Scholar `SourceRateLimitError` in literature refresh and only `CircuitBreakerOpenError` entries for Semantic Scholar in the similarity phase.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 375 tests passed and 4 skipped.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+- Problems:
+  - Added and resolved `P-20260613-018` for source clients being rebuilt after a source circuit opened.
+  - Updated `P-20260613-016`; Semantic Scholar source coverage still blocks publication-level novelty claims until an API key or longer cooldown avoids 429.
+- Follow-up:
+  - Add durable on-disk source cooldown if multi-process or multi-cycle deployments keep hitting 429 across process boundaries.
+  - Rerun an aligned review-enabled Pendigits cycle after Semantic Scholar access is stabilized.
+
 ### 2026-06-13 10:12:46 +08:00 - Codex - Task 79.1 demo-aligned autopilot novelty search
 
 - Request: Continue strict innovation quality control by ensuring broad online novelty search checks the same research object as the executed experiment, not a generic or mismatched candidate.

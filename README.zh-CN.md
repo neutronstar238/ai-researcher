@@ -142,6 +142,8 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 `autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
 
+同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。如果 Semantic Scholar 在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。
+
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
 poetry run airesearcher run-demo --demo pendigits_prototype_shrinkage --timeout-seconds 60
