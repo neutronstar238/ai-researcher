@@ -1340,6 +1340,15 @@ A task can be checked only when all applicable items are true:
     - _References: task `84.1` follow-up and the SCALE-lite multi-agent/source-politeness requirement that concurrent workers must not silently overwrite shared evidence state._
     - _Verify: focused literature-client and CLI tests, ruff, mypy, full smoke/unit tests, and a real CLI `autopilot` run with an active `source-circuit-breakers.json.lock` showing `[BLOCKED] source_preflight: blocked`, `state_locked` checks, skipped review, and a queued Obsidian issue follow-up._
 
+- [x] 86. Harden publication novelty classification coverage
+  - [x] 86.1 Block publication claims when similarity findings are all unknown
+    - Add a `similarity_classification_coverage` publication-audit check for CCF-B/Q3-style targets.
+    - Treat similarity findings that are all `unknown` or unclassified as a high-severity failure instead of letting raw finding count imply novelty coverage.
+    - Keep direct-duplicate and adjacent-work handling unchanged; at least one non-unknown evidence-backed classification is required before similarity evidence can support novelty claims.
+    - Write the failed check into publication-audit JSON/Markdown and Obsidian review/issue notes so the self-loop receives a concrete novelty-classification follow-up.
+    - _References: user request for strict innovation quality control and SCALE-style physical gates that do not rely on prompt-only self-discipline._
+    - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` CLI run over a real autopilot cycle showing `similarity_classification_coverage=fail` when all findings remain `unknown`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1596,6 +1605,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 52,
       "tasks": ["85.1"]
+    },
+    {
+      "id": 53,
+      "tasks": ["86.1"]
     }
   ]
 }

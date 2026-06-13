@@ -102,6 +102,27 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert report.publishable is True
 
 
+def test_publication_audit_blocks_unknown_only_similarity_classifications(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        similarity_classification="unknown",
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["similarity_classification_coverage"].status.value == "fail"
+    assert "unknown" in checks["similarity_classification_coverage"].message
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
+
+
 def test_publication_audit_blocks_underperforming_method_candidate(
     tmp_path: Path,
 ) -> None:
@@ -321,6 +342,7 @@ def _write_real_benchmark_cycle(
     *,
     novel_method: bool = False,
     method_delta: float | None = 0.03,
+    similarity_classification: str | None = None,
 ) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
@@ -486,13 +508,16 @@ def _write_real_benchmark_cycle(
         encoding="utf-8",
     )
     similarity_summary = cycle_dir / "similarity.md"
+    classification = similarity_classification or (
+        "adjacent_work" if novel_method else "unknown"
+    )
     similarity_summary.write_text(
         "\n".join(
             [
                 "## Findings",
                 "",
                 *[
-                    f"### Source {index}\n\n- Classification: `unknown`\n"
+                    f"### Source {index}\n\n- Classification: `{classification}`\n"
                     f"- Source URL/DOI: `https://arxiv.org/abs/0000.{index:05d}` / `unknown`"
                     for index in range(10)
                 ],

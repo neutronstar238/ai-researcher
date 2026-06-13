@@ -350,6 +350,10 @@ def _similarity_checks(
     classifications = _similarity_classifications(similarity, base_dir)
     direct_duplicates = classifications.get("direct_duplicate", 0)
     adjacent_work = classifications.get("adjacent_work", 0)
+    unknown_findings = classifications.get("unknown", 0)
+    classified_findings = sum(
+        count for classification, count in classifications.items() if classification != "unknown"
+    )
 
     checks = [
         _threshold_check(
@@ -402,6 +406,27 @@ def _similarity_checks(
                 "info",
                 "No similarity-check source errors were recorded.",
                 ("cycle_summary.similarity.fetches",),
+            )
+        )
+    if target.require_novel_contribution and finding_count > 0 and classified_findings <= 0:
+        checks.append(
+            PublicationAuditCheck(
+                "similarity_classification_coverage",
+                PublicationAuditCheckStatus.FAIL,
+                "high",
+                f"Similarity findings are all unclassified or unknown: unknown={unknown_findings}, classified={classified_findings}.",
+                ("cycle_summary.similarity.summary_path",),
+                "Resolve unknown similarity classifications into direct_duplicate, adjacent_work, or another supported evidence-backed category before claiming novelty.",
+            )
+        )
+    else:
+        checks.append(
+            PublicationAuditCheck(
+                "similarity_classification_coverage",
+                PublicationAuditCheckStatus.PASS,
+                "info",
+                f"Similarity classification coverage includes {classified_findings} non-unknown findings and {unknown_findings} unknown findings.",
+                ("cycle_summary.similarity.summary_path",),
             )
         )
     if direct_duplicates:

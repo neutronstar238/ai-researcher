@@ -62,6 +62,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 11:19:51 +08:00 - Codex - Task 86.1 similarity classification coverage gate
+
+- Request: Continue strict innovation quality control so AI-Researcher cannot treat unknown similar-work hits as publication-level novelty evidence; incorporate the SCALE-style lesson as a lightweight physical gate rather than prompt-only discipline.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-86-1-similarity-classification-coverage.md`
+  - `autoresearch-vault/projects/task86_similarity_classification/issues/publication-audit-cycle-20260613t030125z.md`
+  - `autoresearch-vault/projects/task86_similarity_classification/review/publication-audit-cycle-20260613t030125z.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added `similarity_classification_coverage` to publication audit.
+  - For targets requiring a novel contribution, any nonzero similarity findings that are all `unknown` or unclassified now fail with high severity.
+  - Kept direct-duplicate and adjacent-work gates unchanged while requiring at least one non-unknown evidence-backed classification before similarity evidence can support novelty claims.
+  - Updated publication-quality docs, changelog, tasks, problem log, and Obsidian progress/audit evidence.
+  - Reviewed the current SCALE Engine public README/license as a design reference for executable gates and evidence files; no upstream SCALE code, templates, prompts, or assets were copied.
+- Verification:
+  - Focused test: `poetry run pytest tests\unit\reports\test_publication_audit.py -q` passed with 7 tests.
+  - Focused ruff: `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py` passed.
+  - Focused mypy: `poetry run mypy src\autoresearch\reports\publication_audit.py` passed.
+  - Real audit: `poetry run airesearcher publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\publication-audit-task86 --vault autoresearch-vault --project-id task86_similarity_classification` wrote `runs/manual-live/publication-audit-task86/publication-audit.json` with `similarity_classification_coverage.status=fail`, `publishable=false`, score `0.523`, and Obsidian review/issue notes under `autoresearch-vault/projects/task86_similarity_classification/`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 95 source files.
+  - `git diff --check`: passed with only line-ending normalization warnings.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 385 passed and 4 skipped.
+  - Verification commands still emitted the existing non-failing `RequestsDependencyWarning` tracked earlier in `Problem.md`.
+- Problems added or updated:
+  - Added and resolved `P-20260613-024` for unknown-only similarity findings satisfying novelty coverage.
+- Follow-up work:
+  - Improve the similarity summarizer so source-backed abstracts and metadata can be conservatively classified as direct duplicate, adjacent work, or another evidence-backed category instead of staying `unknown`.
+  - Continue source stability and full-review runs before any CCF-B/Q3 publication claim.
+
 ### 2026-06-13 11:09:51 +08:00 - Codex - Task 85.1 source state mutation lock
 
 - Request: Continue SCALE-lite hard-gate work by preventing concurrent source-state read-modify-write races in long-running deployments.

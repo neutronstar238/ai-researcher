@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-024 - Unknown-only similarity findings could satisfy novelty coverage
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 11:19:51 +08:00
+- Source: User requested strict CCF-B/Q3-level innovation quality control and warned against prompt-only self-discipline after reviewing SCALE-style physical gates.
+- Symptom: A publication audit could have enough raw similarity findings while every finding classification remained `unknown`, letting a positive benchmark fixture appear publishable without evidence-backed duplicate/adjacent-work positioning.
+- Impact: The system could overstate novelty by treating unclassified online search hits as cross-check evidence, weakening the core promise that publication claims are evidence-bound and non-fabricated.
+- Evidence: Before task `86.1`, the positive publication-audit fixture for a method candidate wrote `Classification: unknown` for all similarity findings. A real audit over `runs/manual-live/autopilot-atomic-source-state-task84/cycle-20260613T030125Z/cycle-summary.json` now writes `similarity_classification_coverage.status=fail` with `unknown=2, classified=0`.
+- Root cause: Similarity breadth and duplicate checks counted findings and recognized direct duplicates, but did not separately require at least one non-unknown classification for targets that require a novel contribution.
+- Workaround: None needed after task `86.1`.
+- Next action: Continue improving the similarity summarizer so it resolves `unknown` findings into direct duplicate, adjacent work, or another evidence-backed category when source abstracts and metadata are sufficient.
+- Linked tasks: `86.1`
+- Resolution: Task `86.1` adds a high-severity `similarity_classification_coverage` publication-audit check. For CCF-B/Q3-style targets, any nonzero similarity findings that are all `unknown` now block publishability and generate JSON/Markdown plus Obsidian review/issue evidence.
+- Verification: `poetry run pytest tests\unit\reports\test_publication_audit.py -q`, `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py`, and `poetry run mypy src\autoresearch\reports\publication_audit.py` passed. A real CLI run `poetry run airesearcher publication-audit runs\manual-live\autopilot-atomic-source-state-task84\cycle-20260613T030125Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\publication-audit-task86 --vault autoresearch-vault --project-id task86_similarity_classification` wrote `runs/manual-live/publication-audit-task86/publication-audit.json` with `similarity_classification_coverage.status=fail`, `publishable=false`, score `0.523`, plus Obsidian review and issue notes under `autoresearch-vault/projects/task86_similarity_classification/`.
+
 ### P-20260613-023 - Source cooldown state updates were not serialized across processes
 
 - Status: Resolved
