@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-037 - Semantic Scholar was treated as a required default source despite 429-prone access
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-13 18:35:00 +08:00
+- Source: User requested README optimization and asked to lower Semantic Scholar priority because HTTP 429s are common; default retrieval should prefer free APIs first.
+- Symptom: Default literature refresh, similarity checks, autopilot source clients, and publication-audit source-error gates treated Semantic Scholar like a required source. A Semantic Scholar 429 could therefore appear as a high-severity source failure even when ArXiv/OpenAlex core coverage was sufficient.
+- Impact: The system could over-block otherwise useful cycles on an optional metadata source and make README/deployment guidance imply Semantic Scholar is required.
+- Evidence: `src/autoresearch/literature/refresh.py`, `src/autoresearch/research/similarity.py`, and `src/autoresearch/cli/main.py` created Semantic Scholar clients by default; `publication_audit.py` marked every source error as `FAIL`.
+- Root cause: Earlier source-breadth work added OpenAlex as fallback but did not demote Semantic Scholar from default required coverage after repeated 429 evidence.
+- Workaround: Before this fix, operators could avoid Semantic Scholar only by passing custom source clients in code paths that exposed that hook.
+- Next action: Continue adding more stable public metadata sources and keep optional-source warnings separate from core source-breadth blockers.
+- Linked tasks: `102.1`
+- Resolution: Default source clients now use ArXiv and OpenAlex; Semantic Scholar is included only when `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1` or `SEMANTIC_SCHOLAR_API_KEY` is present. Optional Semantic Scholar source errors are publication-audit warnings when core source breadth passes, and source preflight records optional degradation without blocking the cycle.
+- Verification: Focused literature/similarity/publication-audit/CLI tests passed with 66 tests; full `poetry run ruff check src tests`, `poetry run mypy src`, and `poetry run pytest tests\smoke tests\unit -q` passed with 420 passed and 4 skipped. Real `literature-refresh` with Semantic Scholar env cleared fetched ArXiv/OpenAlex only and wrote 2 documents; real `similarity-check` with Semantic Scholar env cleared fetched ArXiv/OpenAlex only and wrote 2 findings.
+
 ### P-20260613-036 - Real task101 full cycle is functional but not directly publishable
 
 - Status: Open

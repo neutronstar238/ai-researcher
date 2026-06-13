@@ -27,6 +27,7 @@ from autoresearch.literature import (
     deduplicate_papers,
     paper_to_document_record,
     retrieval_cache_key,
+    semantic_scholar_enabled,
 )
 from autoresearch.schemas import DocumentRecord, ResearchCandidate
 
@@ -57,8 +58,8 @@ RISK_QUERY_PHRASES = (
 )
 DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
-    "semantic_scholar": 1.0,
     "openalex": 1.0,
+    "semantic_scholar": 1.0,
 }
 STOPWORDS = {
     "and",
@@ -205,11 +206,7 @@ def run_project_similarity_check(
     """Run source-backed online similarity and novelty checking for one candidate."""
 
     timestamp = _normalize_datetime(now)
-    source_clients = clients or {
-        "arxiv": ArxivClient(),
-        "semantic_scholar": SemanticScholarClient(),
-        "openalex": OpenAlexClient(),
-    }
+    source_clients = clients or _default_similarity_clients()
     cache = RetrievalCache(cache_root, ttl_hours=config.cache_ttl_hours)
     queries = generate_similarity_queries(candidate, vault_root=vault_root, config=config)
 
@@ -296,6 +293,16 @@ def run_project_similarity_check(
             summary_path=_write_similarity_summary(Path(vault_root), candidate, report, timestamp),
         )
     return report
+
+
+def _default_similarity_clients() -> dict[str, LiteratureSearchClient]:
+    clients: dict[str, LiteratureSearchClient] = {
+        "arxiv": ArxivClient(),
+        "openalex": OpenAlexClient(),
+    }
+    if semantic_scholar_enabled():
+        clients["semantic_scholar"] = SemanticScholarClient()
+    return clients
 
 
 def validate_similarity_findings(findings: tuple[SimilarityFinding, ...]) -> None:

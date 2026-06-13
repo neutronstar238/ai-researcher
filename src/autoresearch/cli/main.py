@@ -48,6 +48,7 @@ from autoresearch.knowledge import (
     create_skill_evolution_candidate,
 )
 from autoresearch.literature import (
+    OPTIONAL_LITERATURE_SOURCES,
     ArxivClient,
     LiteratureRefreshConfig,
     LiteratureSearchClient,
@@ -55,6 +56,7 @@ from autoresearch.literature import (
     SemanticScholarClient,
     SourceCircuitStateLockError,
     run_daily_literature_refresh,
+    semantic_scholar_enabled,
 )
 from autoresearch.llm import (
     LLMClientError,
@@ -247,12 +249,15 @@ AUTORESEARCH_LLM_BASE_URL=
 AUTORESEARCH_LLM_MODEL_NAME=
 AUTORESEARCH_LLM_API_KEY=
 
-# Optional Semantic Scholar Graph API key for higher rate limits.
+# Optional Semantic Scholar Graph API source.
+# AI-Researcher defaults to ArXiv + OpenAlex; set this flag or an API key
+# only when you want Semantic Scholar as an extra metadata source.
+AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=
 SEMANTIC_SCHOLAR_API_KEY=
 SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS=
 SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS=
 
-# Optional OpenAlex key/contact for broader source fallback.
+# Optional OpenAlex key/contact for the default free/public metadata source.
 OPENALEX_API_KEY=
 OPENALEX_MAILTO=
 OPENALEX_MIN_INTERVAL_SECONDS=
@@ -2180,11 +2185,13 @@ def list_slash_commands(
 
 def _autopilot_literature_clients(cache_root: Path) -> dict[str, LiteratureSearchClient]:
     circuit_state_path = cache_root / "source-circuit-breakers.json"
-    return {
+    clients: dict[str, LiteratureSearchClient] = {
         "arxiv": ArxivClient(),
-        "semantic_scholar": SemanticScholarClient(circuit_state_path=circuit_state_path),
         "openalex": OpenAlexClient(circuit_state_path=circuit_state_path),
     }
+    if semantic_scholar_enabled():
+        clients["semantic_scholar"] = SemanticScholarClient(circuit_state_path=circuit_state_path)
+    return clients
 
 
 def _run_autopilot_cycle(
@@ -2208,6 +2215,7 @@ def _run_autopilot_cycle(
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
+    _load_optional_env(env_path)
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
         clients=literature_clients,
@@ -2438,6 +2446,13 @@ def _run_source_preflight_gate(
         str(check["source"])
         for check in checks
         if str(check["status"]) in blocking_statuses
+        and str(check["source"]) not in OPTIONAL_LITERATURE_SOURCES
+    ]
+    optional_degraded_sources = [
+        str(check["source"])
+        for check in checks
+        if str(check["status"]) in blocking_statuses
+        and str(check["source"]) in OPTIONAL_LITERATURE_SOURCES
     ]
     blocked = bool(blocked_sources)
     report: dict[str, Any] = {
@@ -2446,6 +2461,7 @@ def _run_source_preflight_gate(
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "blocked_sources": blocked_sources,
+        "optional_degraded_sources": optional_degraded_sources,
         "output_path": output_path.as_posix(),
         "markdown_path": markdown_path.as_posix(),
         "issue_path": None,
@@ -2630,6 +2646,7 @@ def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
         "",
         f"- Verdict: `{report['verdict']}`",
         f"- Blocked: `{report['blocked']}`",
+        f"- Optional degraded sources: `{', '.join(report.get('optional_degraded_sources', [])) or 'none'}`",
         f"- Checked at: `{report['checked_at']}`",
         f"- Issue path: `{report.get('issue_path') or 'none'}`",
         "",
@@ -2647,6 +2664,7 @@ def _render_source_preflight_markdown(report: dict[str, Any]) -> str:
             "## Policy",
             "",
             "A publication-level cycle cannot spend experiment, review, or paper-build work while a required online source is already in a persisted cooldown window, while its cooldown state is locked by another process, or while its cooldown state cannot be verified.",
+            "Optional enhancement sources such as Semantic Scholar may be skipped or degraded without stopping the cycle when core free/public sources still run.",
             "",
         ]
     )

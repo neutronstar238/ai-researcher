@@ -232,6 +232,8 @@ def test_project_similarity_default_sources_include_openalex_fallback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", raising=False)
+    monkeypatch.delenv("SEMANTIC_SCHOLAR_API_KEY", raising=False)
     candidate = _candidate()
     _write_similarity_context(tmp_path, candidate)
     paper = AcademicPaper(
@@ -264,15 +266,47 @@ def test_project_similarity_default_sources_include_openalex_fallback(
         config=SimilarityCheckConfig(max_queries=1, max_results_per_source=2),
     )
 
-    assert [fetch.source for fetch in report.fetches] == [
-        "arxiv",
-        "semantic_scholar",
-        "openalex",
-    ]
-    assert report.fetches[1].error == "RuntimeError: rate limited"
+    assert [fetch.source for fetch in report.fetches] == ["arxiv", "openalex"]
     assert report.findings[0].source_database == "openalex"
     assert report.summary_path is not None
     assert "openalex" in report.summary_path.read_text(encoding="utf-8")
+
+
+def test_project_similarity_includes_semantic_scholar_only_when_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", "1")
+    candidate = _candidate()
+    _write_similarity_context(tmp_path, candidate)
+    paper = AcademicPaper(
+        title="Semantic Scholar agent review evidence",
+        abstract="Agent review workflows need evidence.",
+        url="https://api.semanticscholar.org/paper/123",
+        source="semantic_scholar",
+    )
+
+    monkeypatch.setattr(similarity_module, "ArxivClient", lambda: _FakeClient([], 3.0))
+    monkeypatch.setattr(similarity_module, "OpenAlexClient", lambda: _FakeClient([], 1.0))
+    monkeypatch.setattr(
+        similarity_module,
+        "SemanticScholarClient",
+        lambda: _FakeClient([paper], 3.0),
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        config=SimilarityCheckConfig(max_queries=1, max_results_per_source=2),
+    )
+
+    assert [fetch.source for fetch in report.fetches] == [
+        "arxiv",
+        "openalex",
+        "semantic_scholar",
+    ]
+    assert report.findings[0].source_database == "semantic_scholar"
 
 
 def test_project_similarity_classifies_conservative_token_overlap(

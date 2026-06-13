@@ -20,14 +20,14 @@ from autoresearch.knowledge import (
 from autoresearch.schemas import DocumentRecord
 
 from .cache import RetrievalCache, retrieval_cache_key
-from .clients import ArxivClient, OpenAlexClient, SemanticScholarClient
+from .clients import ArxivClient, OpenAlexClient, SemanticScholarClient, semantic_scholar_enabled
 from .models import AcademicPaper, deduplicate_papers
 from .storage import paper_to_document_record
 
 DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
-    "semantic_scholar": 1.0,
     "openalex": 1.0,
+    "semantic_scholar": 1.0,
 }
 GENERIC_TERMS = {
     "archived",
@@ -154,11 +154,7 @@ def run_daily_literature_refresh(
     """Fetch, cache, deduplicate, normalize, and summarize daily literature."""
 
     timestamp = _normalize_datetime(now)
-    source_clients = clients or {
-        "arxiv": ArxivClient(),
-        "semantic_scholar": SemanticScholarClient(),
-        "openalex": OpenAlexClient(),
-    }
+    source_clients = clients or _default_literature_clients()
     cache = RetrievalCache(cache_root, ttl_hours=config.cache_ttl_hours)
     queries = generate_literature_queries(vault_root, config=config)
 
@@ -254,6 +250,16 @@ def _default_queries() -> list[LiteratureQuery]:
         LiteratureQuery(text=text, origin=origin, vault_paths=())
         for text, origin in defaults
     ]
+
+
+def _default_literature_clients() -> dict[str, LiteratureSearchClient]:
+    clients: dict[str, LiteratureSearchClient] = {
+        "arxiv": ArxivClient(),
+        "openalex": OpenAlexClient(),
+    }
+    if semantic_scholar_enabled():
+        clients["semantic_scholar"] = SemanticScholarClient()
+    return clients
 
 
 def _expansion_queries(

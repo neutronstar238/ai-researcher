@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from typer.testing import CliRunner
 
 import autoresearch.cli.main as cli_main
@@ -840,7 +841,9 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
 
 def test_autopilot_literature_clients_share_persistent_circuit_state(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", "1")
     clients = cli_main._autopilot_literature_clients(tmp_path / "cache")
 
     semantic = clients["semantic_scholar"]
@@ -850,6 +853,21 @@ def test_autopilot_literature_clients_share_persistent_circuit_state(
     assert semantic.circuit_breaker.state_key == "semantic_scholar"
     assert openalex.circuit_breaker.state_path == tmp_path / "cache" / "source-circuit-breakers.json"
     assert openalex.circuit_breaker.state_key == "openalex"
+
+
+def test_autopilot_literature_clients_default_to_core_free_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", raising=False)
+    monkeypatch.delenv("SEMANTIC_SCHOLAR_API_KEY", raising=False)
+
+    clients = cli_main._autopilot_literature_clients(tmp_path / "cache")
+
+    assert list(clients) == ["arxiv", "openalex"]
+    assert clients["openalex"].circuit_breaker.state_path == (
+        tmp_path / "cache" / "source-circuit-breakers.json"
+    )
 
 
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
@@ -1083,8 +1101,8 @@ def test_autopilot_source_preflight_blocks_cooling_source(tmp_path: Path, monkey
     )
     shared_clients = {
         "arxiv": object(),
-        "semantic_scholar": SimpleNamespace(circuit_breaker=cooling_breaker),
-        "openalex": object(),
+        "semantic_scholar": object(),
+        "openalex": SimpleNamespace(circuit_breaker=cooling_breaker),
     }
 
     def fail_if_called(**_kwargs: object) -> SimpleNamespace:
@@ -1123,7 +1141,7 @@ def test_autopilot_source_preflight_blocks_cooling_source(tmp_path: Path, monkey
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
     assert payload["status"] == "blocked"
     assert payload["source_preflight"]["verdict"] == "blocked"
-    assert payload["source_preflight"]["blocked_sources"] == ["semantic_scholar"]
+    assert payload["source_preflight"]["blocked_sources"] == ["openalex"]
     assert payload["review"]["status"] == "skipped_source_preflight"
     assert Path(payload["source_preflight"]["output_path"]).exists()
     assert Path(payload["source_preflight"]["markdown_path"]).exists()
@@ -1150,8 +1168,8 @@ def test_autopilot_source_preflight_blocks_malformed_state_file(
     )
     shared_clients = {
         "arxiv": object(),
-        "semantic_scholar": SimpleNamespace(circuit_breaker=breaker),
-        "openalex": object(),
+        "semantic_scholar": object(),
+        "openalex": SimpleNamespace(circuit_breaker=breaker),
     }
 
     def fail_if_called(**_kwargs: object) -> SimpleNamespace:
@@ -1185,14 +1203,14 @@ def test_autopilot_source_preflight_blocks_malformed_state_file(
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
     assert payload["status"] == "blocked"
-    assert payload["source_preflight"]["blocked_sources"] == ["semantic_scholar"]
-    semantic_check = [
+    assert payload["source_preflight"]["blocked_sources"] == ["openalex"]
+    openalex_check = [
         check
         for check in payload["source_preflight"]["checks"]
-        if check["source"] == "semantic_scholar"
+        if check["source"] == "openalex"
     ][0]
-    assert semantic_check["status"] == "state_error"
-    assert "unreadable" in semantic_check["message"]
+    assert openalex_check["status"] == "state_error"
+    assert "unreadable" in openalex_check["message"]
     issue_text = Path(payload["source_preflight"]["issue_path"]).read_text(encoding="utf-8")
     assert "83.1" in issue_text
 
@@ -1215,8 +1233,8 @@ def test_autopilot_source_preflight_blocks_locked_state_file(
     )
     shared_clients = {
         "arxiv": object(),
-        "semantic_scholar": SimpleNamespace(circuit_breaker=breaker),
-        "openalex": object(),
+        "semantic_scholar": object(),
+        "openalex": SimpleNamespace(circuit_breaker=breaker),
     }
 
     def fail_if_called(**_kwargs: object) -> SimpleNamespace:
@@ -1250,15 +1268,48 @@ def test_autopilot_source_preflight_blocks_locked_state_file(
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
-    semantic_check = [
+    openalex_check = [
         check
         for check in payload["source_preflight"]["checks"]
-        if check["source"] == "semantic_scholar"
+        if check["source"] == "openalex"
     ][0]
-    assert semantic_check["status"] == "state_locked"
-    assert "locked" in semantic_check["message"]
+    assert openalex_check["status"] == "state_locked"
+    assert "locked" in openalex_check["message"]
     issue_text = Path(payload["source_preflight"]["issue_path"]).read_text(encoding="utf-8")
     assert "85.1" in issue_text
+
+
+def test_source_preflight_records_optional_semantic_scholar_degradation(
+    tmp_path: Path,
+) -> None:
+    cache_root = tmp_path / "cache"
+    state_path = cache_root / "source-circuit-breakers.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    cooling_breaker = SimpleNamespace(
+        remaining_seconds=lambda: 120.0,
+        state_path=state_path,
+    )
+    cycle_dir = tmp_path / "cycle"
+    cycle_dir.mkdir()
+
+    report = cli_main._run_source_preflight_gate(
+        clients={
+            "arxiv": object(),
+            "openalex": object(),
+            "semantic_scholar": SimpleNamespace(circuit_breaker=cooling_breaker),
+        },
+        cycle_dir=cycle_dir,
+        vault=tmp_path / "vault",
+        project_id="project_1",
+        cycle_id="cycle_optional",
+    )
+
+    assert report["verdict"] == "pass"
+    assert report["blocked_sources"] == []
+    assert report["optional_degraded_sources"] == ["semantic_scholar"]
+    assert report["issue_path"] is None
+    markdown = Path(report["markdown_path"]).read_text(encoding="utf-8")
+    assert "Optional enhancement sources" in markdown
 
 
 def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monkeypatch) -> None:

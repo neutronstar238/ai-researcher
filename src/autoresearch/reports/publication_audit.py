@@ -16,6 +16,7 @@ from autoresearch.knowledge import (
     KnowledgeZone,
     MarkdownKnowledgeStore,
 )
+from autoresearch.literature import OPTIONAL_LITERATURE_SOURCES
 from autoresearch.schemas import file_hash
 
 
@@ -286,7 +287,7 @@ def _literature_checks(
     literature = _dict(summary.get("literature"))
     fetches = _dict_list(literature.get("fetches"))
     successful_sources = _successful_sources(fetches)
-    source_errors = [fetch for fetch in fetches if _text(fetch.get("error"))]
+    required_source_errors, optional_source_errors = _partition_source_errors(fetches)
     query_count = _int(literature.get("query_count"))
     document_count = _int(literature.get("document_count"))
 
@@ -319,9 +320,10 @@ def _literature_checks(
             ("cycle_summary.literature.fetches",),
         ),
     ]
-    if source_errors:
+    if required_source_errors:
         errors = "; ".join(
-            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}" for fetch in source_errors
+            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}"
+            for fetch in required_source_errors
         )
         checks.append(
             PublicationAuditCheck(
@@ -331,6 +333,21 @@ def _literature_checks(
                 f"Some literature sources failed: {errors}",
                 ("cycle_summary.literature.fetches",),
                 "Treat failed source coverage as a novelty-risk blocker until rerun with rate limits/API keys.",
+            )
+        )
+    elif optional_source_errors:
+        errors = "; ".join(
+            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}"
+            for fetch in optional_source_errors
+        )
+        checks.append(
+            PublicationAuditCheck(
+                "literature_source_errors",
+                PublicationAuditCheckStatus.WARNING,
+                "medium",
+                f"Only optional literature sources failed: {errors}",
+                ("cycle_summary.literature.fetches",),
+                "Semantic Scholar is optional; keep ArXiv/OpenAlex coverage, then retry the optional source later if its extra metadata is useful.",
             )
         )
     else:
@@ -354,7 +371,7 @@ def _similarity_checks(
     similarity = _dict(summary.get("similarity"))
     fetches = _dict_list(similarity.get("fetches"))
     successful_sources = _successful_sources(fetches)
-    source_errors = [fetch for fetch in fetches if _text(fetch.get("error"))]
+    required_source_errors, optional_source_errors = _partition_source_errors(fetches)
     query_count = len({_text(fetch.get("query")) for fetch in fetches if _text(fetch.get("query"))})
     finding_count = _int(similarity.get("finding_count"))
     classifications = _similarity_classifications(similarity, base_dir)
@@ -394,9 +411,10 @@ def _similarity_checks(
             ("cycle_summary.similarity.fetches",),
         ),
     ]
-    if source_errors:
+    if required_source_errors:
         errors = "; ".join(
-            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}" for fetch in source_errors
+            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}"
+            for fetch in required_source_errors
         )
         checks.append(
             PublicationAuditCheck(
@@ -406,6 +424,21 @@ def _similarity_checks(
                 f"Some similarity-check sources failed: {errors}",
                 ("cycle_summary.similarity.fetches",),
                 "Rerun cross-search after rate-limit cooldown/API-key setup; do not treat missing sources as negative evidence.",
+            )
+        )
+    elif optional_source_errors:
+        errors = "; ".join(
+            f"{_text(fetch.get('source'))}: {_text(fetch.get('error'))}"
+            for fetch in optional_source_errors
+        )
+        checks.append(
+            PublicationAuditCheck(
+                "similarity_source_errors",
+                PublicationAuditCheckStatus.WARNING,
+                "medium",
+                f"Only optional similarity-check sources failed: {errors}",
+                ("cycle_summary.similarity.fetches",),
+                "Do not treat the optional source outage as negative evidence; keep core-source breadth and retry Semantic Scholar later if needed.",
             )
         )
     else:
@@ -1112,6 +1145,19 @@ def _successful_sources(fetches: list[dict[str, Any]]) -> tuple[str, ...]:
             }
         )
     )
+
+
+def _partition_source_errors(
+    fetches: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    errored = [fetch for fetch in fetches if _text(fetch.get("error"))]
+    required = [
+        fetch for fetch in errored if _text(fetch.get("source")) not in OPTIONAL_LITERATURE_SOURCES
+    ]
+    optional = [
+        fetch for fetch in errored if _text(fetch.get("source")) in OPTIONAL_LITERATURE_SOURCES
+    ]
+    return required, optional
 
 
 def _script_data_message(

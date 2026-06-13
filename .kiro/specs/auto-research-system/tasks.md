@@ -26,7 +26,7 @@ research direction
 
 Core innovation: the Obsidian-compatible knowledge vault is the system's shared memory and evolution substrate. Its canonical project-root path is `autoresearch-vault/`. It is not a replaceable storage detail. The vault must connect global exploration, per-project knowledge, experiment records, issues, failures, skills, evidence, strategy versions, topic indexes, wiki-links, and rollback history so the system can self-loop and self-evolve while staying human-readable and auditable.
 
-Networked discovery is mandatory, not optional. The Obsidian vault is the evidence memory layer, not a substitute for external search. Project-start novelty checks, similar-direction cross-validation, and scheduled candidate refresh must query external sources such as ArXiv and Semantic Scholar before relying on local vault memory. Summaries written to the vault must cite source documents, query text, retrieval timestamps, and unsupported/unknown claims explicitly; never fabricate results, citations, rankings, or experimental outcomes.
+Networked discovery is mandatory, not optional. The Obsidian vault is the evidence memory layer, not a substitute for external search. Project-start novelty checks, similar-direction cross-validation, and scheduled candidate refresh must query external sources such as ArXiv and OpenAlex before relying on local vault memory; Semantic Scholar is an optional enhancement source when enabled or keyed. Summaries written to the vault must cite source documents, query text, retrieval timestamps, and unsupported/unknown claims explicitly; never fabricate results, citations, rankings, or experimental outcomes.
 
 ## Source References
 
@@ -272,8 +272,8 @@ A task can be checked only when all applicable items are true:
     - _References: RP 5.2, EP 4.3, REQ 9_
     - _Verify: property test removes DOI duplicates and high-similarity title duplicates._
 
-  - [x] 6.2 Implement ArXiv and Semantic Scholar clients
-    - Start with ArXiv and Semantic Scholar only.
+  - [x] 6.2 Implement ArXiv, OpenAlex, and optional Semantic Scholar clients
+    - Start with free/public academic APIs first, and keep Semantic Scholar optional when rate limits or credentials make it unsuitable as a default source.
     - Add rate limiting and retry backoff.
     - Keep CNKI, WanFang, DBLP, and PubMed as later extensions unless a task explicitly needs them.
     - _References: EP 4.3, REQ 9_
@@ -568,13 +568,13 @@ A task can be checked only when all applicable items are true:
     - _Verify: scheduler runs a mock recurring task and records audit logs._
 
   - [x] 21.2 Add daily online literature refresh pipeline
-    - Fetch fresh papers and research materials automatically from free/public sources, starting with ArXiv and Semantic Scholar.
+    - Fetch fresh papers and research materials automatically from free/public sources, starting with ArXiv and OpenAlex.
     - Respect source-specific API limits; ArXiv legacy API access must use a single connection and at least 3 seconds between requests.
     - Optimize search queries from project topics, Obsidian topic indexes, method cards, dataset cards, prior failures, and active candidate gaps.
     - Store raw metadata, normalized `DocumentRecord` items, source query text, timestamps, and rate-limit decisions in the Obsidian vault or retrieval cache.
     - Deduplicate results across sources before candidate update analysis.
     - _References: REQ 12, REQ 6, Horizon-style source pipeline, arXiv API terms_
-    - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access; opt-in live smoke test fetches real ArXiv/Semantic Scholar documents before completion._
+    - _Verify: unit tests cover query generation, deduplication, cache reuse, and mocked rate-limited daily refresh without network access; opt-in live smoke test fetches real ArXiv/OpenAlex documents before completion._
 
   - [x] 21.3 Add project-start online similarity and novelty cross-check
     - Before a candidate is approved into a project, run a broad online search for similar directions, adjacent methods, known baselines, datasets, negative results, and competing claims.
@@ -1278,9 +1278,9 @@ A task can be checked only when all applicable items are true:
     - Make autopilot-generated candidates include demo-aligned title, method, dataset, benchmark, baseline, and limitation metadata when a known demo is selected.
     - Preserve the generic self-evolving research-loop candidate only for generic/default demos.
     - Ensure similarity search, literature refresh, and the executed experiment are about the same research object before publication-level claims are evaluated.
-    - Keep Semantic Scholar 429s as source-coverage blockers; ArXiv/OpenAlex fallback evidence is useful but cannot erase a failed source.
+    - Keep required-source errors as source-coverage blockers; Semantic Scholar 429s are optional-source risks when ArXiv/OpenAlex coverage is sufficient.
     - _References: task `78.1` real positive-effect candidate, the user requirement for broad cross-checking before paper claims, and the task `79` full-width cycle showing query breadth collapsed to one and candidate/experiment topic mismatch._
-    - _Verify: focused literature/CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` showing `literature.query_count=4`, demo-aligned candidate metadata, real source fetches, and publication gating still blocks unresolved Semantic Scholar 429/review evidence._
+    - _Verify: focused literature/CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` showing `literature.query_count=4`, demo-aligned candidate metadata, real source fetches, and publication gating still blocks unresolved required-source/review evidence._
 
 - [x] 80. Make source rate-limit state persist across one autopilot cycle
   - [x] 80.1 Share literature clients between refresh and similarity checks
@@ -1499,6 +1499,19 @@ A task can be checked only when all applicable items are true:
     - Write an Obsidian-readable acceptance review summarizing whether the loop ran, whether self-evolution is implemented, and whether the output meets a CCF-B/Q3 publication bar.
     - _References: user requirement to run the real full chain, verify self-evolution, and strictly judge whether the output is directly publishable._
     - _Verify: real `serve --once` returns `source_preflight=pass`, `review_status=passed`, `publication_audit=fail`, `evidence_gate=blocked`; `issue-followups` writes 2 open tasks; `skill-evolve` writes a shadow candidate and rejected buffer; `skill-polish-audit` passes 60/60; Obsidian acceptance review records that the current paper is not directly publishable._
+
+- [x] 102. Clarify source policy and README positioning
+  - [x] 102.1 Make Semantic Scholar optional and improve bilingual README positioning
+    - Rewrite the English and Chinese README opening/status/source-policy copy so the project reads like an open-source evidence-first research operator rather than a generic paper-writing bot.
+    - Keep README claims bounded to implemented capabilities and the current publication-quality gates.
+    - Change default literature and similarity clients to use ArXiv plus OpenAlex first.
+    - Include Semantic Scholar only when `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1` or `SEMANTIC_SCHOLAR_API_KEY` is present.
+    - Treat Semantic Scholar 429/source errors as optional-source warnings in publication audits when ArXiv/OpenAlex core source breadth passes, while preserving hard failures for required source errors.
+    - Ensure `autopilot`/`serve` loads `.env` before constructing source clients so the optional-source policy is honored in real deployments.
+    - Update `.env.example`, generated deploy template text, tests, task plan, problem log, and agent log.
+    - Do not hand-write a root project-vault progress note for this maintenance task; only vault notes produced by AI-Researcher runtime commands count as system-written knowledge.
+    - _References: user request to optimize `README.md` and the Chinese README; user request to lower Semantic Scholar priority because 429s are common and to prefer free APIs first._
+    - _Verify: focused literature/similarity/publication-audit/CLI tests, focused ruff, focused mypy, and live `literature-refresh` using default ArXiv/OpenAlex sources without Semantic Scholar._
 
 ## Checkpoints
 
@@ -1820,6 +1833,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 68,
       "tasks": ["101.1"]
+    },
+    {
+      "id": 69,
+      "tasks": ["102.1"]
     }
   ]
 }

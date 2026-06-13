@@ -98,7 +98,8 @@ Target version: `0.1.0`.
 - LLM smoke and review quality gates now cap critical structured-output failures below the default threshold, including malformed JSON, missing required fields, quoted arrays, fake URLs, secret leaks, and invalid evidence refs.
 - Re-discovered issue follow-up tasks now preserve completed scheduler-state records instead of reopening them.
 - Semantic Scholar throttling now keeps conservative defaults while allowing stricter deployment-specific request spacing and 429 circuit reset windows.
-- Online discovery now uses ArXiv, Semantic Scholar, and OpenAlex by default, so Semantic Scholar rate limits no longer reduce live source breadth to ArXiv-only when OpenAlex is reachable.
+- Online discovery now uses ArXiv and OpenAlex as default core academic sources. Semantic Scholar is an optional enhancement source enabled by `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1` or `SEMANTIC_SCHOLAR_API_KEY`, so 429-prone optional access no longer blocks the default free-source loop.
+- Publication audits now downgrade Semantic Scholar-only source errors to optional-source warnings when ArXiv/OpenAlex core source breadth passes, while preserving hard failures for required-source errors.
 - GitHub Actions CI now uses `actions/checkout@v5` and `actions/setup-python@v6` to avoid the Node 20 deprecation warning.
 - README now documents design inspirations from AI-Researcher, AutoResearchClaw, long-horizon auto-research roadmaps, daily literature refresh projects, SkillOpt, and OpenClaw-style always-on assistants.
 - README now documents the safe Obsidian setup flow and clarifies that third-party Obsidian plugins are recommended manual installs, not bundled runtime dependencies.

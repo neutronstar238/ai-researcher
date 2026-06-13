@@ -108,6 +108,45 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert report.publishable is True
 
 
+def test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["literature"]["fetches"] = [
+        {"source": "arxiv", "query": "q1", "paper_count": 10, "error": None},
+        {"source": "openalex", "query": "q1", "paper_count": 10, "error": None},
+        {
+            "source": "semantic_scholar",
+            "query": "q1",
+            "paper_count": 0,
+            "error": "HTTP 429",
+        },
+    ]
+    summary["similarity"]["fetches"] = [
+        {"source": "arxiv", "query": "q1", "paper_count": 5, "error": None},
+        {"source": "openalex", "query": "q2", "paper_count": 5, "error": None},
+        {
+            "source": "semantic_scholar",
+            "query": "q3",
+            "paper_count": 0,
+            "error": "HTTP 429",
+        },
+        {"source": "arxiv", "query": "q4", "paper_count": 5, "error": None},
+    ]
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["literature_source_errors"].status.value == "warning"
+    assert checks["similarity_source_errors"].status.value == "warning"
+    assert report.verdict is PublicationAuditVerdict.PASS
+    assert report.publishable is True
+
+
 def test_publication_audit_accepts_standalone_review_json(
     tmp_path: Path,
 ) -> None:
@@ -686,8 +725,8 @@ def _write_real_benchmark_cycle(
             "query_count": 4,
             "document_count": 20,
             "fetches": [
-                {"source": "arxiv", "query": "q1", "paper_count": 5, "error": None},
-                {"source": "semantic_scholar", "query": "q1", "paper_count": 5, "error": None},
+                {"source": "arxiv", "query": "q1", "paper_count": 10, "error": None},
+                {"source": "openalex", "query": "q1", "paper_count": 10, "error": None},
             ],
         },
         "similarity": {
@@ -695,9 +734,9 @@ def _write_real_benchmark_cycle(
             "summary_path": similarity_summary.as_posix(),
             "fetches": [
                 {"source": "arxiv", "query": "q1", "paper_count": 3, "error": None},
-                {"source": "semantic_scholar", "query": "q2", "paper_count": 3, "error": None},
+                {"source": "openalex", "query": "q2", "paper_count": 3, "error": None},
                 {"source": "arxiv", "query": "q3", "paper_count": 3, "error": None},
-                {"source": "semantic_scholar", "query": "q4", "paper_count": 3, "error": None},
+                {"source": "openalex", "query": "q4", "paper_count": 3, "error": None},
             ],
         },
         "demo": {

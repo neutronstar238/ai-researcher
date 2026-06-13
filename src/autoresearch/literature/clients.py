@@ -22,6 +22,7 @@ import certifi
 from .models import AcademicPaper
 
 HttpGet = Callable[[str, dict[str, str | int], Mapping[str, str] | None], str]
+OPTIONAL_LITERATURE_SOURCES = frozenset({"semantic_scholar"})
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,15 @@ class RetryConfig:
     max_attempts: int = 3
     backoff_seconds: float = 0.5
     max_backoff_seconds: float = 8.0
+
+
+def semantic_scholar_enabled() -> bool:
+    """Return whether the optional Semantic Scholar source should be queried."""
+
+    explicit = os.getenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR")
+    if explicit is not None and explicit.strip():
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return bool((os.getenv("SEMANTIC_SCHOLAR_API_KEY") or "").strip())
 
 
 class SourceRateLimitError(RuntimeError):

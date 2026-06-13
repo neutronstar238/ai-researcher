@@ -62,6 +62,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 18:08:00 +08:00 - Codex - Task 102.1 README positioning and optional Semantic Scholar policy
+
+- Request: Optimize the English and Chinese README pages and lower Semantic Scholar priority so free/public APIs are used first while Semantic Scholar remains optional.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/__init__.py`
+  - `src/autoresearch/literature/clients.py`
+  - `src/autoresearch/literature/refresh.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_refresh.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/research/test_similarity.py`
+- Summary:
+  - Reworked README opening/status/source-policy copy in English and Chinese around AI-Researcher as an evidence-first, always-on research operator.
+  - Changed default literature and similarity clients to use ArXiv and OpenAlex first.
+  - Added `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR`; Semantic Scholar now runs only when explicitly enabled or when `SEMANTIC_SCHOLAR_API_KEY` is present.
+  - Made publication audit treat Semantic Scholar-only errors as optional-source warnings when core ArXiv/OpenAlex source breadth passes.
+  - Made source preflight record optional Semantic Scholar degradation without blocking the cycle, while required-source cooldown/state failures still block.
+  - Moved `.env` loading before autopilot source-client construction so optional-source settings are honored in real deployments.
+  - Did not hand-write a root project-vault progress note for this maintenance task after clarifying that only AI-Researcher runtime commands should count as system-written Obsidian knowledge.
+- Verification:
+  - `poetry run pytest tests\unit\literature\test_refresh.py tests\unit\research\test_similarity.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py -q`: first run failed because three old source-preflight tests still expected Semantic Scholar cooldowns to block; updated those tests to use OpenAlex as the required source and added an optional Semantic Scholar degradation test; rerun passed with 66 tests.
+  - `poetry run ruff check ...`: first focused run failed on import ordering in `src/autoresearch/cli/main.py` and `src/autoresearch/literature/__init__.py`; `poetry run ruff check --fix ...` fixed the imports; focused ruff then passed.
+  - `poetry run mypy src\autoresearch\literature\clients.py src\autoresearch\literature\refresh.py src\autoresearch\research\similarity.py src\autoresearch\cli\main.py src\autoresearch\reports\publication_audit.py`: passed.
+  - `poetry run airesearcher literature-refresh ... --output ...`: failed because `literature-refresh` has no `--output` option; reran after checking `--help`.
+  - `poetry run airesearcher literature-refresh --vault runs\manual-live\task102-default-source-vault --cache runs\manual-live\task102-default-source-cache --max-queries 1 --max-results-per-source 1 --env-path runs\manual-live\task102-empty.env` with Semantic Scholar env cleared: passed; fetched `arxiv` and `openalex` only, wrote 2 documents and the runtime-generated vault note `runs\manual-live\task102-default-source-vault\exploration\topics\literature_refresh_20260613.md`.
+  - `poetry run airesearcher similarity-check --candidate-file runs\manual-live\task101-full-cycle\cycle-20260613T091517Z\candidate.json --vault runs\manual-live\task102-default-similarity-vault --cache runs\manual-live\task102-default-similarity-cache --max-queries 1 --max-results-per-source 1 --project-id task102_default_similarity --env-path runs\manual-live\task102-empty.env` with Semantic Scholar env cleared: passed; fetched `arxiv` and `openalex` only, wrote 2 findings and runtime-generated vault notes under `runs\manual-live\task102-default-similarity-vault`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed, 97 source files.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 420 passed and 4 skipped.
+  - `git diff --check`: passed with LF-to-CRLF warnings only.
+- Problems:
+  - `P-20260613-037` added and resolved.
+- Follow-up:
+  - Continue adding stable public metadata sources and richer evidence-bound manuscript generation; this source-policy fix does not make the current task101 paper directly publishable.
+
 ### 2026-06-13 17:33:00 +08:00 - Codex - Task 101.1 full-cycle and self-evolution acceptance audit
 
 - Request: Run a real full-chain autonomous cycle, verify whether self-evolution is actually implemented, and strictly judge whether the generated output is directly publishable.

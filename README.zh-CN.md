@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-AI-Researcher 是一个证据优先的自动化计算科研平台。目标不是做“会写论文的聊天机器人”，而是构建一个受控、可审计、可复现的科研闭环：文献检索、知识建模、假设生成、实验设计、沙箱执行、结果验证、报告/论文草稿、复盘，以及受控策略进化。
+AI-Researcher 是一个证据优先的自动化计算科研平台。它面向本地或服务器常驻运行：发现公开来源、维护 Obsidian 知识库、提出假设、执行可复现实验、验证结果、生成 LaTeX 论文，并把失败和经验回写到受控自进化循环中。
 
-> 当前状态：本地 MVP 脚手架和核心研究闭环组件已具备测试覆盖。仓库包含可执行任务计划、Obsidian 知识库底座、供应商无关的首次部署配置、本地 demo 闭环、文献/相似工作检索基础、验证/报告模块和发布准备检查。它还不是生产级多用户服务。
+> 当前状态：本地 MVP 和核心研究闭环组件已具备测试覆盖。仓库包含可执行任务计划、Obsidian 知识库底座、供应商无关的首次部署配置、常驻 CLI 入口、公开来源文献/相似工作检索、真实 benchmark demo、验证/报告模块、LaTeX 论文构建、OpenCode 集成契约和发布准备门禁。它还不是生产级多用户服务；除非证据门禁通过，否则不能声称产物达到 CCF-B/三区期刊可投稿水平。
 
 ## 核心原则
 
@@ -14,6 +14,7 @@ AI-Researcher 是一个证据优先的自动化计算科研平台。目标不是
 - 默认沙箱执行。
 - `autoresearch-vault/` 是项目根目录下固定的 Obsidian 兼容知识库，用于研究记忆、失败库、技能库、证据链接和策略进化。
 - 项目启动和定时刷新都必须联网检索文献与相近工作；vault 只沉淀有来源支撑的总结，不虚构成果。
+- ArXiv 和 OpenAlex 是默认核心学术来源。Semantic Scholar 因为未认证 Graph API 容易触发 429，默认只作为可选增强源；只有提供 key 或显式启用时才参与检索。
 - 每个实验记录 run ID、commit、配置 hash、数据 hash、指标、日志、产物和成本。
 - 每个 Agent 改动必须写入 [Agent.md](Agent.md)。
 - 每个发现的问题、阻塞或风险必须写入 [Problem.md](Problem.md)。
@@ -69,7 +70,7 @@ poetry run airesearcher deploy-setup
 
 该命令会引导输入 LLM provider 标签、API base URL、model name、API key，以及可选的微信/飞书通道参数。API key 和通道密钥只写入 `.env`；`config.yaml` 只保存非密钥模型配置、通道元数据和环境变量名。如果 `.env.example` 缺失，CLI 会创建一个公开的非密钥模板。
 
-如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。也可以填写 `SEMANTIC_SCHOLAR_API_KEY` 以获得更高的 Semantic Scholar Graph API 限额；如果部署环境需要更严格限频，还可以填写可选的 `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` 和 `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS`。OpenAlex 默认可以无 key 小规模使用；较大的部署可以填写 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`，让来源 fallback 更稳定也更礼貌。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
+如果你想手动填写模型配置，可以把 `.env.example` 复制为 `.env`，然后填写 `AUTORESEARCH_LLM_BASE_URL`、`AUTORESEARCH_LLM_MODEL_NAME` 和 `AUTORESEARCH_LLM_API_KEY`。AI-Researcher 默认使用 ArXiv 和 OpenAlex 作为免费/公开学术来源。OpenAlex 小规模使用可以不填 key；较大的部署可以填写 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`，让访问更礼貌、更可预测。Semantic Scholar 是可选增强源：只有当你设置 `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1` 或填写 `SEMANTIC_SCHOLAR_API_KEY` 时才会参与检索；如需更严格限频，还可以填写 `SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS` 和 `SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS`。根目录 `.env` 会被 git 忽略，不能提交真实密钥。
 
 脚本化部署示例：
 
@@ -146,7 +147,7 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 `autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致。相似工作检查会优先使用短结构化 novelty-stress queries，例如 method+benchmark、baseline+benchmark、adjacent-risk-technique+benchmark，再使用长 research-gap prose；这是因为真实学术搜索 API 对段落式提示词常返回弱相关结果。只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
 
-同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。如果 Semantic Scholar 在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。该 circuit 状态也会持久化到所选文献 cache root 下的 `source-circuit-breakers.json`，让同一部署的后续 cycle 在冷却窗口结束前继续尊重限流状态。状态文件会先写入同目录临时文件，再用原子替换更新，降低中断写入留下半文件的风险；读-改-写更新还会使用本地 `.lock` 文件，避免并发 worker 静默覆盖彼此的来源冷却状态。在昂贵步骤开始前，SCALE-lite source preflight gate 会无联网读取该持久化状态；如果某个来源仍在冷却、状态文件正被另一个进程锁定，或持久化状态文件损坏导致无法验证，cycle 会写出 `source-preflight.json`/`.md`，创建 Obsidian issue note，排入 follow-up task，并跳过本轮实验、review 和 paper-build。
+同一个 `autopilot` 或 `serve` cycle 内，literature refresh 和 similarity check 会共享同一组来源客户端。默认客户端是 ArXiv 加 OpenAlex。如果你显式启用了 Semantic Scholar，并且它在 refresh 阶段打开 429 circuit，similarity 阶段会继承这个 circuit-open 状态，而不是重新创建客户端继续打同一个来源。该 circuit 状态也会持久化到所选文献 cache root 下的 `source-circuit-breakers.json`，让同一部署的后续 cycle 在冷却窗口结束前继续尊重限流状态。状态文件会先写入同目录临时文件，再用原子替换更新，降低中断写入留下半文件的风险；读-改-写更新还会使用本地 `.lock` 文件，避免并发 worker 静默覆盖彼此的来源冷却状态。在昂贵步骤开始前，SCALE-lite source preflight gate 会无联网读取持久化来源状态；必需来源的冷却、锁定或状态损坏会让 cycle 在实验、review 和 paper-build 前停止；可选 Semantic Scholar 的冷却会被记录为 optional degraded coverage，但不会阻断 ArXiv/OpenAlex 核心免费来源闭环。
 
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
@@ -191,7 +192,7 @@ poetry run airesearcher inspiration-refresh --vault autoresearch-vault --query "
 poetry run airesearcher similarity-check --candidate-file candidate.json --vault autoresearch-vault --cache .cache/literature --project-id my_project
 ```
 
-文献刷新和相似工作检查命令默认调用真实文献 API：ArXiv、Semantic Scholar 和 OpenAlex。它们会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。项目启动检索现在会优先使用短结构化查询，而不是把长段落直接塞给搜索 API；research-gap、negative-result 和 vault-context 查询仍作为扩展广度保留。OpenAlex 作为免费公开元数据来源参与默认检索，避免 Semantic Scholar 限流时来源广度退化为只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS` 和 `OPENALEX_CIRCUIT_RESET_SECONDS`。
+文献刷新和相似工作检查命令默认调用真实文献 API：ArXiv 和 OpenAlex。Semantic Scholar 可以作为可选增强源加入，但不再是默认必需来源。命令会从 `.env` 读取可选文献 API key，对不同来源使用保守且可调的请求间隔、429 circuit breaker 和可见错误记录，并写入带防虚构说明的 Obsidian 总结；没有证据支撑的结果保持为 `unknown` 或 `pending verification`。相似工作总结可以分类 direct duplicate、adjacent work、supporting prior work、contradictory evidence 和 benchmark gap，但只有来源标题/摘要元数据支撑时才会分类；保守的 method/dataset token overlap 会写入 classification basis，弱相关的真实返回仍保持 `unknown`。项目启动检索现在会优先使用短结构化查询，而不是把长段落直接塞给搜索 API；research-gap、negative-result 和 vault-context 查询仍作为扩展广度保留。OpenAlex 属于核心免费来源路径，所以 Semantic Scholar 429 不会让发现覆盖退化成只有 ArXiv。`.env.example` 提供可选的 `OPENALEX_API_KEY`、`OPENALEX_MAILTO`、`OPENALEX_MIN_INTERVAL_SECONDS`、`OPENALEX_CIRCUIT_RESET_SECONDS`、`AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR` 和 `SEMANTIC_SCHOLAR_API_KEY`。
 
 `inspiration-refresh` 会调用真实的广义联网来源，但它们不是学术数据库。当前内置来源是 Hugging Face 公开 dataset 元数据和 Hacker News Search。结果适合用于发现数据集线索、工具想法、工程约束、社区痛点和相邻项目；生成的 Obsidian 笔记会明确标注这些只是 dataset/community/news signals。它们不能直接算作文献证据、创新性证据或发表门禁支撑，除非后续再用 primary source、代码、data card 或真实实验验证。
 
@@ -233,7 +234,7 @@ poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summar
 
 如果历史 cycle 当时跳过了 review，`--review-json` 可以指向后续真实补跑的 `llm-review.json`。这只能让 `llm_evidence_review` 和 `review_verdict_strength` 使用该评审证据通过；补跑评审还必须绑定当前 cycle：评审 subject 的 hash/path 要匹配 cycle 报告，评审 evidence bundle 要用 hash 或 path 覆盖 validation report 和 evidence map。联网文献广度、相似工作广度、来源错误、novelty 分类、方法效果和论文章节门禁仍会独立阻断，不能被 review 结果覆盖。
 
-这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、Semantic Scholar 429 等来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，baseline、ablation、统计 sanity 是否有证据，以及提出的方法是否有文件支撑的创新性证据。对 CCF-B/三区期刊目标，baseline-only 任务或 `baseline_only=true` 元数据即使章节完整也不能通过发表级审计；run record 必须包含 proposed mechanism/contribution 元数据，并且实验产物里必须有实际存在的 innovation/mechanism/contribution artifact。该 artifact 还必须为经验增益声明提供正向 baseline-vs-candidate delta；中性、负向或缺失的方法效果证据会让 `method_effect_evidence` 失败，只能作为负结果证据或下一轮更强实验的任务来源。相似工作检索结果也必须有证据支撑的分类：如果所有 similarity finding 都仍是 `unknown` 或未分类，`similarity_classification_coverage` 会失败；只有非 `unknown` 分类才计入 `similarity_classified_finding_breadth`，系统不能只凭 raw finding 数量把它当成 novelty 支撑。当前生成的 Markdown 报告已经包含论文式章节，同时保留指标到 evidence edge 的绑定，并保持 Obsidian 可读；过程数据、总结、证据 note 和最终 cycle summary 仍应以 Markdown 写入 `autoresearch-vault/`。真正的论文级最终产物不是 Markdown 证据稿，而是由对应 LaTeX 模板编译出的 PDF；通用单栏/双栏 `article` 模板 smoke 已经能在本地 LaTeX 引擎可用时编译。外部兼容性矩阵会抓取 IEEEtran、ACM `acmart` 和 Springer Nature 的当前来源页面；当本地安装了对应 class 时会编译 IEEEtran/ACM smoke PDF，若缺少 Springer Nature `sn-jnl.cls`，则记录为 `source_unavailable`，不会虚构兼容通过。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、来源覆盖、模板兼容性、方法创新证据、方法效果证据、已分类相似工作广度或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
+这比 `llm-review` 更严格：它检查脚本是否真的执行、数据哈希和指标是否能追溯、验证数据规模是否足够、联网文献与相似工作检索是否足够宽、必需来源失败是否削弱 novelty 覆盖、报告是否具备论文级章节，baseline、ablation、统计 sanity 是否有证据，以及提出的方法是否有文件支撑的创新性证据。当 ArXiv/OpenAlex 覆盖充足时，Semantic Scholar 429 会被记录为可选来源风险 warning，而不是必需来源失败。对 CCF-B/三区期刊目标，baseline-only 任务或 `baseline_only=true` 元数据即使章节完整也不能通过发表级审计；run record 必须包含 proposed mechanism/contribution 元数据，并且实验产物里必须有实际存在的 innovation/mechanism/contribution artifact。该 artifact 还必须为经验增益声明提供正向 baseline-vs-candidate delta；中性、负向或缺失的方法效果证据会让 `method_effect_evidence` 失败，只能作为负结果证据或下一轮更强实验的任务来源。相似工作检索结果也必须有证据支撑的分类：如果所有 similarity finding 都仍是 `unknown` 或未分类，`similarity_classification_coverage` 会失败；只有非 `unknown` 分类才计入 `similarity_classified_finding_breadth`，系统不能只凭 raw finding 数量把它当成 novelty 支撑。当前生成的 Markdown 报告已经包含论文式章节，同时保留指标到 evidence edge 的绑定，并保持 Obsidian 可读；过程数据、总结、证据 note 和最终 cycle summary 仍应以 Markdown 写入 `autoresearch-vault/`。真正的论文级最终产物不是 Markdown 证据稿，而是由对应 LaTeX 模板编译出的 PDF；通用单栏/双栏 `article` 模板 smoke 已经能在本地 LaTeX 引擎可用时编译。外部兼容性矩阵会抓取 IEEEtran、ACM `acmart` 和 Springer Nature 的当前来源页面；当本地安装了对应 class 时会编译 IEEEtran/ACM smoke PDF，若缺少 Springer Nature `sn-jnl.cls`，则记录为 `source_unavailable`，不会虚构兼容通过。`ccf-b` 和 `q3-journal` 目标会默认拒绝合成 ScientistBench-Lite 玩具实验；即使是真实 benchmark，如果 novelty 检索、核心来源覆盖、模板兼容性、方法创新证据、方法效果证据、已分类相似工作广度或证据广度不足，也会继续被拒绝。失败审计会写入 Obsidian 的 `publication-audit` review/issue note，供自循环任务池继续处理。
 
 从 evidence-bound Markdown 报告构建论文级 LaTeX/PDF artifact：
 

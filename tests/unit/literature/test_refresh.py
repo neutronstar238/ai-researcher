@@ -190,6 +190,8 @@ def test_daily_refresh_default_sources_include_openalex_fallback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", raising=False)
+    monkeypatch.delenv("SEMANTIC_SCHOLAR_API_KEY", raising=False)
     _write_candidate_context(tmp_path)
     paper = AcademicPaper(
         title="Open Evidence Agent Review",
@@ -219,15 +221,44 @@ def test_daily_refresh_default_sources_include_openalex_fallback(
         config=LiteratureRefreshConfig(max_queries=1, max_results_per_source=2),
     )
 
-    assert [fetch.source for fetch in report.fetches] == [
-        "arxiv",
-        "semantic_scholar",
-        "openalex",
-    ]
-    assert report.fetches[1].error == "RuntimeError: rate limited"
+    assert [fetch.source for fetch in report.fetches] == ["arxiv", "openalex"]
     assert report.documents[0].tags == ["openalex"]
     assert report.summary_path is not None
     assert "openalex" in report.summary_path.read_text(encoding="utf-8")
+
+
+def test_daily_refresh_includes_semantic_scholar_only_when_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR", "1")
+    _write_candidate_context(tmp_path)
+    paper = AcademicPaper(
+        title="Semantic Scholar evidence agent review",
+        url="https://api.semanticscholar.org/paper/123",
+        source="semantic_scholar",
+    )
+
+    monkeypatch.setattr(refresh_module, "ArxivClient", lambda: _FakeClient("arxiv", [], 3.0))
+    monkeypatch.setattr(refresh_module, "OpenAlexClient", lambda: _FakeClient("openalex", [], 1.0))
+    monkeypatch.setattr(
+        refresh_module,
+        "SemanticScholarClient",
+        lambda: _FakeClient("semantic_scholar", [paper], 3.0),
+    )
+
+    report = run_daily_literature_refresh(
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "literature",
+        config=LiteratureRefreshConfig(max_queries=1, max_results_per_source=2),
+    )
+
+    assert [fetch.source for fetch in report.fetches] == [
+        "arxiv",
+        "openalex",
+        "semantic_scholar",
+    ]
+    assert report.documents[0].tags == ["semantic_scholar"]
 
 
 def _write_candidate_context(vault_root: Path) -> None:

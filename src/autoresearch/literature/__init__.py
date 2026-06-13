@@ -2,6 +2,7 @@
 
 from .cache import RetrievalCache, RetrievalCacheRecord, retrieval_cache_key
 from .clients import (
+    OPTIONAL_LITERATURE_SOURCES,
     ArxivClient,
     CircuitBreakerOpenError,
     OpenAlexClient,
@@ -11,6 +12,7 @@ from .clients import (
     SemanticScholarClient,
     SourceCircuitStateLockError,
     SourceRateLimitError,
+    semantic_scholar_enabled,
 )
 from .models import AcademicPaper, deduplicate_papers, normalize_doi, normalize_title
 from .refresh import (
@@ -32,6 +34,7 @@ __all__ = [
     "LiteratureRefreshConfig",
     "LiteratureRefreshReport",
     "LiteratureSearchClient",
+    "OPTIONAL_LITERATURE_SOURCES",
     "OpenAlexClient",
     "RateLimitCircuitBreaker",
     "RateLimiter",
@@ -50,5 +53,6 @@ __all__ = [
     "paper_to_knowledge_entry",
     "retrieval_cache_key",
     "run_daily_literature_refresh",
+    "semantic_scholar_enabled",
     "store_paper_notes",
 ]
