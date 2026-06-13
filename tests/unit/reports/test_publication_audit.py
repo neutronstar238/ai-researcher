@@ -97,8 +97,31 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
 
     checks = {check.check_id: check for check in report.checks}
     assert checks["method_innovation_evidence"].status.value == "pass"
+    assert checks["method_effect_evidence"].status.value == "pass"
     assert report.verdict is PublicationAuditVerdict.PASS
     assert report.publishable is True
+
+
+def test_publication_audit_blocks_underperforming_method_candidate(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        method_delta=-0.0011,
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["method_innovation_evidence"].status.value == "pass"
+    assert checks["method_effect_evidence"].status.value == "fail"
+    assert "underperformed" in checks["method_effect_evidence"].message
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
 
 
 def _write_toy_cycle(tmp_path: Path) -> Path:
@@ -293,7 +316,12 @@ def _paper_style_report() -> str:
     )
 
 
-def _write_real_benchmark_cycle(tmp_path: Path, *, novel_method: bool = False) -> Path:
+def _write_real_benchmark_cycle(
+    tmp_path: Path,
+    *,
+    novel_method: bool = False,
+    method_delta: float | None = 0.03,
+) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-real"
     task_id = "pendigits_contrastive_centroid" if novel_method else "pendigits_centroid_baseline"
     demo_slug = task_id.replace("_", "-")
@@ -345,6 +373,15 @@ def _write_real_benchmark_cycle(tmp_path: Path, *, novel_method: bool = False) -
                     "proposed_method": "contrastive centroid calibration",
                     "mechanism": "calibrates class centroids with evidence-bound ablation.",
                     "baseline_comparison": "nearest centroid",
+                    **(
+                        {
+                            "baseline_accuracy": 0.88,
+                            "candidate_accuracy": 0.88 + method_delta,
+                            "accuracy_delta_vs_baseline": method_delta,
+                        }
+                        if method_delta is not None
+                        else {}
+                    ),
                 }
             ),
             encoding="utf-8",

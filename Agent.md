@@ -62,6 +62,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 09:37:36 +08:00 - Codex - Task 77.1 method-effect publication gate
+
+- Request: Continue strict innovation quality control so file-backed method artifacts cannot be treated as publishable empirical gain when the actual baseline delta is neutral or negative.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/release-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-77-1-method-effect-gate.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_publication_audit.py`
+- Summary:
+  - Added task `77.1` to the executable plan and dependency graph.
+  - Added `method_effect_evidence` to publication audit for targets requiring novel contribution.
+  - The new gate reads file-backed innovation/mechanism/contribution artifacts, extracts `accuracy_delta_vs_baseline` or equivalent candidate/baseline metrics, and passes only positive deltas for empirical-gain claims.
+  - Neutral, negative, or missing method-effect evidence now fails CCF-B/Q3-style publication readiness while preserving the evidence as a useful negative result.
+  - Updated README, release gate docs, changelog, Problem log, and Obsidian progress memory to document the new physical gate.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_publication_audit.py -q`: passed, 6 tests.
+  - `poetry run ruff check src\autoresearch\reports\publication_audit.py tests\unit\reports\test_publication_audit.py`: passed.
+  - `poetry run mypy src\autoresearch\reports\publication_audit.py`: passed.
+  - `poetry run airesearcher publication-audit runs\manual-live\autopilot-shrinkage-task76\cycle-20260613T012402Z\cycle-summary.json --target ccf-b --output-dir runs\manual-live\publication-audit-task77 --vault runs\manual-live\task77-vault --project-id task77_method_effect_gate --no-fail-on-not-publishable`: passed as a command and correctly produced a failed audit. The real audit reported `method_innovation_evidence.status=pass`, `method_effect_evidence.status=fail`, message `Method candidate underperformed the baseline with recorded delta=-0.001144.`, score `0.500`, and `publishable=false`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 370 tests passed and 4 skipped.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+- Problems:
+  - Added and resolved `P-20260613-015` for method innovation artifacts lacking positive method-effect evidence.
+  - Updated `P-20260613-014` to point at `method_effect_evidence` as the publication-claim blocker for the current negative result.
+  - Updated `P-20260613-004` with task `77.1` as a stricter publication-readiness gate.
+- Follow-up:
+  - Add a separate negative-result publication target only if the project later wants to evaluate publishable negative findings under explicit negative-result criteria.
+  - Continue searching for a stronger method candidate whose positive effect survives real reruns and broad literature/similarity checks.
+
 ### 2026-06-13 09:29:13 +08:00 - Codex - Task 76.1 Pendigits prototype shrinkage candidate
 
 - Request: Continue implementing the always-on research loop with strict innovation quality control, real executable experiments, and SCALE-inspired physical evidence gates rather than prompt-only self-discipline.

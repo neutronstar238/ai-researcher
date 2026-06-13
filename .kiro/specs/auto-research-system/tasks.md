@@ -1250,6 +1250,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement for real executable experiments, publication-quality innovation checks, and lightweight physical gates inspired by SCALE Engine._
     - _Verify: focused demo tests, ruff, mypy, full smoke/unit tests, real `run-demo`, and real `autopilot`/publication audit showing innovation evidence exists, is checked, and does not mask a negative result._
 
+- [x] 77. Harden method-effect publication gating
+  - [x] 77.1 Block method candidates whose innovation artifact lacks positive baseline effect
+    - Add a `method_effect_evidence` publication-audit check for targets requiring novel contribution.
+    - Read file-backed innovation/mechanism/contribution artifacts and extract a numeric baseline-vs-candidate delta.
+    - Pass only when the recorded method-candidate delta is positive; fail neutral, negative, or missing effect evidence for CCF-B/Q3-style targets.
+    - Keep `mvp-demo` exempt so runtime smoke tests do not need method-effect claims.
+    - Preserve negative evidence as useful research memory while blocking empirical-gain and paper-ready claims.
+    - _References: user requirement that the system meet strict CCF-B/Q3-style evidence standards and not rely on prompt-only "AI self-discipline" for innovation claims._
+    - _Verify: focused publication-audit tests, ruff, mypy, full smoke/unit tests, and a real `publication-audit` over the task `76.1` negative-result cycle showing `method_innovation_evidence=pass` but `method_effect_evidence=fail`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1470,6 +1480,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 43,
       "tasks": ["76.1"]
+    },
+    {
+      "id": 44,
+      "tasks": ["77.1"]
     }
   ]
 }

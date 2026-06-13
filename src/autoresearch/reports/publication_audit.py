@@ -494,6 +494,12 @@ def _script_and_data_checks(
     ablation_present = _has_ablation_evidence(run_record)
     statistical_sanity = _has_statistical_sanity(run_record)
     innovation_present = _has_innovation_evidence(run_record, experiment_dir)
+    method_effect_check = _method_effect_check(
+        run_record,
+        experiment_dir,
+        target,
+        run_record_path.as_posix(),
+    )
 
     checks = [
         PublicationAuditCheck(
@@ -581,6 +587,7 @@ def _script_and_data_checks(
                 ),
                 (run_record_path.as_posix(),),
             ),
+            method_effect_check,
         ]
     )
     return checks
@@ -1022,15 +1029,112 @@ def _has_innovation_evidence(
     if not has_contribution_metadata:
         return False
 
+    innovation_artifacts = _innovation_artifact_paths(run_record)
+    if not innovation_artifacts:
+        return False
+    return _relative_paths_exist(experiment_dir, list(innovation_artifacts))
+
+
+def _method_effect_check(
+    run_record: dict[str, Any],
+    experiment_dir: Path | None,
+    target: PublicationQualityTarget,
+    run_record_ref: str,
+) -> PublicationAuditCheck:
+    if not target.require_novel_contribution:
+        return PublicationAuditCheck(
+            "method_effect_evidence",
+            PublicationAuditCheckStatus.PASS,
+            "info",
+            "Positive method-effect evidence is not required for this target.",
+            (run_record_ref,),
+        )
+
+    artifact_paths = _innovation_artifact_paths(run_record)
+    resolved_paths = _existing_relative_paths(experiment_dir, artifact_paths)
+    refs = (run_record_ref, *[path.as_posix() for path in resolved_paths])
+    if not resolved_paths:
+        return PublicationAuditCheck(
+            "method_effect_evidence",
+            PublicationAuditCheckStatus.FAIL,
+            "high",
+            "Method-effect evidence is missing because no readable innovation artifact exists.",
+            refs,
+            "Preserve a JSON innovation artifact with baseline and candidate metrics before publication review.",
+        )
+
+    for path in resolved_paths:
+        payload = _read_json_if_exists(path)
+        delta = _method_effect_delta(payload)
+        if delta is None:
+            continue
+        if delta > 0:
+            return PublicationAuditCheck(
+                "method_effect_evidence",
+                PublicationAuditCheckStatus.PASS,
+                "high",
+                f"Method candidate improved over baseline with recorded delta={delta:.6f}.",
+                refs,
+            )
+        relation = "tied" if delta == 0 else "underperformed"
+        return PublicationAuditCheck(
+            "method_effect_evidence",
+            PublicationAuditCheckStatus.FAIL,
+            "high",
+            f"Method candidate {relation} the baseline with recorded delta={delta:.6f}.",
+            refs,
+            (
+                "Do not claim empirical gain; treat this as negative evidence or "
+                "validate a stronger method candidate."
+            ),
+        )
+
+    return PublicationAuditCheck(
+        "method_effect_evidence",
+        PublicationAuditCheckStatus.FAIL,
+        "high",
+        "Innovation artifacts exist but do not report a baseline-vs-candidate effect delta.",
+        refs,
+        "Add a numeric delta such as accuracy_delta_vs_baseline or candidate/baseline metrics.",
+    )
+
+
+def _innovation_artifact_paths(run_record: dict[str, Any]) -> tuple[str, ...]:
     artifact_paths = tuple(_text(path) for path in _list(run_record.get("artifacts")))
-    innovation_artifacts = tuple(
+    return tuple(
         path_text
         for path_text in artifact_paths
         if any(term in path_text.casefold() for term in ("innovation", "mechanism", "contribution"))
     )
-    if not innovation_artifacts:
-        return False
-    return _relative_paths_exist(experiment_dir, list(innovation_artifacts))
+
+
+def _existing_relative_paths(root: Path | None, paths: tuple[str, ...]) -> tuple[Path, ...]:
+    if root is None:
+        return ()
+    resolved: list[Path] = []
+    for path_text in paths:
+        path = Path(path_text)
+        candidate = path if path.is_absolute() else root / path
+        if candidate.exists():
+            resolved.append(candidate)
+    return tuple(resolved)
+
+
+def _method_effect_delta(payload: dict[str, Any]) -> float | None:
+    for key in (
+        "accuracy_delta_vs_baseline",
+        "delta_vs_baseline",
+        "metric_delta_vs_baseline",
+        "candidate_minus_baseline",
+    ):
+        delta = _float_or_none(payload.get(key))
+        if delta is not None:
+            return delta
+    candidate = _float_or_none(payload.get("candidate_accuracy"))
+    baseline = _float_or_none(payload.get("baseline_accuracy"))
+    if candidate is not None and baseline is not None:
+        return candidate - baseline
+    return None
 
 
 def _relative_paths_exist(root: Path | None, paths: list[Any]) -> bool:
@@ -1107,6 +1211,13 @@ def _int(value: object, *, default: int = 0) -> int:
         return int(float(str(value)))
     except (TypeError, ValueError):
         return default
+
+
+def _float_or_none(value: object) -> float | None:
+    try:
+        return float(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def _escape_table(value: str) -> str:
