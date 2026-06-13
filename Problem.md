@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-017 - Autopilot novelty search could drift away from the executed demo
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 10:04:00 +08:00
+- Source: Full-width task `79` review-enabled autopilot cycle over `pendigits_variance_calibrated_prototypes`.
+- Symptom: The cycle executed the UCI Pendigits variance-calibrated prototype experiment, but the generated candidate remained a generic "evidence-bound self-evolving research loop" topic. Literature and similarity search could therefore evaluate a different research object from the actual method script.
+- Impact: Publication-level novelty checks could look broad while failing to cross-check the specific method, dataset, benchmark, and baseline behind the experiment result.
+- Evidence: `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` recorded `demo.demo=pendigits_variance_calibrated_prototypes`, but the candidate title was generic and `literature.query_count=1`.
+- Root cause: `autopilot` generated the literature refresh first from sparse vault context and then generated a generic candidate from the first retrieved document; the selected demo did not seed either step.
+- Workaround: None needed after task `79.1`; known demos now inject deterministic literature seed queries and demo-aligned candidate metadata.
+- Next action: Add similar seed-query/candidate contracts whenever new real benchmark demos are introduced.
+- Linked tasks: `79.1`
+- Resolution: Task `79.1` adds a literature query floor, optional seed queries, demo-specific seed lists, and Pendigits-aligned candidate metadata for known Pendigits demos.
+- Verification: Focused literature/CLI tests passed. A real `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 3 --no-review` cycle at `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` reported `literature.query_count=4`, `candidate.title=Variance-calibrated prototype classifiers for UCI Pendigits`, method metadata `diagonal variance-calibrated prototypes with variance shrinkage`, dataset metadata `UCI Pen-Based Recognition of Handwritten Digits`, and `similarity.finding_count=14`.
+
 ### P-20260613-016 - Positive method-effect demo is not yet a publishable novelty claim
 
 - Status: Open
@@ -40,13 +56,13 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Real task `78.1` UCI Pendigits variance-calibrated prototype run and autopilot cycle.
 - Symptom: The new method candidate has a positive measured effect over the nearest-centroid baseline, but the full publication audit still fails when literature breadth is smoke-sized and LLM evidence review is skipped.
 - Impact: The system now has a real positive-effect method path, but must not present it as a CCF-B/Q3-ready paper until novelty search, related-work breadth, review, and manuscript gates all pass.
-- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The real autopilot cycle at `runs/manual-live/autopilot-variance-task78/cycle-20260613T015034Z/publication-audit.json` reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`.
-- Root cause: Positive method effect is necessary but not sufficient; the smoke run intentionally used one query/result and skipped review, while the method still needs broad cross-literature novelty checks.
+- Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review.
+- Root cause: Positive method effect is necessary but not sufficient; the method still needs broad cross-literature novelty checks without source failures, plus a passing review-enabled cycle on the aligned candidate.
 - Workaround: Keep the result as a positive method-candidate evidence note, not as a publication-ready claim.
-- Next action: Run a full-width, review-enabled cycle for this demo after Semantic Scholar/source stability is improved, then compare against adjacent Gaussian/prototype/nearest-centroid calibration literature.
-- Linked tasks: `78.1`
+- Next action: Provide or configure a Semantic Scholar API key/cooldown that avoids 429, then rerun a review-enabled aligned cycle and compare against adjacent Gaussian/prototype/nearest-centroid calibration literature.
+- Linked tasks: `78.1`, `79.1`
 - Resolution: Not resolved; task `78.1` creates the positive-effect candidate path and leaves publication readiness blocked by the broader gates.
-- Verification: Real `run-demo` and real `autopilot --demo pendigits_variance_calibrated_prototypes --no-review` completed. The autopilot cycle reported `reproduction_check.status=passed`, `method_innovation_evidence.status=pass`, `method_effect_evidence.status=pass`, and `evidence_gate.verdict=blocked`.
+- Verification: Real `run-demo`, review-enabled `autopilot`, and aligned no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` completed. The aligned cycle reported `literature.query_count=4`, `reproduction_check.status=passed`, `publication_audit.verdict=needs_revision`, and `evidence_gate.verdict=blocked`.
 
 ### P-20260613-015 - Method innovation artifacts could pass without positive method-effect evidence
 

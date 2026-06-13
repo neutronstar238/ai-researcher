@@ -62,6 +62,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 10:12:46 +08:00 - Codex - Task 79.1 demo-aligned autopilot novelty search
+
+- Request: Continue strict innovation quality control by ensuring broad online novelty search checks the same research object as the executed experiment, not a generic or mismatched candidate.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-79-1-demo-aligned-autopilot-search.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/literature/refresh.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/literature/test_refresh.py`
+- Summary:
+  - Added task `79.1` to the executable task plan and dependency graph.
+  - Added a literature query floor and optional seed-query contract to `LiteratureRefreshConfig` so publication-mode refresh cannot collapse to a single query on sparse vault context.
+  - Added deterministic demo-specific literature seed queries for Pendigits baseline, prototype-shrinkage, and variance-calibrated prototype demos.
+  - Made autopilot candidates for known Pendigits demos carry demo-aligned title, method, dataset, benchmark, baseline, and limitation metadata before similarity search and publication audit run.
+  - Preserved the generic autonomous-research-loop candidate for generic/default demos only.
+  - Documented that Semantic Scholar 429 remains a source-coverage blocker rather than something OpenAlex fallback can erase for novelty claims.
+- Verification:
+  - `poetry run pytest tests\unit\literature\test_refresh.py tests\unit\cli\test_main.py -q`: passed, 37 tests.
+  - `poetry run ruff check src\autoresearch\literature\refresh.py src\autoresearch\cli\main.py tests\unit\literature\test_refresh.py tests\unit\cli\test_main.py`: passed.
+  - `poetry run mypy src\autoresearch\literature\refresh.py src\autoresearch\cli\main.py`: passed.
+  - `poetry run airesearcher autopilot --vault runs\manual-live\task79-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-variance-full-task79 --state runs\manual-live\autopilot-variance-full-task79\scheduler-state.json --project-id task79_variance_full_review --demo pendigits_variance_calibrated_prototypes --timeout-seconds 60 --max-tokens 4096 --min-quality-score 0.85`: passed as a command and exposed the pre-fix quality issue. The cycle wrote `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json`, with `review.status=passed`, `publication_audit.verdict=fail`, `evidence_gate.verdict=blocked`, and `literature.query_count=1`.
+  - `$env:SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS='10'; $env:SEMANTIC_SCHOLAR_CIRCUIT_RESET_SECONDS='90'; poetry run airesearcher autopilot --vault runs\manual-live\task79-aligned-vault --cache .cache\literature --output-dir runs\manual-live\autopilot-aligned-task79 --state runs\manual-live\autopilot-aligned-task79\scheduler-state.json --project-id task79_aligned --demo pendigits_variance_calibrated_prototypes --max-queries 4 --max-results-per-source 3 --timeout-seconds 60 --no-review`: passed as a real online cycle. It wrote `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` with `literature.query_count=4`, `literature.document_count=21`, `candidate.title=Variance-calibrated prototype classifiers for UCI Pendigits`, aligned method/dataset metadata, `similarity.finding_count=14`, `publication_audit.verdict=needs_revision`, and `evidence_gate.verdict=blocked`.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed, 375 tests passed and 4 skipped.
+  - `git diff --check`: passed; Git only warned about LF-to-CRLF normalization.
+- Problems:
+  - Added and resolved `P-20260613-017` for autopilot novelty search drifting away from the executed demo.
+  - Updated `P-20260613-016` with the review-enabled and aligned-cycle evidence; Semantic Scholar 429 and review-enabled rerun on the aligned candidate remain open publication blockers.
+- Follow-up:
+  - Rerun the aligned Pendigits cycle with review enabled after providing a Semantic Scholar API key or a longer cooldown that avoids 429.
+  - Add demo-specific seed-query contracts whenever a new real benchmark demo is added.
+
 ### 2026-06-13 09:56:26 +08:00 - Codex - Task 78.1 Pendigits variance-calibrated prototype candidate
 
 - Request: Continue toward a real autonomous research loop by adding a positive-effect, executable method candidate while keeping publication claims blocked until strict novelty and review gates pass.

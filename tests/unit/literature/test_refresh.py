@@ -61,6 +61,45 @@ def test_generate_literature_queries_uses_candidate_and_vault_context(
     assert "exploration/topics/candidate_1.md" in queries[0].vault_paths
 
 
+def test_generate_literature_queries_expands_empty_vault_to_query_floor(
+    tmp_path: Path,
+) -> None:
+    queries = generate_literature_queries(
+        tmp_path,
+        config=LiteratureRefreshConfig(max_queries=4),
+    )
+
+    assert len(queries) == 4
+    assert len({query.text for query in queries}) == 4
+    assert {query.origin for query in queries} >= {
+        "default",
+        "default_self_loop",
+        "default_validation",
+        "default_memory",
+    }
+
+
+def test_generate_literature_queries_prioritizes_seed_queries(
+    tmp_path: Path,
+) -> None:
+    queries = generate_literature_queries(
+        tmp_path,
+        config=LiteratureRefreshConfig(
+            max_queries=4,
+            seed_queries=(
+                "UCI Pendigits variance calibrated prototype classifier",
+                "nearest centroid handwritten digit recognition",
+            ),
+        ),
+    )
+
+    assert len(queries) == 4
+    assert queries[0].origin == "configured_seed_1"
+    assert queries[0].text == "uci pendigits variance calibrated prototype classifier"
+    assert queries[1].origin == "configured_seed_2"
+    assert any(query.origin.endswith("_prior_work") for query in queries)
+
+
 def test_daily_refresh_fetches_deduplicates_caches_and_writes_obsidian_summary(
     tmp_path: Path,
 ) -> None:

@@ -67,8 +67,10 @@ class LiteratureRefreshConfig:
     """Configuration for one daily refresh run."""
 
     max_queries: int = 5
+    min_query_floor: int = 4
     max_results_per_source: int = 20
     cache_ttl_hours: int = 24
+    seed_queries: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -122,17 +124,22 @@ def generate_literature_queries(
     """Generate search queries from Obsidian topics, cards, and candidates."""
 
     contexts = _load_vault_context(Path(vault_root))
-    candidates = [_query_from_context(context) for context in contexts]
+    seed_queries = _seed_queries(config.seed_queries)
+    candidates = [*seed_queries, *(_query_from_context(context) for context in contexts)]
     queries = [query for query in candidates if query is not None]
     if not queries:
-        queries = [
-            LiteratureQuery(
-                text="automated research agents evidence graph reproducibility",
-                origin="default",
-                vault_paths=(),
-            )
-        ]
-    return _deduplicate_queries(queries)[: config.max_queries]
+        queries = _default_queries()
+
+    target_count = min(config.max_queries, max(config.min_query_floor, 0))
+    deduplicated = _deduplicate_queries(queries)
+    if len(deduplicated) < target_count:
+        deduplicated = _deduplicate_queries(
+            [
+                *deduplicated,
+                *_expansion_queries(contexts=contexts, seed_texts=config.seed_queries),
+            ]
+        )
+    return deduplicated[: config.max_queries]
 
 
 def run_daily_literature_refresh(
@@ -218,6 +225,88 @@ def run_daily_literature_refresh(
             summary_path=_write_refresh_summary(Path(vault_root), report, timestamp),
         )
     return report
+
+
+def _seed_queries(seed_texts: tuple[str, ...]) -> list[LiteratureQuery]:
+    queries: list[LiteratureQuery] = []
+    for index, seed_text in enumerate(seed_texts, start=1):
+        text = _clean_query_text(seed_text)
+        if len(_significant_tokens(text)) < 2:
+            continue
+        queries.append(
+            LiteratureQuery(
+                text=text,
+                origin=f"configured_seed_{index}",
+                vault_paths=(),
+            )
+        )
+    return queries
+
+
+def _default_queries() -> list[LiteratureQuery]:
+    defaults = (
+        ("automated research agents evidence graph reproducibility", "default"),
+        ("self evolving research agents validation gates", "default_self_loop"),
+        ("research automation literature retrieval experiment validation", "default_validation"),
+        ("knowledge base memory for autonomous scientific agents", "default_memory"),
+    )
+    return [
+        LiteratureQuery(text=text, origin=origin, vault_paths=())
+        for text, origin in defaults
+    ]
+
+
+def _expansion_queries(
+    *,
+    contexts: list[_VaultContext],
+    seed_texts: tuple[str, ...],
+) -> list[LiteratureQuery]:
+    expansions: list[LiteratureQuery] = []
+    for index, seed_text in enumerate(seed_texts, start=1):
+        terms = _significant_tokens(seed_text)
+        if len(terms) >= 3:
+            core = " ".join(terms[:6])
+            expansions.extend(
+                [
+                    LiteratureQuery(
+                        text=_clean_query_text(f"{core} prior work"),
+                        origin=f"configured_seed_{index}_prior_work",
+                        vault_paths=(),
+                    ),
+                    LiteratureQuery(
+                        text=_clean_query_text(f"{core} benchmark validation"),
+                        origin=f"configured_seed_{index}_benchmark",
+                        vault_paths=(),
+                    ),
+                ]
+            )
+
+    for context in contexts:
+        context_terms = _query_terms(context)
+        if len(context_terms) >= 3:
+            paths = (context.relative_path,)
+            core = " ".join(context_terms[:6])
+            expansions.extend(
+                [
+                    LiteratureQuery(
+                        text=_clean_query_text(f"{core} prior work"),
+                        origin=f"{_context_priority(context) or 'context'}_prior_work",
+                        vault_paths=paths,
+                    ),
+                    LiteratureQuery(
+                        text=_clean_query_text(f"{core} reproducibility validation"),
+                        origin=f"{_context_priority(context) or 'context'}_validation",
+                        vault_paths=paths,
+                    ),
+                ]
+            )
+
+    expansions.extend(_default_queries())
+    return [
+        query
+        for query in expansions
+        if len(_significant_tokens(query.text)) >= 2
+    ]
 
 
 def _load_vault_context(vault_root: Path) -> list[_VaultContext]:
@@ -334,6 +423,19 @@ def _clean_query_terms(value: str) -> list[str]:
     return terms
 
 
+def _clean_query_text(value: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9 -]+", " ", value.casefold())
+    return " ".join(normalized.split())
+
+
+def _significant_tokens(value: str) -> list[str]:
+    return [
+        token
+        for token in _clean_query_text(value).split()
+        if len(token) > 2 and token not in GENERIC_TERMS and token not in STOPWORDS
+    ]
+
+
 def _deduplicate_queries(queries: list[LiteratureQuery]) -> list[LiteratureQuery]:
     unique: dict[str, LiteratureQuery] = {}
     for query in sorted(queries, key=lambda item: (_origin_rank(item.origin), item.text)):
@@ -350,16 +452,25 @@ def _deduplicate_queries(queries: list[LiteratureQuery]) -> list[LiteratureQuery
 
 
 def _origin_rank(origin: str) -> int:
+    configured_seed_match = re.match(r"configured_seed_(\d+)$", origin)
+    if configured_seed_match is not None:
+        return int(configured_seed_match.group(1)) - 1
+    configured_seed_expansion_match = re.match(r"configured_seed_(\d+)_", origin)
+    if configured_seed_expansion_match is not None:
+        return 50 + int(configured_seed_expansion_match.group(1))
     order = {
-        "active_candidate_gap": 0,
-        "failure_pattern": 1,
-        "project_experience": 2,
-        "method_card": 3,
-        "dataset_card": 4,
-        "topic_index": 5,
-        "default": 6,
+        "active_candidate_gap": 100,
+        "failure_pattern": 101,
+        "project_experience": 102,
+        "method_card": 103,
+        "dataset_card": 104,
+        "topic_index": 105,
+        "default": 106,
+        "default_self_loop": 107,
+        "default_validation": 108,
+        "default_memory": 109,
     }
-    return order.get(origin, 99)
+    return order.get(origin, 999)
 
 
 def _document_for_refresh(

@@ -1933,11 +1933,13 @@ def _run_autopilot_cycle(
         config=LiteratureRefreshConfig(
             max_queries=max_queries,
             max_results_per_source=max_results_per_source,
+            seed_queries=_autopilot_literature_seed_queries(demo),
         ),
     )
     candidate = _autopilot_candidate_from_literature(
         literature_report,
         project_id=project_id,
+        demo=demo,
         now=now,
     )
     candidate_path = cycle_dir / "candidate.json"
@@ -2070,10 +2072,41 @@ def _run_autopilot_cycle(
     return summary
 
 
+def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:
+    if demo == "pendigits_variance_calibrated_prototypes":
+        return (
+            "UCI Pendigits variance calibrated prototype classifier",
+            "Pen-Based Recognition of Handwritten Digits nearest centroid classifier",
+            "diagonal Gaussian prototype classification variance shrinkage",
+            "prototype classifier variance normalization handwritten digit recognition",
+        )
+    if demo == "pendigits_prototype_shrinkage":
+        return (
+            "UCI Pendigits prototype shrinkage classifier",
+            "nearest centroid prototype shrinkage handwritten digit recognition",
+            "class centroid shrinkage classification public benchmark",
+            "prototype classifier regularization Pen-Based Recognition Digits",
+        )
+    if demo == "pendigits_centroid_baseline":
+        return (
+            "UCI Pendigits nearest centroid baseline",
+            "Pen-Based Recognition of Handwritten Digits classification benchmark",
+            "nearest centroid classifier handwritten digit recognition",
+            "prototype based classification UCI Pendigits",
+        )
+    return (
+        "automated research agents evidence graph reproducibility",
+        "self evolving research agents validation gates",
+        "research automation literature retrieval experiment validation",
+        "knowledge base memory for autonomous scientific agents",
+    )
+
+
 def _autopilot_candidate_from_literature(
     literature_report: object,
     *,
     project_id: str,
+    demo: str,
     now: datetime,
 ) -> ResearchCandidate:
     documents = list(getattr(literature_report, "documents", ()))
@@ -2084,8 +2117,111 @@ def _autopilot_candidate_from_literature(
     seed_title = str(getattr(seed, "title", "retrieved literature")).strip()
     seed_uri = str(getattr(seed, "source_uri", seed_title)).strip()
     seed_id = str(getattr(seed, "id", seed_uri)).strip()
+    candidate_id = f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}"
+    if demo == "pendigits_variance_calibrated_prototypes":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Variance-calibrated prototype classifiers for UCI Pendigits",
+            description=(
+                "Evaluate whether diagonal per-class variance calibration improves a "
+                "nearest-prototype classifier on the official UCI Pendigits train/test split."
+            ),
+            research_gap=(
+                "Nearest-centroid baselines are reproducible and interpretable, but a "
+                "publication claim requires checking whether variance-calibrated prototype "
+                "distance has already been covered by Gaussian, Mahalanobis, or metric-learning "
+                "classifiers on handwritten digit benchmarks."
+            ),
+            novelty_score=0.45,
+            feasibility_score=0.85,
+            impact_score=0.55,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "diagonal variance-calibrated prototypes with variance shrinkage",
+                "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+                "benchmark": "UCI Pendigits",
+                "baseline": "nearest centroid classifier and z-score centroid ablation",
+                "limitation": (
+                    "single public benchmark; adjacent Gaussian, Mahalanobis, and "
+                    "distance-metric classifiers may already cover the mechanism"
+                ),
+            },
+        )
+    if demo == "pendigits_prototype_shrinkage":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Prototype-shrinkage classifiers for UCI Pendigits",
+            description=(
+                "Evaluate class-prototype shrinkage against a nearest-centroid baseline on "
+                "the official UCI Pendigits split."
+            ),
+            research_gap=(
+                "Prototype shrinkage is easy to implement and audit, but negative or neutral "
+                "deltas must be preserved as failed method evidence rather than rewritten as "
+                "innovation."
+            ),
+            novelty_score=0.35,
+            feasibility_score=0.85,
+            impact_score=0.45,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "class prototype shrinkage toward the global feature mean",
+                "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+                "benchmark": "UCI Pendigits",
+                "baseline": "nearest centroid classifier",
+                "limitation": "candidate underperformed in the first real run",
+            },
+        )
+    if demo == "pendigits_centroid_baseline":
+        return ResearchCandidate(
+            id=candidate_id,
+            title="Nearest-centroid reproducibility baseline for UCI Pendigits",
+            description=(
+                "Use the official UCI Pendigits split to test whether the system can produce "
+                "real data, metrics, validation, and reproducibility evidence for a baseline."
+            ),
+            research_gap=(
+                "This is a reproducibility and evidence-pipeline baseline, not a method "
+                "innovation claim."
+            ),
+            novelty_score=0.2,
+            feasibility_score=0.9,
+            impact_score=0.35,
+            evidence_refs=[seed_id, seed_uri],
+            related_document_ids=[seed_id],
+            status=CandidateStatus.READY_FOR_REVIEW,
+            validation_status=ValidationStatus.PENDING,
+            metadata={
+                "generated_by": "airesearcher autopilot",
+                "project_id": project_id,
+                "demo": demo,
+                "seed_document_title": seed_title,
+                "seed_source_uri": seed_uri,
+                "method": "nearest centroid classifier",
+                "dataset": "UCI Pen-Based Recognition of Handwritten Digits",
+                "benchmark": "UCI Pendigits",
+                "baseline_only": "true",
+                "limitation": "baseline-only reproducibility run",
+            },
+        )
     return ResearchCandidate(
-        id=f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}",
+        id=candidate_id,
         title=f"Evidence-bound self-evolving research loop from {seed_title[:80]}",
         description=(
             "Autopilot-generated candidate for improving evidence-bound automated "
@@ -2107,8 +2243,13 @@ def _autopilot_candidate_from_literature(
         metadata={
             "generated_by": "airesearcher autopilot",
             "project_id": project_id,
+            "demo": demo,
             "seed_document_title": seed_title,
             "seed_source_uri": seed_uri,
+            "method": "evidence-bound autonomous research loop",
+            "dataset": "local run records and source-backed literature metadata",
+            "baseline": "manual prompt-only research-agent operation",
+            "limitation": "system-level candidate must be validated across multiple real research cycles",
         },
     )
 

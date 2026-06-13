@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -687,6 +688,34 @@ def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:
     assert "## Results" in report
 
 
+def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
+    seeds = cli_main._autopilot_literature_seed_queries(
+        "pendigits_variance_calibrated_prototypes"
+    )
+    assert len(seeds) == cli_main.PUBLICATION_SEARCH_QUERIES
+    assert any("Pendigits" in seed for seed in seeds)
+    assert any("prototype" in seed for seed in seeds)
+
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="A Source Paper",
+        source_uri="https://example.test/source",
+    )
+    candidate = cli_main._autopilot_candidate_from_literature(
+        SimpleNamespace(documents=(seed_document,)),
+        project_id="project_1",
+        demo="pendigits_variance_calibrated_prototypes",
+        now=datetime(2026, 6, 13, 2, 30, tzinfo=timezone.utc),
+    )
+
+    assert candidate.title == "Variance-calibrated prototype classifiers for UCI Pendigits"
+    assert candidate.metadata["demo"] == "pendigits_variance_calibrated_prototypes"
+    assert candidate.metadata["dataset"] == "UCI Pen-Based Recognition of Handwritten Digits"
+    assert "variance-calibrated prototypes" in candidate.metadata["method"]
+    assert "nearest centroid" in candidate.metadata["baseline"]
+    assert "Gaussian" in candidate.metadata["limitation"]
+
+
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
@@ -713,6 +742,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         config = kwargs["config"]
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        assert len(config.seed_queries) == cli_main.PUBLICATION_SEARCH_QUERIES
         return SimpleNamespace(
             queries=(SimpleNamespace(text="evidence graph autonomous research"),),
             fetches=(fetch,),

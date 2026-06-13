@@ -1271,6 +1271,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `77.1` method-effect gate and the user requirement for real executable experiments with strict innovation-quality checks._
     - _Verify: focused demo tests, ruff, mypy, full smoke/unit tests, real `run-demo`, and real `autopilot` showing `method_innovation_evidence=pass`, `method_effect_evidence=pass`, and `reproduction_check=passed`._
 
+- [x] 79. Align autonomous novelty search with the executed method
+  - [x] 79.1 Add demo-specific literature seeds and candidate metadata for autopilot
+    - Add a query floor and optional seed-query list to `LiteratureRefreshConfig` so publication-mode refresh runs cannot silently collapse to one query on a sparse or empty vault.
+    - Generate deterministic, method-specific literature seed queries for Pendigits baseline, prototype-shrinkage, and variance-calibrated prototype demos.
+    - Make autopilot-generated candidates include demo-aligned title, method, dataset, benchmark, baseline, and limitation metadata when a known demo is selected.
+    - Preserve the generic self-evolving research-loop candidate only for generic/default demos.
+    - Ensure similarity search, literature refresh, and the executed experiment are about the same research object before publication-level claims are evaluated.
+    - Keep Semantic Scholar 429s as source-coverage blockers; ArXiv/OpenAlex fallback evidence is useful but cannot erase a failed source.
+    - _References: task `78.1` real positive-effect candidate, the user requirement for broad cross-checking before paper claims, and the task `79` full-width cycle showing query breadth collapsed to one and candidate/experiment topic mismatch._
+    - _Verify: focused literature/CLI tests, ruff, mypy, full smoke/unit tests, and a real no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` showing `literature.query_count=4`, demo-aligned candidate metadata, real source fetches, and publication gating still blocks unresolved Semantic Scholar 429/review evidence._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1499,6 +1510,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 45,
       "tasks": ["78.1"]
+    },
+    {
+      "id": 46,
+      "tasks": ["79.1"]
     }
   ]
 }

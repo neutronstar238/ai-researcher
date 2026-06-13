@@ -140,7 +140,7 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 真实 benchmark 可选运行：
 
-`autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
+`autopilot` 和 `serve` 默认使用 4 个生成查询、每个来源/查询最多 10 篇论文，以满足当前发表级审计的证据宽度；已知 demo 还会注入与方法对齐的 seed queries 和 candidate metadata，确保联网 novelty check 检索的 method、dataset、benchmark、baseline 与实际执行的实验一致；只有在明确做 smoke 或成本控制时，才应手动降低 `--max-queries` 或 `--max-results-per-source`。
 
 ```bash
 poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60

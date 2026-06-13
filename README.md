@@ -199,7 +199,7 @@ poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 
 After `deploy-setup`, this keeps the local loop running directly. Each cycle performs live literature refresh, source-backed similarity checking, a local demo or public benchmark experiment, a command-line reproduction rerun, optional live LLM evidence review, publication-readiness audit, automatic LaTeX paper build, physical evidence gate, Obsidian review/issue writing, and local follow-up state merging. Use `--no-review` for offline dry runs, or omit `--watch` for a single cycle. The current loop produces a reproducible evidence-backed report, paper-build record, reproduction-check record, and review trail; the publication audit and evidence gate are deliberately strict and will reject toy-data cycles as not CCF-B/Q3-ready.
 
-By default, `autopilot` and `serve` use 4 generated queries and up to 10 papers per source/query for publication-gate evidence breadth. Pass lower `--max-queries` or `--max-results-per-source` values only for explicit smoke or cost-control runs.
+By default, `autopilot` and `serve` use 4 generated queries and up to 10 papers per source/query for publication-gate evidence breadth. Known demos also inject method-aligned seed queries and candidate metadata so online novelty checks target the same method, dataset, benchmark, and baseline as the executed experiment. Pass lower `--max-queries` or `--max-results-per-source` values only for explicit smoke or cost-control runs.
 
 Real benchmark opt-in:
 
