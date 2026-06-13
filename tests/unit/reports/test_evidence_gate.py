@@ -157,14 +157,18 @@ def test_evidence_gate_accepts_explicit_review_json_for_skipped_cycle(
     summary["review"] = {"status": "skipped"}
     summary_path.write_text(json.dumps(summary), encoding="utf-8")
     review_override = summary_path.parent / "manual-llm-review.json"
-    report_path = Path(summary["demo"]["report_path"])
+    manuscript_path = summary_path.parent / "paper-manuscript" / "manuscript.md"
+    manuscript_path.parent.mkdir(parents=True)
+    manuscript_path.write_text("# Paper\n\n## Results\n\nEvidence.", encoding="utf-8")
+    summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
     evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     review_override.write_text(
         json.dumps(
             {
-                "subject_path": report_path.as_posix(),
-                "subject_sha256": file_hash(report_path),
+                "subject_path": manuscript_path.as_posix(),
+                "subject_sha256": file_hash(manuscript_path),
                 "evidence": [
                     {
                         "evidence_id": "evidence_1",
@@ -216,6 +220,11 @@ def test_evidence_gate_blocks_explicit_review_json_for_different_subject(
     summary["review"] = {"status": "skipped"}
     summary_path.write_text(json.dumps(summary), encoding="utf-8")
     review_override = summary_path.parent / "manual-llm-review.json"
+    manuscript_path = summary_path.parent / "paper-manuscript" / "manuscript.md"
+    manuscript_path.parent.mkdir(parents=True)
+    manuscript_path.write_text("# Paper\n\n## Results\n\nEvidence.", encoding="utf-8")
+    summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
     evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     unrelated_subject = tmp_path / "unrelated-report.md"

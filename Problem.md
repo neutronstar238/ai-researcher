@@ -32,6 +32,54 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260613-047 - Final-manuscript live review repeatedly caught unsupported prose overclaims
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 20:01:00 +08:00
+- Source: Task `111.1` real ACM-template autopilot review cycles.
+- Symptom: Live LLM review correctly blocked several final-manuscript attempts because the prose promoted title-level hits, per-paper similarity labels, pre-announced audit/build status, an ablation label, or reconstructed script steps beyond the attached evidence.
+- Impact: Without the block, the generated paper could have looked polished while still overstating what the data and local artifacts proved.
+- Evidence: Real ACM cycles `task111-acm-review-cycle` through `task111-acm-review-cycle-v7` produced actionable review failures before `task111-acm-review-cycle-v8` passed.
+- Root cause: The manuscript composer was still too willing to turn runtime metadata and nearby search hits into paper prose, even when those fields were only useful as local evidence pointers.
+- Workaround: None needed after the fix; the generator now keeps detailed title-level and classification evidence in runtime artifacts instead of promoting it into submission prose.
+- Next action: Add a citation validator and richer related-work classification before using retrieved metadata as formal references.
+- Linked tasks: `103.1`, `108.1`, `110.1`, `111.1`
+- Resolution: Conservative manuscript prose removed unsupported per-paper classifications, title-level reference lists, audit/build pre-announcements, named ablation claims, and script-step reconstructions. The LLM review prompt now gives clear pass semantics when all findings are informational and requires non-empty next steps.
+- Verification: Final real ACM run `runs/manual-live/task111-acm-review-cycle-v8/cycle-20260613T122156Z/cycle-summary.json` passed with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks.
+
+### P-20260613-046 - Autopilot LLM review evaluated the demo report instead of the final manuscript
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 19:54:00 +08:00
+- Source: Task `111.1` review-path audit after the first ACM full-cycle run.
+- Symptom: The autopilot review step was executed before final manuscript composition and used `demo.report_path`, so it judged the thinner experiment report instead of the paper-level manuscript later sent through publication audit and LaTeX build.
+- Impact: A cycle could pass physical gates while the actual generated paper draft had not been reviewed by the evidence-constrained LLM reviewer.
+- Evidence: The first ACM cycle under `runs/manual-live/task111-acm-cycle/` completed the loop but the review findings targeted omissions in the demo report rather than the final manuscript.
+- Root cause: `_run_autopilot_cycle` ran `_run_autopilot_review` immediately after `run-demo`, before `compose_publication_manuscript` wrote `paper-manuscript/manuscript.md`.
+- Workaround: None needed after the fix; autopilot now reviews the final manuscript.
+- Next action: Keep publication audit and evidence gate review binding anchored to `paper_manuscript.markdown_path` for future standalone review artifacts.
+- Linked tasks: `103.1`, `111.1`
+- Resolution: Moved autopilot review after manuscript composition, added `review-evidence-context.json`, and changed publication audit/evidence gate review binding to prefer the final paper draft while still requiring run record, validation report, and evidence map coverage.
+- Verification: Unit regressions assert autopilot passes `manuscript.md` as the review subject and include compact context plus run/validation/evidence artifacts. Final real ACM run `task111-acm-review-cycle-v8` passed review, publication audit, paper build, and evidence gate.
+
+### P-20260613-045 - Conference templates exposed thin manuscript and raw identifier layout overflow
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-13 19:48:00 +08:00
+- Source: Task `111.1` ACM/IEEE conference-template preflights.
+- Symptom: The generated manuscript compiled under conference templates but initially failed paper-quality expectations because it was too short and one raw machine identifier caused an overfull box.
+- Impact: A generic or journal-template pass did not prove conference-paper readiness; the manuscript needed more technical detail and safer prose before a CCF-style two-column layout could be trusted.
+- Evidence: Initial ACM preflight produced 5 pages out of the 6-page target, about 2914 words, and 1 overfull hbox from `letter_variance_calibrated_prototypes`; initial IEEE preflights produced only 4 pages.
+- Root cause: The paper manuscript was still closer to an expanded report than a conference-style technical draft, and machine identifiers were emitted verbatim in prose.
+- Workaround: None needed after the fix; identifiers are rendered in readable prose and the manuscript has deeper method, evidence, experiment, limitation, and venue-compatibility sections.
+- Next action: Continue adding target-venue rubrics and stronger baseline comparisons before treating a specific generated PDF as submission-ready.
+- Linked tasks: `108.1`, `110.1`, `111.1`
+- Resolution: Expanded the deterministic manuscript composer, added readable identifier normalization, and kept technical details evidence-bound rather than fabricated.
+- Verification: ACM preflight v2 passed paper quality with 6 pages, 4433 words, and 0 overfull hboxes. IEEE preflight v2 passed paper quality with 6 pages, 4433 words, and 0 overfull hboxes. Final ACM autopilot v8 passed the full evidence gate.
+
 ### P-20260613-044 - Generic-template stability matrix did not prove venue-template readiness
 
 - Status: Resolved

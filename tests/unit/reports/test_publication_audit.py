@@ -174,14 +174,19 @@ def test_publication_audit_accepts_standalone_review_json(
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
     report_path.write_text(_paper_style_report(), encoding="utf-8")
+    manuscript_path = tmp_path / "paper-manuscript" / "manuscript.md"
+    manuscript_path.parent.mkdir(parents=True)
+    manuscript_path.write_text(_paper_style_report(), encoding="utf-8")
+    summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
     evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     review_path = tmp_path / "llm-review.json"
     review_path.write_text(
         json.dumps(
             {
-                "subject_path": report_path.as_posix(),
-                "subject_sha256": file_hash(report_path),
+                "subject_path": manuscript_path.as_posix(),
+                "subject_sha256": file_hash(manuscript_path),
                 "evidence": [
                     {
                         "evidence_id": "evidence_1",
@@ -240,6 +245,11 @@ def test_publication_audit_blocks_standalone_review_for_different_subject(
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
     report_path.write_text(_paper_style_report(), encoding="utf-8")
+    manuscript_path = tmp_path / "paper-manuscript" / "manuscript.md"
+    manuscript_path.parent.mkdir(parents=True)
+    manuscript_path.write_text(_paper_style_report(), encoding="utf-8")
+    summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
     evidence_map_path = Path(summary["demo"]["evidence_map_path"])
     unrelated_subject = tmp_path / "unrelated-report.md"

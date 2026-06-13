@@ -1614,6 +1614,24 @@ A task can be checked only when all applicable items are true:
     - _References: task `100.1`; task `105.1`; task `108.1`; task `109.1`; `P-20260613-044`; user requirement that final paper-level output use LaTeX templates compatible with real venues or journals._
     - _Verify: focused stability/CLI tests, focused ruff, focused mypy, real generic-only `publication-stability` blocking on `external_template_coverage`, real Springer Nature `paper-build` preflight downloading `sn-jnl.cls` and passing paper quality, real Skin Segmentation `autopilot` with `springer-nature-sn-jnl` passing publication/evidence gates, and real three-cycle `ccf-b-matrix` passing with 1 external fetched template._
 
+- [x] 111. Require conference and journal template evidence plus final-manuscript review
+  - [x] 111.1 Gate stable output on external conference and journal templates
+    - Extend publication-stability targets to distinguish external fetched conference templates from external fetched journal templates.
+    - Require `ccf-b-matrix` to include at least one release-allowed external conference template and at least one release-allowed external journal template.
+    - Keep `mvp-matrix` free of conference/journal template category requirements.
+    - Add regression tests proving generic-only and journal-only matrices are blocked even when release count, datasets, and generic template diversity pass.
+    - Repair conference-template manuscript quality so ACM/IEEE-style two-column builds meet page count, word count, section-depth, and zero-overfull-hbox requirements.
+    - Change autonomous LLM evidence review to review the final `paper-manuscript/manuscript.md` instead of the thin demo report.
+    - Add a compact `review-evidence-context.json` evidence bundle so live review sees final-manuscript context without overlong prompts.
+    - Tighten manuscript prose so title-level literature hits, per-paper similarity classifications, audit/build pre-announcements, ablation labels, and script-step reconstructions are not promoted beyond local evidence.
+    - Require publication audit and evidence gate review binding to prefer `paper_manuscript.markdown_path`, while continuing to require run record, validation report, and evidence map coverage.
+    - Run real ACM and IEEE conference-template preflights and require paper quality to pass.
+    - Run a real ACM `autopilot` cycle with live ArXiv/OpenAlex search, live LLM review, reproduction check, publication audit, LaTeX build, paper quality, and evidence gate all passing.
+    - Rerun `publication-stability --target ccf-b-matrix` with release-allowed generic, ACM conference, and Springer journal cycles and require `external_conference_template_coverage` plus `external_journal_template_coverage` to pass.
+    - Do not hand-write root `autoresearch-vault/projects/.../progress` notes; project progress notes in the canonical vault are runtime-owned by AI-Researcher, while coding agents only update `Agent.md`, `Problem.md`, tasks, changelog, code, and tests.
+    - _References: task `103.1`; task `108.1`; task `110.1`; `P-20260613-045`; `P-20260613-046`; `P-20260613-047`; user requirement that CCF-B/Q3 claims use real conference/journal LaTeX templates, real API review, strict evidence gates, and no manually fabricated Obsidian progress notes._
+    - _Verify: focused manuscript/LLM/CLI/publication-audit/evidence-gate/stability tests, focused ruff, focused mypy, real ACM and IEEE preflight `paper-build` runs passing quality, repeated real ACM `autopilot` runs until live LLM/evidence feedback was resolved, final real ACM `autopilot` with `evidence_gate=pass` and 0 follow-up tasks, and real three-cycle `ccf-b-matrix` passing with score `1.000`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -1970,6 +1988,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 77,
       "tasks": ["110.1"]
+    },
+    {
+      "id": 78,
+      "tasks": ["111.1"]
     }
   ]
 }

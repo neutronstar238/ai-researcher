@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 from autoresearch.config import ConfigParser, SystemConfig
 from autoresearch.schemas import file_hash
 
+REVIEW_SUBJECT_MAX_CHARS = 36_000
+REVIEW_EVIDENCE_MAX_CHARS = 3_000
+
 
 class LLMClientError(RuntimeError):
     """Raised when a live LLM smoke request cannot complete."""
@@ -164,7 +167,11 @@ def run_llm_evidence_review(
     llm = config.deployment.llm
     endpoint = _chat_completions_endpoint(llm.base_url)
     subject_file = Path(subject_path)
-    subject_text = _read_limited_text(subject_file, label="subject", max_chars=12_000)
+    subject_text = _read_limited_text(
+        subject_file,
+        label="subject",
+        max_chars=REVIEW_SUBJECT_MAX_CHARS,
+    )
     evidence = [
         _read_evidence_artifact(index=index, path=Path(path))
         for index, path in enumerate(evidence_paths, start=1)
@@ -525,7 +532,11 @@ def _load_llm_config_and_api_key(
 
 
 def _read_evidence_artifact(*, index: int, path: Path) -> LLMEvidenceArtifact:
-    excerpt = _read_limited_text(path, label=f"evidence_{index}", max_chars=6_000)
+    excerpt = _read_limited_text(
+        path,
+        label=f"evidence_{index}",
+        max_chars=REVIEW_EVIDENCE_MAX_CHARS,
+    )
     return LLMEvidenceArtifact(
         evidence_id=f"evidence_{index}",
         path=path.as_posix(),
@@ -591,7 +602,13 @@ def _review_messages(
                 "evidence_refs. If the subject report cites internal metric evidence "
                 "edge IDs, treat those subject citations as valid when the IDs appear "
                 "inside a provided evidence-map artifact; this rule does not change "
-                "the outer evidence_refs IDs required in your JSON.\n\n"
+                "the outer evidence_refs IDs required in your JSON. Use verdict `pass` "
+                "when unsupported_claims is empty and all findings are informational. "
+                "Use `needs_revision` only when there is at least one unsupported claim, "
+                "missing caveat, warning finding, blocking finding, or concrete revision "
+                "action. next_steps must contain at least one non-empty string; if the "
+                "verdict is pass, use a maintenance step such as keeping the evidence "
+                "bundle attached.\n\n"
                 f"SUBJECT path={subject_path.as_posix()}\n{subject_text}\n\n"
                 f"LOCAL EVIDENCE\n{evidence_block}"
             ),
@@ -631,7 +648,10 @@ def _review_repair_messages(
                 "Do not cite file paths, URLs, paper titles, source_run_id values, or "
                 "nested evidence ids. Do not add findings that were not in the previous "
                 "response. If a previous finding lacks an allowed evidence ref, move its "
-                "claim into unsupported_claims instead of guessing a ref.\n\n"
+                "claim into unsupported_claims instead of guessing a ref. next_steps must "
+                "contain at least one non-empty string. Use verdict `pass` when "
+                "unsupported_claims is empty and all findings are informational; use "
+                "`needs_revision` only for a concrete revision item.\n\n"
                 f"Previous invalid response:\n{previous_response[:3000]}"
             ),
         },

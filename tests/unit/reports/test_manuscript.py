@@ -23,12 +23,20 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert Path(artifact.json_path).is_file()
     assert artifact.vault_markdown_path is not None
     assert Path(artifact.vault_markdown_path).is_file()
-    assert artifact.word_count >= 2500
+    assert artifact.word_count >= 3500
     assert artifact.section_word_counts["Method"] >= 260
+    assert artifact.section_word_counts["Experiments"] >= 600
     assert "accuracy delta of 0.0400" in manuscript
     assert "The next system action should not be to submit the paper" in manuscript
-    assert "Representative retrieved records are:" in manuscript
+    assert "Representative retrieved records are retained" in manuscript
     assert "not a submission claim" in manuscript
+    assert "Current finding classifications are:" not in manuscript
+    assert "Retrieved record 1:" not in manuscript
+    assert "was classified as" not in manuscript
+    assert "Representative similarity findings are retained" in manuscript
+    assert "Prototype Calibration for Digits was retrieved" not in manuscript
+    assert "pendigits_variance_calibrated_prototypes" not in manuscript
+    assert "pendigits variance calibrated prototypes" in manuscript
 
     paper_artifact = build_latex_paper_from_markdown(
         artifact.markdown_path,

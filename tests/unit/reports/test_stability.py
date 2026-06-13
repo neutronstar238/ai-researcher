@@ -7,7 +7,13 @@ from autoresearch.reports import PublicationStabilityVerdict, audit_publication_
 def test_publication_stability_passes_multi_dataset_matrix(tmp_path: Path) -> None:
     cycles = (
         _write_cycle(tmp_path, "cycle-a", dataset="UCI Pendigits", template="generic-article-one-column"),
-        _write_cycle(tmp_path, "cycle-b", dataset="UCI Letter Recognition", template="generic-article-two-column"),
+        _write_cycle(
+            tmp_path,
+            "cycle-b",
+            dataset="UCI Letter Recognition",
+            template="acm-acmart-sigconf",
+            template_source_kind="external_fetched",
+        ),
         _write_cycle(
             tmp_path,
             "cycle-c",
@@ -30,12 +36,18 @@ def test_publication_stability_passes_multi_dataset_matrix(tmp_path: Path) -> No
     assert checks["distinct_real_datasets"].status.value == "pass"
     assert checks["paper_template_diversity"].status.value == "pass"
     assert checks["external_template_coverage"].status.value == "pass"
-    assert report.cycles[2].paper_template_source_kind == "external_fetched"
+    assert checks["external_conference_template_coverage"].status.value == "pass"
+    assert checks["external_journal_template_coverage"].status.value == "pass"
+    assert report.cycles[1].paper_template_venue_kind == "conference"
+    assert report.cycles[2].paper_template_venue_kind == "journal"
     assert Path(report.output_path).is_file()
     assert Path(report.markdown_path).is_file()
     payload = json.loads(Path(report.output_path).read_text(encoding="utf-8"))
     assert payload["target"]["min_external_templates"] == 1
+    assert payload["target"]["min_external_conference_templates"] == 1
+    assert payload["target"]["min_external_journal_templates"] == 1
     assert payload["cycles"][2]["paper_template_source_kind"] == "external_fetched"
+    assert payload["cycles"][2]["paper_template_venue_kind"] == "journal"
 
 
 def test_publication_stability_blocks_generic_template_only_overclaim(tmp_path: Path) -> None:
@@ -55,7 +67,35 @@ def test_publication_stability_blocks_generic_template_only_overclaim(tmp_path: 
     assert report.verdict is PublicationStabilityVerdict.BLOCKED
     assert checks["paper_template_diversity"].status.value == "pass"
     assert checks["external_template_coverage"].status.value == "fail"
+    assert checks["external_conference_template_coverage"].status.value == "fail"
+    assert checks["external_journal_template_coverage"].status.value == "fail"
     assert checks["external_template_coverage"].next_action
+
+
+def test_publication_stability_blocks_journal_only_template_overclaim(tmp_path: Path) -> None:
+    cycles = (
+        _write_cycle(tmp_path, "cycle-a", dataset="UCI Pendigits", template="generic-article-one-column"),
+        _write_cycle(tmp_path, "cycle-b", dataset="UCI Letter Recognition", template="generic-article-two-column"),
+        _write_cycle(
+            tmp_path,
+            "cycle-c",
+            dataset="UCI Optical Digits",
+            template="springer-nature-sn-jnl",
+            template_source_kind="external_fetched",
+        ),
+    )
+
+    report = audit_publication_stability(
+        cycle_summary_paths=cycles,
+        target="ccf-b-matrix",
+        output_dir=tmp_path / "matrix",
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is PublicationStabilityVerdict.BLOCKED
+    assert checks["external_template_coverage"].status.value == "pass"
+    assert checks["external_journal_template_coverage"].status.value == "pass"
+    assert checks["external_conference_template_coverage"].status.value == "fail"
 
 
 def test_publication_stability_blocks_single_cycle_overclaim(tmp_path: Path) -> None:
@@ -188,7 +228,7 @@ def _write_cycle(
         json.dumps(
             {
                 "status": "compiled",
-                "template": {"id": template, "source_kind": template_source_kind},
+                "template": _template_payload(template, template_source_kind),
                 "paper_quality": {"passed": release_allowed},
             }
         ),
@@ -214,7 +254,7 @@ def _write_cycle(
             json.dumps(
                 {
                     "status": "compiled_with_quality_issues",
-                    "template": {"id": template, "source_kind": template_source_kind},
+                    "template": _template_payload(template, template_source_kind),
                     "paper_quality": {"passed": stale_summary_paper_quality},
                 }
             ),
@@ -238,3 +278,12 @@ def _write_cycle(
         encoding="utf-8",
     )
     return summary_path
+
+
+def _template_payload(template_id: str, source_kind: str) -> dict[str, str]:
+    payload = {"id": template_id, "source_kind": source_kind}
+    if template_id == "acm-acmart-sigconf":
+        payload.update({"display_name": "ACM acmart SIGCONF", "document_class": "acmart"})
+    if template_id == "springer-nature-sn-jnl":
+        payload.update({"display_name": "Springer Nature sn-jnl", "document_class": "sn-jnl"})
+    return payload

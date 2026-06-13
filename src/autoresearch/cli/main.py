@@ -175,7 +175,8 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher publication-stability <cycle-summary.json> ... --target ccf-b-matrix` "
         "after several complete cycles. The matrix requires multiple release-allowed cycles, "
         "distinct real public datasets, LaTeX template diversity, and at least one fetched "
-        "external venue/publisher template before stable CCF-B/Q3 claims are allowed.",
+        "external conference template plus one fetched external journal template before stable "
+        "CCF-B/Q3 claims are allowed.",
     ),
     "research/approve.toml": (
         "Approve the latest pending dangerous runtime action.",
@@ -2389,23 +2390,6 @@ def _run_autopilot_cycle(
         output_dir=cycle_dir / "demo",
         timeout_seconds=timeout_seconds,
     )
-    review_result = _run_autopilot_review(
-        enabled=review,
-        config_path=config_path,
-        env_path=env_path,
-        vault=vault,
-        project_id=project_id,
-        source_task_id="autopilot",
-        cycle_dir=cycle_dir,
-        report_path=Path(demo_result.report_path),
-        evidence_paths=[
-            Path(demo_result.validation_json_path),
-            Path(demo_result.evidence_map_path),
-            Path(demo_result.run_record_path),
-        ],
-        max_tokens=max_tokens,
-        min_quality_score=min_quality_score,
-    )
     reproduction_check = _run_cycle_reproduction_check(
         cycle_dir=cycle_dir,
         demo=demo,
@@ -2452,7 +2436,7 @@ def _run_autopilot_cycle(
             "validation_json_path": Path(demo_result.validation_json_path).as_posix(),
             "evidence_map_path": Path(demo_result.evidence_map_path).as_posix(),
         },
-        "review": review_result,
+        "review": {"status": "pending_manuscript_review" if review else "skipped"},
         "reproduction_check": reproduction_check,
         "followups": {
             "state_path": state.as_posix(),
@@ -2471,6 +2455,55 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["paper_manuscript"] = paper_manuscript.to_dict()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    review_context_path = cycle_dir / "review-evidence-context.json"
+    review_context = {
+        "cycle_id": cycle_id,
+        "project_id": project_id,
+        "candidate": summary["candidate"],
+        "literature": summary["literature"],
+        "similarity": summary["similarity"],
+        "demo": summary["demo"],
+        "reproduction_check": reproduction_check,
+        "paper_manuscript": paper_manuscript.to_dict(),
+    }
+    review_context_path.write_text(
+        json.dumps(review_context, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    summary["review_context_path"] = review_context_path.as_posix()
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    review_evidence_paths: list[Path | str] = [
+        review_context_path,
+        Path(demo_result.report_path),
+        Path(demo_result.run_record_path),
+        Path(demo_result.validation_json_path),
+        Path(demo_result.evidence_map_path),
+    ]
+    for optional_path in (
+        getattr(literature_report, "summary_path", None),
+        getattr(similarity_report, "summary_path", None),
+        similarity_project_path,
+        reproduction_check.get("json_path"),
+    ):
+        if optional_path:
+            review_evidence_paths.append(optional_path)
+    review_result = _run_autopilot_review(
+        enabled=review,
+        config_path=config_path,
+        env_path=env_path,
+        vault=vault,
+        project_id=project_id,
+        source_task_id="autopilot",
+        cycle_dir=cycle_dir,
+        report_path=Path(paper_manuscript.markdown_path),
+        evidence_paths=review_evidence_paths,
+        max_tokens=max_tokens,
+        min_quality_score=min_quality_score,
+    )
+    summary["review"] = review_result
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     publication_audit = audit_publication_quality(

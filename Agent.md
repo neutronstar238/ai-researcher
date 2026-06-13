@@ -62,6 +62,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-13 20:26:11 +08:00 - Codex - Task 111.1 conference/journal template matrix and final-manuscript review
+
+- Request: Continue toward strict CCF-B/Q3-level output with real API/retrieval evidence, real LaTeX template runs, final-paper quality review, and no hand-written root Obsidian progress notes from the coding agent.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `CHANGELOG.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/reports/stability.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/reports/test_stability.py`
+- Summary:
+  - Split external template stability into conference-style and journal-style requirements, so `ccf-b-matrix` now needs both a release-allowed fetched conference template and a release-allowed fetched journal template.
+  - Added `paper_template_venue_kind` to stability cycle records and Markdown/JSON output, with regressions for generic-only and journal-only overclaims.
+  - Moved autopilot LLM review after publication-manuscript generation so the reviewer audits `paper-manuscript/manuscript.md`, not the thinner demo report.
+  - Added compact `review-evidence-context.json` review evidence and adjusted LLM review prompt budgets/semantics so live full-manuscript review is less likely to truncate or return ambiguous revisions.
+  - Changed publication-audit and evidence-gate standalone review binding to prefer the final manuscript and require run-record, validation-report, and evidence-map coverage.
+  - Expanded the deterministic manuscript composer enough for ACM/IEEE conference templates while removing unsupported title-level source lists, per-paper similarity classifications, audit/build pre-announcements, named ablation claims, and script-step reconstructions from paper prose.
+  - Confirmed root `autoresearch-vault/projects/.../progress` notes are runtime-owned; this task did not hand-write canonical vault progress notes. Runtime outputs used for verification were written under `runs/manual-live/...` by `airesearcher` commands.
+- Verification:
+  - `poetry run pytest tests\unit\reports\test_manuscript.py tests\unit\llm\test_client.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\reports\test_publication_audit.py::test_publication_audit_accepts_standalone_review_json tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_standalone_review_for_different_subject tests\unit\reports\test_evidence_gate.py::test_evidence_gate_accepts_explicit_review_json_for_skipped_cycle tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_explicit_review_json_for_different_subject tests\unit\reports\test_stability.py -q`: passed with 23 tests.
+  - `poetry run ruff check src\autoresearch\cli\main.py src\autoresearch\llm\client.py src\autoresearch\reports\stability.py src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\evidence_gate.py tests\unit\cli\test_main.py tests\unit\llm\test_client.py tests\unit\reports\test_stability.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py`: passed.
+  - `poetry run mypy src\autoresearch\cli\main.py src\autoresearch\llm\client.py src\autoresearch\reports\stability.py src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py src\autoresearch\reports\evidence_gate.py`: passed; mypy still notes unused module override sections for `langchain.*` and `langgraph.*`.
+  - `poetry run pytest tests\smoke tests\unit -q`: passed with 441 tests and 4 skipped opt-in live API smoke tests.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task108-template-cycle\cycle-20260613T111030Z\cycle-summary.json runs\manual-live\task110-venue-cycle\cycle-20260613T114041Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task111-springer-only-stability --no-fail-on-unstable`: blocked as expected with `external_conference_template_coverage=fail`.
+  - ACM preflight v2: `poetry run airesearcher paper-build runs\manual-live\task111-acm-preflight-manuscript\manuscript.md --output-dir runs\manual-live\task111-acm-preflight-paper-build-v2 --template-id acm-acmart-sigconf --timeout-seconds 120 --vault runs\manual-live\task111-acm-preflight-vault --project-id task111_acm_preflight`: passed with compiled PDF, 6 pages, 4433 words, and 0 overfull hboxes.
+  - IEEE preflight v2: `poetry run airesearcher paper-build runs\manual-live\task111-acm-preflight-manuscript\manuscript.md --output-dir runs\manual-live\task111-ieee-preflight-paper-build-v2 --template-id ieee-ieeetran-conference --timeout-seconds 120 --vault runs\manual-live\task111-ieee-preflight-vault --project-id task111_ieee_preflight`: passed with compiled PDF, 6 pages, 4433 words, and 0 overfull hboxes.
+  - Repeated real ACM autopilot cycles with live ArXiv/OpenAlex search and live LLM review caught and drove fixes for unsupported prose. Final command `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task111-acm-review-vault-v8 --cache runs\manual-live\task108-template-cache --output-dir runs\manual-live\task111-acm-review-cycle-v8 --state runs\manual-live\task111-acm-review-state-v8.json --project-id task111_acm_review_cycle_v8 --demo letter_variance_calibrated_prototypes --paper-template-id acm-acmart-sigconf --timeout-seconds 120 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85`: passed with `source_preflight=pass`, `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`, and 0 follow-up tasks.
+  - `poetry run airesearcher publication-stability runs\manual-live\task104-similarity-classification\cycle-summary.json runs\manual-live\task111-acm-review-cycle-v8\cycle-20260613T122156Z\cycle-summary.json runs\manual-live\task110-venue-cycle\cycle-20260613T114041Z\cycle-summary.json --target ccf-b-matrix --output-dir runs\manual-live\task111-conference-journal-stability-v2 --vault runs\manual-live\task111-acm-review-vault-v8 --project-id task111_acm_review_cycle_v8 --no-fail-on-unstable`: passed with `stable=true`, score `1.000`, and conference plus journal external-template coverage passing.
+- Problems:
+  - `P-20260613-045` added and resolved for conference-template page/layout failures.
+  - `P-20260613-046` added and resolved for reviewing the demo report instead of the final manuscript.
+  - `P-20260613-047` added and resolved for unsupported final-manuscript prose caught by live review.
+- Follow-up:
+  - Add a citation validator and richer abstract/full-text related-work classifier before any generated paper can claim venue-specific submission readiness without human disciplinary review.
+
 ### 2026-06-13 19:42:04 +08:00 - Codex - Task 110.1 external venue-template stability gate
 
 - Request: Continue toward strict CCF-B/Q3-quality output, but keep Obsidian project progress notes runtime-owned rather than hand-written by the coding agent.

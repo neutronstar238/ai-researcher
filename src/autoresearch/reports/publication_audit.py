@@ -743,21 +743,26 @@ def _review_artifact_binding_check(
     review_source: str,
 ) -> PublicationAuditCheck:
     demo = _dict(summary.get("demo"))
-    report_path = _resolve_path(demo.get("report_path"), base_dir)
-    if report_path is None or not report_path.exists():
+    subject_path = _manuscript_path(summary, base_dir)
+    if subject_path is None or not subject_path.exists():
         return PublicationAuditCheck(
             "review_artifact_binding",
             PublicationAuditCheckStatus.FAIL,
             "blocking",
-            "Standalone review artifact cannot be bound because the cycle report is missing.",
-            (review_source, "cycle_summary.demo.report_path"),
-            "Regenerate the cycle report before using a standalone review artifact.",
+            "Standalone review artifact cannot be bound because the reviewed paper draft is missing.",
+            (
+                review_source,
+                "cycle_summary.paper_manuscript.markdown_path",
+                "cycle_summary.demo.report_path",
+            ),
+            "Regenerate the paper draft before using a standalone review artifact.",
         )
 
-    subject_ok = _review_subject_matches_report(review, report_path, base_dir)
+    subject_ok = _review_subject_matches_report(review, subject_path, base_dir)
     required_paths = tuple(
         path
         for path in (
+            _resolve_path(demo.get("run_record_path"), base_dir),
             _resolve_path(demo.get("validation_json_path"), base_dir),
             _resolve_path(demo.get("evidence_map_path"), base_dir),
         )
@@ -777,11 +782,11 @@ def _review_artifact_binding_check(
             f"subject_match={str(subject_ok).lower()}, "
             f"covered_required_evidence={len(covered_paths)}/{len(required_paths)}."
         ),
-        (review_source, report_path.as_posix(), *(path.as_posix() for path in required_paths)),
+        (review_source, subject_path.as_posix(), *(path.as_posix() for path in required_paths)),
         None
         if passed
         else (
-            "Rerun llm-review against this cycle's report plus validation and evidence-map "
+            "Rerun llm-review against this cycle's paper draft plus run, validation, and evidence-map "
             "artifacts before publication audit."
         ),
     )

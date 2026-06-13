@@ -403,7 +403,10 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher publication-stability" in (
         commands_dir / "research" / "publication-stability.toml"
     ).read_text(encoding="utf-8")
-    assert "external venue/publisher template" in (
+    assert "external conference template" in (
+        commands_dir / "research" / "publication-stability.toml"
+    ).read_text(encoding="utf-8")
+    assert "external journal template" in (
         commands_dir / "research" / "publication-stability.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher inspiration-refresh" in (
@@ -1134,6 +1137,21 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             }
         )
 
+    review_calls: list[dict[str, object]] = []
+
+    def fake_autopilot_review(**kwargs: object) -> dict[str, object]:
+        review_calls.append(dict(kwargs))
+        assert kwargs["enabled"] is False
+        assert Path(kwargs["report_path"]).name == "manuscript.md"
+        evidence_names = {Path(path).name for path in kwargs["evidence_paths"]}
+        assert {
+            "review-evidence-context.json",
+            "report.md",
+            "run-record.json",
+            "validation-report.json",
+        } <= evidence_names
+        return {"status": "skipped"}
+
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
@@ -1145,6 +1163,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "build_latex_paper_from_markdown", fake_paper_build)
     monkeypatch.setattr(cli_main, "_run_cycle_reproduction_check", fake_reproduction_check)
     monkeypatch.setattr(cli_main, "run_evidence_gate", fake_evidence_gate)
+    monkeypatch.setattr(cli_main, "_run_autopilot_review", fake_autopilot_review)
 
     output_dir = tmp_path / "runs" / "autopilot"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
@@ -1185,12 +1204,14 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "dataset/community/news signals only; not scholarly evidence"
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert Path(payload["review_context_path"]).name == "review-evidence-context.json"
     assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
     assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
+    assert len(review_calls) == 1
 
 
 def test_autopilot_source_preflight_blocks_cooling_source(tmp_path: Path, monkeypatch) -> None:

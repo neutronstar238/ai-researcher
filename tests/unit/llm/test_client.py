@@ -275,6 +275,59 @@ def test_run_llm_review_retries_once_on_critical_quality_failure(
     assert "\"evidence_1\"" in result.response_text
 
 
+def test_run_llm_evidence_review_keeps_long_manuscript_tail(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    subject = tmp_path / "manuscript.md"
+    evidence = tmp_path / "evidence.json"
+    subject.write_text(("method evidence paragraph\n" * 900) + "TAIL_SENTINEL", encoding="utf-8")
+    evidence.write_text('{"status": "passed"}', encoding="utf-8")
+    calls: list[list[dict[str, str]] | None] = []
+
+    def fake_post_chat_completion(**kwargs: object) -> dict[str, object]:
+        messages = kwargs.get("messages")
+        calls.append(messages if isinstance(messages, list) else None)
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "verdict": "pass",
+                                "summary": "The manuscript is supported by provided evidence.",
+                                "findings": [
+                                    {
+                                        "severity": "info",
+                                        "claim": "Evidence status is passed.",
+                                        "evidence_refs": ["evidence_1"],
+                                    }
+                                ],
+                                "unsupported_claims": [],
+                                "next_steps": ["Keep the evidence bundle with the paper."],
+                            }
+                        )
+                    }
+                }
+            ],
+            "usage": {"completion_tokens": 20},
+        }
+
+    monkeypatch.setenv("AUTORESEARCH_LLM_API_KEY", "sk-testsecret")
+    monkeypatch.setattr(llm_client, "_post_chat_completion", fake_post_chat_completion)
+
+    result = llm_client.run_llm_evidence_review(
+        subject_path=subject,
+        evidence_paths=[evidence],
+        config_path=Path("missing-config.yaml"),
+        env_path=Path("missing.env"),
+    )
+
+    assert result.quality.score == 1.0
+    assert calls[0] is not None
+    assert "TAIL_SENTINEL" in calls[0][1]["content"]
+
+
 def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
     messages = _review_messages(
         subject_path=Path("report.md"),
@@ -292,4 +345,5 @@ def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
     prompt = messages[1]["content"]
     assert "internal metric evidence edge IDs" in prompt
     assert "outer evidence_refs IDs" in prompt
+    assert "Use verdict `pass` when unsupported_claims is empty" in prompt
     assert "evidence_1" in prompt

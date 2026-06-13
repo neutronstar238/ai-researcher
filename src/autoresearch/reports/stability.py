@@ -44,6 +44,8 @@ class PublicationStabilityTarget:
     min_distinct_real_datasets: int
     min_distinct_templates: int
     min_external_templates: int
+    min_external_conference_templates: int
+    min_external_journal_templates: int
     max_warnings_per_cycle: int
 
 
@@ -87,6 +89,7 @@ class CycleStabilityRecord:
     release_allowed: bool
     paper_template: str
     paper_template_source_kind: str
+    paper_template_venue_kind: str
     paper_quality_passed: bool
 
     def to_dict(self) -> dict[str, Any]:
@@ -105,6 +108,7 @@ class CycleStabilityRecord:
             "release_allowed": self.release_allowed,
             "paper_template": self.paper_template,
             "paper_template_source_kind": self.paper_template_source_kind,
+            "paper_template_venue_kind": self.paper_template_venue_kind,
             "paper_quality_passed": self.paper_quality_passed,
         }
 
@@ -148,6 +152,8 @@ class PublicationStabilityReport:
                 "min_distinct_real_datasets": self.target.min_distinct_real_datasets,
                 "min_distinct_templates": self.target.min_distinct_templates,
                 "min_external_templates": self.target.min_external_templates,
+                "min_external_conference_templates": self.target.min_external_conference_templates,
+                "min_external_journal_templates": self.target.min_external_journal_templates,
                 "max_warnings_per_cycle": self.target.max_warnings_per_cycle,
             },
             "verdict": self.verdict.value,
@@ -172,6 +178,8 @@ STABILITY_TARGETS = {
         min_distinct_real_datasets=3,
         min_distinct_templates=2,
         min_external_templates=1,
+        min_external_conference_templates=1,
+        min_external_journal_templates=1,
         max_warnings_per_cycle=2,
     ),
     "mvp-matrix": PublicationStabilityTarget(
@@ -183,6 +191,8 @@ STABILITY_TARGETS = {
         min_distinct_real_datasets=1,
         min_distinct_templates=1,
         min_external_templates=0,
+        min_external_conference_templates=0,
+        min_external_journal_templates=0,
         max_warnings_per_cycle=5,
     ),
 }
@@ -276,6 +286,8 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
         real_dataset = float(metrics.get("test_rows", 0) or 0) >= 1000
     paper_quality = paper_build.get("paper_quality", {}) if isinstance(paper_build, dict) else {}
     template = paper_build.get("template", {}) if isinstance(paper_build, dict) else {}
+    paper_template = _text(template.get("id") or paper_build.get("template_id") or "unknown")
+    paper_template_source_kind = _text(template.get("source_kind") or paper_build.get("template_source_kind") or "unknown")
     return CycleStabilityRecord(
         cycle_summary_path=summary_path.as_posix(),
         cycle_id=_text(summary.get("cycle_id") or summary_path.parent.name),
@@ -289,8 +301,9 @@ def _cycle_record(summary_path: Path) -> CycleStabilityRecord:
         publication_warning_count=_warning_count(publication),
         evidence_verdict=_text(evidence_gate.get("verdict") or summary.get("evidence_gate", {}).get("verdict") or "unknown"),
         release_allowed=bool(evidence_gate.get("release_allowed")),
-        paper_template=_text(template.get("id") or paper_build.get("template_id") or "unknown"),
-        paper_template_source_kind=_text(template.get("source_kind") or paper_build.get("template_source_kind") or "unknown"),
+        paper_template=paper_template,
+        paper_template_source_kind=paper_template_source_kind,
+        paper_template_venue_kind=_template_venue_kind(template, template_id=paper_template, source_kind=paper_template_source_kind),
         paper_quality_passed=bool(paper_quality.get("passed")),
     )
 
@@ -312,6 +325,20 @@ def _stability_checks(
         for cycle in release_allowed
         if cycle.paper_template != "unknown"
         and cycle.paper_template_source_kind == "external_fetched"
+    }
+    external_conference_templates = {
+        cycle.paper_template
+        for cycle in release_allowed
+        if cycle.paper_template != "unknown"
+        and cycle.paper_template_source_kind == "external_fetched"
+        and cycle.paper_template_venue_kind == "conference"
+    }
+    external_journal_templates = {
+        cycle.paper_template
+        for cycle in release_allowed
+        if cycle.paper_template != "unknown"
+        and cycle.paper_template_source_kind == "external_fetched"
+        and cycle.paper_template_venue_kind == "journal"
     }
     failed_cycles = tuple(cycle for cycle in cycles if not cycle.release_allowed)
     warning_over_budget = tuple(
@@ -367,6 +394,34 @@ def _stability_checks(
             f"{len(external_templates)}; target requires at least {target.min_external_templates}.",
             tuple(cycle.cycle_summary_path for cycle in release_allowed if cycle.paper_template in external_templates),
             "Run at least one release-allowed cycle with a fetched venue or publisher template such as IEEEtran, ACM acmart, or Springer Nature.",
+        ),
+        _threshold_check(
+            "external_conference_template_coverage",
+            len(external_conference_templates),
+            target.min_external_conference_templates,
+            "blocking",
+            "External conference-style LaTeX templates among release-allowed cycles: "
+            f"{len(external_conference_templates)}; target requires at least {target.min_external_conference_templates}.",
+            tuple(
+                cycle.cycle_summary_path
+                for cycle in release_allowed
+                if cycle.paper_template in external_conference_templates
+            ),
+            "Run at least one release-allowed cycle with an ACM acmart or IEEEtran conference template.",
+        ),
+        _threshold_check(
+            "external_journal_template_coverage",
+            len(external_journal_templates),
+            target.min_external_journal_templates,
+            "blocking",
+            "External journal-style LaTeX templates among release-allowed cycles: "
+            f"{len(external_journal_templates)}; target requires at least {target.min_external_journal_templates}.",
+            tuple(
+                cycle.cycle_summary_path
+                for cycle in release_allowed
+                if cycle.paper_template in external_journal_templates
+            ),
+            "Run at least one release-allowed cycle with an external journal template such as Springer Nature.",
         ),
         _failed_cycle_check(failed_cycles),
         _paper_quality_check(release_allowed),
@@ -546,6 +601,29 @@ def _text(value: Any) -> str:
     return value if isinstance(value, str) and value else "unknown"
 
 
+def _template_venue_kind(
+    template: dict[str, Any],
+    *,
+    template_id: str,
+    source_kind: str,
+) -> str:
+    explicit = template.get("venue_kind") or template.get("template_venue_kind")
+    if isinstance(explicit, str) and explicit in {"conference", "journal", "generic"}:
+        return explicit
+    if source_kind == "built_in_generic":
+        return "generic"
+    haystack = " ".join(
+        _text(template.get(key))
+        for key in ("id", "display_name", "document_class", "class_file")
+    )
+    haystack = f"{template_id} {haystack}".casefold()
+    if any(marker in haystack for marker in ("conference", "sigconf", "ieeetran", "acmart")):
+        return "conference"
+    if any(marker in haystack for marker in ("journal", "springer", "sn-jnl", "jnl")):
+        return "journal"
+    return "unknown"
+
+
 def _float_or_none(value: Any) -> float | None:
     if isinstance(value, int | float):
         return float(value)
@@ -572,12 +650,14 @@ def _markdown(report: PublicationStabilityReport) -> str:
         f"- Minimum distinct real datasets: `{report.target.min_distinct_real_datasets}`",
         f"- Minimum distinct LaTeX templates: `{report.target.min_distinct_templates}`",
         f"- Minimum external venue/publisher templates: `{report.target.min_external_templates}`",
+        f"- Minimum external conference templates: `{report.target.min_external_conference_templates}`",
+        f"- Minimum external journal templates: `{report.target.min_external_journal_templates}`",
         f"- Maximum publication warnings per cycle: `{report.target.max_warnings_per_cycle}`",
         "",
         "## Cycles",
         "",
-        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Warnings |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
+        "| Cycle | Demo | Dataset | Real data | Publishable | Release | Template | Source kind | Venue kind | Warnings |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
     ]
     for cycle in report.cycles:
         lines.append(
@@ -585,6 +665,7 @@ def _markdown(report: PublicationStabilityReport) -> str:
             f"`{str(cycle.real_dataset).lower()}` | `{str(cycle.publishable).lower()}` | "
             f"`{str(cycle.release_allowed).lower()}` | `{cycle.paper_template}` | "
             f"`{cycle.paper_template_source_kind}` | "
+            f"`{cycle.paper_template_venue_kind}` | "
             f"`{cycle.publication_warning_count}` |"
         )
     lines.extend(
@@ -690,7 +771,7 @@ def _issue_body(
             "",
             "## Required Next Action",
             "",
-            "- Run additional real public benchmark cycles, include at least one release-allowed external venue or publisher LaTeX template, and rerun this matrix before claiming stable CCF-B/Q3 output.",
+            "- Run additional real public benchmark cycles, include release-allowed external conference and journal LaTeX templates, and rerun this matrix before claiming stable CCF-B/Q3 output.",
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
