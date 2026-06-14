@@ -110,6 +110,70 @@ def test_run_llm_smoke_retries_once_on_critical_quality_failure(monkeypatch) -> 
     assert "previous response failed" in calls[1][1]["content"].lower()
 
 
+def test_post_chat_completion_omits_max_tokens_by_default(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode("utf-8")
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="https://llm.example.test/v1/chat/completions",
+        api_key="sk-testsecret",
+        model_name="research-model",
+        timeout_seconds=10,
+        max_tokens=None,
+    )
+
+    assert "max_tokens" not in captured["payload"]
+
+
+def test_post_chat_completion_includes_explicit_max_tokens(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode("utf-8")
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="https://llm.example.test/v1/chat/completions",
+        api_key="sk-testsecret",
+        model_name="research-model",
+        timeout_seconds=10,
+        max_tokens=4096,
+    )
+
+    assert captured["payload"]["max_tokens"] == 4096
+
+
 def test_evaluate_llm_review_quality_accepts_known_local_evidence_refs() -> None:
     result = evaluate_llm_review_quality(
         json.dumps(

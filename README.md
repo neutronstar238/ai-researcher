@@ -14,8 +14,8 @@ claims, and write everything back into a human-readable knowledge base.
 ![AI-Researcher capability overview](docs/assets/readme/capability-overview.png)
 
 > Status: local MVP with tested research-loop components and integration contracts. The
-> repository includes the Obsidian vault substrate, OpenCode integration manifest, OpenClaw
-> channel runbook, scheduled `serve` / `autopilot` entrypoints, public-source literature
+> repository includes the Obsidian vault substrate, OpenCode integration manifest, optional
+> channel adapter runbook, scheduled `serve` / `autopilot` entrypoints, public-source literature
 > retrieval, real benchmark demos, validation and reporting gates, LaTeX paper builds, and
 > controlled self-evolution scaffolding. It is not yet a production multi-user service, and it
 > must not claim CCF-B/Q3 publishability unless the publication audit and physical evidence gate
@@ -25,10 +25,11 @@ claims, and write everything back into a human-readable knowledge base.
 
 | Capability | What exists now | Main commands and files |
 |---|---|---|
-| OpenCode backend connection | Uses OpenCode as an external code-drafting backend while AI-Researcher keeps validation, approval, memory, and commit authority. | `poetry run airesearcher code-agents opencode init`, `integrations/opencode/code-agent.json` |
-| Scheduled self-loop | Runs recurring research cycles for discovery, experiment, validation, review, audit, paper build, and follow-up issue creation. | `poetry run airesearcher serve`, `poetry run airesearcher autopilot --watch` |
-| Periodic push and approval | Records OpenClaw channel install metadata and maps dangerous actions to an AI-Researcher approval queue. | `poetry run airesearcher channels openclaw init`, `.airesearcher/runtime-approvals.json` |
-| Obsidian knowledge core | Stores literature, project progress, evidence, issues, failures, skills, strategy cards, review notes, and rollback history as linked Markdown. | `autoresearch-vault/`, `poetry run airesearcher obsidian-setup` |
+| OpenCode backend connection | Uses OpenCode as an external code-drafting backend while AI-Researcher keeps validation, approval, memory, and commit authority. | `airesearcher code-agents opencode init`, `integrations/opencode/code-agent.json` |
+| Scheduled self-loop | Runs recurring research cycles for discovery, experiment, validation, review, audit, paper build, and follow-up issue creation. | `airesearcher serve`, `airesearcher autopilot --watch` |
+| Periodic push and approval | Records optional channel adapter metadata and maps dangerous actions to an AI-Researcher approval queue. | `airesearcher channels adapters init`, `.airesearcher/runtime-approvals.json` |
+| OA-first PDF source manifest | Records ScanSci PDF as an optional backend while keeping OA/legal sources as the default and approval-gating restricted or bypass-oriented sources. | `airesearcher pdf-sources scansci-pdf init`, `integrations/scansci-pdf/pdf-source.json` |
+| Obsidian knowledge core | Stores literature, project progress, evidence, issues, failures, skills, strategy cards, review notes, and rollback history as linked Markdown. | `autoresearch-vault/`, `airesearcher obsidian-setup` |
 | Evidence gates | Blocks paper or release claims when run records, validation reports, reproduction checks, reviews, publication audits, paper builds, or PDFs are missing or weak. | `publication-audit`, `paper-build`, `evidence-gate` |
 | Controlled self-evolution | Writes candidate skill and strategy updates, then requires validation, human approval, shadow evaluation, and rollback paths before promotion. | `skill-evolve`, `skill-polish-audit`, strategy cards in the vault |
 
@@ -39,8 +40,8 @@ claims, and write everything back into a human-readable knowledge base.
 Prerequisites:
 
 - Python 3.10+
+- Node.js 20+ if you want the npm-style launcher
 - Git
-- Poetry
 - Optional: OpenCode, if you want AI-Researcher to hand off code-writing tasks
 - Optional: Obsidian, if you want to browse the vault visually
 
@@ -49,19 +50,25 @@ Install the project:
 ```bash
 git clone <your-fork-or-repo-url>
 cd AIResearch
-poetry install
-poetry run airesearcher doctor
+python -m pip install -e .
+npm install
+airesearcher doctor
 ```
 
-Create local configuration:
+Start the guided first-deploy wizard:
 
 ```bash
-poetry run airesearcher deploy-setup
+airesearcher setup
+# or
+npm run setup
 ```
 
-The guided setup asks for provider label, API base URL, model name, API key, and optional
-WeChat or Feishu channel settings. Secrets are written to `.env`; non-secret settings stay in
-`config.yaml`. The root `.env` file is ignored by git and must never be committed.
+The wizard presents provider presets, lets you confirm or override the API base URL and model
+name, asks for the API key, and optionally collects WeChat or Feishu webhook/app credentials.
+It then prepares `autoresearch-vault/`, integration manifests under `integrations/`, and local
+slash-command templates. It does not install third-party coding backends or channel plugins.
+Secrets are written to `.env`; non-secret settings stay in `config.yaml`. The root `.env` file is
+ignored by git and must never be committed.
 
 If you prefer manual setup:
 
@@ -77,35 +84,40 @@ AUTORESEARCH_LLM_MODEL_NAME=...
 AUTORESEARCH_LLM_API_KEY=...
 ```
 
-Initialize the Obsidian vault:
+The legacy setup-only entry point remains available:
 
 ```bash
-poetry run airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
+airesearcher deploy-setup
 ```
 
 Run a local smoke check:
 
 ```bash
-poetry run airesearcher run-demo --demo tabular_baseline
+airesearcher run-demo --demo tabular_baseline
 ```
 
 Run a real public benchmark demo:
 
 ```bash
-poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
+airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
 ```
 
 Start the always-on operator:
 
 ```bash
-poetry run airesearcher serve --permission-mode approve-dangerous
+airesearcher serve --permission-mode approve-dangerous
 ```
+
+Completed research cycles publish the user-facing paper bundle under `outputs/<project-id>/`.
+When LaTeX compilation succeeds, the bundle includes `<project-id>-<cycle-id>.pdf` plus a
+manifest that points to the source manuscript, audit, evidence gate, related-work inspection,
+and cycle summary.
 
 In another terminal, inspect and approve queued actions:
 
 ```bash
-poetry run airesearcher runtime list
-poetry run airesearcher runtime approve latest --approved-by operator
+airesearcher runtime list
+airesearcher runtime approve latest --approved-by operator
 ```
 
 ## OpenCode Integration
@@ -117,8 +129,8 @@ vault, and only then allows the work to move toward commit or release.
 Initialize the integration contract:
 
 ```bash
-poetry run airesearcher code-agents opencode init
-poetry run airesearcher code-agents opencode list
+airesearcher code-agents opencode init
+airesearcher code-agents opencode list
 ```
 
 This writes or refreshes `integrations/opencode/code-agent.json`. The manifest documents:
@@ -143,7 +155,7 @@ Recommended operating model:
 The recurring loop is designed for a local machine or server that stays online.
 
 ```bash
-poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
+airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
 ```
 
 Each cycle can perform:
@@ -161,22 +173,35 @@ Each cycle can perform:
 11. Obsidian review, issue, failure, skill, and strategy updates;
 12. local follow-up state merge.
 
-For push-style operation, initialize the OpenClaw channel manifest:
+For push-style operation, initialize the optional channel adapter runbook:
 
 ```bash
-poetry run airesearcher channels openclaw init
-poetry run airesearcher channels openclaw list
+airesearcher channels adapters init
+airesearcher channels adapters list
 ```
 
-The generated `integrations/openclaw/channels.json` is a runbook for mounting communication
-channels such as Feishu/Lark, WeChat, WeCom, Telegram, Slack, Teams, and webhook-style adapters
-inside an OpenClaw deployment. Channel plugins are not vendored here. Their secrets must stay in
-OpenClaw credentials, `.env`, or a platform secret store.
+The generated `integrations/channels/adapters.json` is a runbook for optional upstream messaging
+adapters such as Feishu/Lark, WeChat, WeCom, Telegram, Slack, Teams, and webhook-style adapters.
+Some referenced adapters were originally written for other ecosystems; AI-Researcher does not
+install, vendor, or run them. Secrets must stay in `.env` or a platform secret store.
 
 Map operator messages such as `/approve` to:
 
 ```bash
-poetry run airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+```
+
+## PDF Source Backends
+
+AI-Researcher can record ScanSci PDF as an optional PDF retrieval backend, but the default policy
+is OA-first and legal-only. The manifest keeps publisher-direct open access, arXiv, PubMed
+Central, Unpaywall, OpenAlex, DOAJ, CORE, and Europe PMC in the allowed default set. Sci-Hub,
+LibGen, institutional WebVPN/CARSI, Tor, Cloudflare bypass, and credentialed library proxy paths
+are approval-gated and must pass license and operator review before use.
+
+```bash
+airesearcher pdf-sources scansci-pdf init
+airesearcher pdf-sources scansci-pdf list
 ```
 
 ## Obsidian Knowledge Vault
@@ -269,9 +294,9 @@ For strong claims, the system expects physical artifacts:
 Run the main gates manually when you need to inspect a completed cycle:
 
 ```bash
-poetry run airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json --target ccf-b
-poetry run airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/report/report.md --template-id generic-article-one-column
-poetry run airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.json --publication-audit runs/autopilot/<cycle-id>/publication-audit.json --paper-build-json runs/paper-build/<cycle-id>/paper-build.json
+airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json --target ccf-b
+airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/report/report.md --template-id generic-article-one-column
+airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.json --publication-audit runs/autopilot/<cycle-id>/publication-audit.json --paper-build-json runs/paper-build/<cycle-id>/paper-build.json
 ```
 
 ## Self-Evolution
@@ -281,7 +306,7 @@ Self-evolution is controlled, not free-form self-modification.
 Use `skill-evolve` to write a candidate skill card:
 
 ```bash
-poetry run airesearcher skill-evolve \
+airesearcher skill-evolve \
   --parent-skill-id skill_evidence_bound_review \
   --issue-ref projects/autoresearch-system/issues/example_issue \
   --change-summary "Tighten the evidence bundle before live review." \
@@ -292,7 +317,7 @@ poetry run airesearcher skill-evolve \
 Use `skill-polish-audit` before promotion:
 
 ```bash
-poetry run airesearcher skill-polish-audit \
+airesearcher skill-polish-audit \
   --skill-id <candidate_skill_id> \
   --peer-ref https://github.com/LearnPrompt/luban-skill \
   --live-evidence-ref runs/skill-polish/demo-validation.json \
@@ -308,17 +333,20 @@ gradually, and roll back if the reward or safety metrics regress.
 
 | Goal | Command |
 |---|---|
-| Check local install | `poetry run airesearcher doctor` |
-| Configure model and channels | `poetry run airesearcher deploy-setup` |
-| Initialize Obsidian vault | `poetry run airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system` |
-| Initialize OpenCode backend contract | `poetry run airesearcher code-agents opencode init` |
-| Initialize OpenClaw channel runbook | `poetry run airesearcher channels openclaw init` |
-| Run toy demo | `poetry run airesearcher run-demo --demo tabular_baseline` |
-| Run real benchmark demo | `poetry run airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60` |
-| Start always-on runtime | `poetry run airesearcher serve --permission-mode approve-dangerous` |
-| Run daily autopilot loop | `poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` |
-| List runtime approvals | `poetry run airesearcher runtime list` |
-| Approve latest queued action | `poetry run airesearcher runtime approve latest --approved-by operator` |
+| Check local install | `airesearcher doctor` |
+| Guided first-deploy setup | `airesearcher setup` or `npm run setup` |
+| Configure model and channels only | `airesearcher deploy-setup` |
+| Initialize Obsidian vault only | `airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system` |
+| Initialize OpenCode backend contract | `airesearcher code-agents opencode init` |
+| Initialize channel adapter runbook | `airesearcher channels adapters init` |
+| Initialize ScanSci PDF source manifest | `airesearcher pdf-sources scansci-pdf init` |
+| Run toy demo | `airesearcher run-demo --demo tabular_baseline` |
+| Run real benchmark demo | `airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60` |
+| Start always-on runtime | `airesearcher serve --permission-mode approve-dangerous` |
+| Run daily autopilot loop | `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` |
+| Watch agents, queues, diffs, and outputs | `airesearcher monitor` or `npm run monitor` |
+| List runtime approvals | `airesearcher runtime list` |
+| Approve latest queued action | `airesearcher runtime approve latest --approved-by operator` |
 | Run local quality gate | `python scripts/check.py` |
 
 ## Repository Layout
@@ -328,7 +356,7 @@ gradually, and roll back if the reward or safety metrics regress.
 ├── autoresearch-vault/              # Obsidian-compatible knowledge memory
 ├── docs/assets/readme/              # README illustrations
 ├── integrations/opencode/           # OpenCode backend contract
-├── integrations/openclaw/           # Push/channel integration runbook
+├── integrations/channels/           # Optional messaging adapter runbooks
 ├── runs/                            # Local run artifacts
 ├── src/autoresearch/                # Python package
 ├── tests/                           # Unit, smoke, property, integration tests

@@ -1,6 +1,9 @@
 """Minimal Typer CLI for the AI-Researcher Phase 0 scaffold."""
 
 import json
+import os
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -28,15 +31,20 @@ from autoresearch.integrations import (
     CCSwitchCodeAgentBackend,
     OpenClawChannelPlugin,
     OpenCodeCodeAgentBackend,
+    ScanSciPdfIntegration,
     get_ccswitch_code_agent_backend,
     get_openclaw_channel_plugin,
     get_opencode_code_agent_backend,
+    get_scansci_pdf_integration,
     iter_ccswitch_code_agent_backends,
     iter_openclaw_channel_plugins,
     iter_opencode_code_agent_backends,
+    iter_scansci_pdf_integrations,
     write_ccswitch_code_agent_manifest,
+    write_channel_adapter_manifest,
     write_openclaw_channel_manifest,
     write_opencode_code_agent_manifest,
+    write_scansci_pdf_manifest,
 )
 from autoresearch.knowledge import (
     KnowledgeEntry,
@@ -106,25 +114,75 @@ scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
 sessions_app = typer.Typer(help="Coordinate concurrent agent file claims.")
 channels_app = typer.Typer(help="Manage communication channel integration manifests.")
-openclaw_channels_app = typer.Typer(help="Manage OpenClaw channel plugin manifests.")
+channel_adapters_app = typer.Typer(help="Manage optional messaging channel adapter runbooks.")
+openclaw_channels_app = typer.Typer(help="Manage optional upstream OpenClaw plugin runbooks.")
 code_agents_app = typer.Typer(help="Manage external code-agent integration manifests.")
 ccswitch_code_agents_app = typer.Typer(help="Manage cc-switch / Claude Code backend manifests.")
 opencode_code_agents_app = typer.Typer(help="Manage OpenCode direct backend manifests.")
+pdf_sources_app = typer.Typer(help="Manage optional PDF retrieval integration manifests.")
+scansci_pdf_app = typer.Typer(help="Manage ScanSci PDF source metadata.")
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
 app.add_typer(runtime_app, name="runtime")
 app.add_typer(sessions_app, name="sessions")
 app.add_typer(channels_app, name="channels")
 app.add_typer(code_agents_app, name="code-agents")
+app.add_typer(pdf_sources_app, name="pdf-sources")
+channels_app.add_typer(channel_adapters_app, name="adapters")
 channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
+pdf_sources_app.add_typer(scansci_pdf_app, name="scansci-pdf")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
+LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
+    {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "provider": "deepseek",
+        "base_url": "https://api.deepseek.com",
+        "model_name": "deepseek-chat",
+    },
+    {
+        "id": "openrouter",
+        "label": "OpenRouter",
+        "provider": "openrouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "model_name": "openai/gpt-4o-mini",
+    },
+    {
+        "id": "openai",
+        "label": "OpenAI",
+        "provider": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "model_name": "gpt-4o-mini",
+    },
+    {
+        "id": "qwen-dashscope",
+        "label": "Alibaba Cloud DashScope / Qwen compatible mode",
+        "provider": "dashscope",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "model_name": "qwen-plus",
+    },
+    {
+        "id": "siliconflow",
+        "label": "SiliconFlow",
+        "provider": "siliconflow",
+        "base_url": "https://api.siliconflow.cn/v1",
+        "model_name": "Qwen/Qwen2.5-72B-Instruct",
+    },
+    {
+        "id": "custom",
+        "label": "Custom OpenAI-compatible endpoint",
+        "provider": "openai-compatible",
+        "base_url": "https://api.example.com/v1",
+        "model_name": "model-name",
+    },
+)
 
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
@@ -186,12 +244,20 @@ DEFAULT_SLASH_COMMANDS = {
         "--approved-by operator`. Use `latest` when approving the newest pending request "
         "from a WeChat/Feishu `/approve` message.",
     ),
-    "research/openclaw-channels.toml": (
-        "Write the OpenClaw communication channel integration manifest.",
-        "Run `airesearcher channels openclaw init --output integrations/openclaw/channels.json` "
-        "to create the repository runbook for official Lark/Feishu, Weixin, WeCom, "
+    "research/channel-adapters.toml": (
+        "Write the optional messaging channel adapter runbook.",
+        "Run `airesearcher channels adapters init --output integrations/channels/adapters.json` "
+        "to create the repository runbook for optional Lark/Feishu, Weixin, WeCom, "
         "Telegram, Discord, Slack, WhatsApp, Teams, QQ, Signal, and Zalo channel plugins. "
-        "Review upstream permissions and secrets before installing any plugin.",
+        "Review upstream licenses, platform permissions, and secrets before installing any "
+        "adapter outside AI-Researcher.",
+    ),
+    "research/scansci-pdf.toml": (
+        "Write the optional ScanSci PDF integration manifest with OA/legal-first defaults.",
+        "Run `airesearcher pdf-sources scansci-pdf init --output integrations/scansci-pdf/pdf-source.json` "
+        "before enabling any PDF fetch backend. Keep publisher-direct, arXiv, PMC, Unpaywall, "
+        "OpenAlex, DOAJ, CORE, and Europe PMC as default sources; require human approval and "
+        "license review for Sci-Hub, LibGen, WebVPN, CARSI, Tor, or bypass-oriented sources.",
     ),
     "research/code-agent-backends.toml": (
         "Write external code-agent backend contracts.",
@@ -621,39 +687,42 @@ def deploy_setup(
 ) -> None:
     """Run first-deploy setup for model API credentials and chat channels."""
 
+    existing_config = _load_or_default_config(config_path)
+    existing_env = _read_env_file(env_path)
+    llm_defaults = existing_config.deployment.llm
     provider_value = _required_value(
         provider,
         prompt="LLM provider label",
-        default="openai-compatible",
+        default=existing_env.get("AUTORESEARCH_LLM_PROVIDER") or llm_defaults.provider,
         non_interactive=non_interactive,
     )
     base_url_value = _required_value(
         base_url,
         prompt="LLM API base URL",
-        default="https://api.openai.com/v1",
+        default=existing_env.get("AUTORESEARCH_LLM_BASE_URL") or llm_defaults.base_url,
         non_interactive=non_interactive,
     )
     model_name_value = _required_value(
         model_name,
         prompt="LLM model name",
-        default="gpt-4o-mini",
+        default=existing_env.get("AUTORESEARCH_LLM_MODEL_NAME") or llm_defaults.model_name,
         non_interactive=non_interactive,
     )
     api_key_value = _required_value(
         api_key,
         prompt="LLM API key",
-        default=None,
+        default=existing_env.get("AUTORESEARCH_LLM_API_KEY"),
         hide_input=True,
         non_interactive=non_interactive,
     )
 
     wechat_enabled = _confirm_if_missing(
-        wechat,
+        wechat if wechat is not None else existing_config.deployment.wechat.enabled,
         prompt="Configure WeChat channel?",
         non_interactive=non_interactive,
     )
     feishu_enabled = _confirm_if_missing(
-        feishu,
+        feishu if feishu is not None else existing_config.deployment.feishu.enabled,
         prompt="Configure Feishu channel?",
         non_interactive=non_interactive,
     )
@@ -661,21 +730,21 @@ def deploy_setup(
     wechat_values = _channel_values(
         enabled=wechat_enabled,
         channel_name="WeChat",
-        webhook_url=wechat_webhook_url,
-        app_id=wechat_app_id,
-        app_secret=wechat_app_secret,
+        webhook_url=wechat_webhook_url or existing_env.get("AUTORESEARCH_WECHAT_WEBHOOK_URL"),
+        app_id=wechat_app_id or existing_env.get("AUTORESEARCH_WECHAT_APP_ID"),
+        app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
         non_interactive=non_interactive,
     )
     feishu_values = _channel_values(
         enabled=feishu_enabled,
         channel_name="Feishu",
-        webhook_url=feishu_webhook_url,
-        app_id=feishu_app_id,
-        app_secret=feishu_app_secret,
+        webhook_url=feishu_webhook_url or existing_env.get("AUTORESEARCH_FEISHU_WEBHOOK_URL"),
+        app_id=feishu_app_id or existing_env.get("AUTORESEARCH_FEISHU_APP_ID"),
+        app_secret=feishu_app_secret or existing_env.get("AUTORESEARCH_FEISHU_APP_SECRET"),
         non_interactive=non_interactive,
     )
 
-    config = _load_or_default_config(config_path)
+    config = existing_config
     config = config.model_copy(
         update={
             "deployment": DeploymentConfig(
@@ -740,6 +809,272 @@ def deploy_setup(
     typer.echo(f"[OK] model: {provider_value} / {model_name_value}")
     typer.echo(f"[OK] wechat: {'enabled' if wechat_enabled else 'disabled'}")
     typer.echo(f"[OK] feishu: {'enabled' if feishu_enabled else 'disabled'}")
+
+
+@app.command("setup")
+def setup(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Configuration file to create or update.",
+        ),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file for secrets and channel credentials."),
+    ] = Path(".env"),
+    provider: Annotated[
+        str | None,
+        typer.Option("--provider", help="LLM provider label, for example openai-compatible."),
+    ] = None,
+    base_url: Annotated[
+        str | None,
+        typer.Option("--base-url", help="OpenAI-compatible API base URL."),
+    ] = None,
+    model_name: Annotated[
+        str | None,
+        typer.Option("--model-name", help="Model name to use for first deployment."),
+    ] = None,
+    api_key: Annotated[
+        str | None,
+        typer.Option("--api-key", help="LLM API key. Stored only in .env."),
+    ] = None,
+    wechat: Annotated[
+        bool | None,
+        typer.Option("--wechat/--no-wechat", help="Configure the WeChat channel."),
+    ] = None,
+    wechat_webhook_url: Annotated[
+        str | None,
+        typer.Option("--wechat-webhook-url", help="WeChat webhook URL stored in .env."),
+    ] = None,
+    wechat_app_id: Annotated[
+        str | None,
+        typer.Option("--wechat-app-id", help="WeChat app ID stored in .env."),
+    ] = None,
+    wechat_app_secret: Annotated[
+        str | None,
+        typer.Option("--wechat-app-secret", help="WeChat app secret stored in .env."),
+    ] = None,
+    feishu: Annotated[
+        bool | None,
+        typer.Option("--feishu/--no-feishu", help="Configure the Feishu channel."),
+    ] = None,
+    feishu_webhook_url: Annotated[
+        str | None,
+        typer.Option("--feishu-webhook-url", help="Feishu webhook URL stored in .env."),
+    ] = None,
+    feishu_app_id: Annotated[
+        str | None,
+        typer.Option("--feishu-app-id", help="Feishu app ID stored in .env."),
+    ] = None,
+    feishu_app_secret: Annotated[
+        str | None,
+        typer.Option("--feishu-app-secret", help="Feishu app secret stored in .env."),
+    ] = None,
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to initialize."),
+    ] = Path("autoresearch-vault"),
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for vault setup and runtime examples."),
+    ] = "ai_researcher_system",
+    integrations_dir: Annotated[
+        Path,
+        typer.Option("--integrations-dir", help="Directory for generated integration manifests."),
+    ] = Path("integrations"),
+    commands_dir: Annotated[
+        Path,
+        typer.Option("--commands-dir", help="Directory for slash command templates."),
+    ] = Path(".airesearcher/commands"),
+    non_interactive: Annotated[
+        bool,
+        typer.Option("--non-interactive", help="Fail on missing required inputs instead of prompting."),
+    ] = False,
+    init_obsidian: Annotated[
+        bool,
+        typer.Option(
+            "--init-obsidian/--skip-obsidian",
+            help="Create or refresh safe Obsidian vault assets.",
+        ),
+    ] = True,
+    init_integrations: Annotated[
+        bool,
+        typer.Option(
+            "--init-integrations/--skip-integrations",
+            help="Write channel adapter, OpenCode, and ScanSci PDF manifests.",
+        ),
+    ] = True,
+    init_slash: Annotated[
+        bool,
+        typer.Option(
+            "--init-slash/--skip-slash",
+            help="Write local slash command templates.",
+        ),
+    ] = True,
+) -> None:
+    """Run the guided first-deploy configuration wizard."""
+
+    if not non_interactive:
+        wizard = _collect_setup_wizard_values(
+            config_path=config_path,
+            env_path=env_path,
+            provider=provider,
+            base_url=base_url,
+            model_name=model_name,
+            api_key=api_key,
+            wechat=wechat,
+            wechat_webhook_url=wechat_webhook_url,
+            wechat_app_id=wechat_app_id,
+            wechat_app_secret=wechat_app_secret,
+            feishu=feishu,
+            feishu_webhook_url=feishu_webhook_url,
+            feishu_app_id=feishu_app_id,
+            feishu_app_secret=feishu_app_secret,
+        )
+        provider = wizard["provider"]
+        base_url = wizard["base_url"]
+        model_name = wizard["model_name"]
+        api_key = wizard["api_key"]
+        wechat = wizard["wechat"]
+        wechat_webhook_url = wizard["wechat_webhook_url"]
+        wechat_app_id = wizard["wechat_app_id"]
+        wechat_app_secret = wizard["wechat_app_secret"]
+        feishu = wizard["feishu"]
+        feishu_webhook_url = wizard["feishu_webhook_url"]
+        feishu_app_id = wizard["feishu_app_id"]
+        feishu_app_secret = wizard["feishu_app_secret"]
+        non_interactive = True
+
+    deploy_setup(
+        config_path=config_path,
+        env_path=env_path,
+        provider=provider,
+        base_url=base_url,
+        model_name=model_name,
+        api_key=api_key,
+        wechat=wechat,
+        wechat_webhook_url=wechat_webhook_url,
+        wechat_app_id=wechat_app_id,
+        wechat_app_secret=wechat_app_secret,
+        feishu=feishu,
+        feishu_webhook_url=feishu_webhook_url,
+        feishu_app_id=feishu_app_id,
+        feishu_app_secret=feishu_app_secret,
+        non_interactive=non_interactive,
+    )
+    if init_obsidian:
+        create_obsidian_vault_assets(
+            vault_root=vault,
+            project_id=project_id,
+            write_local_snippet=False,
+        )
+        typer.echo(f"[OK] obsidian_vault: {vault}")
+    if init_integrations:
+        channel_adapters_manifest = write_channel_adapter_manifest(
+            integrations_dir / "channels" / "adapters.json"
+        )
+        opencode_manifest = write_opencode_code_agent_manifest(
+            integrations_dir / "opencode" / "code-agent.json"
+        )
+        scansci_manifest = write_scansci_pdf_manifest(
+            integrations_dir / "scansci-pdf" / "pdf-source.json"
+        )
+        typer.echo(f"[OK] channel_adapters_manifest: {channel_adapters_manifest}")
+        typer.echo(f"[OK] opencode_manifest: {opencode_manifest}")
+        typer.echo(f"[OK] scansci_pdf_manifest: {scansci_manifest}")
+    if init_slash:
+        written, skipped = _write_slash_command_templates(commands_dir, force=False)
+        typer.echo(f"[OK] slash commands written: {written}")
+        typer.echo(f"[OK] slash commands skipped: {skipped}")
+        typer.echo(f"[OK] slash_commands_dir: {commands_dir}")
+    typer.echo("[OK] next: airesearcher serve --permission-mode approve-dangerous")
+    typer.echo("[OK] deliverables: outputs/<project-id>/")
+
+
+@app.command("monitor")
+def monitor(
+    agent_log: Annotated[
+        Path,
+        typer.Option("--agent-log", help="Agent change log to summarize."),
+    ] = Path("Agent.md"),
+    sessions_state: Annotated[
+        Path,
+        typer.Option("--sessions-state", help="Agent session coordination state file."),
+    ] = DEFAULT_AGENT_SESSIONS_PATH,
+    runtime_state: Annotated[
+        Path,
+        typer.Option("--runtime-state", help="Runtime approval queue state file."),
+    ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    scheduler_state: Annotated[
+        Path,
+        typer.Option("--scheduler-state", help="Scheduler task state file."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    outputs_dir: Annotated[
+        Path,
+        typer.Option("--outputs-dir", help="Root output bundle directory to preview."),
+    ] = Path("outputs"),
+    cycle_summary: Annotated[
+        Path | None,
+        typer.Option("--cycle-summary", help="Optional cycle-summary.json to inspect."),
+    ] = None,
+    max_agent_entries: Annotated[
+        int,
+        typer.Option("--max-agent-entries", min=1, help="Recent Agent.md entries to show."),
+    ] = 4,
+    max_diff_lines: Annotated[
+        int,
+        typer.Option("--max-diff-lines", min=0, help="Maximum git diff preview lines."),
+    ] = 80,
+    show_diff: Annotated[
+        bool,
+        typer.Option("--show-diff/--no-diff", help="Show git status and diff preview."),
+    ] = True,
+    watch: Annotated[
+        bool,
+        typer.Option("--watch/--no-watch", help="Refresh the dashboard until interrupted."),
+    ] = False,
+    refresh_seconds: Annotated[
+        float,
+        typer.Option("--refresh-seconds", min=0.5, help="Refresh interval for --watch."),
+    ] = 5.0,
+) -> None:
+    """Render the operator console for agent flow, changes, and output previews."""
+
+    if watch:
+        try:
+            while True:
+                _render_operator_monitor(
+                    agent_log=agent_log,
+                    sessions_state=sessions_state,
+                    runtime_state=runtime_state,
+                    scheduler_state=scheduler_state,
+                    outputs_dir=outputs_dir,
+                    cycle_summary=cycle_summary,
+                    max_agent_entries=max_agent_entries,
+                    max_diff_lines=max_diff_lines,
+                    show_diff=show_diff,
+                    clear=True,
+                )
+                time.sleep(refresh_seconds)
+        except KeyboardInterrupt:
+            typer.echo("\n[OK] monitor stopped")
+        return
+
+    _render_operator_monitor(
+        agent_log=agent_log,
+        sessions_state=sessions_state,
+        runtime_state=runtime_state,
+        scheduler_state=scheduler_state,
+        outputs_dir=outputs_dir,
+        cycle_summary=cycle_summary,
+        max_agent_entries=max_agent_entries,
+        max_diff_lines=max_diff_lines,
+        show_diff=show_diff,
+        clear=False,
+    )
 
 
 @app.command("literature-refresh")
@@ -969,11 +1304,11 @@ def run_demo(
         raise typer.Exit(code=1) from exc
 
     typer.echo(f"[OK] demo: {result.demo}")
-    typer.echo(f"[OK] experiment_dir: {result.experiment_dir}")
+    typer.echo(f"[OK] experiment_dir: {_relative_path_text(result.experiment_dir)}")
     typer.echo(f"[OK] run_id: {result.run_id}")
-    typer.echo(f"[OK] validation: {result.validation_json_path}")
-    typer.echo(f"[OK] evidence_map: {result.evidence_map_path}")
-    typer.echo(f"[OK] report: {result.report_path}")
+    typer.echo(f"[OK] validation: {_relative_path_text(result.validation_json_path)}")
+    typer.echo(f"[OK] evidence_map: {_relative_path_text(result.evidence_map_path)}")
+    typer.echo(f"[OK] report: {_relative_path_text(result.report_path)}")
 
 
 @app.command("validate-package")
@@ -1018,9 +1353,12 @@ def llm_smoke(
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Fail below this score."),
     ] = 0.85,
     max_tokens: Annotated[
-        int,
-        typer.Option("--max-tokens", min=128, help="Maximum output tokens for the smoke request."),
-    ] = 600,
+        int | None,
+        typer.Option(
+            "--max-tokens",
+            help="Optional output token limit. Omit by default for long-context models.",
+        ),
+    ] = None,
 ) -> None:
     """Call the configured live LLM API and run a structured output quality gate."""
 
@@ -1028,7 +1366,7 @@ def llm_smoke(
         result = run_llm_smoke_test(
             config_path=config_path,
             env_path=env_path,
-            max_tokens=max_tokens,
+            max_tokens=_validate_optional_max_tokens(max_tokens, minimum=128),
         )
     except LLMClientError as exc:
         typer.echo(f"[FAIL] LLM smoke request failed: {exc}", err=True)
@@ -1088,9 +1426,12 @@ def llm_review(
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Fail below this score."),
     ] = 0.85,
     max_tokens: Annotated[
-        int,
-        typer.Option("--max-tokens", min=256, help="Maximum output tokens for the review request."),
-    ] = 8192,
+        int | None,
+        typer.Option(
+            "--max-tokens",
+            help="Optional output token limit. Omit by default for long-context models.",
+        ),
+    ] = None,
     vault: Annotated[
         Path,
         typer.Option("--vault", help="Obsidian vault root for optional project review memory."),
@@ -1119,7 +1460,7 @@ def llm_review(
             evidence_paths=list(evidence),
             config_path=config_path,
             env_path=env_path,
-            max_tokens=max_tokens,
+            max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
         )
     except LLMClientError as exc:
         typer.echo(f"[FAIL] LLM review request failed: {exc}", err=True)
@@ -1503,6 +1844,10 @@ def autopilot(
         Path,
         typer.Option("--output-dir", help="Autopilot run output directory."),
     ] = Path("runs/autopilot"),
+    deliverables_dir: Annotated[
+        Path,
+        typer.Option("--deliverables-dir", help="Root directory for published PDF and manifest outputs."),
+    ] = Path("outputs"),
     state: Annotated[
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
@@ -1536,9 +1881,12 @@ def autopilot(
         typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),
     ] = 30,
     max_tokens: Annotated[
-        int,
-        typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 8192,
+        int | None,
+        typer.Option(
+            "--max-tokens",
+            help="Optional LLM reviewer output token limit. Omit by default for long-context models.",
+        ),
+    ] = None,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -1580,13 +1928,14 @@ def autopilot(
                 vault=vault,
                 cache=cache,
                 output_dir=output_dir,
+                deliverables_dir=deliverables_dir,
                 state=state,
                 project_id=project_id,
                 demo=demo,
                 max_queries=max_queries,
                 max_results_per_source=max_results_per_source,
                 timeout_seconds=timeout_seconds,
-                max_tokens=max_tokens,
+                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
                 min_quality_score=min_quality_score,
                 review=review,
                 paper_template_id=paper_template_id,
@@ -1609,6 +1958,11 @@ def autopilot(
         if "evidence_gate" in summary:
             typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+        if "deliverables" in summary:
+            deliverables = summary["deliverables"]
+            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+            if deliverables.get("pdf_path"):
+                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
         if not watch:
             break
         if cycles > 0 and completed >= cycles:
@@ -1638,6 +1992,10 @@ def serve(
         Path,
         typer.Option("--output-dir", help="Runtime autopilot output directory."),
     ] = Path("runs/autopilot"),
+    deliverables_dir: Annotated[
+        Path,
+        typer.Option("--deliverables-dir", help="Root directory for published PDF and manifest outputs."),
+    ] = Path("outputs"),
     state: Annotated[
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
@@ -1679,9 +2037,12 @@ def serve(
         typer.Option("--timeout-seconds", min=1, help="Experiment execution timeout."),
     ] = 30,
     max_tokens: Annotated[
-        int,
-        typer.Option("--max-tokens", min=256, help="LLM reviewer completion token budget."),
-    ] = 8192,
+        int | None,
+        typer.Option(
+            "--max-tokens",
+            help="Optional LLM reviewer output token limit. Omit by default for long-context models.",
+        ),
+    ] = None,
     min_quality_score: Annotated[
         float,
         typer.Option("--min-quality-score", min=0.0, max=1.0, help="Minimum LLM review score."),
@@ -1757,13 +2118,14 @@ def serve(
                 vault=vault,
                 cache=cache,
                 output_dir=output_dir,
+                deliverables_dir=deliverables_dir,
                 state=state,
                 project_id=project_id,
                 demo=demo,
                 max_queries=max_queries,
                 max_results_per_source=max_results_per_source,
                 timeout_seconds=timeout_seconds,
-                max_tokens=max_tokens,
+                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
                 min_quality_score=min_quality_score,
                 review=review,
                 paper_template_id=paper_template_id,
@@ -1786,6 +2148,11 @@ def serve(
         if "evidence_gate" in summary:
             typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
         typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+        if "deliverables" in summary:
+            deliverables = summary["deliverables"]
+            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+            if deliverables.get("pdf_path"):
+                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
         if not watch:
             break
         if cycles > 0 and completed >= cycles:
@@ -2087,6 +2454,48 @@ def release_session(
     typer.echo(f"[OK] status: {session.status.value}")
 
 
+@channel_adapters_app.command("init")
+def init_channel_adapters(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Messaging adapter runbook output path."),
+    ] = Path("integrations/channels/adapters.json"),
+) -> None:
+    """Write optional messaging adapter runbook metadata for AI-Researcher."""
+
+    manifest_path = write_channel_adapter_manifest(output)
+    channel_count = len(iter_openclaw_channel_plugins())
+    typer.echo(f"[OK] channel_adapters: {channel_count}")
+    typer.echo(f"[OK] manifest: {manifest_path}")
+    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+
+
+@channel_adapters_app.command("list")
+def list_channel_adapters(
+    channel: Annotated[
+        str | None,
+        typer.Option("--channel", help="Optional channel or upstream plugin ID to show."),
+    ] = None,
+) -> None:
+    """List optional upstream messaging adapter metadata."""
+
+    plugins: tuple[OpenClawChannelPlugin, ...]
+    if channel:
+        try:
+            plugins = (get_openclaw_channel_plugin(channel),)
+        except KeyError as exc:
+            typer.echo(f"[FAIL] {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+    else:
+        plugins = iter_openclaw_channel_plugins()
+    typer.echo(f"[OK] channel_adapters: {len(plugins)}")
+    for plugin in plugins:
+        typer.echo(
+            f"[CHANNEL] channel={plugin.channel_id} upstream_plugin={plugin.plugin_id} "
+            f"package={plugin.package_name} route={plugin.install_route}"
+        )
+
+
 @openclaw_channels_app.command("init")
 def init_openclaw_channels(
     output: Annotated[
@@ -2215,6 +2624,51 @@ def list_opencode_code_agents(
         )
 
 
+@scansci_pdf_app.command("init")
+def init_scansci_pdf_sources(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="ScanSci PDF integration manifest output path."),
+    ] = Path("integrations/scansci-pdf/pdf-source.json"),
+) -> None:
+    """Write ScanSci PDF integration metadata for AI-Researcher."""
+
+    manifest_path = write_scansci_pdf_manifest(output)
+    integration_count = len(iter_scansci_pdf_integrations())
+    typer.echo(f"[OK] scansci_pdf_integrations: {integration_count}")
+    typer.echo(f"[OK] manifest: {manifest_path}")
+    typer.echo("[OK] default_policy: oa_first_legal_only")
+
+
+@scansci_pdf_app.command("list")
+def list_scansci_pdf_sources(
+    integration: Annotated[
+        str | None,
+        typer.Option("--integration", help="Optional ScanSci PDF integration ID to show."),
+    ] = None,
+) -> None:
+    """List ScanSci PDF integration metadata."""
+
+    integrations: tuple[ScanSciPdfIntegration, ...]
+    if integration:
+        try:
+            integrations = (get_scansci_pdf_integration(integration),)
+        except KeyError as exc:
+            typer.echo(f"[FAIL] {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+    else:
+        integrations = iter_scansci_pdf_integrations()
+    typer.echo(f"[OK] scansci_pdf_integrations: {len(integrations)}")
+    for pdf_integration in integrations:
+        allowed = ",".join(pdf_integration.allowed_default_sources)
+        gated = ",".join(pdf_integration.approval_required_sources)
+        typer.echo(
+            f"[PDF] integration={pdf_integration.integration_id} "
+            f"runner={pdf_integration.runner_command} license={pdf_integration.license} "
+            f"default_sources={allowed} approval_required={gated}"
+        )
+
+
 @slash_app.command("init")
 def init_slash_commands(
     directory: Annotated[
@@ -2232,17 +2686,7 @@ def init_slash_commands(
 ) -> None:
     """Create project-scoped slash command templates."""
 
-    written = 0
-    skipped = 0
-    for relative_path, (description, prompt) in DEFAULT_SLASH_COMMANDS.items():
-        target = directory / relative_path
-        if target.exists() and not force:
-            skipped += 1
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(_slash_command_toml(description, prompt), encoding="utf-8")
-        written += 1
-
+    written, skipped = _write_slash_command_templates(directory, force=force)
     typer.echo(f"[OK] slash commands written: {written}")
     typer.echo(f"[OK] slash commands skipped: {skipped}")
     typer.echo(f"[OK] directory: {directory}")
@@ -2270,6 +2714,20 @@ def list_slash_commands(
         typer.echo(f"/{name}")
 
 
+def _write_slash_command_templates(directory: Path, *, force: bool) -> tuple[int, int]:
+    written = 0
+    skipped = 0
+    for relative_path, (description, prompt) in DEFAULT_SLASH_COMMANDS.items():
+        target = directory / relative_path
+        if target.exists() and not force:
+            skipped += 1
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(_slash_command_toml(description, prompt), encoding="utf-8")
+        written += 1
+    return written, skipped
+
+
 def _autopilot_literature_clients(cache_root: Path) -> dict[str, LiteratureSearchClient]:
     circuit_state_path = cache_root / "source-circuit-breakers.json"
     clients: dict[str, LiteratureSearchClient] = {
@@ -2288,13 +2746,14 @@ def _run_autopilot_cycle(
     vault: Path,
     cache: Path,
     output_dir: Path,
+    deliverables_dir: Path,
     state: Path,
     project_id: str,
     demo: str,
     max_queries: int,
     max_results_per_source: int,
     timeout_seconds: int,
-    max_tokens: int,
+    max_tokens: int | None,
     min_quality_score: float,
     review: bool,
     paper_template_id: str,
@@ -2437,11 +2896,11 @@ def _run_autopilot_cycle(
         "demo": {
             "demo": demo_result.demo,
             "run_id": demo_result.run_id,
-            "experiment_dir": Path(demo_result.experiment_dir).as_posix(),
-            "report_path": Path(demo_result.report_path).as_posix(),
-            "run_record_path": Path(demo_result.run_record_path).as_posix(),
-            "validation_json_path": Path(demo_result.validation_json_path).as_posix(),
-            "evidence_map_path": Path(demo_result.evidence_map_path).as_posix(),
+            "experiment_dir": _relative_path_text(demo_result.experiment_dir),
+            "report_path": _relative_path_text(demo_result.report_path),
+            "run_record_path": _relative_path_text(demo_result.run_record_path),
+            "validation_json_path": _relative_path_text(demo_result.validation_json_path),
+            "evidence_map_path": _relative_path_text(demo_result.evidence_map_path),
         },
         "review": {"status": "pending_manuscript_review" if review else "skipped"},
         "reproduction_check": reproduction_check,
@@ -2569,6 +3028,12 @@ def _run_autopilot_cycle(
         "tasks": followup_records,
     }
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
+    summary["deliverables"] = _export_cycle_deliverables(
+        summary=summary,
+        summary_path=summary_path,
+        output_root=deliverables_dir,
+        project_id=project_id,
+    )
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
 
@@ -3441,7 +3906,7 @@ def _run_autopilot_review(
     cycle_dir: Path,
     report_path: Path,
     evidence_paths: list[Path | str],
-    max_tokens: int,
+    max_tokens: int | None,
     min_quality_score: float,
 ) -> dict[str, Any]:
     if not enabled:
@@ -3533,24 +3998,25 @@ def _run_cycle_reproduction_check(
     run_records = sorted(reproduction_output_dir.rglob("run-record.json"))
     validation_reports = sorted(reproduction_output_dir.rglob("validation-report.json"))
     passed = exit_code == 0 and bool(run_records) and bool(validation_reports)
+    recorded_command = ["python", *command[1:]]
     result: dict[str, Any] = {
         "status": "passed" if passed else "failed",
         "started_at": started_at.isoformat(),
         "completed_at": completed_at.isoformat(),
-        "command": command,
+        "command": recorded_command,
         "timeout_seconds": timeout,
         "exit_code": exit_code,
-        "output_dir": reproduction_output_dir.as_posix(),
-        "run_record_paths": [path.as_posix() for path in run_records],
-        "validation_json_paths": [path.as_posix() for path in validation_reports],
-        "stdout_tail": stdout[-4000:],
-        "stderr_tail": stderr[-4000:],
+        "output_dir": _relative_path_text(reproduction_output_dir),
+        "run_record_paths": [_relative_path_text(path) for path in run_records],
+        "validation_json_paths": [_relative_path_text(path) for path in validation_reports],
+        "stdout_tail": _sanitize_output_paths(stdout[-4000:]),
+        "stderr_tail": _sanitize_output_paths(stderr[-4000:]),
         "error": error,
     }
     json_path = check_dir / "reproduction-check.json"
     markdown_path = check_dir / "reproduction-check.md"
-    result["json_path"] = json_path.as_posix()
-    result["markdown_path"] = markdown_path.as_posix()
+    result["json_path"] = _relative_path_text(json_path)
+    result["markdown_path"] = _relative_path_text(markdown_path)
     json_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
     markdown_path.write_text(_render_reproduction_check_markdown(result), encoding="utf-8")
     return result
@@ -3628,10 +4094,198 @@ def _path_text(path: object) -> str | None:
     if path is None:
         return None
     if isinstance(path, Path):
-        return path.as_posix()
+        return _relative_path_text(path)
     if isinstance(path, str):
-        return Path(path).as_posix()
+        return _relative_path_text(path)
     return str(path)
+
+
+def _validate_optional_max_tokens(value: int | None, *, minimum: int) -> int | None:
+    if value is None:
+        return None
+    if value < minimum:
+        msg = f"--max-tokens must be at least {minimum} when provided"
+        raise typer.BadParameter(msg)
+    return value
+
+
+def _export_cycle_deliverables(
+    *,
+    summary: dict[str, Any],
+    summary_path: Path,
+    output_root: Path,
+    project_id: str,
+) -> dict[str, Any]:
+    cycle_id = str(summary["cycle_id"])
+    project_slug = _safe_path_segment(project_id)
+    target_dir = output_root / project_slug
+    target_dir.mkdir(parents=True, exist_ok=True)
+    copied: dict[str, str] = {}
+
+    def copy_artifact(label: str, source_value: object, filename: str) -> None:
+        source = _existing_path_from_value(source_value)
+        if source is None:
+            return
+        target = target_dir / filename
+        shutil.copy2(source, target)
+        copied[label] = _relative_path_text(target)
+
+    paper_build = summary.get("paper_build")
+    if not isinstance(paper_build, dict):
+        paper_build = {}
+    paper_manuscript = summary.get("paper_manuscript")
+    if not isinstance(paper_manuscript, dict):
+        paper_manuscript = {}
+    publication_audit = summary.get("publication_audit")
+    if not isinstance(publication_audit, dict):
+        publication_audit = {}
+    evidence_gate = summary.get("evidence_gate")
+    if not isinstance(evidence_gate, dict):
+        evidence_gate = {}
+    related_work = summary.get("related_work_inspection")
+    if not isinstance(related_work, dict):
+        related_work = {}
+    review = summary.get("review")
+    if not isinstance(review, dict):
+        review = {}
+
+    copy_artifact("paper_pdf", paper_build.get("pdf_path"), f"{project_slug}-{cycle_id}.pdf")
+    copy_artifact(
+        "paper_tex",
+        paper_build.get("tex_path"),
+        f"{project_slug}-{cycle_id}.tex",
+    )
+    copy_artifact(
+        "paper_build_json",
+        paper_build.get("json_path"),
+        f"{project_slug}-{cycle_id}-paper-build.json",
+    )
+    copy_artifact(
+        "paper_build_markdown",
+        paper_build.get("markdown_path"),
+        f"{project_slug}-{cycle_id}-paper-build.md",
+    )
+    copy_artifact(
+        "manuscript_markdown",
+        paper_manuscript.get("markdown_path"),
+        f"{project_slug}-{cycle_id}-manuscript.md",
+    )
+    copy_artifact(
+        "publication_audit_json",
+        publication_audit.get("output_path"),
+        f"{project_slug}-{cycle_id}-publication-audit.json",
+    )
+    copy_artifact(
+        "evidence_gate_json",
+        evidence_gate.get("output_path"),
+        f"{project_slug}-{cycle_id}-evidence-gate.json",
+    )
+    copy_artifact(
+        "related_work_json",
+        related_work.get("json_path"),
+        f"{project_slug}-{cycle_id}-related-work.json",
+    )
+    copy_artifact(
+        "related_work_markdown",
+        related_work.get("markdown_path"),
+        f"{project_slug}-{cycle_id}-related-work.md",
+    )
+    copy_artifact(
+        "llm_review_json",
+        review.get("output_path"),
+        f"{project_slug}-{cycle_id}-llm-review.json",
+    )
+    copy_artifact("cycle_summary_json", summary_path, f"{project_slug}-{cycle_id}-summary.json")
+
+    manifest_path = target_dir / f"{project_slug}-{cycle_id}-manifest.json"
+    markdown_path = target_dir / f"{project_slug}-{cycle_id}-manifest.md"
+    manifest = {
+        "schema_version": 1,
+        "project_id": project_id,
+        "cycle_id": cycle_id,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "output_dir": _relative_path_text(target_dir),
+        "source_cycle_summary": _relative_path_text(summary_path),
+        "paths": copied,
+        "path_policy": "Paths are written relative to the current project root when possible.",
+    }
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    markdown_path.write_text(_render_deliverables_markdown(manifest), encoding="utf-8")
+    return {
+        "output_dir": _relative_path_text(target_dir),
+        "manifest_path": _relative_path_text(manifest_path),
+        "markdown_path": _relative_path_text(markdown_path),
+        "pdf_path": copied.get("paper_pdf"),
+        "paths": copied,
+    }
+
+
+def _existing_path_from_value(value: object) -> Path | None:
+    if not isinstance(value, str | Path):
+        return None
+    path = Path(value)
+    candidates = (path, Path.cwd() / path) if not path.is_absolute() else (path,)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _relative_path_text(path: Path | str) -> str:
+    resolved = Path(path).resolve()
+    try:
+        return Path(os.path.relpath(resolved, start=Path.cwd().resolve())).as_posix()
+    except ValueError:
+        return resolved.as_posix()
+
+
+def _sanitize_output_paths(text: str) -> str:
+    if not text:
+        return text
+    root = str(Path.cwd().resolve())
+    normalized_root = Path.cwd().resolve().as_posix()
+    return (
+        text.replace(root + "\\", "")
+        .replace(root + "/", "")
+        .replace(normalized_root + "/", "")
+    )
+
+
+def _safe_path_segment(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip()).strip("-._")
+    return slug or "ai-researcher"
+
+
+def _render_deliverables_markdown(manifest: dict[str, Any]) -> str:
+    paths = manifest.get("paths")
+    path_lines: list[str] = []
+    if isinstance(paths, dict):
+        path_lines = [
+            f"- {label}: `{path}`"
+            for label, path in sorted(paths.items())
+        ]
+    return "\n".join(
+        [
+            "# AI-Researcher Deliverables",
+            "",
+            f"- Project: `{manifest['project_id']}`",
+            f"- Cycle: `{manifest['cycle_id']}`",
+            f"- Generated at: `{manifest['generated_at']}`",
+            f"- Source cycle summary: `{manifest['source_cycle_summary']}`",
+            "",
+            "## Files",
+            "",
+            *(path_lines or ["- No copyable artifacts were present."]),
+            "",
+            "## Policy",
+            "",
+            "This bundle is a convenience publication surface. Release or paper claims still depend on the attached publication audit, evidence gate, and source-backed review artifacts.",
+            "",
+        ]
+    )
 
 
 def _serve_command_text(
@@ -3705,6 +4359,599 @@ def _echo_fetches(fetches: Iterable[object]) -> None:
         )
 
 
+def _collect_setup_wizard_values(
+    *,
+    config_path: Path,
+    env_path: Path,
+    provider: str | None,
+    base_url: str | None,
+    model_name: str | None,
+    api_key: str | None,
+    wechat: bool | None,
+    wechat_webhook_url: str | None,
+    wechat_app_id: str | None,
+    wechat_app_secret: str | None,
+    feishu: bool | None,
+    feishu_webhook_url: str | None,
+    feishu_app_id: str | None,
+    feishu_app_secret: str | None,
+) -> dict[str, Any]:
+    existing_config = _load_or_default_config(config_path)
+    existing_env = _read_env_file(env_path)
+    llm_defaults = existing_config.deployment.llm
+    typer.echo("AI-Researcher setup wizard")
+    typer.echo("Step 1/4: choose the model provider.")
+    stored_provider = existing_env.get("AUTORESEARCH_LLM_PROVIDER")
+    if not stored_provider and config_path.exists():
+        stored_provider = llm_defaults.provider
+    preset = _prompt_provider_preset(
+        existing_provider=provider
+        or stored_provider
+        or LLM_PROVIDER_PRESETS[0]["provider"],
+    )
+    provider_value = provider or preset["provider"]
+    config_matches_preset = (
+        config_path.exists()
+        and llm_defaults.provider.casefold() == provider_value.casefold()
+    )
+    base_url_value = base_url or _prompt_text(
+        "API base URL",
+        default=existing_env.get("AUTORESEARCH_LLM_BASE_URL")
+        or (llm_defaults.base_url if config_matches_preset else None)
+        or preset["base_url"],
+    )
+    model_name_value = model_name or _prompt_text(
+        "Model name",
+        default=existing_env.get("AUTORESEARCH_LLM_MODEL_NAME")
+        or (llm_defaults.model_name if config_matches_preset else None)
+        or preset["model_name"],
+    )
+
+    typer.echo("Step 2/4: configure the API key.")
+    api_key_value = api_key or _prompt_api_key(existing_env.get("AUTORESEARCH_LLM_API_KEY"))
+
+    typer.echo("Step 3/4: configure operator channels.")
+    channel_flags = _prompt_channel_flags(
+        wechat=wechat,
+        feishu=feishu,
+        existing_wechat=existing_config.deployment.wechat.enabled,
+        existing_feishu=existing_config.deployment.feishu.enabled,
+    )
+    wechat_enabled = channel_flags["wechat"]
+    feishu_enabled = channel_flags["feishu"]
+    wechat_values = _prompt_setup_channel_values(
+        enabled=wechat_enabled,
+        channel_name="WeChat",
+        webhook_url=wechat_webhook_url or existing_env.get("AUTORESEARCH_WECHAT_WEBHOOK_URL"),
+        app_id=wechat_app_id or existing_env.get("AUTORESEARCH_WECHAT_APP_ID"),
+        app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
+    )
+    feishu_values = _prompt_setup_channel_values(
+        enabled=feishu_enabled,
+        channel_name="Feishu",
+        webhook_url=feishu_webhook_url or existing_env.get("AUTORESEARCH_FEISHU_WEBHOOK_URL"),
+        app_id=feishu_app_id or existing_env.get("AUTORESEARCH_FEISHU_APP_ID"),
+        app_secret=feishu_app_secret or existing_env.get("AUTORESEARCH_FEISHU_APP_SECRET"),
+    )
+
+    typer.echo("Step 4/4: write local AI-Researcher assets.")
+    typer.echo("The wizard will write config.yaml, .env, integration manifests, and slash commands.")
+    return {
+        "provider": provider_value,
+        "base_url": base_url_value,
+        "model_name": model_name_value,
+        "api_key": api_key_value,
+        "wechat": wechat_values["enabled"],
+        "wechat_webhook_url": wechat_values["webhook_url"],
+        "wechat_app_id": wechat_values["app_id"],
+        "wechat_app_secret": wechat_values["app_secret"],
+        "feishu": feishu_values["enabled"],
+        "feishu_webhook_url": feishu_values["webhook_url"],
+        "feishu_app_id": feishu_values["app_id"],
+        "feishu_app_secret": feishu_values["app_secret"],
+    }
+
+
+def _prompt_provider_preset(*, existing_provider: str) -> dict[str, str]:
+    default_index = 1
+    normalized_existing = existing_provider.casefold()
+    for index, preset in enumerate(LLM_PROVIDER_PRESETS, start=1):
+        if normalized_existing in {preset["id"].casefold(), preset["provider"].casefold()}:
+            default_index = index
+            break
+    labels = [
+        f"{preset['label']} ({preset['base_url']}, default model {preset['model_name']})"
+        for preset in LLM_PROVIDER_PRESETS
+    ]
+    index = _prompt_choice_index(
+        "Provider",
+        labels,
+        default_index=default_index,
+    )
+    return LLM_PROVIDER_PRESETS[index - 1]
+
+
+def _prompt_channel_flags(
+    *,
+    wechat: bool | None,
+    feishu: bool | None,
+    existing_wechat: bool,
+    existing_feishu: bool,
+) -> dict[str, bool]:
+    if wechat is not None or feishu is not None:
+        return {
+            "wechat": bool(wechat) if wechat is not None else existing_wechat,
+            "feishu": bool(feishu) if feishu is not None else existing_feishu,
+        }
+    default_index = 1
+    if existing_wechat and existing_feishu:
+        default_index = 4
+    elif existing_wechat:
+        default_index = 2
+    elif existing_feishu:
+        default_index = 3
+    index = _prompt_choice_index(
+        "Channels",
+        (
+            "Skip channels for now",
+            "Configure WeChat",
+            "Configure Feishu",
+            "Configure both WeChat and Feishu",
+        ),
+        default_index=default_index,
+    )
+    return {
+        "wechat": index in {2, 4},
+        "feishu": index in {3, 4},
+    }
+
+
+def _prompt_setup_channel_values(
+    *,
+    enabled: bool,
+    channel_name: str,
+    webhook_url: str | None,
+    app_id: str | None,
+    app_secret: str | None,
+) -> dict[str, str | bool | None]:
+    if not enabled:
+        return {"enabled": False, "webhook_url": None, "app_id": None, "app_secret": None}
+    if (webhook_url or (app_id and app_secret)) and typer.confirm(
+        f"Reuse existing {channel_name} channel credentials?",
+        default=True,
+    ):
+        return {
+            "enabled": True,
+            "webhook_url": webhook_url,
+            "app_id": app_id,
+            "app_secret": app_secret,
+        }
+    mode = _prompt_choice_index(
+        f"{channel_name} credential mode",
+        (
+            "Webhook URL",
+            "App ID + app secret",
+            "Skip this channel for now",
+        ),
+        default_index=1,
+    )
+    if mode == 1:
+        return {
+            "enabled": True,
+            "webhook_url": _prompt_text(f"{channel_name} webhook URL", default=webhook_url),
+            "app_id": None,
+            "app_secret": None,
+        }
+    if mode == 2:
+        return {
+            "enabled": True,
+            "webhook_url": None,
+            "app_id": _prompt_text(f"{channel_name} app ID", default=app_id),
+            "app_secret": _prompt_secret(f"{channel_name} app secret", default=app_secret),
+        }
+    return {"enabled": False, "webhook_url": None, "app_id": None, "app_secret": None}
+
+
+def _prompt_choice_index(
+    prompt: str,
+    choices: Iterable[str],
+    *,
+    default_index: int,
+) -> int:
+    options = list(choices)
+    for index, label in enumerate(options, start=1):
+        default_marker = " [default]" if index == default_index else ""
+        typer.echo(f"  {index}. {label}{default_marker}")
+    while True:
+        raw = typer.prompt(prompt, default=str(default_index)).strip()
+        try:
+            selected = int(raw)
+        except ValueError:
+            typer.echo(f"[WARN] Enter a number from 1 to {len(options)}.")
+            continue
+        if 1 <= selected <= len(options):
+            return selected
+        typer.echo(f"[WARN] Enter a number from 1 to {len(options)}.")
+
+
+def _prompt_text(prompt: str, *, default: str | None) -> str:
+    value = str(typer.prompt(prompt, default=default or "")).strip()
+    if value:
+        return value
+    raise typer.BadParameter(f"{prompt} is required")
+
+
+def _prompt_api_key(existing_key: str | None) -> str:
+    if existing_key and typer.confirm("Reuse existing API key from .env?", default=True):
+        return existing_key
+    return _prompt_secret("LLM API key", default=None)
+
+
+def _prompt_secret(prompt: str, *, default: str | None) -> str:
+    if default and typer.confirm(f"Reuse existing {prompt}?", default=True):
+        return default
+    value = str(typer.prompt(prompt, hide_input=sys.stdin.isatty())).strip()
+    if value:
+        return value
+    raise typer.BadParameter(f"{prompt} is required")
+
+
+def _render_operator_monitor(
+    *,
+    agent_log: Path,
+    sessions_state: Path,
+    runtime_state: Path,
+    scheduler_state: Path,
+    outputs_dir: Path,
+    cycle_summary: Path | None,
+    max_agent_entries: int,
+    max_diff_lines: int,
+    show_diff: bool,
+    clear: bool,
+) -> None:
+    from rich import box
+    from rich.columns import Columns
+    from rich.console import Console
+    from rich.panel import Panel
+
+    console = Console(color_system=None, force_terminal=False)
+    if clear:
+        console.clear()
+    summary_path = cycle_summary or _latest_output_summary(outputs_dir)
+    console.rule("[bold]AI-Researcher Operator Console")
+    console.print(
+        Columns(
+            (
+                Panel(
+                    _recent_agent_entries_text(agent_log, max_entries=max_agent_entries),
+                    title="Agent Messages",
+                    border_style="cyan",
+                    box=box.ASCII,
+                ),
+                Panel(
+                    _state_table(
+                        title="Agent Sessions",
+                        rows=_agent_session_rows(sessions_state),
+                        columns=("agent", "task", "status", "paths"),
+                    ),
+                    title="Active Agents",
+                    border_style="green",
+                    box=box.ASCII,
+                ),
+            ),
+            equal=True,
+            expand=True,
+        )
+    )
+    console.print(
+        Columns(
+            (
+                Panel(
+                    _flow_table(summary_path),
+                    title="Information Flow",
+                    border_style="magenta",
+                    box=box.ASCII,
+                ),
+                Panel(
+                    _state_table(
+                        title="Queue",
+                        rows=_approval_and_task_rows(runtime_state, scheduler_state),
+                        columns=("kind", "id", "status", "detail"),
+                    ),
+                    title="Approvals and Tasks",
+                    border_style="yellow",
+                    box=box.ASCII,
+                ),
+            ),
+            equal=True,
+            expand=True,
+        )
+    )
+    console.print(
+        Columns(
+            (
+                Panel(
+                    _git_changes_text(max_diff_lines=max_diff_lines)
+                    if show_diff
+                    else "Diff preview disabled with --no-diff.",
+                    title="Changes",
+                    border_style="red",
+                    box=box.ASCII,
+                ),
+                Panel(
+                    _output_preview_text(outputs_dir, summary_path=summary_path),
+                    title="Preview Results",
+                    border_style="blue",
+                    box=box.ASCII,
+                ),
+            ),
+            equal=True,
+            expand=True,
+        )
+    )
+
+
+def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
+    if not agent_log.exists():
+        return f"No agent log found at {_relative_path_text(agent_log)}."
+    entries: list[list[str]] = []
+    current: list[str] = []
+    for line in agent_log.read_text(encoding="utf-8", errors="replace").splitlines():
+        if re.match(r"^### \d{4}-\d{2}-\d{2}", line):
+            if current:
+                entries.append(current)
+            current = [line.removeprefix("### ").strip()]
+            continue
+        if current and (
+            line.startswith("- Request:")
+            or line.startswith("- Summary:")
+            or line.startswith("- Verification:")
+            or line.startswith("- Problems:")
+            or line.startswith("- Follow-up:")
+        ):
+            current.append(line.strip())
+    if current:
+        entries.append(current)
+    if not entries:
+        return "Agent.md exists, but no change-log entries were found."
+    rendered: list[str] = []
+    for entry in entries[:max_entries]:
+        rendered.append("\n".join(entry[:7]))
+    return "\n\n".join(rendered)
+
+
+def _state_table(
+    *,
+    title: str,
+    rows: list[tuple[str, str, str, str]],
+    columns: tuple[str, str, str, str],
+) -> Any:
+    from rich import box
+    from rich.table import Table
+
+    table = Table(title=title, expand=True, box=box.ASCII)
+    for column in columns:
+        table.add_column(column)
+    if not rows:
+        table.add_row("-", "-", "-", "none")
+        return table
+    for row in rows:
+        table.add_row(*(_truncate_cell(value) for value in row))
+    return table
+
+
+def _agent_session_rows(sessions_state: Path) -> list[tuple[str, str, str, str]]:
+    payload = _read_json_mapping(sessions_state)
+    rows: list[tuple[str, str, str, str]] = []
+    for session in _mapping_list(payload.get("sessions")):
+        status = str(session.get("status", "unknown"))
+        if status != "active":
+            continue
+        rows.append(
+            (
+                str(session.get("agent_name", "unknown")),
+                str(session.get("task_id", "unknown")),
+                status,
+                ", ".join(str(path) for path in _string_list(session.get("claimed_paths"))),
+            )
+        )
+    return rows
+
+
+def _approval_and_task_rows(
+    runtime_state: Path,
+    scheduler_state: Path,
+) -> list[tuple[str, str, str, str]]:
+    rows: list[tuple[str, str, str, str]] = []
+    approvals = _read_json_mapping(runtime_state)
+    for request in _mapping_list(approvals.get("requests")):
+        status = str(request.get("status", "unknown"))
+        if status not in {"pending", "approved"}:
+            continue
+        rows.append(
+            (
+                "approval",
+                str(request.get("request_id", "unknown")),
+                status,
+                str(request.get("action_id") or request.get("command") or "no detail"),
+            )
+        )
+    scheduler = _read_json_mapping(scheduler_state)
+    for task in _mapping_list(scheduler.get("tasks")):
+        status = str(task.get("status", "unknown"))
+        if status == "completed":
+            continue
+        rows.append(
+            (
+                "task",
+                str(task.get("task_id", "unknown")),
+                status,
+                str(task.get("name") or task.get("metadata", {}).get("issue_path") or "no detail"),
+            )
+        )
+    return rows
+
+
+def _flow_table(summary_path: Path | None) -> Any:
+    from rich import box
+    from rich.table import Table
+
+    table = Table(title="Research Loop", expand=True, box=box.ASCII)
+    table.add_column("stage")
+    table.add_column("status")
+    table.add_column("evidence")
+    if summary_path is None or not summary_path.exists():
+        for stage in (
+            "source discovery",
+            "similarity check",
+            "experiment",
+            "review",
+            "paper build",
+            "evidence gate",
+            "vault follow-up",
+        ):
+            table.add_row(stage, "waiting", "no cycle summary selected")
+        return table
+
+    payload = _read_json_mapping(summary_path)
+    evidence_name = summary_path.name
+    rows = [
+        ("source discovery", _nested_status(payload, "source_preflight"), evidence_name),
+        ("similarity check", _nested_status(payload, "similarity"), evidence_name),
+        ("experiment", _nested_status(payload, "demo"), evidence_name),
+        ("review", _nested_status(payload, "review"), evidence_name),
+        ("publication audit", _nested_status(payload, "publication_audit"), evidence_name),
+        ("paper build", _nested_status(payload, "paper_build"), evidence_name),
+        ("evidence gate", _nested_status(payload, "evidence_gate"), evidence_name),
+    ]
+    for stage, status, evidence in rows:
+        table.add_row(stage, status, evidence)
+    return table
+
+
+def _nested_status(payload: Mapping[str, Any], key: str) -> str:
+    value = payload.get(key)
+    if isinstance(value, Mapping):
+        for status_key in ("status", "verdict", "review_status", "result"):
+            status = value.get(status_key)
+            if status is not None:
+                return str(status)
+        if key == "similarity" and value.get("finding_count") is not None:
+            return f"findings={value['finding_count']}"
+        if key == "demo" and value.get("demo") is not None:
+            return str(value["demo"])
+        if key == "evidence_gate" and value.get("release_allowed") is not None:
+            return f"release_allowed={str(value['release_allowed']).lower()}"
+        return "recorded"
+    if value is not None:
+        return str(value)
+    direct = payload.get(f"{key}_status")
+    if direct is not None:
+        return str(direct)
+    return "unknown"
+
+
+def _git_changes_text(*, max_diff_lines: int) -> str:
+    status = _run_git_text(("status", "--short"))
+    diff_stat = _run_git_text(("diff", "--stat"))
+    diff = _run_git_text(("diff", "--"), max_lines=max_diff_lines)
+    sections = [
+        "status:",
+        status or "(clean)",
+        "",
+        "stat:",
+        diff_stat or "(no unstaged diff stat)",
+    ]
+    if max_diff_lines:
+        sections.extend(("", f"diff preview ({max_diff_lines} lines):", diff or "(no diff preview)"))
+    return "\n".join(sections)
+
+
+def _run_git_text(args: tuple[str, ...], *, max_lines: int | None = None) -> str:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"git {' '.join(args)} failed: {exc}"
+    text = (result.stdout or result.stderr).strip()
+    if max_lines is None:
+        return text
+    lines = text.splitlines()
+    if len(lines) <= max_lines:
+        return text
+    return "\n".join(lines[:max_lines] + [f"... truncated {len(lines) - max_lines} lines"])
+
+
+def _output_preview_text(outputs_dir: Path, *, summary_path: Path | None) -> str:
+    lines: list[str] = []
+    if summary_path is not None:
+        lines.append(f"cycle summary: {_relative_path_text(summary_path)}")
+    if not outputs_dir.exists():
+        lines.append(f"No outputs directory found at {_relative_path_text(outputs_dir)}.")
+        return "\n".join(lines)
+    files = sorted(
+        (path for path in outputs_dir.rglob("*") if path.is_file()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not files:
+        lines.append("No output files yet.")
+        return "\n".join(lines)
+    for path in files[:10]:
+        size = path.stat().st_size
+        marker = "PDF" if path.suffix.casefold() == ".pdf" else path.suffix.lstrip(".") or "file"
+        lines.append(f"{path.name} [{marker}]: {_relative_path_text(path)} ({size} bytes)")
+    return "\n".join(lines)
+
+
+def _latest_output_summary(outputs_dir: Path) -> Path | None:
+    if not outputs_dir.exists():
+        return None
+    candidates = sorted(
+        outputs_dir.rglob("*-summary.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
+
+
+def _read_json_mapping(path: Path) -> Mapping[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if isinstance(data, Mapping):
+        return data
+    return {}
+
+
+def _mapping_list(value: object) -> list[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, Mapping)]
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list | tuple):
+        return []
+    return [str(item) for item in value]
+
+
+def _truncate_cell(value: str, *, limit: int = 72) -> str:
+    if len(value) <= limit:
+        return value
+    return value[: limit - 3] + "..."
+
+
 def _required_value(
     value: str | None,
     *,
@@ -3716,6 +4963,8 @@ def _required_value(
     if value:
         return value
     if non_interactive:
+        if default:
+            return default
         msg = f"{prompt} is required in --non-interactive mode"
         raise typer.BadParameter(msg)
     prompted = typer.prompt(prompt, default=default, hide_input=hide_input)

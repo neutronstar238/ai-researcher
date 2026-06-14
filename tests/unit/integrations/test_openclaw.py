@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 
 from autoresearch.integrations import (
+    channel_adapter_manifest_payload,
     channel_plugin_manifest_payload,
     get_openclaw_channel_plugin,
     iter_openclaw_channel_plugins,
+    write_channel_adapter_manifest,
     write_openclaw_channel_manifest,
 )
 
@@ -49,6 +51,20 @@ def test_openclaw_manifest_contains_runtime_approval_bridge(tmp_path: Path) -> N
     ]
 
 
+def test_channel_adapter_manifest_is_neutral_ai_researcher_runbook(tmp_path: Path) -> None:
+    output = tmp_path / "integrations" / "channels" / "adapters.json"
+
+    write_channel_adapter_manifest(output)
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    channels = {channel["channel_id"]: channel for channel in payload["channels"]}
+    assert "AI-Researcher does not install or execute third-party plugins" in (
+        "\n".join(payload["security_notes"])
+    )
+    assert channels["feishu"]["upstream_role"] == "optional messaging adapter reference"
+    assert channels["openclaw-weixin"]["package_name"] == "@tencent-weixin/openclaw-weixin"
+
+
 def test_openclaw_channel_lookup_accepts_channel_or_plugin_id() -> None:
     assert get_openclaw_channel_plugin("feishu").plugin_id == "openclaw-lark"
     assert get_openclaw_channel_plugin("openclaw-lark").channel_id == "feishu"
@@ -61,3 +77,12 @@ def test_openclaw_manifest_payload_is_json_serialisable() -> None:
 
     assert "AI-Researcher" in text
     assert "copy" not in text.casefold()
+
+
+def test_channel_adapter_manifest_payload_is_json_serialisable() -> None:
+    payload = channel_adapter_manifest_payload()
+
+    text = json.dumps(payload, sort_keys=True)
+
+    assert "AI-Researcher" in text
+    assert "runbook only" in text

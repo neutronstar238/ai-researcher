@@ -309,6 +309,86 @@ def test_deploy_setup_keeps_existing_env_example_template(tmp_path: Path) -> Non
     assert "env template ready" in result.stdout
 
 
+def test_setup_reuses_existing_env_key_in_non_interactive_mode(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_PROVIDER=openai-compatible",
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-existing",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(tmp_path / "config.yaml"),
+            "--env-path",
+            str(env_path),
+            "--no-wechat",
+            "--no-feishu",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--integrations-dir",
+            str(tmp_path / "integrations"),
+            "--commands-dir",
+            str(tmp_path / "commands"),
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    env_text = env_path.read_text(encoding="utf-8")
+    assert "AUTORESEARCH_LLM_API_KEY=sk-existing" in env_text
+    assert "[OK] model: openai-compatible / research-model" in result.stdout
+
+
+def test_setup_guided_wizard_collects_provider_and_api_key(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--integrations-dir",
+            str(tmp_path / "integrations"),
+            "--commands-dir",
+            str(tmp_path / "commands"),
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+        input="\n\nresearch-model\nsk-guided\n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AI-Researcher setup wizard" in result.stdout
+    assert "1. DeepSeek" in result.stdout
+    config = ConfigParser().parse_file(config_path)
+    assert isinstance(config, SystemConfig)
+    assert config.deployment.llm.provider == "deepseek"
+    assert config.deployment.llm.base_url == "https://api.deepseek.com"
+    assert config.deployment.llm.model_name == "research-model"
+    env_text = env_path.read_text(encoding="utf-8")
+    assert "AUTORESEARCH_LLM_API_KEY=sk-guided" in env_text
+    assert "[OK] wechat: disabled" in result.stdout
+    assert "[OK] feishu: disabled" in result.stdout
+
+
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
@@ -333,6 +413,58 @@ def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> No
 
     assert result.exit_code != 0
     assert "WeChat requires" in result.output
+
+
+def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault = tmp_path / "autoresearch-vault"
+    integrations = tmp_path / "integrations"
+    commands = tmp_path / "commands"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--vault",
+            str(vault),
+            "--project-id",
+            "project_1",
+            "--integrations-dir",
+            str(integrations),
+            "--commands-dir",
+            str(commands),
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert config_path.is_file()
+    assert env_path.is_file()
+    assert (vault / "Home.md").is_file()
+    assert (integrations / "channels" / "adapters.json").is_file()
+    assert (integrations / "opencode" / "code-agent.json").is_file()
+    scansci_manifest = integrations / "scansci-pdf" / "pdf-source.json"
+    assert scansci_manifest.is_file()
+    scansci_payload = json.loads(scansci_manifest.read_text(encoding="utf-8"))
+    assert scansci_payload["default_policy"]["mode"] == "oa_first_legal_only"
+    assert (commands / "research" / "autopilot.toml").is_file()
+    assert (commands / "research" / "scansci-pdf.toml").is_file()
+    assert "[OK] next: airesearcher serve --permission-mode approve-dangerous" in result.stdout
 
 
 def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
@@ -361,7 +493,8 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "publication-audit.toml").is_file()
     assert (commands_dir / "research" / "publication-stability.toml").is_file()
     assert (commands_dir / "research" / "approve.toml").is_file()
-    assert (commands_dir / "research" / "openclaw-channels.toml").is_file()
+    assert (commands_dir / "research" / "channel-adapters.toml").is_file()
+    assert (commands_dir / "research" / "scansci-pdf.toml").is_file()
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
@@ -377,7 +510,8 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:publication-audit" in list_result.stdout
     assert "/research:publication-stability" in list_result.stdout
     assert "/research:approve" in list_result.stdout
-    assert "/research:openclaw-channels" in list_result.stdout
+    assert "/research:channel-adapters" in list_result.stdout
+    assert "/research:scansci-pdf" in list_result.stdout
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
@@ -415,8 +549,11 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher skill-polish-audit" in (
         commands_dir / "research" / "skill-polish-audit.toml"
     ).read_text(encoding="utf-8")
-    assert "airesearcher channels openclaw init" in (
-        commands_dir / "research" / "openclaw-channels.toml"
+    assert "airesearcher channels adapters init" in (
+        commands_dir / "research" / "channel-adapters.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher pdf-sources scansci-pdf init" in (
+        commands_dir / "research" / "scansci-pdf.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher code-agents opencode init" in (
         commands_dir / "research" / "code-agent-backends.toml"
@@ -1147,11 +1284,22 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert Path(kwargs["markdown_path"]).name == "manuscript.md"
         assert Path(kwargs["output_dir"]).name == "paper-build"
         assert kwargs["template_id"] == "generic-article-two-column"
+        output_path = Path(kwargs["output_dir"])
+        output_path.mkdir(parents=True, exist_ok=True)
+        for name, content in (
+            ("paper-build.json", "{}"),
+            ("paper-build.md", "# Build\n"),
+            ("main.tex", "\\documentclass{article}\\begin{document}x\\end{document}\n"),
+            ("main.pdf", "%PDF-1.4\n"),
+        ):
+            (output_path / name).write_text(content, encoding="utf-8")
         return SimpleNamespace(
             to_dict=lambda: {
                 "status": "compiled",
-                "json_path": str(Path(kwargs["output_dir"]) / "paper-build.json"),
-                "pdf_path": str(Path(kwargs["output_dir"]) / "main.pdf"),
+                "json_path": str(output_path / "paper-build.json"),
+                "markdown_path": str(output_path / "paper-build.md"),
+                "tex_path": str(output_path / "main.tex"),
+                "pdf_path": str(output_path / "main.pdf"),
             }
         )
 
@@ -1225,6 +1373,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "_run_autopilot_review", fake_autopilot_review)
 
     output_dir = tmp_path / "runs" / "autopilot"
+    deliverables_dir = tmp_path / "outputs"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
     result = CliRunner().invoke(
         app,
@@ -1236,6 +1385,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             str(tmp_path / "cache"),
             "--output-dir",
             str(output_dir),
+            "--deliverables-dir",
+            str(deliverables_dir),
             "--state",
             str(state),
             "--project-id",
@@ -1313,6 +1464,13 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
+    assert payload["deliverables"]["pdf_path"].endswith(".pdf")
+    assert Path(payload["deliverables"]["paths"]["paper_pdf"]).is_file()
+    assert Path(payload["deliverables"]["manifest_path"]).is_file()
+    deliverables_manifest = json.loads(
+        Path(payload["deliverables"]["manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert deliverables_manifest["paths"]["paper_pdf"].endswith(".pdf")
     assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
@@ -1819,6 +1977,145 @@ def test_sessions_cli_blocks_overlapping_claim_until_release(tmp_path: Path) -> 
     assert "[OK] session_claim: allowed" in second.stdout
 
 
+def test_channel_adapter_manifest_cli_writes_neutral_runbook(tmp_path: Path) -> None:
+    output = tmp_path / "integrations" / "channels" / "adapters.json"
+    runner = CliRunner()
+
+    init_result = runner.invoke(
+        app,
+        ["channels", "adapters", "init", "--output", str(output)],
+    )
+    list_result = runner.invoke(app, ["channels", "adapters", "list"])
+    feishu_result = runner.invoke(
+        app,
+        ["channels", "adapters", "list", "--channel", "openclaw-lark"],
+    )
+
+    assert init_result.exit_code == 0, init_result.output
+    assert "[OK] channel_adapters: 11" in init_result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert "AI-Researcher does not install or execute third-party plugins" in (
+        "\n".join(payload["security_notes"])
+    )
+    channels = {channel["channel_id"]: channel for channel in payload["channels"]}
+    assert channels["feishu"]["upstream_role"] == "optional messaging adapter reference"
+    assert channels["openclaw-weixin"]["package_name"] == "@tencent-weixin/openclaw-weixin"
+    assert list_result.exit_code == 0, list_result.output
+    assert "[CHANNEL] channel=feishu upstream_plugin=openclaw-lark" in list_result.stdout
+    assert feishu_result.exit_code == 0, feishu_result.output
+    assert "[OK] channel_adapters: 1" in feishu_result.stdout
+
+
+def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
+    agent_log = tmp_path / "Agent.md"
+    agent_log.write_text(
+        "\n".join(
+            [
+                "### 2026-06-14 22:30:00 +08:00 - Codex - Task 117.1",
+                "- Request: guided setup and monitor",
+                "- Summary:",
+                "  - Added operator console.",
+                "- Verification:",
+                "  - focused tests passed.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    sessions = tmp_path / ".airesearcher" / "agent-sessions.json"
+    sessions.parent.mkdir(parents=True)
+    sessions.write_text(
+        json.dumps(
+            {
+                "sessions": [
+                    {
+                        "session_id": "session_a",
+                        "agent_name": "Codex A",
+                        "task_id": "117.1",
+                        "claimed_paths": ["src/autoresearch/cli/main.py"],
+                        "status": "active",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    approvals = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    approvals.write_text(
+        json.dumps(
+            {
+                "requests": [
+                    {
+                        "request_id": "approval_1",
+                        "action_id": "serve:cycle",
+                        "status": "pending",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    scheduler = tmp_path / ".airesearcher" / "scheduler-state.json"
+    scheduler.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_id": "task_open",
+                        "name": "open issue follow-up",
+                        "status": "open",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    outputs = tmp_path / "outputs" / "project_1"
+    outputs.mkdir(parents=True)
+    summary = outputs / "project_1-cycle-summary.json"
+    summary.write_text(
+        json.dumps(
+            {
+                "source_preflight": {"status": "pass"},
+                "review": {"status": "passed"},
+                "paper_build": {"status": "compiled"},
+                "evidence_gate": {"verdict": "pass"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (outputs / "project_1-cycle.pdf").write_bytes(b"%PDF demo")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "monitor",
+            "--agent-log",
+            str(agent_log),
+            "--sessions-state",
+            str(sessions),
+            "--runtime-state",
+            str(approvals),
+            "--scheduler-state",
+            str(scheduler),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--cycle-summary",
+            str(summary),
+            "--no-diff",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AI-Researcher Operator Console" in result.stdout
+    assert "Agent Messages" in result.stdout
+    assert "Codex A" in result.stdout
+    assert "approval_1" in result.stdout
+    assert "task_open" in result.stdout
+    assert "Research Loop" in result.stdout
+    assert "compiled" in result.stdout
+    assert "project_1-cycle.pdf" in result.stdout
+
+
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:
     output = tmp_path / "integrations" / "openclaw" / "channels.json"
     runner = CliRunner()
@@ -1926,6 +2223,39 @@ def test_opencode_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
     assert "validator=AI-Researcher" in list_result.stdout
     assert backend_result.exit_code == 0, backend_result.output
     assert "[OK] opencode_code_agent_backends: 1" in backend_result.stdout
+
+
+def test_scansci_pdf_manifest_cli_writes_oa_first_contract(tmp_path: Path) -> None:
+    output = tmp_path / "integrations" / "scansci-pdf" / "pdf-source.json"
+    runner = CliRunner()
+
+    init_result = runner.invoke(
+        app,
+        ["pdf-sources", "scansci-pdf", "init", "--output", str(output)],
+    )
+    list_result = runner.invoke(app, ["pdf-sources", "scansci-pdf", "list"])
+    one_result = runner.invoke(
+        app,
+        [
+            "pdf-sources",
+            "scansci-pdf",
+            "list",
+            "--integration",
+            "scansci-pdf-oa-first",
+        ],
+    )
+
+    assert init_result.exit_code == 0, init_result.output
+    assert list_result.exit_code == 0, list_result.output
+    assert one_result.exit_code == 0, one_result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    integration = payload["integrations"][0]
+    assert payload["default_policy"]["mode"] == "oa_first_legal_only"
+    assert "arxiv" in integration["allowed_default_sources"]
+    assert "sci-hub" in integration["approval_required_sources"]
+    assert "[OK] scansci_pdf_integrations: 1" in init_result.stdout
+    assert "[PDF] integration=scansci-pdf-oa-first" in list_result.stdout
+    assert "approval_required=sci-hub,libgen" in one_result.stdout
 
 
 def test_validate_package_command_reports_missing_artifact(tmp_path: Path) -> None:

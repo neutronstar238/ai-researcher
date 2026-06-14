@@ -1,0 +1,67 @@
+{
+  "approval_bridge": {
+    "approve_command": "airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json",
+    "local_state": ".airesearcher/runtime-approvals.json",
+    "runtime_command": "airesearcher serve --permission-mode approve-dangerous"
+  },
+  "default_policy": {
+    "mode": "oa_first_legal_only",
+    "require_approval_for_restricted_sources": true,
+    "require_source_metadata": true,
+    "store_under": "autoresearch-vault/projects/<project-id>/sources/"
+  },
+  "generated_for": "AI-Researcher",
+  "integrations": [
+    {
+      "allowed_default_sources": [
+        "publisher_direct_open_access",
+        "arxiv",
+        "pubmed_central",
+        "unpaywall",
+        "openalex",
+        "doaj",
+        "core",
+        "europe_pmc"
+      ],
+      "approval_required_sources": [
+        "sci-hub",
+        "libgen",
+        "institutional_webvpn",
+        "carsi",
+        "tor",
+        "cloudflare_bypass",
+        "credentialed_library_proxy"
+      ],
+      "install_commands": [
+        "python -m pip install scansci-pdf",
+        "pipx install scansci-pdf"
+      ],
+      "integration_id": "scansci-pdf-oa-first",
+      "label": "ScanSci PDF optional OA-first source fetcher",
+      "license": "Apache-2.0",
+      "mcp_commands": [
+        "scansci-pdf run",
+        "scansci-pdf run --mode streamable_http --host 127.0.0.1 --port 8000"
+      ],
+      "package_name": "scansci-pdf",
+      "policy_notes": [
+        "This repository records ScanSci PDF as an optional backend; it does not vendor or execute it.",
+        "AI-Researcher default policy is OA/legal-first metadata and PDF retrieval only.",
+        "Sources that bypass publisher, institutional, or network controls require explicit human approval and license review before use.",
+        "Fetched PDFs must be linked to source metadata and stored as evidence; unsupported paper claims remain blocked."
+      ],
+      "runner_command": "scansci-pdf",
+      "source_url": "https://github.com/Rimagination/scansci-pdf",
+      "verify_commands": [
+        "scansci-pdf check"
+      ]
+    }
+  ],
+  "purpose": "Reference metadata for using ScanSci PDF as an optional PDF retrieval backend while keeping AI-Researcher evidence, legality, and approval gates in control.",
+  "schema_version": 1,
+  "security_notes": [
+    "Do not store institutional credentials, cookies, or proxy state in this repository.",
+    "Do not treat a downloaded PDF as evidence unless its source locator and license basis are recorded.",
+    "Restricted or bypass-oriented sources are disabled by default and require human approval."
+  ]
+}

@@ -62,6 +62,56 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-14 22:34:22 +08:00 - Codex - Task 117.1 guided setup and operator monitor
+
+- Request: Replace the mistaken OpenClaw-install framing with AI-Researcher-owned guided setup; keep WeChat/Feishu plugin reuse as optional upstream adapter runbooks only; add a good-looking CLI monitor for Agent messages, information flow, diffs, and output previews; keep real API/data verification.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `package.json`
+  - `package-lock.json`
+  - `bin/airesearcher.mjs`
+  - `integrations/channels/adapters.json`
+  - `integrations/scansci-pdf/pdf-source.json`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/integrations/__init__.py`
+  - `src/autoresearch/integrations/openclaw.py`
+  - `src/autoresearch/integrations/scansci_pdf.py`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/integrations/test_openclaw.py`
+  - `tests/unit/integrations/test_scansci_pdf.py`
+  - `tests/unit/llm/test_client.py`
+- Summary:
+  - Added `airesearcher setup` as a guided provider/channel/assets wizard with provider presets and reusable existing `.env` values.
+  - Added the npm wrapper entry points `npm run setup`, `npm run serve`, `npm run autopilot`, `npm run monitor`, and `npm run doctor`.
+  - Changed the default channel path to neutral `integrations/channels/adapters.json`; OpenClaw-specific commands remain only as upstream plugin runbook compatibility, not as the AI-Researcher runtime or default setup path.
+  - Added `airesearcher monitor` to render Agent messages, active session claims, approval/task queues, research-loop flow, git change previews, and `outputs/` artifact previews in one Rich terminal surface.
+  - Added ScanSci PDF OA/legal-first manifest support and kept bypass-oriented sources approval/license gated.
+  - Removed hard-coded default `max_tokens` from live LLM smoke/review request payloads unless the operator explicitly passes `--max-tokens`.
+  - Exported completed autopilot paper bundles under `outputs/<project-id>/` with relative-path manifests and PDF/TeX/report copies.
+  - Updated bilingual README guidance and marked task `117.1` complete.
+- Verification:
+  - `python -m pytest tests/unit/llm/test_client.py tests/unit/integrations/test_scansci_pdf.py tests/unit/integrations/test_openclaw.py tests/unit/cli/test_main.py tests/unit/reports/test_paper_build.py -q`: passed, 72 tests.
+  - `python -m ruff check src/autoresearch/cli/main.py src/autoresearch/llm/client.py src/autoresearch/reports/paper_build.py src/autoresearch/integrations/scansci_pdf.py src/autoresearch/integrations/openclaw.py src/autoresearch/integrations/__init__.py tests/unit/llm/test_client.py tests/unit/integrations/test_scansci_pdf.py tests/unit/integrations/test_openclaw.py tests/unit/cli/test_main.py tests/unit/reports/test_paper_build.py`: passed.
+  - `python -m mypy src/autoresearch/cli/main.py src/autoresearch/llm/client.py src/autoresearch/reports/paper_build.py src/autoresearch/integrations/scansci_pdf.py src/autoresearch/integrations/openclaw.py src/autoresearch/integrations/__init__.py`: passed.
+  - `node ./bin/airesearcher.mjs setup ...` with piped guided input into `runs/manual-live/task117-guided-setup`: passed and wrote local config/env without installing third-party plugins.
+  - `node ./bin/airesearcher.mjs setup ... --non-interactive` into `runs/manual-live/task117-setup-integrations`: passed; `integrations/channels/adapters.json` existed and `integrations/openclaw/channels.json` did not under that temp setup output.
+  - `node ./bin/airesearcher.mjs llm-smoke --output runs/manual-live/task117-llm-smoke-post-monitor.json`: passed against DeepSeek V4 Flash with quality score `1.000`, no explicit `max_tokens`, and no secret leak in the report.
+  - Prior real task-117 autopilot cycle remains the PDF-bundle evidence: `outputs/ai_researcher_task117/ai_researcher_task117-cycle-20260614T140329Z.pdf` exists with size `100700` bytes; manifest/summary path scan found no absolute Windows/Linux paths and no `max_tokens`.
+  - `node ./bin/airesearcher.mjs monitor --no-diff --max-agent-entries 2`: passed and rendered Agent messages, queue state, research flow, and output previews including the PDF.
+  - `python -m pytest tests/smoke tests/unit -q`: passed, 462 passed, 4 skipped.
+  - `python -m mypy src/autoresearch`: passed.
+  - `python -m ruff check src tests`: failed on unrelated existing `SIM103` findings in `src/autoresearch/reports/manuscript.py:1093` and `src/autoresearch/reports/publication_audit.py:958`; recorded as `P-20260614-056`.
+- Problems:
+  - Added `P-20260614-056` for the full-repository ruff blocker outside this task's touched files.
+- Follow-up:
+  - Future UI work can upgrade `airesearcher monitor` from a Rich dashboard into a full Textual TUI with scrolling panes, diff selection, and live preview controls.
+
 ### 2026-06-13 23:43:32 +08:00 - Codex - Task 116.1 source-backed related-work inspection
 
 - Request: Continue real API/data-backed quality control until the system can defend CCF-B/Q3-style output; add source-backed related-work cross-checking; also commit the user's README work if any README diff exists.

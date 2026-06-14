@@ -1,0 +1,20 @@
+{
+  "name": "ai-researcher-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "airesearcher": "./bin/airesearcher.mjs"
+  },
+  "scripts": {
+    "setup": "node ./bin/airesearcher.mjs setup",
+    "serve": "node ./bin/airesearcher.mjs serve --permission-mode approve-dangerous",
+    "autopilot": "node ./bin/airesearcher.mjs autopilot",
+    "monitor": "node ./bin/airesearcher.mjs monitor",
+    "doctor": "node ./bin/airesearcher.mjs doctor",
+    "test": "python -m pytest tests/smoke tests/unit"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

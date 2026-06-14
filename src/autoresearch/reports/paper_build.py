@@ -240,7 +240,7 @@ def build_latex_paper_from_markdown(
                 log_path.write_text(reason + "\n", encoding="utf-8")
             else:
                 command_list = _compile_command(engine, tex_path)
-                command = tuple(command_list)
+                command = _recorded_compile_command(command_list)
                 engine_name = Path(engine).name
                 status, pdf_path, reason = _compile_latex(
                     tex_path,
@@ -262,12 +262,12 @@ def build_latex_paper_from_markdown(
         status=status,
         generated_at=generated_at,
         template=template,
-        source_markdown_path=source_path.as_posix(),
-        tex_path=tex_path.as_posix(),
-        pdf_path=pdf_path.as_posix() if pdf_path is not None else None,
-        log_path=log_path.as_posix(),
-        markdown_path=summary_path.as_posix(),
-        json_path=json_path.as_posix(),
+        source_markdown_path=_artifact_path_text(source_path),
+        tex_path=_artifact_path_text(tex_path),
+        pdf_path=_artifact_path_text(pdf_path) if pdf_path is not None else None,
+        log_path=_artifact_path_text(log_path),
+        markdown_path=_artifact_path_text(summary_path),
+        json_path=_artifact_path_text(json_path),
         vault_markdown_path=None,
         missing_sections=missing_sections,
         engine=engine_name,
@@ -291,7 +291,7 @@ def build_latex_paper_from_markdown(
             log_path=artifact.log_path,
             markdown_path=artifact.markdown_path,
             json_path=artifact.json_path,
-            vault_markdown_path=vault_path.as_posix(),
+            vault_markdown_path=_artifact_path_text(vault_path),
             missing_sections=artifact.missing_sections,
             engine=artifact.engine,
             command=artifact.command,
@@ -307,6 +307,14 @@ def build_latex_paper_from_markdown(
         summary_path.write_text(summary_markdown, encoding="utf-8")
         vault_path.write_text(summary_markdown, encoding="utf-8")
     return artifact
+
+
+def _artifact_path_text(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return resolved.as_posix()
 
 
 def _template_by_id(template_id: str) -> LatexTemplateSpec:
@@ -679,6 +687,16 @@ def _compile_command(engine: str, tex_path: Path) -> list[str]:
     if executable.startswith("pdflatex"):
         return [engine, "-interaction=nonstopmode", "-halt-on-error", tex_path.name]
     return [engine, tex_path.name]
+
+
+def _recorded_compile_command(command: list[str]) -> tuple[str, ...]:
+    if not command:
+        return ()
+    recorded = list(command)
+    executable = Path(recorded[0])
+    if executable.is_absolute():
+        recorded[0] = executable.name
+    return tuple(recorded)
 
 
 def _latex_escape(text: str) -> str:

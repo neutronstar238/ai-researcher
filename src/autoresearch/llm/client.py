@@ -85,7 +85,7 @@ def run_llm_smoke_test(
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     timeout_seconds: int | None = None,
-    max_tokens: int = 600,
+    max_tokens: int | None = None,
 ) -> LLMSmokeResult:
     """Call the configured OpenAI-compatible model and validate its output."""
 
@@ -155,7 +155,7 @@ def run_llm_evidence_review(
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     timeout_seconds: int | None = None,
-    max_tokens: int = 4096,
+    max_tokens: int | None = None,
 ) -> LLMReviewResult:
     """Ask the configured model to review output using only local evidence artifacts."""
 
@@ -405,16 +405,17 @@ def _post_chat_completion(
     api_key: str,
     model_name: str,
     timeout_seconds: int,
-    max_tokens: int,
+    max_tokens: int | None,
     messages: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
         "messages": messages or _smoke_messages(),
         "temperature": 0,
-        "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
     }
+    if max_tokens is not None:
+        payload["max_tokens"] = max_tokens
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
@@ -671,8 +672,8 @@ def _extract_message_content(response: dict[str, Any]) -> str:
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
         raise LLMClientError(
-            "LLM API message content is empty; reasoning models may need a higher "
-            "--max-tokens value"
+            "LLM API message content is empty; if you manually set --max-tokens, "
+            "remove it or raise the provider-specific value"
         )
     return content.strip()
 

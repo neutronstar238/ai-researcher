@@ -1706,6 +1706,22 @@ A task can be checked only when all applicable items are true:
     - _References: task `115.1`; task `114.1`; task `113.1`; `P-20260613-054`; `P-20260613-055`; user requirement that generated papers use real online literature, source-backed cross-checking, conservative claims, and strict CCF-B/Q3-style quality gates._
     - _Verify: focused related-work/publication-audit/stability/manuscript/CLI tests; focused ruff; focused mypy; old real audit at `runs/manual-live/task116-related-work-old-audit/publication-audit.json` blocked on missing related-work inspection; old real matrix at `runs/manual-live/task116-related-work-old-matrix/publication-stability.json` blocked with `missing_related_work_inspection`; fresh Pendigits/generic cycle at `runs/manual-live/task116-related-work-pendigits-cycle/cycle-20260613T154024Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; fresh Letter/ACM cycle at `runs/manual-live/task116-related-work-letter-v2-cycle/cycle-20260613T153611Z/cycle-summary.json` with 54 inspected related-work records, 51 abstract-backed records, 11 direct-method candidates, `review_status=passed`, `publication_audit=pass`, and `evidence_gate=pass`; fresh Skin/Springer cycle at `runs/manual-live/task116-related-work-skin-cycle/cycle-20260613T154125Z/cycle-summary.json` with `review_status=passed`, `publication_audit=pass`, `evidence_gate=pass`; final matrix at `runs/manual-live/task116-related-work-current-matrix/publication-stability.json` with `stable=true`, score `1.000`, `strict_review_context_all_releases=pass`, and related-work abstract/direct counts present for every release cell._
 
+- [x] 117. Make deployment and paper outputs user-facing from guided setup
+  - [x] 117.1 Add guided setup, root output bundle, and OA-first PDF-source manifest
+    - Add `airesearcher setup` as the default first-deploy configuration wizard that walks a normal user through provider selection, API base URL, model name, API key, optional WeChat/Feishu channel values, Obsidian vault assets, channel adapter runbooks, OpenCode backend manifest, ScanSci PDF source manifest, and slash command templates.
+    - Keep `airesearcher deploy-setup` as the narrower backward-compatible configuration command.
+    - Add an npm-style wrapper so normal users can run `npm run setup`, `npm run serve`, and `npm run doctor` without learning Poetry command prefixes.
+    - Remove hard-coded default completion-token limits from live LLM smoke/review/autopilot paths; `--max-tokens` must be optional and omitted from the OpenAI-compatible request payload unless the operator explicitly provides it.
+    - Publish completed autopilot paper bundles under project-root `outputs/<project-id>/`, with `<project-id>-<cycle-id>.pdf` when LaTeX compilation succeeds plus a manifest and Markdown index whose paths are relative to the project root when possible.
+    - Record ScanSci PDF as an optional PDF retrieval backend only with OA/legal-first defaults; keep Sci-Hub, LibGen, WebVPN/CARSI, Tor, Cloudflare bypass, and credentialed proxy paths approval-gated and license-review-gated.
+    - Update English and Chinese README quick-start guidance to make `airesearcher setup` / `npm run setup` the normal guided entry point, document `outputs/<project-id>/`, and explain the ScanSci PDF boundary.
+    - Run focused unit tests for LLM request payloads, CLI setup, ScanSci integration, and autopilot deliverable export; run focused lint/type checks for touched modules; run real `airesearcher setup`, real `llm-smoke`, and one real live autopilot cycle using the configured `.env`; verify the generated PDF bundle exists under `outputs/`.
+    - Do not install third-party coding backends or channel plugins from `airesearcher setup`; upstream plugin commands may appear only in generated adapter runbooks and must require a separate operator decision.
+    - Verify that the guided setup experience mirrors the safe parts of provider onboarding: choose provider, enter or reuse credentials, choose optional channels, then write local AI-Researcher config without executing third-party plugin installers.
+    - Add an operator-facing terminal monitor so users can see Agent messages, active session claims, approval/task queues, research information flow, git changes, and output previews in one CLI surface.
+    - _References: user request for guided setup rather than manual subcommands, no manual `max_tokens`, ScanSci PDF review, root `outputs/` PDF publication, Computer Use deployment check, OpenCode `/connect` provider flow, WeChat/Feishu upstream plugin reuse without runtime fusion, Hermes/skills self-evolution inspiration, and npm-like UX._
+    - _Verify: focused tests, ruff, mypy, real guided setup smoke, real LLM smoke without `max_tokens`, real autopilot cycle with `outputs/<project-id>/<project-id>-<cycle-id>.pdf`, manifest path inspection, monitor rendering smoke, and verification that setup does not install third-party channel plugins._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2086,6 +2102,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 83,
       "tasks": ["116.1"]
+    },
+    {
+      "id": 84,
+      "tasks": ["117.1"]
     }
   ]
 }

@@ -312,6 +312,30 @@ def channel_plugin_manifest_payload() -> dict[str, object]:
     }
 
 
+def channel_adapter_manifest_payload() -> dict[str, object]:
+    """Build a neutral upstream messaging-adapter runbook payload."""
+
+    payload = channel_plugin_manifest_payload()
+    payload["purpose"] = (
+        "Reference metadata for optional upstream messaging adapters that can bridge "
+        "operator channels such as WeChat and Feishu into the AI-Researcher runtime."
+    )
+    payload["security_notes"] = [
+        "This manifest is a runbook only; AI-Researcher does not install or execute third-party plugins.",
+        "Review upstream licenses, permissions, and platform terms before installing any adapter elsewhere.",
+        "Keep channel secrets in `.env` or platform secret stores, never in git.",
+        "Route dangerous actions through AI-Researcher runtime approval before execution.",
+    ]
+    payload["channels"] = [
+        {
+            **plugin.to_json_dict(),
+            "upstream_role": "optional messaging adapter reference",
+        }
+        for plugin in OPENCLAW_CHANNEL_PLUGINS
+    ]
+    return payload
+
+
 def write_openclaw_channel_manifest(output_path: Path | str) -> Path:
     """Write the OpenClaw channel manifest to disk."""
 
@@ -319,6 +343,18 @@ def write_openclaw_channel_manifest(output_path: Path | str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(channel_plugin_manifest_payload(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_channel_adapter_manifest(output_path: Path | str) -> Path:
+    """Write the neutral messaging-adapter runbook manifest to disk."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(channel_adapter_manifest_payload(), indent=2, sort_keys=True),
         encoding="utf-8",
     )
     return path

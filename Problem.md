@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260614-056 - Full repository ruff is blocked by pre-existing SIM103 findings
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-06-14 22:34:00 +08:00
+- Source: Extra broad verification after completing task `117.1`.
+- Symptom: `python -m ruff check src tests` failed with two `SIM103 Return the condition directly` findings in `src/autoresearch/reports/manuscript.py:1093` and `src/autoresearch/reports/publication_audit.py:958`.
+- Impact: Focused lint for the task-117 touched modules passes, full pytest and full mypy pass, but the repository-wide ruff gate is not clean until those unrelated style findings are addressed.
+- Evidence: Full ruff reported exactly the two SIM103 findings above. The focused ruff command over `src/autoresearch/cli/main.py`, LLM client, paper build, integration manifests, and related tests passed.
+- Root cause: Existing report-classification helper code returns boolean branches that ruff now wants simplified; these files were not part of the current guided-setup/monitor changes.
+- Workaround: Use the focused ruff gate for task `117.1`; keep the broad ruff failure visible for the next report-quality maintenance task.
+- Next action: When editing manuscript/publication-audit logic next, simplify the two boolean returns and rerun full `python -m ruff check src tests`.
+- Linked tasks: `117.1`
+- Resolution: Pending.
+- Verification: Pending full ruff rerun after the unrelated report helpers are updated.
+
 ### P-20260613-055 - Manuscript overclaimed system-design contribution during live review
 
 - Status: Resolved
