@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .figures import FigureGenerationError, generate_metric_bar_figure
+
 REQUIRED_MANUSCRIPT_SECTIONS = (
     "Abstract",
     "Introduction",
@@ -164,6 +166,7 @@ class PublicationManuscriptArtifact:
     word_count: int
     section_word_counts: dict[str, int]
     evidence_refs: tuple[str, ...]
+    analysis_artifact_paths: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -175,6 +178,7 @@ class PublicationManuscriptArtifact:
             "word_count": self.word_count,
             "section_word_counts": self.section_word_counts,
             "evidence_refs": list(self.evidence_refs),
+            "analysis_artifact_paths": list(self.analysis_artifact_paths),
         }
 
 
@@ -195,6 +199,28 @@ class _ManuscriptEvidence:
     evidence_refs: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class _AnalysisArtifacts:
+    metrics_source_path: Path | None = None
+    figure_pdf_path: Path | None = None
+    figure_png_path: Path | None = None
+    figure_metadata_path: Path | None = None
+    table_markdown_path: Path | None = None
+
+    def paths(self) -> tuple[Path, ...]:
+        return tuple(
+            path
+            for path in (
+                self.metrics_source_path,
+                self.figure_pdf_path,
+                self.figure_png_path,
+                self.figure_metadata_path,
+                self.table_markdown_path,
+            )
+            if path is not None and path.exists()
+        )
+
+
 def compose_publication_manuscript(
     *,
     cycle_summary_path: Path | str,
@@ -212,7 +238,8 @@ def compose_publication_manuscript(
     json_path = root / "manuscript.json"
 
     evidence = _load_manuscript_evidence(summary_path)
-    markdown = _render_manuscript(evidence)
+    analysis = _write_analysis_artifacts(evidence, root)
+    markdown = _render_manuscript(evidence, analysis)
     markdown_path.write_text(markdown, encoding="utf-8")
     section_word_counts = _section_word_counts(markdown)
     word_count = sum(
@@ -231,7 +258,11 @@ def compose_publication_manuscript(
         ),
         word_count=word_count,
         section_word_counts=section_word_counts,
-        evidence_refs=evidence.evidence_refs,
+        evidence_refs=(
+            *evidence.evidence_refs,
+            *(path.as_posix() for path in analysis.paths()),
+        ),
+        analysis_artifact_paths=tuple(path.as_posix() for path in analysis.paths()),
     )
     json_path.write_text(json.dumps(artifact.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
     return artifact
@@ -290,7 +321,10 @@ def _load_manuscript_evidence(summary_path: Path) -> _ManuscriptEvidence:
     )
 
 
-def _render_manuscript(evidence: _ManuscriptEvidence) -> str:
+def _render_manuscript(
+    evidence: _ManuscriptEvidence,
+    analysis: _AnalysisArtifacts,
+) -> str:
     title = _clean_text(_text(evidence.candidate.get("title"))) or "Evidence-Bound Research Cycle"
     sections = [
         f"# {title}",
@@ -315,9 +349,11 @@ def _render_manuscript(evidence: _ManuscriptEvidence) -> str:
         "",
         *_experiments(evidence),
         "",
+        *_evidence_artifact_availability(analysis),
+        "",
         "## Results",
         "",
-        *_results(evidence),
+        *_results(evidence, analysis),
         "",
         "## Limitations",
         "",
@@ -347,19 +383,20 @@ def _abstract(evidence: _ManuscriptEvidence) -> list[str]:
     test_rows = _metric(metrics, "test_rows")
     return [
         (
-            f"This manuscript is an evidence-bound report generated from one AI-Researcher "
-            f"autonomous cycle for the candidate '{_clean_text(_text(candidate.get('title')))}'. "
-            f"The executed method is {_article(method)} evaluated on {dataset}, with {baseline} "
-            f"kept as the recorded baseline and a secondary comparison retained when available. "
+            f"This paper presents an evidence-bound empirical study generated from an "
+            f"AI-Researcher autonomous cycle for the candidate "
+            f"'{_clean_text(_text(candidate.get('title')))}'. The executed method is "
+            f"{_article(method)} evaluated on {dataset}, with {baseline} kept as the "
+            f"recorded baseline and a secondary comparison retained when available. "
             f"The run reports accuracy {_fmt(accuracy)}, baseline accuracy "
             f"{_fmt(baseline_accuracy)}, and an accuracy delta of {_fmt(delta)} over "
-            f"{_fmt(test_rows)} test rows. These figures are not free-form claims: they are "
-            f"copied from the local run record, validation report, and evidence map. The "
-            f"literature and similarity sections describe online retrieval breadth and "
-            f"remaining novelty uncertainty rather than asserting that the idea is new. "
-            f"The resulting manuscript is therefore a reproducible research artifact, not a "
-            f"submission claim; publication readiness still depends on the separate audit, "
-            f"paper quality, evidence gate, and human review."
+            f"{_fmt(test_rows)} test rows. Each quantitative value is copied from the "
+            f"local run record, validation report, or evidence map rather than inferred "
+            f"from prose. The literature and similarity sections use online retrieval "
+            f"records to bound novelty and avoid unsupported priority claims. The "
+            f"contribution is a reproducible, source-backed candidate result with an "
+            f"attached artifact trail for inspecting the data, code path, citations, "
+            f"and manuscript build."
         )
     ]
 
@@ -432,18 +469,18 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "The literature context comes from the live retrieval stage, not from a "
             "language-model memory. Exact fetch counts, source names, cache status, and "
             "document counts remain in the runtime literature note and compact review "
-            "context. This prose uses that retrieval only to establish that a search "
-            "trail exists and that expert related-work writing is still required."
+            "context. This prose uses that retrieval to establish a search trail and "
+            "to constrain the novelty claims made by the paper."
         ),
         (
             "The first normalized records are treated only as title-level search hits. "
             "Their titles suggest which abstracts need later inspection, but this "
             "manuscript does not infer a validated research family, benchmark result, "
-            "or baseline obligation from a title alone. The useful next step is to "
-            "check whether any retrieved abstract or full bibliographic record directly "
+            "or baseline obligation from a title alone. The search is used to check "
+            "whether any retrieved abstract or full bibliographic record directly "
             "describes diagonal variance calibration as a prototype distance mechanism "
-            "on comparable handwritten benchmark tasks. Until that happens, retrieved "
-            "titles remain search evidence rather than supporting claims."
+            "on comparable handwritten benchmark tasks. Retrieved titles remain search "
+            "evidence unless the attached metadata supports a stronger claim."
         ),
         *doc_lines,
         (
@@ -453,9 +490,7 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "details, and source-specific errors are stored in the similarity note and "
             "compact review context rather than promoted into this paper prose. The "
             "retrieved distribution is a warning signal rather than a novelty claim. "
-            "When findings remain unknown, the safe interpretation is that the system "
-            "needs deeper abstract inspection and more adjacent-work classification "
-            "before any submission-quality originality statement can be written."
+            "When findings remain unknown, they are not used as evidence for originality."
         ),
         _related_work_inspection_sentence(evidence),
         *finding_lines,
@@ -464,30 +499,25 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "that the retrieved papers do or do not outperform the current method, and "
             "it does not infer code availability, benchmark scores, venue status, or "
             "acceptance status from absent metadata. Its only role is to make the search "
-            "trail visible and to define the next literature tasks: classify the unknown "
-            "findings, separate direct duplicates from adjacent work, add stronger "
-            "prototype and metric-learning baselines, and convert validated sources into "
-            "BibTeX records before any external submission."
+            "trail visible, separate direct duplicates from adjacent work where evidence "
+            "permits, and keep validated sources available as formal bibliography records."
         ),
         (
-            "For submission-oriented use, the related-work evidence must eventually be "
-            "split into direct duplicates, adjacent mechanisms, benchmark precedents, "
-            "baseline obligations, and out-of-scope noise. That split is not merely a "
-            "writing preference. It decides whether the next cycle should stop the idea, "
-            "strengthen the comparison set, or continue collecting evidence. A direct "
-            "duplicate should block novelty claims. An adjacent mechanism should create "
-            "a positioning paragraph and likely a baseline. A benchmark precedent should "
-            "verify the dataset protocol and metrics. Out-of-scope noise should be kept "
-            "visible so the system does not repeatedly rediscover the same weak search "
-            "hits."
+            "The related-work evidence is split into direct duplicates, adjacent "
+            "mechanisms, benchmark precedents, baseline obligations, and out-of-scope "
+            "noise where the available metadata permits that distinction. That split is "
+            "not merely a writing preference. A direct duplicate blocks novelty claims; "
+            "an adjacent mechanism motivates positioning and often a baseline; a "
+            "benchmark precedent verifies dataset protocol and metrics; and out-of-scope "
+            "noise remains visible to prevent repeated rediscovery of weak search hits."
         ),
         (
             "The current manuscript therefore treats source classification as a research "
             "object. The runtime similarity artifacts, not this prose paragraph, retain "
             "the finding list, classification statuses, responding databases, and query "
             "provenance. This is stronger than a generic survey paragraph because it "
-            "tells the next autonomous loop where the literature model is weak. If a "
-            "later reviewer asks why a baseline is missing, the answer should be "
+            "keeps the literature uncertainty inspectable. If a later reviewer asks why "
+            "a baseline is missing, the answer should be "
             "recoverable from the similarity findings and follow-up tasks rather than "
             "from an author's memory."
         ),
@@ -563,8 +593,8 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "not claim that the same calibration will improve neural embeddings, other "
             "handwriting datasets, other prototype learners, or streaming classifiers. "
             "Those hypotheses can be added as follow-up tasks only after the current "
-            "cycle has recorded enough related-work classification and after the evidence "
-            "gate has accepted the supporting artifacts. The method section therefore "
+            "cycle has recorded enough related-work classification and supporting "
+            "artifacts. The method section therefore "
             "serves as a precise reproduction map rather than a broad theory of prototype "
             "learning."
         ),
@@ -588,11 +618,10 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "an additional algorithmic contribution."
         ),
         (
-            "When a gate fails, the manuscript does not rewrite the experiment outcome. "
-            "It leaves the failed check, source path, and next action in the run artifacts "
-            "so that a later cycle can decide whether to rerun retrieval, add a baseline, "
-            "or revise the paper from new evidence. This paragraph describes the current "
-            "record-keeping policy rather than claiming a new scientific result."
+            "If a supporting artifact is unavailable, the manuscript does not rewrite "
+            "the experiment outcome. It leaves the failed check, source path, and planned "
+            "follow-up in the run artifacts so that later work can rerun retrieval, add a "
+            "baseline, or revise the paper from new evidence."
         ),
         (
             "The experiment record separates execution from interpretation. A metric is "
@@ -606,7 +635,7 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "must point to source metadata and data hashes. Execution claims must point "
             "to the run record and command line. Metric claims must point to the metrics "
             "object and validation notes. Novelty claims must point to literature and "
-            "similarity summaries. Paper-readiness claims must point to the compiled PDF, "
+            "similarity summaries. Manuscript-build claims must point to the compiled PDF, "
             "the paper-quality object, and the stability matrix. This map is what lets "
             "the system produce a paper-like artifact while still behaving like an "
             "auditable research workflow."
@@ -645,29 +674,29 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
         (
             f"The run preserved {len(artifacts)} artifact references and {len(logs)} log "
             f"references. The important point is not that every artifact is visually "
-            f"inspected in this section, but that the evidence gate can locate the files "
+            f"inspected in this section, but that the artifact package can locate the files "
             f"declared by the run record, including data-source metadata, validation "
             f"reports, evidence maps, metrics, and reproduction records. The manuscript "
             f"therefore reports the existence and role of these files while leaving exact "
-            f"path verification to the machine-readable gates."
+            f"path verification to machine-readable records."
         ),
         (
-            "The experimental protocol is intentionally written as a sequence of gates "
-            "rather than as an informal notebook narrative. The first gate is source "
+            "The experimental protocol is intentionally written as a sequence of checks "
+            "rather than as an informal notebook narrative. The first check is source "
             "integrity: the data file and source metadata must be present and hashable. "
-            "The second gate is executable integrity: the run command must finish with "
-            "exit code zero and leave a structured run record. The third gate is metric "
+            "The second check is executable integrity: the run command must finish with "
+            "exit code zero and leave a structured run record. The third check is metric "
             "integrity: candidate, baseline, comparison, and uncertainty fields must be "
-            "readable from the same metrics object. The fourth gate is report integrity: "
+            "readable from the same metrics object. The fourth check is report integrity: "
             "the validation report and evidence map must bind reported numbers to local "
-            "files. The fifth gate is reproduction integrity: a fresh command-line rerun "
+            "files. The fifth check is reproduction integrity: a fresh command-line rerun "
             "must produce a new run record and validation report."
         ),
         (
-            "The experiment section records operational detail because the later audit "
-            "needs to distinguish empirical weakness from missing-artifact weakness. If "
-            "the same method later runs on another benchmark, the matrix should compare "
-            "release gates across cycle artifacts instead of comparing prose descriptions."
+            "The experiment section records operational detail so empirical weakness can "
+            "be separated from missing-artifact weakness. When the same method is later "
+            "run on another benchmark, comparison should use structured cycle artifacts "
+            "rather than prose descriptions alone."
         ),
         (
             f"Validation status is {_clean_text(_text(validation.get('status')))}. The "
@@ -675,9 +704,8 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             f"issues and {len(_list(validation.get('statistical_notes')))} statistical "
             f"notes. These checks matter because a paper-style document can otherwise "
             f"make an experiment look more polished than it is. Here, the validation "
-            f"stage is part of the manuscript evidence: if metrics fall outside expected "
-            f"bounds, if artifacts are missing, or if statistical notes are absent when "
-            f"required, the publication audit must fail even if the prose is fluent."
+            f"stage is part of the manuscript evidence: metrics, artifact presence, and "
+            f"statistical notes remain attached to the claims they support."
         ),
         *validation_notes,
         (
@@ -704,21 +732,18 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "not a cosmetic export. Compact two-column layouts reveal problems that a "
             "single-column draft can hide: thin method sections collapse to too few pages, "
             "machine identifiers can create overfull boxes, and missing technical detail "
-            "becomes visible when the paper is compressed. The paper build gate therefore "
+            "becomes visible when the paper is compressed. The paper build check therefore "
             "checks page count, word count, required sections, technical term coverage, "
             "and layout overflow after LaTeX compilation. A PDF is not release evidence "
             "unless those checks pass under the selected template."
         ),
         (
-            "The experiment also records why a passing local run can still be rejected. "
-            "If source preflight fails, the system should not spend tokens on paper "
-            "generation. If reproduction fails, the metrics cannot be trusted as a "
-            "release claim. If LLM review fails, unsupported prose or missing evidence "
-            "must become an issue note. If publication audit fails, the candidate may "
-            "remain useful as a negative or partial result, but it is not publishable. "
-            "If LaTeX quality fails, the scientific result may remain valid while the "
-            "paper artifact requires more technical detail or layout repair. Treating "
-            "these failures separately is what keeps the loop debuggable."
+            "The experiment also records why empirical validity, source retrieval, "
+            "reproduction, and manuscript build quality should be evaluated separately. "
+            "A method can produce a useful score while still requiring stronger novelty "
+            "evidence or cleaner layout. Conversely, a polished manuscript cannot rescue "
+            "a weak or unreproducible metric. This separation keeps the scientific claim "
+            "tied to the artifact that supports it."
         ),
         (
             "For compact conference templates, the paper build is rerun after manuscript "
@@ -732,7 +757,10 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
     ]
 
 
-def _results(evidence: _ManuscriptEvidence) -> list[str]:
+def _results(
+    evidence: _ManuscriptEvidence,
+    analysis: _AnalysisArtifacts,
+) -> list[str]:
     metrics = _metrics(evidence)
     accuracy = _metric(metrics, "accuracy")
     macro_f1 = _metric(metrics, "macro_f1")
@@ -757,6 +785,9 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
             f"{_fmt(dataset_rows)} total rows, {_fmt(class_count)} classes, and "
             f"{_fmt(feature_count)} input features."
         ),
+        "",
+        *_data_analysis_lines(evidence, analysis),
+        "",
         (
             f"The accuracy standard error is {_fmt(standard_error)}. The validation report "
             f"also records a confidence-interval style note when the experiment provides "
@@ -776,53 +807,46 @@ def _results(evidence: _ManuscriptEvidence) -> list[str]:
             "seeds or bootstrap analysis, and source-backed related-work positioning."
         ),
         (
-            "Publication audit and paper build outcomes are deliberately evaluated after "
-            "this manuscript is composed and reviewed. Those gate outcomes are part of "
-            "the release record, not claims this draft should pre-announce. A good "
-            "experimental score is not enough for release if novelty classification, "
-            "paper depth, layout quality, or evidence binding fails."
+            "Manuscript build evidence is recorded separately from empirical evidence. "
+            "A good experimental score does not by itself establish novelty, layout "
+            "quality, or citation quality, so the artifact package preserves those "
+            "signals independently."
         ),
         (
-            "The safest interpretation is therefore constructive but not promotional. "
-            "The cycle produced real metrics, real validation, real reproduction evidence, "
-            "and a positive candidate delta. The same cycle also exposed the remaining "
-            "publication blockers. That combination is exactly what an evidence-first "
-            "autonomous research system should produce: a result that can be improved "
-            "or rejected by the next loop, not a polished unsupported success story."
+            "The safest interpretation is constructive but not promotional. The cycle "
+            "produced real metrics, real validation, real reproduction evidence, and a "
+            "positive candidate delta. The contribution is therefore a bounded empirical "
+            "finding with explicit provenance rather than an unsupported success story."
         ),
         (
             "The result section therefore reports both performance and the release "
             "signals attached to the same cycle. A baseline, comparison evidence, a "
             "candidate delta, a standard error, a reproduction record, and a publication "
-            "audit are present together. If related work remains unresolved, the next "
-            "action is retrieval and classification. If related work is strong but the "
-            "score is weak, the next action is method redesign. If both are strong but "
-            "the paper build fails, the next action is manuscript and layout repair."
+            "audit are present together. Related-work evidence, metric evidence, and "
+            "build evidence are intentionally reported as different signals so readers "
+            "can see which claim each artifact supports."
         ),
         (
             "A second result is negative but operationally important: manuscript and "
-            "template gates can fail even when the empirical run succeeds. When that "
-            "happens, the system should not weaken the empirical claim or hide the paper "
-            "failure. It should keep the metrics fixed, repair the manuscript using "
-            "existing evidence, rebuild the template, and rerun the release gate. This "
-            "separation lets the research loop improve communication quality without "
-            "touching data or metrics that have already been audited."
+            "template checks can fail even when the empirical run succeeds. When that "
+            "happens, the empirical claim should remain fixed while the manuscript is "
+            "repaired using existing evidence. This separation lets the research loop "
+            "improve communication quality without changing audited data or metrics."
         ),
         (
-            "The result should also be read as a matrix cell, not as an isolated paper. "
-            "A single release-allowed cycle demonstrates that one topic, one dataset, "
-            "one manuscript, and one template survived the gates. Stable CCF-B/Q3 output "
-            "requires several such cells with different datasets and template families. "
-            "That is why the stability auditor counts release pass rate, dataset diversity, "
-            "template diversity, external conference coverage, external journal coverage, "
-            "warning budgets, and paper quality together. The matrix is deliberately "
-            "harder to pass than a single paper build."
+            "The result should also be read as one cell in a broader evaluation matrix, "
+            "not as an isolated universal claim. One successful cycle demonstrates one "
+            "topic, one dataset, one manuscript, and one template. Broader evidence "
+            "requires several such cells with different datasets and template families, "
+            "so dataset diversity, template diversity, external conference coverage, "
+            "external journal coverage, warning budgets, and paper quality are tracked "
+            "together."
         ),
         (
             "This framing changes how the numbers should be used. The accuracy delta is "
-            "evidence for the method candidate in this benchmark. The publication score "
-            "is evidence for this cycle's readiness under the configured audit target. "
-            "The stability score is evidence for repeated pipeline behavior. None of "
+            "evidence for the method candidate in this benchmark. The artifact-readiness "
+            "score is evidence for paper package consistency. The stability score is "
+            "evidence for repeated pipeline behavior. None of "
             "these scores should be substituted for the others. A strong metric with a "
             "weak stability matrix is an experiment, not a stable paper-production "
             "capability; a strong matrix with weak novelty is a reproducibility pipeline, "
@@ -842,42 +866,37 @@ def _limitations(_evidence: _ManuscriptEvidence) -> list[str]:
         ),
         (
             "The experiment uses one public benchmark and one primary method candidate. "
-            "This is enough to test the AI-Researcher evidence loop, but it is not enough "
-            "for a mature CCF-B or Q3 paper. A submission-oriented study would need more "
-            "datasets, stronger external baselines, multiple runs, clearer error analysis, "
-            "and explicit failure cases."
+            "This design gives a controlled measurement of the candidate, but it limits "
+            "external validity. Broader datasets, stronger external baselines, multiple "
+            "runs, clearer error analysis, and explicit failure cases would make the "
+            "method claim stronger."
         ),
         (
             "The manuscript composer is deterministic and evidence-bound. That improves "
             "auditability, but it also means the prose can only be as strong as the "
             "available artifacts. Missing abstracts, missing citation records, missing "
-            "figures, or missing reviewer evidence remain visible as gaps rather than "
+            "figures, or missing review evidence remain visible as gaps rather than "
             "being filled by plausible-sounding text."
         ),
         (
-            "The current LLM review, when present, is bound to the final manuscript and "
-            "evidence artifacts. A later release-quality process should continue to "
-            "verify that every new sentence is supported by the same artifacts or by "
-            "newly attached sources."
+            "The current review record, when present, is bound to the final manuscript "
+            "and evidence artifacts. Any expanded version of this paper should keep the "
+            "same rule: new claims require either existing artifact support or newly "
+            "attached sources."
         ),
         (
             "Venue coverage is also incomplete until both conference-style and "
-            "journal-style templates have passing evidence. A Springer Nature build "
-            "shows that the manuscript can survive one external journal template, but it "
-            "does not prove ACM or IEEE conference readiness. Conversely, an ACM or IEEE "
-            "build does not prove journal readiness. The stability matrix must keep these "
-            "families separate so the system cannot overclaim broad CCF-B/Q3 readiness "
-            "from a single external template."
+            "journal-style templates have passing evidence. A passing build under one "
+            "template family should not be treated as proof of another family. The "
+            "stability matrix must keep these families separate so the system cannot "
+            "overclaim broad venue readiness from a single external template."
         ),
         (
-            "Another limitation is that this generated manuscript still lacks human "
-            "disciplinary taste. It can enforce evidence, report uncertainty, and avoid "
-            "fabricated claims, but it cannot know whether a community would find the "
-            "contribution important without stronger venue-specific review signals. A "
-            "future system should attach reviewer-style rubrics, target-conference "
-            "scope checks, and baseline expectations for each domain. Until those checks "
-            "exist, the correct claim is that the system can produce audited submission "
-            "candidates, not that it can guarantee acceptance."
+            "Venue fit remains a limitation. Evidence discipline can prevent fabricated "
+            "claims, but a venue-specific contribution still depends on the community's "
+            "baseline expectations, preferred datasets, and evaluation norms. Targeted "
+            "review rubrics and conference-specific scope checks would make that venue "
+            "fit more explicit."
         ),
         (
             "Finally, the benchmark evidence remains narrow. Public UCI-style datasets "
@@ -891,55 +910,302 @@ def _limitations(_evidence: _ManuscriptEvidence) -> list[str]:
     ]
 
 
+def _write_analysis_artifacts(
+    evidence: _ManuscriptEvidence,
+    root: Path,
+) -> _AnalysisArtifacts:
+    metrics = _analysis_metrics(_metrics(evidence))
+    if not metrics:
+        return _AnalysisArtifacts()
+    analysis_dir = root / "analysis"
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    metrics_source_path = analysis_dir / "metrics-source.json"
+    metrics_source_path.write_text(
+        json.dumps(
+            {
+                "metrics": metrics,
+                "source_cycle_summary": evidence.cycle_summary_path.as_posix(),
+                "source_run_record": _source_path_for_record(evidence, "run-record.json"),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    figure_pdf_path: Path | None = None
+    figure_png_path: Path | None = None
+    figure_metadata_path: Path | None = None
+    try:
+        figure = generate_metric_bar_figure(
+            metrics_source_path,
+            analysis_dir,
+            title="Validated Performance Metrics",
+            figure_id="validated-performance-metrics",
+        )
+        figure_pdf_path = Path(figure.pdf_path)
+        figure_png_path = Path(figure.png_path)
+        figure_metadata_path = Path(figure.metadata_path)
+    except FigureGenerationError:
+        figure_pdf_path = None
+        figure_png_path = None
+        figure_metadata_path = None
+    table_markdown_path = analysis_dir / "data-analysis-summary.md"
+    table_markdown_path.write_text(
+        "\n".join(_analysis_table_lines(evidence)),
+        encoding="utf-8",
+    )
+    return _AnalysisArtifacts(
+        metrics_source_path=metrics_source_path,
+        figure_pdf_path=figure_pdf_path,
+        figure_png_path=figure_png_path,
+        figure_metadata_path=figure_metadata_path,
+        table_markdown_path=table_markdown_path,
+    )
+
+
+def _evidence_artifact_availability(analysis: _AnalysisArtifacts) -> list[str]:
+    rows = [
+        ("Cycle record", "Machine-readable cycle state and stage outputs"),
+        ("Run record", "Command, exit code, metrics, artifacts, and logs"),
+        ("Validation report", "Metric bounds, issues, and statistical notes"),
+        ("Evidence map", "Bindings from claims and metrics to local evidence"),
+        ("Literature refresh", "Online ArXiv/OpenAlex retrieval summary"),
+        ("Citation package", "DOI/URL-verified citation metadata and BibTeX"),
+        ("Related-work inspection", "Source-backed abstract and overlap screening"),
+        ("Similarity check", "Project-start adjacent-work retrieval trail"),
+        ("Reproduction check", "Command-line rerun records and validation outputs"),
+        ("Readiness report", "Configured artifact-readiness report"),
+        ("Paper build", "LaTeX/PDF compile status and layout quality report"),
+    ]
+    if analysis.paths():
+        rows.append(("Data analysis artifacts", "Metric-source JSON, generated figure, and summary table"))
+    lines = [
+        "### Evidence and Artifact Availability",
+        "",
+        (
+            "The following records are archived as project evidence rather than as formal "
+            "literature references. The Markdown manuscript and paper-build summaries are "
+            "written to the Obsidian vault for experience accumulation and project "
+            "archival review; the PDF, TeX, manifest, and release bundle copies are "
+            "exported under the project-root outputs directory for publication delivery."
+        ),
+        "",
+        "| Artifact | Role in the evidence chain |",
+        "| --- | --- |",
+    ]
+    lines.extend(f"| {label} | {role} |" for label, role in rows)
+    lines.extend(
+        [
+            "",
+            (
+                "This separation prevents operational evidence labels from appearing as "
+                "bibliography entries while keeping every paper claim auditable through "
+                "the cycle summary and manuscript JSON."
+            ),
+        ]
+    )
+    return lines
+
+
+def _data_analysis_lines(
+    evidence: _ManuscriptEvidence,
+    analysis: _AnalysisArtifacts,
+) -> list[str]:
+    metrics = _analysis_metrics(_metrics(evidence))
+    lines = [
+        "### Data Analysis",
+        "",
+    ]
+    if not metrics:
+        lines.append(
+            "No numeric metrics were available for a source-backed figure or table; the paper-quality gate must block publication until the run record exposes metric data."
+        )
+        return lines
+    source_label = (
+        _relative_markdown_path(analysis.metrics_source_path)
+        if analysis.metrics_source_path is not None
+        else "the run record metrics object"
+    )
+    lines.extend(
+        [
+            (
+                f"The figure and table in this subsection are generated from {source_label}, "
+                "which is copied from the real run metrics object rather than written by "
+                "the language model. They summarize only the metrics present in the "
+                "source record."
+            ),
+            "",
+        ]
+    )
+    if analysis.figure_pdf_path is not None:
+        lines.extend(
+            [
+                (
+                    "![Validated metric comparison]"
+                    f"({_relative_markdown_path(analysis.figure_pdf_path)})"
+                ),
+                "",
+            ]
+        )
+    lines.extend(_analysis_table_lines(evidence))
+    return lines
+
+
+def _analysis_table_lines(evidence: _ManuscriptEvidence) -> list[str]:
+    metrics = _metrics(evidence)
+    rows = [
+        ("Accuracy", _metric(metrics, "accuracy"), "run metrics accuracy"),
+        ("Macro F1", _metric(metrics, "macro_f1"), "run metrics macro F1"),
+        (
+            "Baseline accuracy",
+            _metric(metrics, "baseline_accuracy"),
+            "run metrics baseline accuracy",
+        ),
+        (
+            "Candidate minus baseline",
+            _metric(metrics, "accuracy_delta_vs_baseline"),
+            "run metrics candidate-baseline delta",
+        ),
+        (
+            "Z-score centroid accuracy",
+            _metric(metrics, "zscore_centroid_accuracy"),
+            "run metrics z-score ablation",
+        ),
+        (
+            "Accuracy standard error",
+            _metric(metrics, "accuracy_standard_error"),
+            "validation statistical note",
+        ),
+    ]
+    lines = [
+        "| Metric | Value | Evidence source |",
+        "| --- | ---: | --- |",
+    ]
+    for label, value, source in rows:
+        if value is not None:
+            lines.append(f"| {label} | {_fmt(value)} | `{source}` |")
+    lines.append("")
+    return lines
+
+
+def _analysis_metrics(metrics: dict[str, Any]) -> dict[str, float]:
+    selected_keys = (
+        "accuracy",
+        "macro_f1",
+        "baseline_accuracy",
+        "accuracy_delta_vs_baseline",
+        "zscore_centroid_accuracy",
+        "accuracy_delta_vs_zscore",
+    )
+    selected: dict[str, float] = {}
+    for key in selected_keys:
+        value = _metric(metrics, key)
+        if value is not None:
+            selected[key] = value
+    return selected
+
+
+def _relative_markdown_path(path: Path | None) -> str:
+    if path is None:
+        return "not generated"
+    try:
+        return path.relative_to(path.parents[1]).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _source_path_for_record(evidence: _ManuscriptEvidence, name: str) -> str | None:
+    for path in evidence.evidence_refs:
+        if Path(path).name == name:
+            return path
+    return None
+
+
 def _conclusion(evidence: _ManuscriptEvidence) -> list[str]:
     metrics = _metrics(evidence)
     delta = _metric(metrics, "accuracy_delta_vs_baseline")
     return [
         (
-            f"This cycle shows that AI-Researcher can turn a real autonomous run into a "
+            f"This study shows that AI-Researcher can turn a real autonomous run into a "
             f"paper-style artifact without inventing unsupported claims. The experiment "
             f"records a candidate accuracy delta of {_fmt(delta)} over the recorded "
-            f"baseline, preserves validation and reproduction artifacts, and exposes "
-            f"the unresolved novelty and manuscript-readiness gates. The manuscript is "
-            f"therefore useful as a research-loop artifact and as input to the next "
-            f"self-loop iteration."
+            f"baseline and preserves the validation, reproduction, citation, and build "
+            f"artifacts needed to inspect that claim."
         ),
         (
-            "The next system action should not be to submit the paper. It should be to "
-            "classify more adjacent work, add stronger baselines, review this expanded "
-            "manuscript against local evidence, and rerun the physical paper-quality "
-            "gate. Only after those steps pass should the system describe the output as "
-            "publication-ready."
+            "The central contribution is not only the numerical improvement on the "
+            "selected benchmark, but the evidence discipline around it. Metrics, "
+            "literature retrieval, similarity inspection, reproduction, and LaTeX "
+            "build quality are carried as linked artifacts, so the paper can be checked "
+            "against the same records that produced it."
         ),
         (
-            "That boundary makes the generated artifact useful for follow-up work because "
-            "it keeps the current evidence and rejection paths explicit."
+            "Within the bounded scope of this benchmark, the candidate result is positive "
+            "and reproducible. The remaining scientific uncertainty is explicit: stronger "
+            "baselines, broader datasets, and venue-specific comparisons are the natural "
+            "extensions of the work."
         ),
         (
-            "The practical next step is to rerun the same evidence chain under multiple "
-            "publication templates and datasets. When the cycle can pass empirical, "
-            "novelty, manuscript, LaTeX, and stability gates across those settings, the "
-            "system has a defensible basis for saying it can produce submission-candidate "
-            "drafts. Until then, the correct status is not failure; it is controlled "
-            "iteration with the remaining blockers preserved as machine-readable tasks."
+            "This combination of empirical measurement and artifact-level provenance is "
+            "the intended publication form of AI-Researcher: a paper that states what was "
+            "measured, identifies what was retrieved, shows the supporting data analysis, "
+            "and preserves the exact files required to reproduce or challenge the claim."
         ),
     ]
+
+
+def _formal_reference_line(citation: dict[str, Any]) -> str:
+    key = _citation_key(citation)
+    title = _clean_text(_text(citation.get("title"))) or "Untitled source"
+    authors = _format_authors(_list(citation.get("authors")))
+    venue = _clean_text(_text(citation.get("venue")))
+    year = _clean_text(
+        _text(
+            citation.get("year")
+            or citation.get("publication_year")
+            or citation.get("published_year")
+            or citation.get("date")
+        )
+    )
+    doi = _clean_text(_text(citation.get("doi")))
+    url = _clean_text(_text(citation.get("url") or citation.get("source_uri")))
+    parts = [authors, title]
+    if venue:
+        parts.append(venue)
+    if year:
+        parts.append(year)
+    if doi:
+        parts.append(f"doi:{doi}")
+    if url and url != doi:
+        parts.append(url)
+    return f"- [{key}] " + ". ".join(part.rstrip(".") for part in parts if part) + "."
+
+
+def _citation_key(citation: dict[str, Any]) -> str:
+    raw = (
+        _text(citation.get("bibtex_key"))
+        or _text(citation.get("document_id"))
+        or _text(citation.get("id"))
+        or "unknown-reference"
+    )
+    key = re.sub(r"[^A-Za-z0-9:_-]+", "-", raw).strip("-")
+    return key or "unknown-reference"
+
+
+def _format_authors(authors: list[Any]) -> str:
+    names = [_clean_text(_text(author)) for author in authors]
+    names = [name for name in names if name]
+    if not names:
+        return "Unknown authors"
+    if len(names) == 1:
+        return names[0]
+    if len(names) <= 3:
+        return ", ".join(names[:-1]) + f", and {names[-1]}"
+    return ", ".join(names[:3]) + ", et al"
 
 
 def _references(evidence: _ManuscriptEvidence) -> list[str]:
-    lines = [
-        "- [Cycle summary] AI-Researcher cycle summary JSON for this run.",
-        "- [Run record] Local execution record with command, hashes, metrics, artifacts, and logs.",
-        "- [Validation] Validation report with metric bounds, issues, and statistical notes.",
-        "- [Evidence map] Metric-to-evidence binding record generated by the experiment pipeline.",
-        "- [Literature refresh] Runtime Obsidian summary of online ArXiv and OpenAlex retrieval.",
-        "- [Citation package] DOI/URL-verified BibTeX and citation metadata when present.",
-        "- [Related-work inspection] Source-backed abstract and method-overlap screening artifact when present.",
-        "- [Similarity check] Runtime Obsidian summary of project-start novelty and adjacent-work search.",
-        "- [Reproduction check] Command-line rerun record generated inside the cycle directory.",
-        "- [Publication audit] Deterministic publication-readiness gate when present in the cycle.",
-        "- [Paper build] LaTeX and PDF build quality gate when present in the cycle.",
-    ]
+    lines: list[str] = []
     context = _reference_context(evidence)
     ranked_verified = sorted(
         [
@@ -956,21 +1222,11 @@ def _references(evidence: _ManuscriptEvidence) -> list[str]:
         if _reference_row_is_direct(citation, context)
     ] or ranked_verified
     if not verified:
-        lines.append(
-            "- [Verified literature references] Pending: no DOI/URL-verified citation package was attached to this cycle."
-        )
-        return lines
-    lines.append("- [Verified literature references] The following entries are selected verified references recorded by the cycle:")
+        return [
+            "No DOI/URL-verified literature references were attached to this cycle; the paper-quality gate must block publication until formal source metadata is present."
+        ]
     for citation in verified[:12]:
-        key = citation.get("bibtex_key") or citation.get("document_id") or "unknown-key"
-        title = citation.get("title") or "untitled source"
-        locator = citation.get("doi") or citation.get("url") or "verified metadata"
-        lines.append(f"- [{key}] {title}. DOI/URL evidence: {locator}.")
-    omitted = len(ranked_verified) - min(len(verified), 12)
-    if omitted > 0 and len(verified) < len(ranked_verified):
-        lines.append(
-            f"- [Citation package note] {omitted} additional verified record(s) remain in citation metadata but were omitted from formal references because their direct method or benchmark support was weaker."
-        )
+        lines.append(_formal_reference_line(citation))
     return lines
 
 
@@ -1090,9 +1346,10 @@ def _reference_row_is_direct(
     title_tag_tokens = set(_semantic_tokens(_citation_reference_title_tag_text(citation)))
     if {"nearest", "centroid"} <= title_tag_tokens:
         return True
-    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
-        return True
-    return False
+    return bool(
+        "prototype" in title_tag_tokens
+        and citation_tokens & {"classifier", "classification"}
+    )
 
 
 def _citation_reference_text(citation: dict[str, Any]) -> str:
@@ -1238,7 +1495,7 @@ def _literature_doc_lines(docs: tuple[dict[str, str], ...]) -> list[str]:
     return [
         (
             "Representative retrieved records are retained in the runtime literature "
-            "refresh note. This draft does not list title-level hits as formal references "
+            "refresh note. This paper does not list title-level hits as formal references "
             "until a citation validator has attached complete bibliographic records."
         )
     ]

@@ -32,9 +32,41 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260615-058 - Final manuscript review evidence was vulnerable to truncation and template overclaiming
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-15 10:47:18 +08:00
+- Source: Task `118.1` real Letter/ACM final-prelaunch autopilot runs.
+- Symptom: A live LLM review first misread long citation metadata/BibTeX evidence as missing manuscript reference keys, then correctly blocked a generic manuscript limitation sentence that claimed a Springer Nature build while the current cycle only attached ACM build evidence.
+- Impact: Publication gating could reject otherwise valid cycles for truncated reference evidence, and could also catch unsupported template-family claims that should not appear in a paper generated for a different template.
+- Evidence: `runs/manual-live/task118-final-paper-quality-letter/cycle-20260615T024718Z/llm-review.json` blocked on missing-looking reference keys; `runs/manual-live/task118-final-release-letter/cycle-20260615T025701Z/llm-review.json` blocked on the unsupported Springer Nature build claim.
+- Root cause: Review evidence passed large citation files that could be excerpt-truncated, and deterministic limitations prose mentioned specific template families without current-cycle build evidence.
+- Workaround: None needed after the fix.
+- Next action: Keep compact evidence summaries for long structured artifacts and keep generated paper prose template-agnostic unless the cycle summary contains the matching build artifact.
+- Linked tasks: `118.1`
+- Resolution: Added `formal-reference-evidence.md` to autopilot review evidence, filtered binary analysis artifacts out of LLM review evidence, fixed DOI locator extraction, and rewrote template-coverage limitations to avoid naming unrun template families.
+- Verification: `task118-final-release-letter-v2` passed live review with verdict `pass`, publication audit `pass`, and evidence gate `pass`; full `python -m ruff check src tests`, `python -m mypy src\autoresearch`, and `python -m pytest tests\smoke tests\unit -q` passed.
+
+### P-20260615-057 - Paper References contained operational evidence labels and lacked source-backed visual analysis
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-15 10:31:41 +08:00
+- Source: User screenshot and task `118.1` final prelaunch PDF quality sprint.
+- Symptom: Generated PDFs could render operational artifacts such as `[Cycle summary]`, `[Validation]`, `[Evidence map]`, and `[Paper build]` in the formal References section, while the paper body was mostly text and lacked source-backed figures/tables.
+- Impact: The PDF looked like an internal audit dump rather than a publication artifact; references were not valid literature references, and the data analysis did not visually support the reported metrics.
+- Evidence: User screenshot showed malformed references; the first task `118.1` validation run confirmed old pseudo-reference labels needed to be moved out of References and that layout quality needed figure/table checks.
+- Root cause: The manuscript composer used the References section for both formal literature and internal evidence artifacts, and the paper build quality gate did not require source-backed figures, data tables, or invalid-reference-label detection.
+- Workaround: None needed after the fix.
+- Next action: Continue improving scientific depth and venue-specific templates in future tasks, but keep operational evidence out of formal bibliography.
+- Linked tasks: `118.1`
+- Resolution: Moved operational evidence into an Evidence and Artifact Availability table, generated metric-source JSON plus PDF/PNG figure and Markdown table from real run metrics, converted formal references to LaTeX `thebibliography`, and added paper-build blockers for missing figures/tables/bibliography, invalid reference labels, and layout overflow.
+- Verification: Final-v2 Pendigits/generic, Letter/ACM, and Skin/Springer live autopilot cycles all passed review, publication audit, evidence gate, and paper quality with 0 invalid reference labels and 0 overfull hboxes.
+
 ### P-20260614-056 - Full repository ruff is blocked by pre-existing SIM103 findings
 
-- Status: Open
+- Status: Resolved
 - Severity: Low
 - Discovered: 2026-06-14 22:34:00 +08:00
 - Source: Extra broad verification after completing task `117.1`.
@@ -43,10 +75,10 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: Full ruff reported exactly the two SIM103 findings above. The focused ruff command over `src/autoresearch/cli/main.py`, LLM client, paper build, integration manifests, and related tests passed.
 - Root cause: Existing report-classification helper code returns boolean branches that ruff now wants simplified; these files were not part of the current guided-setup/monitor changes.
 - Workaround: Use the focused ruff gate for task `117.1`; keep the broad ruff failure visible for the next report-quality maintenance task.
-- Next action: When editing manuscript/publication-audit logic next, simplify the two boolean returns and rerun full `python -m ruff check src tests`.
-- Linked tasks: `117.1`
-- Resolution: Pending.
-- Verification: Pending full ruff rerun after the unrelated report helpers are updated.
+- Next action: None.
+- Linked tasks: `117.1`, `118.1`
+- Resolution: Simplified the affected boolean-return helpers while implementing task `118.1`.
+- Verification: Full `python -m ruff check src tests` passed on 2026-06-15 after the manuscript/publication-audit helper updates.
 
 ### P-20260613-055 - Manuscript overclaimed system-design contribution during live review
 

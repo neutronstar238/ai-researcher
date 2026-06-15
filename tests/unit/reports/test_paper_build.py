@@ -69,12 +69,39 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     tex = Path(artifact.tex_path).read_text(encoding="utf-8")
     assert r"\title{Evidence-Bound Demo Paper}" in tex
     assert r"\section{Related Work}" in tex
-    assert r"\section{References}" in tex
+    assert r"\usepackage{graphicx}" in tex
+    assert r"\begin{thebibliography}{99}" in tex
+    assert r"\bibitem{ref-1} Evidence vault record." in tex
     assert artifact.vault_markdown_path is not None
     vault_summary = Path(artifact.vault_markdown_path).read_text(encoding="utf-8")
     assert "release-ready only when status is `compiled`" in vault_summary
     assert "Dependency recovery: `not_required`" in vault_summary
     assert "Thin manuscripts" in vault_summary
+    assert "Missing source-backed figures" in vault_summary
+
+
+def test_build_latex_paper_flags_pseudo_reference_labels(tmp_path: Path) -> None:
+    source = tmp_path / "report.md"
+    source.write_text(
+        _complete_markdown().replace(
+            "- Evidence vault record.",
+            "- [Cycle summary] AI-Researcher cycle summary JSON for this run.\n"
+            "- [source2026] Verified Prototype Source. doi:10.1234/verified.",
+        ),
+        encoding="utf-8",
+    )
+
+    artifact = build_latex_paper_from_markdown(
+        source,
+        tmp_path / "paper",
+        compile_pdf=False,
+    )
+
+    tex = Path(artifact.tex_path).read_text(encoding="utf-8")
+    assert r"\bibitem{source2026}" in tex
+    assert "[Cycle summary]" not in tex
+    assert artifact.quality.invalid_reference_label_count == 1
+    assert "reference_format" in artifact.quality.failures
 
 
 def test_build_latex_paper_from_markdown_blocks_missing_sections(

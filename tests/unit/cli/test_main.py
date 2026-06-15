@@ -1246,6 +1246,16 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert Path(kwargs["cycle_summary_path"]).name == "cycle-summary.json"
         output_path = Path(kwargs["output_dir"]) / "manuscript.md"
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        analysis_dir = output_path.parent / "analysis"
+        analysis_dir.mkdir()
+        metrics_source = analysis_dir / "metrics-source.json"
+        figure_png = analysis_dir / "validated-performance-metrics.png"
+        figure_metadata = analysis_dir / "validated-performance-metrics.metadata.json"
+        data_table = analysis_dir / "data-analysis-summary.md"
+        metrics_source.write_text('{"metrics": {"accuracy": 0.9}}', encoding="utf-8")
+        figure_png.write_bytes(b"\x89PNG\r\n\x1a\n")
+        figure_metadata.write_text('{"figure_type": "metric_bar"}', encoding="utf-8")
+        data_table.write_text("| Metric | Value |\n| --- | ---: |\n| Accuracy | 0.9 |\n", encoding="utf-8")
         output_path.write_text(
             "\n".join(
                 [
@@ -1273,10 +1283,22 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
         return SimpleNamespace(
             markdown_path=output_path.as_posix(),
+            analysis_artifact_paths=(
+                metrics_source.as_posix(),
+                figure_png.as_posix(),
+                figure_metadata.as_posix(),
+                data_table.as_posix(),
+            ),
             to_dict=lambda: {
                 "markdown_path": output_path.as_posix(),
                 "word_count": 2600,
                 "section_word_counts": {"Abstract": 100},
+                "analysis_artifact_paths": [
+                    metrics_source.as_posix(),
+                    figure_png.as_posix(),
+                    figure_metadata.as_posix(),
+                    data_table.as_posix(),
+                ],
             },
         )
 
@@ -1348,6 +1370,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         evidence_names = {Path(path).name for path in kwargs["evidence_paths"]}
         assert {
             "review-evidence-context.json",
+            "formal-reference-evidence.md",
             "report.md",
             "run-record.json",
             "validation-report.json",
@@ -1356,7 +1379,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "related-work-inspection.json",
             "related-work-inspection.md",
             "paper-build.json",
+            "metrics-source.json",
+            "validated-performance-metrics.metadata.json",
+            "data-analysis-summary.md",
         } <= evidence_names
+        assert "validated-performance-metrics.png" not in evidence_names
         return {"status": "skipped"}
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
@@ -1432,6 +1459,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
     assert Path(payload["review_context_path"]).name == "review-evidence-context.json"
+    assert Path(payload["formal_reference_evidence_path"]).name == "formal-reference-evidence.md"
+    formal_reference_note = Path(payload["formal_reference_evidence_path"]).read_text(
+        encoding="utf-8"
+    )
+    assert "`researcher2026`" in formal_reference_note
+    assert "all_displayed_keys_present" in formal_reference_note
     review_context = json.loads(
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
@@ -1475,6 +1508,15 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
     assert len(review_calls) == 1
+
+
+def test_autopilot_reference_locator_keeps_full_dotted_doi() -> None:
+    _title, locator = cli_main._autopilot_reference_title_and_locator(
+        "Metrics and models for handwritten character recognition. "
+        "doi:10.1214/ss/1028905973. source URL recorded in artifact."
+    )
+
+    assert locator == "doi:10.1214/ss/1028905973"
 
 
 def test_autopilot_source_preflight_blocks_cooling_source(tmp_path: Path, monkeypatch) -> None:

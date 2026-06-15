@@ -27,13 +27,19 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert artifact.section_word_counts["Method"] >= 260
     assert artifact.section_word_counts["Experiments"] >= 600
     assert "accuracy delta of 0.0400" in manuscript
-    assert "The next system action should not be to submit the paper" in manuscript
+    assert "reproducible, source-backed candidate result" in manuscript
+    assert "The next system action should not be to submit the paper" not in manuscript
     assert "Representative retrieved records are retained" in manuscript
-    assert "[Verified literature references]" in manuscript
-    assert "[source2026] Verified Prototype Source" in manuscript
+    assert "### Evidence and Artifact Availability" in manuscript
+    assert "### Data Analysis" in manuscript
+    assert "![Validated metric comparison](analysis/validated-performance-metrics.pdf)" in manuscript
+    assert "| Metric | Value | Evidence source |" in manuscript
+    assert "Markdown manuscript and paper-build summaries are written to the Obsidian vault" in manuscript
+    assert "[Cycle summary]" not in manuscript
+    assert "[Verified literature references]" not in manuscript
+    assert "V. Source. Verified Prototype Source. MethodConf. doi:10.1234/verified" in manuscript
     assert "[generic2026] Generic Visual Recognition Source" not in manuscript
-    assert "additional verified record(s) remain in citation metadata" in manuscript
-    assert "not a submission claim" in manuscript
+    assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
     assert "variance_shrinkage parameter of 0.0500" in manuscript
     assert "bound to the final manuscript" in manuscript
@@ -48,6 +54,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "Prototype Calibration for Digits was retrieved" not in manuscript
     assert "pendigits_variance_calibrated_prototypes" not in manuscript
     assert "pendigits variance calibrated prototypes" in manuscript
+    assert artifact.analysis_artifact_paths
+    assert any(path.endswith("validated-performance-metrics.pdf") for path in artifact.analysis_artifact_paths)
+    assert any(path.endswith("data-analysis-summary.md") for path in artifact.analysis_artifact_paths)
 
     paper_artifact = build_latex_paper_from_markdown(
         artifact.markdown_path,
@@ -57,6 +66,16 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert paper_artifact.missing_sections == ()
     assert "word_count" not in paper_artifact.quality.failures
     assert "section_depth" not in paper_artifact.quality.failures
+    assert "figure_coverage" not in paper_artifact.quality.failures
+    assert "table_coverage" not in paper_artifact.quality.failures
+    assert "bibliography_depth" not in paper_artifact.quality.failures
+    assert "reference_format" not in paper_artifact.quality.failures
+    tex = Path(paper_artifact.tex_path).read_text(encoding="utf-8")
+    assert r"\includegraphics" in tex
+    assert r"\begin{tabular}" in tex
+    assert r"\begin{thebibliography}{99}" in tex
+    assert r"\bibitem{source2026}" in tex
+    assert "[Cycle summary]" not in tex
 
 
 def _write_cycle(tmp_path: Path) -> Path:

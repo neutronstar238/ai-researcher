@@ -2941,12 +2941,13 @@ def _run_autopilot_cycle(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_context_path = cycle_dir / "review-evidence-context.json"
+    review_audit_summary = _autopilot_review_audit_summary(
+        summary=summary,
+        reproduction_check=reproduction_check,
+        paper_build=paper_build.to_dict(),
+    )
     review_context = {
-        "audit_summary": _autopilot_review_audit_summary(
-            summary=summary,
-            reproduction_check=reproduction_check,
-            paper_build=paper_build.to_dict(),
-        ),
+        "audit_summary": review_audit_summary,
         "cycle_id": cycle_id,
         "project_id": project_id,
         "candidate": summary["candidate"],
@@ -2963,10 +2964,16 @@ def _run_autopilot_cycle(
         encoding="utf-8",
     )
     summary["review_context_path"] = review_context_path.as_posix()
+    reference_evidence_path = _write_autopilot_reference_evidence(
+        cycle_dir=cycle_dir,
+        audit_summary=review_audit_summary,
+    )
+    summary["formal_reference_evidence_path"] = reference_evidence_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_evidence_paths: list[Path | str] = [
         review_context_path,
+        reference_evidence_path,
         Path(demo_result.report_path),
         Path(demo_result.run_record_path),
         Path(demo_result.validation_json_path),
@@ -2983,6 +2990,7 @@ def _run_autopilot_cycle(
         reproduction_check.get("json_path"),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
+        *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
     ):
         if isinstance(optional_path, str | Path):
             review_evidence_paths.append(optional_path)
@@ -3055,6 +3063,72 @@ def _generate_cycle_citations(*, literature_report: object, cycle_dir: Path) -> 
         "blocked_count": len(artifact.blocked_document_ids),
         **payload,
     }
+
+
+def _review_text_artifact_paths(paths: object) -> tuple[str | Path, ...]:
+    if not isinstance(paths, list | tuple):
+        return ()
+    text_suffixes = {".json", ".md", ".txt", ".tex", ".yaml", ".yml", ".csv"}
+    return tuple(
+        path
+        for path in paths
+        if isinstance(path, str | Path) and Path(path).suffix.casefold() in text_suffixes
+    )
+
+
+def _write_autopilot_reference_evidence(
+    *,
+    cycle_dir: Path,
+    audit_summary: dict[str, Any],
+) -> Path:
+    """Write a compact reference-key proof so LLM review is not misled by truncation."""
+
+    citations = audit_summary.get("citations")
+    citation_summary = citations if isinstance(citations, dict) else {}
+    formal_refs = citation_summary.get("formal_references")
+    formal_summary = formal_refs if isinstance(formal_refs, dict) else {}
+    displayed = formal_summary.get("displayed_references")
+    displayed_refs = displayed if isinstance(displayed, list) else []
+    lines = [
+        "# Formal Reference Evidence",
+        "",
+        "This compact file records the exact references rendered in the manuscript and "
+        "their citation metadata lookup status. Use it with the full BibTeX and metadata "
+        "files when checking citation consistency.",
+        "",
+        f"- Metadata path: `{citation_summary.get('metadata_path') or 'unknown'}`",
+        f"- BibTeX path: `{citation_summary.get('bib_path') or 'unknown'}`",
+        f"- Displayed reference count: `{formal_summary.get('displayed_count', 0)}`",
+        (
+            "- Citation metadata key count: "
+            f"`{formal_summary.get('citation_metadata_key_count', 0)}`"
+        ),
+        (
+            "- Citation metadata status: "
+            f"`{formal_summary.get('citation_metadata_status') or 'unknown'}`"
+        ),
+        "",
+        "| Key | Metadata status | Metadata locator | Manuscript locator | Title |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for item in displayed_refs:
+        row = item if isinstance(item, dict) else {}
+        lines.append(
+            "| "
+            f"`{_markdown_table_cell(row.get('key'))}` | "
+            f"`{_markdown_table_cell(row.get('citation_metadata_status'))}` | "
+            f"`{_markdown_table_cell(row.get('citation_metadata_locator'))}` | "
+            f"`{_markdown_table_cell(row.get('doi_or_url_evidence'))}` | "
+            f"{_markdown_table_cell(row.get('title'))} |"
+        )
+    path = cycle_dir / "formal-reference-evidence.md"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def _markdown_table_cell(value: object) -> str:
+    text = str(value or "unknown")
+    return text.replace("|", "\\|").replace("\n", " ").strip()
 
 
 def _autopilot_review_audit_summary(
@@ -3257,12 +3331,9 @@ def _autopilot_formal_reference_summary(
             continue
         if not line.startswith("- [") or "] " not in line:
             continue
-        marker = ". DOI/URL evidence: "
-        if marker not in line:
-            continue
         key, tail = line[3:].split("] ", 1)
         clean_key = key.strip()
-        title, locator = tail.split(marker, 1)
+        title, locator = _autopilot_reference_title_and_locator(tail)
         metadata_row = citation_metadata.get(clean_key, {})
         displayed.append(
             {
@@ -3295,6 +3366,21 @@ def _autopilot_formal_reference_summary(
         "displayed_references": displayed,
         "omitted_verified_count": omitted_verified_count,
     }
+
+
+def _autopilot_reference_title_and_locator(tail: str) -> tuple[str, str]:
+    old_marker = ". DOI/URL evidence: "
+    if old_marker in tail:
+        title, locator = tail.split(old_marker, 1)
+        return title.strip(), locator.rstrip(".").strip()
+    locator = ""
+    locator_match = re.search(
+        r"(doi:\S+|https?://[^\s.]+|source URL recorded in artifact)",
+        tail,
+    )
+    if locator_match is not None:
+        locator = locator_match.group(1).rstrip(".")
+    return tail.rstrip(".").strip(), locator
 
 
 def _autopilot_citation_metadata_by_key(path_value: object) -> dict[str, dict[str, Any]]:

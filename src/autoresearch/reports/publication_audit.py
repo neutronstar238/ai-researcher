@@ -955,9 +955,10 @@ def _citation_row_is_direct(
     title_tag_tokens = set(_semantic_tokens(_citation_row_title_tag_text(row)))
     if {"nearest", "centroid"} <= title_tag_tokens:
         return True
-    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
-        return True
-    return False
+    return bool(
+        "prototype" in title_tag_tokens
+        and citation_tokens & {"classifier", "classification"}
+    )
 
 
 def _citation_row_text(row: dict[str, Any]) -> str:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -38,6 +39,9 @@ PAPER_MIN_WORDS = 2500
 PAPER_MIN_TECHNICAL_TERMS = 15
 PAPER_MAX_OVERFULL_HBOX_COUNT = 0
 PAPER_MAX_OVERFULL_HBOX_POINTS = 0.0
+PAPER_MIN_FIGURES = 1
+PAPER_MIN_TABLES = 1
+PAPER_MIN_BIBLIOGRAPHY_ITEMS = 1
 PAPER_SECTION_MIN_WORDS = {
     "Abstract": 80,
     "Introduction": 180,
@@ -104,6 +108,13 @@ class LatexPaperQualityReport:
     max_overfull_hbox_count: int
     max_overfull_hbox_points: float
     max_allowed_overfull_hbox_points: float
+    figure_count: int
+    min_figures: int
+    table_count: int
+    min_tables: int
+    bibliography_item_count: int
+    min_bibliography_items: int
+    invalid_reference_label_count: int
     failures: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -122,6 +133,13 @@ class LatexPaperQualityReport:
             "max_overfull_hbox_count": self.max_overfull_hbox_count,
             "max_overfull_hbox_points": self.max_overfull_hbox_points,
             "max_allowed_overfull_hbox_points": self.max_allowed_overfull_hbox_points,
+            "figure_count": self.figure_count,
+            "min_figures": self.min_figures,
+            "table_count": self.table_count,
+            "min_tables": self.min_tables,
+            "bibliography_item_count": self.bibliography_item_count,
+            "min_bibliography_items": self.min_bibliography_items,
+            "invalid_reference_label_count": self.invalid_reference_label_count,
             "failures": list(self.failures),
         }
 
@@ -204,6 +222,8 @@ def build_latex_paper_from_markdown(
             title=paper_title,
             authors=authors,
             sections=sections,
+            source_dir=source_path.parent,
+            output_dir=root,
         ),
         encoding="utf-8",
     )
@@ -380,6 +400,8 @@ def _render_markdown_sections_as_latex(
     title: str,
     authors: tuple[str, ...],
     sections: dict[str, str],
+    source_dir: Path,
+    output_dir: Path,
 ) -> str:
     class_options = (
         f"[{','.join(template.class_options)}]"
@@ -392,6 +414,7 @@ def _render_markdown_sections_as_latex(
         r"\author{" + _latex_escape(", ".join(authors)) + "}",
         r"\date{}",
         r"\usepackage{url}",
+        r"\usepackage{graphicx}",
         r"\emergencystretch=3em",
         *template.preamble_lines,
         r"\begin{document}",
@@ -399,7 +422,7 @@ def _render_markdown_sections_as_latex(
     abstract = sections.get("Abstract", "")
     abstract_lines = [
         r"\begin{abstract}",
-        *_markdown_text_to_latex_lines(abstract),
+        *_markdown_text_to_latex_lines(abstract, source_dir=source_dir, output_dir=output_dir),
         r"\end{abstract}",
         "",
     ]
@@ -416,8 +439,23 @@ def _render_markdown_sections_as_latex(
         body = sections.get(section)
         if not body:
             continue
-        lines.extend([rf"\section{{{_latex_escape(section)}}}"])
-        lines.extend(_markdown_text_to_latex_lines(body))
+        if section == "References":
+            lines.extend(
+                _markdown_references_to_latex_lines(
+                    body,
+                    source_dir=source_dir,
+                    output_dir=output_dir,
+                )
+            )
+        else:
+            lines.extend([rf"\section{{{_latex_escape(section)}}}"])
+            lines.extend(
+                _markdown_text_to_latex_lines(
+                    body,
+                    source_dir=source_dir,
+                    output_dir=output_dir,
+                )
+            )
         lines.append("")
     lines.extend([r"\end{document}", ""])
     return "\n".join(lines)
@@ -448,6 +486,11 @@ def _build_quality_report(
     overfull_points = _overfull_hbox_points(log_text)
     overfull_count = len(overfull_points)
     max_overfull_points = max(overfull_points) if overfull_points else 0.0
+    figure_count = _markdown_figure_count(source_markdown)
+    table_count = _markdown_table_count(source_markdown)
+    references_body = sections.get("References", "")
+    bibliography_item_count = _bibliography_item_count(references_body)
+    invalid_reference_label_count = _invalid_reference_label_count(references_body)
     failures: list[str] = []
     if page_count is None or page_count < PAPER_MIN_PAGES:
         failures.append("page_count")
@@ -462,6 +505,14 @@ def _build_quality_report(
         or max_overfull_points > PAPER_MAX_OVERFULL_HBOX_POINTS
     ):
         failures.append("layout_overflow")
+    if figure_count < PAPER_MIN_FIGURES:
+        failures.append("figure_coverage")
+    if table_count < PAPER_MIN_TABLES:
+        failures.append("table_coverage")
+    if bibliography_item_count < PAPER_MIN_BIBLIOGRAPHY_ITEMS:
+        failures.append("bibliography_depth")
+    if invalid_reference_label_count:
+        failures.append("reference_format")
     return LatexPaperQualityReport(
         passed=not failures,
         page_count=page_count,
@@ -477,6 +528,13 @@ def _build_quality_report(
         max_overfull_hbox_count=PAPER_MAX_OVERFULL_HBOX_COUNT,
         max_overfull_hbox_points=max_overfull_points,
         max_allowed_overfull_hbox_points=PAPER_MAX_OVERFULL_HBOX_POINTS,
+        figure_count=figure_count,
+        min_figures=PAPER_MIN_FIGURES,
+        table_count=table_count,
+        min_tables=PAPER_MIN_TABLES,
+        bibliography_item_count=bibliography_item_count,
+        min_bibliography_items=PAPER_MIN_BIBLIOGRAPHY_ITEMS,
+        invalid_reference_label_count=invalid_reference_label_count,
         failures=tuple(failures),
     )
 
@@ -519,17 +577,130 @@ def _technical_terms(text: str) -> set[str]:
     return words & PAPER_TECHNICAL_TERMS
 
 
-def _markdown_text_to_latex_lines(text: str) -> list[str]:
+def _markdown_figure_count(markdown: str) -> int:
+    return len(re.findall(r"!\[[^\]]*\]\([^)]+\)", markdown))
+
+
+def _markdown_table_count(markdown: str) -> int:
+    lines = markdown.splitlines()
+    count = 0
+    index = 0
+    while index < len(lines):
+        if _starts_markdown_table(lines, index):
+            count += 1
+            _block, index = _collect_markdown_table(lines, index)
+            continue
+        index += 1
+    return count
+
+
+def _bibliography_item_count(references_body: str) -> int:
+    count = 0
+    for line in references_body.splitlines():
+        label_match = re.match(r"^[-*]\s+\[([^\]]+)\]\s+(.+?)\s*$", line.strip())
+        cite_match = re.match(r"^[-*]\s+@[A-Za-z0-9:_-]+:\s+.+?\s*$", line.strip())
+        if (
+            label_match
+            and not _is_nonbibliographic_reference_label(label_match.group(1))
+        ) or cite_match:
+            count += 1
+    return count
+
+
+def _invalid_reference_label_count(references_body: str) -> int:
+    count = 0
+    for line in references_body.splitlines():
+        match = re.match(r"^[-*]\s+\[([^\]]+)\]\s+.+?\s*$", line.strip())
+        if match and _is_nonbibliographic_reference_label(match.group(1)):
+            count += 1
+    return count
+
+
+def _markdown_text_to_latex_lines(
+    text: str,
+    *,
+    source_dir: Path,
+    output_dir: Path,
+) -> list[str]:
     lines: list[str] = []
-    for raw_line in text.splitlines():
+    raw_lines = text.splitlines()
+    index = 0
+    while index < len(raw_lines):
+        if _starts_markdown_table(raw_lines, index):
+            table_block, index = _collect_markdown_table(raw_lines, index)
+            lines.extend(_markdown_table_to_latex_lines(table_block))
+            continue
+        raw_line = raw_lines[index]
+        index += 1
         line = raw_line.strip()
         if not line:
             lines.append("")
             continue
-        lines.append(_latex_escape(_strip_markdown_markup(line)))
+        image = _markdown_image_match(line)
+        if image is not None:
+            alt_text, asset_path = image
+            lines.extend(
+                _markdown_image_to_latex_lines(
+                    alt_text,
+                    asset_path,
+                    source_dir=source_dir,
+                    output_dir=output_dir,
+                )
+            )
+            continue
+        subheading = re.match(r"^###\s+(.+?)\s*$", line)
+        if subheading:
+            lines.append(rf"\subsection{{{_latex_inline(subheading.group(1))}}}")
+            continue
+        lines.append(_latex_inline(_strip_markdown_markup(line)))
     while lines and lines[-1] == "":
         lines.pop()
     return lines or [""]
+
+
+def _markdown_references_to_latex_lines(
+    text: str,
+    *,
+    source_dir: Path,
+    output_dir: Path,
+) -> list[str]:
+    entries: list[tuple[str, str]] = []
+    note_lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = re.match(r"^[-*]\s+\[([^\]]+)\]\s+(.+?)\s*$", line)
+        if match:
+            key = _safe_bibitem_key(match.group(1))
+            if _is_nonbibliographic_reference_label(match.group(1)):
+                note_lines.append(match.group(2))
+                continue
+            entries.append((key, match.group(2)))
+            continue
+        match = re.match(r"^[-*]\s+@([A-Za-z0-9:_-]+):\s+(.+?)\s*$", line)
+        if match:
+            entries.append((_safe_bibitem_key(match.group(1)), match.group(2)))
+            continue
+        if line.startswith("- ") or line.startswith("* "):
+            entries.append((f"ref-{len(entries) + 1}", line[2:].strip()))
+            continue
+        note_lines.append(line)
+    lines: list[str] = []
+    if note_lines and not entries:
+        lines.extend(
+            _markdown_text_to_latex_lines(
+                "\n".join(note_lines),
+                source_dir=source_dir,
+                output_dir=output_dir,
+            )
+        )
+    if entries:
+        lines.append(r"\begin{thebibliography}{99}")
+        for key, body in entries:
+            lines.append(rf"\bibitem{{{key}}} {_latex_inline_with_urls(_strip_markdown_markup(body))}")
+        lines.append(r"\end{thebibliography}")
+    return lines or ["No formal bibliography entries were generated."]
 
 
 def _strip_markdown_markup(line: str) -> str:
@@ -537,6 +708,154 @@ def _strip_markdown_markup(line: str) -> str:
     line = re.sub(r"`([^`]+)`", r"\1", line)
     line = re.sub(r"\*\*([^*]+)\*\*", r"\1", line)
     return line
+
+
+def _latex_inline(text: str) -> str:
+    parts: list[str] = []
+    cursor = 0
+    for match in re.finditer(r"\[@([A-Za-z0-9:_-]+)\]", text):
+        parts.append(_latex_escape(text[cursor:match.start()]))
+        parts.append(rf"\cite{{{_safe_bibitem_key(match.group(1))}}}")
+        cursor = match.end()
+    parts.append(_latex_escape(text[cursor:]))
+    return "".join(parts)
+
+
+def _latex_inline_with_urls(text: str) -> str:
+    parts: list[str] = []
+    cursor = 0
+    for match in re.finditer(r"https?://[^\s.)]+[^\s.);,]", text):
+        parts.append(_latex_inline(text[cursor:match.start()]))
+        parts.append(rf"\url{{{match.group(0)}}}")
+        cursor = match.end()
+    parts.append(_latex_inline(text[cursor:]))
+    return "".join(parts)
+
+
+def _markdown_image_match(line: str) -> tuple[str, str] | None:
+    match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line)
+    if match is None:
+        return None
+    return match.group(1), match.group(2)
+
+
+def _markdown_image_to_latex_lines(
+    alt_text: str,
+    asset_path: str,
+    *,
+    source_dir: Path,
+    output_dir: Path,
+) -> list[str]:
+    resolved = _resolve_markdown_asset_path(asset_path, source_dir=source_dir, output_dir=output_dir)
+    return [
+        r"\begin{figure}[t]",
+        r"\centering",
+        rf"\includegraphics[width=0.88\linewidth]{{{resolved}}}",
+        rf"\caption{{{_latex_inline(alt_text or 'Source-backed figure')}}}",
+        r"\end{figure}",
+    ]
+
+
+def _resolve_markdown_asset_path(
+    asset_path: str,
+    *,
+    source_dir: Path,
+    output_dir: Path,
+) -> str:
+    cleaned = asset_path.strip().strip("\"'")
+    if re.match(r"^[a-z]+://", cleaned, flags=re.IGNORECASE):
+        return cleaned
+    source = Path(cleaned)
+    if not source.is_absolute():
+        source = source_dir / source
+    try:
+        return os.path.relpath(source.resolve(), start=output_dir.resolve()).replace("\\", "/")
+    except ValueError:
+        return source.resolve().as_posix()
+
+
+def _starts_markdown_table(lines: list[str], index: int) -> bool:
+    if index + 1 >= len(lines):
+        return False
+    return _is_table_row(lines[index]) and _is_table_separator(lines[index + 1])
+
+
+def _collect_markdown_table(lines: list[str], index: int) -> tuple[list[str], int]:
+    block: list[str] = []
+    while index < len(lines) and _is_table_row(lines[index]):
+        block.append(lines[index].strip())
+        index += 1
+    return block, index
+
+
+def _markdown_table_to_latex_lines(block: list[str]) -> list[str]:
+    if len(block) < 2:
+        return []
+    rows = [_markdown_table_cells(row) for row in block]
+    header = rows[0]
+    body_rows = rows[2:]
+    column_count = len(header)
+    latex_lines = [
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\small",
+        r"\caption{Source-backed data table}",
+        rf"\begin{{tabular}}{{{_table_column_spec(column_count)}}}",
+        r"\hline",
+        " & ".join(_latex_inline(_strip_markdown_markup(cell)) for cell in header) + r" \\",
+        r"\hline",
+    ]
+    for row in body_rows:
+        normalized = [*row, *([""] * max(column_count - len(row), 0))][:column_count]
+        latex_lines.append(
+            " & ".join(_latex_inline(_strip_markdown_markup(cell)) for cell in normalized)
+            + r" \\"
+        )
+    latex_lines.extend([r"\hline", r"\end{tabular}", r"\end{table}"])
+    return latex_lines
+
+
+def _table_column_spec(column_count: int) -> str:
+    width = "0.28" if column_count <= 3 else f"{0.92 / max(column_count, 1):.2f}"
+    return "|" + "|".join([rf"p{{{width}\linewidth}}"] * max(column_count, 1)) + "|"
+
+
+def _is_table_row(line: str) -> bool:
+    stripped = line.strip()
+    return stripped.startswith("|") and stripped.endswith("|")
+
+
+def _is_table_separator(line: str) -> bool:
+    cells = _markdown_table_cells(line)
+    return bool(cells) and all(re.fullmatch(r":?-{3,}:?", cell.strip()) for cell in cells)
+
+
+def _markdown_table_cells(line: str) -> list[str]:
+    return [cell.strip().replace(r"\|", "|") for cell in line.strip().strip("|").split("|")]
+
+
+def _safe_bibitem_key(key: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9:_-]+", "-", key.strip()).strip("-")
+    return cleaned or "unknown-reference"
+
+
+def _is_nonbibliographic_reference_label(label: str) -> bool:
+    normalized = label.casefold().strip()
+    return normalized in {
+        "cycle summary",
+        "run record",
+        "validation",
+        "evidence map",
+        "literature refresh",
+        "citation package",
+        "citation package note",
+        "related-work inspection",
+        "similarity check",
+        "reproduction check",
+        "publication audit",
+        "paper build",
+        "verified literature references",
+    }
 
 
 def _compile_latex(
@@ -602,6 +921,13 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             f"maximum `{artifact.quality.max_overfull_hbox_count}`; "
             f"max width `{artifact.quality.max_overfull_hbox_points:.3f}pt`"
         ),
+        f"- Figures: `{artifact.quality.figure_count}` / minimum `{artifact.quality.min_figures}`",
+        f"- Data tables: `{artifact.quality.table_count}` / minimum `{artifact.quality.min_tables}`",
+        (
+            f"- Bibliography items: `{artifact.quality.bibliography_item_count}` / "
+            f"minimum `{artifact.quality.min_bibliography_items}`"
+        ),
+        f"- Invalid reference labels: `{artifact.quality.invalid_reference_label_count}`",
         "",
         "## Missing Sections",
         "",
@@ -644,6 +970,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             "- Missing paper sections stop compilation instead of being filled with invented content.",
             "- Missing external LaTeX classes trigger recorded TeX Live or official archive recovery before the build is blocked.",
             "- Thin manuscripts, shallow technical sections, or LaTeX overfull boxes are blockers, not polish notes.",
+            "- Missing source-backed figures, missing data-analysis tables, missing formal bibliography entries, or operational evidence labels inside References are release blockers.",
             "",
         ]
     )

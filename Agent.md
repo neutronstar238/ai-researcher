@@ -62,6 +62,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-15 11:06:00 +08:00 - Codex - Task 118.1 final paper artifact quality
+
+- Request: Fix the malformed PDF References section shown in the user screenshot, add source-backed figures/tables, keep Markdown archive outputs in the Obsidian vault and publication PDFs in root `outputs/`, reference `Leey21/awesome-ai-research-writing` only as inspiration, and run multiple real autonomous cycles until final PDFs pass strict review.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_paper_build.py`
+- Summary:
+  - Moved operational artifacts out of formal References and into an Evidence and Artifact Availability table.
+  - Added manuscript analysis artifacts from real run metrics: `metrics-source.json`, a validated metric comparison figure, figure metadata, and a data-analysis Markdown table.
+  - Converted formal literature references into LaTeX `thebibliography`/`\bibitem` output and made invalid operational reference labels a paper-quality blocker.
+  - Added paper-quality gates for missing figures, missing data tables, missing bibliography items, reference-format regressions, and layout overflow.
+  - Reworked manuscript prose so PDFs read as paper artifacts rather than internal review instructions; removed unsupported template-family overclaims.
+  - Added compact `formal-reference-evidence.md` to live LLM review evidence so citation-key checks do not depend on long metadata/BibTeX excerpts.
+  - Fixed DOI locator extraction so dotted DOI values remain intact in review evidence.
+  - Marked task `118.1` complete after three real final-v2 autonomous cycles passed.
+- Verification:
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 464 passed, 4 skipped, 1 warning.
+  - `node .\bin\airesearcher.mjs autopilot --output-dir runs\manual-live\task118-final-release-pendigits-v2 --deliverables-dir outputs --cache .cache\task118-final-release-pendigits-v2 --state .airesearcher\task118-final-release-pendigits-v2-state.json --project-id ai_researcher_task118_final_pendigits_v2 --demo pendigits_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id generic-article-one-column --cycles 1`: passed review, publication audit, evidence gate, and wrote `outputs/ai_researcher_task118_final_pendigits_v2/ai_researcher_task118_final_pendigits_v2-cycle-20260615T030141Z.pdf`.
+  - `node .\bin\airesearcher.mjs autopilot --output-dir runs\manual-live\task118-final-release-letter-v2 --deliverables-dir outputs --cache .cache\task118-final-release-letter-v2 --state .airesearcher\task118-final-release-letter-v2-state.json --project-id ai_researcher_task118_final_letter_v2 --demo letter_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id acm-acmart-sigconf --cycles 1`: passed review, publication audit, evidence gate, and wrote `outputs/ai_researcher_task118_final_letter_v2/ai_researcher_task118_final_letter_v2-cycle-20260615T025959Z.pdf`.
+  - `node .\bin\airesearcher.mjs autopilot --output-dir runs\manual-live\task118-final-release-skin-v2 --deliverables-dir outputs --cache .cache\task118-final-release-skin-v2 --state .airesearcher\task118-final-release-skin-v2-state.json --project-id ai_researcher_task118_final_skin_v2 --demo skin_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id springer-nature-sn-jnl --cycles 1`: passed review, publication audit, evidence gate, and wrote `outputs/ai_researcher_task118_final_skin_v2/ai_researcher_task118_final_skin_v2-cycle-20260615T030309Z.pdf`.
+  - Final artifact inspection confirmed all three final-v2 PDFs had figures, tables, formal bibliography entries, 0 invalid reference labels, 0 overfull hboxes, and no old `[Cycle summary]`-style pseudo-reference labels in final Markdown/TeX.
+- Problems:
+  - `P-20260614-056` resolved.
+  - `P-20260615-057` added and resolved.
+  - `P-20260615-058` added and resolved.
+- Follow-up:
+  - Future work should deepen scientific novelty and venue-specific baselines, but the task `118.1` paper artifact gate is complete.
+
 ### 2026-06-14 22:34:22 +08:00 - Codex - Task 117.1 guided setup and operator monitor
 
 - Request: Replace the mistaken OpenClaw-install framing with AI-Researcher-owned guided setup; keep WeChat/Feishu plugin reuse as optional upstream adapter runbooks only; add a good-looking CLI monitor for Agent messages, information flow, diffs, and output previews; keep real API/data verification.
