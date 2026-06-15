@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260615-060 - V1.0 inspiration refresh had no direct webhook push path
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-15 13:10:00 +08:00
+- Source: Task `119.1` final V1.0 release-readiness check.
+- Symptom: `inspiration-refresh` could fetch Hugging Face/Hacker News signals and write an Obsidian note, while WeChat/Feishu setup collected webhook values but no command directly pushed the inspiration digest.
+- Impact: The daily loop could be documented as retrieving inspiration, but a user expecting post-setup channel delivery would need an external adapter/runbook step and could not verify delivery status in cycle artifacts.
+- Evidence: CLI inspection showed `inspiration-refresh` wrote JSON and vault notes only; channel commands wrote adapter metadata but did not send a digest.
+- Root cause: Channel credentials were collected for future adapters, but the CLI lacked a minimal direct webhook sender for inspiration summaries.
+- Workaround: Before the fix, operators could read the Obsidian note or wire their own external adapter.
+- Next action: Keep direct webhook sends explicit and evidence-recorded; do not make external push delivery a publication-evidence gate.
+- Linked tasks: `119.1`
+- Resolution: Added `autoresearch.notifications`, `inspiration-refresh --env-path`, `--push`, `--push-channel`, `--push-timeout-seconds`, and `serve/autopilot --push-inspiration`; push attempts now record `sent`, `failed`, or `skipped` in JSON/cycle summaries.
+- Verification: Focused notification and CLI tests passed; full smoke/unit pytest passed; command help confirmed push options exist; a real `inspiration-refresh --push --push-channel feishu` run fetched one Hacker News item and recorded `skipped` because `AUTORESEARCH_FEISHU_WEBHOOK_URL` was not set; `README.md` and `README.zh-CN.md` document webhook push semantics and the skipped-webhook behavior.
+
+### P-20260615-059 - Repository had excessive loose and garbage Git objects after local runs
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-15 12:40:00 +08:00
+- Source: User reported Git warning after the previous task commit.
+- Symptom: Git warned that too many loose objects existed; `git count-objects -vH` reported `count: 10932`, `size: 661.32 MiB`, `packs: 24`, `garbage: 35`, and `size-garbage: 21.38 MiB`.
+- Impact: The warning did not corrupt the repository, but it slowed Git operations and could confuse future release commits.
+- Evidence: Initial `git count-objects -vH` output during task `119.1`.
+- Root cause: Repeated local live-cycle runs and commit activity left many unreachable loose objects and temporary object files.
+- Workaround: None needed after maintenance.
+- Next action: Run `git gc --prune=now` again if the warning reappears after future large local cycles.
+- Linked tasks: `119.1`
+- Resolution: Ran `git gc --prune=now`.
+- Verification: Follow-up `git count-objects -vH` reported `count: 0`, `size: 0 bytes`, `packs: 1`, `size-pack: 8.79 MiB`, `garbage: 0`, and `size-garbage: 0 bytes`.
+
 ### P-20260615-058 - Final manuscript review evidence was vulnerable to truncation and template overclaiming
 
 - Status: Resolved

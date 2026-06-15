@@ -73,6 +73,7 @@ from autoresearch.llm import (
     write_llm_review_issue_notes,
     write_llm_review_note,
 )
+from autoresearch.notifications import NotificationSendRecord, send_inspiration_digest
 from autoresearch.reports import (
     EvidenceGateVerdict,
     LatexPaperBuildStatus,
@@ -187,19 +188,20 @@ LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
         "Fetch real literature sources and write a guarded Obsidian summary.",
-        "Run `airesearcher literature-refresh --live --vault autoresearch-vault --cache .cache/literature` "
+        "Run `airesearcher literature-refresh --vault autoresearch-vault --cache .cache/literature` "
         "and summarize source-backed new papers only. Do not infer paper results, code "
         "availability, or benchmark scores unless the fetched source explicitly provides them.",
     ),
     "research/inspiration-refresh.toml": (
         "Search broad non-scholarly inspiration sources without treating them as paper evidence.",
         "Run `airesearcher inspiration-refresh --query \"{{args}}\" --vault autoresearch-vault "
-        "--output runs/inspiration/latest.json`. Results from Hugging Face datasets and Hacker News "
-        "are dataset/community signals only; validate them separately before using them as research evidence.",
+        "--output runs/inspiration/latest.json --push`. Results from Hugging Face datasets and Hacker News "
+        "are dataset/community signals only; validate them separately before using them as research evidence. "
+        "Use `--push-channel feishu` or `--push-channel wechat` to target a configured webhook.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
-        "Run `airesearcher similarity-check --candidate-file <candidate.json> --live` for {{args}}. "
+        "Run `airesearcher similarity-check --candidate-file <candidate.json>` for {{args}}. "
         "Use source URLs and DOI evidence only; unsupported outcomes must remain pending verification.",
     ),
     "research/run-demo.toml": (
@@ -209,16 +211,17 @@ DEFAULT_SLASH_COMMANDS = {
     ),
     "research/autopilot.toml": (
         "Start the local autonomous research loop with evidence and review gates.",
-        "Run `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` "
+        "Run `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration` "
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
-        "follow-up discovery using publication-grade default search breadth; inspect "
+        "follow-up discovery using publication-grade default search breadth, and pushes "
+        "the broad-inspiration digest when a webhook is configured; inspect "
         "cycle-summary.json before claiming publication quality. Use "
         "`--paper-template-id <template>` to collect venue-template compatibility evidence.",
     ),
     "research/serve.toml": (
         "Start the always-on operator service with dangerous-action approval gates.",
-        "Run `airesearcher serve --permission-mode approve-dangerous` after deploy-setup. "
+        "Run `airesearcher serve --permission-mode approve-dangerous --push-inspiration` after deploy-setup. "
         "This is the preferred 24h runtime entry point; it runs the research loop only "
         "after dangerous actions are approved through `airesearcher runtime approve` or "
         "a future WeChat/Feishu `/approve` adapter.",
@@ -1142,6 +1145,10 @@ def inspiration_refresh(
         Path,
         typer.Option("--output", "-o", help="JSON report output path."),
     ] = Path("runs/inspiration/latest.json"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file with webhook credentials."),
+    ] = Path(".env"),
     query: Annotated[
         list[str] | None,
         typer.Option("--query", "-q", help="Inspiration query. Repeat for multiple queries."),
@@ -1154,10 +1161,23 @@ def inspiration_refresh(
         int,
         typer.Option("--max-results-per-source", min=1, help="Maximum items per source/query."),
     ] = 5,
+    push: Annotated[
+        bool,
+        typer.Option("--push/--no-push", help="Send the digest to configured operator webhooks."),
+    ] = False,
+    push_channel: Annotated[
+        list[str] | None,
+        typer.Option("--push-channel", help="Webhook channel to notify. Repeat for multiple channels."),
+    ] = None,
+    push_timeout_seconds: Annotated[
+        float,
+        typer.Option("--push-timeout-seconds", min=1.0, help="Webhook send timeout."),
+    ] = 10.0,
 ) -> None:
     """Search broad dataset/community sources and write an Obsidian-safe summary."""
 
     try:
+        _load_optional_env(env_path)
         report = run_inspiration_refresh(
             vault_root=vault,
             queries=tuple(query or ()),
@@ -1170,8 +1190,18 @@ def inspiration_refresh(
         typer.echo(f"[FAIL] inspiration refresh failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
+    push_records: tuple[NotificationSendRecord, ...] = ()
+    if push:
+        push_records = send_inspiration_digest(
+            report,
+            channels=tuple(push_channel or ("wechat", "feishu")),
+            timeout_seconds=push_timeout_seconds,
+        )
+    payload = report.to_json_dict()
+    if push:
+        payload["pushes"] = [record.to_json_dict() for record in push_records]
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(report.to_json_dict(), indent=2, sort_keys=True), encoding="utf-8")
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     for fetch in report.fetches:
         error = f" error={fetch.error}" if fetch.error else ""
         typer.echo(
@@ -1183,6 +1213,11 @@ def inspiration_refresh(
     typer.echo(f"[OK] report: {output}")
     if report.summary_path is not None:
         typer.echo(f"[OK] summary: {report.summary_path}")
+    for record in push_records:
+        typer.echo(
+            f"[PUSH] channel={record.channel} status={record.status} "
+            f"detail={record.detail}"
+        )
     if not report.items:
         typer.echo("[FAIL] inspiration refresh returned no source-backed items", err=True)
         raise typer.Exit(code=1)
@@ -1902,6 +1937,13 @@ def autopilot(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    push_inspiration: Annotated[
+        bool,
+        typer.Option(
+            "--push-inspiration/--no-push-inspiration",
+            help="Push the broad-inspiration digest to configured operator webhooks.",
+        ),
+    ] = False,
     watch: Annotated[
         bool,
         typer.Option("--watch", help="Keep running cycles after the first one."),
@@ -1939,6 +1981,7 @@ def autopilot(
                 min_quality_score=min_quality_score,
                 review=review,
                 paper_template_id=paper_template_id,
+                push_inspiration=push_inspiration,
             )
         except RuntimeError as exc:
             typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
@@ -1963,6 +2006,7 @@ def autopilot(
             typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
             if deliverables.get("pdf_path"):
                 typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+        _echo_inspiration_pushes(summary)
         if not watch:
             break
         if cycles > 0 and completed >= cycles:
@@ -2058,6 +2102,13 @@ def serve(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    push_inspiration: Annotated[
+        bool,
+        typer.Option(
+            "--push-inspiration/--no-push-inspiration",
+            help="Push the broad-inspiration digest to configured operator webhooks.",
+        ),
+    ] = False,
     watch: Annotated[
         bool,
         typer.Option("--watch/--once", help="Keep the runtime alive after one cycle."),
@@ -2082,6 +2133,7 @@ def serve(
         permission_mode=permission_mode,
         review=review,
         paper_template_id=paper_template_id,
+        push_inspiration=push_inspiration,
     )
     typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
     while True:
@@ -2129,6 +2181,7 @@ def serve(
                 min_quality_score=min_quality_score,
                 review=review,
                 paper_template_id=paper_template_id,
+                push_inspiration=push_inspiration,
             )
         except RuntimeError as exc:
             typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
@@ -2153,6 +2206,7 @@ def serve(
             typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
             if deliverables.get("pdf_path"):
                 typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+        _echo_inspiration_pushes(summary)
         if not watch:
             break
         if cycles > 0 and completed >= cycles:
@@ -2757,6 +2811,7 @@ def _run_autopilot_cycle(
     min_quality_score: float,
     review: bool,
     paper_template_id: str,
+    push_inspiration: bool,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
@@ -2845,6 +2900,9 @@ def _run_autopilot_cycle(
             max_results_per_source=max_results_per_source,
         ),
     )
+    inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
+    if push_inspiration:
+        inspiration_pushes = send_inspiration_digest(inspiration_report)
 
     demo_result = run_scientistbench_demo(
         demo=demo,
@@ -2891,6 +2949,7 @@ def _run_autopilot_cycle(
             "item_count": len(getattr(inspiration_report, "items", ())),
             "summary_path": _path_text(getattr(inspiration_report, "summary_path", None)),
             "evidence_policy": "dataset/community/news signals only; not scholarly evidence",
+            "pushes": [record.to_json_dict() for record in inspiration_pushes],
         },
         "citations": citations,
         "demo": {
@@ -4381,15 +4440,18 @@ def _serve_command_text(
     permission_mode: RuntimePermissionMode,
     review: bool,
     paper_template_id: str,
+    push_inspiration: bool,
 ) -> str:
     review_flag = "--review" if review else "--no-review"
+    push_flag = "--push-inspiration" if push_inspiration else "--no-push-inspiration"
     return (
         "airesearcher serve "
         f"--permission-mode {permission_mode.value} "
         f"--project-id {project_id} "
         f"--demo {demo} "
         f"--paper-template-id {paper_template_id} "
-        f"{review_flag}"
+        f"{review_flag} "
+        f"{push_flag}"
     )
 
 
@@ -4442,6 +4504,24 @@ def _echo_fetches(fetches: Iterable[object]) -> None:
         typer.echo(
             f"[FETCH] source={source} papers={paper_count} cache={cache_status} "
             f"query={query}{error_text}"
+        )
+
+
+def _echo_inspiration_pushes(summary: Mapping[str, object]) -> None:
+    inspiration = summary.get("inspiration")
+    if not isinstance(inspiration, Mapping):
+        return
+    pushes = inspiration.get("pushes")
+    if not isinstance(pushes, list):
+        return
+    for push in pushes:
+        if not isinstance(push, Mapping):
+            continue
+        typer.echo(
+            "[PUSH] inspiration "
+            f"channel={push.get('channel', 'unknown')} "
+            f"status={push.get('status', 'unknown')} "
+            f"detail={push.get('detail', '')}"
         )
 
 

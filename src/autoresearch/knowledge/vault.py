@@ -193,8 +193,8 @@ def _home_markdown(project_id: str) -> str:
 ## Operator Commands
 
 ```bash
-poetry run airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
-poetry run airesearcher issue-followups --vault autoresearch-vault --project-id {project_id}
+airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
+airesearcher issue-followups --vault autoresearch-vault --project-id {project_id}
 ```
 """
 

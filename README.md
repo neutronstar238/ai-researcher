@@ -2,409 +2,325 @@
 
 [简体中文](README.zh-CN.md)
 
-AI-Researcher is an always-on, evidence-first research operator. It can connect an external
-OpenCode code-writing backend, run scheduled research cycles, push status updates through
-operator channels, maintain an Obsidian-compatible knowledge vault, and turn repeated failures
-or successes into governed skill and strategy updates.
+AI-Researcher is a V1.0 local/server research operator for evidence-first automated
+computational research. It is designed to stay online, discover real sources, collect
+inspiration, run bounded experiments, validate results, build LaTeX/PDF artifacts, and write
+all durable memory back to an Obsidian-compatible Markdown vault.
 
-It is not a paper-writing chatbot. The core loop is: discover real sources, create traceable
-research tasks, run bounded experiments, validate results, build paper artifacts, block weak
-claims, and write everything back into a human-readable knowledge base.
+It is not a paper-writing chatbot. The product goal is a governed research loop:
+real retrieval, reproducible execution, evidence gates, review gates, publication-quality
+artifacts, and controlled self-evolution.
 
-![AI-Researcher capability overview](docs/assets/readme/capability-overview.png)
+![AI-Researcher operator console](docs/assets/readme/cli-monitor.svg)
 
-> Status: local MVP with tested research-loop components and integration contracts. The
-> repository includes the Obsidian vault substrate, OpenCode integration manifest, optional
-> channel adapter runbook, scheduled `serve` / `autopilot` entrypoints, public-source literature
-> retrieval, real benchmark demos, validation and reporting gates, LaTeX paper builds, and
-> controlled self-evolution scaffolding. It is not yet a production multi-user service, and it
-> must not claim CCF-B/Q3 publishability unless the publication audit and physical evidence gate
-> pass on the real cycle artifacts.
+## V1.0 Scope
 
-## What It Does
+V1.0 is a single-operator local/server release. It can run continuously on a workstation or
+server after one guided setup. It is not a hosted multi-user SaaS, and it does not submit papers
+automatically.
 
-| Capability | What exists now | Main commands and files |
-|---|---|---|
-| OpenCode backend connection | Uses OpenCode as an external code-drafting backend while AI-Researcher keeps validation, approval, memory, and commit authority. | `airesearcher code-agents opencode init`, `integrations/opencode/code-agent.json` |
-| Scheduled self-loop | Runs recurring research cycles for discovery, experiment, validation, review, audit, paper build, and follow-up issue creation. | `airesearcher serve`, `airesearcher autopilot --watch` |
-| Periodic push and approval | Records optional channel adapter metadata and maps dangerous actions to an AI-Researcher approval queue. | `airesearcher channels adapters init`, `.airesearcher/runtime-approvals.json` |
-| OA-first PDF source manifest | Records ScanSci PDF as an optional backend while keeping OA/legal sources as the default and approval-gating restricted or bypass-oriented sources. | `airesearcher pdf-sources scansci-pdf init`, `integrations/scansci-pdf/pdf-source.json` |
-| Obsidian knowledge core | Stores literature, project progress, evidence, issues, failures, skills, strategy cards, review notes, and rollback history as linked Markdown. | `autoresearch-vault/`, `airesearcher obsidian-setup` |
-| Evidence gates | Blocks paper or release claims when run records, validation reports, reproduction checks, reviews, publication audits, paper builds, or PDFs are missing or weak. | `publication-audit`, `paper-build`, `evidence-gate` |
-| Controlled self-evolution | Writes candidate skill and strategy updates, then requires validation, human approval, shadow evaluation, and rollback paths before promotion. | `skill-evolve`, `skill-polish-audit`, strategy cards in the vault |
+| Area | V1.0 behavior |
+| --- | --- |
+| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, optional WeChat/Feishu webhooks, vault path, integration manifests, and slash templates. |
+| Always-on loop | `airesearcher serve` and `airesearcher autopilot --watch` run a daily loop with online literature search, inspiration refresh, experiments, review, audit, paper build, and follow-up tasks. |
+| Inspiration push | `--push-inspiration` sends a compact digest to configured WeChat/Feishu webhooks. Missing webhooks are recorded as `skipped`, not faked. |
+| Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
+| Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
+| Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
+| Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
+| Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
-## Quick Install
-
-![Installation flow](docs/assets/readme/install-flow.png)
+## Install
 
 Prerequisites:
 
 - Python 3.10+
-- Node.js 20+ if you want the npm-style launcher
+- Node.js 20+
 - Git
-- Optional: OpenCode, if you want AI-Researcher to hand off code-writing tasks
-- Optional: Obsidian, if you want to browse the vault visually
-
-Install the project:
+- Optional: Obsidian for browsing the vault
+- Optional: OpenCode for external code-generation tasks
 
 ```bash
-git clone <your-fork-or-repo-url>
+git clone <your-repo-url>
 cd AIResearch
 python -m pip install -e .
 npm install
-airesearcher doctor
+npm run doctor
 ```
 
-Start the guided first-deploy wizard:
+The Python CLI and the npm launcher call the same application:
 
 ```bash
-airesearcher setup
-# or
+airesearcher version
+node ./bin/airesearcher.mjs version
+```
+
+## First Deployment
+
+Run the guided setup wizard:
+
+```bash
 npm run setup
+# or
+airesearcher setup
 ```
 
-The wizard presents provider presets, lets you confirm or override the API base URL and model
-name, asks for the API key, and optionally collects WeChat or Feishu webhook/app credentials.
-It then prepares `autoresearch-vault/`, integration manifests under `integrations/`, and local
-slash-command templates. It does not install third-party coding backends or channel plugins.
-Secrets are written to `.env`; non-secret settings stay in `config.yaml`. The root `.env` file is
-ignored by git and must never be committed.
+The wizard walks through:
 
-If you prefer manual setup:
+1. Choose a provider preset such as DeepSeek, OpenAI-compatible, SiliconFlow, or custom.
+2. Confirm `AUTORESEARCH_LLM_BASE_URL`.
+3. Enter `AUTORESEARCH_LLM_MODEL_NAME`.
+4. Enter `AUTORESEARCH_LLM_API_KEY`.
+5. Optionally configure WeChat or Feishu webhook/app credentials.
+6. Initialize `autoresearch-vault/`.
+7. Write integration runbooks under `integrations/`.
+8. Write local slash command templates under `.airesearcher/commands/`.
+
+Secrets are written only to `.env`. Public examples live in `.env.example`. Never commit real
+API keys, webhook URLs, app secrets, or tokens.
+
+Non-interactive setup is also supported:
 
 ```bash
-cp .env.example .env
+airesearcher setup \
+  --provider openai-compatible \
+  --base-url https://api.example.com/v1 \
+  --model-name your-model \
+  --api-key sk-... \
+  --no-wechat \
+  --no-feishu \
+  --non-interactive
 ```
 
-Then set:
+## Start The 24h Operator
 
-```text
-AUTORESEARCH_LLM_BASE_URL=...
-AUTORESEARCH_LLM_MODEL_NAME=...
-AUTORESEARCH_LLM_API_KEY=...
-```
-
-The legacy setup-only entry point remains available:
+Recommended V1.0 command:
 
 ```bash
-airesearcher deploy-setup
+npm run serve
 ```
 
-Run a local smoke check:
+This is equivalent to:
 
 ```bash
-airesearcher run-demo --demo tabular_baseline
+airesearcher serve --permission-mode approve-dangerous --push-inspiration
 ```
 
-Run a real public benchmark demo:
+`serve` stays alive by default. It checks the approval queue, runs approved cycles, waits
+`86400` seconds between cycles, and records push status for the broad-inspiration digest.
 
-```bash
-airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
-```
-
-Start the always-on operator:
-
-```bash
-airesearcher serve --permission-mode approve-dangerous
-```
-
-Completed research cycles publish the user-facing paper bundle under `outputs/<project-id>/`.
-When LaTeX compilation succeeds, the bundle includes `<project-id>-<cycle-id>.pdf` plus a
-manifest that points to the source manuscript, audit, evidence gate, related-work inspection,
-and cycle summary.
-
-In another terminal, inspect and approve queued actions:
+In another terminal, approve the first dangerous cycle:
 
 ```bash
 airesearcher runtime list
 airesearcher runtime approve latest --approved-by operator
 ```
 
-## OpenCode Integration
-
-AI-Researcher treats OpenCode as a code-writing backend, not as the final authority. OpenCode can
-draft a diff; AI-Researcher captures that diff, runs validation, records the outcome, updates the
-vault, and only then allows the work to move toward commit or release.
-
-Initialize the integration contract:
+For a fully automatic trusted machine, use:
 
 ```bash
-airesearcher code-agents opencode init
-airesearcher code-agents opencode list
+airesearcher serve --permission-mode allow-all --push-inspiration
 ```
 
-This writes or refreshes `integrations/opencode/code-agent.json`. The manifest documents:
+Use `allow-all` only on a machine and project where online retrieval, local experiment execution,
+LLM review, vault writes, and output writes are acceptable without per-cycle approval.
 
-- how to call OpenCode through `opencode run`, `opencode serve`, or `opencode acp`;
-- recommended permission defaults for shell, edit, webfetch, and websearch actions;
-- how generated diffs are accepted only after AI-Researcher validation gates pass;
-- where provider credentials may live;
-- why OpenCode source code is not vendored into this repository.
+## Daily Retrieval And Inspiration Push
 
-Recommended operating model:
-
-1. AI-Researcher creates or selects a bounded task scope.
-2. OpenCode drafts the code change in that scope.
-3. AI-Researcher captures the generated diff and artifacts.
-4. Focused tests, lint, type checks, live smoke tests, publication gates, or evidence gates run as needed.
-5. Accepted findings, failures, and follow-up tasks are written into `Agent.md`, `Problem.md`, and `autoresearch-vault/`.
-6. A commit is created only after the relevant gates pass.
-
-## Scheduled Self-Loop and Push
-
-The recurring loop is designed for a local machine or server that stays online.
+Use the daily autopilot loop directly when you do not need the approval service wrapper:
 
 ```bash
-airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
+airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
-Each cycle can perform:
+Each cycle can run:
 
-1. source cooldown preflight;
-2. online literature refresh from ArXiv and OpenAlex, with Semantic Scholar optional;
-3. source-backed similarity and novelty checks;
-4. broad inspiration refresh from non-scholarly sources;
-5. local demo or real public benchmark experiment;
-6. command-line reproduction rerun;
-7. optional live LLM evidence review;
-8. publication audit;
-9. LaTeX paper build;
-10. physical evidence gate;
-11. Obsidian review, issue, failure, skill, and strategy updates;
-12. local follow-up state merge.
+1. Source preflight and cooldown checks.
+2. ArXiv and OpenAlex literature refresh. Semantic Scholar is optional and lower priority.
+3. Source-backed similar-work and novelty checks.
+4. Hugging Face and Hacker News broad inspiration refresh.
+5. Local demo or public benchmark experiment.
+6. Command-line reproduction check.
+7. Optional live LLM evidence review.
+8. Publication audit.
+9. LaTeX paper build.
+10. Physical evidence gate.
+11. Obsidian review, issue, skill, and strategy updates.
+12. Scheduler follow-up merge.
+13. Optional WeChat/Feishu inspiration digest push.
 
-For push-style operation, initialize the optional channel adapter runbook:
+Single inspiration refresh with push:
 
 ```bash
-airesearcher channels adapters init
-airesearcher channels adapters list
+airesearcher inspiration-refresh \
+  --query "autonomous research agents datasets" \
+  --vault autoresearch-vault \
+  --output runs/inspiration/latest.json \
+  --push \
+  --push-channel feishu
 ```
 
-The generated `integrations/channels/adapters.json` is a runbook for optional upstream messaging
-adapters such as Feishu/Lark, WeChat, WeCom, Telegram, Slack, Teams, and webhook-style adapters.
-Some referenced adapters were originally written for other ecosystems; AI-Researcher does not
-install, vendor, or run them. Secrets must stay in `.env` or a platform secret store.
+If no webhook is configured, the command records `skipped` in the JSON output and does not claim
+delivery.
 
-Map operator messages such as `/approve` to:
+## Operator Monitor
 
 ```bash
-airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+npm run monitor
+# or
+airesearcher monitor
 ```
 
-## PDF Source Backends
+The monitor shows recent agent messages, active file claims, research-stage flow, approval queue,
+open follow-up tasks, git changes, and output previews. Useful options:
 
-AI-Researcher can record ScanSci PDF as an optional PDF retrieval backend, but the default policy
-is OA-first and legal-only. The manifest keeps publisher-direct open access, arXiv, PubMed
-Central, Unpaywall, OpenAlex, DOAJ, CORE, and Europe PMC in the allowed default set. Sci-Hub,
-LibGen, institutional WebVPN/CARSI, Tor, Cloudflare bypass, and credentialed library proxy paths
-are approval-gated and must pass license and operator review before use.
+| Option | Purpose |
+| --- | --- |
+| `--watch` | Refresh the console continuously. |
+| `--refresh-seconds <n>` | Refresh interval for watch mode. |
+| `--no-diff` | Hide git diff preview for a clean status display. |
+| `--cycle-summary <path>` | Inspect one specific cycle summary. |
+| `--outputs-dir <path>` | Preview a custom output directory. |
+
+## Slash Commands
+
+Run once after setup if templates need to be regenerated:
 
 ```bash
-airesearcher pdf-sources scansci-pdf init
-airesearcher pdf-sources scansci-pdf list
+airesearcher slash-commands init
+airesearcher slash-commands list
 ```
 
-## Obsidian Knowledge Vault
+The text after a slash command is passed into that template as `{{args}}`.
 
-![Obsidian vault management](docs/assets/readme/obsidian-vault.png)
+| Slash command | Typical args | Runs |
+| --- | --- | --- |
+| `/research:serve` | none | `airesearcher serve --permission-mode approve-dangerous --push-inspiration` |
+| `/research:approve` | `latest` or `<request-id>` | Approves a queued dangerous action. |
+| `/research:autopilot` | optional notes | Starts the daily autonomous loop with evidence gates. |
+| `/research:refresh-literature` | optional topic | Runs real ArXiv/OpenAlex literature refresh. |
+| `/research:inspiration-refresh` | query text | Searches broad inspiration sources and can push a digest. |
+| `/research:similarity-check` | candidate context | Cross-checks a candidate against adjacent online work. |
+| `/research:run-demo` | demo id | Runs a local demo or public benchmark. |
+| `/research:publication-audit` | cycle summary path | Audits publication readiness. |
+| `/research:publication-stability` | multiple cycle summaries | Checks stability across cycles/templates/datasets. |
+| `/research:paper-build` | report path or template id | Builds LaTeX/PDF artifacts. |
+| `/research:evidence-gate` | cycle summary path | Runs the physical release gate. |
+| `/research:issue-followups` | project id | Lists open vault issues as scheduler tasks. |
+| `/research:session-claim` | task/path info | Coordinates concurrent agent file claims. |
+| `/research:obsidian-setup` | project id | Refreshes safe vault assets. |
+| `/research:skill-evolve` | skill evidence | Creates bounded skill-evolution candidates. |
+| `/research:skill-polish-audit` | skill id | Audits skill cards before promotion. |
+| `/research:channel-adapters` | none | Writes optional messaging adapter runbooks. |
+| `/research:code-agent-backends` | none | Writes OpenCode backend integration contracts. |
+| `/research:scansci-pdf` | none | Writes OA-first PDF retrieval manifest. |
+| `/research:status` | none | Shows local operator status guidance. |
 
-`autoresearch-vault/` is the system's canonical memory substrate. It is both a plain Markdown
-folder that humans can inspect and a machine-readable state layer that future cycles can query.
+## Key CLI Parameters
 
-The vault is not optional decoration. It is where the system stores the context that makes
-self-looping and self-evolution auditable.
+| Command | Parameter | Meaning |
+| --- | --- | --- |
+| `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | Provider-agnostic LLM configuration. |
+| `setup` | `--wechat`, `--feishu`, webhook/app options | Optional operator channel credentials written to `.env`. |
+| `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |
+| `serve` / `autopilot` | `--interval-seconds 86400` | Daily loop interval. |
+| `serve` / `autopilot` | `--cycles 0` | Run forever when combined with watch mode. |
+| `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to configured webhooks. |
+| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
+| `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
+| `inspiration-refresh` | `--env-path .env` | Loads webhook credentials for one-shot push. |
+| `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
+| `paper-build` | `--template-id` | Selects a registered LaTeX template. |
+| `runtime approve` | `latest` or request id | Approves queued dangerous work. |
 
-### What Goes Into The Vault
+## Outputs And Repository Hygiene
 
-| Vault area | Purpose |
-|---|---|
-| `exploration/` | Global topics, methods, datasets, failure patterns, reusable skills, and strategy cards. |
-| `projects/<project-id>/knowledge/` | Literature notes, source-backed facts, method cards, and dataset cards for a specific project. |
-| `projects/<project-id>/experiments/` | Experiment records, configs, commands, run IDs, metrics, and artifact links. |
-| `projects/<project-id>/evidence/` | Claim-to-evidence links, validation status, source artifacts, and audit references. |
-| `projects/<project-id>/issues/` | Review findings, blockers, missing evidence, failed checks, and follow-up tasks. |
-| `projects/<project-id>/experience/` | Failure cases, lessons learned, reusable skill candidates, and strategy observations. |
-| `projects/<project-id>/paper/` | Paper-build summaries, review notes, citation package notes, and reproducibility context. |
+Local runtime artifacts are intentionally ignored by git:
 
-### Management Mechanisms
+- `.env`
+- `.airesearcher/`
+- `.cache/`
+- `runs/`
+- `artifacts/`
+- `outputs/`
 
-- Markdown files use YAML frontmatter so entries are readable in Obsidian and structured enough
-  for agents.
-- Wiki-links and backlinks connect papers, hypotheses, experiments, evidence, failures, skills,
-  and strategy cards.
-- Topic indexes make repeated retrieval and future-cycle context lookup deterministic.
-- Permission checks prevent project agents from writing outside their allowed project area.
-- Denied writes and approval gates become audit events instead of silent failures.
-- Version history, backups, and rollback support make knowledge evolution reversible.
-- Issues and failures are first-class memory objects, so the next cycle can start from known
-  blockers rather than prompt-only reminders.
-- Skill cards and strategy cards are promoted only after validation, shadow evaluation, approval,
-  and rollback planning.
+The tracked repository should contain source code, tests, docs, integration manifests, templates,
+license notices, and the safe Obsidian vault scaffold. Generated PDFs and large run bundles stay
+local under `outputs/` unless a release process explicitly publishes them elsewhere.
 
-The intended rhythm is simple: every cycle writes back, and future cycles read from the same
-vault before proposing new work.
+## Obsidian Vault
 
-## System Architecture
+`autoresearch-vault/` is the system memory substrate, not decoration. It stores:
 
-![System architecture](docs/assets/readme/architecture.png)
+- literature and source summaries;
+- inspiration notes from non-scholarly sources;
+- project progress and experiment records;
+- evidence maps and validation summaries;
+- review findings and follow-up issues;
+- failure patterns;
+- reusable skill cards;
+- strategy cards with shadow-evaluation and rollback notes;
+- paper-build summaries and archive Markdown.
 
-```mermaid
-flowchart LR
-    Operator["Operator / Reviewer"] --> Runtime["serve / autopilot"]
-    Runtime --> Scheduler["Scheduler"]
-    Runtime --> Approval["Approval Queue"]
-    Runtime --> OpenCode["OpenCode Backend"]
-    OpenCode --> Diff["Code Proposal / Diff"]
-    Diff --> Gates["Tests and Evidence Gates"]
-    Scheduler --> Loop["Research Self-loop"]
-    Loop --> Sources["ArXiv / OpenAlex / Optional Sources"]
-    Loop --> Experiment["Sandboxed Experiment"]
-    Experiment --> Results["Result Bundle"]
-    Results --> Validation["Validation and Reproduction"]
-    Validation --> Paper["Report / LaTeX Paper Build"]
-    Paper --> ReleaseGate["Publication Audit / Evidence Gate"]
-    ReleaseGate --> Push["Status Push / Review Notes"]
-    ReleaseGate --> Vault["Obsidian Vault"]
-    Vault --> Loop
-    Vault --> Evolution["Skill and Strategy Evolution"]
-    Evolution --> Shadow["Shadow Evaluation"]
-    Shadow --> Approval
-    Approval --> Rollback["Promote or Roll Back"]
-```
+Future cycles read the same vault before proposing new work, so self-looping and self-evolution
+are grounded in durable Markdown rather than prompt-only memory.
 
-## Evidence, Audit, and Paper Gates
+## Publication Artifacts
 
-![Evidence loop](docs/assets/readme/evidence-loop.png)
-
-AI-Researcher intentionally refuses to treat a polished report as a publication-ready result.
-For strong claims, the system expects physical artifacts:
-
-- cycle summary;
-- literature and similarity evidence;
-- first run record;
-- validation report;
-- evidence map;
-- reproduction rerun record;
-- evidence-constrained review;
-- publication audit;
-- LaTeX build JSON;
-- compiled PDF;
-- paper-quality report.
-
-Run the main gates manually when you need to inspect a completed cycle:
-
-```bash
-airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json --target ccf-b
-airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/report/report.md --template-id generic-article-one-column
-airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.json --publication-audit runs/autopilot/<cycle-id>/publication-audit.json --paper-build-json runs/paper-build/<cycle-id>/paper-build.json
-```
-
-## Self-Evolution
-
-Self-evolution is controlled, not free-form self-modification.
-
-Use `skill-evolve` to write a candidate skill card:
-
-```bash
-airesearcher skill-evolve \
-  --parent-skill-id skill_evidence_bound_review \
-  --issue-ref projects/autoresearch-system/issues/example_issue \
-  --change-summary "Tighten the evidence bundle before live review." \
-  --proposed-action "Attach run-record evidence before review." \
-  --validation-check "Held-out review has zero unsupported reproduction claims."
-```
-
-Use `skill-polish-audit` before promotion:
-
-```bash
-airesearcher skill-polish-audit \
-  --skill-id <candidate_skill_id> \
-  --peer-ref https://github.com/LearnPrompt/luban-skill \
-  --live-evidence-ref runs/skill-polish/demo-validation.json \
-  --install-ref .opencode/skills/ai-researcher-evidence-gate/SKILL.md \
-  --release-ref autoresearch-vault/exploration/skills/rejected/demo_rejections.md
-```
-
-Promotion requires real evidence, bounded edits, rollback awareness, and human review. Strategy
-changes follow the same idea: propose, evaluate offline, run in shadow mode, approve, deploy
-gradually, and roll back if the reward or safety metrics regress.
-
-## Common Commands
-
-| Goal | Command |
-|---|---|
-| Check local install | `airesearcher doctor` |
-| Guided first-deploy setup | `airesearcher setup` or `npm run setup` |
-| Configure model and channels only | `airesearcher deploy-setup` |
-| Initialize Obsidian vault only | `airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system` |
-| Initialize OpenCode backend contract | `airesearcher code-agents opencode init` |
-| Initialize channel adapter runbook | `airesearcher channels adapters init` |
-| Initialize ScanSci PDF source manifest | `airesearcher pdf-sources scansci-pdf init` |
-| Run toy demo | `airesearcher run-demo --demo tabular_baseline` |
-| Run real benchmark demo | `airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60` |
-| Start always-on runtime | `airesearcher serve --permission-mode approve-dangerous` |
-| Run daily autopilot loop | `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` |
-| Watch agents, queues, diffs, and outputs | `airesearcher monitor` or `npm run monitor` |
-| List runtime approvals | `airesearcher runtime list` |
-| Approve latest queued action | `airesearcher runtime approve latest --approved-by operator` |
-| Run local quality gate | `python scripts/check.py` |
-
-## Repository Layout
+Markdown records and project archive notes stay in `autoresearch-vault/`. Publication-targeted
+artifacts are copied to:
 
 ```text
-.
-├── autoresearch-vault/              # Obsidian-compatible knowledge memory
-├── docs/assets/readme/              # README illustrations
-├── integrations/opencode/           # OpenCode backend contract
-├── integrations/channels/           # Optional messaging adapter runbooks
-├── runs/                            # Local run artifacts
-├── src/autoresearch/                # Python package
-├── tests/                           # Unit, smoke, property, integration tests
-├── .kiro/specs/auto-research-system # Executable implementation plan
-├── Agent.md                         # Required agent change log
-├── Problem.md                       # Problem, blocker, and risk log
-├── config.yaml                      # Non-secret runtime config
-└── pyproject.toml
+outputs/<project-id>/
 ```
 
-## Boundaries
+A passing cycle can include:
 
-AI-Researcher is designed to be autonomous where evidence exists and conservative where evidence
-is missing.
+- `<project-id>-<cycle-id>.pdf`
+- generated `.tex`
+- `paper-build.json`
+- `publication-audit.json`
+- `evidence-gate.json`
+- `cycle-summary.json`
+- manifest `.json` and `.md`
 
-- It does not automatically publish or submit papers.
-- It does not store API keys in git.
-- It does not treat OpenCode-generated diffs as accepted code until AI-Researcher gates pass.
-- It does not promote skill or strategy updates without validation, approval, and rollback paths.
-- It does not claim publication readiness from toy demos or paper-shaped Markdown alone.
-- It is not yet a production multi-user product; deployment and channel integrations need operator
-  review.
+Do not claim a paper is publication-ready just because a PDF exists. The release claim requires
+the publication audit and evidence gate to pass on the same cycle artifacts.
+
+## External References And Licenses
+
+AI-Researcher references several open-source projects as design inspiration or optional ecosystem
+integration points, including HKUDS AI-Researcher, AutoResearch, Horizon-style daily refreshers,
+AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, and Luban Skill style guides.
+
+Their license and incorporation status are tracked in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This repository does not vendor OpenClaw,
+OpenCode, AutoResearchClaw, or channel plugin source code.
+
+## Development
+
+Before changing code, read [AGENTS.md](AGENTS.md). The current executable plan is in
+[.kiro/specs/auto-research-system/tasks.md](.kiro/specs/auto-research-system/tasks.md).
+
+Useful checks:
+
+```bash
+python -m ruff check src tests
+python -m mypy src/autoresearch
+python -m pytest tests/smoke tests/unit -q
+```
 
 ## Documentation
 
-- [Research Plan](AutoResearch_System_Research_Plan.md): research scope, architecture, agent model, verification model, risk matrix, and roadmap.
-- [Execution Plan](AutoResearch_System_Execution_Plan.md): phased implementation plan, milestones, schemas, testing strategy, cost model, and release gates.
-- [Implementation Tasks](.kiro/specs/auto-research-system/tasks.md): detailed executable task list.
-- [Release Gate Checklist](docs/release-gate.md): checks before release tags, demos, or production-ready claims.
-- [Agent Change Log](Agent.md): required change log for every coding agent.
-- [Problem Log](Problem.md): blocker, risk, and defect register.
-- [Third-Party Notices](THIRD_PARTY_NOTICES.md): license and attribution notes for inspirations and integrations.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
-
-Before changing files:
-
-1. Read [AGENTS.md](AGENTS.md).
-2. Check [.kiro/specs/auto-research-system/tasks.md](.kiro/specs/auto-research-system/tasks.md).
-3. Review open items in [Problem.md](Problem.md).
-4. Make the smallest change that satisfies the task.
-5. Run the relevant verification command.
-6. Append your change summary to [Agent.md](Agent.md).
+- [Research Plan](AutoResearch_System_Research_Plan.md)
+- [Execution Plan](AutoResearch_System_Execution_Plan.md)
+- [Implementation Tasks](.kiro/specs/auto-research-system/tasks.md)
+- [Release Gate Checklist](docs/release-gate.md)
+- [Agent Change Log](Agent.md)
+- [Problem Log](Problem.md)
+- [Third-Party Notices](THIRD_PARTY_NOTICES.md)
 
 ## License
 
-AI-Researcher is licensed under the [Apache License 2.0](LICENSE). The SPDX identifier is
-`Apache-2.0`. See [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for
-attribution and third-party reference notes.
+AI-Researcher is licensed under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution and third-party reference notes.

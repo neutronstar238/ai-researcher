@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ai-researcher"
-version = "0.1.0"
+version = "1.0.0"
 description = "AI-Researcher: evidence-first automated computational research platform with multi-agent collaboration"
 authors = ["AI-Researcher Team"]
 license = "Apache-2.0"

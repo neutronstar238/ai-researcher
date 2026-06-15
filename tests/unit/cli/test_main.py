@@ -218,6 +218,75 @@ def test_inspiration_refresh_command_writes_report(tmp_path: Path, monkeypatch) 
     assert payload["summary_path"] == summary_path.as_posix()
 
 
+def test_inspiration_refresh_command_can_push_digest(tmp_path: Path, monkeypatch) -> None:
+    vault_path = tmp_path / "vault"
+    output = tmp_path / "runs" / "inspiration.json"
+    summary_path = vault_path / "exploration" / "inspiration" / "summary.md"
+
+    def fake_run_inspiration_refresh(*, vault_root, queries, config):
+        assert vault_root == vault_path
+        assert config.max_results_per_source == 5
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text("# Summary\n", encoding="utf-8")
+        return InspirationRefreshReport(
+            queries=tuple(queries),
+            fetches=(),
+            items=(
+                InspirationItem(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    title="Research agent thread",
+                    url="https://news.ycombinator.com/item?id=123",
+                    query=queries[0],
+                    summary="Community signal only.",
+                    score=3.0,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+            ),
+            summary_path=summary_path,
+        )
+
+    def fake_send_inspiration_digest(report, *, channels, timeout_seconds):
+        assert len(report.items) == 1
+        assert channels == ("feishu",)
+        assert timeout_seconds == 2.0
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="webhook accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_run_inspiration_refresh)
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "inspiration-refresh",
+            "--vault",
+            str(vault_path),
+            "--query",
+            "research agents",
+            "--output",
+            str(output),
+            "--push",
+            "--push-channel",
+            "feishu",
+            "--push-timeout-seconds",
+            "2",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[PUSH] channel=feishu status=sent detail=webhook accepted" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["pushes"][0]["channel"] == "feishu"
+    assert payload["pushes"][0]["status_code"] == 200
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -1454,6 +1523,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     ]
     assert payload["similarity"]["finding_count"] == 1
     assert payload["inspiration"]["item_count"] == 1
+    assert payload["inspiration"]["pushes"] == []
     assert payload["inspiration"]["evidence_policy"] == (
         "dataset/community/news signals only; not scholarly evidence"
     )

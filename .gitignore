@@ -15,6 +15,15 @@ htmlcov/
 .airesearcher/
 .autoresearch/
 autoresearch-vault/.obsidian/
+autoresearch-vault/.trash/
+autoresearch-vault/.versions/
+autoresearch-vault/exploration/inspiration/
+autoresearch-vault/exploration/topics/literature_refresh_*.md
+autoresearch-vault/exploration/topics/similarity_check_*.md
+autoresearch-vault/projects/ai_researcher_task*/
+autoresearch-vault/projects/live_*/
+autoresearch-vault/projects/ci_dry/
 
 runs/
 artifacts/
+outputs/

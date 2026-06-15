@@ -1,6 +1,6 @@
 {
   "name": "ai-researcher-local",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "setup": "node ./bin/airesearcher.mjs setup",
-    "serve": "node ./bin/airesearcher.mjs serve --permission-mode approve-dangerous",
+    "serve": "node ./bin/airesearcher.mjs serve --permission-mode approve-dangerous --push-inspiration",
     "autopilot": "node ./bin/airesearcher.mjs autopilot",
     "monitor": "node ./bin/airesearcher.mjs monitor",
     "doctor": "node ./bin/airesearcher.mjs doctor",

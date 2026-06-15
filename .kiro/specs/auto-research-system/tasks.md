@@ -1736,6 +1736,20 @@ A task can be checked only when all applicable items are true:
     - _References: user screenshot showing malformed `[Cycle summary]`-style references; user requirement that Markdown versions are vault knowledge/archive artifacts while PDF versions under `outputs/` are direct publication artifacts; task `117.1` output bundle._
     - _Verify: `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; `python -m pytest tests\smoke tests\unit -q` passed with 464 passed, 4 skipped, and 1 warning. Real live autopilot final-v2 runs passed review, publication audit, and evidence gate for Pendigits/generic at `runs/manual-live/task118-final-release-pendigits-v2/cycle-20260615T030141Z/cycle-summary.json`, Letter/ACM at `runs/manual-live/task118-final-release-letter-v2/cycle-20260615T025959Z/cycle-summary.json`, and Skin/Springer at `runs/manual-live/task118-final-release-skin-v2/cycle-20260615T030309Z/cycle-summary.json`. Generated PDFs are `outputs/ai_researcher_task118_final_pendigits_v2/ai_researcher_task118_final_pendigits_v2-cycle-20260615T030141Z.pdf`, `outputs/ai_researcher_task118_final_letter_v2/ai_researcher_task118_final_letter_v2-cycle-20260615T025959Z.pdf`, and `outputs/ai_researcher_task118_final_skin_v2/ai_researcher_task118_final_skin_v2-cycle-20260615T030309Z.pdf`. TeX inspection confirmed `thebibliography`, `\bibitem`, `\includegraphics`, `tabular`, Data Analysis, and Evidence and Artifact Availability; regression search found no `[Cycle summary]`-style pseudo-reference labels, `Springer Nature build`, `publication score`, `configured audit target`, or `This draft` in final Markdown/TeX._
 
+- [x] 119. V1.0 release-readiness cleanup and user onboarding
+  - [x] 119.1 Add inspiration push, repository hygiene, and V1.0 README release guide
+    - Run Git object maintenance after the loose-object warning and verify loose object and garbage counts return to zero.
+    - Keep runtime outputs out of GitHub by ignoring `outputs/`, runtime cache/state directories, and generated vault run notes while preserving the tracked Obsidian vault scaffold and selected durable knowledge files.
+    - Add a direct webhook notification path for broad-inspiration digests so `inspiration-refresh --push` and `serve/autopilot --push-inspiration` can push to configured WeChat/Feishu webhooks.
+    - Keep push delivery evidence explicit: `sent`, `failed`, or `skipped`, with JSON records in command output artifacts and cycle summaries.
+    - Update npm `serve` to the V1.0 recommended operator entry point with approval gates and inspiration push enabled.
+    - Bump project version metadata to `1.0.0` consistently across Python and npm entry points.
+    - Rewrite `README.md` and `README.zh-CN.md` as product-style onboarding pages with guided setup, daily loop, push behavior, slash commands, parameters, outputs, boundaries, references, and license notes.
+    - Add a README-visible CLI monitor screenshot asset showing agent messages, active agents, information flow, approvals/tasks, changes, and output previews.
+    - Remove stale user-facing command fragments such as nonexistent `--live` literature/similarity options and old Poetry-prefixed operator commands from generated templates.
+    - _References: user request to handle Git loose objects, keep GitHub repository focused on necessary code, perform a final V1.0 check, document guided setup and slash commands, include the CLI Agent-flow UI screenshot, and verify daily scheduled retrieval plus inspiration push._
+    - _Verify: `git gc --prune=now` completed and `git count-objects -vH` reported `count: 0`, `packs: 1`, `garbage: 0` immediately after maintenance; full `python -m ruff check src tests`, `python -m mypy src\autoresearch`, and `python -m pytest tests\smoke tests\unit -q` passed with 468 passed, 4 skipped, and 1 warning; real `inspiration-refresh --push --push-channel feishu` fetched one live Hacker News inspiration item and recorded Feishu push as `skipped` because `AUTORESEARCH_FEISHU_WEBHOOK_URL` was not set; `serve --once --permission-mode approve-dangerous --push-inspiration` and `npm run serve -- --once` both stopped at the expected approval gate; `node .\bin\airesearcher.mjs version` returned `1.0.0`; `node .\bin\airesearcher.mjs monitor --no-diff --max-agent-entries 2` rendered the operator console; `node .\bin\airesearcher.mjs slash-commands init/list --directory .tmp-slash-check` generated and listed 20 slash command templates; command-help checks confirmed `inspiration-refresh --env-path/--push`, `autopilot --push-inspiration`, `serve --push-inspiration`, `--cycles 0`, and default `--interval-seconds 86400` exist; README/source-template regression search found no stale `literature-refresh --live`, `similarity-check ... --live`, `poetry run airesearcher`, old `autoresearch deploy`, or mojibake markers in the release docs/source templates._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2120,6 +2134,14 @@ A task can be checked only when all applicable items are true:
     {
       "id": 84,
       "tasks": ["117.1"]
+    },
+    {
+      "id": 85,
+      "tasks": ["118.1"]
+    },
+    {
+      "id": 86,
+      "tasks": ["119.1"]
     }
   ]
 }

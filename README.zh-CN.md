@@ -2,372 +2,302 @@
 
 [English](README.md)
 
-AI-Researcher 是一个证据优先、可常驻运行的自动科研操作系统。它的重点不是“让模型写一篇像论文的文本”，而是把真实来源检索、OpenCode 代码生成、定时自循环、Obsidian 知识库、结果验证、论文构建、推送通知、人工审批和受控自进化连成一条可审计的工程链路。
+AI-Researcher 是一个 V1.0 本地/服务器端的证据优先自动科研操作系统。它可以长期运行，自动发现真实资料，抓取灵感，执行有边界的实验，验证结果，构建 LaTeX/PDF 论文产物，并把长期记忆写回 Obsidian 兼容的 Markdown 知识库。
 
-一句话理解：AI-Researcher 可以定时发现研究线索，把需要写代码的任务交给 OpenCode 起草，把实验和审查结果写回 Obsidian，并在证据不足时自动阻断论文级声明。
+它不是“让大模型写一篇像论文的文章”的聊天机器人。它的核心是一个可审计科研闭环：真实检索、可复现实验、证据门禁、评审门禁、论文级产物和受控自进化。
 
-![AI-Researcher 能力总览](docs/assets/readme/capability-overview.png)
+![AI-Researcher 操作台](docs/assets/readme/cli-monitor.svg)
 
-> 当前状态：本地 MVP 和核心研究闭环组件已具备测试覆盖。仓库包含 Obsidian vault 底座、OpenCode 集成契约、可选通道 adapter runbook、`serve` / `autopilot` 常驻入口、公开来源文献检索、真实 benchmark demo、验证与报告门禁、LaTeX 论文构建和受控自进化脚手架。它还不是生产级多用户服务；除非真实 cycle artifact 通过 publication audit 和 physical evidence gate，否则不能声称达到 CCF-B/三区期刊可发表水平。
+## V1.0 范围
 
-## 它现在能做什么
+V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作站或服务器上持续运行。它还不是多用户 SaaS，也不会自动投稿。
 
-| 能力 | 当前已有内容 | 入口 |
-|---|---|---|
-| 自动连接 OpenCode | 把 OpenCode 当作外部代码起草后端；OpenCode 写 proposal/diff，AI-Researcher 负责验证、审批、记忆和最终接收。 | `airesearcher code-agents opencode init`，`integrations/opencode/code-agent.json` |
-| 定时自循环 | 周期性执行文献刷新、相似工作检查、实验、复现、评审、发表级审计、论文构建和 follow-up 写入。 | `airesearcher serve`，`airesearcher autopilot --watch` |
-| 定期推送与审批 | 记录可选通道 adapter 元数据，并把危险动作映射到 AI-Researcher 的 approval queue。 | `airesearcher channels adapters init`，`.airesearcher/runtime-approvals.json` |
-| OA 优先 PDF 源 manifest | 把 ScanSci PDF 记录为可选后端，但默认只允许开放获取/合法来源；绕过型或受限来源必须审批。 | `airesearcher pdf-sources scansci-pdf init`，`integrations/scansci-pdf/pdf-source.json` |
-| Obsidian 核心知识库 | 把文献、项目进展、实验、证据、issue、失败、技能、策略、review 和回滚历史都写成可读 Markdown。 | `autoresearch-vault/`，`airesearcher obsidian-setup` |
-| 证据门禁 | 缺少 run record、validation、复现、review、audit、paper build 或 PDF 时，阻断发表级声明。 | `publication-audit`，`paper-build`，`evidence-gate` |
-| 受控自进化 | 把重复失败和成功模式沉淀为 skill/strategy 候选，但 promotion 需要验证、影子评估、人工审批和回滚路径。 | `skill-evolve`，`skill-polish-audit`，vault 中的 strategy cards |
+| 模块 | V1.0 行为 |
+| --- | --- |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、可选微信/飞书 webhook、vault 路径、集成 manifest 和 slash 模板。 |
+| 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
+| 灵感推送 | `--push-inspiration` 会把灵感摘要推送到已配置的微信/飞书 webhook；没有配置时记录为 `skipped`，不会假装成功。 |
+| Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
+| 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
+| 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
+| 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
+| 发表门禁 | CCF-B/三区级别声明必须绑定真实来源、实验记录、复现检查、审计、PDF 构建和 evidence gate。 |
 
-## 普通用户快速安装
+## 安装
 
-![安装流程](docs/assets/readme/install-flow.png)
+准备环境：
 
-需要先准备：
-
-- Python 3.10 或更高版本
+- Python 3.10+
+- Node.js 20+
 - Git
-- Node.js 20+（如果使用 npm 风格入口）
-- 可选：OpenCode，用于让 AI-Researcher 自动委托代码编写任务
 - 可选：Obsidian，用于可视化浏览知识库
-
-安装项目：
+- 可选：OpenCode，用于外部代码生成任务
 
 ```bash
-git clone <your-fork-or-repo-url>
+git clone <your-repo-url>
 cd AIResearch
 python -m pip install -e .
 npm install
-airesearcher doctor
+npm run doctor
 ```
 
-启动首次部署配置向导：
+Python CLI 和 npm 启动器调用的是同一个系统：
 
 ```bash
-airesearcher setup
-# 或
+airesearcher version
+node ./bin/airesearcher.mjs version
+```
+
+## 首次部署
+
+运行引导式配置：
+
+```bash
 npm run setup
+# 或
+airesearcher setup
 ```
 
-这个向导会先让用户选择模型供应商预设，再确认或修改 API base URL 和 model name，然后填写 API key，并可选填写微信/飞书 webhook 或 app 凭据。随后它会初始化 `autoresearch-vault/`、`integrations/` 下的 runbook/manifest，以及本地 slash command 模板。它不会安装第三方代码后端或通道插件。真实密钥只写入 `.env`；`config.yaml` 只保存非密钥配置。根目录 `.env` 已被 git 忽略，不能提交。
+向导会依次引导：
 
-如果想手动配置：
+1. 选择 DeepSeek、OpenAI-compatible、SiliconFlow 或自定义供应商。
+2. 确认 `AUTORESEARCH_LLM_BASE_URL`。
+3. 填写 `AUTORESEARCH_LLM_MODEL_NAME`。
+4. 填写 `AUTORESEARCH_LLM_API_KEY`。
+5. 可选配置微信/飞书 webhook 或 app 凭据。
+6. 初始化 `autoresearch-vault/`。
+7. 写入 `integrations/` 下的集成 runbook。
+8. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
+
+真实密钥只写入 `.env`。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret 或 token。
+
+也可以非交互式部署：
 
 ```bash
-cp .env.example .env
+airesearcher setup \
+  --provider openai-compatible \
+  --base-url https://api.example.com/v1 \
+  --model-name your-model \
+  --api-key sk-... \
+  --no-wechat \
+  --no-feishu \
+  --non-interactive
 ```
 
-然后填写：
+## 启动 24h 常驻系统
 
-```text
-AUTORESEARCH_LLM_BASE_URL=...
-AUTORESEARCH_LLM_MODEL_NAME=...
-AUTORESEARCH_LLM_API_KEY=...
-```
-
-初始化 Obsidian 知识库：
+V1.0 推荐入口：
 
 ```bash
-airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system
+npm run serve
 ```
 
-先跑一个本地 demo：
+等价于：
 
 ```bash
-airesearcher run-demo --demo tabular_baseline
+airesearcher serve --permission-mode approve-dangerous --push-inspiration
 ```
 
-再跑一个真实公开 benchmark demo：
+`serve` 默认持续运行。它会检查审批队列，执行已批准的 cycle，每次 cycle 间隔默认 `86400` 秒，并记录灵感摘要推送状态。
 
-```bash
-airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60
-```
-
-启动常驻运行：
-
-```bash
-airesearcher serve --permission-mode approve-dangerous
-```
-
-完整 cycle 结束后，面向用户的论文产物会发布到 `outputs/<project-id>/`。LaTeX 编译成功时，这里会包含 `<project-id>-<cycle-id>.pdf`，以及指向手稿、publication audit、evidence gate、related-work inspection 和 cycle summary 的 manifest。
-
-另开一个终端查看和批准待审批动作：
+另开一个终端审批第一轮危险动作：
 
 ```bash
 airesearcher runtime list
 airesearcher runtime approve latest --approved-by operator
 ```
 
-## 自动连接 OpenCode
-
-AI-Researcher 的 OpenCode 集成不是把 OpenCode 源码复制进仓库，也不是让 OpenCode 直接决定合并。它采用的是“外部代码起草后端 + AI-Researcher 验证接收”的模式。
-
-初始化 OpenCode 集成契约：
+如果这是完全可信的本地机器，也可以使用：
 
 ```bash
-airesearcher code-agents opencode init
-airesearcher code-agents opencode list
+airesearcher serve --permission-mode allow-all --push-inspiration
 ```
 
-这会写入或刷新 `integrations/opencode/code-agent.json`。该文件记录：
+只有当你确认联网检索、本地实验、LLM 评审、vault 写入和 output 写入都可以无需逐轮审批时，才使用 `allow-all`。
 
-- 如何通过 `opencode run`、`opencode serve` 或 `opencode acp` 调用 OpenCode；
-- shell、edit、webfetch、websearch 等动作的建议权限；
-- OpenCode 生成的 diff 为什么只能作为 proposal；
-- AI-Researcher 在接收前要运行哪些验证门禁；
-- provider credentials 应该放在哪里；
-- 为什么不能把 OpenCode 源码 vendor 到本仓库。
+## 每日抓取和灵感推送
 
-推荐工作流：
-
-1. AI-Researcher 创建或选择一个有边界的任务范围。
-2. OpenCode 在这个范围里起草代码改动。
-3. AI-Researcher 捕获 diff 和产物。
-4. 根据改动风险运行测试、lint、类型检查、真实 API smoke、publication gate 或 evidence gate。
-5. 通过或失败的证据写入 `Agent.md`、`Problem.md` 和 `autoresearch-vault/`。
-6. 只有相关门禁通过后，才允许进入 commit 或 release。
-
-## 定时自循环与定期推送
-
-AI-Researcher 可以作为本地机器或服务器上的常驻研究 operator。
+不需要审批服务包装时，可以直接启动每日 autopilot：
 
 ```bash
-airesearcher autopilot --watch --cycles 0 --interval-seconds 86400
+airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
-一轮 cycle 可以包括：
+每一轮 cycle 可以执行：
 
-1. 来源冷却状态 preflight；
-2. ArXiv / OpenAlex 真实文献刷新，Semantic Scholar 可选；
-3. 有来源支撑的相似工作和 novelty 检查；
-4. 非学术来源的 broad inspiration refresh；
-5. 本地 demo 或真实公开 benchmark 实验；
-6. 命令行复现实验 rerun；
-7. 可选真实 LLM 证据评审；
-8. 发表级质量审计；
-9. LaTeX 论文构建；
-10. physical evidence gate；
-11. Obsidian review、issue、failure、skill 和 strategy 写入；
-12. 本地 follow-up state 合并。
+1. 来源冷却和 preflight 检查。
+2. ArXiv 和 OpenAlex 文献刷新，Semantic Scholar 作为可选低优先级来源。
+3. 有来源支撑的相似工作和创新性检查。
+4. Hugging Face 和 Hacker News 灵感抓取。
+5. 本地 demo 或真实公开 benchmark 实验。
+6. 命令行复现实验检查。
+7. 可选真实 LLM 证据评审。
+8. publication audit。
+9. LaTeX 论文构建。
+10. physical evidence gate。
+11. Obsidian review、issue、skill、strategy 写入。
+12. scheduler follow-up 合并。
+13. 可选微信/飞书灵感摘要推送。
 
-初始化可选推送通道 adapter runbook：
+单次灵感抓取并推送：
 
 ```bash
-airesearcher channels adapters init
-airesearcher channels adapters list
+airesearcher inspiration-refresh \
+  --query "autonomous research agents datasets" \
+  --vault autoresearch-vault \
+  --output runs/inspiration/latest.json \
+  --push \
+  --push-channel feishu
 ```
 
-生成的 `integrations/channels/adapters.json` 用来记录可选上游消息 adapter，例如飞书/Lark、微信、企业微信、Telegram、Slack、Teams、webhook 等通道。有些 adapter 最初写给其他生态使用；AI-Researcher 不安装、不 vendor、不直接运行它们。密钥应保存在 `.env` 或平台 secret store。
+如果 webhook 未配置，JSON 输出会记录 `skipped`，不会声称已经送达。
 
-把通信软件里的 `/approve` 映射到：
+## 操作台监控
 
 ```bash
-airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json --approved-by <operator>
+npm run monitor
+# 或
+airesearcher monitor
 ```
 
-这样系统可以定期推送状态、阻塞原因和审批请求，但高风险动作仍由人确认。
+监控台会显示最近 Agent 消息、活跃文件声明、研究流程状态、审批队列、follow-up 任务、git diff 和 output 预览。
 
-## PDF 来源后端
+| 参数 | 作用 |
+| --- | --- |
+| `--watch` | 持续刷新操作台。 |
+| `--refresh-seconds <n>` | 设置刷新间隔。 |
+| `--no-diff` | 隐藏 diff 预览，保持监控界面干净。 |
+| `--cycle-summary <path>` | 指定查看某个 cycle summary。 |
+| `--outputs-dir <path>` | 预览自定义输出目录。 |
 
-AI-Researcher 可以把 ScanSci PDF 记录为可选 PDF 获取后端，但默认策略是 OA-first / legal-only。manifest 允许的默认来源包括 publisher-direct open access、arXiv、PubMed Central、Unpaywall、OpenAlex、DOAJ、CORE 和 Europe PMC。Sci-Hub、LibGen、WebVPN/CARSI、Tor、Cloudflare bypass、带凭据的图书馆代理等路径必须走人工审批和许可证审查。
+## Slash Commands
+
+如果需要重新生成模板：
 
 ```bash
-airesearcher pdf-sources scansci-pdf init
-airesearcher pdf-sources scansci-pdf list
+airesearcher slash-commands init
+airesearcher slash-commands list
 ```
 
-## Obsidian 核心知识库与管理机制
+slash 命令后面的文本会作为 `{{args}}` 传入模板。
 
-![Obsidian 知识库管理机制](docs/assets/readme/obsidian-vault.png)
+| Slash 命令 | 常见参数 | 执行动作 |
+| --- | --- | --- |
+| `/research:serve` | 无 | 启动 `approve-dangerous` 常驻服务并开启灵感推送。 |
+| `/research:approve` | `latest` 或 `<request-id>` | 审批队列中的危险动作。 |
+| `/research:autopilot` | 可选说明 | 启动带证据门禁的每日自循环。 |
+| `/research:refresh-literature` | 可选主题 | 联网刷新 ArXiv/OpenAlex 文献。 |
+| `/research:inspiration-refresh` | 查询文本 | 抓取非学术灵感来源并可推送摘要。 |
+| `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索。 |
+| `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
+| `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
+| `/research:publication-stability` | 多个 cycle summary | 检查跨 cycle、模板和数据集的稳定性。 |
+| `/research:paper-build` | 报告路径或模板 id | 构建 LaTeX/PDF 论文产物。 |
+| `/research:evidence-gate` | cycle summary 路径 | 运行物理证据门禁。 |
+| `/research:issue-followups` | project id | 把 vault 中开放 issue 列成 scheduler 任务。 |
+| `/research:session-claim` | task/path 信息 | 协调多个 Agent 的文件声明。 |
+| `/research:obsidian-setup` | project id | 刷新安全的 vault 资产。 |
+| `/research:skill-evolve` | skill 证据 | 创建受控 skill 进化候选。 |
+| `/research:skill-polish-audit` | skill id | 在 promotion 前审计 skill card。 |
+| `/research:channel-adapters` | 无 | 写入可选通信 adapter runbook。 |
+| `/research:code-agent-backends` | 无 | 写入 OpenCode 后端集成契约。 |
+| `/research:scansci-pdf` | 无 | 写入 OA-first PDF 获取 manifest。 |
+| `/research:status` | 无 | 查看本地 operator 状态提示。 |
 
-`autoresearch-vault/` 是 AI-Researcher 的核心记忆底座。它既是人能直接打开阅读的 Markdown vault，也是机器能检索、更新、回滚和复用的结构化状态层。
+## 常用 CLI 参数
 
-这不是“附带的笔记目录”。自循环和自进化都依赖它：每一轮运行写回 vault，下一轮运行再从 vault 读取上下文、失败、技能、策略和证据。
+| 命令 | 参数 | 含义 |
+| --- | --- | --- |
+| `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | 供应商无关的大模型配置。 |
+| `setup` | `--wechat`, `--feishu` 及 webhook/app 参数 | 写入 `.env` 的可选通道凭据。 |
+| `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
+| `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
+| `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
+| `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到已配置 webhook。 |
+| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 检索广度。仅 smoke 时降低。 |
+| `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
+| `inspiration-refresh` | `--env-path .env` | 单次推送时加载 webhook 凭据。 |
+| `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
+| `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
+| `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
 
-### Vault 里放什么
+## 输出和仓库卫生
 
-| 区域 | 作用 |
-|---|---|
-| `exploration/` | 跨项目主题、方法、数据集、失败模式、可复用技能和策略卡。 |
-| `projects/<project-id>/knowledge/` | 单项目文献笔记、来源事实、方法卡和数据集卡。 |
-| `projects/<project-id>/experiments/` | 实验记录、配置、命令、run ID、指标和产物链接。 |
-| `projects/<project-id>/evidence/` | claim 到 evidence 的映射、验证状态、来源 artifact 和审计引用。 |
-| `projects/<project-id>/issues/` | review findings、blocker、缺失证据、失败检查和后续任务。 |
-| `projects/<project-id>/experience/` | 失败案例、经验沉淀、候选 skill 和 strategy observations。 |
-| `projects/<project-id>/paper/` | paper-build 摘要、review note、citation package note 和复现上下文。 |
+以下本地运行产物默认被 git 忽略：
 
-### 管理机制
+- `.env`
+- `.airesearcher/`
+- `.cache/`
+- `runs/`
+- `artifacts/`
+- `outputs/`
 
-- 每个 Markdown 条目带 YAML frontmatter，既方便 Obsidian 阅读，也方便程序解析。
-- Wiki-links 和 backlinks 连接文献、假设、实验、证据、失败、技能和策略。
-- Topic index 帮助后续 cycle 稳定地找回相关上下文。
-- Permission check 限制 Project Agent 只能写入自己的 project zone。
-- 被拒绝的写入和需要审批的动作会变成 audit event，而不是悄悄失败。
-- Version history、backup 和 rollback 让知识库进化可以回退。
-- Issue 和 failure 是一等对象，下一轮 cycle 可以直接从已知 blocker 继续。
-- Skill card 和 strategy card 只有在验证、影子评估、审批和回滚路径齐全时才允许 promotion。
+仓库应该只保留源码、测试、文档、集成 manifest、模板、许可证声明和安全的 Obsidian vault 脚手架。生成的 PDF 和大型运行包留在本地 `outputs/`，除非发布流程明确复制到其它地方。
 
-最重要的节奏是：每轮写回，后续读取；成功沉淀成技能，失败沉淀成任务，策略变更必须可回滚。
+## Obsidian 知识库
 
-## 系统结构设计
+`autoresearch-vault/` 是系统的记忆底座，不是装饰目录。它存储：
 
-![系统结构](docs/assets/readme/architecture.png)
+- 文献和来源摘要；
+- 非学术来源灵感笔记；
+- 项目进展和实验记录；
+- evidence map 和验证摘要；
+- review findings 和 follow-up issue；
+- failure patterns；
+- 可复用 skill card；
+- 带 shadow evaluation 和 rollback 的 strategy card；
+- paper-build 摘要和 Markdown 归档。
 
-```mermaid
-flowchart LR
-    Operator["操作者 / 审阅者"] --> Runtime["serve / autopilot"]
-    Runtime --> Scheduler["Scheduler"]
-    Runtime --> Approval["Approval Queue"]
-    Runtime --> OpenCode["OpenCode 后端"]
-    OpenCode --> Diff["代码 proposal / diff"]
-    Diff --> Gates["测试与证据门禁"]
-    Scheduler --> Loop["科研自循环"]
-    Loop --> Sources["ArXiv / OpenAlex / 可选来源"]
-    Loop --> Experiment["沙箱实验"]
-    Experiment --> Results["Result Bundle"]
-    Results --> Validation["验证与复现"]
-    Validation --> Paper["报告 / LaTeX 论文构建"]
-    Paper --> ReleaseGate["Publication Audit / Evidence Gate"]
-    ReleaseGate --> Push["状态推送 / Review Notes"]
-    ReleaseGate --> Vault["Obsidian Vault"]
-    Vault --> Loop
-    Vault --> Evolution["技能与策略进化"]
-    Evolution --> Shadow["影子评估"]
-    Shadow --> Approval
-    Approval --> Rollback["Promotion 或 Rollback"]
-```
+后续 cycle 会先读取同一个 vault，再提出新任务。因此自循环和自进化不是靠 prompt 记忆，而是靠可审计、可版本管理的 Markdown 记忆。
 
-## 证据、审计与论文门禁
+## 论文产物
 
-![证据闭环](docs/assets/readme/evidence-loop.png)
-
-AI-Researcher 不把“看起来像论文的报告”当成可发表成果。强声明必须绑定真实物理产物：
-
-- cycle summary；
-- 文献和相似工作证据；
-- 第一次 run record；
-- validation report；
-- evidence map；
-- 复现实验 rerun record；
-- evidence-constrained review；
-- publication audit；
-- LaTeX build JSON；
-- 编译出的 PDF；
-- paper-quality report。
-
-手动检查一个完成 cycle：
-
-```bash
-airesearcher publication-audit runs/autopilot/<cycle-id>/cycle-summary.json --target ccf-b
-airesearcher paper-build runs/autopilot/<cycle-id>/demo/<demo-id>/report/report.md --template-id generic-article-one-column
-airesearcher evidence-gate runs/autopilot/<cycle-id>/cycle-summary.json --publication-audit runs/autopilot/<cycle-id>/publication-audit.json --paper-build-json runs/paper-build/<cycle-id>/paper-build.json
-```
-
-如果证据不足，系统应该留下可执行 follow-up，而不是把弱结果包装成论文级 claim。
-
-## 受控自进化
-
-自进化不是让系统随意改自己。AI-Researcher 的自进化对象主要是 skill、workflow、retrieval policy、validation policy 和 strategy card，而且必须经过验证和回滚设计。
-
-写入候选 skill：
-
-```bash
-airesearcher skill-evolve \
-  --parent-skill-id skill_evidence_bound_review \
-  --issue-ref projects/autoresearch-system/issues/example_issue \
-  --change-summary "Tighten the evidence bundle before live review." \
-  --proposed-action "Attach run-record evidence before review." \
-  --validation-check "Held-out review has zero unsupported reproduction claims."
-```
-
-promotion 前运行 skill polish audit：
-
-```bash
-airesearcher skill-polish-audit \
-  --skill-id <candidate_skill_id> \
-  --peer-ref https://github.com/LearnPrompt/luban-skill \
-  --live-evidence-ref runs/skill-polish/demo-validation.json \
-  --install-ref .opencode/skills/ai-researcher-evidence-gate/SKILL.md \
-  --release-ref autoresearch-vault/exploration/skills/rejected/demo_rejections.md
-```
-
-策略进化也遵循同样规则：先提出候选，再离线评估，再影子运行，再人工审批，再灰度上线；如果 reward、安全、复现或证据完整性退化，就回滚。
-
-## 常用命令
-
-| 目标 | 命令 |
-|---|---|
-| 检查本地安装 | `airesearcher doctor` |
-| 引导式首次部署 | `airesearcher setup` 或 `npm run setup` |
-| 只配置模型和通道 | `airesearcher deploy-setup` |
-| 只初始化 Obsidian vault | `airesearcher obsidian-setup --vault autoresearch-vault --project-id autoresearch-system` |
-| 初始化 OpenCode 后端契约 | `airesearcher code-agents opencode init` |
-| 初始化通道 adapter runbook | `airesearcher channels adapters init` |
-| 初始化 ScanSci PDF 来源 manifest | `airesearcher pdf-sources scansci-pdf init` |
-| 运行 toy demo | `airesearcher run-demo --demo tabular_baseline` |
-| 运行真实 benchmark demo | `airesearcher run-demo --demo pendigits_centroid_baseline --timeout-seconds 60` |
-| 启动常驻 runtime | `airesearcher serve --permission-mode approve-dangerous` |
-| 运行每日 autopilot | `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400` |
-| 查看 Agent、队列、diff 和产物预览 | `airesearcher monitor` 或 `npm run monitor` |
-| 查看待审批动作 | `airesearcher runtime list` |
-| 批准最新动作 | `airesearcher runtime approve latest --approved-by operator` |
-| 本地质量门 | `python scripts/check.py` |
-
-## 仓库结构
+Markdown 记录和项目归档留在 `autoresearch-vault/`。面向发表的产物会复制到：
 
 ```text
-.
-├── autoresearch-vault/              # Obsidian 兼容知识记忆
-├── docs/assets/readme/              # README 插图
-├── integrations/opencode/           # OpenCode 后端契约
-├── integrations/channels/           # 可选消息 adapter runbook
-├── runs/                            # 本地运行产物
-├── src/autoresearch/                # Python package
-├── tests/                           # 单元、冒烟、性质和集成测试
-├── .kiro/specs/auto-research-system # 可执行实施计划
-├── Agent.md                         # Agent 必填改动日志
-├── Problem.md                       # 问题、阻塞和风险日志
-├── config.yaml                      # 非密钥运行配置
-└── pyproject.toml
+outputs/<project-id>/
 ```
 
-## 边界
+通过门禁的 cycle 可以包含：
 
-AI-Researcher 的默认立场是：有证据的地方自动化，缺证据的地方阻断并留下任务。
+- `<project-id>-<cycle-id>.pdf`
+- 生成的 `.tex`
+- `paper-build.json`
+- `publication-audit.json`
+- `evidence-gate.json`
+- `cycle-summary.json`
+- manifest `.json` 和 `.md`
 
-- 不会自动投稿或公开发布论文。
-- 不会把 API key 写入 git。
-- 不会把 OpenCode 生成的 diff 直接当作已接受代码。
-- 不会在没有验证、审批和回滚路径时 promotion skill 或 strategy。
-- 不会用 toy demo 或“像论文的 Markdown”声称发表级成果。
-- 还不是生产级多用户产品；部署和通信通道需要操作者审阅。
+不能因为 PDF 存在就声称论文可发表。发表级声明必须来自同一 cycle 的 publication audit 和 evidence gate 通过结果。
+
+## 外部参考与许可证
+
+AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode 和 Luban Skill 风格指南。
+
+这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、AutoResearchClaw 或任何第三方通道插件源码。
+
+## 开发
+
+改代码前请先读 [AGENTS.md](AGENTS.md)。当前可执行任务计划在 [.kiro/specs/auto-research-system/tasks.md](.kiro/specs/auto-research-system/tasks.md)。
+
+常用检查：
+
+```bash
+python -m ruff check src tests
+python -m mypy src/autoresearch
+python -m pytest tests/smoke tests/unit -q
+```
 
 ## 文档
 
-- [研究计划](AutoResearch_System_Research_Plan.md)：研究范围、架构、Agent 模型、验证机制、风险矩阵和路线图。
-- [实施计划](AutoResearch_System_Execution_Plan.md)：阶段计划、里程碑、schema、测试策略、成本模型和发布门槛。
-- [实现任务](.kiro/specs/auto-research-system/tasks.md)：详细可执行任务清单。
-- [发布门槛清单](docs/release-gate.md)：创建发布标签、演示或生产可用声明前的检查。
-- [Agent 改动日志](Agent.md)：所有编码 Agent 必须更新的变更日志。
-- [问题日志](Problem.md)：问题、阻塞和风险记录。
-- [第三方声明](THIRD_PARTY_NOTICES.md)：设计参考和集成的许可证与署名说明。
-
-## 贡献方式
-
-完整开发流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-修改文件前：
-
-1. 阅读 [AGENTS.md](AGENTS.md)。
-2. 查看 [.kiro/specs/auto-research-system/tasks.md](.kiro/specs/auto-research-system/tasks.md)。
-3. 检查 [Problem.md](Problem.md) 中的未关闭问题。
-4. 用最小改动完成任务。
-5. 运行相关验证命令。
-6. 将改动摘要追加到 [Agent.md](Agent.md)。
+- [研究计划](AutoResearch_System_Research_Plan.md)
+- [实施计划](AutoResearch_System_Execution_Plan.md)
+- [实现任务](.kiro/specs/auto-research-system/tasks.md)
+- [发布门禁清单](docs/release-gate.md)
+- [Agent 改动日志](Agent.md)
+- [问题日志](Problem.md)
+- [第三方声明](THIRD_PARTY_NOTICES.md)
 
 ## 许可证
 
-AI-Researcher 使用 [Apache License 2.0](LICENSE) 发布。SPDX 标识为 `Apache-2.0`。署名信息和第三方参考声明见 [NOTICE](NOTICE) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+AI-Researcher 使用 [Apache License 2.0](LICENSE)。署名信息和第三方参考说明见 [NOTICE](NOTICE) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

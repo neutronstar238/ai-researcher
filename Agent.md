@@ -62,6 +62,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-15 13:57:06 +08:00 - Codex - Task 119.1 V1.0 release-readiness cleanup
+
+- Request: Handle the Git loose-object warning, keep GitHub focused on necessary code, perform the final V1.0 release-readiness check, verify daily scheduled retrieval and inspiration push, rewrite README onboarding, document slash commands/parameters, and add the CLI Agent-flow screenshot.
+- Files changed:
+  - `.env.example`
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/assets/readme/cli-monitor.svg`
+  - `package.json`
+  - `package-lock.json`
+  - `pyproject.toml`
+  - `src/autoresearch/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/vault.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_notifications.py`
+- Summary:
+  - Added direct webhook inspiration digest support through `inspiration-refresh --env-path --push` and `serve/autopilot --push-inspiration`, with `sent`/`failed`/`skipped` evidence records instead of silent delivery assumptions.
+  - Updated npm `serve` to the V1.0 operator entry point, synchronized package versions to `1.0.0`, cleaned stale setup/template commands, and added gitignore rules for runtime outputs and generated vault run notes while preserving the tracked vault scaffold.
+  - Rewrote English and Chinese READMEs as product onboarding pages and added the CLI monitor screenshot asset.
+- Verification:
+  - `git gc --prune=now`: completed; follow-up `git count-objects -vH` immediately after maintenance reported `count: 0`, `packs: 1`, `garbage: 0`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 468 passed, 4 skipped, 1 warning.
+  - `node .\bin\airesearcher.mjs version`: returned `1.0.0`.
+  - `node .\bin\airesearcher.mjs doctor`: passed local scaffold checks.
+  - `node .\bin\airesearcher.mjs inspiration-refresh --query "AI research agents datasets" --max-queries 1 --max-results-per-source 1 --output runs\manual-live\task119-v1-inspiration-push\inspiration.json --env-path .env --push --push-channel feishu --push-timeout-seconds 5`: fetched one live Hacker News item and recorded Feishu push as `skipped` because `AUTORESEARCH_FEISHU_WEBHOOK_URL` was not set.
+  - `node .\bin\airesearcher.mjs serve --once --permission-mode approve-dangerous --project-id v1_check --no-review --push-inspiration --approvals-state .airesearcher\v1-check-approvals.json`: stopped at expected approval gate exit 2.
+  - `npm run serve -- --once --approvals-state .airesearcher\npm-v1-check-approvals.json --project-id v1_npm_check --no-review`: stopped at expected approval gate exit 2 through the npm entry point.
+  - `node .\bin\airesearcher.mjs monitor --no-diff --max-agent-entries 2`: rendered the operator console.
+  - `node .\bin\airesearcher.mjs slash-commands init/list --directory .tmp-slash-check`: generated and listed 20 slash command templates, then the temporary directory was removed.
+  - Regression scans found no stale `literature-refresh --live`, `similarity-check ... --live`, `poetry run airesearcher`, old `autoresearch deploy`, or README mojibake markers in release docs/source templates; `--live-evidence-ref` remains as a valid skill-audit parameter.
+- Problems:
+  - `P-20260615-059` resolved.
+  - `P-20260615-060` resolved.
+- Follow-up:
+  - Configure real `AUTORESEARCH_FEISHU_WEBHOOK_URL` or `AUTORESEARCH_WECHAT_WEBHOOK_URL` in `.env` before expecting external IM delivery; the code path is verified and currently records `skipped` when webhooks are absent.
+
 ### 2026-06-15 11:06:00 +08:00 - Codex - Task 118.1 final paper artifact quality
 
 - Request: Fix the malformed PDF References section shown in the user screenshot, add source-backed figures/tables, keep Markdown archive outputs in the Obsidian vault and publication PDFs in root `outputs/`, reference `Leey21/awesome-ai-research-writing` only as inspiration, and run multiple real autonomous cycles until final PDFs pass strict review.
