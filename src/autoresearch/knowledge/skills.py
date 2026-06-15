@@ -843,6 +843,44 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
             ),
             tags=("skill-evolution", "collective-learning"),
         ),
+        ExternalSkillCandidate(
+            candidate_id="oh_my_openagent_agent_harness",
+            name="oh-my-openagent / LazyCodex",
+            purpose=(
+                "Agent-harness reference for OpenCode/Codex orchestration, Team "
+                "Mode, LSP/AST tooling, hash-anchored edits, and long-running "
+                "coding loops."
+            ),
+            source_refs=(
+                "https://github.com/code-yeongyu/oh-my-openagent",
+                "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/LICENSE.md",
+                "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/docs/guide/installation.md",
+            ),
+            license_status=(
+                "SUL-1.0 / Sustainable Use License; not OSI-style permissive; "
+                "no adoption without legal review"
+            ),
+            adoption_stage="reference-only-license-risk",
+            expected_benefit=(
+                "Provides ideas for external coding-agent harness contracts, "
+                "hash-anchored edit validation, team visualization, and "
+                "tool-scoped skills."
+            ),
+            risk_notes=(
+                "The SUL-1.0 license includes non-commercial/internal-use limitations.",
+                "Installer can modify global Codex/OpenCode configuration and "
+                "autonomous permission settings.",
+                "Telemetry is documented as enabled by default upstream.",
+            ),
+            validation_gates=(
+                "Do not install or vendor it in AI-Researcher by default.",
+                "If evaluated, run only in an isolated test home and record exact "
+                "config mutations.",
+                "Adopt concepts only after license review and AI-Researcher "
+                "validation/rollback gates.",
+            ),
+            tags=("agent-harness", "opencode", "codex", "code-agent"),
+        ),
     )
 
 

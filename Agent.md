@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-15 19:55:13 +08:00 - Codex - Task 122.1 oh-my-openagent reference quarantine
+
+- Request: Consider `code-yeongyu/oh-my-openagent` as another useful project while preserving AI-Researcher's license, installer, telemetry, and validation boundaries.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `oh_my_openagent_agent_harness` to the default external research-skill watchlist candidates as `reference-only-license-risk`.
+  - Documented oh-my-openagent/LazyCodex as an OpenCode/Codex agent-harness reference only, with SUL-1.0 license risk, config-mutation risk, optional autonomous-permission setup risk, and default telemetry risk.
+  - Updated README, Chinese README, third-party notices, compliance tests, and skill watchlist tests so the project is not installed, vendored, copied, adapted, or promoted by default.
+- Verification:
+  - Live web review checked `https://github.com/code-yeongyu/oh-my-openagent`, raw `LICENSE.md`, installer README sections, and `package.json`; upstream package metadata declares `SUL-1.0`, raw license text limits use/modification to internal business, non-commercial, or personal use, installer docs describe Codex/OpenCode config writes plus optional autonomous permissions, and telemetry is documented as enabled by default.
+  - `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py::test_project_notice_tracks_third_party_reference_policy -q`: passed, 13 tests.
+  - `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task122-openagent-watchlist-vault --source-note "2026-06-15 oh-my-openagent reference smoke"`: passed and wrote 13 quarantined candidates.
+  - `rg -n "oh-my-openagent|LazyCodex|reference-only-license-risk|SUL-1.0|Do not install" runs\manual-live\task122-openagent-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated Obsidian watchlist contains the quarantined oh-my-openagent entry and no-install gate.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 476 passed, 4 skipped, 1 warning.
+  - `git diff --check`: passed.
+- Problems:
+  - `P-20260615-063` resolved.
+- Follow-up:
+  - If the project is ever evaluated beyond design reference, use an isolated test home, record all Codex/OpenCode config mutations, record telemetry settings, and require license/legal review before adopting any independently reimplemented concept.
+
 ### 2026-06-15 19:15:14 +08:00 - Codex - Task 121.1 external research-skill watchlist
 
 - Request: Use the user-provided research-skill and Omni-SimpleMem/SkillClaw screenshots as useful ideas without treating screenshot claims or third-party skill text as verified capabilities.

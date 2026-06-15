@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260615-063 - oh-my-openagent must remain reference-only until license and installer risks are cleared
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-15 20:05:00 +08:00
+- Source: User linked `https://github.com/code-yeongyu/oh-my-openagent` as another useful project to consider.
+- Symptom: The project has useful OpenCode/Codex agent-harness ideas, but direct adoption would bring license, installer side-effect, permission, and telemetry risk.
+- Impact: Installing, copying, or bundling it by default could mutate a user's Codex/OpenCode configuration, enable autonomous permission modes, send telemetry, or violate upstream license limits.
+- Evidence: Live web review found upstream `package.json` declares `license: SUL-1.0`; raw `LICENSE.md` limits use/modification to internal business, non-commercial, or personal use; README installation docs describe Codex/OpenCode config writes, optional autonomous full-permissions setup, and default anonymous telemetry.
+- Root cause: External agent-harness projects can look like drop-in productivity upgrades, while AI-Researcher's governance requires license review, isolated evaluation, and validation gates before any adoption.
+- Workaround: Record it only as an Obsidian watchlist candidate and third-party reference; do not install, vendor, copy, adapt, or promote it by default.
+- Next action: Keep any future evaluation in an isolated test home with recorded config mutations and telemetry behavior.
+- Linked tasks: `122.1`
+- Resolution: Added `oh_my_openagent_agent_harness` as a default quarantined external watchlist candidate, documented it in README/README.zh-CN and `THIRD_PARTY_NOTICES.md`, and added tests to keep the no-install/no-vendor boundary.
+- Verification: Live web review checked upstream README/install behavior, raw `LICENSE.md`, and package metadata; focused ruff, mypy, focused pytest, a real `airesearcher skill-watchlist` CLI write with 13 candidates, full smoke/unit pytest, and `git diff --check` all passed.
+
 ### P-20260615-062 - Screenshot-discovered skill ideas need quarantine before adoption
 
 - Status: Resolved
