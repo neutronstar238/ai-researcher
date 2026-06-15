@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-15 19:15:14 +08:00 - Codex - Task 121.1 external research-skill watchlist
+
+- Request: Use the user-provided research-skill and Omni-SimpleMem/SkillClaw screenshots as useful ideas without treating screenshot claims or third-party skill text as verified capabilities.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `ExternalSkillCandidate`, `ExternalSkillWatchlist`, default external research-skill candidates, and `write_external_skill_watchlist`.
+  - Added `airesearcher skill-watchlist` and `/research:skill-watchlist` so external skill discoveries are ingested by the system into an Obsidian quarantine watchlist.
+  - Included screenshot-derived directions such as CCFA-Skill, Paper-Skill, Question-Validator, Empirical-Paper, Source-Tracing, Paper2Beamer, and Research-Genealogy as unverified candidates with validation gates.
+  - Added reference-only entries for SimpleMem/Omni-SimpleMem, SkillClaw, AERS, paper-craft-skills, citation-management, Deep-Research-skills, and deer-flow deep-research without copying upstream content.
+  - Updated README, Chinese README, third-party notices, compliance tests, and task/problem logs with the quarantine, license, and no-vendoring boundary.
+- Verification:
+  - Live web review checked related public sources and license/status evidence for SimpleMem, SkillClaw, AERS, paper-craft-skills, citation-management, Deep-Research-skills, and deer-flow deep-research.
+  - `python -m ruff check src\autoresearch\knowledge\skills.py src\autoresearch\knowledge\__init__.py src\autoresearch\cli\main.py tests\unit\knowledge\test_skills.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\cli\test_main.py::test_skill_watchlist_writes_external_candidates tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates tests\unit\compliance\test_licenses.py::test_project_notice_tracks_third_party_reference_policy -q`: passed, 15 tests.
+  - `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task121-skill-watchlist-vault --source-note "2026-06-15 user screenshot skill scouting smoke"`: passed and wrote 12 quarantined candidates.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 476 passed, 4 skipped, 1 warning.
+- Problems:
+  - `P-20260615-062` resolved.
+- Follow-up:
+  - Promote any individual watchlist item only through a later `skill-evolve` candidate, live validation evidence, `skill-polish-audit`, license review, and rollback plan.
+
 ### 2026-06-15 14:22:11 +08:00 - Codex - Task 120.1 IM setup onboarding correction
 
 - Request: Correct the release setup experience so normal users do not hand-edit `.env` for IM channels: WeChat QR should be selected during `airesearcher setup`, display the upstream QR login flow immediately, and wait for scan/login feedback; Feishu should collect App ID/App Secret and home chat data during setup.

@@ -193,6 +193,32 @@ class SkillPolishReport:
 
 
 @dataclass(frozen=True)
+class ExternalSkillCandidate:
+    """External skill idea held in quarantine before any promotion."""
+
+    candidate_id: str
+    name: str
+    purpose: str
+    source_refs: tuple[str, ...]
+    license_status: str
+    adoption_stage: str
+    expected_benefit: str
+    risk_notes: tuple[str, ...]
+    validation_gates: tuple[str, ...]
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ExternalSkillWatchlist:
+    """Persisted Obsidian watchlist for external research-skill candidates."""
+
+    path: Path
+    relative_path: str
+    entry: KnowledgeEntry
+    candidate_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class _SkillEntryRow:
     relative_path: str
     entry: KnowledgeEntry
@@ -572,6 +598,313 @@ def audit_skill_polish_candidate(
     )
 
 
+def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate, ...]:
+    """Return the default external research-skill watchlist candidates."""
+
+    return (
+        ExternalSkillCandidate(
+            candidate_id="ccfa_skill_quality_gate",
+            name="CCFA-Skill",
+            purpose="Full-flow venue-quality automation direction from the user screenshot.",
+            source_refs=("user screenshot 2026-06-15: research skill discoveries",),
+            license_status="unverified screenshot-derived idea; no upstream content adopted",
+            adoption_stage="taxonomy-only",
+            expected_benefit="Adds a named quality-gate bucket for CCF-A/B-style checks.",
+            risk_notes=(
+                "Venue labels are not evidence by themselves.",
+                "Do not inflate publication-readiness claims without reviewer evidence.",
+            ),
+            validation_gates=(
+                "Run publication audit on held-out cycles.",
+                "Require source-backed venue fit and reviewer-style rejection reasons.",
+            ),
+            tags=("quality-gate", "venue-fit"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="paper_skill_writing_library",
+            name="Paper-Skill",
+            purpose="Academic writing skill-library direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/zsyggg/paper-craft-skills",
+            ),
+            license_status="paper-craft-skills is MIT; screenshot name remains unverified",
+            adoption_stage="reference-only",
+            expected_benefit="Improves paper-to-figure, paper-to-deck, and paper analysis planning.",
+            risk_notes=(
+                "Do not copy third-party skill prompt text or generated examples.",
+                "Visual polish must not hide weak evidence.",
+            ),
+            validation_gates=(
+                "Run figure/table quality gates on generated manuscripts.",
+                "Verify all paper claims against local evidence and citations.",
+            ),
+            tags=("paper-writing", "visualization"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="question_validator_topic_gate",
+            name="Question-Validator",
+            purpose="Research-question validation direction from the user screenshot.",
+            source_refs=("user screenshot 2026-06-15: research skill discoveries",),
+            license_status="unverified screenshot-derived idea; no upstream content adopted",
+            adoption_stage="candidate-gate",
+            expected_benefit="Strengthens topic novelty, feasibility, and evidence-readiness checks.",
+            risk_notes=(
+                "A question can sound novel while already existing under different terminology.",
+                "Broad web and academic cross-search is required before approval.",
+            ),
+            validation_gates=(
+                "Require similarity-check evidence across scholarly and non-scholarly sources.",
+                "Block topics with no executable experiment path.",
+            ),
+            tags=("topic-validation", "novelty"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="empirical_paper_pipeline",
+            name="Empirical-Paper",
+            purpose="Empirical-paper automation direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/brycewang-stanford/Auto-Empirical-Research-Skills",
+            ),
+            license_status="AERS shows a CC BY-SA 4.0 license badge; review before copying",
+            adoption_stage="reference-only",
+            expected_benefit="Adds a stage taxonomy for data cleaning, identification, estimation, robustness, tables, and draft checks.",
+            risk_notes=(
+                "Social-science empirical workflows may not transfer directly to ML benchmark papers.",
+                "Share-alike or mixed-license constraints need review before adaptation.",
+            ),
+            validation_gates=(
+                "Recompute numeric benchmark values from raw or fetched data.",
+                "Audit license metadata before using any external skill content.",
+            ),
+            tags=("empirical", "statistics"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="paper_to_patent_prior_art",
+            name="Paper-to-Patent",
+            purpose="Paper-to-patent/prior-art direction from the user screenshot.",
+            source_refs=("user screenshot 2026-06-15: research skill discoveries",),
+            license_status="unverified screenshot-derived idea; no upstream content adopted",
+            adoption_stage="legal-sensitive-watchlist",
+            expected_benefit="Could convert method claims into prior-art search plans.",
+            risk_notes=(
+                "Patent analysis is legal-adjacent and must avoid legal advice claims.",
+                "Requires external prior-art evidence and human review.",
+            ),
+            validation_gates=(
+                "Label output as prior-art research support, not legal advice.",
+                "Require source URLs, dates, and claim-to-evidence mapping.",
+            ),
+            tags=("prior-art", "patent"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="in_depth_research_workflow",
+            name="In-depth-Research",
+            purpose="Deep investigation direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/Weizhena/Deep-Research-skills",
+                "https://github.com/bytedance/deer-flow/blob/main/skills/public/deep-research/SKILL.md",
+            ),
+            license_status="Deep-Research-skills is MIT; deer-flow skill content requires separate review",
+            adoption_stage="reference-only",
+            expected_benefit="Improves outline-first, source-broad, multi-pass research before writing.",
+            risk_notes=(
+                "Human-in-the-loop assumptions may conflict with always-on operation.",
+                "Deep research must still obey rate limits and source-claim discipline.",
+            ),
+            validation_gates=(
+                "Require source diversity and freshness metadata.",
+                "Block unsupported synthesis without citations.",
+            ),
+            tags=("deep-research", "source-breadth"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="paper_to_storyboard_publication_web",
+            name="Paper-to-Storyboard",
+            purpose="Paper-to-web/storyboard direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/zsyggg/paper-craft-skills",
+            ),
+            license_status="paper-craft-skills is MIT; screenshot name remains unverified",
+            adoption_stage="reference-only",
+            expected_benefit="Turns accepted evidence into public-facing explainer pages.",
+            risk_notes=(
+                "Explainers can over-simplify negative or uncertain results.",
+                "Generated web assets need license and source audits.",
+            ),
+            validation_gates=(
+                "Map every visual or storyboard claim back to paper evidence.",
+                "Run asset license scan before publishing.",
+            ),
+            tags=("storyboard", "paper-web"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="source_tracing_citation_provenance",
+            name="Source-Tracing",
+            purpose="Citation and source-provenance direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/benchflow-ai/skillsbench/blob/main/tasks/citation-check/environment/skills/citation-management/SKILL.md",
+            ),
+            license_status="referenced citation-management skill declares MIT License",
+            adoption_stage="candidate-gate",
+            expected_benefit="Supports DOI/BibTeX verification and source-backed claims.",
+            risk_notes=(
+                "Google Scholar scraping may violate terms or be unstable.",
+                "Citation metadata must be verified against primary APIs where possible.",
+            ),
+            validation_gates=(
+                "Use Crossref, PubMed, arXiv, OpenAlex, or publisher metadata before final bibliography.",
+                "Fail paper build when references contain pseudo-labels.",
+            ),
+            tags=("citation", "provenance"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="paper2beamer_presentation_export",
+            name="Paper2Beamer",
+            purpose="Paper-to-PPT/Beamer direction from the user screenshot.",
+            source_refs=(
+                "user screenshot 2026-06-15: research skill discoveries",
+                "https://github.com/zsyggg/paper-craft-skills",
+            ),
+            license_status="paper-craft-skills is MIT; screenshot name remains unverified",
+            adoption_stage="reference-only",
+            expected_benefit="Adds a future presentation export path after paper evidence gates pass.",
+            risk_notes=(
+                "Slides are secondary artifacts and must not precede evidence validation.",
+                "Template and image assets need attribution checks.",
+            ),
+            validation_gates=(
+                "Generate slides only from a passing paper/evidence bundle.",
+                "Render and visually QA PPTX/PDF outputs.",
+            ),
+            tags=("slides", "beamer"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="research_genealogy_prior_work_graph",
+            name="Research-Genealogy",
+            purpose="Paper genealogy and prior-work lineage direction from the user screenshot.",
+            source_refs=("user screenshot 2026-06-15: research skill discoveries",),
+            license_status="unverified screenshot-derived idea; no upstream content adopted",
+            adoption_stage="candidate-gate",
+            expected_benefit="Builds contribution lineage graphs to reduce duplicate novelty claims.",
+            risk_notes=(
+                "Citation graph incompleteness can hide close prior work.",
+                "Needs cross-source deduplication and evidence confidence labels.",
+            ),
+            validation_gates=(
+                "Search title, method, dataset, task, and metric variants.",
+                "Store lineage graph and overlap classification in Obsidian.",
+            ),
+            tags=("lineage", "novelty"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="simplemem_memory_substrate",
+            name="Omni-SimpleMem / SimpleMem",
+            purpose="Long-horizon memory architecture reference for the Obsidian memory layer.",
+            source_refs=(
+                "https://github.com/aiming-lab/SimpleMem",
+                "https://arxiv.org/abs/2604.01007",
+            ),
+            license_status="SimpleMem is MIT",
+            adoption_stage="architecture-reference",
+            expected_benefit="Provides compression-first and progressive-retrieval ideas for vault experiments.",
+            risk_notes=(
+                "Claims require reproduction before being used as product benchmarks.",
+                "Direct dependency would add vector/search infrastructure complexity.",
+            ),
+            validation_gates=(
+                "Benchmark against existing Obsidian retrieval on local historical cycles.",
+                "Require rollback-safe memory index builds before production use.",
+            ),
+            tags=("memory", "retrieval"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="skillclaw_collective_skill_evolution",
+            name="SkillClaw",
+            purpose="Collective skill evolution architecture reference.",
+            source_refs=(
+                "https://github.com/AMAP-ML/SkillClaw",
+                "https://huggingface.co/papers/2604.08377",
+            ),
+            license_status="SkillClaw is MIT",
+            adoption_stage="architecture-reference",
+            expected_benefit="Separates local skill capture, shared storage, and optional evolution server.",
+            risk_notes=(
+                "Automatic skill mutation must not bypass AI-Researcher approval gates.",
+                "Shared multi-user storage raises privacy and provenance concerns.",
+            ),
+            validation_gates=(
+                "Keep skill candidates in shadow mode until audit passes.",
+                "Record every promoted skill with source refs, rejected edits, and rollback target.",
+            ),
+            tags=("skill-evolution", "collective-learning"),
+        ),
+    )
+
+
+def write_external_skill_watchlist(
+    *,
+    vault_root: Path | str,
+    candidates: tuple[ExternalSkillCandidate, ...],
+    source_note: str = "",
+    watchlist_id: str = "external_research_skill_watchlist",
+) -> ExternalSkillWatchlist:
+    """Write external skill candidates as a quarantined Obsidian watchlist."""
+
+    if not candidates:
+        msg = "at least one external skill candidate is required"
+        raise ValueError(msg)
+    _validate_skill_id(watchlist_id)
+    for candidate in candidates:
+        _validate_external_skill_candidate(candidate)
+
+    candidate_ids = _ordered_unique(candidate.candidate_id for candidate in candidates)
+    source_refs = _ordered_unique(ref for candidate in candidates for ref in candidate.source_refs)
+    tags = _ordered_unique(
+        [
+            "skill",
+            "external-skill",
+            "skill-watchlist",
+            "quarantine",
+            *(tag for candidate in candidates for tag in candidate.tags),
+        ]
+    )
+    keywords = _ordered_unique(
+        [
+            "external-skill",
+            "skill-watchlist",
+            "reference-only",
+            *candidate_ids,
+            *(candidate.name for candidate in candidates),
+            *(tag for candidate in candidates for tag in candidate.tags),
+        ]
+    )
+    entry = KnowledgeEntry(
+        entry_id=watchlist_id,
+        entry_type=KnowledgeEntryType.REVIEW_NOTE,
+        zone=KnowledgeZone.EXPLORATION,
+        title="External research skill watchlist",
+        tags=list(tags),
+        keywords=list(keywords),
+        source_refs=list(source_refs),
+        body=_external_skill_watchlist_body(candidates=candidates, source_note=source_note),
+    )
+    relative_path = Path("exploration") / "skills" / "external-research-skill-watchlist.md"
+    store = MarkdownKnowledgeStore(vault_root)
+    path = store.write_entry(relative_path, entry)
+    stored_entry = store.read_entry(relative_path)
+    return ExternalSkillWatchlist(
+        path=path,
+        relative_path=relative_path.as_posix(),
+        entry=stored_entry,
+        candidate_ids=tuple(candidate_ids),
+    )
+
+
 def _polish_check(
     *,
     check_id: str,
@@ -633,6 +966,30 @@ def _validate_example(example: SuccessfulPatternExample) -> None:
     if not _ordered_unique(example.success_metrics):
         msg = "each successful example must include at least one success metric"
         raise ValueError(msg)
+
+
+def _validate_external_skill_candidate(candidate: ExternalSkillCandidate) -> None:
+    _validate_skill_id(_required_text(candidate.candidate_id, "candidate.candidate_id"))
+    _required_text(candidate.name, "candidate.name")
+    _required_text(candidate.purpose, "candidate.purpose")
+    _required_text(candidate.license_status, "candidate.license_status")
+    _required_text(candidate.adoption_stage, "candidate.adoption_stage")
+    _required_text(candidate.expected_benefit, "candidate.expected_benefit")
+    if not candidate.source_refs:
+        msg = "candidate.source_refs must not be empty"
+        raise ValueError(msg)
+    if not candidate.risk_notes:
+        msg = "candidate.risk_notes must not be empty"
+        raise ValueError(msg)
+    if not candidate.validation_gates:
+        msg = "candidate.validation_gates must not be empty"
+        raise ValueError(msg)
+    for source_ref in candidate.source_refs:
+        _required_text(source_ref, "candidate.source_ref")
+    for risk_note in candidate.risk_notes:
+        _required_text(risk_note, "candidate.risk_note")
+    for validation_gate in candidate.validation_gates:
+        _required_text(validation_gate, "candidate.validation_gate")
 
 
 def _validate_skill_id(skill_id: str) -> None:
@@ -759,6 +1116,51 @@ def _skill_evolution_body(
         "- Do not replace the parent skill until validation checks pass.",
         "- Record rejected edits in the linked buffer instead of deleting evidence.",
     ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _external_skill_watchlist_body(
+    *,
+    candidates: tuple[ExternalSkillCandidate, ...],
+    source_note: str,
+) -> str:
+    lines = [
+        "# External research skill watchlist",
+        "",
+        "## Intake Policy",
+        "",
+        "- Status: `quarantine` until license, source, security, and live validation gates pass.",
+        "- Do not copy, vendor, adapt, or enable third-party skill text, prompts, code, screenshots, or generated assets from this watchlist.",
+        "- Use candidates as retrieval cues, peer references, and future validation-gate ideas only.",
+        "- Promotion requires a separate bounded `skill-evolve` candidate, `skill-polish-audit`, live evidence, and rollback plan.",
+        "",
+    ]
+    if source_note.strip():
+        lines.extend(["## Source Note", "", source_note.strip(), ""])
+    lines.extend(["## Candidates", ""])
+    for candidate in candidates:
+        lines.extend(
+            [
+                f"### {candidate.name}",
+                "",
+                f"- Candidate ID: `{candidate.candidate_id}`",
+                f"- Purpose: {candidate.purpose}",
+                f"- Adoption stage: `{candidate.adoption_stage}`",
+                f"- License status: {candidate.license_status}",
+                f"- Expected benefit: {candidate.expected_benefit}",
+                f"- Source refs: {_inline_items(candidate.source_refs)}",
+                f"- Tags: {_inline_items(candidate.tags)}",
+                "",
+                "Risk notes:",
+                "",
+                *_bullet_lines(candidate.risk_notes),
+                "",
+                "Validation gates:",
+                "",
+                *_bullet_lines(candidate.validation_gates),
+                "",
+            ]
+        )
     return "\n".join(lines).rstrip() + "\n"
 
 

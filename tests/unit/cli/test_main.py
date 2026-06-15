@@ -81,6 +81,35 @@ def test_obsidian_setup_creates_vault_assets_and_local_snippet(tmp_path: Path) -
     )
 
 
+def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
+    vault_root = tmp_path / "autoresearch-vault"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "skill-watchlist",
+            "--vault",
+            str(vault_root),
+            "--source-note",
+            "unit test scouting batch",
+        ],
+    )
+
+    watchlist_path = (
+        vault_root / "exploration" / "skills" / "external-research-skill-watchlist.md"
+    )
+    markdown = watchlist_path.read_text(encoding="utf-8")
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] skill_watchlist: written" in result.stdout
+    assert "[OK] candidate_count:" in result.stdout
+    assert watchlist_path.is_file()
+    assert "unit test scouting batch" in markdown
+    assert "CCFA-Skill" in markdown
+    assert "SkillClaw" in markdown
+    assert "Status: `quarantine`" in markdown
+
+
 def test_skill_evolve_creates_bounded_candidate_from_issue_ref(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
     parent = extract_reusable_skill_card(
@@ -657,6 +686,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "skill-polish-audit.toml").is_file()
+    assert (commands_dir / "research" / "skill-watchlist.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "evidence-gate.toml").is_file()
     assert (commands_dir / "research" / "session-claim.toml").is_file()
@@ -674,6 +704,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:obsidian-setup" in list_result.stdout
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:skill-polish-audit" in list_result.stdout
+    assert "/research:skill-watchlist" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
     assert "/research:evidence-gate" in list_result.stdout
     assert "/research:session-claim" in list_result.stdout
@@ -706,6 +737,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher skill-polish-audit" in (
         commands_dir / "research" / "skill-polish-audit.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher skill-watchlist" in (
+        commands_dir / "research" / "skill-watchlist.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher channels adapters init" in (
         commands_dir / "research" / "channel-adapters.toml"

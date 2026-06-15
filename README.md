@@ -223,6 +223,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:obsidian-setup` | project id | Refreshes safe vault assets. |
 | `/research:skill-evolve` | skill evidence | Creates bounded skill-evolution candidates. |
 | `/research:skill-polish-audit` | skill id | Audits skill cards before promotion. |
+| `/research:skill-watchlist` | none | Writes external research-skill candidates into the Obsidian quarantine watchlist. |
 | `/research:channel-adapters` | none | Writes optional messaging adapter runbooks. |
 | `/research:code-agent-backends` | none | Writes OpenCode backend integration contracts. |
 | `/research:scansci-pdf` | none | Writes OA-first PDF retrieval manifest. |
@@ -305,13 +306,15 @@ the publication audit and evidence gate to pass on the same cycle artifacts.
 
 AI-Researcher references several open-source projects as design inspiration or optional ecosystem
 integration points, including HKUDS AI-Researcher, AutoResearch, Horizon-style daily refreshers,
-AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, and Luban Skill style guides.
-Hermes Agent is also referenced for setup-owned channel onboarding, persistent memory, scheduled
-gateway operation, and skill-learning UX.
+AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, Hermes Agent, Luban Skill style
+guides, SimpleMem/Omni-SimpleMem, SkillClaw, Auto-Empirical Research Skills, paper-craft-skills,
+citation-management, and Deep-Research-skills. External skill ideas are first recorded with
+`airesearcher skill-watchlist` as quarantined Obsidian candidates; they are not installed,
+copied, or promoted until license, security, live-evidence, and rollback gates pass.
 
 Their license and incorporation status are tracked in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This repository does not vendor OpenClaw,
-OpenCode, Hermes Agent, AutoResearchClaw, or channel plugin source code.
+OpenCode, Hermes Agent, AutoResearchClaw, channel plugin source code, or third-party skill content.
 
 ## Development
 

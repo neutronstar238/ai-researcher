@@ -54,6 +54,8 @@ from autoresearch.knowledge import (
     audit_skill_polish_candidate,
     create_obsidian_vault_assets,
     create_skill_evolution_candidate,
+    default_external_research_skill_candidates,
+    write_external_skill_watchlist,
 )
 from autoresearch.literature import (
     OPTIONAL_LITERATURE_SOURCES,
@@ -292,6 +294,12 @@ DEFAULT_SLASH_COMMANDS = {
         "--release-ref <observation>`. The Luban-inspired gate blocks promotion when "
         "the skill lacks peer positioning, real validation evidence, rollback/rejected-edit "
         "boundaries, installable/shareable assets, or follow-up observation refs.",
+    ),
+    "research/skill-watchlist.toml": (
+        "Write the external research-skill watchlist into the Obsidian vault.",
+        "Run `airesearcher skill-watchlist --vault autoresearch-vault` after external skill "
+        "discovery. This records candidate directions, source refs, license status, risks, "
+        "and validation gates without installing or copying third-party skill content.",
     ),
     "research/paper-build.toml": (
         "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
@@ -626,6 +634,42 @@ def skill_polish_audit(
         typer.echo(f"[FAIL] blocked_checks: {failed_checks}")
         if fail_on_blocked:
             raise typer.Exit(1)
+
+
+@app.command("skill-watchlist")
+def skill_watchlist(
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to receive the watchlist."),
+    ] = Path("autoresearch-vault"),
+    source_note: Annotated[
+        str,
+        typer.Option(
+            "--source-note",
+            help="Short note describing where this external-skill scouting batch came from.",
+        ),
+    ] = (
+        "User-provided 2026-06-15 research-skill screenshots plus live web review of "
+        "SimpleMem, SkillClaw, AERS, paper-craft-skills, citation-management, and "
+        "Deep-Research-skills references."
+    ),
+) -> None:
+    """Write external research-skill candidates into the Obsidian quarantine watchlist."""
+
+    try:
+        watchlist = write_external_skill_watchlist(
+            vault_root=vault,
+            candidates=default_external_research_skill_candidates(),
+            source_note=source_note,
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] skill_watchlist: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo("[OK] skill_watchlist: written")
+    typer.echo(f"[OK] watchlist_path: {watchlist.path}")
+    typer.echo(f"[OK] candidate_count: {len(watchlist.candidate_ids)}")
+    typer.echo("[OK] status: quarantine")
 
 
 @app.command("deploy-setup")

@@ -11,8 +11,10 @@ from autoresearch.knowledge import (
     SuccessfulPatternExample,
     audit_skill_polish_candidate,
     create_skill_evolution_candidate,
+    default_external_research_skill_candidates,
     extract_reusable_skill_card,
     retrieve_relevant_skills,
+    write_external_skill_watchlist,
 )
 
 
@@ -85,6 +87,41 @@ def test_extract_reusable_skill_card_writes_obsidian_entry(tmp_path: Path) -> No
         "[[skill_baseline_first_experiment_design|Baseline-first experiment design]]"
         in topic_index
     )
+
+
+def test_write_external_skill_watchlist_keeps_candidates_quarantined(
+    tmp_path: Path,
+) -> None:
+    candidates = default_external_research_skill_candidates()
+
+    watchlist = write_external_skill_watchlist(
+        vault_root=tmp_path,
+        candidates=candidates,
+        source_note="User screenshot and web source review.",
+    )
+
+    markdown = watchlist.path.read_text(encoding="utf-8")
+    store = MarkdownKnowledgeStore(tmp_path)
+    entry = store.read_entry(watchlist.relative_path)
+
+    assert watchlist.relative_path == "exploration/skills/external-research-skill-watchlist.md"
+    assert entry.entry_id == "external_research_skill_watchlist"
+    assert entry.entry_type is KnowledgeEntryType.REVIEW_NOTE
+    assert "quarantine" in entry.tags
+    assert "external-skill" in entry.keywords
+    assert "CCFA-Skill" in markdown
+    assert "Question-Validator" in markdown
+    assert "Omni-SimpleMem / SimpleMem" in markdown
+    assert "SkillClaw" in markdown
+    assert "Do not copy, vendor, adapt, or enable third-party skill text" in markdown
+    assert "https://github.com/aiming-lab/SimpleMem" in entry.source_refs
+    assert "https://github.com/AMAP-ML/SkillClaw" in entry.source_refs
+    assert len(watchlist.candidate_ids) >= 12
+
+
+def test_write_external_skill_watchlist_requires_evidence_fields(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="at least one external skill candidate"):
+        write_external_skill_watchlist(vault_root=tmp_path, candidates=())
 
 
 def test_extract_reusable_skill_card_requires_repeated_successful_examples(

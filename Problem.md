@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260615-062 - Screenshot-discovered skill ideas need quarantine before adoption
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-15 15:00:00 +08:00
+- Source: User provided screenshots listing research-skill ideas and Omni-SimpleMem/SkillClaw-style memory/skill-evolution claims.
+- Symptom: The screenshots contained useful skill directions, but the names and claimed performance benefits were not enough to justify direct integration.
+- Impact: Directly copying or enabling third-party skill content could introduce license risk, prompt-quality drift, unsupported capability claims, and unverified self-evolution behavior.
+- Evidence: Live web review found related public projects with varying license clarity and scope: SimpleMem, SkillClaw, AERS, paper-craft-skills, citation-management, Deep-Research-skills, and deer-flow deep-research.
+- Root cause: AI-Researcher had skill extraction, skill evolution, and skill-polish gates, but no explicit external skill watchlist/quarantine path for screenshot or social-feed discoveries.
+- Workaround: Before this task, agents could manually mention references in docs, but that bypassed system-owned Obsidian ingestion.
+- Next action: Later tasks can promote individual watchlist items only through `skill-evolve`, live evidence, `skill-polish-audit`, license review, and rollback planning.
+- Linked tasks: `121.1`
+- Resolution: Added `ExternalSkillCandidate`, default external research-skill candidates, `write_external_skill_watchlist`, `airesearcher skill-watchlist`, `/research:skill-watchlist`, third-party notice coverage, README guidance, and tests.
+- Verification: `python -m ruff check src\autoresearch\knowledge\skills.py src\autoresearch\knowledge\__init__.py src\autoresearch\cli\main.py tests\unit\knowledge\test_skills.py tests\unit\cli\test_main.py tests\unit\compliance\test_licenses.py` passed; `python -m mypy src\autoresearch` passed; focused skill/CLI/compliance pytest passed with 15 tests; full `python -m pytest tests\smoke tests\unit -q` passed with 476 passed, 4 skipped, and 1 warning. Real `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task121-skill-watchlist-vault ...` wrote a quarantine watchlist with 12 candidates.
+
 ### P-20260615-061 - IM setup incorrectly framed webhook entry as the normal user path
 
 - Status: Resolved

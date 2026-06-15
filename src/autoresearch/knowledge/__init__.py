@@ -17,6 +17,8 @@ from .project_permissions import (
     permissions_for_role,
 )
 from .skills import (
+    ExternalSkillCandidate,
+    ExternalSkillWatchlist,
     ExtractedSkillCard,
     SkillEvolutionCandidate,
     SkillMatch,
@@ -26,8 +28,10 @@ from .skills import (
     SuccessfulPatternExample,
     audit_skill_polish_candidate,
     create_skill_evolution_candidate,
+    default_external_research_skill_candidates,
     extract_reusable_skill_card,
     retrieve_relevant_skills,
+    write_external_skill_watchlist,
 )
 from .vault import (
     EXPLORATION_DIRECTORIES,
@@ -56,6 +60,8 @@ __all__ = [
     "AgentRole",
     "EXPLORATION_DIRECTORIES",
     "ExtractedSkillCard",
+    "ExternalSkillCandidate",
+    "ExternalSkillWatchlist",
     "FileVersionSnapshot",
     "KnowledgeEntry",
     "KnowledgeEntryType",
@@ -87,11 +93,13 @@ __all__ = [
     "create_skill_evolution_candidate",
     "create_vault_layout",
     "create_strategy_candidate",
+    "default_external_research_skill_candidates",
     "extract_wiki_links",
     "extract_reusable_skill_card",
     "permissions_for_role",
     "rollback_knowledge_entry",
     "rollback_strategy_card",
     "retrieve_relevant_skills",
+    "write_external_skill_watchlist",
     "write_strategy_card_entry",
 ]
