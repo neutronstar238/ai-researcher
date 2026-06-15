@@ -14,9 +14,9 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 
 | 模块 | V1.0 行为 |
 | --- | --- |
-| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、可选微信/飞书 webhook、vault 路径、集成 manifest 和 slash 模板。 |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、vault 路径、集成 manifest 和 slash 模板。 |
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
-| 灵感推送 | `--push-inspiration` 会把灵感摘要推送到已配置的微信/飞书 webhook；没有配置时记录为 `skipped`，不会假装成功。 |
+| 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
@@ -64,12 +64,18 @@ airesearcher setup
 2. 确认 `AUTORESEARCH_LLM_BASE_URL`。
 3. 填写 `AUTORESEARCH_LLM_MODEL_NAME`。
 4. 填写 `AUTORESEARCH_LLM_API_KEY`。
-5. 可选配置微信/飞书 webhook 或 app 凭据。
+5. 可选配置微信扫码通道，或用 App ID/App Secret 配置飞书/Lark。
 6. 初始化 `autoresearch-vault/`。
 7. 写入 `integrations/` 下的集成 runbook。
 8. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
 
-真实密钥只写入 `.env`。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret 或 token。
+向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
+
+推荐通道配置：
+
+- 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。
+- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
+- Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
 也可以非交互式部署：
 
@@ -150,7 +156,7 @@ airesearcher inspiration-refresh \
   --push-channel feishu
 ```
 
-如果 webhook 未配置，JSON 输出会记录 `skipped`，不会声称已经送达。
+如果所选通道缺少送达所需状态，JSON 输出会记录 `skipped`，不会声称已经送达。飞书 App 凭据在配置 home chat ID 后可以直接发送摘要；微信扫码送达依赖 QR adapter 会话处于可用状态。
 
 ## 操作台监控
 
@@ -209,14 +215,16 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | 命令 | 参数 | 含义 |
 | --- | --- | --- |
 | `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | 供应商无关的大模型配置。 |
-| `setup` | `--wechat`, `--feishu` 及 webhook/app 参数 | 写入 `.env` 的可选通道凭据。 |
+| `setup` | `--wechat --wechat-qr` | 微信/Weixin 扫码适配器配置；交互式 setup 会启动扫码流程，非交互脚本可额外使用 `--run-wechat-qr-setup`。 |
+| `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
+| `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
-| `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到已配置 webhook。 |
+| `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 检索广度。仅 smoke 时降低。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
-| `inspiration-refresh` | `--env-path .env` | 单次推送时加载 webhook 凭据。 |
+| `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
 | `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
@@ -272,9 +280,10 @@ outputs/<project-id>/
 
 ## 外部参考与许可证
 
-AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode 和 Luban Skill 风格指南。
+AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode、Hermes Agent 和 Luban Skill 风格指南。
+其中 Hermes Agent 主要作为 setup 阶段通道 onboarding、持久记忆、定时 gateway 运行和 skill-learning UX 的参考。
 
-这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、AutoResearchClaw 或任何第三方通道插件源码。
+这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、Hermes Agent、AutoResearchClaw 或任何第三方通道插件源码。
 
 ## 开发
 

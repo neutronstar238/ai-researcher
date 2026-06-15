@@ -39,10 +39,14 @@ def test_config_models_validate_basic_bounds() -> None:
 def test_deployment_channel_config_keeps_secrets_in_env_references() -> None:
     channel = MessagingChannelConfig(
         enabled=True,
+        connection_mode="websocket",
         webhook_url_env="AUTORESEARCH_FEISHU_WEBHOOK_URL",
         app_secret_env="AUTORESEARCH_FEISHU_APP_SECRET",
+        home_chat_id_env="AUTORESEARCH_FEISHU_HOME_CHAT_ID",
     )
 
     assert channel.enabled is True
+    assert channel.connection_mode == "websocket"
     assert channel.webhook_url_env == "AUTORESEARCH_FEISHU_WEBHOOK_URL"
     assert channel.app_secret_env == "AUTORESEARCH_FEISHU_APP_SECRET"
+    assert channel.home_chat_id_env == "AUTORESEARCH_FEISHU_HOME_CHAT_ID"

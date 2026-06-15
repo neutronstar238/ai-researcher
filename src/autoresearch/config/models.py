@@ -73,9 +73,14 @@ class MessagingChannelConfig(BaseModel):
     """Messaging channel deployment settings backed by environment variables."""
 
     enabled: bool = False
+    connection_mode: str | None = None
     webhook_url_env: str | None = None
     app_id_env: str | None = None
     app_secret_env: str | None = None
+    home_chat_id_env: str | None = None
+    allowed_users_env: str | None = None
+    qr_setup_command_env: str | None = None
+    session_path_env: str | None = None
     verification_token_env: str | None = None
     slash_command_prefix: str = "/airesearcher"
 

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260615-061 - IM setup incorrectly framed webhook entry as the normal user path
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-15 15:05:00 +08:00
+- Source: User correction after task `119.1`.
+- Symptom: README and CLI help implied external IM delivery primarily required configuring WeChat/Feishu webhook values in `.env`.
+- Impact: This contradicted the intended Hermes-style onboarding experience where setup collects channel credentials, Feishu uses App ID/App Secret, and WeChat uses a QR/login adapter flow; it also made `.env` feel like a manual setup surface.
+- Evidence: README V1.0 scope and setup sections said optional WeChat/Feishu webhooks; `send_inspiration_digest` skipped Feishu unless `AUTORESEARCH_FEISHU_WEBHOOK_URL` existed.
+- Root cause: The direct push path added in task `119.1` solved webhook evidence recording but did not update the channel onboarding model to represent QR/app-gateway modes.
+- Workaround: Before the fix, users could still use webhook fallback or external adapter runbooks, but the documented setup flow was misleading.
+- Next action: Add inbound `/approve` gateway adapters later; keep current delivery records explicit until those adapters are implemented.
+- Linked tasks: `120.1`
+- Resolution: Added channel connection-mode metadata, WeChat QR setup flags, interactive WeChat QR setup execution, Feishu App credential/home-chat fields, Feishu App API digest delivery, QR-gateway skipped status, updated setup wizard/docs/templates, and refreshed tests.
+- Verification: `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; `python -m pytest tests\smoke tests\unit -q` passed with 473 passed, 4 skipped, and 1 warning. Focused interactive CLI coverage verified that choosing WeChat QR during `airesearcher setup` invokes the QR setup runner immediately after config write. Real non-interactive setup smoke wrote WeChat QR and Feishu websocket config, and a real `inspiration-refresh --push --push-channel wechat` run fetched one Hacker News item while recording QR gateway state as `skipped` instead of fake delivery.
+
 ### P-20260615-060 - V1.0 inspiration refresh had no direct webhook push path
 
 - Status: Resolved

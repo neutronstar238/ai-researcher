@@ -64,3 +64,78 @@ def test_send_inspiration_digest_records_missing_webhook_without_network() -> No
 
     assert [record.status for record in records] == ["skipped", "skipped"]
     assert "missing AUTORESEARCH_WECHAT_WEBHOOK_URL" in records[0].detail
+
+
+def test_send_inspiration_digest_uses_feishu_app_credentials_with_home_chat() -> None:
+    token_calls: list[tuple[str, str, str, float]] = []
+    message_calls: list[tuple[str, str, str, str, float]] = []
+
+    def fake_token_getter(
+        base_url: str,
+        app_id: str,
+        app_secret: str,
+        timeout_seconds: float,
+    ) -> str:
+        token_calls.append((base_url, app_id, app_secret, timeout_seconds))
+        return "tenant-token"
+
+    def fake_message_sender(
+        base_url: str,
+        token: str,
+        home_chat_id: str,
+        text: str,
+        timeout_seconds: float,
+    ) -> int:
+        message_calls.append((base_url, token, home_chat_id, text, timeout_seconds))
+        return 200
+
+    records = send_inspiration_digest(
+        _report(),
+        channels=("feishu",),
+        env={
+            "AUTORESEARCH_FEISHU_CONNECTION_MODE": "websocket",
+            "AUTORESEARCH_FEISHU_BASE_URL": "https://open.feishu.example.test",
+            "AUTORESEARCH_FEISHU_APP_ID": "cli_a_test",
+            "AUTORESEARCH_FEISHU_APP_SECRET": "secret",
+            "AUTORESEARCH_FEISHU_HOME_CHAT_ID": "oc_test",
+        },
+        feishu_token_getter=fake_token_getter,
+        feishu_message_sender=fake_message_sender,
+        timeout_seconds=4.0,
+    )
+
+    assert [record.status for record in records] == ["sent"]
+    assert records[0].detail == "feishu app API accepted"
+    assert token_calls == [("https://open.feishu.example.test", "cli_a_test", "secret", 4.0)]
+    assert message_calls[0][0:3] == ("https://open.feishu.example.test", "tenant-token", "oc_test")
+    assert "Show HN: Research agent" in message_calls[0][3]
+
+
+def test_send_inspiration_digest_reports_feishu_app_missing_home_chat() -> None:
+    records = send_inspiration_digest(
+        _report(),
+        channels=("feishu",),
+        env={
+            "AUTORESEARCH_FEISHU_CONNECTION_MODE": "websocket",
+            "AUTORESEARCH_FEISHU_APP_ID": "cli_a_test",
+            "AUTORESEARCH_FEISHU_APP_SECRET": "secret",
+        },
+    )
+
+    assert records[0].status == "skipped"
+    assert "missing AUTORESEARCH_FEISHU_HOME_CHAT_ID" in records[0].detail
+
+
+def test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook() -> None:
+    records = send_inspiration_digest(
+        _report(),
+        channels=("wechat",),
+        env={
+            "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
+            "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+        },
+    )
+
+    assert records[0].status == "skipped"
+    assert "wechat QR gateway configured" in records[0].detail
+    assert "@tencent-weixin/openclaw-weixin-cli" in records[0].detail

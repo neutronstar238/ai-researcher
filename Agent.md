@@ -62,6 +62,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-15 14:22:11 +08:00 - Codex - Task 120.1 IM setup onboarding correction
+
+- Request: Correct the release setup experience so normal users do not hand-edit `.env` for IM channels: WeChat QR should be selected during `airesearcher setup`, display the upstream QR login flow immediately, and wait for scan/login feedback; Feishu should collect App ID/App Secret and home chat data during setup.
+- Files changed:
+  - `.env.example`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `docs/assets/readme/cli-monitor.svg`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/config/test_models.py`
+  - `tests/unit/test_notifications.py`
+- Summary:
+  - Added IM channel connection-mode metadata so WeChat QR, Feishu app gateway, and webhook fallback are represented separately in config and `.env`.
+  - Updated `airesearcher setup` and `deploy-setup` with WeChat QR and Feishu app credential options.
+  - Made interactive setup run the WeChat QR setup command after writing config when the user chooses QR, while non-interactive setup records the QR command without blocking unless explicitly requested.
+  - Added Feishu App ID/App Secret digest delivery through the Feishu tenant token and message API when a home chat ID is configured.
+  - Kept WeChat QR push evidence honest by reporting gateway/session state instead of claiming delivery when no active adapter session is verified.
+  - Updated README, Chinese README, `.env.example`, notice text, slash-command wording, and README monitor copy away from webhook-first onboarding.
+- Verification:
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway tests\unit\test_notifications.py -q`: passed, 8 tests.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 473 passed, 4 skipped, 1 warning.
+  - Real non-interactive setup smoke with `node .\bin\airesearcher.mjs setup ... --wechat --wechat-qr --feishu ... --non-interactive`: passed; generated config recorded `wechat.connection_mode: qr`, WeChat QR command env, `feishu.connection_mode: websocket`, Feishu App ID env, and Feishu home chat env.
+  - Real `inspiration-refresh --push --push-channel wechat` smoke against live Hacker News query: passed; fetched one item and recorded WeChat QR gateway state as `skipped`, not fake delivery.
+  - Regression searches found no stale webhook-primary IM onboarding text or old QR explicit-only wording in the touched docs/source.
+- Problems:
+  - `P-20260615-061` resolved.
+- Follow-up:
+  - Implement real inbound WeChat/Feishu gateway adapters and `/approve` message handling in a later task; this task only fixes setup-owned onboarding, config, direct Feishu app sends, and honest QR delivery evidence.
+
 ### 2026-06-15 13:57:06 +08:00 - Codex - Task 119.1 V1.0 release-readiness cleanup
 
 - Request: Handle the Git loose-object warning, keep GitHub focused on necessary code, perform the final V1.0 release-readiness check, verify daily scheduled retrieval and inspiration push, rewrite README onboarding, document slash commands/parameters, and add the CLI Agent-flow screenshot.

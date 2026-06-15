@@ -184,6 +184,9 @@ LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
         "model_name": "model-name",
     },
 )
+WECHAT_QR_SETUP_COMMAND = "npx -y @tencent-weixin/openclaw-weixin-cli install"
+WECHAT_QR_SESSION_PATH = ".airesearcher/channels/wechat/session.json"
+FEISHU_DEFAULT_BASE_URL = "https://open.feishu.cn"
 
 DEFAULT_SLASH_COMMANDS = {
     "research/refresh-literature.toml": (
@@ -197,7 +200,7 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher inspiration-refresh --query \"{{args}}\" --vault autoresearch-vault "
         "--output runs/inspiration/latest.json --push`. Results from Hugging Face datasets and Hacker News "
         "are dataset/community signals only; validate them separately before using them as research evidence. "
-        "Use `--push-channel feishu` or `--push-channel wechat` to target a configured webhook.",
+        "Use `--push-channel feishu` or `--push-channel wechat` to target a setup-configured channel.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
@@ -215,7 +218,7 @@ DEFAULT_SLASH_COMMANDS = {
         "after deploy-setup. The loop performs live literature refresh, similarity "
         "checking, local experiment execution, evidence review, and Obsidian issue "
         "follow-up discovery using publication-grade default search breadth, and pushes "
-        "the broad-inspiration digest when a webhook is configured; inspect "
+        "the broad-inspiration digest when a delivery channel is configured; inspect "
         "cycle-summary.json before claiming publication quality. Use "
         "`--paper-template-id <template>` to collect venue-template compatibility evidence.",
     ),
@@ -345,15 +348,22 @@ OPENALEX_MAILTO=
 OPENALEX_MIN_INTERVAL_SECONDS=
 OPENALEX_CIRCUIT_RESET_SECONDS=
 
-# Optional WeChat channel.
+# Optional WeChat channel. The setup wizard defaults to QR adapter onboarding.
+AUTORESEARCH_WECHAT_CONNECTION_MODE=
 AUTORESEARCH_WECHAT_WEBHOOK_URL=
 AUTORESEARCH_WECHAT_APP_ID=
 AUTORESEARCH_WECHAT_APP_SECRET=
+AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=
+AUTORESEARCH_WECHAT_SESSION_PATH=
 
-# Optional Feishu channel.
+# Optional Feishu/Lark channel. The setup wizard defaults to App ID/App Secret.
+AUTORESEARCH_FEISHU_CONNECTION_MODE=
+AUTORESEARCH_FEISHU_BASE_URL=
 AUTORESEARCH_FEISHU_WEBHOOK_URL=
 AUTORESEARCH_FEISHU_APP_ID=
 AUTORESEARCH_FEISHU_APP_SECRET=
+AUTORESEARCH_FEISHU_HOME_CHAT_ID=
+AUTORESEARCH_FEISHU_ALLOWED_USERS=
 """
 
 
@@ -667,6 +677,20 @@ def deploy_setup(
         str | None,
         typer.Option("--wechat-app-secret", help="WeChat app secret stored in .env."),
     ] = None,
+    wechat_qr: Annotated[
+        bool,
+        typer.Option(
+            "--wechat-qr/--no-wechat-qr",
+            help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
+        ),
+    ] = False,
+    run_wechat_qr_setup: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-wechat-qr-setup/--skip-wechat-qr-setup",
+            help="Run the upstream WeChat QR setup command after writing AI-Researcher config.",
+        ),
+    ] = None,
     feishu: Annotated[
         bool | None,
         typer.Option("--feishu/--no-feishu", help="Configure the Feishu channel."),
@@ -682,6 +706,24 @@ def deploy_setup(
     feishu_app_secret: Annotated[
         str | None,
         typer.Option("--feishu-app-secret", help="Feishu app secret stored in .env."),
+    ] = None,
+    feishu_connection_mode: Annotated[
+        str | None,
+        typer.Option(
+            "--feishu-connection-mode",
+            help="Feishu mode: websocket/app credentials by default, or webhook fallback.",
+        ),
+    ] = None,
+    feishu_home_chat_id: Annotated[
+        str | None,
+        typer.Option(
+            "--feishu-home-chat-id",
+            help="Optional Feishu/Lark chat_id for direct app-credential digest delivery.",
+        ),
+    ] = None,
+    feishu_allowed_users: Annotated[
+        str | None,
+        typer.Option("--feishu-allowed-users", help="Optional comma-separated Feishu operator IDs."),
     ] = None,
     non_interactive: Annotated[
         bool,
@@ -736,6 +778,8 @@ def deploy_setup(
         webhook_url=wechat_webhook_url or existing_env.get("AUTORESEARCH_WECHAT_WEBHOOK_URL"),
         app_id=wechat_app_id or existing_env.get("AUTORESEARCH_WECHAT_APP_ID"),
         app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
+        qr_setup=wechat_qr
+        or existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE", "").casefold() == "qr",
         non_interactive=non_interactive,
     )
     feishu_values = _channel_values(
@@ -744,6 +788,14 @@ def deploy_setup(
         webhook_url=feishu_webhook_url or existing_env.get("AUTORESEARCH_FEISHU_WEBHOOK_URL"),
         app_id=feishu_app_id or existing_env.get("AUTORESEARCH_FEISHU_APP_ID"),
         app_secret=feishu_app_secret or existing_env.get("AUTORESEARCH_FEISHU_APP_SECRET"),
+        connection_mode=(
+            feishu_connection_mode
+            or existing_env.get("AUTORESEARCH_FEISHU_CONNECTION_MODE")
+            or existing_config.deployment.feishu.connection_mode
+        ),
+        home_chat_id=feishu_home_chat_id
+        or existing_env.get("AUTORESEARCH_FEISHU_HOME_CHAT_ID"),
+        allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
         non_interactive=non_interactive,
     )
 
@@ -759,6 +811,9 @@ def deploy_setup(
                 ),
                 wechat=MessagingChannelConfig(
                     enabled=wechat_enabled,
+                    connection_mode=str(wechat_values["connection_mode"])
+                    if wechat_values["connection_mode"]
+                    else None,
                     webhook_url_env="AUTORESEARCH_WECHAT_WEBHOOK_URL"
                     if wechat_values["webhook_url"]
                     else None,
@@ -768,9 +823,22 @@ def deploy_setup(
                         if wechat_values["app_secret"]
                         else None
                     ),
+                    qr_setup_command_env=(
+                        "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND"
+                        if wechat_values["connection_mode"] == "qr"
+                        else None
+                    ),
+                    session_path_env=(
+                        "AUTORESEARCH_WECHAT_SESSION_PATH"
+                        if wechat_values["connection_mode"] == "qr"
+                        else None
+                    ),
                 ),
                 feishu=MessagingChannelConfig(
                     enabled=feishu_enabled,
+                    connection_mode=str(feishu_values["connection_mode"])
+                    if feishu_values["connection_mode"]
+                    else None,
                     webhook_url_env="AUTORESEARCH_FEISHU_WEBHOOK_URL"
                     if feishu_values["webhook_url"]
                     else None,
@@ -778,6 +846,16 @@ def deploy_setup(
                     app_secret_env=(
                         "AUTORESEARCH_FEISHU_APP_SECRET"
                         if feishu_values["app_secret"]
+                        else None
+                    ),
+                    home_chat_id_env=(
+                        "AUTORESEARCH_FEISHU_HOME_CHAT_ID"
+                        if feishu_values["home_chat_id"]
+                        else None
+                    ),
+                    allowed_users_env=(
+                        "AUTORESEARCH_FEISHU_ALLOWED_USERS"
+                        if feishu_values["allowed_users"]
                         else None
                     ),
                 ),
@@ -794,12 +872,29 @@ def deploy_setup(
         "AUTORESEARCH_LLM_BASE_URL": base_url_value,
         "AUTORESEARCH_LLM_MODEL_NAME": model_name_value,
         "AUTORESEARCH_LLM_API_KEY": api_key_value,
+        "AUTORESEARCH_WECHAT_CONNECTION_MODE": str(wechat_values["connection_mode"])
+        if wechat_values["connection_mode"]
+        else None,
         "AUTORESEARCH_WECHAT_WEBHOOK_URL": wechat_values["webhook_url"],
         "AUTORESEARCH_WECHAT_APP_ID": wechat_values["app_id"],
         "AUTORESEARCH_WECHAT_APP_SECRET": wechat_values["app_secret"],
+        "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": WECHAT_QR_SETUP_COMMAND
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_FEISHU_CONNECTION_MODE": str(feishu_values["connection_mode"])
+        if feishu_values["connection_mode"]
+        else None,
+        "AUTORESEARCH_FEISHU_BASE_URL": FEISHU_DEFAULT_BASE_URL
+        if feishu_values["connection_mode"] and feishu_values["connection_mode"] != "webhook"
+        else None,
         "AUTORESEARCH_FEISHU_WEBHOOK_URL": feishu_values["webhook_url"],
         "AUTORESEARCH_FEISHU_APP_ID": feishu_values["app_id"],
         "AUTORESEARCH_FEISHU_APP_SECRET": feishu_values["app_secret"],
+        "AUTORESEARCH_FEISHU_HOME_CHAT_ID": feishu_values["home_chat_id"],
+        "AUTORESEARCH_FEISHU_ALLOWED_USERS": feishu_values["allowed_users"],
     }
     env_example_path, env_example_created = _ensure_env_example(env_path)
     _merge_env_file(env_path, env_values)
@@ -810,8 +905,12 @@ def deploy_setup(
         f"[OK] env template {'created' if env_example_created else 'ready'}: {env_example_path}"
     )
     typer.echo(f"[OK] model: {provider_value} / {model_name_value}")
-    typer.echo(f"[OK] wechat: {'enabled' if wechat_enabled else 'disabled'}")
-    typer.echo(f"[OK] feishu: {'enabled' if feishu_enabled else 'disabled'}")
+    typer.echo(f"[OK] wechat: {_channel_summary(wechat_enabled, wechat_values)}")
+    typer.echo(f"[OK] feishu: {_channel_summary(feishu_enabled, feishu_values)}")
+    if wechat_enabled and wechat_values["connection_mode"] == "qr":
+        typer.echo(f"[NEXT] wechat_qr_setup: {WECHAT_QR_SETUP_COMMAND}")
+        if run_wechat_qr_setup:
+            _run_wechat_qr_setup()
 
 
 @app.command("setup")
@@ -860,6 +959,20 @@ def setup(
         str | None,
         typer.Option("--wechat-app-secret", help="WeChat app secret stored in .env."),
     ] = None,
+    wechat_qr: Annotated[
+        bool,
+        typer.Option(
+            "--wechat-qr/--no-wechat-qr",
+            help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
+        ),
+    ] = False,
+    run_wechat_qr_setup: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-wechat-qr-setup/--skip-wechat-qr-setup",
+            help="Run the upstream WeChat QR setup command after writing AI-Researcher config.",
+        ),
+    ] = None,
     feishu: Annotated[
         bool | None,
         typer.Option("--feishu/--no-feishu", help="Configure the Feishu channel."),
@@ -875,6 +988,24 @@ def setup(
     feishu_app_secret: Annotated[
         str | None,
         typer.Option("--feishu-app-secret", help="Feishu app secret stored in .env."),
+    ] = None,
+    feishu_connection_mode: Annotated[
+        str | None,
+        typer.Option(
+            "--feishu-connection-mode",
+            help="Feishu mode: websocket/app credentials by default, or webhook fallback.",
+        ),
+    ] = None,
+    feishu_home_chat_id: Annotated[
+        str | None,
+        typer.Option(
+            "--feishu-home-chat-id",
+            help="Optional Feishu/Lark chat_id for direct app-credential digest delivery.",
+        ),
+    ] = None,
+    feishu_allowed_users: Annotated[
+        str | None,
+        typer.Option("--feishu-allowed-users", help="Optional comma-separated Feishu operator IDs."),
     ] = None,
     vault: Annotated[
         Path,
@@ -932,10 +1063,15 @@ def setup(
             wechat_webhook_url=wechat_webhook_url,
             wechat_app_id=wechat_app_id,
             wechat_app_secret=wechat_app_secret,
+            wechat_qr=wechat_qr,
+            run_wechat_qr_setup=run_wechat_qr_setup,
             feishu=feishu,
             feishu_webhook_url=feishu_webhook_url,
             feishu_app_id=feishu_app_id,
             feishu_app_secret=feishu_app_secret,
+            feishu_connection_mode=feishu_connection_mode,
+            feishu_home_chat_id=feishu_home_chat_id,
+            feishu_allowed_users=feishu_allowed_users,
         )
         provider = wizard["provider"]
         base_url = wizard["base_url"]
@@ -945,10 +1081,15 @@ def setup(
         wechat_webhook_url = wizard["wechat_webhook_url"]
         wechat_app_id = wizard["wechat_app_id"]
         wechat_app_secret = wizard["wechat_app_secret"]
+        wechat_qr = bool(wizard["wechat_qr"])
+        run_wechat_qr_setup = bool(wizard["run_wechat_qr_setup"])
         feishu = wizard["feishu"]
         feishu_webhook_url = wizard["feishu_webhook_url"]
         feishu_app_id = wizard["feishu_app_id"]
         feishu_app_secret = wizard["feishu_app_secret"]
+        feishu_connection_mode = str(wizard["feishu_connection_mode"] or "")
+        feishu_home_chat_id = wizard["feishu_home_chat_id"]
+        feishu_allowed_users = wizard["feishu_allowed_users"]
         non_interactive = True
 
     deploy_setup(
@@ -962,10 +1103,15 @@ def setup(
         wechat_webhook_url=wechat_webhook_url,
         wechat_app_id=wechat_app_id,
         wechat_app_secret=wechat_app_secret,
+        wechat_qr=wechat_qr,
+        run_wechat_qr_setup=run_wechat_qr_setup,
         feishu=feishu,
         feishu_webhook_url=feishu_webhook_url,
         feishu_app_id=feishu_app_id,
         feishu_app_secret=feishu_app_secret,
+        feishu_connection_mode=feishu_connection_mode,
+        feishu_home_chat_id=feishu_home_chat_id,
+        feishu_allowed_users=feishu_allowed_users,
         non_interactive=non_interactive,
     )
     if init_obsidian:
@@ -1147,7 +1293,7 @@ def inspiration_refresh(
     ] = Path("runs/inspiration/latest.json"),
     env_path: Annotated[
         Path,
-        typer.Option("--env-path", help="Local .env file with webhook credentials."),
+        typer.Option("--env-path", help="Local .env file written by setup for channel credentials."),
     ] = Path(".env"),
     query: Annotated[
         list[str] | None,
@@ -1163,15 +1309,15 @@ def inspiration_refresh(
     ] = 5,
     push: Annotated[
         bool,
-        typer.Option("--push/--no-push", help="Send the digest to configured operator webhooks."),
+        typer.Option("--push/--no-push", help="Send the digest to configured operator channels."),
     ] = False,
     push_channel: Annotated[
         list[str] | None,
-        typer.Option("--push-channel", help="Webhook channel to notify. Repeat for multiple channels."),
+        typer.Option("--push-channel", help="Operator channel to notify. Repeat for multiple channels."),
     ] = None,
     push_timeout_seconds: Annotated[
         float,
-        typer.Option("--push-timeout-seconds", min=1.0, help="Webhook send timeout."),
+        typer.Option("--push-timeout-seconds", min=1.0, help="Channel delivery timeout."),
     ] = 10.0,
 ) -> None:
     """Search broad dataset/community sources and write an Obsidian-safe summary."""
@@ -1941,7 +2087,7 @@ def autopilot(
         bool,
         typer.Option(
             "--push-inspiration/--no-push-inspiration",
-            help="Push the broad-inspiration digest to configured operator webhooks.",
+            help="Push the broad-inspiration digest to configured operator channels.",
         ),
     ] = False,
     watch: Annotated[
@@ -2106,7 +2252,7 @@ def serve(
         bool,
         typer.Option(
             "--push-inspiration/--no-push-inspiration",
-            help="Push the broad-inspiration digest to configured operator webhooks.",
+            help="Push the broad-inspiration digest to configured operator channels.",
         ),
     ] = False,
     watch: Annotated[
@@ -4537,10 +4683,15 @@ def _collect_setup_wizard_values(
     wechat_webhook_url: str | None,
     wechat_app_id: str | None,
     wechat_app_secret: str | None,
+    wechat_qr: bool,
+    run_wechat_qr_setup: bool | None,
     feishu: bool | None,
     feishu_webhook_url: str | None,
     feishu_app_id: str | None,
     feishu_app_secret: str | None,
+    feishu_connection_mode: str | None,
+    feishu_home_chat_id: str | None,
+    feishu_allowed_users: str | None,
 ) -> dict[str, Any]:
     existing_config = _load_or_default_config(config_path)
     existing_env = _read_env_file(env_path)
@@ -4591,6 +4742,15 @@ def _collect_setup_wizard_values(
         webhook_url=wechat_webhook_url or existing_env.get("AUTORESEARCH_WECHAT_WEBHOOK_URL"),
         app_id=wechat_app_id or existing_env.get("AUTORESEARCH_WECHAT_APP_ID"),
         app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
+        connection_mode=(
+            "qr"
+            if wechat_qr
+            else existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE")
+            or existing_config.deployment.wechat.connection_mode
+        ),
+        home_chat_id=None,
+        allowed_users=None,
+        run_qr_setup=run_wechat_qr_setup,
     )
     feishu_values = _prompt_setup_channel_values(
         enabled=feishu_enabled,
@@ -4598,6 +4758,15 @@ def _collect_setup_wizard_values(
         webhook_url=feishu_webhook_url or existing_env.get("AUTORESEARCH_FEISHU_WEBHOOK_URL"),
         app_id=feishu_app_id or existing_env.get("AUTORESEARCH_FEISHU_APP_ID"),
         app_secret=feishu_app_secret or existing_env.get("AUTORESEARCH_FEISHU_APP_SECRET"),
+        connection_mode=(
+            feishu_connection_mode
+            or existing_env.get("AUTORESEARCH_FEISHU_CONNECTION_MODE")
+            or existing_config.deployment.feishu.connection_mode
+        ),
+        home_chat_id=feishu_home_chat_id
+        or existing_env.get("AUTORESEARCH_FEISHU_HOME_CHAT_ID"),
+        allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
+        run_qr_setup=False,
     )
 
     typer.echo("Step 4/4: write local AI-Researcher assets.")
@@ -4611,10 +4780,15 @@ def _collect_setup_wizard_values(
         "wechat_webhook_url": wechat_values["webhook_url"],
         "wechat_app_id": wechat_values["app_id"],
         "wechat_app_secret": wechat_values["app_secret"],
+        "wechat_qr": wechat_values["connection_mode"] == "qr",
+        "run_wechat_qr_setup": wechat_values["run_qr_setup"],
         "feishu": feishu_values["enabled"],
         "feishu_webhook_url": feishu_values["webhook_url"],
         "feishu_app_id": feishu_values["app_id"],
         "feishu_app_secret": feishu_values["app_secret"],
+        "feishu_connection_mode": feishu_values["connection_mode"],
+        "feishu_home_chat_id": feishu_values["home_chat_id"],
+        "feishu_allowed_users": feishu_values["allowed_users"],
     }
 
 
@@ -4679,24 +4853,86 @@ def _prompt_setup_channel_values(
     webhook_url: str | None,
     app_id: str | None,
     app_secret: str | None,
+    connection_mode: str | None,
+    home_chat_id: str | None,
+    allowed_users: str | None,
+    run_qr_setup: bool | None,
 ) -> dict[str, str | bool | None]:
     if not enabled:
-        return {"enabled": False, "webhook_url": None, "app_id": None, "app_secret": None}
-    if (webhook_url or (app_id and app_secret)) and typer.confirm(
+        return _empty_channel_values(enabled=False)
+    existing_mode = _default_channel_mode(
+        channel_name=channel_name,
+        webhook_url=webhook_url,
+        app_id=app_id,
+        app_secret=app_secret,
+        requested_mode=connection_mode,
+        qr_setup=False,
+    )
+    if (existing_mode == "qr" or webhook_url or (app_id and app_secret)) and typer.confirm(
         f"Reuse existing {channel_name} channel credentials?",
         default=True,
     ):
         return {
             "enabled": True,
+            "connection_mode": existing_mode,
             "webhook_url": webhook_url,
             "app_id": app_id,
             "app_secret": app_secret,
+            "home_chat_id": home_chat_id,
+            "allowed_users": allowed_users,
+            "run_qr_setup": run_qr_setup,
         }
+    if channel_name.casefold() == "wechat":
+        mode = _prompt_choice_index(
+            "WeChat setup mode",
+            (
+                "QR login through the upstream Weixin adapter (recommended)",
+                "Webhook URL fallback",
+                "App ID + app secret",
+                "Skip this channel for now",
+            ),
+            default_index=1,
+        )
+        if mode == 1:
+            return {
+                "enabled": True,
+                "connection_mode": "qr",
+                "webhook_url": None,
+                "app_id": None,
+                "app_secret": None,
+                "home_chat_id": None,
+                "allowed_users": None,
+                "run_qr_setup": True if run_qr_setup is None else run_qr_setup,
+            }
+        if mode == 2:
+            return {
+                "enabled": True,
+                "connection_mode": "webhook",
+                "webhook_url": _prompt_text("WeChat webhook URL", default=webhook_url),
+                "app_id": None,
+                "app_secret": None,
+                "home_chat_id": None,
+                "allowed_users": None,
+                "run_qr_setup": False,
+            }
+        if mode == 3:
+            return {
+                "enabled": True,
+                "connection_mode": "app_credentials",
+                "webhook_url": None,
+                "app_id": _prompt_text("WeChat app ID", default=app_id),
+                "app_secret": _prompt_secret("WeChat app secret", default=app_secret),
+                "home_chat_id": None,
+                "allowed_users": None,
+                "run_qr_setup": False,
+            }
+        return _empty_channel_values(enabled=False)
+
     mode = _prompt_choice_index(
-        f"{channel_name} credential mode",
+        "Feishu setup mode",
         (
-            "Webhook URL",
-            "App ID + app secret",
+            "App ID + app secret using Feishu/Lark app gateway (recommended)",
+            "Webhook URL fallback",
             "Skip this channel for now",
         ),
         default_index=1,
@@ -4704,18 +4940,34 @@ def _prompt_setup_channel_values(
     if mode == 1:
         return {
             "enabled": True,
-            "webhook_url": _prompt_text(f"{channel_name} webhook URL", default=webhook_url),
-            "app_id": None,
-            "app_secret": None,
+            "connection_mode": "websocket",
+            "webhook_url": None,
+            "app_id": _prompt_text("Feishu App ID", default=app_id),
+            "app_secret": _prompt_secret("Feishu App Secret", default=app_secret),
+            "home_chat_id": typer.prompt(
+                "Feishu home chat ID (optional; can be set later)",
+                default=home_chat_id or "",
+            ).strip()
+            or None,
+            "allowed_users": typer.prompt(
+                "Feishu allowed users (optional comma-separated)",
+                default=allowed_users or "",
+            ).strip()
+            or None,
+            "run_qr_setup": False,
         }
     if mode == 2:
         return {
             "enabled": True,
-            "webhook_url": None,
-            "app_id": _prompt_text(f"{channel_name} app ID", default=app_id),
-            "app_secret": _prompt_secret(f"{channel_name} app secret", default=app_secret),
+            "connection_mode": "webhook",
+            "webhook_url": _prompt_text("Feishu webhook URL", default=webhook_url),
+            "app_id": None,
+            "app_secret": None,
+            "home_chat_id": None,
+            "allowed_users": None,
+            "run_qr_setup": False,
         }
-    return {"enabled": False, "webhook_url": None, "app_id": None, "app_secret": None}
+    return _empty_channel_values(enabled=False)
 
 
 def _prompt_choice_index(
@@ -5153,6 +5405,19 @@ def _confirm_if_missing(
     return typer.confirm(prompt, default=False)
 
 
+def _empty_channel_values(*, enabled: bool) -> dict[str, str | bool | None]:
+    return {
+        "enabled": enabled,
+        "connection_mode": None,
+        "webhook_url": None,
+        "app_id": None,
+        "app_secret": None,
+        "home_chat_id": None,
+        "allowed_users": None,
+        "run_qr_setup": False,
+    }
+
+
 def _channel_values(
     *,
     enabled: bool,
@@ -5160,21 +5425,41 @@ def _channel_values(
     webhook_url: str | None,
     app_id: str | None,
     app_secret: str | None,
+    qr_setup: bool = False,
+    connection_mode: str | None = None,
+    home_chat_id: str | None = None,
+    allowed_users: str | None = None,
     non_interactive: bool,
-) -> dict[str, str | None]:
+) -> dict[str, str | bool | None]:
     if not enabled:
-        return {"webhook_url": None, "app_id": None, "app_secret": None}
+        return _empty_channel_values(enabled=False)
     values = {
+        "enabled": True,
+        "connection_mode": _default_channel_mode(
+            channel_name=channel_name,
+            webhook_url=webhook_url,
+            app_id=app_id,
+            app_secret=app_secret,
+            requested_mode=connection_mode,
+            qr_setup=qr_setup,
+        ),
         "webhook_url": webhook_url,
         "app_id": app_id,
         "app_secret": app_secret,
+        "home_chat_id": home_chat_id,
+        "allowed_users": allowed_users,
+        "run_qr_setup": False,
     }
     if non_interactive:
+        if values["connection_mode"] == "qr":
+            return values
         if not values["webhook_url"] and not (values["app_id"] and values["app_secret"]):
             msg = (
                 f"{channel_name} requires --{channel_name.lower()}-webhook-url or both "
                 f"--{channel_name.lower()}-app-id and --{channel_name.lower()}-app-secret"
             )
+            if channel_name.casefold() == "wechat":
+                msg += " or --wechat-qr"
             raise typer.BadParameter(msg)
         return values
 
@@ -5190,17 +5475,71 @@ def _channel_values(
             typer.prompt(f"{channel_name} app secret (optional)", default="", hide_input=True).strip()
             or None
         )
+    values["connection_mode"] = _default_channel_mode(
+        channel_name=channel_name,
+        webhook_url=str(values["webhook_url"]) if values["webhook_url"] else None,
+        app_id=str(values["app_id"]) if values["app_id"] else None,
+        app_secret=str(values["app_secret"]) if values["app_secret"] else None,
+        requested_mode=connection_mode,
+        qr_setup=qr_setup,
+    )
     if not values["webhook_url"] and not (values["app_id"] and values["app_secret"]):
         msg = f"{channel_name} channel needs a webhook URL or app ID plus app secret"
         raise typer.BadParameter(msg)
     return values
 
 
-def _merge_env_file(env_path: Path, values: dict[str, str | None]) -> None:
+def _default_channel_mode(
+    *,
+    channel_name: str,
+    webhook_url: str | None,
+    app_id: str | None,
+    app_secret: str | None,
+    requested_mode: str | None,
+    qr_setup: bool,
+) -> str | None:
+    if qr_setup:
+        return "qr"
+    requested = (requested_mode or "").strip().casefold()
+    if requested:
+        if requested in {"websocket", "webhook", "qr", "app", "app_credentials"}:
+            return "app_credentials" if requested == "app" else requested
+        msg = f"Unsupported {channel_name} connection mode: {requested_mode}"
+        raise typer.BadParameter(msg)
+    if webhook_url:
+        return "webhook"
+    if app_id and app_secret:
+        return "websocket" if channel_name.casefold() == "feishu" else "app_credentials"
+    return None
+
+
+def _channel_summary(enabled: bool, values: Mapping[str, object]) -> str:
+    if not enabled:
+        return "disabled"
+    mode = values.get("connection_mode") or "configured"
+    return f"enabled ({mode})"
+
+
+def _run_wechat_qr_setup() -> None:
+    try:
+        result = subprocess.run(
+            ["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"],
+            check=False,
+        )
+    except OSError as exc:
+        typer.echo(f"[FAIL] wechat_qr_setup: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if result.returncode != 0:
+        typer.echo(f"[FAIL] wechat_qr_setup exited {result.returncode}", err=True)
+        raise typer.Exit(result.returncode)
+    typer.echo("[OK] wechat_qr_setup: completed")
+
+
+def _merge_env_file(env_path: Path, values: Mapping[str, object | None]) -> None:
     existing = _read_env_file(env_path)
     for key, value in values.items():
         if value is not None:
-            existing[key] = value
+            existing[key] = str(value)
     env_path.parent.mkdir(parents=True, exist_ok=True)
     lines = ["# Generated by airesearcher deploy-setup"]
     lines.extend(f"{key}={value}" for key, value in sorted(existing.items()))

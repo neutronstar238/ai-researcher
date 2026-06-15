@@ -21,9 +21,9 @@ automatically.
 
 | Area | V1.0 behavior |
 | --- | --- |
-| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, optional WeChat/Feishu webhooks, vault path, integration manifests, and slash templates. |
+| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, WeChat QR or Feishu App credentials, vault path, integration manifests, and slash templates. |
 | Always-on loop | `airesearcher serve` and `airesearcher autopilot --watch` run a daily loop with online literature search, inspiration refresh, experiments, review, audit, paper build, and follow-up tasks. |
-| Inspiration push | `--push-inspiration` sends a compact digest to configured WeChat/Feishu webhooks. Missing webhooks are recorded as `skipped`, not faked. |
+| Inspiration push | `--push-inspiration` sends a compact digest through setup-configured WeChat/Feishu channels. Missing delivery state is recorded as `skipped`, not faked. |
 | Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
@@ -71,13 +71,24 @@ The wizard walks through:
 2. Confirm `AUTORESEARCH_LLM_BASE_URL`.
 3. Enter `AUTORESEARCH_LLM_MODEL_NAME`.
 4. Enter `AUTORESEARCH_LLM_API_KEY`.
-5. Optionally configure WeChat or Feishu webhook/app credentials.
+5. Optionally configure WeChat by QR adapter onboarding, or Feishu/Lark with App ID and App Secret.
 6. Initialize `autoresearch-vault/`.
 7. Write integration runbooks under `integrations/`.
 8. Write local slash command templates under `.airesearcher/commands/`.
 
-Secrets are written only to `.env`. Public examples live in `.env.example`. Never commit real
-API keys, webhook URLs, app secrets, or tokens.
+The wizard writes local secrets and channel state to `.env`; users do not need to hand-edit that
+file. Public examples live in `.env.example`. Never commit real API keys, webhook URLs, app
+secrets, chat IDs, sessions, or tokens.
+
+Recommended channel setup:
+
+- Feishu/Lark: choose the App ID + App Secret mode in `airesearcher setup`. Add a home chat ID
+  during setup if you already have it; otherwise message the bot and bind the home channel later
+  through the adapter/gateway flow.
+- WeChat/Weixin: choose QR setup. In the interactive wizard, AI-Researcher starts the QR adapter
+  setup command immediately after writing config and waits for the scan/login result. Non-interactive
+  scripts record the setup state without blocking unless `--run-wechat-qr-setup` is passed.
+- Webhook URLs remain available as a fallback for environments that already use incoming webhooks.
 
 Non-interactive setup is also supported:
 
@@ -160,8 +171,9 @@ airesearcher inspiration-refresh \
   --push-channel feishu
 ```
 
-If no webhook is configured, the command records `skipped` in the JSON output and does not claim
-delivery.
+If the selected channel lacks the required delivery state, the command records `skipped` in the JSON
+output and does not claim delivery. Feishu App credentials can send directly when a home chat ID is
+configured; WeChat QR delivery depends on the QR adapter session being active.
 
 ## Operator Monitor
 
@@ -221,14 +233,16 @@ The text after a slash command is passed into that template as `{{args}}`.
 | Command | Parameter | Meaning |
 | --- | --- | --- |
 | `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | Provider-agnostic LLM configuration. |
-| `setup` | `--wechat`, `--feishu`, webhook/app options | Optional operator channel credentials written to `.env`. |
+| `setup` | `--wechat --wechat-qr` | WeChat/Weixin QR adapter onboarding; interactive setup starts the scan flow, while non-interactive scripts can add `--run-wechat-qr-setup`. |
+| `setup` | `--feishu --feishu-app-id --feishu-app-secret` | Feishu/Lark App credential setup; `--feishu-home-chat-id` enables direct digest delivery. |
+| `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | Fallback incoming-webhook setup for existing deployments. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |
 | `serve` / `autopilot` | `--interval-seconds 86400` | Daily loop interval. |
 | `serve` / `autopilot` | `--cycles 0` | Run forever when combined with watch mode. |
-| `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to configured webhooks. |
+| `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
-| `inspiration-refresh` | `--env-path .env` | Loads webhook credentials for one-shot push. |
+| `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
 | `runtime approve` | `latest` or request id | Approves queued dangerous work. |
@@ -292,10 +306,12 @@ the publication audit and evidence gate to pass on the same cycle artifacts.
 AI-Researcher references several open-source projects as design inspiration or optional ecosystem
 integration points, including HKUDS AI-Researcher, AutoResearch, Horizon-style daily refreshers,
 AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, and Luban Skill style guides.
+Hermes Agent is also referenced for setup-owned channel onboarding, persistent memory, scheduled
+gateway operation, and skill-learning UX.
 
 Their license and incorporation status are tracked in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This repository does not vendor OpenClaw,
-OpenCode, AutoResearchClaw, or channel plugin source code.
+OpenCode, Hermes Agent, AutoResearchClaw, or channel plugin source code.
 
 ## Development
 

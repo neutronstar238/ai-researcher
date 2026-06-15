@@ -64,7 +64,7 @@
   <text x="688" y="410" class="text">approval    latest                     pending     dangerous run</text>
   <text x="688" y="434" class="text">task        issue-follow-up            open        missing evidence</text>
   <text x="688" y="458" class="text">push        feishu                     sent        inspiration digest</text>
-  <text x="688" y="482" class="text">push        wechat                     skipped     webhook not set</text>
+  <text x="688" y="482" class="text">push        wechat                     skipped     QR gateway offline</text>
 
   <rect x="52" y="534" width="562" height="170" class="panel red"/>
   <text x="74" y="562" class="panel-title">Changes</text>

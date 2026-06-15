@@ -344,6 +344,59 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     assert "sk-test" not in env_example_text
 
 
+def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "deploy-setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--wechat",
+            "--wechat-qr",
+            "--feishu",
+            "--feishu-app-id",
+            "cli_a_test",
+            "--feishu-app-secret",
+            "feishu-secret",
+            "--feishu-home-chat-id",
+            "oc_test_chat",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    config = ConfigParser().parse_file(config_path)
+    assert isinstance(config, SystemConfig)
+    assert config.deployment.wechat.connection_mode == "qr"
+    assert config.deployment.wechat.qr_setup_command_env == "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND"
+    assert config.deployment.feishu.connection_mode == "websocket"
+    assert config.deployment.feishu.app_id_env == "AUTORESEARCH_FEISHU_APP_ID"
+    assert config.deployment.feishu.home_chat_id_env == "AUTORESEARCH_FEISHU_HOME_CHAT_ID"
+
+    env_text = env_path.read_text(encoding="utf-8")
+    assert "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr" in env_text
+    assert "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=npx -y @tencent-weixin/openclaw-weixin-cli install" in env_text
+    assert "AUTORESEARCH_FEISHU_CONNECTION_MODE=websocket" in env_text
+    assert "AUTORESEARCH_FEISHU_APP_ID=cli_a_test" in env_text
+    assert "AUTORESEARCH_FEISHU_HOME_CHAT_ID=oc_test_chat" in env_text
+    assert "[OK] wechat: enabled (qr)" in result.stdout
+    assert "[OK] feishu: enabled (websocket)" in result.stdout
+    assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+
+
 def test_deploy_setup_keeps_existing_env_example_template(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
@@ -456,6 +509,42 @@ def test_setup_guided_wizard_collects_provider_and_api_key(tmp_path: Path) -> No
     assert "AUTORESEARCH_LLM_API_KEY=sk-guided" in env_text
     assert "[OK] wechat: disabled" in result.stdout
     assert "[OK] feishu: disabled" in result.stdout
+
+
+def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(cli_main, "_run_wechat_qr_setup", lambda: calls.append("qr"))
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--integrations-dir",
+            str(tmp_path / "integrations"),
+            "--commands-dir",
+            str(tmp_path / "commands"),
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+        input="\n\nresearch-model\nsk-guided\n2\n1\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == ["qr"]
+    assert "[OK] wechat: enabled (qr)" in result.stdout
+    assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+    config = ConfigParser().parse_file(config_path)
+    assert isinstance(config, SystemConfig)
+    assert config.deployment.wechat.connection_mode == "qr"
 
 
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:
