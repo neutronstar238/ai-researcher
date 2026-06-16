@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260616-064 - Browser-native inspiration sources need governance before runtime enablement
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 13:53:38 +08:00
+- Source: User mentioned PageAgent as an AI-native browser project that could let Horizon-style discovery go beyond API-only web sources.
+- Symptom: Browser-native acquisition can reach useful public pages without APIs, but direct runtime enablement could create brittle scraping, ToS/robots issues, login/session leakage, uncontrolled rate, and unverifiable extraction evidence.
+- Impact: If treated as a default crawler too early, AI-Researcher could ingest unsupported web claims, mutate interactive pages, or create source records that cannot be reproduced or audited.
+- Evidence: Live web review found `alibaba/page-agent` is MIT and designed as an in-page JavaScript GUI agent with text-based DOM manipulation, optional Chrome extension and MCP server, while upstream README states PageAgent is for client-side web enhancement and not server-side automation.
+- Root cause: The current broad-inspiration loop is API-first for reproducibility; adding browser acquisition requires a separate governance layer for permissions, snapshots, action traces, source terms, and rate limits.
+- Workaround: Track PageAgent only as a quarantined source-adapter reference and keep V1.0 broad inspiration API-first.
+- Next action: Design a separate browser-source adapter task only after robots/ToS, rate-limit, isolated-profile, snapshot, action-log, and approval gates exist.
+- Linked tasks: `123.1`
+- Resolution: Added `page_agent_browser_source_adapter` as a quarantined external watchlist candidate, documented PageAgent in README/README.zh-CN and `THIRD_PARTY_NOTICES.md`, and added tests to keep browser acquisition separate from current API-first inspiration refresh.
+- Verification: Live web review checked upstream README/docs, raw `LICENSE`, and package metadata; focused ruff, mypy, focused pytest, a real `airesearcher skill-watchlist` CLI write with 14 candidates, generated-watchlist `rg` evidence checks, and full smoke/unit pytest all passed.
+
 ### P-20260615-063 - oh-my-openagent must remain reference-only until license and installer risks are cleared
 
 - Status: Resolved

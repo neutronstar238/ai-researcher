@@ -145,6 +145,8 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 12. scheduler follow-up 合并。
 13. 可选微信/飞书灵感摘要推送。
 
+V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
+
 单次灵感抓取并推送：
 
 ```bash
@@ -281,9 +283,9 @@ outputs/<project-id>/
 
 ## 外部参考与许可证
 
-AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode、Hermes Agent、Luban Skill 风格指南、SimpleMem/Omni-SimpleMem、SkillClaw、oh-my-openagent/LazyCodex、Auto-Empirical Research Skills、paper-craft-skills、citation-management 和 Deep-Research-skills。外部 skill 线索会先通过 `airesearcher skill-watchlist` 进入 Obsidian 隔离观察清单；在许可证、安全、真实证据和回滚门禁通过之前，不会安装、复制或 promotion。
+AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode、Hermes Agent、Luban Skill 风格指南、SimpleMem/Omni-SimpleMem、SkillClaw、oh-my-openagent/LazyCodex、PageAgent、Auto-Empirical Research Skills、paper-craft-skills、citation-management 和 Deep-Research-skills。外部 skill 或来源适配器线索会先通过 `airesearcher skill-watchlist` 进入 Obsidian 隔离观察清单；在许可证、安全、真实证据和回滚门禁通过之前，不会安装、复制或 promotion。
 
-这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、Hermes Agent、AutoResearchClaw、oh-my-openagent/LazyCodex、任何第三方通道插件源码或第三方 skill 内容。
+这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、Hermes Agent、AutoResearchClaw、oh-my-openagent/LazyCodex、PageAgent、任何第三方通道插件源码或第三方 skill 内容。
 
 ## 开发
 

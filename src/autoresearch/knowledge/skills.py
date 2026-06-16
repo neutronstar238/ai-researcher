@@ -881,6 +881,49 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
             ),
             tags=("agent-harness", "opencode", "codex", "code-agent"),
         ),
+        ExternalSkillCandidate(
+            candidate_id="page_agent_browser_source_adapter",
+            name="PageAgent",
+            purpose=(
+                "Browser-source acquisition reference for non-API Horizon-style "
+                "inspiration and search sources, using in-page JavaScript DOM "
+                "actions plus optional extension/MCP control."
+            ),
+            source_refs=(
+                "https://github.com/alibaba/page-agent",
+                "https://raw.githubusercontent.com/alibaba/page-agent/main/LICENSE",
+                "https://alibaba.github.io/page-agent/",
+            ),
+            license_status=(
+                "MIT; upstream README acknowledges browser-use-derived DOM "
+                "processing and prompt components under MIT"
+            ),
+            adoption_stage="browser-source-reference",
+            expected_benefit=(
+                "Extends future broad-inspiration acquisition beyond public APIs "
+                "by capturing interactive web pages with structured DOM snapshots "
+                "and action logs."
+            ),
+            risk_notes=(
+                "Upstream positions PageAgent as client-side web enhancement, not "
+                "server-side automation.",
+                "Interactive pages require robots/ToS, rate-limit, consent, login, "
+                "and reproducible snapshot checks.",
+                "Browser actions must use allowlists, sandboxed profiles, and "
+                "approval for state-changing clicks or forms.",
+            ),
+            validation_gates=(
+                "Do not use PageAgent as the default crawler for V1.0.",
+                "Evaluate only in an isolated browser profile against allowed test "
+                "sites or public pages.",
+                "Persist URL, timestamp, DOM snapshot, screenshot/hash, action "
+                "trace, source terms, and extraction confidence before Obsidian "
+                "ingestion.",
+                "Promotion requires rate-limit, robots/terms review, and evidence "
+                "gate integration.",
+            ),
+            tags=("browser-agent", "source-acquisition", "horizon", "web-retrieval"),
+        ),
     )
 
 

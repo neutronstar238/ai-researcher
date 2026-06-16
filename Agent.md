@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-16 13:58:08 +08:00 - Codex - Task 123.1 PageAgent browser-source reference
+
+- Request: Review PageAgent as an AI-native browser project that could let the Horizon-style loop go beyond API-only web sources.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `page_agent_browser_source_adapter` to the default external watchlist candidates as a quarantined browser-source acquisition reference.
+  - Documented that V1.0 remains API-first for broad inspiration, while PageAgent-style browser acquisition is a future adapter path for public pages without stable APIs.
+  - Added governance boundaries for any future browser acquisition: robots/ToS, rate limits, isolated browser profiles, source snapshots, action traces, extraction confidence, evidence-gate integration, and approval for state-changing actions.
+  - Updated README, Chinese README, third-party notices, compliance tests, and skill tests so PageAgent is not treated as a bundled crawler or default runtime tool.
+- Verification:
+  - Live web review checked `https://github.com/alibaba/page-agent`, raw `LICENSE`, `package.json`, and official docs/site; upstream README describes in-page JavaScript, text-based DOM manipulation, optional Chrome extension, and MCP server ideas, while also stating PageAgent is client-side web enhancement rather than server-side automation; raw license and package metadata are MIT.
+  - `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py::test_project_notice_tracks_third_party_reference_policy -q`: passed, 13 tests.
+  - `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task123-pageagent-watchlist-vault --source-note "2026-06-16 PageAgent browser-source reference smoke"`: passed and wrote 14 quarantined candidates.
+  - `rg -n "PageAgent|page-agent|browser-source-reference|robots|isolated browser|action" runs\manual-live\task123-pageagent-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated watchlist contains the PageAgent browser-source reference and gate wording.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 476 passed, 4 skipped, 1 warning.
+- Problems:
+  - `P-20260616-064` resolved.
+- Follow-up:
+  - Future implementation should be a separate browser-source adapter task, not an extension of current API fetchers, and should add live tests only against allowed public/test pages with persisted DOM/screenshot/action evidence.
+
 ### 2026-06-15 19:55:13 +08:00 - Codex - Task 122.1 oh-my-openagent reference quarantine
 
 - Request: Consider `code-yeongyu/oh-my-openagent` as another useful project while preserving AI-Researcher's license, installer, telemetry, and validation boundaries.

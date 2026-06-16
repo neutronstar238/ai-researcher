@@ -160,6 +160,11 @@ Each cycle can run:
 12. Scheduler follow-up merge.
 13. Optional WeChat/Feishu inspiration digest push.
 
+V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
+tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,
+rate-limit, isolated-browser-profile, snapshot evidence, action-log, and approval gates before
+runtime enablement.
+
 Single inspiration refresh with push:
 
 ```bash
@@ -308,15 +313,16 @@ AI-Researcher references several open-source projects as design inspiration or o
 integration points, including HKUDS AI-Researcher, AutoResearch, Horizon-style daily refreshers,
 AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, Hermes Agent, Luban Skill style
 guides, SimpleMem/Omni-SimpleMem, SkillClaw, Auto-Empirical Research Skills, paper-craft-skills,
-oh-my-openagent/LazyCodex, citation-management, and Deep-Research-skills. External skill ideas
-are first recorded with `airesearcher skill-watchlist` as quarantined Obsidian candidates; they
+oh-my-openagent/LazyCodex, PageAgent, citation-management, and Deep-Research-skills. External
+skill and source-adapter ideas are first recorded with `airesearcher skill-watchlist` as
+quarantined Obsidian candidates; they
 are not installed, copied, or promoted until license, security, live-evidence, and rollback gates
 pass.
 
 Their license and incorporation status are tracked in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This repository does not vendor OpenClaw,
-OpenCode, Hermes Agent, AutoResearchClaw, oh-my-openagent/LazyCodex, channel plugin source code,
-or third-party skill content.
+OpenCode, Hermes Agent, AutoResearchClaw, oh-my-openagent/LazyCodex, PageAgent, channel plugin
+source code, or third-party skill content.
 
 ## Development
 

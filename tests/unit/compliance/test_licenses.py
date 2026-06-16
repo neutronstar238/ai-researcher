@@ -28,6 +28,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "aiming-lab/SimpleMem",
         "AMAP-ML/SkillClaw",
         "code-yeongyu/oh-my-openagent",
+        "alibaba/page-agent",
         "brycewang-stanford/Auto-Empirical-Research-Skills",
         "zsyggg/paper-craft-skills",
         "benchflow-ai/skillsbench citation-management skill",
