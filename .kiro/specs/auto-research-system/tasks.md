@@ -1830,6 +1830,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that the system run real data/calls, produce a PDF under `outputs/`, fix reference/layout issues, include figures/tables, and only claim publication-readiness when the evidence and review gates pass._
     - _Verify: Real publication-grade autopilot `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task126-pendigits-live\vault --cache runs\manual-live\task126-pendigits-live\cache --output-dir runs\manual-live\task126-pendigits-live\runs --deliverables-dir runs\manual-live\task126-pendigits-live\outputs --state runs\manual-live\task126-pendigits-live\scheduler-state.json --project-id task126_pendigits_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] research_plan: passed`, `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `followup_tasks: 0`; summary inspection confirmed review verdict `pass`, quality score `1.0`, publication score `0.985`, publishable `true`, release allowed `true`, 4 literature queries, 65 normalized documents, 57 similarity findings, 65 verified citations, and a 3-page research plan. `pdfinfo` confirmed the paper PDF has 14 pages and the research-plan PDF has 3 pages. `pdftotext` confirmed references are numeric `[1]` style rather than operational pseudo-labels. `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py` passed; `python -m pytest tests\unit\reports\test_paper_build.py -q` passed with 6 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real paper rebuild `node .\bin\airesearcher.mjs paper-build runs\manual-live\task126-pendigits-live\runs\cycle-20260616T094744Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task126-paper-rerun-final\paper-build --template-id generic-article-one-column --vault runs\manual-live\task126-paper-rerun-final\vault --project-id task126_paper_rerun_final --timeout-seconds 180` passed, produced a 14-page PDF, and `rg` confirmed the final `compile.log` contains `RERUNS_COMPLETED: 1` plus `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches._
 
+- [x] 127. Always-on serve gate visibility
+  - [x] 127.1 Show research-plan status in `serve` and verify approval gating
+    - Share the research-plan status echo path between `autopilot` and `serve` so the always-on runtime makes the post-direction plan gate visible to operators.
+    - Add unit coverage proving `serve --permission-mode allow-all --once` prints `[OK] research_plan: passed` when the cycle summary contains a passed plan audit.
+    - Run a real `serve --once` cycle with live literature/model review and a real public benchmark to verify the serve entrypoint enters the same evidence-first loop as autopilot.
+    - Run `serve --permission-mode approve-dangerous --once` and confirm it queues a pending approval request without creating run artifacts until approved.
+    - Record any publication-quality blockers from the live serve run as follow-up issues instead of weakening the release gates.
+    - _References: user requirement that one command can keep AI-Researcher running 24h with visible agent/gate flow, while dangerous actions require `/approve`-style human approval._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 3 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real serve run `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task127-serve-live\vault --cache runs\manual-live\task127-serve-live\cache --output-dir runs\manual-live\task127-serve-live\runs --deliverables-dir runs\manual-live\task127-serve-live\outputs --state runs\manual-live\task127-serve-live\scheduler-state.json --approvals-state runs\manual-live\task127-serve-live\approvals.json --project-id task127_serve_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` printed `[OK] research_plan: passed`, generated the PDF deliverable, and correctly blocked release because the live LLM review verdict was `needs_revision`; direct approval-gate smoke with `node .\bin\airesearcher.mjs serve --permission-mode approve-dangerous --once ...` printed `[WAITING] approval_required`, wrote only `approvals.json`, and a propagated exit-code check confirmed `LASTEXIT=2`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2250,6 +2260,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 93,
       "tasks": ["126.1"]
+    },
+    {
+      "id": 94,
+      "tasks": ["127.1"]
     }
   ]
 }

@@ -62,6 +62,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-16 18:11:03 +08:00 - Codex - Task 127.1 serve research-plan gate visibility
+
+- Request:
+  - Continue running the project and verify the always-on `serve` path exposes the same research-plan and approval gates as the direct autopilot path.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a shared `_echo_research_plan_status()` helper and called it from both `autopilot` and `serve`.
+  - Added CLI unit coverage proving `serve --permission-mode allow-all --once` prints `[OK] research_plan: passed` when the cycle summary includes a passed plan audit.
+  - Ran a real `serve --once` cycle with live literature retrieval, real public benchmark execution, live model review, PDF output, and release gates.
+  - Verified `approve-dangerous` mode queues a pending approval request and does not create run artifacts before approval.
+  - Recorded the live serve manuscript quality blocker separately because the gate correctly rejected the generated paper as `needs_revision`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 3 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real serve cycle: `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task127-serve-live\vault --cache runs\manual-live\task127-serve-live\cache --output-dir runs\manual-live\task127-serve-live\runs --deliverables-dir runs\manual-live\task127-serve-live\outputs --state runs\manual-live\task127-serve-live\scheduler-state.json --approvals-state runs\manual-live\task127-serve-live\approvals.json --project-id task127_serve_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` printed `[OK] research_plan: passed`, produced a PDF deliverable, and correctly blocked release because the live LLM review verdict was `needs_revision`.
+  - Approval gate: `node .\bin\airesearcher.mjs serve --permission-mode approve-dangerous --once ...` printed `[WAITING] approval_required`, wrote only `approvals.json`, and a propagated exit-code check confirmed `LASTEXIT=2`.
+- Problems:
+  - Added and resolved `P-20260616-069`.
+  - Added open `P-20260616-070`.
+- Follow-up:
+  - Fix the manuscript/revision loop so the serve path can automatically address reviewer issues about variance-shrinkage sensitivity and related-work positioning before re-running the release gate.
+
 ### 2026-06-16 17:59:40 +08:00 - Codex - Task 126.1 publication-grade live acceptance and LaTeX rerun
 
 - Request:

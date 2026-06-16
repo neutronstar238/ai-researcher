@@ -2308,16 +2308,7 @@ def autopilot(
             preflight = summary["source_preflight"]
             prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
             typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
-        if "research_plan" in summary:
-            research_plan = summary["research_plan"]
-            plan_audit = research_plan.get("audit") if isinstance(research_plan, dict) else {}
-            plan_verdict = (
-                plan_audit.get("verdict")
-                if isinstance(plan_audit, dict)
-                else "unknown"
-            )
-            prefix = "[OK]" if plan_verdict == "passed" else "[BLOCKED]"
-            typer.echo(f"{prefix} research_plan: {plan_verdict}")
+        _echo_research_plan_status(summary)
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
         if "publication_audit" in summary:
             typer.echo(
@@ -2518,6 +2509,7 @@ def serve(
             preflight = summary["source_preflight"]
             prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
             typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+        _echo_research_plan_status(summary)
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
         if "publication_audit" in summary:
             typer.echo(
@@ -4973,6 +4965,16 @@ def _echo_inspiration_pushes(summary: Mapping[str, object]) -> None:
             f"status={push.get('status', 'unknown')} "
             f"detail={push.get('detail', '')}"
         )
+
+
+def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
+    research_plan = summary.get("research_plan")
+    if not isinstance(research_plan, Mapping):
+        return
+    plan_audit = research_plan.get("audit")
+    verdict = plan_audit.get("verdict") if isinstance(plan_audit, Mapping) else "unknown"
+    prefix = "[OK]" if verdict == "passed" else "[BLOCKED]"
+    typer.echo(f"{prefix} research_plan: {verdict}")
 
 
 def _collect_setup_wizard_values(

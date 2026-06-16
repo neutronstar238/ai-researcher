@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260616-070 - Live serve cycle blocked release on reviewer revision items
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-06-16 18:09:00 +08:00
+- Source: Real `task127_serve_live` always-on serve verification.
+- Symptom: `airesearcher serve --permission-mode allow-all --once` completed the research-plan, experiment, paper build, and review stages, but the live LLM reviewer returned `verdict=needs_revision`; publication audit reported `needs_revision`, evidence gate reported `blocked`, and 7 follow-up tasks were queued.
+- Impact: The serve entrypoint is correctly fail-closed, but this specific generated manuscript is not release-ready until the manuscript addresses reviewer issues about variance-shrinkage sensitivity and related-work/similarity positioning.
+- Evidence: `runs/manual-live/task127-serve-live/runs/cycle-20260616T100641Z/cycle-summary.json` shows `review.verdict=needs_revision`, `publication_audit.publishable=false`, `evidence_gate.release_allowed=false`, and follow-up issue notes under `runs/manual-live/task127-serve-live/vault/projects/task127_serve_live/issues/`.
+- Root cause: The manuscript text did not fully satisfy the evidence-constrained reviewer, even though the code execution, reproduction, PDF build, citation breadth, related-work breadth, and research-plan gates passed.
+- Workaround: None. Do not mark this run as paper-ready.
+- Next action: Improve manuscript generation/revision so it explicitly addresses variance-shrinkage sensitivity and positions similarity/related-work evidence without overclaiming.
+- Linked tasks: `127.1`
+- Resolution: Pending.
+- Verification: Pending.
+
+### P-20260616-069 - Serve output hid the research-plan gate status
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 18:00:00 +08:00
+- Source: Task `127.1` inspection after autopilot started enforcing the research-plan gate.
+- Symptom: `airesearcher autopilot` printed `[OK] research_plan: passed` or `[BLOCKED] research_plan: failed`, but `airesearcher serve` only printed source preflight, review, publication, evidence, follow-up, and deliverable status.
+- Impact: Operators running the intended always-on service could not see whether a cycle had passed the mandatory post-direction research-plan gate without opening `cycle-summary.json`.
+- Evidence: Before the fix, `serve()` in `src/autoresearch/cli/main.py` did not echo `summary["research_plan"]`, while `autopilot()` had an inline research-plan echo block.
+- Root cause: Task `125.1` added CLI output for the direct autopilot command but did not share that status output with the serve command.
+- Workaround: None needed after the fix.
+- Next action: Keep future operator-visible gates in shared echo helpers when both `autopilot` and `serve` use the same cycle summary.
+- Linked tasks: `127.1`
+- Resolution: Added `_echo_research_plan_status()` and called it from both `autopilot` and `serve`.
+- Verification: Focused CLI tests passed; full smoke/unit tests passed; real `serve --permission-mode allow-all --once` printed `[OK] research_plan: passed`.
+
 ### P-20260616-068 - Paper build logs retained first-pass LaTeX rerun warnings
 
 - Status: Resolved

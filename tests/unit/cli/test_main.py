@@ -2323,6 +2323,7 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
         return {
             "cycle_id": "cycle-allow-all",
             "summary_path": "runs/autopilot/cycle-allow-all/cycle-summary.json",
+            "research_plan": {"audit": {"verdict": "passed"}},
             "review": {"status": "skipped"},
             "followups": {"task_count": 0},
         }
@@ -2346,6 +2347,7 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
     assert result.exit_code == 0, result.output
     assert "[OK] runtime_mode: allow-all" in result.stdout
     assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
+    assert "[OK] research_plan: passed" in result.stdout
     assert not approvals_state.exists()
 
 
