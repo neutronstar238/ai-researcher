@@ -74,6 +74,14 @@ class TaskStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class ResearchPlanStatus(str, Enum):
+    DRAFT = "draft"
+    NEEDS_REVISION = "needs_revision"
+    READY_FOR_APPROVAL = "ready_for_approval"
+    APPROVED = "approved"
+    BLOCKED = "blocked"
+
+
 class ExecutionStatus(str, Enum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -155,6 +163,30 @@ class Hypothesis(BaseRecord):
     dataset_ref: str | None = None
     evidence_refs: list[str] = Field(min_length=1)
     status: TaskStatus = TaskStatus.DRAFT
+    validation_status: ValidationStatus = ValidationStatus.PENDING
+
+
+class ResearchPlan(BaseRecord):
+    """Evidence-bound plan between an approved direction and executable experiments."""
+
+    id: str = Field(default_factory=lambda: _record_id("plan"))
+    project_id: str = Field(min_length=1)
+    candidate_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    problem_statement: str = Field(min_length=1)
+    rationale: str = Field(min_length=1)
+    technical_details: str = Field(min_length=1)
+    datasets: dict[str, str] = Field(default_factory=dict)
+    methods: str = Field(min_length=1)
+    experiments: list[str] = Field(min_length=1)
+    expected_results: str = Field(min_length=1)
+    code_agent_brief: str = Field(min_length=1)
+    risks_and_alternatives: list[str] = Field(min_length=1)
+    references: list[str] = Field(min_length=1)
+    evidence_refs: list[str] = Field(min_length=1)
+    quality_gate: dict[str, Any] = Field(default_factory=dict)
+    approval_status: str = "pending"
+    status: ResearchPlanStatus = ResearchPlanStatus.DRAFT
     validation_status: ValidationStatus = ValidationStatus.PENDING
 
 

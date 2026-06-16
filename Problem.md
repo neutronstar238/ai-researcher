@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260616-066 - Verification caught research-plan import ordering and timeout-output typing
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-16 16:53:00 +08:00
+- Source: Verification for task `124.1`.
+- Symptom: `python -m ruff check ...` first reported an import-order issue in `src/autoresearch/research/plans.py`; `python -m mypy src\autoresearch` then reported a `str-bytes-safe` error for `subprocess.TimeoutExpired` stdout/stderr logging.
+- Impact: The new research-plan module could not pass repository quality gates until formatting and timeout logging were corrected.
+- Evidence: Ruff reported one fixable `I001` finding; mypy reported `If x = b'abc' then f"{x}" ...` at `src\autoresearch\research\plans.py`.
+- Root cause: The new module import block needed ruff normalization, and timeout output can be `bytes` even when the normal subprocess call uses `text=True`.
+- Workaround: None after the fix.
+- Next action: Keep ruff and mypy in the task completion gate.
+- Linked tasks: `124.1`
+- Resolution: Ran ruff's import fix and added explicit bytes-to-text handling for timeout logs.
+- Verification: `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 482 passed, 4 skipped, and 1 warning.
+
+### P-20260616-065 - Research directions could skip a rigorous executable plan gate
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 16:30:00 +08:00
+- Source: User clarified that after confirming a research direction, the loop must first generate a detailed, scientific, feasible research plan for code agents and experiments.
+- Symptom: The CLI had candidate, similarity, experiment, paper, and audit surfaces, but no first-class research-plan artifact or gate between a confirmed direction and code-agent execution.
+- Impact: Code agents could start implementation from a broad candidate without a durable plan, baseline, metric, dataset route, evidence list, risk alternatives, or PDF/Markdown plan artifact.
+- Evidence: `src/autoresearch/cli/main.py` exposed `similarity-check` and `run-demo`; schemas included `ResearchCandidate` and `Hypothesis`, but no `ResearchPlan`; the vault entry types had no `research_plan` entry.
+- Root cause: Previous loop work focused on literature, similarity, experiments, and final paper build, leaving the post-direction planning step implicit.
+- Workaround: None needed after the new gate.
+- Next action: Wire future autopilot cycles to require a passed research-plan artifact before invoking code-agent experiment execution.
+- Linked tasks: `124.1`
+- Resolution: Added `ResearchPlan`, `research/plans.py`, `research-plan` and `research-plan-audit` CLI commands, `/research:research-plan`, vault Markdown output, `outputs/<project-id>/research-plan/` JSON/TEX/PDF output, deterministic quality gates, tests, and README updates.
+- Verification: Real CLI smoke compiled a 3-page research-plan PDF and wrote the vault Markdown/JSON/TEX/PDF artifacts under `runs/manual-live/task124-research-plan`; `research-plan-audit` passed on the generated JSON; forbidden contest/project-title terms were absent from generated Markdown/TEX; full `python -m pytest tests\smoke tests\unit -q` passed with 482 passed, 4 skipped, and 1 warning.
+
 ### P-20260616-064 - Browser-native inspiration sources need governance before runtime enablement
 
 - Status: Resolved

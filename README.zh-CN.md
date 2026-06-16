@@ -18,6 +18,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
+| 研究计划门禁 | 用户确认研究方向后，`airesearcher research-plan` 会先把可执行研究计划写入 vault，并在 `outputs/<project-id>/research-plan/` 下生成 LaTeX/PDF，之后才允许代码 Agent 做实验。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
@@ -134,16 +135,17 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 1. 来源冷却和 preflight 检查。
 2. ArXiv 和 OpenAlex 文献刷新，Semantic Scholar 作为可选低优先级来源。
 3. 有来源支撑的相似工作和创新性检查。
-4. Hugging Face 和 Hacker News 灵感抓取。
-5. 本地 demo 或真实公开 benchmark 实验。
-6. 命令行复现实验检查。
-7. 可选真实 LLM 证据评审。
-8. publication audit。
-9. LaTeX 论文构建。
-10. physical evidence gate。
-11. Obsidian review、issue、skill、strategy 写入。
-12. scheduler follow-up 合并。
-13. 可选微信/飞书灵感摘要推送。
+4. 用户确认方向后的研究计划生成与门禁。
+5. Hugging Face 和 Hacker News 灵感抓取。
+6. 本地 demo 或真实公开 benchmark 实验。
+7. 命令行复现实验检查。
+8. 可选真实 LLM 证据评审。
+9. publication audit。
+10. LaTeX 论文构建。
+11. physical evidence gate。
+12. Obsidian review、issue、skill、strategy 写入。
+13. scheduler follow-up 合并。
+14. 可选微信/飞书灵感摘要推送。
 
 V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 
@@ -197,6 +199,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:refresh-literature` | 可选主题 | 联网刷新 ArXiv/OpenAlex 文献。 |
 | `/research:inspiration-refresh` | 查询文本 | 抓取非学术灵感来源并可推送摘要。 |
 | `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索。 |
+| `/research:research-plan` | candidate JSON + project id | 把确认方向后的研究计划写入 Obsidian 和 `outputs/`。 |
 | `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
 | `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
 | `/research:publication-stability` | 多个 cycle summary | 检查跨 cycle、模板和数据集的稳定性。 |
@@ -229,6 +232,8 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
+| `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
+| `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
 | `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
 
@@ -271,6 +276,10 @@ outputs/<project-id>/
 
 通过门禁的 cycle 可以包含：
 
+- vault 中的 `research-plan/research-plan.md`
+- `research-plan/research-plan.tex`
+- `research-plan/research-plan.pdf`
+- `research-plan/research-plan.json`
 - `<project-id>-<cycle-id>.pdf`
 - 生成的 `.tex`
 - `paper-build.json`

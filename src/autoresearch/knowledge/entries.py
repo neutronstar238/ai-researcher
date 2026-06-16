@@ -30,6 +30,7 @@ class KnowledgeEntryType(str, Enum):
     ISSUE_NOTE = "issue_note"
     REVIEW_NOTE = "review_note"
     RESEARCH_CANDIDATE = "research_candidate"
+    RESEARCH_PLAN = "research_plan"
 
 
 class KnowledgeZone(str, Enum):

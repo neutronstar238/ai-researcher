@@ -24,7 +24,7 @@ from autoresearch.knowledge import (
     extract_reusable_skill_card,
 )
 from autoresearch.llm import LLMReviewResult, LLMSmokeResult
-from autoresearch.schemas import ResearchCandidate
+from autoresearch.schemas import ResearchCandidate, ResearchPlan
 
 
 def test_version_command_prints_package_version() -> None:
@@ -674,6 +674,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
     assert (commands_dir / "research" / "inspiration-refresh.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
+    assert (commands_dir / "research" / "research-plan.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "serve.toml").is_file()
@@ -710,6 +711,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:session-claim" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:inspiration-refresh" in list_result.stdout
+    assert "/research:research-plan" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
     assert "airesearcher autopilot" in autopilot_template
@@ -734,6 +736,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher inspiration-refresh" in (
         commands_dir / "research" / "inspiration-refresh.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher research-plan" in (
+        commands_dir / "research" / "research-plan.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher skill-polish-audit" in (
         commands_dir / "research" / "skill-polish-audit.toml"
@@ -1159,6 +1164,84 @@ def test_similarity_check_accepts_windows_utf8_bom_candidate_json(
 
     assert result.exit_code == 0, result.output
     assert "[OK] candidate: candidate_cli_bom" in result.stdout
+
+
+def test_research_plan_command_writes_vault_markdown_and_outputs(tmp_path: Path) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_plan",
+        title="AI-Researcher system proposal",
+        description="Plan an evidence traceability experiment.",
+        research_gap="Metric claims are not tied to concrete execution artifacts.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["https://example.org/source-paper"],
+        metadata={
+            "method": "evidence trace adapter",
+            "dataset": "UCI Pendigits",
+            "baseline": "nearest centroid baseline",
+            "metric": "macro_f1",
+        },
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "research-plan",
+            "--candidate-file",
+            str(candidate_path),
+            "--project-id",
+            "project_1",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--output-dir",
+            str(tmp_path / "outputs"),
+            "--no-compile-pdf",
+        ],
+    )
+
+    markdown_path = tmp_path / "vault" / "projects" / "project_1" / "plans" / "research-plan.md"
+    json_path = tmp_path / "outputs" / "project_1" / "research-plan" / "research-plan.json"
+    tex_path = tmp_path / "outputs" / "project_1" / "research-plan" / "research-plan.tex"
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] compile_status: skipped" in result.stdout
+    assert markdown_path.is_file()
+    assert json_path.is_file()
+    assert tex_path.is_file()
+    assert "entry_type: research_plan" in markdown_path.read_text(encoding="utf-8")
+    assert "AI-Researcher system proposal" not in tex_path.read_text(encoding="utf-8")
+
+
+def test_research_plan_audit_blocks_forbidden_title(tmp_path: Path) -> None:
+    plan = ResearchPlan(
+        project_id="project_1",
+        candidate_id="candidate_1",
+        title="AI-Researcher system",
+        problem_statement="A source-backed gap needs a concrete plan.",
+        rationale="XH-202619 参赛方案 should never enter a normal research plan.",
+        technical_details="Use a baseline, macro_f1 metric, and source dataset.",
+        datasets={"source": "UCI Pendigits", "target": "hold-out split"},
+        methods="Compare the method with a baseline using macro_f1 metric.",
+        experiments=["Run baseline.", "Run method.", "Run ablation."],
+        expected_results="Expected, not yet observed: metric changes require real runs.",
+        code_agent_brief="Run python scripts/run_experiment.py and save metrics.json.",
+        risks_and_alternatives=["Baseline may fail.", "Dataset license may block use."],
+        references=["https://example.org/source-paper"],
+        evidence_refs=["https://example.org/source-paper"],
+    )
+    plan_path = tmp_path / "research-plan.json"
+    plan_path.write_text(json.dumps({"plan": plan.model_dump(mode="json")}), encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["research-plan-audit", str(plan_path)])
+
+    assert result.exit_code == 1
+    assert "[OK] research_plan_audit: failed" in result.stdout
+    assert "title must be a discovered research topic" in result.stdout
+    assert "forbidden contest" in result.stdout
 
 
 def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:

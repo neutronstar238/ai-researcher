@@ -25,6 +25,7 @@ automatically.
 | Always-on loop | `airesearcher serve` and `airesearcher autopilot --watch` run a daily loop with online literature search, inspiration refresh, experiments, review, audit, paper build, and follow-up tasks. |
 | Inspiration push | `--push-inspiration` sends a compact digest through setup-configured WeChat/Feishu channels. Missing delivery state is recorded as `skipped`, not faked. |
 | Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
+| Research-plan gate | After a user confirms a direction, `airesearcher research-plan` writes an execution-ready Markdown plan into the vault and a LaTeX/PDF plan under `outputs/<project-id>/research-plan/` before code-agent experiments start. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
@@ -149,16 +150,17 @@ Each cycle can run:
 1. Source preflight and cooldown checks.
 2. ArXiv and OpenAlex literature refresh. Semantic Scholar is optional and lower priority.
 3. Source-backed similar-work and novelty checks.
-4. Hugging Face and Hacker News broad inspiration refresh.
-5. Local demo or public benchmark experiment.
-6. Command-line reproduction check.
-7. Optional live LLM evidence review.
-8. Publication audit.
-9. LaTeX paper build.
-10. Physical evidence gate.
-11. Obsidian review, issue, skill, and strategy updates.
-12. Scheduler follow-up merge.
-13. Optional WeChat/Feishu inspiration digest push.
+4. Research-plan generation after the user confirms a direction.
+5. Hugging Face and Hacker News broad inspiration refresh.
+6. Local demo or public benchmark experiment.
+7. Command-line reproduction check.
+8. Optional live LLM evidence review.
+9. Publication audit.
+10. LaTeX paper build.
+11. Physical evidence gate.
+12. Obsidian review, issue, skill, and strategy updates.
+13. Scheduler follow-up merge.
+14. Optional WeChat/Feishu inspiration digest push.
 
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,
@@ -218,6 +220,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:refresh-literature` | optional topic | Runs real ArXiv/OpenAlex literature refresh. |
 | `/research:inspiration-refresh` | query text | Searches broad inspiration sources and can push a digest. |
 | `/research:similarity-check` | candidate context | Cross-checks a candidate against adjacent online work. |
+| `/research:research-plan` | candidate JSON + project id | Writes the post-direction research plan to Obsidian and `outputs/`. |
 | `/research:run-demo` | demo id | Runs a local demo or public benchmark. |
 | `/research:publication-audit` | cycle summary path | Audits publication readiness. |
 | `/research:publication-stability` | multiple cycle summaries | Checks stability across cycles/templates/datasets. |
@@ -250,6 +253,8 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
+| `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
+| `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
 | `runtime approve` | `latest` or request id | Approves queued dangerous work. |
 
@@ -296,6 +301,10 @@ outputs/<project-id>/
 
 A passing cycle can include:
 
+- `research-plan/research-plan.md` in the vault
+- `research-plan/research-plan.tex`
+- `research-plan/research-plan.pdf`
+- `research-plan/research-plan.json`
 - `<project-id>-<cycle-id>.pdf`
 - generated `.tex`
 - `paper-build.json`

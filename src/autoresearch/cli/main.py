@@ -90,6 +90,8 @@ from autoresearch.reports import (
 )
 from autoresearch.research import (
     SimilarityCheckConfig,
+    audit_research_plan,
+    generate_research_plan,
     link_similarity_report_to_project,
     run_project_similarity_check,
 )
@@ -106,7 +108,7 @@ from autoresearch.runtime import (
     release_agent_session,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
-from autoresearch.schemas import CandidateStatus, ResearchCandidate, ValidationStatus
+from autoresearch.schemas import CandidateStatus, ResearchCandidate, ResearchPlan, ValidationStatus
 
 app = typer.Typer(
     help="AI-Researcher command line interface.",
@@ -208,6 +210,13 @@ DEFAULT_SLASH_COMMANDS = {
         "Cross-check a candidate against adjacent online work before project approval.",
         "Run `airesearcher similarity-check --candidate-file <candidate.json>` for {{args}}. "
         "Use source URLs and DOI evidence only; unsupported outcomes must remain pending verification.",
+    ),
+    "research/research-plan.toml": (
+        "Generate the execution-ready research plan after the user confirms a direction.",
+        "Run `airesearcher research-plan --candidate-file <candidate.json> --project-id <project>` "
+        "after similarity checking. The command writes the archival Markdown plan into the "
+        "Obsidian vault and the LaTeX/PDF plan under outputs/<project>/research-plan/. "
+        "Do not start code-agent experiments until this gate passes.",
     ),
     "research/run-demo.toml": (
         "Run a local demo or public benchmark and inspect evidence outputs.",
@@ -1492,6 +1501,123 @@ def similarity_check(
         typer.echo(f"[OK] summary: {report.summary_path}")
     if project_link is not None:
         typer.echo(f"[OK] project_link: {project_link}")
+
+
+@app.command("research-plan")
+def research_plan(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            "-f",
+            help="JSON file containing a user-confirmed ResearchCandidate payload.",
+        ),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID used for vault and outputs paths."),
+    ],
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to write the Markdown plan."),
+    ] = Path("autoresearch-vault"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Root directory for JSON, TeX, and PDF outputs."),
+    ] = Path("outputs"),
+    similarity_summary: Annotated[
+        Path | None,
+        typer.Option("--similarity-summary", help="Optional local similarity-check summary path."),
+    ] = None,
+    literature_summary: Annotated[
+        Path | None,
+        typer.Option("--literature-summary", help="Optional local literature-refresh summary path."),
+    ] = None,
+    inspiration_summary: Annotated[
+        Path | None,
+        typer.Option("--inspiration-summary", help="Optional local broad-inspiration summary path."),
+    ] = None,
+    compile_pdf: Annotated[
+        bool,
+        typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the LaTeX plan into PDF."),
+    ] = True,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="LaTeX compile timeout."),
+    ] = 120,
+) -> None:
+    """Generate the post-direction research-plan gate and artifacts."""
+
+    try:
+        candidate = _load_candidate(candidate_file)
+        artifact = generate_research_plan(
+            candidate=candidate,
+            project_id=project_id,
+            vault_root=vault,
+            output_dir=output_dir,
+            compile_pdf=compile_pdf,
+            similarity_summary=similarity_summary,
+            literature_summary=literature_summary,
+            inspiration_summary=inspiration_summary,
+            timeout_seconds=timeout_seconds,
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] research plan generation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] research_plan: {artifact.audit.verdict.value}")
+    typer.echo(f"[OK] score: {artifact.audit.score}")
+    typer.echo(f"[OK] markdown: {artifact.markdown_path}")
+    typer.echo(f"[OK] json: {artifact.json_path}")
+    typer.echo(f"[OK] tex: {artifact.tex_path}")
+    typer.echo(f"[OK] compile_status: {artifact.compile_status}")
+    if artifact.pdf_path is not None:
+        typer.echo(f"[OK] pdf: {artifact.pdf_path}")
+    if artifact.page_count is not None:
+        typer.echo(f"[OK] pages: {artifact.page_count}")
+    for issue in artifact.audit.issues:
+        typer.echo(f"[ISSUE] {issue}")
+    for warning in artifact.audit.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not artifact.audit.passed:
+        raise typer.Exit(code=1)
+    if compile_pdf and artifact.compile_status != "compiled":
+        if artifact.compile_reason:
+            typer.echo(f"[FAIL] pdf: {artifact.compile_reason}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("research-plan-audit")
+def research_plan_audit(
+    plan_json: Annotated[
+        Path,
+        typer.Argument(help="research-plan.json or a raw ResearchPlan JSON file."),
+    ],
+) -> None:
+    """Re-run the deterministic research-plan quality gate."""
+
+    try:
+        payload = json.loads(plan_json.read_text(encoding="utf-8-sig"))
+        if isinstance(payload, dict) and isinstance(payload.get("plan"), dict):
+            plan_payload = payload["plan"]
+        else:
+            plan_payload = payload
+        plan = ResearchPlan.model_validate(plan_payload)
+        markdown = _read_optional_artifact_text(payload, "markdown_path", base_dir=plan_json.parent)
+        tex = _read_optional_artifact_text(payload, "tex_path", base_dir=plan_json.parent)
+        audit = audit_research_plan(plan, rendered_markdown=markdown, rendered_tex=tex)
+    except Exception as exc:
+        typer.echo(f"[FAIL] research plan audit failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] research_plan_audit: {audit.verdict.value}")
+    typer.echo(f"[OK] score: {audit.score}")
+    for issue in audit.issues:
+        typer.echo(f"[ISSUE] {issue}")
+    for warning in audit.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not audit.passed:
+        raise typer.Exit(code=1)
 
 
 @app.command("run-demo")
@@ -4680,6 +4806,30 @@ def _load_candidate(candidate_file: Path) -> ResearchCandidate:
     except Exception as exc:
         msg = f"Invalid ResearchCandidate payload: {exc}"
         raise typer.BadParameter(msg) from exc
+
+
+def _read_optional_artifact_text(
+    payload: object,
+    key: str,
+    *,
+    base_dir: Path | None = None,
+) -> str | None:
+    if not isinstance(payload, Mapping):
+        return None
+    value = payload.get(key)
+    if not isinstance(value, str):
+        return None
+    path = Path(value)
+    candidate_paths = [path]
+    if base_dir is not None and not path.is_absolute():
+        candidate_paths.append(base_dir / path)
+    for candidate_path in candidate_paths:
+        if candidate_path.is_file():
+            try:
+                return candidate_path.read_text(encoding="utf-8-sig")
+            except OSError:
+                return None
+    return None
 
 
 def _echo_fetches(fetches: Iterable[object]) -> None:

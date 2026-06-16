@@ -62,6 +62,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-16 16:59:30 +08:00 - Codex - Task 124.1 post-direction research-plan gate
+
+- Request:
+  - Implement the proposed plan for a research-plan stage after the user confirms a research direction.
+  - Keep the Markdown version in the Obsidian knowledge base and the PDF/TEX/JSON version under `outputs/`.
+  - Make the PDF a normal research plan for a discovered topic, not a contest proposal or the AI-Researcher project itself.
+- Files changed:
+  - `src/autoresearch/schemas/models.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/knowledge/entries.py`
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/schemas/test_schema_models.py`
+  - `tests/unit/schemas/test_roundtrip.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a first-class `ResearchPlan` lifecycle schema and Obsidian `research_plan` entry type.
+  - Added deterministic research-plan generation, Markdown rendering, LaTeX rendering, local PDF compilation, JSON artifact output, and re-audit support.
+  - Added quality gates that block contest wrappers, project-name-as-topic titles, missing evidence refs, missing dataset source/target routes, missing baselines, missing metrics, missing command-oriented code-agent briefs, and unsupported result claims.
+  - Added `airesearcher research-plan`, `airesearcher research-plan-audit`, and `/research:research-plan`.
+  - Updated English and Chinese README workflow, slash command, parameter, and output sections to place the research-plan gate before experiments and paper builds.
+  - Added schema, research, and CLI tests for the new lifecycle surface.
+- Verification:
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\research\test_plans.py tests\unit\cli\test_main.py::test_research_plan_command_writes_vault_markdown_and_outputs tests\unit\cli\test_main.py::test_research_plan_audit_blocks_forbidden_title -q`: passed with 5 tests.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 482 passed, 4 skipped, and 1 warning.
+  - Real CLI/PDF smoke: `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task124-research-plan\candidate.json --project-id task124_research_plan --vault runs\manual-live\task124-research-plan\vault --output-dir runs\manual-live\task124-research-plan\outputs --compile-pdf --timeout-seconds 180` passed, wrote vault Markdown plus JSON/TEX/PDF artifacts, and compiled a 3-page A4 PDF.
+  - `node .\bin\airesearcher.mjs research-plan-audit runs\manual-live\task124-research-plan\outputs\task124_research_plan\research-plan\research-plan.json`: passed.
+  - `pdfinfo` confirmed the generated PDF has 3 A4 pages; `pdftoppm` rendered page 1 for visual inspection and no obvious overflow was observed.
+  - `rg` confirmed generated Markdown/TEX preserves `Claim Evidence Trace Adapter for UCI Pendigits...` and contains no `XH-202619`, `参赛`, `赛事`, `发榜`, `主办`, `评分`, `浙江阿里巴巴`, `AI-Researcher competition proposal`, or `AI-Researcher system`.
+- Problems:
+  - Added and resolved `P-20260616-065`.
+  - Added and resolved `P-20260616-066`.
+- Follow-up:
+  - Wire the always-on autopilot/code-agent path to require a passed research-plan artifact before experiment execution.
+
 ### 2026-06-16 13:58:08 +08:00 - Codex - Task 123.1 PageAgent browser-source reference
 
 - Request: Review PageAgent as an AI-native browser project that could let the Horizon-style loop go beyond API-only web sources.
