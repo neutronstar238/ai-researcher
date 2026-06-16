@@ -1819,6 +1819,17 @@ A task can be checked only when all applicable items are true:
     - _References: Task `124.1` follow-up; user requirement that after research direction selection the system writes a concrete plan into Obsidian before code agents implement experiments; strict evidence-first loop where no unsupported or unplanned experiment should run._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 2 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 483 passed, 4 skipped, and 1 warning. Real autopilot smoke `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task125-autopilot-plan\vault --cache runs\manual-live\task125-autopilot-plan\cache --output-dir runs\manual-live\task125-autopilot-plan\runs --deliverables-dir runs\manual-live\task125-autopilot-plan\outputs --state runs\manual-live\task125-autopilot-plan\scheduler-state.json --project-id task125_autopilot_plan --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --paper-template-id generic-article-one-column --no-review` passed, printed `[OK] research_plan: passed`, compiled a 3-page A4 research-plan PDF, ran the demo/reproduction path after the plan gate, exported `research_plan_markdown`, `research_plan_json`, `research_plan_tex`, and `research_plan_pdf` in the deliverables manifest, and kept the final publication/evidence gates blocked because the LLM evidence review was intentionally skipped by `--no-review`. `rg` confirmed the generated plan Markdown/TEX contains no `赛题`, `参赛`, `比赛`, `人工评审`, `manual review`, `TODO`, or `TBD`._
 
+- [x] 126. Publication-grade live acceptance and LaTeX build stabilization
+  - [x] 126.1 Verify a real benchmark cycle reaches release gates and stabilize paper-build reruns
+    - Run a real always-on loop with the default publication search breadth, live model review, and a real public benchmark rather than the smoke-only tabular fixture.
+    - Verify the generated paper-level PDF, research-plan PDF, LLM review, publication audit, evidence gate, citation package, related-work breadth, similarity breadth, reproduction rerun, data analysis figure/table package, and deliverables manifest.
+    - Record the difference between smoke-loop failures and publication-grade acceptance: smoke runs may intentionally fail CCF-B/Q3 gates when they use tiny fixtures or `--no-review`.
+    - Update the LaTeX paper builder so a successful first compile that reports changed labels, cross-reference rerun requests, or citation rerun requests automatically executes one more pass.
+    - Keep failed LaTeX attempts diagnosable, but keep successful release logs focused on the final stable attempt and record `RERUNS_COMPLETED`.
+    - Add unit coverage for the second-pass compile behavior without requiring a live LaTeX binary.
+    - _References: user requirement that the system run real data/calls, produce a PDF under `outputs/`, fix reference/layout issues, include figures/tables, and only claim publication-readiness when the evidence and review gates pass._
+    - _Verify: Real publication-grade autopilot `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task126-pendigits-live\vault --cache runs\manual-live\task126-pendigits-live\cache --output-dir runs\manual-live\task126-pendigits-live\runs --deliverables-dir runs\manual-live\task126-pendigits-live\outputs --state runs\manual-live\task126-pendigits-live\scheduler-state.json --project-id task126_pendigits_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] research_plan: passed`, `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `followup_tasks: 0`; summary inspection confirmed review verdict `pass`, quality score `1.0`, publication score `0.985`, publishable `true`, release allowed `true`, 4 literature queries, 65 normalized documents, 57 similarity findings, 65 verified citations, and a 3-page research plan. `pdfinfo` confirmed the paper PDF has 14 pages and the research-plan PDF has 3 pages. `pdftotext` confirmed references are numeric `[1]` style rather than operational pseudo-labels. `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py` passed; `python -m pytest tests\unit\reports\test_paper_build.py -q` passed with 6 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real paper rebuild `node .\bin\airesearcher.mjs paper-build runs\manual-live\task126-pendigits-live\runs\cycle-20260616T094744Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task126-paper-rerun-final\paper-build --template-id generic-article-one-column --vault runs\manual-live\task126-paper-rerun-final\vault --project-id task126_paper_rerun_final --timeout-seconds 180` passed, produced a 14-page PDF, and `rg` confirmed the final `compile.log` contains `RERUNS_COMPLETED: 1` plus `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2235,6 +2246,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 92,
       "tasks": ["125.1"]
+    },
+    {
+      "id": 93,
+      "tasks": ["126.1"]
     }
   ]
 }

@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-16 17:59:40 +08:00 - Codex - Task 126.1 publication-grade live acceptance and LaTeX rerun
+
+- Request:
+  - Continue running the system end to end, verify real publication-grade output quality, and fix final PDF/reference/layout issues found during QA.
+- Files changed:
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_paper_build.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Ran a real publication-grade autopilot cycle with default search breadth, live DeepSeek-compatible review, and the real UCI Pendigits benchmark demo.
+  - Confirmed the cycle reached `publication_audit: pass`, `evidence_gate: pass`, `publishable: true`, `release_allowed: true`, and `followup_tasks: 0`.
+  - Updated the paper builder to rerun LaTeX once when a successful first pass reports changed labels, cross-reference rerun requests, or citation rerun requests.
+  - Kept failed compile attempts diagnosable while keeping successful release logs focused on the final stable pass and recording `RERUNS_COMPLETED`.
+  - Added a unit test for second-pass LaTeX behavior without depending on a live LaTeX binary.
+  - Used the `latex:latex-compile` skill guidance for the LaTeX build task.
+- Verification:
+  - Real autopilot: `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task126-pendigits-live\vault --cache runs\manual-live\task126-pendigits-live\cache --output-dir runs\manual-live\task126-pendigits-live\runs --deliverables-dir runs\manual-live\task126-pendigits-live\outputs --state runs\manual-live\task126-pendigits-live\scheduler-state.json --project-id task126_pendigits_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column`: passed with research plan, review, publication audit, and evidence gate all passing.
+  - Summary inspection: review verdict `pass`, review quality `1.0`, publication score `0.985`, publishable `true`, release allowed `true`, 4 literature queries, 65 documents, 57 similarity findings, 65 verified citations, 3-page research plan, and 0 follow-up tasks.
+  - `pdfinfo` confirmed the paper PDF has 14 pages and the research-plan PDF has 3 pages.
+  - `pdftotext` confirmed the PDF reference section renders numeric references `[1]` through `[12]`, not operational pseudo-labels.
+  - `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py`: passed.
+  - `python -m pytest tests\unit\reports\test_paper_build.py -q`: passed with 6 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real paper rebuild: `node .\bin\airesearcher.mjs paper-build runs\manual-live\task126-pendigits-live\runs\cycle-20260616T094744Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task126-paper-rerun-final\paper-build --template-id generic-article-one-column --vault runs\manual-live\task126-paper-rerun-final\vault --project-id task126_paper_rerun_final --timeout-seconds 180` passed, produced a 14-page PDF, and final `compile.log` contained `RERUNS_COMPLETED: 1` plus `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches.
+- Problems:
+  - Added and resolved `P-20260616-068`.
+- Follow-up:
+  - The real Pendigits result is gate-passing for the configured CCF-B/Q3 readiness audit, but scientific scope is still one benchmark; future cycles should add more datasets and stronger baselines rather than weakening the gates.
+
 ### 2026-06-16 17:46:30 +08:00 - Codex - Task 125.1 autopilot research-plan gate
 
 - Request:

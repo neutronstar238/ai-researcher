@@ -1,4 +1,5 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -156,6 +157,51 @@ def test_build_latex_paper_external_template_records_dependency_failure(
     assert artifact.reason == "automatic LaTeX dependency recovery failed for sn-jnl.cls"
     summary = Path(artifact.markdown_path).read_text(encoding="utf-8")
     assert "Dependency recovery: `unavailable`" in summary
+
+
+def test_compile_latex_reruns_when_cross_references_need_second_pass(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tex_path = tmp_path / "main.tex"
+    log_path = tmp_path / "compile.log"
+    tex_path.write_text(r"\documentclass{article}\begin{document}x\end{document}", encoding="utf-8")
+    calls: list[int] = []
+
+    def fake_run(
+        command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(len(calls) + 1)
+        assert command == ["pdflatex", "main.tex"]
+        assert kwargs["cwd"] == tmp_path
+        tex_path.with_suffix(".pdf").write_bytes(b"%PDF-1.4\n")
+        stdout = (
+            "LaTeX Warning: Label(s) may have changed. "
+            "Rerun to get cross-references right.\n"
+            if len(calls) == 1
+            else "Output written on main.pdf.\n"
+        )
+        return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(paper_build.subprocess, "run", fake_run)
+
+    status, pdf_path, reason = paper_build._compile_latex(
+        tex_path,
+        log_path,
+        ["pdflatex", "main.tex"],
+        timeout_seconds=5,
+    )
+
+    assert status is LatexPaperBuildStatus.COMPILED
+    assert pdf_path == tex_path.with_suffix(".pdf")
+    assert reason is None
+    assert calls == [1, 2]
+    log_text = log_path.read_text(encoding="utf-8")
+    assert "RERUNS_COMPLETED: 1" in log_text
+    assert "ATTEMPT 1" not in log_text
+    assert "ATTEMPT 2" in log_text
+    assert "Rerun to get cross-references right" not in log_text
 
 
 @pytest.mark.skipif(shutil.which("pdflatex") is None, reason="pdflatex is unavailable")

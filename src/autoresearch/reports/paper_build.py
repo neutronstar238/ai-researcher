@@ -865,30 +865,71 @@ def _compile_latex(
     *,
     timeout_seconds: int,
 ) -> tuple[LatexPaperBuildStatus, Path | None, str | None]:
-    try:
-        completed = subprocess.run(
-            command,
-            cwd=tex_path.parent,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout_seconds,
+    attempts: list[tuple[int, subprocess.CompletedProcess[str]]] = []
+    reruns_completed = 0
+    pdf_path = tex_path.with_suffix(".pdf")
+    for attempt in range(1, 3):
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=tex_path.parent,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            log_path.write_text(str(exc), encoding="utf-8")
+            return (
+                LatexPaperBuildStatus.FAILED,
+                None,
+                f"compile timed out after {timeout_seconds}s",
+            )
+        attempts.append((attempt, completed))
+        if completed.returncode != 0 or not pdf_path.exists():
+            log_path.write_text(_compile_log_text(attempts), encoding="utf-8")
+            return (
+                LatexPaperBuildStatus.FAILED,
+                None,
+                f"LaTeX compile failed with exit code {completed.returncode}",
+            )
+        if attempt == 1 and _latex_log_requests_rerun(completed.stdout + completed.stderr):
+            reruns_completed += 1
+            continue
+        log_path.write_text(
+            _compile_log_text([(attempt, completed)], reruns_completed=reruns_completed),
+            encoding="utf-8",
         )
-    except subprocess.TimeoutExpired as exc:
-        log_path.write_text(str(exc), encoding="utf-8")
-        return LatexPaperBuildStatus.FAILED, None, f"compile timed out after {timeout_seconds}s"
+        return LatexPaperBuildStatus.COMPILED, pdf_path, None
     log_path.write_text(
-        "STDOUT:\n" + completed.stdout + "\nSTDERR:\n" + completed.stderr,
+        _compile_log_text(attempts[-1:], reruns_completed=reruns_completed),
         encoding="utf-8",
     )
-    pdf_path = tex_path.with_suffix(".pdf")
-    if completed.returncode == 0 and pdf_path.exists():
-        return LatexPaperBuildStatus.COMPILED, pdf_path, None
-    return (
-        LatexPaperBuildStatus.FAILED,
-        None,
-        f"LaTeX compile failed with exit code {completed.returncode}",
+    return LatexPaperBuildStatus.COMPILED, pdf_path, None
+
+
+def _compile_log_text(
+    attempts: list[tuple[int, subprocess.CompletedProcess[str]]],
+    *,
+    reruns_completed: int = 0,
+) -> str:
+    sections: list[str] = [f"RERUNS_COMPLETED: {reruns_completed}"]
+    for attempt, completed in attempts:
+        sections.append(
+            f"ATTEMPT {attempt}\n"
+            f"STDOUT:\n{completed.stdout}\n"
+            f"STDERR:\n{completed.stderr}"
+        )
+    return "\n\n".join(sections)
+
+
+def _latex_log_requests_rerun(log_text: str) -> bool:
+    rerun_markers = (
+        "Rerun to get cross-references right",
+        "Rerun to get citations correct",
+        "Label(s) may have changed",
     )
+    return any(marker in log_text for marker in rerun_markers)
 
 
 def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:

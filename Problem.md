@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260616-068 - Paper build logs retained first-pass LaTeX rerun warnings
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-16 17:52:00 +08:00
+- Source: Live `task126_pendigits_live` publication-grade PDF audit after the paper build passed.
+- Symptom: The generated PDF was valid and the paper quality gate passed, but `compile.log` still contained `LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.` from the first `pdflatex` pass.
+- Impact: Operators could misread a successful paper build as having unresolved reference instability, especially during final release QA.
+- Evidence: `rg` on `runs/manual-live/task126-pendigits-live/runs/cycle-20260616T094744Z/paper-build/compile.log` found the label rerun warning even though the paper build had `overfull_hbox=0`, quality passed, and a 14-page PDF.
+- Root cause: `_compile_latex` ran the selected LaTeX engine once and wrote that first-pass log directly.
+- Workaround: None needed after the fix.
+- Next action: Keep release paper-build logs focused on the final stable attempt and rely on failed-build logs for full diagnostic output.
+- Linked tasks: `126.1`
+- Resolution: `_compile_latex` now detects first-pass label/cross-reference/citation rerun markers, executes one additional pass, and writes the final successful attempt with `RERUNS_COMPLETED`.
+- Verification: Unit test `test_compile_latex_reruns_when_cross_references_need_second_pass` passed; real `airesearcher paper-build` on the Pendigits manuscript produced a 14-page PDF and a final `compile.log` containing `RERUNS_COMPLETED: 1` and `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches.
+
 ### P-20260616-067 - Autopilot could execute experiments without consuming the research-plan gate
 
 - Status: Resolved
