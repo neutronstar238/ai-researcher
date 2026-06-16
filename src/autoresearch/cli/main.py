@@ -2308,6 +2308,16 @@ def autopilot(
             preflight = summary["source_preflight"]
             prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
             typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+        if "research_plan" in summary:
+            research_plan = summary["research_plan"]
+            plan_audit = research_plan.get("audit") if isinstance(research_plan, dict) else {}
+            plan_verdict = (
+                plan_audit.get("verdict")
+                if isinstance(plan_audit, dict)
+                else "unknown"
+            )
+            prefix = "[OK]" if plan_verdict == "passed" else "[BLOCKED]"
+            typer.echo(f"{prefix} research_plan: {plan_verdict}")
         typer.echo(f"[OK] review_status: {summary['review']['status']}")
         if "publication_audit" in summary:
             typer.echo(
@@ -3208,6 +3218,63 @@ def _run_autopilot_cycle(
             project_id=project_id,
         )
 
+    research_plan_artifact = generate_research_plan(
+        candidate=candidate,
+        project_id=project_id,
+        vault_root=vault,
+        output_dir=cycle_dir,
+        compile_pdf=True,
+        similarity_summary=getattr(similarity_report, "summary_path", None),
+        literature_summary=getattr(literature_report, "summary_path", None),
+        timeout_seconds=max(timeout_seconds, 60),
+    )
+    research_plan_payload = research_plan_artifact.to_dict()
+    if (
+        not research_plan_artifact.audit.passed
+        or research_plan_artifact.compile_status != "compiled"
+    ):
+        followup_records = _issue_followup_records(vault, project_id)
+        _merge_scheduler_state(state, followup_records)
+        blocked_summary = {
+            "cycle_id": cycle_id,
+            "status": "blocked",
+            "blocked_reason": "research_plan_gate",
+            "started_at": now.isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": project_id,
+            "vault": vault.as_posix(),
+            "cache": cache.as_posix(),
+            "source_preflight": source_preflight,
+            "candidate_path": candidate_path.as_posix(),
+            "literature": {
+                "query_count": len(getattr(literature_report, "queries", ())),
+                "fetches": _serialise_fetches(getattr(literature_report, "fetches", ())),
+                "document_count": len(getattr(literature_report, "documents", ())),
+                "summary_path": _path_text(getattr(literature_report, "summary_path", None)),
+            },
+            "candidate": candidate.model_dump(mode="json"),
+            "similarity": {
+                "fetches": _serialise_fetches(getattr(similarity_report, "fetches", ())),
+                "finding_count": len(getattr(similarity_report, "findings", ())),
+                "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
+                "project_path": _path_text(similarity_project_path),
+            },
+            "research_plan": research_plan_payload,
+            "review": {"status": "skipped_research_plan_gate"},
+            "followups": {
+                "state_path": state.as_posix(),
+                "task_count": len(followup_records),
+                "tasks": followup_records,
+            },
+        }
+        summary_path = cycle_dir / "cycle-summary.json"
+        blocked_summary["summary_path"] = summary_path.as_posix()
+        summary_path.write_text(
+            json.dumps(blocked_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        return blocked_summary
+
     inspiration_report = run_inspiration_refresh(
         vault_root=vault,
         queries=_autopilot_inspiration_queries(candidate, demo=demo),
@@ -3257,6 +3324,7 @@ def _run_autopilot_cycle(
             "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
             "project_path": _path_text(similarity_project_path),
         },
+        "research_plan": research_plan_payload,
         "inspiration": {
             "query_count": len(getattr(inspiration_report, "queries", ())),
             "fetches": _serialise_inspiration_fetches(
@@ -3328,6 +3396,7 @@ def _run_autopilot_cycle(
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
+        "research_plan": summary["research_plan"],
         "citations": summary["citations"],
         "related_work_inspection": summary["related_work_inspection"],
         "demo": summary["demo"],
@@ -3356,6 +3425,9 @@ def _run_autopilot_cycle(
     ]
     for optional_path in (
         getattr(literature_report, "summary_path", None),
+        research_plan_payload.get("markdown_path"),
+        research_plan_payload.get("json_path"),
+        research_plan_payload.get("tex_path"),
         citations.get("metadata_path"),
         citations.get("bib_path"),
         summary["related_work_inspection"].get("json_path"),
@@ -3517,6 +3589,8 @@ def _autopilot_review_audit_summary(
 
     literature = mapping(summary.get("literature"))
     similarity = mapping(summary.get("similarity"))
+    research_plan = mapping(summary.get("research_plan"))
+    research_plan_audit = mapping(research_plan.get("audit"))
     citations = mapping(summary.get("citations"))
     related_work = mapping(summary.get("related_work_inspection"))
     paper_manuscript = mapping(summary.get("paper_manuscript"))
@@ -3536,6 +3610,19 @@ def _autopilot_review_audit_summary(
             "finding_count": similarity.get("finding_count"),
             "summary_path": similarity.get("summary_path"),
             "project_path": similarity.get("project_path"),
+        },
+        "research_plan": {
+            "verdict": research_plan_audit.get("verdict"),
+            "passed": research_plan_audit.get("passed"),
+            "score": research_plan_audit.get("score"),
+            "issues": research_plan_audit.get("issues", []),
+            "warnings": research_plan_audit.get("warnings", []),
+            "compile_status": research_plan.get("compile_status"),
+            "page_count": research_plan.get("page_count"),
+            "markdown_path": research_plan.get("markdown_path"),
+            "json_path": research_plan.get("json_path"),
+            "tex_path": research_plan.get("tex_path"),
+            "pdf_path": research_plan.get("pdf_path"),
         },
         "citations": {
             "additional_verified_record_count": formal_references.get("omitted_verified_count"),
@@ -4594,6 +4681,9 @@ def _export_cycle_deliverables(
     paper_build = summary.get("paper_build")
     if not isinstance(paper_build, dict):
         paper_build = {}
+    research_plan = summary.get("research_plan")
+    if not isinstance(research_plan, dict):
+        research_plan = {}
     paper_manuscript = summary.get("paper_manuscript")
     if not isinstance(paper_manuscript, dict):
         paper_manuscript = {}
@@ -4655,6 +4745,26 @@ def _export_cycle_deliverables(
         "llm_review_json",
         review.get("output_path"),
         f"{project_slug}-{cycle_id}-llm-review.json",
+    )
+    copy_artifact(
+        "research_plan_pdf",
+        research_plan.get("pdf_path"),
+        f"{project_slug}-{cycle_id}-research-plan.pdf",
+    )
+    copy_artifact(
+        "research_plan_tex",
+        research_plan.get("tex_path"),
+        f"{project_slug}-{cycle_id}-research-plan.tex",
+    )
+    copy_artifact(
+        "research_plan_json",
+        research_plan.get("json_path"),
+        f"{project_slug}-{cycle_id}-research-plan.json",
+    )
+    copy_artifact(
+        "research_plan_markdown",
+        research_plan.get("markdown_path"),
+        f"{project_slug}-{cycle_id}-research-plan.md",
     )
     copy_artifact("cycle_summary_json", summary_path, f"{project_slug}-{cycle_id}-summary.json")
 

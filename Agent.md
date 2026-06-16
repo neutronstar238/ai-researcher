@@ -62,6 +62,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-16 17:46:30 +08:00 - Codex - Task 125.1 autopilot research-plan gate
+
+- Request:
+  - Continue running the implementation plan and make the autonomous loop use the post-direction research-plan stage before code/experiment execution.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inserted research-plan generation into `airesearcher autopilot` after source/literature/candidate/similarity work and before inspiration refresh, demo execution, paper build, and review.
+  - Added fail-closed cycle blocking when the plan audit fails or the plan PDF does not compile, with `blocked_reason=research_plan_gate`.
+  - Added research-plan payloads to successful cycle summaries, CLI status output, review audit context, review evidence paths, and exported deliverables.
+  - Added tests covering the normal autopilot path and the blocked-before-experiment path.
+  - Added task `125.1` and updated the waves index through task `125.1`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 2 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 483 passed, 4 skipped, and 1 warning.
+  - Real autopilot smoke: `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task125-autopilot-plan\vault --cache runs\manual-live\task125-autopilot-plan\cache --output-dir runs\manual-live\task125-autopilot-plan\runs --deliverables-dir runs\manual-live\task125-autopilot-plan\outputs --state runs\manual-live\task125-autopilot-plan\scheduler-state.json --project-id task125_autopilot_plan --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --paper-template-id generic-article-one-column --no-review` passed, printed `[OK] research_plan: passed`, compiled a 3-page A4 research-plan PDF, ran demo/reproduction only after the plan gate, and exported `research_plan_markdown`, `research_plan_json`, `research_plan_tex`, and `research_plan_pdf` in the deliverables manifest.
+  - `pdfinfo runs\manual-live\task125-autopilot-plan\outputs\task125_autopilot_plan\task125_autopilot_plan-cycle-20260616T093901Z-research-plan.pdf`: confirmed 3 A4 pages.
+  - `rg -n "赛题|参赛|比赛|人工评审|manual review|TODO|TBD" ...research-plan.md ...research-plan.tex`: returned no matches.
+- Problems:
+  - Added and resolved `P-20260616-067`.
+- Follow-up:
+  - Publication/evidence gates still correctly fail when `--no-review` skips the LLM evidence reviewer; run future paper-ready checks without `--no-review` and with model credentials active.
+
 ### 2026-06-16 16:59:30 +08:00 - Codex - Task 124.1 post-direction research-plan gate
 
 - Request:

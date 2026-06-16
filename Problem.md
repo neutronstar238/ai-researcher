@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260616-067 - Autopilot could execute experiments without consuming the research-plan gate
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 17:18:00 +08:00
+- Source: Follow-up from task `124.1` while wiring the post-direction research-plan gate into the always-on loop.
+- Symptom: `airesearcher research-plan` could generate and audit a rigorous plan, but `airesearcher autopilot` still advanced from similarity checking into inspiration refresh, demo execution, paper build, and review without requiring that plan artifact.
+- Impact: The always-on cycle could still run code-agent or experiment work from a broad candidate rather than from a durable, audited, Obsidian-backed research plan.
+- Evidence: Before the fix, `_run_autopilot_cycle` in `src/autoresearch/cli/main.py` called literature refresh, candidate generation, similarity, inspiration refresh, and `run_scientistbench_demo` without a research-plan gate between similarity and execution.
+- Root cause: Task `124.1` added the standalone plan generator and audit commands, but did not yet integrate them into the autopilot execution path.
+- Workaround: None needed after the fix.
+- Next action: Keep future code-agent and external experiment adapters behind the same `research_plan_gate` fail-closed contract.
+- Linked tasks: `125.1`
+- Resolution: Added research-plan generation to autopilot before inspiration and experiment execution; blocked the cycle when the plan audit fails or PDF compilation is not successful; added plan artifacts to summaries, review context, evidence inputs, CLI status, and deliverables.
+- Verification: Focused autopilot tests passed for both the normal path and the blocked-before-experiment path; full `python -m pytest tests\smoke tests\unit -q` passed with 483 passed, 4 skipped, and 1 warning; real `airesearcher autopilot` smoke under `runs/manual-live/task125-autopilot-plan` printed `[OK] research_plan: passed`, compiled a 3-page plan PDF, ran the demo only after the plan gate, and exported plan Markdown/JSON/TEX/PDF in the deliverables manifest.
+
 ### P-20260616-066 - Verification caught research-plan import ordering and timeout-output typing
 
 - Status: Resolved

@@ -1807,6 +1807,18 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that after the user confirms a research direction the system must first create a detailed, specific, feasible, rigorous research plan that can guide code agents and experiments; the Markdown version belongs in the Obsidian knowledge base, while the PDF version belongs in `outputs/`; the plan/PDF should be a normal research plan for a system-discovered topic, not a contest proposal or the AI-Researcher project itself._
     - _Verify: `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; focused `python -m pytest tests\unit\research\test_plans.py tests\unit\cli\test_main.py::test_research_plan_command_writes_vault_markdown_and_outputs tests\unit\cli\test_main.py::test_research_plan_audit_blocks_forbidden_title -q` passed with 5 tests; full `python -m pytest tests\smoke tests\unit -q` passed with 482 passed, 4 skipped, and 1 warning. Real CLI smoke `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task124-research-plan\candidate.json --project-id task124_research_plan --vault runs\manual-live\task124-research-plan\vault --output-dir runs\manual-live\task124-research-plan\outputs --compile-pdf --timeout-seconds 180` passed, compiled a 3-page A4 PDF, wrote vault Markdown and JSON/TEX/PDF artifacts, and `research-plan-audit` passed on the generated JSON. `pdfinfo` confirmed 3 pages; `rg` confirmed the generated Markdown/TEX title preserves `UCI` and contains no `XH-202619`, `参赛`, `赛事`, `发榜`, `主办`, `评分`, `浙江阿里巴巴`, `AI-Researcher competition proposal`, or `AI-Researcher system`; `pdftoppm` rendered page 1 and visual inspection found no obvious overflow._
 
+- [x] 125. Autopilot research-plan enforcement
+  - [x] 125.1 Require a passed research-plan gate before inspiration, experiment, paper, and review work
+    - Insert `generate_research_plan` into the autopilot cycle after source preflight, literature refresh, candidate generation, and similarity check, but before inspiration refresh and demo/code-agent execution.
+    - Pass literature and similarity summary paths into the research-plan generator so the plan can bind claims to adjacent-work evidence.
+    - Fail closed when the research-plan audit does not pass or the plan PDF does not compile: write a blocked `cycle-summary.json`, record `blocked_reason=research_plan_gate`, preserve scheduler follow-ups, and skip inspiration, experiment, paper, and review stages.
+    - Include the research-plan artifact payload in successful cycle summaries and CLI status output.
+    - Include the research-plan gate in the review audit context and add plan Markdown/JSON/TEX artifacts to review evidence inputs.
+    - Export plan Markdown/JSON/TEX/PDF files through the autopilot deliverables manifest under the project output directory.
+    - Add unit coverage for the successful autopilot path and the blocked-before-experiment path.
+    - _References: Task `124.1` follow-up; user requirement that after research direction selection the system writes a concrete plan into Obsidian before code agents implement experiments; strict evidence-first loop where no unsupported or unplanned experiment should run._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 2 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 483 passed, 4 skipped, and 1 warning. Real autopilot smoke `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task125-autopilot-plan\vault --cache runs\manual-live\task125-autopilot-plan\cache --output-dir runs\manual-live\task125-autopilot-plan\runs --deliverables-dir runs\manual-live\task125-autopilot-plan\outputs --state runs\manual-live\task125-autopilot-plan\scheduler-state.json --project-id task125_autopilot_plan --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --paper-template-id generic-article-one-column --no-review` passed, printed `[OK] research_plan: passed`, compiled a 3-page A4 research-plan PDF, ran the demo/reproduction path after the plan gate, exported `research_plan_markdown`, `research_plan_json`, `research_plan_tex`, and `research_plan_pdf` in the deliverables manifest, and kept the final publication/evidence gates blocked because the LLM evidence review was intentionally skipped by `--no-review`. `rg` confirmed the generated plan Markdown/TEX contains no `赛题`, `参赛`, `比赛`, `人工评审`, `manual review`, `TODO`, or `TBD`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2199,6 +2211,30 @@ A task can be checked only when all applicable items are true:
     {
       "id": 86,
       "tasks": ["119.1"]
+    },
+    {
+      "id": 87,
+      "tasks": ["120.1"]
+    },
+    {
+      "id": 88,
+      "tasks": ["121.1"]
+    },
+    {
+      "id": 89,
+      "tasks": ["122.1"]
+    },
+    {
+      "id": 90,
+      "tasks": ["123.1"]
+    },
+    {
+      "id": 91,
+      "tasks": ["124.1"]
+    },
+    {
+      "id": 92,
+      "tasks": ["125.1"]
     }
   ]
 }

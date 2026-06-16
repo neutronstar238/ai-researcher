@@ -1430,7 +1430,50 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     def fake_link_similarity_report_to_project(**_kwargs: object) -> Path:
         return project_similarity
 
+    call_order: list[str] = []
+
+    def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        call_order.append("research_plan")
+        assert kwargs["project_id"] == "project_1"
+        assert kwargs["vault_root"] == tmp_path / "vault"
+        assert Path(kwargs["similarity_summary"]) == similarity_summary
+        assert Path(kwargs["literature_summary"]) == literature_summary
+        plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
+        plan_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = plan_dir / "research-plan.md"
+        json_path = plan_dir / "research-plan.json"
+        tex_path = plan_dir / "research-plan.tex"
+        pdf_path = plan_dir / "research-plan.pdf"
+        markdown_path.write_text("# Plan\n", encoding="utf-8")
+        json_path.write_text("{}", encoding="utf-8")
+        tex_path.write_text(
+            "\\documentclass{article}\\begin{document}Plan\\end{document}\n",
+            encoding="utf-8",
+        )
+        pdf_path.write_text("%PDF-1.4\n", encoding="utf-8")
+        payload = {
+            "audit": {
+                "verdict": "passed",
+                "passed": True,
+                "score": 1.0,
+                "issues": [],
+                "warnings": [],
+            },
+            "markdown_path": markdown_path.as_posix(),
+            "json_path": json_path.as_posix(),
+            "tex_path": tex_path.as_posix(),
+            "pdf_path": pdf_path.as_posix(),
+            "compile_status": "compiled",
+            "page_count": 2,
+        }
+        return SimpleNamespace(
+            audit=SimpleNamespace(passed=True),
+            compile_status="compiled",
+            to_dict=lambda: payload,
+        )
+
     def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
+        assert call_order == ["research_plan"]
         config = kwargs["config"]
         queries = tuple(kwargs["queries"])
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
@@ -1463,6 +1506,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["research_plan"]
         output_dir = Path(kwargs["output_dir"])
         experiment_dir = output_dir / "tabular-baseline"
         report_path = experiment_dir / "report" / "report.md"
@@ -1653,6 +1697,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "references.bib",
             "related-work-inspection.json",
             "related-work-inspection.md",
+            "research-plan.json",
+            "research-plan.md",
+            "research-plan.tex",
             "paper-build.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
@@ -1663,6 +1710,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
@@ -1701,6 +1749,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     assert result.exit_code == 0, result.output
     assert "[OK] autopilot_cycle:" in result.stdout
+    assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
     assert "[OK] evidence_gate: blocked" in result.stdout
@@ -1728,6 +1777,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "autonomous-research",
     ]
     assert payload["similarity"]["finding_count"] == 1
+    assert payload["research_plan"]["audit"]["passed"] is True
+    assert payload["research_plan"]["compile_status"] == "compiled"
+    assert payload["research_plan"]["page_count"] == 2
     assert payload["inspiration"]["item_count"] == 1
     assert payload["inspiration"]["pushes"] == []
     assert payload["inspiration"]["evidence_policy"] == (
@@ -1746,6 +1798,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
+    assert review_context["audit_summary"]["research_plan"]["passed"] is True
+    assert review_context["audit_summary"]["research_plan"]["compile_status"] == "compiled"
     candidate_summary = review_context["audit_summary"]["candidate"]
     assert candidate_summary["title"].startswith("Evidence-bound self-evolving research loop")
     assert "durable evidence memory" in candidate_summary["research_gap"]
@@ -1780,10 +1834,136 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         Path(payload["deliverables"]["manifest_path"]).read_text(encoding="utf-8")
     )
     assert deliverables_manifest["paths"]["paper_pdf"].endswith(".pdf")
+    assert deliverables_manifest["paths"]["research_plan_pdf"].endswith("-research-plan.pdf")
+    assert deliverables_manifest["paths"]["research_plan_json"].endswith("-research-plan.json")
     assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
     assert len(review_calls) == 1
+
+
+def test_autopilot_research_plan_gate_blocks_before_experiment(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
+    similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
+    for path in (literature_summary, similarity_summary, project_similarity):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("summary", encoding="utf-8")
+
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="Evidence Graphs for Autonomous Research",
+        source_uri="https://example.test/paper",
+        authors=["A. Researcher"],
+        abstract="Evidence graphs connect claims to validation artifacts.",
+        publication_date=datetime(2026, 6, 13, tzinfo=timezone.utc),
+        venue="ExampleConf",
+        doi="10.1234/example",
+        tags=["evidence-graph"],
+    )
+    fetch = SimpleNamespace(
+        source="openalex",
+        query="evidence graph autonomous research",
+        paper_count=1,
+        cache_hit=False,
+        error=None,
+    )
+    shared_clients = {"arxiv": object(), "openalex": object()}
+
+    def fake_literature_refresh(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            queries=(SimpleNamespace(text="evidence graph autonomous research"),),
+            fetches=(fetch,),
+            documents=(seed_document,),
+            summary_path=literature_summary,
+        )
+
+    def fake_similarity_check(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            fetches=(fetch,),
+            findings=(SimpleNamespace(source_uri="https://example.test/paper"),),
+            summary_path=similarity_summary,
+        )
+
+    def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
+        plan_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = plan_dir / "research-plan.md"
+        json_path = plan_dir / "research-plan.json"
+        tex_path = plan_dir / "research-plan.tex"
+        for path in (markdown_path, json_path, tex_path):
+            path.write_text("blocked", encoding="utf-8")
+        payload = {
+            "audit": {
+                "verdict": "failed",
+                "passed": False,
+                "score": 0.4,
+                "issues": ["title must be a discovered research topic"],
+                "warnings": [],
+            },
+            "markdown_path": markdown_path.as_posix(),
+            "json_path": json_path.as_posix(),
+            "tex_path": tex_path.as_posix(),
+            "pdf_path": None,
+            "compile_status": "skipped_quality_gate",
+            "compile_reason": "research-plan audit did not pass",
+            "page_count": None,
+        }
+        return SimpleNamespace(
+            audit=SimpleNamespace(passed=False),
+            compile_status="skipped_quality_gate",
+            to_dict=lambda: payload,
+        )
+
+    def fail_if_called(**_kwargs: object) -> object:
+        raise AssertionError("research-plan-blocked cycle should not run later stages")
+
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
+    monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "link_similarity_report_to_project", lambda **_kwargs: project_similarity)
+    monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
+    monkeypatch.setattr(cli_main, "compose_publication_manuscript", fail_if_called)
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--state",
+            str(state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] research_plan: failed" in result.stdout
+    assert "[OK] review_status: skipped_research_plan_gate" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "research_plan_gate"
+    assert payload["research_plan"]["audit"]["passed"] is False
+    assert payload["research_plan"]["compile_status"] == "skipped_quality_gate"
+    assert payload["review"]["status"] == "skipped_research_plan_gate"
+    assert "inspiration" not in payload
+    assert "demo" not in payload
+    assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 
 
 def test_autopilot_reference_locator_keeps_full_dotted_doi() -> None:
