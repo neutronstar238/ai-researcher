@@ -7824,3 +7824,33 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-093` added and resolved.
 - Follow-up:
   - A real prelaunch pass still requires the operator to complete QR pairing and run `channels test --require-sent`.
+
+### 2026-06-18 04:47:00 +08:00 - Codex - Task 174.1 Operator monitor publication gate visibility
+
+- Request: Continue autonomous project iteration and improve launch-quality gate visibility in the CLI operator monitor after a real no-push `serve --once` cycle.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added publication-audit monitor status that summarizes score, target, blocker count, and first failed check.
+  - Added evidence-gate monitor status that summarizes failed-check count, `release_allowed`, and first failed check.
+  - Added gate evidence text that surfaces the first blocker message and next action directly in the monitor stage table.
+  - Fixed follow-up rendering for real serve cycle summaries that write `followups.tasks` instead of the legacy `followup_tasks` key.
+  - Updated the monitor unit fixture so blocked publication/evidence gates and current follow-up task shape are covered.
+- Verification:
+  - Initial focused monitor test failed because a Rich column-width truncation assertion expected the full `literature_query_breadth` ID in terminal stdout; the test was adjusted to assert exact blocker IDs through structured `_cycle_stage_rows()` and compact UI fields through stdout.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed with 1 test.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - Real monitor rerun: `node ./bin/airesearcher.mjs monitor --runtime-state runs\manual-live\task174-serve-no-push\approvals.json --scheduler-state runs\manual-live\task174-serve-no-push\scheduler-state.json --sessions-state runs\manual-live\task174-serve-no-push\sessions.json --outputs-dir runs\manual-live\task174-serve-no-push\outputs --cycle-summary runs\manual-live\task174-serve-no-push\runs\cycle-20260617T203842Z\cycle-summary.json --no-diff --max-agent-entries 2` displayed `publication` with `fail; score=0.327; target=ccf-b; blockers=19; first=literature_query_breadth`, `evidence` with `blocked; failed=2; release_allowed=false; first=review_gate`, and `follow-ups` with `5 open / 5 total`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-094` added and resolved.
+- Follow-up:
+  - Continue using real cycle summaries to validate operator monitor changes, especially blocked publication-quality cases rather than only all-pass fixtures.

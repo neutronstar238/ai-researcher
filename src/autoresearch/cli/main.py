@@ -6668,8 +6668,13 @@ def _cycle_stage_rows(
         ),
         (
             "publication",
-            _nested_status(payload, "publication_audit"),
-            _cycle_evidence(payload, "publication_audit", ("markdown_path", "json_path", "output_path"), summary_path),
+            _publication_audit_status(payload),
+            _gate_evidence(
+                payload,
+                "publication_audit",
+                ("markdown_path", "json_path", "output_path"),
+                summary_path,
+            ),
         ),
         (
             "paper",
@@ -6683,8 +6688,8 @@ def _cycle_stage_rows(
         ),
         (
             "evidence",
-            _nested_status(payload, "evidence_gate"),
-            _cycle_evidence(payload, "evidence_gate", ("markdown_path", "json_path", "output_path"), summary_path),
+            _evidence_gate_status(payload),
+            _gate_evidence(payload, "evidence_gate", ("markdown_path", "json_path", "output_path"), summary_path),
         ),
         (
             "follow-ups",
@@ -6825,8 +6830,45 @@ def _paper_build_status(payload: Mapping[str, Any]) -> str:
     return status
 
 
+def _publication_audit_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("publication_audit")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "publication_audit")
+    status = _nested_status(payload, "publication_audit")
+    score = value.get("score")
+    if isinstance(score, int | float):
+        status = f"{status}; score={score:.3f}"
+    target = value.get("target")
+    if isinstance(target, Mapping) and target.get("name"):
+        status = f"{status}; target={target['name']}"
+    blockers = _failed_gate_checks(value)
+    if blockers:
+        first_id = str(blockers[0].get("check_id") or "unnamed_check")
+        status = f"{status}; blockers={len(blockers)}; first={_truncate_cell(first_id, limit=32)}"
+    return status
+
+
+def _evidence_gate_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("evidence_gate")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "evidence_gate")
+    status = _nested_status(payload, "evidence_gate")
+    failed_count = value.get("failed_check_count")
+    blockers = _failed_gate_checks(value)
+    if failed_count is None and blockers:
+        failed_count = len(blockers)
+    if failed_count is not None:
+        status = f"{status}; failed={failed_count}"
+    if value.get("release_allowed") is not None:
+        status = f"{status}; release_allowed={str(value['release_allowed']).lower()}"
+    if blockers:
+        first_id = str(blockers[0].get("check_id") or "unnamed_check")
+        status = f"{status}; first={_truncate_cell(first_id, limit=32)}"
+    return status
+
+
 def _followup_status(payload: Mapping[str, Any]) -> str:
-    tasks = _mapping_list(payload.get("followup_tasks"))
+    tasks = _summary_followup_tasks(payload)
     if not tasks:
         return "none"
     statuses = [str(task.get("status", "open")) for task in tasks]
@@ -6862,8 +6904,58 @@ def _cycle_evidence(
     return _format_evidence_paths(paths, fallback=summary_path.name)
 
 
-def _followup_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+def _gate_evidence(
+    payload: Mapping[str, Any],
+    key: str,
+    fields: tuple[str, ...],
+    summary_path: Path,
+) -> str:
+    evidence = _cycle_evidence(payload, key, fields, summary_path)
+    value = payload.get(key)
+    if not isinstance(value, Mapping):
+        return evidence
+    blockers = _failed_gate_checks(value)
+    if not blockers:
+        return evidence
+    blocker = blockers[0]
+    parts: list[str] = []
+    message = blocker.get("message")
+    if isinstance(message, str) and message.strip():
+        parts.append(f"blocker: {message.strip()}")
+    next_action = blocker.get("next_action")
+    if isinstance(next_action, str) and next_action.strip():
+        parts.append(f"next: {next_action.strip()}")
+    if not parts:
+        check_id = blocker.get("check_id")
+        if check_id is not None:
+            parts.append(f"blocker: {check_id}")
+    if not parts:
+        return evidence
+    detail = _truncate_cell("; ".join(parts), limit=160)
+    return f"{evidence}; {detail}"
+
+
+def _failed_gate_checks(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    failed: list[Mapping[str, Any]] = []
+    for check in _mapping_list(value.get("checks")):
+        status = str(check.get("status", "")).casefold()
+        if status and status not in {"pass", "passed", "ok", "success"}:
+            failed.append(check)
+    return failed
+
+
+def _summary_followup_tasks(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     tasks = _mapping_list(payload.get("followup_tasks"))
+    if tasks:
+        return tasks
+    followups = payload.get("followups")
+    if isinstance(followups, Mapping):
+        return _mapping_list(followups.get("tasks"))
+    return []
+
+
+def _followup_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+    tasks = _summary_followup_tasks(payload)
     paths: list[str] = []
     for task in tasks[:3]:
         for field in ("issue_path", "markdown_path", "path"):
@@ -6871,6 +6963,11 @@ def _followup_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
             if isinstance(field_value, str) and field_value.strip():
                 paths.append(field_value)
                 break
+        metadata = task.get("metadata")
+        if isinstance(metadata, Mapping):
+            field_value = metadata.get("issue_path")
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
     return _format_evidence_paths(paths, fallback=summary_path.name if tasks else "no queued follow-ups")
 
 

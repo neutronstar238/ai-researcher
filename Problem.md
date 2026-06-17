@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-094 - Monitor hid publication and evidence gate blockers from real serve cycle
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 04:39:00 +08:00
+- Source: Real `serve --once` no-push cycle `runs/manual-live/task174-serve-no-push/runs/cycle-20260617T203842Z/cycle-summary.json` inspected through `airesearcher monitor`.
+- Symptom: The operator monitor showed `publication=fail` and `evidence=blocked`, but did not summarize the failed check count, first blocker, next action, or real `followups.tasks` count. The stage row also showed `follow-ups none` even though the scheduler queue contained five open issue follow-up tasks.
+- Impact: A long-running operator could see that the cycle was not publishable without seeing why, which weakens the launch requirement that the CLI surface show quality gates, output status, and actionable next work during autonomous operation.
+- Evidence: Before the fix, the real monitor run showed `publication fail`, `evidence blocked`, and `follow-ups none` while `publication_audit.checks` contained nineteen failed checks, `evidence_gate.failed_check_count` was two, and `followups.task_count` was five.
+- Root cause: `_cycle_stage_rows()` used generic nested status rendering for release gates and `_followup_status()` only read the legacy `followup_tasks` key rather than current `followups.tasks` written by serve cycles.
+- Workaround: Before this fix, inspect `publication-audit.json`, `evidence-gate.json`, and `scheduler-state.json` manually.
+- Next action: Keep future monitor changes covered against real cycle-summary shapes rather than only handcrafted all-pass fixtures.
+- Linked tasks: `142.1`, `152.1`, `174.1`
+- Resolution: Added publication and evidence gate status helpers that summarize score, target, failed-check count, `release_allowed`, and first failed check; added gate evidence text with the first blocker message and next action; and added follow-up parsing for both `followup_tasks` and `followups.tasks`.
+- Verification: Focused monitor test, ruff, and mypy passed; real monitor rerun against `task174` displayed `publication fail; score=0.327; target=ccf-b; blockers=19; first=literature_query_breadth`, `evidence blocked; failed=2; release_allowed=false; first=review_gate`, and `follow-ups 5 open / 5 total`.
+
 ### P-20260618-093 - Prelaunch WeChat repair command did not explicitly launch QR setup
 
 - Status: Resolved

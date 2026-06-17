@@ -3615,7 +3615,18 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                     "vault_review": "vault/projects/project_1/review/llm-review.md",
                 },
                 "publication_audit": {
-                    "verdict": "pass",
+                    "verdict": "fail",
+                    "score": 0.3269,
+                    "target": {"name": "ccf-b"},
+                    "checks": [
+                        {
+                            "check_id": "literature_query_breadth",
+                            "message": "Literature query breadth is 1; target requires at least 4.",
+                            "next_action": "Expand query variants from title, gap, methods, datasets, baselines, negative evidence, and vault context.",
+                            "severity": "blocking",
+                            "status": "fail",
+                        }
+                    ],
                     "output_path": "runs/project_1/publication-audit.json",
                 },
                 "paper_build": {
@@ -3628,15 +3639,37 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                     },
                 },
                 "evidence_gate": {
-                    "verdict": "pass",
+                    "verdict": "blocked",
+                    "failed_check_count": 1,
+                    "release_allowed": False,
+                    "checks": [
+                        {
+                            "check_id": "review_gate",
+                            "message": "Reviewer verdict is `needs_revision`, not ready for release.",
+                            "next_action": "Resolve reviewer revision items before publication audit can pass.",
+                            "severity": "blocking",
+                            "status": "fail",
+                        }
+                    ],
                     "output_path": "runs/project_1/evidence-gate.json",
                 },
-                "followup_tasks": [
-                    {
-                        "status": "open",
-                        "issue_path": "vault/projects/project_1/issues/follow-up.md",
-                    }
-                ],
+                "followups": {
+                    "task_count": 2,
+                    "tasks": [
+                        {
+                            "status": "open",
+                            "metadata": {
+                                "issue_path": "projects/project_1/issues/evidence-gate.md",
+                            },
+                        },
+                        {
+                            "status": "completed",
+                            "metadata": {
+                                "issue_path": "projects/project_1/issues/review-fixed.md",
+                            },
+                        },
+                    ],
+                },
                 "deliverables": {
                     "manifest_path": "outputs/project_1/manifest.json",
                     "paths": {
@@ -3687,6 +3720,13 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "quality=pass" in result.stdout
     assert "network=approve-dangerous" in result.stdout
     assert "preflight=pass" in result.stdout
+    assert "score=0.327" in result.stdout
+    assert "target=ccf-b" in result.stdout
+    assert "blockers=1" in result.stdout
+    assert "failed=1" in result.stdout
+    assert "release_allowed=false" in result.stdout
+    assert "1 open / 2 total" in result.stdout
+    assert "evidence-gate.md" in result.stdout
     assert "compiled" in result.stdout
     assert "project_1-cycle.pdf" in result.stdout
     rows = {
@@ -3703,6 +3743,12 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "network=approve-dangerous" in rows["experiment"][0]
     assert "domains=2" in rows["experiment"][0]
     assert "findings=1" in rows["experiment"][0]
+    assert "literature_query_breadth" in rows["publication"][0]
+    assert "Literature query breadth is 1" in rows["publication"][1]
+    assert "review_gate" in rows["evidence"][0]
+    assert "Reviewer verdict is `needs_revision`" in rows["evidence"][1]
+    assert rows["follow-ups"][0] == "1 open / 2 total"
+    assert "evidence-gate.md" in rows["follow-ups"][1]
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:
