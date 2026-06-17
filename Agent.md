@@ -62,6 +62,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 07:12:26 +08:00 - Codex - Task 186.1 Formal bibliography directness
+
+- Request:
+  - Continue running launch-quality hardening so publication-facing PDF references remain method-direct and are not padded with broad domain-only handwritten-recognition papers.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added title/tag-level method-anchor constants for formal bibliography directness.
+  - Removed the broad rule that allowed handwritten/digit/recognition plus classifier/classification wording to enter formal References without a method anchor.
+  - Kept prototype, nearest-centroid, metric-recognition, and K-nearest-neighbor sources eligible for publication references.
+  - Added a regression citation for a verified handwritten Bangla MLP classifier paper and asserted it is excluded from the formal References section.
+  - Added completed task `186.1` and resolved `P-20260618-105`.
+- Verification:
+  - `python -m pytest tests\unit\reports\test_manuscript.py -q`: passed.
+  - `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\reports\manuscript.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task186-formal-reference-directness-v2\vault --cache runs\manual-live\task186-formal-reference-directness-v2\cache --output-dir runs\manual-live\task186-formal-reference-directness-v2\runs --deliverables-dir outputs --state runs\manual-live\task186-formal-reference-directness-v2\scheduler-state.json --approvals-state runs\manual-live\task186-formal-reference-directness-v2\approvals.json --sessions-state runs\manual-live\task186-formal-reference-directness-v2\sessions.json --project-id task186_formal_reference_directness_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and root PDF output under `outputs/task186_formal_reference_directness_v2/`.
+  - `Get-Content -Raw runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\paper-build\paper-build.json`: reported `paper_quality.passed=true`, `bibliography_item_count=10`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `Get-Content -Raw runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\formal-reference-evidence.md`: confirmed the displayed references no longer include `wahid2022` or `basu2012`.
+  - `pdfinfo outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z.pdf`: reported 15 pages.
+  - `pdfinfo outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z-research-plan.pdf`: reported 3 pages.
+  - `pdftotext outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z.pdf - | Select-String -Pattern 'Bangla|MLP|Handcrafted|Wahid|Basu|Boolean|Catoni|Variance function|References|Prototype|Nearest|K-nearest|Metrics and models'`: confirmed method-direct prototype/nearest/metric/KNN reference text is present and broad Bangla/MLP/domain-only entries are absent from PDF References.
+  - `python -m pytest tests\unit\reports -q`: passed with 90 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check -- src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-105`.
+- Follow-up:
+  - The compact `formal-reference-evidence.md` table still truncates arXiv `Manuscript locator` values to `http://arxiv`; this is a display artifact separate from PDF reference content and can be tightened in a later task.
+
 ### 2026-06-18 07:01:17 +08:00 - Codex - Task 185.1 Autopilot seed evidence alignment
 
 - Request:

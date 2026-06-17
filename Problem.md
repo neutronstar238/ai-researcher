@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-105 - Formal bibliography admitted broad domain-only handwritten-recognition references
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:04:00 +08:00
+- Source: Inspection of the real `task185_aligned_seed_evidence_v2` publication PDF and formal reference evidence artifact.
+- Symptom: The generated publication-facing References section still included broad context-only handwritten-recognition papers such as `wahid2022` and `basu2012` even after candidate seed evidence and research-plan evidence had been made method-aligned.
+- Impact: A final PDF could look citation-rich while padding the formal bibliography with papers that are domain-adjacent but not direct evidence for variance-calibrated prototypes, nearest-centroid baselines, metric recognition, or comparable method mechanisms.
+- Evidence: `runs\manual-live\task185-aligned-seed-evidence-v2\runs\cycle-20260617T225914Z\formal-reference-evidence.md` listed `wahid2022` and `basu2012` among 12 displayed references. During investigation, `Get-Content -Raw runs\manual-live\task185-aligned-seed-evidence-v2\runs\cycle-20260617T225914Z\paper-manuscript\analysis\formal-reference-evidence.md` failed because `formal-reference-evidence.md` lives at the cycle root, not under `paper-manuscript\analysis`.
+- Root cause: `_reference_row_is_direct()` treated title/tag overlap on handwritten/digit/pendigit plus classifier/classification/recognition as sufficient for direct publication references, even when no title-level method anchor such as prototype, centroid, nearest, Mahalanobis, metric, distance, or KNN was present.
+- Workaround: Before the fix, manually inspect `formal-reference-evidence.md` at the cycle root and demote broad handwritten-recognition references when checking a publication PDF.
+- Next action: Keep formal bibliography directness aligned with related-work directness, and fix separate locator-display artifacts if the compact evidence table's `Manuscript locator` column needs full URL rendering.
+- Linked tasks: `186.1`
+- Resolution: Added title/tag-level method anchor constants, removed the broad domain-only directness rule, and added a regression fixture where a verified handwritten Bangla MLP classifier paper remains available as citation metadata but is excluded from formal References.
+- Verification: Focused manuscript tests, ruff, and mypy passed. The real `task186_formal_reference_directness_v2` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; the paper PDF has 15 pages, zero overfull hboxes, and 10 formal bibliography items. `formal-reference-evidence.md` no longer lists `wahid2022` or `basu2012`, and `pdftotext` confirmed the final PDF keeps method-direct prototype/nearest/metric/KNN sources while omitting broad Bangla/MLP/domain-only entries.
+
 ### P-20260618-104 - Autopilot seed evidence could pollute research plans with unrelated or domain-only papers
 
 - Status: Resolved

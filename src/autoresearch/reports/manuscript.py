@@ -66,6 +66,29 @@ REFERENCE_TASK_ANCHOR_TOKENS = frozenset(
     }
 )
 
+REFERENCE_TITLE_METHOD_ANCHOR_TOKENS = frozenset(
+    {
+        "centroid",
+        "distance",
+        "knn",
+        "mahalanobi",
+        "mahalanobis",
+        "metric",
+        "nearest",
+        "prototype",
+    }
+)
+
+REFERENCE_TITLE_DOMAIN_ANCHOR_TOKENS = frozenset(
+    {
+        "character",
+        "digit",
+        "handwritten",
+        "pendigit",
+        "recognition",
+    }
+)
+
 REFERENCE_GENERIC_TOKENS = frozenset(
     {
         "also",
@@ -1460,14 +1483,13 @@ def _reference_row_is_direct(
         return True
     if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
         return True
-    if title_tag_tokens & {"handwritten", "digit", "pendigit"} and title_tag_tokens & {
-        "classifier",
-        "classification",
-        "recognition",
-    }:
+    if (
+        title_tag_tokens & REFERENCE_TITLE_DOMAIN_ANCHOR_TOKENS
+        and title_tag_tokens & REFERENCE_TITLE_METHOD_ANCHOR_TOKENS
+    ):
         return True
     return bool(
-        title_tag_tokens & {"centroid", "nearest", "prototype", "mahalanobi", "mahalanobis"}
+        title_tag_tokens & REFERENCE_TITLE_METHOD_ANCHOR_TOKENS
         and citation_tokens & REFERENCE_TASK_ANCHOR_TOKENS
     )
 

@@ -46,6 +46,7 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "source URL recorded in artifact" not in references_section
     assert "[generic2026] Generic Visual Recognition Source" not in manuscript
     assert "[seed2020] Variance function of boolean additive convolution" not in manuscript
+    assert "[domain2026] Handwritten Bangla Alphabet Recognition using MLP Classifier" not in manuscript
     assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
     assert "variance_shrinkage parameter of 0.0500" in manuscript
@@ -217,6 +218,20 @@ def _write_cycle(tmp_path: Path) -> Path:
                         "source_uri": "https://example.test/generic",
                         "authors": ["G. Generic"],
                         "tags": ["recognition"],
+                    },
+                    {
+                        "document_id": "doc_domain_only",
+                        "title": "Handwritten Bangla Alphabet Recognition using MLP Classifier",
+                        "status": "verified_url",
+                        "bibtex_key": "domain2026",
+                        "doi": None,
+                        "url": "https://example.test/bangla-mlp",
+                        "reason": None,
+                        "abstract": "Domain-specific handwritten character recognition with a multilayer perceptron.",
+                        "venue": "DomainOnlyConf",
+                        "source_uri": "https://example.test/bangla-mlp",
+                        "authors": ["D. Domain"],
+                        "tags": ["handwritten", "recognition", "classifier"],
                     },
                     {
                         "document_id": "doc_verified",
