@@ -2121,6 +2121,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
 
     assert result.exit_code == 0, result.output
+    assert (
+        "[OK] loop_plan: command=autopilot, mode=single-cycle, "
+        "cycles=1, interval_seconds=86400, push_inspiration=false"
+    ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
@@ -2813,12 +2817,17 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
             str(approvals_state),
             "--project-id",
             "project_1",
+            "--push-inspiration",
             "--no-review",
         ],
     )
 
     assert result.exit_code == 0, result.output
     assert "[OK] runtime_mode: allow-all" in result.stdout
+    assert (
+        "[OK] loop_plan: command=serve, mode=single-cycle, "
+        "cycles=1, interval_seconds=86400, push_inspiration=true"
+    ) in result.stdout
     assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] session_claim: allowed" in result.stdout

@@ -7480,3 +7480,29 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-083` added and resolved.
 - Follow-up:
   - The explicit workflow integration test still shows a third-party LangGraph `allowed_objects` deprecation warning; address that only when the installed LangGraph version exposes a stable configuration path or when the workflow implementation is updated.
+
+### 2026-06-18 03:20:46 +08:00 - Codex - Task 162.1 Daily loop startup evidence
+
+- Request: Continue V1.0 prelaunch hardening by making the daily/always-on loop visibly prove its schedule and inspiration-push mode when it starts.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `_echo_loop_plan()` for `autopilot` and `serve` startup.
+  - The loop plan prints command name, loop mode, cycle count, interval seconds, and whether inspiration push is enabled.
+  - Covered the default autopilot single-cycle path and a real `serve --once --push-inspiration` startup path in unit assertions.
+  - Ran a real Node-wrapper `serve --once --push-inspiration` smoke that stopped at the approval gate and wrote approval/session evidence without running a cycle.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state -q`: passed, 2 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 508 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+  - `node .\bin\airesearcher.mjs serve --once --permission-mode approve-dangerous --state runs\manual-live\task162-loop-plan\scheduler-state.json --approvals-state runs\manual-live\task162-loop-plan\approvals.json --sessions-state runs\manual-live\task162-loop-plan\sessions.json --vault runs\manual-live\task162-loop-plan\vault --cache runs\manual-live\task162-loop-plan\cache --output-dir runs\manual-live\task162-loop-plan\runs --deliverables-dir runs\manual-live\task162-loop-plan\outputs --project-id task162_loop_plan --no-review --push-inspiration`: printed `[OK] loop_plan: command=serve, mode=single-cycle, cycles=1, interval_seconds=86400, push_inspiration=true`, stopped at the expected approval gate, wrote the approval request command with `--push-inspiration`, and released the runtime session. The Node wrapper returned nonzero for the approval wait path as expected.
+- Problems:
+  - None.
+- Follow-up:
+  - Once a WeChat or Feishu channel is configured and self-tested, run strict `npm run prelaunch`, then start `npm run serve` or `airesearcher serve --permission-mode approve-dangerous --push-inspiration` for the 24h loop.

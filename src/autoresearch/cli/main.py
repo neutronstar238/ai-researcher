@@ -2947,6 +2947,13 @@ def autopilot(
     """Run the trusted research loop from one operator command."""
 
     _load_optional_env(env_path)
+    _echo_loop_plan(
+        command_name="autopilot",
+        watch=watch,
+        cycles=cycles,
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
     completed = 0
     resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
     session = _claim_runtime_session(
@@ -3156,6 +3163,13 @@ def serve(
         push_inspiration=push_inspiration,
     )
     typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
+    _echo_loop_plan(
+        command_name="serve",
+        watch=watch,
+        cycles=cycles,
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
     resolved_sessions_state = _resolve_runtime_sessions_state(
         sessions_state,
         state,
@@ -5833,6 +5847,31 @@ def _echo_inspiration_pushes(summary: Mapping[str, object]) -> None:
             f"status={push.get('status', 'unknown')} "
             f"detail={push.get('detail', '')}"
         )
+
+
+def _echo_loop_plan(
+    *,
+    command_name: str,
+    watch: bool,
+    cycles: int,
+    interval_seconds: int,
+    push_inspiration: bool,
+) -> None:
+    if not watch:
+        mode = "single-cycle"
+        cycle_detail = "1"
+    elif cycles == 0:
+        mode = "watch-forever"
+        cycle_detail = "unbounded"
+    else:
+        mode = "watch-limited"
+        cycle_detail = str(cycles)
+    typer.echo(
+        "[OK] loop_plan: "
+        f"command={command_name}, mode={mode}, cycles={cycle_detail}, "
+        f"interval_seconds={interval_seconds}, "
+        f"push_inspiration={str(push_inspiration).lower()}"
+    )
 
 
 def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
