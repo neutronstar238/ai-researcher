@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-099 - Formal references replaced URLs with artifact placeholders
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:36:00 +08:00
+- Source: Text extraction from `outputs/task177_root_output/task177_root_output-cycle-20260617T212210Z.pdf` and focused manuscript test updates.
+- Symptom: The latest PDF no longer put operational labels such as `[Cycle summary]` in References, but formal bibliography lines still contained phrases such as `source URL recorded in artifact` instead of actual source URLs. A first attempted pytest command also used a non-existent test selector, so no tests ran for that command.
+- Impact: Publication-facing references looked like placeholders and weakened DOI/URL traceability even though citation metadata contained real URLs.
+- Evidence: `pdftotext` on the task177 PDF showed multiple references ending with `source URL recorded in artifact`; the first focused test command reported `ERROR: not found` for `test_build_latex_paper_from_markdown_writes_tex_without_compiling`.
+- Root cause: Citation parsing used the generic `_clean_text()` helper for `url` and `source_uri`, and that helper intentionally replaces HTTP URLs in prose with `source URL recorded in artifact`. After preserving URLs in manuscript references, the LaTeX URL converter also wrapped only `https://example` from `https://example.test/verified` because its regex excluded dots too aggressively.
+- Workaround: Before the fix, inspect citation metadata JSON or BibTeX artifacts for the real URLs.
+- Next action: Keep formal bibliography locator fields on the dedicated locator-cleaning path; keep prose URL elision separate from reference formatting.
+- Linked tasks: `180.1`
+- Resolution: Added `_clean_locator_text()` for DOI/URL/source URI fields, used it during citation parsing and formal reference rendering, and changed LaTeX URL wrapping to strip trailing punctuation after matching the full non-whitespace URL.
+- Verification: Focused report tests passed after an intermediate expected failure exposed the TeX URL splitting issue; full `tests\unit\reports` passed with 89 tests; full `tests\smoke tests\unit` passed with 521 passed and 4 skipped; a real `serve --once` cycle for `task180_reference_urls` passed review, publication audit, and evidence gate, generated a 14-page PDF, and `pdftotext` showed real arXiv/DOI URLs in References without the placeholder phrase.
+
 ### P-20260618-098 - CI ruff rejected tuple-style isinstance in review status helper
 
 - Status: Resolved

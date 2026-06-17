@@ -2325,6 +2325,16 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that the GitHub repository keep only necessary code and project files._
     - _Verify: `git ls-files outputs runs htmlcov .cache tmp .pytest_cache .mypy_cache .ruff_cache .airesearcher .codex-remote-attachments` returned no tracked paths; tracked artifact pattern scan returned no matches; after the ignore update, `git status --short` no longer lists `.codex-remote-attachments/`._
 
+- [x] 180. Publication reference locator quality
+  - [x] 180.1 Preserve real DOI/URL locators in formal references and LaTeX output
+    - Keep prose URL elision for ordinary manuscript text, but preserve DOI, URL, and source URI fields used by formal bibliography lines.
+    - Ensure LaTeX URL wrapping captures dotted domains and strips only trailing sentence punctuation.
+    - Add regression coverage that the Markdown References section contains the real URL and no `source URL recorded in artifact` placeholder.
+    - Verify the generated TeX contains a complete `\url{...}` reference locator.
+    - Run a real default-Pendigits `serve --once` cycle and inspect the generated PDF references.
+    - _References: `P-20260618-099`; user screenshot and repeated requirement that reference format be publication-facing and not placeholder-like._
+    - _Verify: after an initial incorrect pytest selector and an intermediate TeX URL-splitting failure, focused report tests passed; `python -m pytest tests\unit\reports -q` passed with 89 tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues; real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task180-reference-urls\vault --cache runs\manual-live\task180-reference-urls\cache --output-dir runs\manual-live\task180-reference-urls\runs --deliverables-dir outputs --state runs\manual-live\task180-reference-urls\scheduler-state.json --approvals-state runs\manual-live\task180-reference-urls\approvals.json --sessions-state runs\manual-live\task180-reference-urls\sessions.json --project-id task180_reference_urls --timeout-seconds 120 --no-push-inspiration` passed with review, publication audit, evidence gate, zero follow-ups, and PDF output; `pdftotext` on the generated PDF showed real arXiv/DOI URLs in References; `pdfinfo` reported a 14-page PDF; `python -m pytest tests\smoke tests\unit -q` passed with 521 passed and 4 skipped._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

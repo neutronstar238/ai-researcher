@@ -1171,8 +1171,8 @@ def _formal_reference_line(citation: dict[str, Any]) -> str:
             or citation.get("date")
         )
     )
-    doi = _clean_text(_text(citation.get("doi")))
-    url = _clean_text(_text(citation.get("url") or citation.get("source_uri")))
+    doi = _clean_locator_text(_text(citation.get("doi")))
+    url = _clean_locator_text(_text(citation.get("url") or citation.get("source_uri")))
     parts = [authors, title]
     if venue:
         parts.append(venue)
@@ -1180,7 +1180,7 @@ def _formal_reference_line(citation: dict[str, Any]) -> str:
         parts.append(year)
     if doi:
         parts.append(f"doi:{doi}")
-    if url and url != doi:
+    if url and url not in {doi, f"doi:{doi}"}:
         parts.append(url)
     return f"- [{key}] " + ". ".join(part.rstrip(".") for part in parts if part) + "."
 
@@ -1475,11 +1475,11 @@ def _parse_citations(
                 "title": _clean_text(_text(row.get("title"))),
                 "status": _clean_text(_text(row.get("status"))),
                 "bibtex_key": _clean_text(_text(row.get("bibtex_key"))),
-                "doi": _clean_text(_text(row.get("doi"))),
-                "url": _clean_text(_text(row.get("url"))),
+                "doi": _clean_locator_text(_text(row.get("doi"))),
+                "url": _clean_locator_text(_text(row.get("url"))),
                 "abstract": _clean_text(_text(row.get("abstract"))),
                 "venue": _clean_text(_text(row.get("venue"))),
-                "source_uri": _clean_text(_text(row.get("source_uri"))),
+                "source_uri": _clean_locator_text(_text(row.get("source_uri"))),
                 "authors": [_clean_text(_text(author)) for author in _list(row.get("authors"))],
                 "tags": [_clean_text(_text(tag)) for tag in _list(row.get("tags"))],
             }
@@ -1735,3 +1735,9 @@ def _clean_text(value: str) -> str:
     ascii_text = re.sub(r"https?://\S+", "source URL recorded in artifact", ascii_text)
     ascii_text = re.sub(r"\s+", " ", ascii_text).strip()
     return ascii_text
+
+
+def _clean_locator_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", ascii_text).strip().rstrip(".,;")

@@ -811,9 +811,14 @@ def _latex_inline(text: str) -> str:
 def _latex_inline_with_urls(text: str) -> str:
     parts: list[str] = []
     cursor = 0
-    for match in re.finditer(r"https?://[^\s.)]+[^\s.);,]", text):
+    for match in re.finditer(r"https?://\S+", text):
+        raw_url = match.group(0)
+        url = raw_url.rstrip(".,);]")
+        trailing = raw_url[len(url) :]
         parts.append(_latex_inline(text[cursor:match.start()]))
-        parts.append(rf"\url{{{match.group(0)}}}")
+        parts.append(rf"\url{{{url}}}")
+        if trailing:
+            parts.append(_latex_inline(trailing))
         cursor = match.end()
     parts.append(_latex_inline(text[cursor:]))
     return "".join(parts)

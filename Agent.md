@@ -8016,3 +8016,37 @@ This file defines the project development standard for coding agents and records
   - None added or updated.
 - Follow-up:
   - Leave the existing local attachment directory alone unless the user explicitly asks for local cleanup.
+
+### 2026-06-18 05:41:36 +08:00 - Codex - Task 180.1 Publication reference locator quality
+
+- Request: Continue publication-quality hardening after PDF inspection showed formal references still used placeholder-like URL text.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a locator-specific cleaning helper for DOI, URL, and source URI fields so formal bibliography references retain real source locators.
+  - Kept generic prose cleanup unchanged so ordinary manuscript text still avoids uncontrolled raw URLs.
+  - Fixed LaTeX URL wrapping to capture dotted domains and strip only trailing sentence punctuation.
+  - Added regression assertions that the Markdown References section contains the real URL, omits `source URL recorded in artifact`, and produces a complete TeX `\url{...}`.
+  - Ran a real default-Pendigits cycle and confirmed the generated PDF references include real arXiv/DOI URLs.
+- Verification:
+  - Initial `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_without_compiling -q`: failed because the selected paper-build test name does not exist; recorded under `P-20260618-099`.
+  - Intermediate focused test run failed because TeX wrapping produced `\url{https://example}.test/verified`; fixed in `paper_build.py`.
+  - `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_and_vault_summary -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\paper_build.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\paper_build.py`: passed with no issues in 2 source files.
+  - Real cycle: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task180-reference-urls\vault --cache runs\manual-live\task180-reference-urls\cache --output-dir runs\manual-live\task180-reference-urls\runs --deliverables-dir outputs --state runs\manual-live\task180-reference-urls\scheduler-state.json --approvals-state runs\manual-live\task180-reference-urls\approvals.json --sessions-state runs\manual-live\task180-reference-urls\sessions.json --project-id task180_reference_urls --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and PDF output under `outputs/task180_reference_urls/`.
+  - `pdftotext outputs\task180_reference_urls\task180_reference_urls-cycle-20260617T213912Z.pdf -`: References contained real arXiv/DOI URLs and did not contain the previous placeholder phrase in the reference lines.
+  - `pdfinfo outputs\task180_reference_urls\task180_reference_urls-cycle-20260617T213912Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `python -m pytest tests\unit\reports -q`: passed, 89 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 521 passed and 4 skipped.
+- Problems:
+  - `P-20260618-099` added and resolved.
+- Follow-up:
+  - The References section is now locator-visible; future quality work should focus on stronger related-work relevance ranking, not URL placeholder cleanup.

@@ -40,6 +40,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "[Cycle summary]" not in manuscript
     assert "[Verified literature references]" not in manuscript
     assert "V. Source. Verified Prototype Source. MethodConf. doi:10.1234/verified" in manuscript
+    references_section = manuscript.split("## References", 1)[1]
+    assert "https://example.test/verified" in references_section
+    assert "source URL recorded in artifact" not in references_section
     assert "[generic2026] Generic Visual Recognition Source" not in manuscript
     assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
@@ -83,6 +86,7 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert r"\begin{tabular}" in tex
     assert r"\begin{thebibliography}{99}" in tex
     assert r"\bibitem{source2026}" in tex
+    assert r"\url{https://example.test/verified}" in tex
     assert "[Cycle summary]" not in tex
 
 
