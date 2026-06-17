@@ -67,6 +67,55 @@ def test_execute_experiment_task_records_nonzero_exit(tmp_path: Path) -> None:
     assert "bad experiment" in run.stderr
 
 
+def test_execute_experiment_task_blocks_unapproved_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import socket
+        from pathlib import Path
+
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.exit_code is None
+    assert run.error_type == "NetworkPreflightDenied"
+    assert run.limit_violations == ["network_preflight"]
+    assert "imports network module socket" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+    assert run.metadata["network_preflight"]["approved"] is False
+
+
+def test_execute_experiment_task_allows_approved_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import socket
+        from pathlib import Path
+
+        print(socket.AF_INET)
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+    task = _task().model_copy(update={"metadata": {"network_access_approved": True}})
+
+    run = execute_experiment_task(tmp_path, task)
+
+    assert run.status is ExecutionStatus.SUCCESS
+    assert run.error_type is None
+    assert run.metadata["network_preflight"]["approved"] is True
+    assert run.metadata["network_preflight"]["finding_count"] == 1
+
+
 def test_execute_experiment_task_enforces_timeout_and_cleans_process(
     tmp_path: Path,
 ) -> None:

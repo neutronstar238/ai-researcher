@@ -377,6 +377,13 @@ def create_pendigits_centroid_baseline_task(
             "dataset_source": (
                 "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/"
             ),
+            "network_access_approved": True,
+            "network_access_scope": "public UCI Pendigits train/test download; cached files are preferred",
+            "approved_network_domains": ["archive.ics.uci.edu"],
+            "network_source_urls": [
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra",
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tes",
+            ],
             "dataset_license": "CC BY 4.0",
             "dataset_rows_expected": 10992,
             "feature_count": 16,
@@ -486,6 +493,13 @@ def create_pendigits_prototype_shrinkage_task(
             "dataset_source": (
                 "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/"
             ),
+            "network_access_approved": True,
+            "network_access_scope": "public UCI Pendigits train/test download; cached files are preferred",
+            "approved_network_domains": ["archive.ics.uci.edu"],
+            "network_source_urls": [
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra",
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tes",
+            ],
             "dataset_license": "CC BY 4.0",
             "dataset_rows_expected": 10992,
             "feature_count": 16,
@@ -605,6 +619,13 @@ def create_pendigits_variance_calibrated_task(
             "dataset_source": (
                 "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/"
             ),
+            "network_access_approved": True,
+            "network_access_scope": "public UCI Pendigits train/test download; cached files are preferred",
+            "approved_network_domains": ["archive.ics.uci.edu"],
+            "network_source_urls": [
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra",
+                "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tes",
+            ],
             "dataset_license": "CC BY 4.0",
             "dataset_rows_expected": 10992,
             "feature_count": 16,
@@ -820,6 +841,10 @@ def _create_uci_variance_task(
             "demo_task": spec.task_id,
             "dataset": spec.dataset,
             "dataset_source": spec.dataset_source,
+            "network_access_approved": True,
+            "network_access_scope": f"public UCI {spec.dataset} download; cached files are preferred",
+            "approved_network_domains": ["archive.ics.uci.edu"],
+            "network_source_urls": [spec.source_url],
             "dataset_license": "CC BY 4.0",
             "dataset_rows_expected": "downloaded from UCI source file",
             "feature_count": spec.feature_count,

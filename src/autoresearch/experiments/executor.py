@@ -12,9 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from autoresearch.experiments.review import CodeReviewFinding, review_generated_code
 from autoresearch.experiments.sandbox import SandboxAccessMode, SandboxPathPolicy
 from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 from autoresearch.schemas.provenance import file_hash
+
+NETWORK_ACCESS_APPROVAL_KEY = "network_access_approved"
 
 
 def execute_experiment_task(
@@ -57,6 +60,25 @@ def execute_experiment_task(
             "memory_limit_mb": memory_limit_mb,
         },
     )
+    network_findings = _network_preflight_findings(root, entrypoint_path)
+    if network_findings:
+        approved = task.metadata.get(NETWORK_ACCESS_APPROVAL_KEY) is True
+        run = _with_network_preflight_metadata(
+            run,
+            findings=network_findings,
+            approved=approved,
+        )
+        if not approved:
+            return _finish_run(
+                run,
+                root,
+                status=ExecutionStatus.FAILED,
+                exit_code=None,
+                stdout="",
+                stderr=_network_preflight_message(network_findings),
+                limit_violations=["network_preflight"],
+                error_type="NetworkPreflightDenied",
+            )
 
     command = [str(python_executable), str(entrypoint_path)]
     process = subprocess.Popen(
@@ -115,6 +137,50 @@ def execute_experiment_task(
         stderr=stderr,
         limit_violations=limit_violations,
         error_type=error_type,
+    )
+
+
+def _network_preflight_findings(
+    experiment_dir: Path,
+    entrypoint_path: Path,
+) -> tuple[CodeReviewFinding, ...]:
+    entrypoint = entrypoint_path.relative_to(experiment_dir).as_posix()
+    result = review_generated_code(experiment_dir, entrypoint=entrypoint)
+    return tuple(
+        finding
+        for finding in result.findings
+        if finding.category == "unrestricted_network"
+    )
+
+
+def _with_network_preflight_metadata(
+    run: ExecutionRun,
+    *,
+    findings: tuple[CodeReviewFinding, ...],
+    approved: bool,
+) -> ExecutionRun:
+    metadata = dict(run.metadata)
+    metadata["network_preflight"] = {
+        "approved": approved,
+        "approval_key": NETWORK_ACCESS_APPROVAL_KEY,
+        "finding_count": len(findings),
+        "findings": [finding.to_dict() for finding in findings],
+    }
+    return run.model_copy(update={"metadata": metadata})
+
+
+def _network_preflight_message(findings: tuple[CodeReviewFinding, ...]) -> str:
+    details = "; ".join(
+        f"line {finding.line}: {finding.message}"
+        if finding.line is not None
+        else finding.message
+        for finding in findings
+    )
+    return (
+        "Generated experiment imports network modules without explicit approval. "
+        f"Findings: {details}. "
+        f"Set task.metadata[{NETWORK_ACCESS_APPROVAL_KEY!r}]=True only after "
+        "human approval or route network operations through RestrictedNetworkPolicy."
     )
 
 

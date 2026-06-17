@@ -2021,6 +2021,17 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-042`; tasks `107.1`, `109.1`, `114.1`, `115.1`, `116.1`; user requirement that data must prove claims and weak effects must not be promoted into publication claims._
     - _Verify: Parsed passing `publication-stability.json` reports and confirmed the current stable matrices use release-allowed Pendigits, Letter Recognition, and Skin Segmentation cycles; `runs\manual-live\task116-related-work-current-matrix\publication-stability.json` reports `stable=true` and `score=1.0` with datasets Pen-Based Recognition of Handwritten Digits, Letter Recognition, and Skin Segmentation; no passing stable matrix relies on Spambase. `git diff --check` passed for the task documentation files._
 
+- [x] 147. Executor network preflight gate
+  - [x] 147.1 Block unapproved network imports before local subprocess execution
+    - Reuse the generated-code review findings for `unrestricted_network` imports inside the local experiment executor.
+    - Fail closed before starting the subprocess when generated experiment code imports `requests`, `httpx`, `aiohttp`, `socket`, or `urllib` without explicit task metadata approval.
+    - Preserve a narrow escape hatch for approved work through `task.metadata["network_access_approved"]=True`, so future `/approve`-style permission flow can set the same key instead of bypassing the executor.
+    - Mark trusted built-in UCI public benchmark demos with scoped network approval metadata, approved domains, source URLs, and cache-first scope text so their cached-data tests and public-data fallback remain explicit.
+    - Record the preflight finding details in `ExecutionRun.metadata["network_preflight"]` and return `NetworkPreflightDenied` with `network_preflight` in `limit_violations` when blocked.
+    - Keep `P-20260611-014` mitigated rather than resolved because this is an executor gate, not OS/container/proxy-level network interception.
+    - _References: `P-20260611-014`; tasks `8.3`, `9.2`, `9.3`; user requirement for permission modes and dangerous-command approval instead of prompt-only self-discipline._
+    - _Verify: `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py` passed; `python -m pytest tests\unit\experiments\test_executor.py -q` passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q` passed with 22 tests and the same known host warning; the first full smoke/unit run exposed `P-20260618-078`, then `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q` passed with 22 tests after the scoped UCI metadata fix; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 494 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2521,6 +2532,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 113,
       "tasks": ["146.1"]
+    },
+    {
+      "id": 114,
+      "tasks": ["147.1"]
     }
   ]
 }

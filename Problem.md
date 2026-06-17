@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-078 - Executor network gate initially blocked trusted cached UCI demos
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 01:16:00 +08:00
+- Source: Full `python -m pytest tests\smoke tests\unit -q` verification during task `147.1`.
+- Symptom: Six UCI demo tests failed with `FileNotFoundError` for generated CSV files such as `pendigits_centroid_baseline.csv`, `letter_variance_calibrated_prototypes.csv`, `spambase_variance_calibrated_prototypes.csv`, and `skin_variance_calibrated_prototypes.csv`.
+- Impact: The new executor network preflight correctly blocked raw network imports, but it also stopped trusted built-in public benchmark scripts before they could use already-cached UCI fixture files in local tests.
+- Evidence: The failing demo scripts import `from urllib.request import urlopen` because they can download public UCI data when cache files are absent. The tests write cache files before execution, but static preflight happens before runtime cache checks.
+- Root cause: Built-in UCI demo tasks did not carry explicit network approval metadata, so they were indistinguishable from arbitrary generated code with raw network imports.
+- Workaround: None needed after task `147.1`.
+- Next action: When the runtime `/approve` flow is wired, keep using the same `network_access_approved` key and preserve source URL/domain scope metadata.
+- Linked tasks: `147.1`
+- Resolution: Added scoped network approval metadata to built-in UCI demo tasks, including `network_access_approved=True`, `approved_network_domains`, `network_source_urls`, and a cache-first `network_access_scope`.
+- Verification: `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q` passed with 22 tests; `python -m pytest tests\smoke tests\unit -q` then passed with 494 passed and 4 skipped.
+
 ### P-20260618-077 - README monitor screenshot lagged behind release-flow monitor
 
 - Status: Resolved
@@ -2379,13 +2395,13 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Task `9.3` implementation of restricted network policy placeholder.
 - Symptom: The MVP can preflight and audit network requests routed through `RestrictedNetworkPolicy`, but it does not install OS-level firewall, proxy, or socket interception rules for arbitrary generated code.
 - Impact: Generated experiment code that bypasses the policy helper could still attempt network access until a later sandbox layer enforces network restrictions at the process or OS boundary.
-- Evidence: `network_enforcement_note()` documents that MVP network policy is preflight/audit only; blocked-request tests verify audit logging only for calls routed through the policy.
+- Evidence: `network_enforcement_note()` documents that MVP network policy is preflight/audit only; blocked-request tests verify audit logging only for calls routed through the policy. Task `147.1` adds an executor preflight gate that reuses generated-code review findings and blocks known raw Python network imports before local subprocess launch unless `task.metadata["network_access_approved"]` is explicitly true.
 - Root cause: Full network sandboxing requires an OS firewall, proxy, container, or process-level interception layer beyond the current MVP local subprocess executor.
-- Workaround: Run generated code review before execution, route approved network operations through `RestrictedNetworkPolicy.require_allowed()`, and audit blocked requests with `AuditEventType.SANDBOX_DENIAL`.
+- Workaround: Run generated code review before execution, keep local subprocess execution behind the executor network preflight gate, route approved network operations through `RestrictedNetworkPolicy.require_allowed()`, and audit blocked requests with `AuditEventType.SANDBOX_DENIAL`.
 - Next action: Later sandbox hardening should add OS/container/proxy enforcement and prove that arbitrary network calls to non-allowed domains are blocked.
-- Linked tasks: `9.3`, `16.3`
-- Resolution: Not fully resolved; MVP mitigation is documented and covered by tests.
-- Verification: `poetry run pytest tests/unit/experiments/test_network.py tests/unit/observability/test_audit.py` passed with 18 tests.
+- Linked tasks: `9.3`, `16.3`, `147.1`
+- Resolution: Not fully resolved; MVP mitigation is documented and covered by tests. Task `147.1` strengthened the mitigation by failing closed in `execute_experiment_task()` for `requests`, `httpx`, `aiohttp`, `socket`, or `urllib` imports without explicit task metadata approval, but this remains an executor-level preflight and not OS-level enforcement.
+- Verification: `poetry run pytest tests/unit/experiments/test_network.py tests/unit/observability/test_audit.py` passed with 18 tests for the original policy. Task `147.1` verification passed with focused ruff, executor tests, combined executor/review/network tests, and mypy; pytest still emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
 
 ### P-20260611-013 - Mypy rejected Unix-only runtime limit APIs on Windows
 

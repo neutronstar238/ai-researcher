@@ -62,6 +62,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:09:51 +08:00 - Codex - Task 147.1 Executor network preflight gate
+
+- Request:
+  - Continue running the project and turn the network sandbox boundary from prompt discipline into an executor-level gate where currently feasible.
+- Files changed:
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `147.1` and dependency-graph node `114`.
+  - Reused generated-code review findings inside `execute_experiment_task()` to block known raw Python network imports before local subprocess launch.
+  - Added explicit approval metadata support through `task.metadata["network_access_approved"]=True` for future `/approve` permission flow integration.
+  - Recorded preflight finding details in `ExecutionRun.metadata["network_preflight"]` and returned `NetworkPreflightDenied` with `network_preflight` limit violations when blocked.
+  - Added scoped approval metadata to trusted built-in UCI public benchmark demo tasks so cached-data tests and live public-data fallback remain explicit instead of silently bypassing the gate.
+  - Kept `P-20260611-014` mitigated rather than resolved because OS/container/proxy-level network interception is still not implemented.
+- Verification:
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m pytest tests\unit\experiments\test_executor.py -q`: passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q`: passed with 22 tests and the same known host warning.
+  - First `python -m pytest tests\smoke tests\unit -q`: failed with six UCI demo CSV `FileNotFoundError` failures after the new preflight gate blocked trusted built-in scripts that import `urllib.request.urlopen`; recorded as `P-20260618-078`.
+  - `python -m ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py`: passed after adding scoped UCI approval metadata.
+  - `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q`: passed with 22 tests and then emitted the known host Python `RequestsDependencyWarning`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\experiments\demos.py src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: passed with line-ending warnings only.
+  - Final `python -m pytest tests\smoke tests\unit -q`: passed with 494 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260611-014` updated and kept mitigated.
+  - `P-20260618-078` added and resolved.
+  - `P-20260612-057` remains the known host-warning boundary observed after pytest exits.
+- Follow-up:
+  - Add OS/container/proxy-level enforcement in a later sandbox-hardening task and wire the runtime approval flow so `/approve` sets the same `network_access_approved` key with an audit record.
+
 ### 2026-06-18 01:03:00 +08:00 - Codex - Task 146.1 Spambase weak-effect release quarantine audit
 
 - Request:
