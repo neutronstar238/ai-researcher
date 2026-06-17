@@ -7711,3 +7711,34 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-090` added and resolved.
 - Follow-up:
   - Strict prelaunch still needs a real operator channel and sent self-test on this machine; the new command makes the post-pairing target-binding step CLI-owned.
+
+### 2026-06-18 04:18:18 +08:00 - Codex - Task 170.1 Readiness QR target repair action
+
+- Request: Continue V1.0 channel onboarding hardening by making completed WeChat QR setups without a target point to the smaller `channels bind-target` repair flow.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Let `channels bind-target` prompt for a target when `--target` is omitted.
+  - Added readiness detection for completed WeChat QR setup with missing OpenClaw target.
+  - Changed readiness next actions to emit `bind_wechat_target` rather than rerunning full setup for that state.
+  - Updated README parameter tables to document optional prompt behavior.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_prompts_for_missing_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task170-readiness-bind-target\.env --vault runs\manual-live\task170-readiness-bind-target\vault --outputs-dir runs\manual-live\task170-readiness-bind-target\outputs --output runs\manual-live\task170-readiness-bind-target\readiness.json --require-channel-config`: failed because a BOM-bearing temporary `.env` hid `AUTORESEARCH_LLM_BASE_URL`; recorded as `P-20260618-091`.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task170-readiness-bind-target-v2\.env --vault runs\manual-live\task170-readiness-bind-target-v2\vault --outputs-dir runs\manual-live\task170-readiness-bind-target-v2\outputs --output runs\manual-live\task170-readiness-bind-target-v2\readiness.json --require-channel-config`: printed `[NEXT] readiness_action.bind_wechat_target: airesearcher channels bind-target --channel wechat --env-path runs/manual-live/task170-readiness-bind-target-v2/.env` and correctly remained blocked until the operator provides a target.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 516 passed and 4 skipped.
+- Problems:
+  - `P-20260618-091` added and remains open for a follow-up env parser hardening task.
+- Follow-up:
+  - Fix BOM-bearing `.env` parsing so editor-created env files do not hide the first key.

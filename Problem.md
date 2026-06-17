@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-091 - BOM-bearing `.env` first key is not parsed
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-06-18 04:15:25 +08:00
+- Source: Real temporary readiness verification for task `170.1`.
+- Symptom: A `.env` file written by PowerShell `Set-Content -Encoding UTF8` began with `EF BB BF`, and readiness failed to read `AUTORESEARCH_LLM_BASE_URL` from the first line.
+- Impact: Operators who create or rewrite `.env` with a BOM-bearing editor could see false missing-credential failures on the first key.
+- Evidence: `Format-Hex runs\manual-live\task170-readiness-bind-target\.env` showed `EF BB BF` before `AUTORESEARCH_LLM_BASE_URL`; the readiness report listed `missing model API values: AUTORESEARCH_LLM_BASE_URL`.
+- Root cause: The env parser does not strip an initial UTF-8 BOM before parsing the first key.
+- Workaround: Use `airesearcher setup`/`channels bind-target`, or save `.env` as UTF-8 without BOM.
+- Next action: Strip `\ufeff` from the first parsed env key or decode `.env` as UTF-8-sig.
+- Linked tasks: `170.1`
+- Resolution:
+- Verification:
+
 ### P-20260618-090 - Post-pairing channel targets still required rerunning setup or editing `.env`
 
 - Status: Resolved

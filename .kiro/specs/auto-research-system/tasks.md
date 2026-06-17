@@ -2232,6 +2232,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-090`; task `168.1`; user requirement that setup and channel configuration be CLI-owned rather than manual `.env` editing._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_feishu_home_chat tests\unit\cli\test_main.py::test_channels_bind_target_rejects_unknown_channel tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result -q` passed with 4 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `node ./bin/airesearcher.mjs channels bind-target --env-path runs\manual-live\task169-bind-target\.env --channel wechat --target peer:wx_user` passed and printed the channel-test next step._
 
+- [x] 170. Readiness repair action precision for QR target binding
+  - [x] 170.1 Point completed WeChat QR setups without a target to `channels bind-target`
+    - Let `channels bind-target` prompt for the target when `--target` is omitted, so readiness can print an executable repair command.
+    - Detect `wechat_mode=qr`, completed QR setup status, and missing OpenClaw target in readiness evidence.
+    - Emit `bind_wechat_target` next action instead of rerunning full setup for that specific post-pairing state.
+    - Document the optional prompt behavior in English and Chinese README parameter tables.
+    - _References: `P-20260618-090`; `P-20260618-091`; tasks `168.1` and `169.1`; user requirement that setup/channel onboarding avoid manual `.env` edits and guide the operator through QR setup._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_prompts_for_missing_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; first real readiness probe failed because a BOM-bearing temporary `.env` hid the first LLM key and was logged as `P-20260618-091`; the second no-BOM real probe printed `[NEXT] readiness_action.bind_wechat_target: airesearcher channels bind-target --channel wechat --env-path runs/manual-live/task170-readiness-bind-target-v2/.env`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

@@ -1585,14 +1585,14 @@ def channel_bind_target(
         typer.Option("--channel", help="Channel to bind: wechat or feishu."),
     ] = "wechat",
     target: Annotated[
-        str,
+        str | None,
         typer.Option("--target", help="OpenClaw target or Feishu/Lark home chat ID."),
-    ] = "",
+    ] = None,
 ) -> None:
     """Bind a post-pairing channel target without hand-editing `.env`."""
 
     normalized = channel.casefold().strip()
-    target_value = target.strip()
+    target_value = (target or typer.prompt("Channel target")).strip()
     if not target_value:
         raise typer.BadParameter("--target is required")
     if normalized in {"wechat", "weixin", "openclaw-weixin"}:
@@ -2095,6 +2095,10 @@ def _readiness_next_actions(
         f"--config {_command_path(config_path)} --env-path {_command_path(env_path)}"
     )
     channel_setup_command = setup_command + " --wechat --wechat-qr"
+    bind_wechat_target_command = (
+        "airesearcher channels bind-target "
+        f"--channel wechat --env-path {_command_path(env_path)}"
+    )
 
     for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
         check = checks_by_id.get(check_id)
@@ -2109,12 +2113,20 @@ def _readiness_next_actions(
 
     operator_check = checks_by_id.get("operator_channels")
     if operator_check and operator_check.get("status") in {"warn", "fail"}:
-        add(
-            "configure_operator_channel",
-            severity="required" if operator_check.get("status") == "fail" else "recommended",
-            command=channel_setup_command,
-            reason="Configure at least one WeChat or Feishu channel before push delivery.",
-        )
+        if _readiness_missing_wechat_qr_target(operator_check):
+            add(
+                "bind_wechat_target",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=bind_wechat_target_command,
+                reason="Bind the OpenClaw WeChat target discovered after QR pairing.",
+            )
+        else:
+            add(
+                "configure_operator_channel",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=channel_setup_command,
+                reason="Configure at least one WeChat or Feishu channel before push delivery.",
+            )
 
     delivery_check = checks_by_id.get("channel_delivery_test")
     if delivery_check and delivery_check.get("status") in {"warn", "fail"}:
@@ -2131,12 +2143,20 @@ def _readiness_next_actions(
                 reason="Produce real sent-delivery evidence before treating push readiness as proven.",
             )
         else:
-            add(
-                "configure_operator_channel",
-                severity="required",
-                command=channel_setup_command,
-                reason="Configure a delivery channel before running the channel self-test.",
-            )
+            if _readiness_missing_wechat_qr_target(operator_check):
+                add(
+                    "bind_wechat_target",
+                    severity="required",
+                    command=bind_wechat_target_command,
+                    reason="Bind the OpenClaw WeChat target before running the channel self-test.",
+                )
+            else:
+                add(
+                    "configure_operator_channel",
+                    severity="required",
+                    command=channel_setup_command,
+                    reason="Configure a delivery channel before running the channel self-test.",
+                )
 
     if not any(check.get("status") in {"fail", "warn"} for check in checks):
         add(
@@ -2155,6 +2175,19 @@ def _readiness_ready_channels(check: Mapping[str, object] | None) -> list[str]:
     if not isinstance(evidence, Mapping):
         return []
     return _string_list(evidence.get("ready_channels"))
+
+
+def _readiness_missing_wechat_qr_target(check: Mapping[str, object] | None) -> bool:
+    if not check:
+        return False
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    return (
+        str(evidence.get("wechat_mode") or "").casefold() == "qr"
+        and str(evidence.get("wechat_qr_status") or "").casefold() == "completed"
+        and evidence.get("wechat_openclaw_target_configured") is False
+    )
 
 
 def _command_path(path: Path) -> str:

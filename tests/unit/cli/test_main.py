@@ -437,6 +437,28 @@ def test_channels_bind_target_writes_wechat_openclaw_target(tmp_path: Path) -> N
     )
 
 
+def test_channels_bind_target_prompts_for_missing_target(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "wechat",
+        ],
+        input="peer:wx_prompted\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_prompted" in env_path.read_text(
+        encoding="utf-8"
+    )
+
+
 def test_channels_bind_target_writes_feishu_home_chat(tmp_path: Path) -> None:
     env_path = tmp_path / ".env"
 
@@ -740,6 +762,10 @@ def test_readiness_requires_wechat_qr_openclaw_target_for_push(tmp_path: Path) -
     assert checks["operator_channels"]["status"] == "fail"
     assert checks["operator_channels"]["evidence"]["wechat_qr_status"] == "completed"
     assert checks["operator_channels"]["evidence"]["wechat_openclaw_target_configured"] is False
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["bind_wechat_target"]["command"] == (
+        f"airesearcher channels bind-target --channel wechat --env-path {env_path.as_posix()}"
+    )
 
 
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
