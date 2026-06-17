@@ -62,6 +62,26 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:53:17 +08:00 - Codex - Task 138.1 CI polling environment reconciliation
+
+- Request:
+  - Continue running stale-risk cleanup and resolve local environment blockers when real verification now passes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `138.1` and its task-dependency graph node.
+  - Rechecked GitHub CLI in the active PowerShell session.
+  - Updated `P-20260613-033` from mitigated to resolved because `gh` is now installed and can query the project repository's GitHub Actions runs.
+- Verification:
+  - `gh --version`: passed; printed `gh version 2.93.0 (2026-05-27)`.
+  - `gh run list --repo neutronstar238/ai-researcher --limit 1 --json databaseId,status,conclusion,workflowName,url,createdAt`: passed; returned CI run `27544632808` with `status=completed` and `conclusion=success`.
+- Problems:
+  - `P-20260613-033` resolved.
+- Follow-up:
+  - Keep the REST API fallback for environments where GitHub CLI is unavailable or unauthenticated.
+
 ### 2026-06-17 23:51:12 +08:00 - Codex - Task 137.1 optional Semantic Scholar default-source reconciliation
 
 - Request:

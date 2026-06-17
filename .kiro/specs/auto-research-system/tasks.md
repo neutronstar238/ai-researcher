@@ -1938,6 +1938,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-003`; user request to prefer free APIs first and demote Semantic Scholar because 429s are common._
     - _Verify: `rg -n "Semantic Scholar|semantic_scholar|AUTORESEARCH_ENABLE_SEMANTIC|core free" src tests .kiro\specs\auto-research-system\tasks.md README.md README.zh-CN.md` confirmed code, tests, tasks, and READMEs describe Semantic Scholar as optional; real CLI `node .\bin\airesearcher.mjs literature-refresh --vault runs\manual-live\task137-default-sources\vault --cache runs\manual-live\task137-default-sources\cache --max-queries 1 --max-results-per-source 1` printed only `[FETCH] source=arxiv` and `[FETCH] source=openalex`, wrote 2 documents, and wrote `runs\manual-live\task137-default-sources\vault\exploration\topics\literature_refresh_20260617.md` with ArXiv/OpenAlex provenance._
 
+- [x] 138. CI polling environment reconciliation
+  - [x] 138.1 Resolve stale missing-`gh` local environment problem
+    - Re-check whether GitHub CLI is now installed and visible in the active PowerShell session.
+    - Run a real GitHub Actions list query for the project repository instead of relying on version output only.
+    - Update `P-20260613-033` only if both the executable and a real `gh run list` query work.
+    - _References: `P-20260613-033`; previous CI polling fallback because `gh` was missing locally._
+    - _Verify: `gh --version` printed `gh version 2.93.0 (2026-05-27)`; real `gh run list --repo neutronstar238/ai-researcher --limit 1 --json databaseId,status,conclusion,workflowName,url,createdAt` returned CI run `27544632808` with `status=completed` and `conclusion=success`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2402,6 +2410,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 104,
       "tasks": ["137.1"]
+    },
+    {
+      "id": 105,
+      "tasks": ["138.1"]
     }
   ]
 }
