@@ -111,6 +111,8 @@ This writes `.airesearcher/readiness/report.json` and confirms the daily loop, v
 path, model API, operator-channel configuration, and latest channel self-test delivery evidence
 are ready. When a check is missing, the report includes `next_actions` with executable repair
 commands.
+The planned daily command uses the approval-gated `serve` runtime, not the lower-level direct
+`autopilot` entry point.
 
 Non-interactive setup is also supported:
 

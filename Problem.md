@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-087 - Prelaunch readiness recommended the direct autopilot loop
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:44:11 +08:00
+- Source: Real `npm run prelaunch` check during V1.0 launch-entry inspection.
+- Symptom: The readiness report's `planned_daily_command` was `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+- Impact: Operators following the strict prelaunch report would start the lower-level loop directly and bypass the `serve` runtime's dangerous-action approval queue, despite README recommending `npm run serve`.
+- Evidence: The generated `.airesearcher/readiness/report.json` contained the direct autopilot command before the fix.
+- Root cause: `_readiness_daily_command()` predated the approval-gated `serve` runtime and was not updated when `serve` became the preferred 24h entry point.
+- Workaround: Before the fix, operators could manually run `npm run serve` instead of the readiness report's planned command.
+- Next action: Keep `autopilot` documented as an expert/direct loop, but keep prelaunch and V1.0 defaults on `serve`.
+- Linked tasks: `166.1`
+- Resolution: Changed readiness `planned_daily_command` to `airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 ...` and documented that prelaunch plans the approval-gated runtime.
+- Verification: `npm run prelaunch` still blocked correctly on missing channel setup, but printed `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+
 ### P-20260618-086 - Serve waiting output hid the per-cycle approval action ID
 
 - Status: Resolved

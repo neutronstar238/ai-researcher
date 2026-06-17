@@ -7593,3 +7593,33 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-086` added and resolved.
 - Follow-up:
   - Reuse the same action ID field in future WeChat/Feishu approval cards.
+
+### 2026-06-18 03:45:28 +08:00 - Codex - Task 166.1 Prelaunch entrypoint alignment
+
+- Request: Continue V1.0 launch-entry verification and make strict prelaunch recommend the approval-gated 24h runtime rather than the lower-level direct loop.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed readiness `planned_daily_command` from `airesearcher autopilot --watch ...` to `airesearcher serve --permission-mode approve-dangerous --watch ...`.
+  - Kept `autopilot` as a direct lower-level loop while aligning strict prelaunch with the preferred approval-gated `serve` runtime.
+  - Updated the readiness CLI unit test to reject the old direct autopilot command.
+  - Documented in both README files that the readiness report plans the approval-gated runtime.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q`: passed, 1 test.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `npm run prelaunch`: exited 1 as expected for the current local deployment because no WeChat/Feishu channel is configured or QR-ready and no sent channel self-test result exists; it now prints `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-087` added and resolved.
+- Follow-up:
+  - Complete channel setup and a real sent channel self-test before using strict `npm run prelaunch` as the final green launch gate.

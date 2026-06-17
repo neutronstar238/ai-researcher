@@ -484,9 +484,10 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     assert payload["status"] == "ready"
     assert payload["failure_count"] == 0
     assert payload["planned_daily_command"] == (
-        "airesearcher autopilot --watch --cycles 0 "
+        "airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 "
         "--interval-seconds 86400 --push-inspiration"
     )
+    assert "autopilot --watch" not in payload["planned_daily_command"]
     assert payload["next_actions"] == [
         {
             "id": "start_daily_loop",

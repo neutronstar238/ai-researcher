@@ -2197,6 +2197,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-086`; task `164.1`; user requirement for approval gates that are understandable from CLI and IM surfaces._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed with no issues in 1 source file; focused `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q` passed with 3 tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
 
+- [x] 166. Prelaunch entrypoint alignment
+  - [x] 166.1 Make readiness recommend the approval-gated `serve` runtime
+    - Change the readiness report's `planned_daily_command` from direct `autopilot --watch` to `serve --permission-mode approve-dangerous --watch`.
+    - Keep `autopilot` available as the lower-level direct loop, but ensure strict prelaunch points ordinary operators to the approval service wrapper.
+    - Update the readiness unit test and README text to make this policy explicit.
+    - Run the real `npm run prelaunch` command and record whether the planned command and blocking checks match the current local deployment state.
+    - _References: `P-20260618-087`; tasks `163.1` through `165.1`; user requirement that the 24h system use dangerous-command approval gates._
+    - _Verify: focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`, `python -m mypy src\autoresearch\cli\main.py`, and `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q` passed; real `npm run prelaunch` printed `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration` and correctly blocked on missing WeChat/Feishu channel configuration plus missing sent channel self-test evidence; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

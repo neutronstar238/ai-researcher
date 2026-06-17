@@ -95,6 +95,7 @@ airesearcher readiness --push-inspiration --require-channel-config --require-cha
 ```
 
 它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
+报告里的计划日循环命令会使用带审批门禁的 `serve` runtime，而不是更底层的直接 `autopilot` 入口。
 
 也可以非交互式部署：
 

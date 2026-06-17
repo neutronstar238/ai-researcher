@@ -1968,7 +1968,7 @@ def _channel_delivery_test_readiness(
 def _readiness_daily_command(*, interval_seconds: int, push_inspiration: bool) -> str:
     push_flag = "--push-inspiration" if push_inspiration else "--no-push-inspiration"
     return (
-        "airesearcher autopilot --watch --cycles 0 "
+        "airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 "
         f"--interval-seconds {interval_seconds} {push_flag}"
     )
 
