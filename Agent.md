@@ -8285,3 +8285,34 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-103`.
 - Follow-up:
   - If a future readiness artifact is included in the LLM evidence bundle, add it dynamically to the artifact table rather than restoring a static row.
+
+### 2026-06-18 07:27:58 +08:00 - Codex - Task 188.1 Formal reference evidence title cleanup
+
+- Request: Continue launch-quality hardening so compact formal-reference evidence is readable, publication-facing, and not cluttered by duplicated locator text.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated `_autopilot_reference_title_and_locator()` so DOI and URL locator substrings are removed from the compact display title after the first locator is extracted into the dedicated locator field.
+  - Preserved full dotted DOI/URL manuscript locators in `doi_or_url_evidence` and the generated locator columns.
+  - Added regression coverage proving the displayed reference title is exactly the clean title and no longer contains `https://`.
+  - Recorded task `188.1` and resolved `P-20260618-107`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task188-formal-title-cleanup\vault --cache runs\manual-live\task188-formal-title-cleanup\cache --output-dir runs\manual-live\task188-formal-title-cleanup\runs --deliverables-dir outputs --state runs\manual-live\task188-formal-title-cleanup\scheduler-state.json --approvals-state runs\manual-live\task188-formal-title-cleanup\approvals.json --sessions-state runs\manual-live\task188-formal-title-cleanup\sessions.json --project-id task188_formal_title_cleanup --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, and PDF output under `outputs/task188_formal_title_cleanup/`.
+  - Real paper quality from `paper-build.json`: `passed=true`, `page_count=15`, `bibliography_item_count=10`, `figure_count=1`, `table_count=3`, `overfull_hbox_count=0`, and no failures.
+  - Real `formal-reference-evidence.md` keeps full locators in `Metadata locator` and `Manuscript locator` columns while the `Title` cells no longer repeat DOI or URL strings.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 75 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 525 passed and 4 skipped.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-107`.
+- Follow-up:
+  - No follow-up for compact title readability; broader multi-venue template validation and multi-dataset evidence remain separate future tasks.

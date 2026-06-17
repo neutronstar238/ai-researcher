@@ -4765,13 +4765,15 @@ def _autopilot_reference_title_and_locator(tail: str) -> tuple[str, str]:
         title, locator = tail.split(old_marker, 1)
         return title.strip(), locator.rstrip(".").strip()
     locator = ""
-    locator_match = re.search(
-        r"(doi:\S+|https?://\S+|source URL recorded in artifact)",
-        tail,
-    )
-    if locator_match is not None:
-        locator = locator_match.group(1).rstrip(".,;)")
-    return tail.rstrip(".").strip(), locator
+    locator_pattern = r"(doi:\S+|https?://\S+|source URL recorded in artifact)"
+    locator_matches = list(re.finditer(locator_pattern, tail))
+    title = tail
+    if locator_matches:
+        locator = locator_matches[0].group(1).rstrip(".,;)")
+        for match in reversed(locator_matches):
+            title = f"{title[:match.start()]}{title[match.end():]}"
+    title = re.sub(r"\s+", " ", title).rstrip(" .").strip()
+    return title, locator
 
 
 def _autopilot_citation_metadata_by_key(path_value: object) -> dict[str, dict[str, Any]]:

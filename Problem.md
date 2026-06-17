@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-107 - Compact formal-reference title cells repeated locator text
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:22:00 +08:00
+- Source: Follow-up inspection after fixing `P-20260618-106`.
+- Symptom: `formal-reference-evidence.md` preserved full `Manuscript locator` values, but the `Title` column still repeated DOI and URL locator strings, making the compact citation evidence table noisy and harder to review.
+- Impact: The LLM review evidence and human audit artifact were technically correct but less readable, which weakens the project goal of publication-facing, traceable, reviewer-friendly evidence.
+- Evidence: `runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\formal-reference-evidence.md` had rows whose `Title` cells included URL/DOI strings that were already present in `Metadata locator` and `Manuscript locator`.
+- Root cause: `_autopilot_reference_title_and_locator()` extracted the first locator but returned the original reference tail as the title for non-legacy reference lines.
+- Workaround: Before the fix, read the dedicated locator columns and ignore duplicated locator text in the title column.
+- Next action: None for compact title readability.
+- Linked tasks: `188.1`
+- Resolution: Removed all DOI/URL locator substrings from the returned compact title after extracting the first locator, while preserving the locator column.
+- Verification: Focused CLI test, ruff, and mypy passed. The real `task188_formal_title_cleanup` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; its `formal-reference-evidence.md` keeps full locators in locator columns while the `Title` cells no longer repeat DOI/URL strings.
+
 ### P-20260618-106 - Compact formal-reference evidence truncated dotted URL locators
 
 - Status: Resolved

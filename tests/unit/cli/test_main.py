@@ -2539,10 +2539,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert formal_references["displayed_references"][0]["doi_or_url_evidence"] == (
         "https://example.test/paper.v1"
     )
-    assert (
-        "Evidence graphs for autonomous research"
-        in formal_references["displayed_references"][0]["title"]
-    )
+    displayed_title = formal_references["displayed_references"][0]["title"]
+    assert displayed_title == "Evidence graphs for autonomous research"
+    assert "https://" not in displayed_title
     assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
