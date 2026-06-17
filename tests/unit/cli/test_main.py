@@ -472,6 +472,7 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert "[OK] readiness: ready" in result.stdout
     assert "[OK] planned_daily_command:" in result.stdout
+    assert "[NEXT] readiness_action.start_daily_loop:" in result.stdout
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["status"] == "ready"
     assert payload["failure_count"] == 0
@@ -479,6 +480,14 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
         "airesearcher autopilot --watch --cycles 0 "
         "--interval-seconds 86400 --push-inspiration"
     )
+    assert payload["next_actions"] == [
+        {
+            "id": "start_daily_loop",
+            "severity": "next",
+            "command": payload["planned_daily_command"],
+            "reason": "All hard readiness checks passed; start the unattended daily loop when ready.",
+        }
+    ]
     checks = {check["id"]: check for check in payload["checks"]}
     assert checks["operator_channels"]["status"] == "pass"
     assert checks["operator_channels"]["evidence"]["ready_channels"] == ["feishu"]
@@ -531,10 +540,16 @@ def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
 
     assert result.exit_code == 1, result.output
     assert "[FAIL] readiness.channel_delivery_test:" in result.output
+    assert "[NEXT] readiness_action.run_channel_self_test:" in result.output
     payload = json.loads(output.read_text(encoding="utf-8"))
     checks = {check["id"]: check for check in payload["checks"]}
     assert checks["operator_channels"]["status"] == "pass"
     assert checks["channel_delivery_test"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel feishu "
+        f"--output {(tmp_path / 'missing-channel-test.json').as_posix()} --require-sent"
+    )
 
 
 def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
@@ -576,10 +591,16 @@ def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
 
     assert result.exit_code == 1, result.output
     assert "[FAIL] readiness.operator_channels:" in result.output
+    assert "[NEXT] readiness_action.configure_operator_channel:" in result.output
     payload = json.loads(output.read_text(encoding="utf-8"))
     checks = {check["id"]: check for check in payload["checks"]}
     assert payload["status"] == "blocked"
     assert checks["operator_channels"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["configure_operator_channel"]["command"] == (
+        f"airesearcher setup --config {config_path.as_posix()} "
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr"
+    )
 
 
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(

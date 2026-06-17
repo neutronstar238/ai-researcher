@@ -1669,12 +1669,20 @@ def readiness(
         interval_seconds=interval_seconds,
         push_inspiration=push_inspiration,
     )
+    next_actions = _readiness_next_actions(
+        checks,
+        planned_command=planned_command,
+        config_path=config_path,
+        env_path=env_path,
+        channel_test_result=channel_test_result,
+    )
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready" if failure_count == 0 else "blocked",
         "failure_count": failure_count,
         "warning_count": warning_count,
         "planned_daily_command": planned_command,
+        "next_actions": next_actions,
         "checks": checks,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1689,6 +1697,8 @@ def readiness(
         )
     typer.echo(f"[OK] readiness_report: {output}")
     typer.echo(f"[OK] planned_daily_command: {planned_command}")
+    for action in next_actions:
+        typer.echo(f"[NEXT] readiness_action.{action['id']}: {action['command']}")
     if failure_count:
         typer.echo("[FAIL] readiness: blocked", err=True)
         raise typer.Exit(code=1)
@@ -1961,6 +1971,102 @@ def _readiness_daily_command(*, interval_seconds: int, push_inspiration: bool) -
         "airesearcher autopilot --watch --cycles 0 "
         f"--interval-seconds {interval_seconds} {push_flag}"
     )
+
+
+def _readiness_next_actions(
+    checks: list[dict[str, object]],
+    *,
+    planned_command: str,
+    config_path: Path,
+    env_path: Path,
+    channel_test_result: Path,
+) -> list[dict[str, str]]:
+    checks_by_id = {str(check.get("id")): check for check in checks}
+    actions: list[dict[str, str]] = []
+    action_ids: set[str] = set()
+
+    def add(action_id: str, *, severity: str, command: str, reason: str) -> None:
+        if action_id in action_ids:
+            return
+        action_ids.add(action_id)
+        actions.append(
+            {
+                "id": action_id,
+                "severity": severity,
+                "command": command,
+                "reason": reason,
+            }
+        )
+
+    setup_command = (
+        "airesearcher setup "
+        f"--config {_command_path(config_path)} --env-path {_command_path(env_path)}"
+    )
+    channel_setup_command = setup_command + " --wechat --wechat-qr"
+
+    for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
+        check = checks_by_id.get(check_id)
+        if check and check.get("status") == "fail":
+            add(
+                "run_setup",
+                severity="required",
+                command=setup_command,
+                reason="Create or repair first-deploy configuration before starting the loop.",
+            )
+            break
+
+    operator_check = checks_by_id.get("operator_channels")
+    if operator_check and operator_check.get("status") in {"warn", "fail"}:
+        add(
+            "configure_operator_channel",
+            severity="required" if operator_check.get("status") == "fail" else "recommended",
+            command=channel_setup_command,
+            reason="Configure at least one WeChat or Feishu channel before push delivery.",
+        )
+
+    delivery_check = checks_by_id.get("channel_delivery_test")
+    if delivery_check and delivery_check.get("status") in {"warn", "fail"}:
+        ready_channels = _readiness_ready_channels(operator_check)
+        if ready_channels:
+            channel_flags = " ".join(f"--channel {channel}" for channel in ready_channels)
+            add(
+                "run_channel_self_test",
+                severity="required" if delivery_check.get("status") == "fail" else "recommended",
+                command=(
+                    "airesearcher channels test "
+                    f"{channel_flags} --output {_command_path(channel_test_result)} --require-sent"
+                ),
+                reason="Produce real sent-delivery evidence before treating push readiness as proven.",
+            )
+        else:
+            add(
+                "configure_operator_channel",
+                severity="required",
+                command=channel_setup_command,
+                reason="Configure a delivery channel before running the channel self-test.",
+            )
+
+    if not any(check.get("status") in {"fail", "warn"} for check in checks):
+        add(
+            "start_daily_loop",
+            severity="next",
+            command=planned_command,
+            reason="All hard readiness checks passed; start the unattended daily loop when ready.",
+        )
+    return actions
+
+
+def _readiness_ready_channels(check: Mapping[str, object] | None) -> list[str]:
+    if not check:
+        return []
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return []
+    return _string_list(evidence.get("ready_channels"))
+
+
+def _command_path(path: Path) -> str:
+    return shlex.quote(path.as_posix())
 
 
 def _env_or_os(env_values: Mapping[str, str], key: str) -> str:

@@ -7369,3 +7369,31 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Run a real channel self-test after the user completes WeChat QR or Feishu app setup.
+
+### 2026-06-18 02:50:57 +08:00 - Codex - Task 158.1 Readiness next-action remediation
+
+- Request: Continue V1.0 onboarding hardening so readiness reports tell operators exactly what to do next when push readiness is warning or blocked.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added structured `next_actions` to `.airesearcher/readiness/report.json`.
+  - Added `[NEXT] readiness_action.<id>: <command>` CLI output for readiness remediation.
+  - Mapped missing first-deploy config to `airesearcher setup`, missing channel config to guided WeChat QR setup, and missing sent channel evidence to `airesearcher channels test ... --require-sent`.
+  - Prevented `start_daily_loop` from being recommended while any readiness warning remains.
+  - Added tests for clean readiness, missing sent-channel evidence, and missing operator channel configuration.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel`: passed on the real local checkout, wrote `.airesearcher/readiness/report.json`, and printed only `configure_operator_channel` as the next action while channel warnings remain.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - After the user completes WeChat QR or Feishu setup, run `airesearcher channels test --channel <channel> --require-sent` and then strict readiness.

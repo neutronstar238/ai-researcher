@@ -2127,6 +2127,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `154.1`, `155.1`, and `156.1`; user requirement that deployment be guided rather than forcing users to manually discover one command after another._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 506 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 158. Readiness next-action remediation
+  - [x] 158.1 Add structured next actions to readiness reports
+    - Add `next_actions` to `.airesearcher/readiness/report.json` so blocked or warning readiness output records executable remediation commands.
+    - Print each action as `[NEXT] readiness_action.<id>: <command>` in the CLI output.
+    - Recommend setup repair for missing first-deploy config, channel setup for missing WeChat/Feishu delivery config, channel self-test for configured channels without sent evidence, and daily-loop start only when there are no failures or warnings.
+    - Add CLI tests for clean readiness, missing sent channel evidence, and missing channel configuration.
+    - _References: tasks `155.1`, `156.1`, and `157.1`; user requirement that setup and prelaunch checks guide operators through real push-readiness instead of relying on manual `.env` edits or hidden assumptions._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel` passed on the real local checkout and wrote `.airesearcher/readiness/report.json` with a `configure_operator_channel` next action but no premature `start_daily_loop` action while warnings remain; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 506 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
