@@ -46,7 +46,7 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Next action: Prefer `result.output` for CLI assertions unless a test explicitly constructs a runner with separate stderr capture.
 - Linked tasks: `154.1`
 - Resolution: Updated the failure-message assertion to read the mixed `result.output` stream.
-- Verification: `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q` passed locally after the fix; full gate and CI rerun are recorded in `Agent.md`.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q` passed locally after the fix; `python -m pytest tests\smoke tests\unit -q` passed locally; GitHub Actions run `27710036107` passed after the fix.
 
 ### P-20260618-080 - Channel test fake sender left unused parameters
 

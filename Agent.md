@@ -7276,7 +7276,8 @@ This file defines the project development standard for coding agents and records
   - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
   - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
   - `python -m pytest tests\smoke tests\unit -q`: passed, 503 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `gh run watch 27710036107 --exit-status`: passed; Python 3.10/Linux CI completed ruff, mypy, and smoke/unit tests successfully.
 - Problems:
   - `P-20260618-081` added and resolved.
 - Follow-up:
-  - After this fix is pushed, watch the replacement GitHub Actions run to confirm Python 3.10/Linux is green.
+  - None for this CI fix.
