@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:48:14 +08:00 - Codex - Task 136.1 runtime session gate automation
+
+- Request:
+  - Continue running the project and turn concurrent-agent coordination from manual prompt discipline into an automatic runtime gate for long-running entrypoints.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added automatic session claiming to `autopilot` and `serve` before approval checks, online retrieval, experiment execution, vault writes, or output writes can start.
+  - Claimed vault, cache, run output, deliverables output, scheduler state, and runtime approval state paths for the active project.
+  - Added `--sessions-state`, `--claim-session/--no-claim-session`, and `--agent-name` controls for runtime operators.
+  - Added release-on-exit behavior so normal completion, queued approval exits, and cycle failures do not leave active session claims behind.
+  - Added CLI coverage for automatic claim/release and conflict-before-cycle behavior.
+  - Marked task `136.1` complete and added its task-dependency graph node.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_blocks_overlapping_runtime_session_before_cycle -q`: passed, 4 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 56 tests.
+  - Real CLI smoke `node .\bin\airesearcher.mjs sessions claim --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --session-id task136_active --agent-name "Codex live smoke" --task-id "136.1-live-conflict" --path runs\manual-live\task136-runtime-session-gate\vault`: passed, first claim allowed.
+  - Real CLI smoke `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --sessions-state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --approvals-state runs\manual-live\task136-runtime-session-gate\approvals.json --vault runs\manual-live\task136-runtime-session-gate\vault --cache runs\manual-live\task136-runtime-session-gate\cache --output-dir runs\manual-live\task136-runtime-session-gate\runs --deliverables-dir runs\manual-live\task136-runtime-session-gate\outputs --state runs\manual-live\task136-runtime-session-gate\scheduler-state.json --project-id task136_runtime_session_gate --demo pendigits_variance_calibrated_prototypes --no-review`: exited `1` as expected, printed `[OK] session_claim: blocked` and `[CONFLICT] session_id=task136_active`, and did not start a cycle.
+  - Real CLI cleanup `node .\bin\airesearcher.mjs sessions release task136_active --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json`: passed, status released.
+  - Real CLI state check `node .\bin\airesearcher.mjs sessions list --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --include-released`: passed, only `status=released` remained.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 490 passed, 4 skipped, 1 known external warning.
+- Problems:
+  - `P-20260613-009` resolved for `autopilot` and `serve` runtime entrypoints; future worker/daemon/channel entrypoints must reuse the same automatic claim/release wrapper.
+- Follow-up:
+  - Continue applying the runtime session wrapper to any new long-running writer entrypoint before it can mutate vault, cache, runs, outputs, scheduler, or approval state.
+
 ### 2026-06-17 23:38:42 +08:00 - Codex - Task 135.1 prompt-only release discipline reconciliation
 
 - Request:

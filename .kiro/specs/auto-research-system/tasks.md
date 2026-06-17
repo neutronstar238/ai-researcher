@@ -1918,6 +1918,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-008`, `P-20260613-009`; user request to borrow SCALE Engine's physical evidence/review gate idea without adopting the whole heavyweight lifecycle._
     - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`; `rg -n "P-20260613-008|P-20260613-009|135\.1|lifecycle trace|release_allowed" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
 
+- [x] 136. Runtime session gate automation
+  - [x] 136.1 Automatically claim runtime write scopes for `autopilot` and `serve`
+    - Add automatic agent-session claiming to the long-running runtime entrypoints before any approval queue, online retrieval, experiment execution, vault write, or deliverable export can start.
+    - Claim the vault, cache, run output, deliverables output, scheduler state, and runtime approval state paths for the current project, and fail closed when another active session overlaps any claimed scope.
+    - Release the runtime session on normal completion, queued approval exit, or cycle failure so a failed run does not leave stale active state.
+    - Keep a `--sessions-state` override for operators while defaulting the session state next to the scheduler or approval state when those paths are custom.
+    - Add focused CLI tests for automatic claim/release, approval-queue release, allow-all release, and conflict-before-cycle behavior.
+    - _References: `P-20260613-009`; user request to make multi-agent traffic control a physical gate rather than relying on prompt discipline._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_blocks_overlapping_runtime_session_before_cycle -q` passed with 4 tests; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\unit\cli\test_main.py -q` passed with 56 tests; real CLI smoke `node .\bin\airesearcher.mjs sessions claim --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --session-id task136_active ...` allowed the first claim, real `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --sessions-state runs\manual-live\task136-runtime-session-gate\agent-sessions.json ...` exited `1` with `[OK] session_claim: blocked` and `[CONFLICT] session_id=task136_active` before any cycle started, real `node .\bin\airesearcher.mjs sessions release task136_active ...` released the session, and `node .\bin\airesearcher.mjs sessions list --include-released ...` showed only `status=released`; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 490 passed, 4 skipped, and 1 known external warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2374,6 +2384,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 102,
       "tasks": ["135.1"]
+    },
+    {
+      "id": 103,
+      "tasks": ["136.1"]
     }
   ]
 }

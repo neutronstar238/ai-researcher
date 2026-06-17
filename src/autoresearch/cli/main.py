@@ -97,6 +97,7 @@ from autoresearch.research import (
     run_project_similarity_check,
 )
 from autoresearch.runtime import (
+    AgentSession,
     AgentSessionError,
     RuntimeActionRisk,
     RuntimeApprovalError,
@@ -2210,6 +2211,21 @@ def autopilot(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    sessions_state: Annotated[
+        Path | None,
+        typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
+    ] = None,
+    claim_session: Annotated[
+        bool,
+        typer.Option(
+            "--claim-session/--no-claim-session",
+            help="Automatically claim runtime write paths before starting the loop.",
+        ),
+    ] = True,
+    agent_name: Annotated[
+        str,
+        typer.Option("--agent-name", help="Agent identity recorded in the runtime session claim."),
+    ] = "AI-Researcher Runtime",
     project_id: Annotated[
         str,
         typer.Option("--project-id", help="Project ID for Obsidian review and issue notes."),
@@ -2284,58 +2300,75 @@ def autopilot(
 
     _load_optional_env(env_path)
     completed = 0
-    while True:
-        completed += 1
-        try:
-            summary = _run_autopilot_cycle(
-                config_path=config_path,
-                env_path=env_path,
-                vault=vault,
-                cache=cache,
-                output_dir=output_dir,
-                deliverables_dir=deliverables_dir,
-                state=state,
-                project_id=project_id,
-                demo=demo,
-                max_queries=max_queries,
-                max_results_per_source=max_results_per_source,
-                timeout_seconds=timeout_seconds,
-                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
-                min_quality_score=min_quality_score,
-                review=review,
-                paper_template_id=paper_template_id,
-                push_inspiration=push_inspiration,
-            )
-        except RuntimeError as exc:
-            typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
-            raise typer.Exit(1) from exc
-        typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
-        typer.echo(f"[OK] summary: {summary['summary_path']}")
-        if "source_preflight" in summary:
-            preflight = summary["source_preflight"]
-            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
-            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
-        _echo_research_plan_status(summary)
-        typer.echo(f"[OK] review_status: {summary['review']['status']}")
-        if "publication_audit" in summary:
-            typer.echo(
-                "[OK] publication_audit: "
-                f"{summary['publication_audit']['verdict']}"
-            )
-        if "evidence_gate" in summary:
-            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
-        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
-        if "deliverables" in summary:
-            deliverables = summary["deliverables"]
-            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
-            if deliverables.get("pdf_path"):
-                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
-        _echo_inspiration_pushes(summary)
-        if not watch:
-            break
-        if cycles > 0 and completed >= cycles:
-            break
-        time.sleep(interval_seconds)
+    resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
+    session = _claim_runtime_session(
+        enabled=claim_session,
+        sessions_state=resolved_sessions_state,
+        agent_name=agent_name,
+        task_id=f"autopilot:{project_id}",
+        claimed_paths=_runtime_claimed_paths(
+            vault=vault,
+            cache=cache,
+            output_dir=output_dir,
+            deliverables_dir=deliverables_dir,
+            state=state,
+        ),
+    )
+    try:
+        while True:
+            completed += 1
+            try:
+                summary = _run_autopilot_cycle(
+                    config_path=config_path,
+                    env_path=env_path,
+                    vault=vault,
+                    cache=cache,
+                    output_dir=output_dir,
+                    deliverables_dir=deliverables_dir,
+                    state=state,
+                    project_id=project_id,
+                    demo=demo,
+                    max_queries=max_queries,
+                    max_results_per_source=max_results_per_source,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
+                    min_quality_score=min_quality_score,
+                    review=review,
+                    paper_template_id=paper_template_id,
+                    push_inspiration=push_inspiration,
+                )
+            except RuntimeError as exc:
+                typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
+                raise typer.Exit(1) from exc
+            typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
+            typer.echo(f"[OK] summary: {summary['summary_path']}")
+            if "source_preflight" in summary:
+                preflight = summary["source_preflight"]
+                prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+                typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_research_plan_status(summary)
+            typer.echo(f"[OK] review_status: {summary['review']['status']}")
+            if "publication_audit" in summary:
+                typer.echo(
+                    "[OK] publication_audit: "
+                    f"{summary['publication_audit']['verdict']}"
+                )
+            if "evidence_gate" in summary:
+                typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
+            typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+            if "deliverables" in summary:
+                deliverables = summary["deliverables"]
+                typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+                if deliverables.get("pdf_path"):
+                    typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+            _echo_inspiration_pushes(summary)
+            if not watch:
+                break
+            if cycles > 0 and completed >= cycles:
+                break
+            time.sleep(interval_seconds)
+    finally:
+        _release_runtime_session(resolved_sessions_state, session)
 
 
 @app.command("serve")
@@ -2372,6 +2405,21 @@ def serve(
         Path,
         typer.Option("--approvals-state", help="Local runtime approval queue JSON file."),
     ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    sessions_state: Annotated[
+        Path | None,
+        typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
+    ] = None,
+    claim_session: Annotated[
+        bool,
+        typer.Option(
+            "--claim-session/--no-claim-session",
+            help="Automatically claim runtime write paths before starting the service.",
+        ),
+    ] = True,
+    agent_name: Annotated[
+        str,
+        typer.Option("--agent-name", help="Agent identity recorded in the runtime session claim."),
+    ] = "AI-Researcher Runtime",
     permission_mode: Annotated[
         RuntimePermissionMode,
         typer.Option("--permission-mode", help="Runtime permission mode."),
@@ -2460,83 +2508,105 @@ def serve(
         push_inspiration=push_inspiration,
     )
     typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
-    while True:
-        decision = ensure_runtime_approval(
-            state_path=approvals_state,
-            mode=permission_mode,
-            action_id=action_id,
-            command=command_text,
-            risk=RuntimeActionRisk.DANGEROUS,
-            reason=(
-                "Runs online literature discovery, source-backed similarity checks, "
-                "local experiment execution, optional live LLM review, and vault/state writes."
-            ),
-        )
-        if not decision.allowed:
-            request = decision.request
-            request_id = request.request_id if request is not None else "unknown"
-            typer.echo(f"[WAITING] approval_required: {request_id}")
-            typer.echo(f"[WAITING] state: {approvals_state}")
-            typer.echo(
-                "[WAITING] approve: "
-                f"airesearcher runtime approve {request_id} --state {approvals_state}"
+    resolved_sessions_state = _resolve_runtime_sessions_state(
+        sessions_state,
+        state,
+        approvals_state,
+    )
+    session = _claim_runtime_session(
+        enabled=claim_session,
+        sessions_state=resolved_sessions_state,
+        agent_name=agent_name,
+        task_id=f"serve:{project_id}",
+        claimed_paths=_runtime_claimed_paths(
+            vault=vault,
+            cache=cache,
+            output_dir=output_dir,
+            deliverables_dir=deliverables_dir,
+            state=state,
+            extra_paths=(approvals_state,),
+        ),
+    )
+    try:
+        while True:
+            decision = ensure_runtime_approval(
+                state_path=approvals_state,
+                mode=permission_mode,
+                action_id=action_id,
+                command=command_text,
+                risk=RuntimeActionRisk.DANGEROUS,
+                reason=(
+                    "Runs online literature discovery, source-backed similarity checks, "
+                    "local experiment execution, optional live LLM review, and vault/state writes."
+                ),
             )
-            if not watch:
-                raise typer.Exit(code=2)
-            time.sleep(interval_seconds)
-            continue
+            if not decision.allowed:
+                request = decision.request
+                request_id = request.request_id if request is not None else "unknown"
+                typer.echo(f"[WAITING] approval_required: {request_id}")
+                typer.echo(f"[WAITING] state: {approvals_state}")
+                typer.echo(
+                    "[WAITING] approve: "
+                    f"airesearcher runtime approve {request_id} --state {approvals_state}"
+                )
+                if not watch:
+                    raise typer.Exit(code=2)
+                time.sleep(interval_seconds)
+                continue
 
-        completed += 1
-        try:
-            summary = _run_autopilot_cycle(
-                config_path=config_path,
-                env_path=env_path,
-                vault=vault,
-                cache=cache,
-                output_dir=output_dir,
-                deliverables_dir=deliverables_dir,
-                state=state,
-                project_id=project_id,
-                demo=demo,
-                max_queries=max_queries,
-                max_results_per_source=max_results_per_source,
-                timeout_seconds=timeout_seconds,
-                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
-                min_quality_score=min_quality_score,
-                review=review,
-                paper_template_id=paper_template_id,
-                push_inspiration=push_inspiration,
-            )
-        except RuntimeError as exc:
-            typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
-            raise typer.Exit(1) from exc
-        typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
-        typer.echo(f"[OK] summary: {summary['summary_path']}")
-        if "source_preflight" in summary:
-            preflight = summary["source_preflight"]
-            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
-            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
-        _echo_research_plan_status(summary)
-        typer.echo(f"[OK] review_status: {summary['review']['status']}")
-        if "publication_audit" in summary:
-            typer.echo(
-                "[OK] publication_audit: "
-                f"{summary['publication_audit']['verdict']}"
-            )
-        if "evidence_gate" in summary:
-            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
-        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
-        if "deliverables" in summary:
-            deliverables = summary["deliverables"]
-            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
-            if deliverables.get("pdf_path"):
-                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
-        _echo_inspiration_pushes(summary)
-        if not watch:
-            break
-        if cycles > 0 and completed >= cycles:
-            break
-        time.sleep(interval_seconds)
+            completed += 1
+            try:
+                summary = _run_autopilot_cycle(
+                    config_path=config_path,
+                    env_path=env_path,
+                    vault=vault,
+                    cache=cache,
+                    output_dir=output_dir,
+                    deliverables_dir=deliverables_dir,
+                    state=state,
+                    project_id=project_id,
+                    demo=demo,
+                    max_queries=max_queries,
+                    max_results_per_source=max_results_per_source,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
+                    min_quality_score=min_quality_score,
+                    review=review,
+                    paper_template_id=paper_template_id,
+                    push_inspiration=push_inspiration,
+                )
+            except RuntimeError as exc:
+                typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
+                raise typer.Exit(1) from exc
+            typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
+            typer.echo(f"[OK] summary: {summary['summary_path']}")
+            if "source_preflight" in summary:
+                preflight = summary["source_preflight"]
+                prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+                typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_research_plan_status(summary)
+            typer.echo(f"[OK] review_status: {summary['review']['status']}")
+            if "publication_audit" in summary:
+                typer.echo(
+                    "[OK] publication_audit: "
+                    f"{summary['publication_audit']['verdict']}"
+                )
+            if "evidence_gate" in summary:
+                typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
+            typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+            if "deliverables" in summary:
+                deliverables = summary["deliverables"]
+                typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+                if deliverables.get("pdf_path"):
+                    typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+            _echo_inspiration_pushes(summary)
+            if not watch:
+                break
+            if cycles > 0 and completed >= cycles:
+                break
+            time.sleep(interval_seconds)
+    finally:
+        _release_runtime_session(resolved_sessions_state, session)
 
 
 @app.command("issue-followups")
@@ -4655,6 +4725,81 @@ def _validate_optional_max_tokens(value: int | None, *, minimum: int) -> int | N
         msg = f"--max-tokens must be at least {minimum} when provided"
         raise typer.BadParameter(msg)
     return value
+
+
+def _resolve_runtime_sessions_state(
+    sessions_state: Path | None,
+    *related_paths: Path,
+) -> Path:
+    if sessions_state is not None:
+        return sessions_state
+    for path in related_paths:
+        parent = Path(path).parent
+        if parent != Path(".airesearcher") and parent != Path("."):
+            return parent / "agent-sessions.json"
+    return DEFAULT_AGENT_SESSIONS_PATH
+
+
+def _runtime_claimed_paths(
+    *,
+    vault: Path,
+    cache: Path,
+    output_dir: Path,
+    deliverables_dir: Path,
+    state: Path,
+    extra_paths: tuple[Path, ...] = (),
+) -> tuple[str, ...]:
+    paths = (vault, cache, output_dir, deliverables_dir, state, *extra_paths)
+    return tuple(str(path) for path in paths)
+
+
+def _claim_runtime_session(
+    *,
+    enabled: bool,
+    sessions_state: Path,
+    agent_name: str,
+    task_id: str,
+    claimed_paths: tuple[str, ...],
+) -> AgentSession | None:
+    if not enabled:
+        typer.echo("[OK] session_claim: disabled")
+        return None
+    try:
+        result = claim_agent_session(
+            state_path=sessions_state,
+            agent_name=agent_name,
+            task_id=task_id,
+            claimed_paths=claimed_paths,
+        )
+    except AgentSessionError as exc:
+        typer.echo(f"[FAIL] session claim failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    status = "allowed" if result.allowed else "blocked"
+    typer.echo(f"[OK] session_claim: {status}")
+    typer.echo(f"[OK] sessions_state: {sessions_state}")
+    if result.session is not None:
+        typer.echo(f"[OK] session_id: {result.session.session_id}")
+        typer.echo(f"[OK] claimed_paths: {', '.join(result.session.claimed_paths)}")
+        return result.session
+    for conflict in result.conflicts:
+        typer.echo(
+            f"[CONFLICT] session_id={conflict.session_id} task_id={conflict.task_id} "
+            f"agent={conflict.agent_name} claimed={conflict.claimed_path} "
+            f"existing={conflict.conflicting_path}"
+        )
+    typer.echo("[FAIL] runtime session claim overlaps an active agent session", err=True)
+    raise typer.Exit(code=1)
+
+
+def _release_runtime_session(sessions_state: Path, session: AgentSession | None) -> None:
+    if session is None:
+        return
+    try:
+        released = release_agent_session(sessions_state, session.session_id)
+    except AgentSessionError as exc:
+        typer.echo(f"[WARN] session_release_failed: {exc}", err=True)
+        return
+    typer.echo(f"[OK] session_release: {released.session_id}")
 
 
 def _export_cycle_deliverables(

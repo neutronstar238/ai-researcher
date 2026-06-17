@@ -1755,6 +1755,23 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
     assert "[OK] evidence_gate: blocked" in result.stdout
+    assert "[OK] session_claim: allowed" in result.stdout
+    assert "[OK] session_release:" in result.stdout
+    session_payload = json.loads(
+        (state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert len(session_payload["sessions"]) == 1
+    session = session_payload["sessions"][0]
+    assert session["task_id"] == "autopilot:project_1"
+    assert session["status"] == "released"
+    assert any(path.endswith("/vault") for path in session["claimed_paths"])
+    assert any(path.endswith("/cache") for path in session["claimed_paths"])
+    assert any(path.endswith("/runs/autopilot") for path in session["claimed_paths"])
+    assert any(path.endswith("/outputs") for path in session["claimed_paths"])
+    assert any(
+        path.endswith("/.airesearcher/scheduler-state.json")
+        for path in session["claimed_paths"]
+    )
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
@@ -2264,6 +2281,8 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
 
     assert pending_result.exit_code == 2, pending_result.output
     assert "[WAITING] approval_required:" in pending_result.stdout
+    assert "[OK] session_claim: allowed" in pending_result.stdout
+    assert "[OK] session_release:" in pending_result.stdout
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
     request_id = payload["requests"][0]["request_id"]
     assert payload["requests"][0]["status"] == "pending"
@@ -2313,6 +2332,18 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
 
     assert allowed_result.exit_code == 0, allowed_result.output
     assert "[OK] serve_cycle: cycle-test" in allowed_result.stdout
+    assert "[OK] session_claim: allowed" in allowed_result.stdout
+    assert "[OK] session_release:" in allowed_result.stdout
+    session_payload = json.loads(
+        (approvals_state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert [session["status"] for session in session_payload["sessions"]] == [
+        "released",
+        "released",
+    ]
+    assert {session["task_id"] for session in session_payload["sessions"]} == {
+        "serve:project_1"
+    }
 
 
 def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch) -> None:
@@ -2350,6 +2381,83 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
     assert "[OK] runtime_mode: allow-all" in result.stdout
     assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] session_claim: allowed" in result.stdout
+    assert "[OK] session_release:" in result.stdout
+    assert not approvals_state.exists()
+    session_payload = json.loads(
+        (approvals_state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert len(session_payload["sessions"]) == 1
+    assert session_payload["sessions"][0]["task_id"] == "serve:project_1"
+    assert session_payload["sessions"][0]["status"] == "released"
+
+
+def test_serve_blocks_overlapping_runtime_session_before_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    sessions_state = tmp_path / ".airesearcher" / "agent-sessions.json"
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    vault = tmp_path / "vault"
+    runner = CliRunner()
+
+    active = runner.invoke(
+        app,
+        [
+            "sessions",
+            "claim",
+            "--state",
+            str(sessions_state),
+            "--session-id",
+            "session_a",
+            "--agent-name",
+            "Codex A",
+            "--task-id",
+            "manual-edit",
+            "--path",
+            str(vault),
+        ],
+    )
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should not run after a session conflict")
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    blocked = runner.invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "allow-all",
+            "--sessions-state",
+            str(sessions_state),
+            "--approvals-state",
+            str(approvals_state),
+            "--vault",
+            str(vault),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(tmp_path / "runs"),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert active.exit_code == 0, active.output
+    assert "[OK] session_claim: allowed" in active.stdout
+    assert blocked.exit_code == 1, blocked.output
+    assert "[OK] runtime_mode: allow-all" in blocked.stdout
+    assert "[OK] session_claim: blocked" in blocked.stdout
+    assert "[CONFLICT] session_id=session_a" in blocked.stdout
+    assert "[FAIL] runtime session claim overlaps an active agent session" in blocked.output
+    assert "serve_cycle" not in blocked.stdout
     assert not approvals_state.exists()
 
 
