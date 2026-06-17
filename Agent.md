@@ -8081,3 +8081,34 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-100`.
 - Follow-up:
   - The default generic-template cycle is now release-gate clean; future venue-readiness claims still require a separate external ACM/IEEE/Springer template cycle or a stability-matrix pass.
+
+### 2026-06-18 06:08:06 +08:00 - Codex - Task 182.1 Related-work inspection directness
+
+- Request: Continue launch-quality hardening and make the related-work inspection as conservative as the formal References filtering.
+- Files changed:
+  - `src/autoresearch/reports/related_work.py`
+  - `tests/unit/reports/test_related_work.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed candidate prose and demo IDs from dataset-context tokens so method words from titles and task IDs cannot inflate benchmark overlap.
+  - Replaced the loose direct-method rule with title/domain anchored directness: prototype/centroid/nearest/metric/Mahalanobis-style anchors are required before a record is a direct related-work candidate.
+  - Demoted generic variance, calibration, and generic recognition records to contextual statuses when they lack direct method anchors.
+  - Expanded stopwords so overlap fields no longer retain generic tokens such as `and` or `the`.
+  - Added a regression fixture where a Boolean variance paper is inspected and source-backed but does not count as a direct method candidate.
+- Verification:
+  - Initial `python -m pytest tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_related_work_inspection_breadth -q` failed because the publication-audit selector does not exist.
+  - First real inspection rerun failed with `ModuleNotFoundError: No module named 'autoresearch'` because the one-off Python command lacked `src` on `sys.path`; reran with `sys.path.insert(0, 'src')`.
+  - Intermediate `python -m pytest tests\unit\reports\test_related_work.py -q` failed until the synthetic seed fixture stopped mentioning handwritten digit classification and the directness rule stopped accepting generic recognition anchors.
+  - Final `python -m pytest tests\unit\reports\test_related_work.py -q`: passed.
+  - Final `python -m ruff check src\autoresearch\reports\related_work.py tests\unit\reports\test_related_work.py`: passed.
+  - Final `python -m mypy src\autoresearch\reports\related_work.py`: passed.
+  - Real existing-cycle inspection over `task181_reference_relevance_v3` with the new code reported 9 direct candidates and no longer classified Boolean variance, Catoni variance, or seismic facies classification as direct method candidates.
+  - Real full cycle: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task182-related-work-directness\vault --cache runs\manual-live\task182-related-work-directness\cache --output-dir runs\manual-live\task182-related-work-directness\runs --deliverables-dir outputs --state runs\manual-live\task182-related-work-directness\scheduler-state.json --approvals-state runs\manual-live\task182-related-work-directness\approvals.json --sessions-state runs\manual-live\task182-related-work-directness\sessions.json --project-id task182_related_work_directness --timeout-seconds 120 --no-push-inspiration`: passed with review, publication audit, evidence gate, zero follow-ups, and PDF output under `outputs/task182_related_work_directness/`.
+  - `pdfinfo outputs\task182_related_work_directness\task182_related_work_directness-cycle-20260617T220623Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `pdftotext` on that PDF confirmed Boolean variance, Catoni variance, seismic facies classification, and `source URL recorded in artifact` were absent from formal References.
+- Problems:
+  - Added and resolved `P-20260618-101`.
+- Follow-up:
+  - The publication audit still keeps a non-blocking adjacent-work warning from similarity classification; a future task can add an explicit manuscript positioning table for adjacent-work findings if the user wants the warning resolved rather than merely visible.

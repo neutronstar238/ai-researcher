@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-101 - Related-work inspection overclassified weak variance and generic recognition papers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:00:00 +08:00
+- Source: Real `task181_reference_relevance_v3` related-work inspection rerun and direct-candidate list review.
+- Symptom: Formal manuscript references were already filtered, but `related-work-inspection.json` still counted weak records such as Boolean variance, Catoni variance, generic handwritten recognition, and seismic facies classification as `direct_method_candidate` in some passes. During verification, an initial focused pytest selector did not exist, a direct Python rerun failed without `src` on `sys.path`, and the first regression fixture accidentally included handwritten-digit wording that made the seed look like benchmark context.
+- Impact: Publication audit could overestimate direct related-work screening depth even when the formal bibliography was cleaner.
+- Evidence: The real `task181_reference_relevance_v3` inspection initially produced broad direct-candidate lists; a rerun after partial tightening still classified `Latent space classification of seismic facies` as direct because `prototype` appeared in abstract overlap while the title only had generic classification wording. The failed commands were `python -m pytest tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_related_work_inspection_breadth -q` and a Python import rerun without `PYTHONPATH`.
+- Root cause: Related-work context treated demo IDs and candidate prose as dataset context, and directness allowed weak abstract method overlap plus generic title classification/recognition anchors. Stopword filtering also left generic tokens such as `and` and `the` in overlap fields.
+- Workaround: Before the fix, compare formal References with `related-work-inspection.json` manually and do not treat `direct_method_count` as strict novelty evidence.
+- Next action: Keep related-work directness aligned with formal-reference directness and prefer title-level method anchors for direct candidate classification.
+- Linked tasks: `182.1`
+- Resolution: Removed candidate title/research-gap/demo text from dataset context, added stronger title/domain anchoring for direct related-work candidates, removed generic handwritten-recognition-only directness, and expanded stopword filtering for generic overlap terms.
+- Verification: Focused related-work tests, ruff, and mypy passed. A real full `serve --once` cycle for `task182_related_work_directness` passed review, publication audit, and evidence gate; its related-work inspection reported 9 direct candidates, with Boolean variance and Catoni variance demoted to contextual statuses, and `pdftotext` confirmed weak references were absent from the generated 14-page PDF References section.
+
 ### P-20260618-100 - Formal reference relevance and template-readiness wording were still too broad
 
 - Status: Resolved

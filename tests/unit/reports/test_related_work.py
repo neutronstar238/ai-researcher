@@ -16,15 +16,16 @@ def test_inspect_related_work_writes_source_backed_screening_artifact(
 
     payload = json.loads(Path(artifact.json_path).read_text(encoding="utf-8"))
     markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
-    assert artifact.inspected_count == 3
-    assert artifact.source_backed_count == 2
-    assert artifact.abstract_backed_count == 1
+    assert artifact.inspected_count == 4
+    assert artifact.source_backed_count == 3
+    assert artifact.abstract_backed_count == 2
     assert artifact.direct_method_count == 1
     assert payload["records"][0]["comparison_status"] == "direct_method_candidate"
     assert payload["records"][0]["evidence_basis"] == "abstract"
     assert "nearest" in payload["records"][0]["method_overlap_terms"]
     assert payload["records"][1]["comparison_status"] == "metadata_only"
     assert payload["records"][2]["comparison_status"] == "blocked_unverified"
+    assert payload["records"][3]["comparison_status"] == "method_term_context"
     assert "Related Work Inspection" in markdown
     assert "Direct method candidates: `1`" in markdown
 
@@ -79,6 +80,22 @@ def _write_cycle(tmp_path: Path) -> Path:
                         "source_uri": None,
                         "authors": [],
                         "tags": [],
+                    },
+                    {
+                        "document_id": "seed",
+                        "title": "Variance function of boolean additive convolution",
+                        "status": "verified_url",
+                        "bibtex_key": "seed2020",
+                        "url": "https://example.test/seed",
+                        "abstract": (
+                            "Studies boolean additive convolution and probability "
+                            "measure variance functions for non-degenerate probability "
+                            "measures."
+                        ),
+                        "venue": "ExampleMath",
+                        "source_uri": "https://example.test/seed",
+                        "authors": ["S. Seed"],
+                        "tags": ["variance"],
                     },
                 ],
             }
