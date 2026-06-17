@@ -2013,6 +2013,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-006`; user request to understand the difference from HKUDS AI-Researcher and verify whether it is open source._
     - _Verify: Live web/API review on 2026-06-18 found repository metadata `licenseInfo=null`, GitHub license API returned 404, root contents listed no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, `setup.cfg` still declares `license = MIT`, and issue #94 is still `OPEN`; `python -m ruff check tests\unit\compliance\test_licenses.py` passed; `python -m pytest tests\unit\compliance\test_licenses.py -q` passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`._
 
+- [x] 146. Spambase weak-effect release quarantine audit
+  - [x] 146.1 Confirm weak Spambase evidence is excluded from stable release claims
+    - Re-check the original Spambase weak-effect record and the later passing CCF-B/Q3 stability matrices.
+    - Confirm Spambase remains useful as a real benchmark execution path but does not contribute to release-allowed stability evidence while its effect is below the method-effect standard-error gate.
+    - Update `P-20260613-042` so future agents do not treat the mitigated weak result as an unresolved publication blocker or as positive publication evidence.
+    - _References: `P-20260613-042`; tasks `107.1`, `109.1`, `114.1`, `115.1`, `116.1`; user requirement that data must prove claims and weak effects must not be promoted into publication claims._
+    - _Verify: Parsed passing `publication-stability.json` reports and confirmed the current stable matrices use release-allowed Pendigits, Letter Recognition, and Skin Segmentation cycles; `runs\manual-live\task116-related-work-current-matrix\publication-stability.json` reports `stable=true` and `score=1.0` with datasets Pen-Based Recognition of Handwritten Digits, Letter Recognition, and Skin Segmentation; no passing stable matrix relies on Spambase. `git diff --check` passed for the task documentation files._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2509,6 +2517,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 112,
       "tasks": ["145.1"]
+    },
+    {
+      "id": 113,
+      "tasks": ["146.1"]
     }
   ]
 }

@@ -62,6 +62,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:03:00 +08:00 - Codex - Task 146.1 Spambase weak-effect release quarantine audit
+
+- Request:
+  - Continue running the project and make sure weak experimental evidence is not being promoted into CCF-B/Q3-style release claims.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `146.1` and dependency-graph node `113`.
+  - Rechecked `P-20260613-042` against later passing publication-stability matrices.
+  - Confirmed the Spambase demo remains a real benchmark execution path but is quarantined from release claims because its positive delta is below the method-effect standard-error gate.
+  - Updated `P-20260613-042` to point future agents toward stronger variants or repeated splits before using Spambase as release evidence, while noting current stable release matrices rely on Pendigits, Letter Recognition, and Skin Segmentation instead.
+- Verification:
+  - Parsed available `publication-stability.json` files and confirmed multiple later matrices report `stable=true`, `score=1.0`, and `target=ccf-b-matrix`.
+  - Parsed `runs\manual-live\task116-related-work-current-matrix\publication-stability.json`: passed; the release-allowed datasets are Pen-Based Recognition of Handwritten Digits, Letter Recognition, and Skin Segmentation.
+  - Confirmed the current passing matrices do not rely on Spambase as release-allowed evidence.
+  - `git diff --check -- .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: passed.
+- Problems:
+  - `P-20260613-042` updated and kept mitigated.
+- Follow-up:
+  - Spambase should get a stronger method variant or repeated deterministic split evidence before being allowed into a release matrix.
+
 ### 2026-06-18 00:58:47 +08:00 - Codex - Task 145.1 HKUDS license boundary freshness
 
 - Request:
