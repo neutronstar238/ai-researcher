@@ -1012,6 +1012,10 @@ def deploy_setup(
         typer.echo(f"[NEXT] wechat_qr_setup: {WECHAT_QR_SETUP_COMMAND}")
         if run_wechat_qr_setup:
             _run_wechat_qr_setup(status_path=env_path.parent / WECHAT_QR_SETUP_STATUS_PATH)
+    _echo_post_setup_next_steps(
+        wechat_enabled=wechat_enabled,
+        feishu_enabled=feishu_enabled,
+    )
 
 
 @app.command("setup")
@@ -6933,6 +6937,23 @@ def _run_wechat_qr_setup(
 def _write_wechat_qr_setup_status(status_path: Path, payload: Mapping[str, object]) -> None:
     status_path.parent.mkdir(parents=True, exist_ok=True)
     status_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _echo_post_setup_next_steps(*, wechat_enabled: bool, feishu_enabled: bool) -> None:
+    channels = []
+    if wechat_enabled:
+        channels.append("wechat")
+    if feishu_enabled:
+        channels.append("feishu")
+    if channels:
+        channel_flags = " ".join(f"--channel {channel}" for channel in channels)
+        typer.echo(f"[NEXT] channel_test: airesearcher channels test {channel_flags} --require-sent")
+        typer.echo(
+            "[NEXT] readiness: airesearcher readiness --push-inspiration "
+            "--require-channel-config --require-channel-sent"
+        )
+        return
+    typer.echo("[NEXT] readiness: airesearcher readiness --no-push-inspiration")
 
 
 def _merge_env_file(env_path: Path, values: Mapping[str, object | None]) -> None:

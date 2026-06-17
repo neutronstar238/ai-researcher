@@ -632,6 +632,14 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     assert "AUTORESEARCH_WECHAT_WEBHOOK_URL=https://wechat.example.test/hook" in env_text
     assert "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook" in env_text
     assert "env template created" in result.stdout
+    assert (
+        "[NEXT] channel_test: airesearcher channels test --channel wechat "
+        "--channel feishu --require-sent"
+    ) in result.stdout
+    assert (
+        "[NEXT] readiness: airesearcher readiness --push-inspiration "
+        "--require-channel-config --require-channel-sent"
+    ) in result.stdout
     assert "AUTORESEARCH_LLM_API_KEY=" in env_example_text
     assert "SEMANTIC_SCHOLAR_API_KEY=" in env_example_text
     assert "SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS=" in env_example_text
@@ -894,6 +902,10 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
     assert calls == ["qr"]
     assert "[OK] wechat: enabled (qr)" in result.stdout
     assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+    assert (
+        "[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent"
+        in result.stdout
+    )
     config = ConfigParser().parse_file(config_path)
     assert isinstance(config, SystemConfig)
     assert config.deployment.wechat.connection_mode == "qr"
@@ -975,6 +987,7 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert (commands / "research" / "autopilot.toml").is_file()
     assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
+    assert "[NEXT] readiness: airesearcher readiness --no-push-inspiration" in result.stdout
     assert "[OK] next: airesearcher serve --permission-mode approve-dangerous" in result.stdout
 
 

@@ -7344,3 +7344,28 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - After a real WeChat or Feishu channel is configured, run `airesearcher channels test --channel <channel> --require-sent`, then `airesearcher readiness --require-channel-config --require-channel-sent`.
+
+### 2026-06-18 02:43:50 +08:00 - Codex - Task 157.1 Setup next-step guidance for push readiness
+
+- Request: Continue V1.0 onboarding hardening so `setup` guides users through channel self-test and strict readiness instead of requiring manual command discovery.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added post-setup `[NEXT]` guidance for channel-enabled deployments, including `airesearcher channels test ... --require-sent` and strict `airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent`.
+  - Added a no-channel setup path that prints `airesearcher readiness --no-push-inspiration`, so deployments that intentionally skip IM setup get a usable next gate.
+  - Covered WeChat+Feishu setup, guided WeChat QR setup, and channel-disabled setup output in CLI tests.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Run a real channel self-test after the user completes WeChat QR or Feishu app setup.

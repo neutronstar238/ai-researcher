@@ -2118,6 +2118,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `154.1` and `155.1`; user requirement that prelaunch checks verify actual push/delivery evidence, not just assumed configuration._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 4 tests and the known host Python `RequestsDependencyWarning`; `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel` passed and reported the current local checkout ready with warnings for missing configured WeChat/Feishu delivery channel and missing latest `channels test` sent evidence; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 506 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 157. Setup next-step guidance for push readiness
+  - [x] 157.1 Print channel self-test and readiness commands after setup
+    - After `setup`/`deploy-setup` writes config and `.env`, print a `[NEXT] channel_test` command when WeChat and/or Feishu are enabled.
+    - Print strict `readiness --push-inspiration --require-channel-config --require-channel-sent` when channels are enabled.
+    - Print `readiness --no-push-inspiration` when no operator channel is configured, so no-channel deployments do not get a guaranteed-failing push gate as the next step.
+    - Add CLI tests for both channel-enabled and channel-disabled setup output.
+    - _References: tasks `154.1`, `155.1`, and `156.1`; user requirement that deployment be guided rather than forcing users to manually discover one command after another._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 506 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
