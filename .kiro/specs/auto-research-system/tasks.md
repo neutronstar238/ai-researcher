@@ -1946,6 +1946,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-033`; previous CI polling fallback because `gh` was missing locally._
     - _Verify: `gh --version` printed `gh version 2.93.0 (2026-05-27)`; real `gh run list --repo neutronstar238/ai-researcher --limit 1 --json databaseId,status,conclusion,workflowName,url,createdAt` returned CI run `27544632808` with `status=completed` and `conclusion=success`._
 
+- [x] 139. Code-agent trust-boundary reconciliation
+  - [x] 139.1 Resolve stale cc-switch validation-boundary risk using OpenCode/cc-switch contract evidence
+    - Re-check the current OpenCode direct backend contract and the optional cc-switch bridge contract before changing `P-20260613-007`.
+    - Confirm OpenCode is the preferred direct external code-writing backend, while cc-switch remains an optional Claude Code provider-routing bridge only when explicitly required.
+    - Confirm both CLI list commands expose `validator=AI-Researcher`, and tests keep generated code-agent diffs as proposals until AI-Researcher gates pass.
+    - Preserve the no-vendoring, no-secret, approval-gated execution boundary in third-party notices and manifests.
+    - _References: `P-20260613-007`; user decision to move from cc-switch/Claude Code compatibility concerns to direct OpenCode while keeping AI-Researcher as code acceptance owner._
+    - _Verify: real `node .\bin\airesearcher.mjs code-agents opencode list` printed backend `opencode-direct` with `validator=AI-Researcher`; real `node .\bin\airesearcher.mjs code-agents cc-switch list` printed backend `claude-code-via-cc-switch` with `validator=AI-Researcher`; `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q` passed with 9 tests._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2414,6 +2423,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 105,
       "tasks": ["138.1"]
+    },
+    {
+      "id": 106,
+      "tasks": ["139.1"]
     }
   ]
 }

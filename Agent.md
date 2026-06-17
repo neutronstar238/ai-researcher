@@ -62,6 +62,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:55:15 +08:00 - Codex - Task 139.1 code-agent trust-boundary reconciliation
+
+- Request:
+  - Continue stale-risk cleanup and resolve the cc-switch/code-agent validation-boundary problem if current contracts prove AI-Researcher keeps acceptance authority.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `139.1` and its task-dependency graph node.
+  - Rechecked the preferred OpenCode direct backend and optional cc-switch bridge backend.
+  - Updated `P-20260613-007` from mitigated to resolved for the current repository integration boundary: external code agents may draft code, but AI-Researcher owns validation, approval, merge, rollback, Obsidian memory, and `Agent.md` logging.
+- Verification:
+  - `node .\bin\airesearcher.mjs code-agents opencode list`: passed; printed backend `opencode-direct` with `validator=AI-Researcher`.
+  - `node .\bin\airesearcher.mjs code-agents cc-switch list`: passed; printed backend `claude-code-via-cc-switch` with `validator=AI-Researcher`.
+  - `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q`: passed, 9 tests.
+- Problems:
+  - `P-20260613-007` resolved for the current code-agent integration boundary.
+- Follow-up:
+  - Future direct Claude Code or cc-switch execution should still use a dedicated worktree, transcript capture, dangerous-command approval, and AI-Researcher-owned validation before acceptance.
+
 ### 2026-06-17 23:53:17 +08:00 - Codex - Task 138.1 CI polling environment reconciliation
 
 - Request:

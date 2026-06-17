@@ -1058,19 +1058,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-007 - cc-switch code-agent integration must not bypass AI-Researcher validation
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 01:53:55 +08:00
 - Source: User asked whether the coding agent could combine cc-switch provider sharing with Claude Code CLI while AI-Researcher keeps code acceptance.
 - Symptom: Directly merging large cc-switch code paths into AI-Researcher would mix a Tauri/Rust/TypeScript desktop provider manager with the Python research runtime, and could blur who owns secrets, provider sync, command approval, validation, merge, and rollback.
-- Impact: A future contributor could accidentally give an external code-writing CLI authority to run dangerous commands, accept its own diffs, or write provider secrets into repository artifacts.
+- Impact: Resolved for the current repository integration boundary. AI-Researcher now treats OpenCode as the preferred direct external code-writing backend and cc-switch/Claude Code as an optional provider-routing bridge only; both manifests and CLI surfaces state that AI-Researcher owns validation, approval, merge, rollback, Obsidian memory, and `Agent.md` logging.
 - Evidence: Reviewed `https://github.com/farion1231/cc-switch`, its top-level MIT license, provider-management documentation for Universal Provider/model fetching, and Claude Code model configuration docs that distinguish endpoint routing from model selection.
 - Root cause: cc-switch is useful provider-routing infrastructure, but it is not the same trust boundary as AI-Researcher's evidence, approval, and publication gates.
-- Workaround: Treat cc-switch and Claude Code as an external code-generation backend only. AI-Researcher must capture generated diffs, run local validation, require runtime approval for dangerous actions, own merge/rollback, and write Obsidian plus `Agent.md` records.
-- Next action: If a future task executes Claude Code directly, run it in an isolated worktree, add command transcript capture, and require explicit approval before full-permission shell or provider-profile writes.
-- Linked tasks: `68.1`
-- Resolution: Added `airesearcher code-agents cc-switch init|list`, a repository manifest contract, README guidance, and third-party notice boundaries that keep AI-Researcher as validator.
-- Verification: Web review confirmed the current cc-switch repository is public, exposes a top-level MIT license, documents provider management/Universal Provider behavior, and Claude Code docs distinguish endpoint routing from model selection. `poetry run pytest tests/unit/integrations/test_cc_switch.py tests/unit/integrations/test_openclaw.py tests/unit/compliance/test_licenses.py -q`, focused CLI tests, `poetry run ruff check src tests`, `poetry run mypy src`, `git diff --check`, `poetry run airesearcher code-agents cc-switch init --output integrations\cc-switch\code-agent.json`, `poetry run airesearcher code-agents cc-switch list`, `rg` text checks, and `poetry run pytest tests/smoke tests/unit -q` passed during task `68.1`.
+- Workaround: None needed for the current repository contracts. Future direct Claude Code or cc-switch execution still needs a dedicated worktree, command transcript capture, dangerous-command approval, and AI-Researcher-owned validation before acceptance.
+- Next action: Keep OpenCode as the preferred direct backend unless a task explicitly requires Claude Code provider routing through cc-switch; never vendor provider-manager source or credentials.
+- Linked tasks: `68.1`, `97.1`, `100.1`, `139.1`
+- Resolution: Task `68.1` added `airesearcher code-agents cc-switch init|list`, a repository manifest contract, README guidance, and third-party notice boundaries that keep AI-Researcher as validator. Task `97.1` added the preferred direct OpenCode backend contract. Task `100.1` verified the installed OpenCode CLI with a bounded disposable live smoke. Task `139.1` rechecked both backend list commands and focused integration tests.
+- Verification: Web review confirmed the current cc-switch repository is public, exposes a top-level MIT license, documents provider management/Universal Provider behavior, and Claude Code docs distinguish endpoint routing from model selection. Task `139.1` real CLI checks printed `validator=AI-Researcher` for both `opencode-direct` and `claude-code-via-cc-switch`; `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q` passed with 9 tests.
 
 ### P-20260613-006 - HKUDS AI-Researcher license text is not explicit enough for code reuse
 
