@@ -813,6 +813,70 @@ def test_readiness_requires_wechat_qr_openclaw_target_for_push(tmp_path: Path) -
     )
 
 
+def test_readiness_accepts_bom_prefixed_wechat_qr_status_file(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    channel_test_result = tmp_path / "missing-channel-test.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(
+        '\ufeff{"status":"completed","completed_at":"2026-06-18T00:00:00+00:00"}',
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr",
+                f"AUTORESEARCH_WECHAT_SETUP_STATUS_PATH={status_path.as_posix()}",
+                "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["operator_channels"]["evidence"]["wechat_qr_status"] == "completed"
+    assert checks["operator_channels"]["evidence"]["ready_channels"] == ["wechat"]
+    assert checks["channel_delivery_test"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel wechat "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:

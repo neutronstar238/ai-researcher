@@ -2249,6 +2249,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-091`; task `170.1`; user requirement that setup/readiness be practical for normal deployment users instead of requiring manual `.env` expertise._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_env_file tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task171-bom-env\.env --vault runs\manual-live\task171-bom-env\vault --outputs-dir runs\manual-live\task171-bom-env\outputs --output runs\manual-live\task171-bom-env\readiness.json --require-channel-config` produced expected blocked readiness with `llm_credentials=pass` and `operator_channels=fail`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 517 passed and 4 skipped._
 
+- [x] 172. BOM-safe QR status and self-test handoff
+  - [x] 172.1 Parse BOM-bearing JSON status files for readiness
+    - Read shared JSON status files with UTF-8 BOM handling.
+    - Cover a completed WeChat QR setup status file that starts with a BOM.
+    - Verify readiness recognizes QR as a ready channel and points to `channels test --channel wechat --require-sent` when delivery evidence is still missing.
+    - _References: `P-20260618-092`; tasks `168.1`, `170.1`, and `171.1`; user requirement that setup/QR/prelaunch be usable by normal Windows deployment users and proceed to real push self-tests._
+    - _Verify: initial real readiness probe against `runs\manual-live\task172-wechat-ready-action` failed with `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`; focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_wechat_qr_status_file tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real Node CLI readiness rerun against the same fixture reported `operator_channels=pass`, `channel_delivery_test=fail`, and `run_channel_self_test` for `--channel wechat`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 518 passed and 4 skipped._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

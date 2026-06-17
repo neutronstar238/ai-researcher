@@ -7769,3 +7769,31 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-091` resolved.
 - Follow-up:
   - Monitor whether any third-party dotenv consumers need separate BOM hardening; CLI readiness/setup parsing is fixed.
+
+### 2026-06-18 04:30:32 +08:00 - Codex - Task 172.1 BOM-safe QR status readiness
+
+- Request: Continue V1.0 prelaunch hardening by verifying the WeChat QR-ready path proceeds to real channel self-test evidence.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed the shared JSON mapping reader to handle UTF-8 BOMs.
+  - Added a WeChat QR readiness regression test with a BOM-prefixed completed setup status file.
+  - Confirmed readiness now treats completed QR plus target as `operator_channels=pass` and points to `channels test --channel wechat --require-sent` when sent evidence is absent.
+- Verification:
+  - Initial real probe `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task172-wechat-ready-action\.env --vault runs\manual-live\task172-wechat-ready-action\vault --outputs-dir runs\manual-live\task172-wechat-ready-action\outputs --channel-test-result runs\manual-live\task172-wechat-ready-action\missing-channel-test.json --output runs\manual-live\task172-wechat-ready-action\readiness.json --require-channel-config --require-channel-sent`: failed with `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_wechat_qr_status_file tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real Node CLI readiness rerun against the same fixture wrote `readiness-fixed.json`, reported `operator_channels=pass`, `channel_delivery_test=fail`, and emitted `run_channel_self_test` for `--channel wechat`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-092` added and resolved.
+- Follow-up:
+  - Strict prelaunch still requires a real operator to run setup/QR pairing, bind the actual target, and run `channels test --require-sent`.

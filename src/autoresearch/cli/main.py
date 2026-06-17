@@ -7006,7 +7006,7 @@ def _read_json_mapping(path: Path) -> Mapping[str, Any]:
     if not path.exists():
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return {}
     if isinstance(data, Mapping):

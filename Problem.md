@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-092 - BOM-bearing WeChat QR status JSON is treated as missing
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:28:00 +08:00
+- Source: Real temporary readiness verification for a completed WeChat QR setup with an OpenClaw target.
+- Symptom: Readiness reported `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`, so `operator_channels` failed and the next action incorrectly returned to full setup.
+- Impact: Operators who completed QR setup through a BOM-writing Windows tool could be asked to repeat setup instead of running the next channel delivery self-test.
+- Evidence: `runs\manual-live\task172-wechat-ready-action\readiness.json` showed `wechat_qr_status=null` even though `setup-status.json` contained `{"status":"completed"}`.
+- Root cause: `_read_json_mapping` decoded JSON status files with plain UTF-8 and swallowed `JSONDecodeError` from a leading UTF-8 BOM.
+- Workaround: No workaround needed after task `172.1`; before the fix, save status JSON without BOM or regenerate it through the CLI.
+- Next action: None.
+- Linked tasks: `172.1`
+- Resolution: Changed the shared JSON mapping reader to decode with UTF-8 BOM handling.
+- Verification: Added `test_readiness_accepts_bom_prefixed_wechat_qr_status_file`; real Node CLI readiness against the same QR-ready fixture reported `operator_channels=pass` and emitted `run_channel_self_test` for `--channel wechat`.
+
 ### P-20260618-091 - BOM-bearing `.env` first key is not parsed
 
 - Status: Resolved
