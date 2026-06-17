@@ -62,6 +62,28 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:38:42 +08:00 - Codex - Task 135.1 prompt-only release discipline reconciliation
+
+- Request:
+  - Continue running the project and reconcile the stale SCALE-lite release-gate problem using lifecycle trace evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `135.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` evidence gate before changing `P-20260613-008`.
+  - Updated `P-20260613-008` from mitigated to resolved for release claims because `evidence-gate` now acts as a physical gate with lifecycle trace evidence and the final real serve cycle passes it.
+  - Left `P-20260613-009` mitigated because concurrent edit coordination still needs worker-launch integration before it is automatic.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`.
+  - `rg -n "P-20260613-008|P-20260613-009|135\.1|lifecycle trace|release_allowed" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-008` resolved.
+  - `P-20260613-009` intentionally remains mitigated.
+- Follow-up:
+  - Integrate `sessions claim` into future multi-worker launch paths before resolving concurrent-agent overlap risk.
+
 ### 2026-06-17 23:36:40 +08:00 - Codex - Task 134.1 release-gate problem reconciliation
 
 - Request:

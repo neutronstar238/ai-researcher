@@ -1026,19 +1026,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-008 - Prompt-only release discipline is insufficient for autonomous research claims
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 03:12:00 +08:00
 - Source: User requested SCALE-style physical gates after warning that AI agents can claim tests passed, overwrite each other, or skip review when governance is only prompt-based.
 - Symptom: Before task `72.1`, AI-Researcher had strong publication-audit and paper-build artifacts, but no single physical release gate that checked required evidence files, review status, publication audit verdict, and compiled PDF together with a release-blocking exit code.
-- Impact: A future operator or agent could treat a non-publishable cycle as releasable by reading only a successful local experiment or compiled PDF while ignoring source errors or audit blockers.
-- Evidence: The latest real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` has a compiled PDF through task `71.1`, but its publication audit remains `needs_revision` because Semantic Scholar source errors still reduce novelty confidence.
+- Impact: Resolved for release claims. A cycle is not releasable unless the physical evidence gate reads the required artifacts, passes publication/review/paper/reproduction/lifecycle checks, and writes `release_allowed=true`. Concurrent editing coordination remains tracked separately in `P-20260613-009`.
+- Evidence: The earlier real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` had a compiled PDF through task `71.1`, but its publication audit remained `needs_revision` because Semantic Scholar source errors still reduced novelty confidence. Task `72.1` added the physical evidence gate, task `89.1` added lifecycle trace gating, and task `128.1` final serve cycle records evidence gate `verdict=pass`, `release_allowed=true`, `failed_check_count=0`, with lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all passing.
 - Root cause: The project relied on separate evidence-producing commands and documentation discipline rather than one release decision command that fails closed.
-- Workaround: Use `airesearcher evidence-gate` before any release or paper-ready claim.
-- Next action: Use `evidence-gate` for release claims and `sessions claim` before concurrent agents edit overlapping file scopes.
-- Linked tasks: `72.1`, `72.2`
-- Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries.
-- Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`.
+- Workaround: None needed for release claims after the evidence gate and lifecycle trace gate.
+- Next action: Keep `P-20260613-009` open as a mitigated concurrent-agent coordination risk until worker launch paths make `sessions claim` automatic.
+- Linked tasks: `72.1`, `89.1`, `128.1`, `135.1`
+- Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries. Task `89.1` added the blocking lifecycle trace gate. Task `128.1` proved the release gate can pass end to end on a real `serve --once` cycle without prompt-only self-attestation.
+- Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`. PowerShell inspection of `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`.
 
 ### P-20260613-009 - Concurrent agents can overlap file edits without a local claim gate
 

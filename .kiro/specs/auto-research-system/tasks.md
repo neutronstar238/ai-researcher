@@ -1909,6 +1909,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-011`, `P-20260613-012`, `P-20260613-013`; user requirement that the system really executes scripts, reruns experiments, and does not rely on AI self-reporting or baseline-only paper packaging._
     - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed publication audit `verdict=pass`, `publishable=True`, evidence gate `verdict=pass`, `release_allowed=True`, `method_innovation_evidence=pass`, `method_effect_evidence=pass`, `reproduction_rerun_gate=pass`, `publication_release_gate=pass`, `paper_pdf_gate=pass`, and `paper_quality_gate=pass`; `rg -n "P-20260613-011|P-20260613-012|P-20260613-013|134\.1|reproduction_rerun_gate|method_effect_evidence|paper_quality_gate" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
 
+- [x] 135. Prompt-only release discipline reconciliation
+  - [x] 135.1 Resolve stale SCALE-lite release-gate problem using lifecycle trace evidence
+    - Re-inspect the final task `128.1` evidence gate before changing `P-20260613-008`.
+    - Resolve only the release-claim part of the prompt-only governance risk; keep concurrent edit coordination tracked separately in `P-20260613-009`.
+    - Confirm the evidence gate has `release_allowed=true`, no failed checks, and a full lifecycle trace for define, plan, build, verify, review, and ship.
+    - Preserve the earlier blocked `serve-paper-structure` evidence that motivated the physical gate.
+    - _References: `P-20260613-008`, `P-20260613-009`; user request to borrow SCALE Engine's physical evidence/review gate idea without adopting the whole heavyweight lifecycle._
+    - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`; `rg -n "P-20260613-008|P-20260613-009|135\.1|lifecycle trace|release_allowed" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2361,6 +2370,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 101,
       "tasks": ["134.1"]
+    },
+    {
+      "id": 102,
+      "tasks": ["135.1"]
     }
   ]
 }
