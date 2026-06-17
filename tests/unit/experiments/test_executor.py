@@ -113,6 +113,7 @@ def test_execute_experiment_task_allows_approved_network_import(
                 "network_access_scope": "approved test socket import",
                 "approved_network_domains": ["example.org"],
                 "network_source_urls": ["https://example.org/data.csv"],
+                "network_approval_mode": "approve-dangerous",
                 "network_approval_id": "approval-001",
                 "network_approved_by": "unit-test",
             }
@@ -129,6 +130,7 @@ def test_execute_experiment_task_allows_approved_network_import(
     assert preflight["network_access_scope"] == "approved test socket import"
     assert preflight["approved_network_domains"] == ["example.org"]
     assert preflight["network_source_urls"] == ["https://example.org/data.csv"]
+    assert preflight["network_approval_mode"] == "approve-dangerous"
     assert preflight["network_approval_id"] == "approval-001"
     assert preflight["network_approved_by"] == "unit-test"
 

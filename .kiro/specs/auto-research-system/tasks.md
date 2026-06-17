@@ -2041,6 +2041,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `147.1`; `P-20260611-014`; user requirement for approval-based dangerous operation gates and auditable evidence._
     - _Verify: `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py` passed; `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py -q` passed with 23 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m mypy src\autoresearch\experiments\executor.py` passed; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 495 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 149. Runtime approval bridge for network metadata
+  - [x] 149.1 Convert approved runtime decisions into network task metadata
+    - Add a runtime helper that converts an allowed `RuntimeApprovalDecision` into the exact task metadata keys consumed by the executor network preflight gate.
+    - Require the decision to be allowed; pending or rejected dangerous work must not produce `network_access_approved=True`.
+    - Preserve approval mode, approval request ID, approving operator, scope, approved domains, and source URLs in the generated metadata.
+    - Export the helper from `autoresearch.runtime` for future CLI, WeChat, and Feishu approval adapters.
+    - Extend executor metadata passthrough so `network_approval_mode` is retained in `ExecutionRun.metadata["network_preflight"]`.
+    - _References: tasks `60.1`, `147.1`, `148.1`; user requirement that `/approve` and communication-channel approvals map to the same permissioned local runtime._
+    - _Verify: `python -m ruff check src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py` passed; `python -m pytest tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py -q` passed with 10 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m mypy src\autoresearch\runtime\approval.py src\autoresearch\experiments\executor.py` passed; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 497 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2549,6 +2559,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 115,
       "tasks": ["148.1"]
+    },
+    {
+      "id": 116,
+      "tasks": ["149.1"]
     }
   ]
 }

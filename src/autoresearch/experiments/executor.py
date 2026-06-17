@@ -172,6 +172,7 @@ def _with_network_preflight_metadata(
         "network_access_scope",
         "approved_network_domains",
         "network_source_urls",
+        "network_approval_mode",
         "network_approval_id",
         "network_approved_by",
     ):

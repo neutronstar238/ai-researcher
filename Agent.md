@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:25:28 +08:00 - Codex - Task 149.1 Runtime approval bridge for network metadata
+
+- Request:
+  - Continue running the project and bridge the runtime `/approve` permission queue toward executor network approval metadata.
+- Files changed:
+  - `src/autoresearch/runtime/approval.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/runtime/test_runtime_approval.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `149.1` and dependency-graph node `116`.
+  - Added `network_approval_metadata_from_decision()` to convert an allowed runtime approval decision into task metadata keys consumed by the executor network preflight gate.
+  - Made the helper fail closed for pending decisions so unapproved dangerous work cannot produce `network_access_approved=True`.
+  - Preserved approval mode, approval request ID, approving operator, scope, approved domains, and source URLs.
+  - Exported the helper from `autoresearch.runtime` and extended executor metadata passthrough for `network_approval_mode`.
+- Verification:
+  - `python -m ruff check src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m pytest tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py -q`: passed with 10 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m mypy src\autoresearch\runtime\approval.py src\autoresearch\experiments\executor.py`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py .kiro\specs\auto-research-system\tasks.md Agent.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 497 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Wire `serve`/autopilot task construction to call the helper when a real approved runtime decision needs to authorize network-bearing experiment tasks.
+
 ### 2026-06-18 01:19:20 +08:00 - Codex - Task 148.1 Network approval audit metadata
 
 - Request:

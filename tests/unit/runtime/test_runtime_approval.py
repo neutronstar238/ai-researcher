@@ -9,6 +9,7 @@ from autoresearch.runtime import (
     approve_runtime_request,
     ensure_runtime_approval,
     list_runtime_approval_requests,
+    network_approval_metadata_from_decision,
 )
 
 
@@ -77,3 +78,69 @@ def test_allow_all_runtime_mode_does_not_write_approval_state(tmp_path: Path) ->
     assert decision.allowed is True
     assert decision.request is None
     assert not state.exists()
+
+
+def test_network_approval_metadata_uses_approved_request(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    decision = ensure_runtime_approval(
+        state_path=state,
+        mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+        action_id="network:uci-pendigits",
+        command="download UCI pendigits",
+        risk=RuntimeActionRisk.DANGEROUS,
+        reason="public benchmark download",
+    )
+    assert decision.request is not None
+    approved = approve_runtime_request(
+        state,
+        decision.request.request_id,
+        approved_by="operator",
+    )
+    approved_decision = ensure_runtime_approval(
+        state_path=state,
+        mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+        action_id="network:uci-pendigits",
+        command="download UCI pendigits",
+        risk=RuntimeActionRisk.DANGEROUS,
+        reason="public benchmark download",
+    )
+
+    metadata = network_approval_metadata_from_decision(
+        approved_decision,
+        scope="public UCI dataset download",
+        approved_network_domains=["archive.ics.uci.edu"],
+        network_source_urls=["https://archive.ics.uci.edu/data.csv"],
+    )
+
+    assert approved.status is RuntimeApprovalStatus.APPROVED
+    assert metadata == {
+        "network_access_approved": True,
+        "network_access_scope": "public UCI dataset download",
+        "network_approval_mode": "approve-dangerous",
+        "approved_network_domains": ["archive.ics.uci.edu"],
+        "network_source_urls": ["https://archive.ics.uci.edu/data.csv"],
+        "network_approval_id": approved.request_id,
+        "network_approved_by": "operator",
+    }
+
+
+def test_network_approval_metadata_rejects_pending_decision(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    decision = ensure_runtime_approval(
+        state_path=state,
+        mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+        action_id="network:pending",
+        command="download pending dataset",
+        risk=RuntimeActionRisk.DANGEROUS,
+        reason="public benchmark download",
+    )
+
+    try:
+        network_approval_metadata_from_decision(
+            decision,
+            scope="pending network download",
+        )
+    except ValueError as exc:
+        assert "requires an allowed runtime decision" in str(exc)
+    else:
+        raise AssertionError("pending approval should not produce network metadata")
