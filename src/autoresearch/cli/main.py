@@ -302,9 +302,10 @@ DEFAULT_SLASH_COMMANDS = {
     ),
     "research/readiness.toml": (
         "Check whether the local deployment is ready for the daily unattended research loop.",
-        "Run `airesearcher readiness --push-inspiration --require-channel-config` after setup "
-        "and channel testing. Inspect `.airesearcher/readiness/report.json` before leaving "
-        "the service running for 24h operation.",
+        "Run `airesearcher readiness --push-inspiration --require-channel-config "
+        "--require-channel-sent` after setup and channel testing. Inspect "
+        "`.airesearcher/readiness/report.json` before leaving the service running "
+        "for 24h operation.",
     ),
     "research/scansci-pdf.toml": (
         "Write the optional ScanSci PDF integration manifest with OA/legal-first defaults.",
@@ -1571,6 +1572,13 @@ def readiness(
         Path,
         typer.Option("--scheduler-state", help="Local scheduler follow-up state file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    channel_test_result: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-result",
+            help="Latest `airesearcher channels test` JSON result file.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
     output: Annotated[
         Path,
         typer.Option("--output", "-o", help="JSON readiness report path."),
@@ -1591,6 +1599,13 @@ def readiness(
         typer.Option(
             "--require-channel-config/--allow-missing-channel",
             help="Fail readiness when push is enabled but no WeChat/Feishu channel is configured.",
+        ),
+    ] = False,
+    require_channel_sent: Annotated[
+        bool,
+        typer.Option(
+            "--require-channel-sent/--allow-untested-channel",
+            help="Fail readiness unless the latest channel self-test includes a sent record.",
         ),
     ] = False,
 ) -> None:
@@ -1631,6 +1646,15 @@ def readiness(
             env_values,
             push_inspiration=push_inspiration,
             require_channel_config=require_channel_config,
+        ),
+    )
+    _add_readiness_result(
+        checks,
+        "channel_delivery_test",
+        _channel_delivery_test_readiness(
+            channel_test_result,
+            push_inspiration=push_inspiration,
+            require_channel_sent=require_channel_sent,
         ),
     )
     _add_readiness_result(checks, "scheduler_state", _scheduler_state_readiness(scheduler_state))
@@ -1870,6 +1894,60 @@ def _scheduler_state_readiness(state_path: Path) -> dict[str, object]:
         "status": "pass",
         "detail": f"scheduler follow-up state is readable with {len(tasks)} task(s)",
         "evidence": {"path": state_path.as_posix(), "task_count": len(tasks)},
+    }
+
+
+def _channel_delivery_test_readiness(
+    result_path: Path,
+    *,
+    push_inspiration: bool,
+    require_channel_sent: bool,
+) -> dict[str, object]:
+    if not push_inspiration:
+        return {
+            "status": "pass",
+            "detail": "inspiration push is disabled, so channel delivery self-test is not required",
+            "evidence": {"push_inspiration": False, "path": result_path.as_posix()},
+        }
+    if not result_path.exists():
+        status = "fail" if require_channel_sent else "warn"
+        return {
+            "status": status,
+            "detail": f"no channel self-test result found at {result_path}",
+            "evidence": {
+                "path": result_path.as_posix(),
+                "require_channel_sent": require_channel_sent,
+                "sent_channels": [],
+            },
+        }
+
+    payload = _read_json_mapping(result_path)
+    records = _mapping_list(payload.get("records"))
+    sent_channels = sorted(
+        {
+            str(record.get("channel"))
+            for record in records
+            if record.get("status") == "sent" and record.get("channel")
+        }
+    )
+    evidence = {
+        "path": result_path.as_posix(),
+        "checked_at": payload.get("checked_at"),
+        "record_count": len(records),
+        "sent_channels": sent_channels,
+        "require_channel_sent": require_channel_sent,
+    }
+    if sent_channels:
+        return {
+            "status": "pass",
+            "detail": "latest channel self-test has sent delivery: " + ", ".join(sent_channels),
+            "evidence": evidence,
+        }
+    status = "fail" if require_channel_sent else "warn"
+    return {
+        "status": status,
+        "detail": "latest channel self-test has no sent records",
+        "evidence": evidence,
     }
 
 

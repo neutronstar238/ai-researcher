@@ -7314,3 +7314,33 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-082` added and resolved.
 - Follow-up:
   - Configure and self-test a real WeChat or Feishu channel before using `readiness --require-channel-config` as a hard pass gate for push delivery.
+
+### 2026-06-18 02:38:00 +08:00 - Codex - Task 156.1 Channel delivery evidence readiness gate
+
+- Request: Continue tightening the V1.0 prelaunch checks so readiness verifies actual push/delivery evidence rather than only channel configuration.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Extended `airesearcher readiness` with `--channel-test-result` and `--require-channel-sent`.
+  - Added a separate `channel_delivery_test` readiness check that reads the JSON artifact produced by `airesearcher channels test`.
+  - Made strict readiness fail when `--require-channel-sent` is set and the latest channel-test artifact has no `sent` record.
+  - Updated `/research:readiness` and bilingual README guidance so prelaunch push readiness requires both configured channels and recent sent evidence.
+  - Ran the updated readiness command against the current checkout; it now reports warnings for both missing configured WeChat/Feishu delivery channel and missing latest `channels test` sent evidence.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 4 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel`: passed and wrote `.airesearcher/readiness/report.json` with two operator-channel warnings.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - After a real WeChat or Feishu channel is configured, run `airesearcher channels test --channel <channel> --require-sent`, then `airesearcher readiness --require-channel-config --require-channel-sent`.

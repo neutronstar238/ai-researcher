@@ -80,9 +80,9 @@ airesearcher setup
 
 setup 之后可以运行 `airesearcher channels test --channel feishu --require-sent` 或
 `airesearcher channels test --channel wechat`，在无人值守前确认通道送达状态。
-随后运行 `airesearcher readiness --push-inspiration --require-channel-config`，在启动 24h
+随后运行 `airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent`，在启动 24h
 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API
-和操作者通道配置是否就绪。
+、操作者通道配置和最近一次通道自检送达证据是否就绪。
 
 也可以非交互式部署：
 
@@ -241,7 +241,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
-| `readiness` | `--push-inspiration`, `--require-channel-config`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |

@@ -406,12 +406,29 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     vault_path = tmp_path / "autoresearch-vault"
     outputs_dir = tmp_path / "outputs"
     scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
     output = tmp_path / ".airesearcher" / "readiness" / "report.json"
     ConfigParser().write_file(SystemConfig(), config_path)
     vault_path.mkdir()
     scheduler_state.parent.mkdir(parents=True)
     scheduler_state.write_text(
         json.dumps({"tasks": [{"task_id": "daily", "status": "open"}]}),
+        encoding="utf-8",
+    )
+    channel_test_result.parent.mkdir(parents=True)
+    channel_test_result.write_text(
+        json.dumps(
+            {
+                "checked_at": "2026-06-18T00:00:00+00:00",
+                "records": [
+                    {
+                        "channel": "feishu",
+                        "status": "sent",
+                        "detail": "feishu app API accepted",
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     env_path.write_text(
@@ -443,9 +460,12 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
             str(outputs_dir),
             "--scheduler-state",
             str(scheduler_state),
+            "--channel-test-result",
+            str(channel_test_result),
             "--output",
             str(output),
             "--require-channel-config",
+            "--require-channel-sent",
         ],
     )
 
@@ -462,7 +482,59 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     checks = {check["id"]: check for check in payload["checks"]}
     assert checks["operator_channels"]["status"] == "pass"
     assert checks["operator_channels"]["evidence"]["ready_channels"] == ["feishu"]
+    assert checks["channel_delivery_test"]["status"] == "pass"
+    assert checks["channel_delivery_test"]["evidence"]["sent_channels"] == ["feishu"]
     assert checks["outputs_dir"]["evidence"]["created"] is True
+
+
+def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=webhook",
+                "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(tmp_path / "missing-channel-test.json"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.channel_delivery_test:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["channel_delivery_test"]["status"] == "fail"
 
 
 def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
@@ -1009,6 +1081,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
         commands_dir / "research" / "channel-test.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher readiness" in (
+        commands_dir / "research" / "readiness.toml"
+    ).read_text(encoding="utf-8")
+    assert "--require-channel-sent" in (
         commands_dir / "research" / "readiness.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher pdf-sources scansci-pdf init" in (
