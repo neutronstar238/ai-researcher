@@ -2032,6 +2032,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260611-014`; tasks `8.3`, `9.2`, `9.3`; user requirement for permission modes and dangerous-command approval instead of prompt-only self-discipline._
     - _Verify: `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py` passed; `python -m pytest tests\unit\experiments\test_executor.py -q` passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q` passed with 22 tests and the same known host warning; the first full smoke/unit run exposed `P-20260618-078`, then `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q` passed with 22 tests after the scoped UCI metadata fix; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 494 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 148. Network approval audit metadata
+  - [x] 148.1 Preserve scoped network approval details in execution records
+    - Copy scoped approval metadata from `ExperimentTask.metadata` into `ExecutionRun.metadata["network_preflight"]` whenever the executor sees network-import findings.
+    - Preserve `network_access_scope`, `approved_network_domains`, `network_source_urls`, `network_approval_id`, and `network_approved_by` so approval can be audited after the run.
+    - Add regression coverage that approved network imports retain scope/domain/source metadata in the execution record.
+    - Add regression coverage that built-in UCI public benchmark tasks define cache-first scoped network approval metadata.
+    - _References: task `147.1`; `P-20260611-014`; user requirement for approval-based dangerous operation gates and auditable evidence._
+    - _Verify: `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py` passed; `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py -q` passed with 23 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m mypy src\autoresearch\experiments\executor.py` passed; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 495 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2536,6 +2545,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 114,
       "tasks": ["147.1"]
+    },
+    {
+      "id": 115,
+      "tasks": ["148.1"]
     }
   ]
 }

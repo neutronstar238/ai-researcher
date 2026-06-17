@@ -67,6 +67,7 @@ def execute_experiment_task(
             run,
             findings=network_findings,
             approved=approved,
+            task_metadata=task.metadata,
         )
         if not approved:
             return _finish_run(
@@ -158,14 +159,25 @@ def _with_network_preflight_metadata(
     *,
     findings: tuple[CodeReviewFinding, ...],
     approved: bool,
+    task_metadata: dict[str, Any],
 ) -> ExecutionRun:
     metadata = dict(run.metadata)
-    metadata["network_preflight"] = {
+    preflight_metadata: dict[str, Any] = {
         "approved": approved,
         "approval_key": NETWORK_ACCESS_APPROVAL_KEY,
         "finding_count": len(findings),
         "findings": [finding.to_dict() for finding in findings],
     }
+    for key in (
+        "network_access_scope",
+        "approved_network_domains",
+        "network_source_urls",
+        "network_approval_id",
+        "network_approved_by",
+    ):
+        if key in task_metadata:
+            preflight_metadata[key] = task_metadata[key]
+    metadata["network_preflight"] = preflight_metadata
     return run.model_copy(update={"metadata": metadata})
 
 

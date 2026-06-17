@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:19:20 +08:00 - Codex - Task 148.1 Network approval audit metadata
+
+- Request:
+  - Continue running the project and make the new network approval gate more auditable instead of only recording a boolean approval.
+- Files changed:
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `148.1` and dependency-graph node `115`.
+  - Copied scoped approval metadata from `ExperimentTask.metadata` into `ExecutionRun.metadata["network_preflight"]` whenever network-import findings are present.
+  - Preserved `network_access_scope`, `approved_network_domains`, `network_source_urls`, `network_approval_id`, and `network_approved_by` in the execution record.
+  - Added executor regression coverage for approved network imports retaining audit fields.
+  - Added UCI demo regression coverage so built-in public benchmark tasks keep cache-first scoped network approval metadata.
+- Verification:
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py`: passed.
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py -q`: passed with 23 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m mypy src\autoresearch\experiments\executor.py`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py .kiro\specs\auto-research-system\tasks.md Agent.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 495 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Wire the runtime approval subsystem so user `/approve` decisions populate `network_approval_id` and `network_approved_by`.
+
 ### 2026-06-18 01:09:51 +08:00 - Codex - Task 147.1 Executor network preflight gate
 
 - Request:

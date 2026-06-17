@@ -106,14 +106,31 @@ def test_execute_experiment_task_allows_approved_network_import(
         Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
         """,
     )
-    task = _task().model_copy(update={"metadata": {"network_access_approved": True}})
+    task = _task().model_copy(
+        update={
+            "metadata": {
+                "network_access_approved": True,
+                "network_access_scope": "approved test socket import",
+                "approved_network_domains": ["example.org"],
+                "network_source_urls": ["https://example.org/data.csv"],
+                "network_approval_id": "approval-001",
+                "network_approved_by": "unit-test",
+            }
+        }
+    )
 
     run = execute_experiment_task(tmp_path, task)
 
     assert run.status is ExecutionStatus.SUCCESS
     assert run.error_type is None
-    assert run.metadata["network_preflight"]["approved"] is True
-    assert run.metadata["network_preflight"]["finding_count"] == 1
+    preflight = run.metadata["network_preflight"]
+    assert preflight["approved"] is True
+    assert preflight["finding_count"] == 1
+    assert preflight["network_access_scope"] == "approved test socket import"
+    assert preflight["approved_network_domains"] == ["example.org"]
+    assert preflight["network_source_urls"] == ["https://example.org/data.csv"]
+    assert preflight["network_approval_id"] == "approval-001"
+    assert preflight["network_approved_by"] == "unit-test"
 
 
 def test_execute_experiment_task_enforces_timeout_and_cleans_process(

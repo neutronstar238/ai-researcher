@@ -144,6 +144,25 @@ def test_text_classifier_stub_demo_runs_collects_and_validates(tmp_path: Path) -
         assert (experiment_dir / expected_output).exists()
 
 
+def test_public_uci_tasks_define_scoped_network_approval() -> None:
+    tasks = [
+        create_pendigits_centroid_baseline_task(),
+        create_pendigits_prototype_shrinkage_task(),
+        create_pendigits_variance_calibrated_task(),
+        create_letter_variance_calibrated_task(),
+        create_spambase_variance_calibrated_task(),
+        create_skin_variance_calibrated_task(),
+    ]
+
+    for task in tasks:
+        metadata = task.metadata
+        assert metadata["network_access_approved"] is True
+        assert metadata["approved_network_domains"] == ["archive.ics.uci.edu"]
+        assert metadata["network_source_urls"]
+        assert "cached files are preferred" in metadata["network_access_scope"]
+        assert metadata["real_dataset"] is True
+
+
 def test_create_pendigits_centroid_baseline_task_defines_real_benchmark_contract() -> None:
     task = create_pendigits_centroid_baseline_task(timeout_seconds=30)
 
