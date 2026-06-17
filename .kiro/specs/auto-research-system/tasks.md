@@ -1899,6 +1899,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-030`; task `128.1` live serve pass; user requirement that the system cross-search similar work broadly and not fabricate publication novelty._
     - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed publication audit `verdict=pass`, `publishable=True`, `similarity_classified_finding_breadth` message `18; target requires at least 10`, evidence gate `verdict=pass`, and `release_allowed=True`; `rg -n "P-20260613-030|133\.1|similarity_classified_finding_breadth|P-20260613-003" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
 
+- [x] 134. Release-gate problem reconciliation
+  - [x] 134.1 Resolve stale always-on release-gate mitigations using final serve evidence
+    - Re-inspect the final task `128.1` live serve cycle before changing old release-gate problem statuses.
+    - Update `P-20260613-011` only if the automatic `serve`/`autopilot` path contains paper-build and evidence-gate outputs without manual chaining.
+    - Update `P-20260613-012` only if the current release gate records a fresh command-line reproduction rerun with run-record and validation artifacts.
+    - Update `P-20260613-013` only if the publication audit blocks baseline-only releases and the latest non-baseline release path passes method innovation and method-effect checks.
+    - Preserve historical blocked/mitigated evidence so future agents can see why the release gates exist.
+    - _References: `P-20260613-011`, `P-20260613-012`, `P-20260613-013`; user requirement that the system really executes scripts, reruns experiments, and does not rely on AI self-reporting or baseline-only paper packaging._
+    - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed publication audit `verdict=pass`, `publishable=True`, evidence gate `verdict=pass`, `release_allowed=True`, `method_innovation_evidence=pass`, `method_effect_evidence=pass`, `reproduction_rerun_gate=pass`, `publication_release_gate=pass`, `paper_pdf_gate=pass`, and `paper_quality_gate=pass`; `rg -n "P-20260613-011|P-20260613-012|P-20260613-013|134\.1|reproduction_rerun_gate|method_effect_evidence|paper_quality_gate" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2347,6 +2357,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 100,
       "tasks": ["133.1"]
+    },
+    {
+      "id": 101,
+      "tasks": ["134.1"]
     }
   ]
 }

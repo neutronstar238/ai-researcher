@@ -62,6 +62,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:36:40 +08:00 - Codex - Task 134.1 release-gate problem reconciliation
+
+- Request:
+  - Continue running the project and reconcile stale release-gate mitigations against the final real serve evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `134.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` real serve cycle before changing `P-20260613-011`, `P-20260613-012`, or `P-20260613-013`.
+  - Updated `P-20260613-011` from mitigated to resolved because the current automatic `serve`/`autopilot` path writes paper-build and evidence-gate artifacts without manual chaining.
+  - Updated `P-20260613-012` from mitigated to resolved because the release gate now records a fresh command-line reproduction rerun with run-record and validation artifacts.
+  - Updated `P-20260613-013` from mitigated to resolved because CCF-B publication targets require method innovation and method-effect evidence, and the latest non-baseline release path passes those checks.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed publication audit `verdict=pass`, `publishable=True`, evidence gate `verdict=pass`, `release_allowed=True`, `method_innovation_evidence=pass`, `method_effect_evidence=pass`, `reproduction_rerun_gate=pass`, `publication_release_gate=pass`, `paper_pdf_gate=pass`, and `paper_quality_gate=pass`.
+  - `rg -n "P-20260613-011|P-20260613-012|P-20260613-013|134\.1|reproduction_rerun_gate|method_effect_evidence|paper_quality_gate" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-011` resolved.
+  - `P-20260613-012` resolved.
+  - `P-20260613-013` resolved.
+- Follow-up:
+  - Continue treating automatic gates as blockers for future cycles; keep external-source reliability and OS-level sandbox hardening tracked separately.
+
 ### 2026-06-17 23:33:51 +08:00 - Codex - Task 133.1 similar-work breadth problem reconciliation
 
 - Request:

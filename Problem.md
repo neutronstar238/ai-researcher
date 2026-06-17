@@ -962,51 +962,51 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-013 - Baseline-only paper-style reports could pass publication audit when other gates passed
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 09:18:00 +08:00
 - Source: Continuation review of publication-audit tests after the user required strict innovation and evidence checks at roughly CCF-B/Q3 quality.
 - Symptom: Before task `75.1`, a real-benchmark baseline fixture could pass `ccf-b` publication audit if literature, similarity, data size, ablation, statistics, review, and manuscript-section checks all passed.
-- Impact: A future cycle could package a baseline benchmark run as a paper-style PDF without file-backed evidence of a proposed mechanism or method contribution.
-- Evidence: `tests/unit/reports/test_publication_audit.py::test_publication_audit_passes_manuscript_gate_for_paper_style_report` expected a baseline-style real benchmark cycle to be publishable after adding paper sections.
+- Impact: Resolved for current CCF-B publication targets. A future baseline-only cycle is blocked unless it carries file-backed method innovation evidence and a positive method-effect check; the final task `128.1` release pass demonstrates the non-baseline path.
+- Evidence: `tests/unit/reports/test_publication_audit.py::test_publication_audit_passes_manuscript_gate_for_paper_style_report` expected a baseline-style real benchmark cycle to be publishable after adding paper sections. Task `75.1` added `method_innovation_evidence`; task `77.1` added `method_effect_evidence`; final task `128.1` live serve cycle records `method_innovation_evidence.status=pass`, `method_effect_evidence.status=pass`, and publication audit `verdict=pass`.
 - Root cause: The audit checked evidence breadth and manuscript structure but did not distinguish baseline reproduction evidence from an actual method innovation artifact.
-- Workaround: None needed after task `75.1`; publication targets now require `method_innovation_evidence` unless the target is `mvp-demo`.
-- Next action: Teach future experiment generators to create honest method-contribution metadata and innovation/mechanism artifacts only when a real method change was implemented and validated.
-- Linked tasks: `75.1`
-- Resolution: Task `75.1` adds `require_novel_contribution` to publication targets, blocks `baseline_only=true` or baseline-named tasks, and requires both proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact.
-- Verification: Focused publication-audit tests passed. A real audit over `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, message `File-backed method innovation evidence is missing or baseline-only.`, and a concrete next action.
+- Workaround: None needed for current CCF-B targets.
+- Next action: Continue requiring honest method-contribution metadata and innovation/mechanism artifacts only when a real method change was implemented and validated.
+- Linked tasks: `75.1`, `77.1`, `128.1`, `134.1`
+- Resolution: Task `75.1` adds `require_novel_contribution` to publication targets, blocks `baseline_only=true` or baseline-named tasks, and requires both proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact. Task `77.1` blocks neutral or negative method effects. Task `128.1` demonstrates the positive non-baseline release path.
+- Verification: Focused publication-audit tests passed. A real audit over `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, message `File-backed method innovation evidence is missing or baseline-only.`, and a concrete next action. PowerShell inspection of `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` confirmed `method_innovation_evidence=pass`, `method_effect_evidence=pass`, publication audit `verdict=pass`, and `publishable=True`.
 
 ### P-20260613-012 - Cycle release evidence proved first execution but not a fresh rerun
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 09:24:00 +08:00
 - Source: User emphasized that the system must verify scripts really execute and must not rely on AI self-reporting tests or research runs.
 - Symptom: Before task `74.1`, `autopilot`/`serve` cycle summaries contained the first experiment run record and validation report, but the physical release gate did not require a fresh command-line rerun inside the completed cycle.
-- Impact: A future release claim could prove that one experiment ran once, but not that the chosen experiment can be rerun from the CLI and regenerate validation artifacts.
-- Evidence: Task `73.1` wrote `paper_build` and `evidence_gate` into `cycle-summary.json`, but `run_evidence_gate()` only checked the first `demo.run_record_path` plus validation artifacts.
+- Impact: Resolved for current release gates. A release-allowed cycle now needs a fresh command-line reproduction check with rerun run-record and validation-report artifacts.
+- Evidence: Task `73.1` wrote `paper_build` and `evidence_gate` into `cycle-summary.json`, but `run_evidence_gate()` only checked the first `demo.run_record_path` plus validation artifacts. Task `128.1` final serve cycle records `reproduction_rerun_gate.status=pass`, `exit_code=0`, `run_records=1`, and `validation_reports=1`.
 - Root cause: Reproduction proof existed inside individual run records, but the always-on cycle did not run a second command-line check after the first run and before release gating.
-- Workaround: None needed after task `74.1`; older cycle summaries without `reproduction_check` will now fail the stricter release gate instead of being treated as release-ready.
+- Workaround: None needed after task `74.1`; older cycle summaries without `reproduction_check` fail the stricter release gate instead of being treated as release-ready.
 - Next action: For heavier benchmarks, monitor runtime cost of the automatic rerun and consider an explicit evidence-preserving cache only if it still proves a fresh command invocation and data hash.
-- Linked tasks: `74.1`
+- Linked tasks: `74.1`, `128.1`, `134.1`
 - Resolution: Task `74.1` adds `_run_cycle_reproduction_check()` to rerun the selected demo via `python -m autoresearch.cli.main run-demo`, records command/exit code/stdout/stderr tails plus fresh run-record and validation paths, and makes `reproduction_rerun_gate` a blocking evidence-gate check.
-- Verification: Focused CLI/evidence-gate tests passed. A real `autopilot --no-review` single-cycle run wrote `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` with `reproduction_check.status=passed`, `exit_code=0`, one fresh rerun run record, one fresh rerun validation report, and `reproduction_rerun_gate` passed inside `evidence-gate.json`.
+- Verification: Focused CLI/evidence-gate tests passed. A real `autopilot --no-review` single-cycle run wrote `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` with `reproduction_check.status=passed`, `exit_code=0`, one fresh rerun run record, one fresh rerun validation report, and `reproduction_rerun_gate` passed inside `evidence-gate.json`. PowerShell inspection of the task `128.1` cycle confirmed the final release-allowed serve path also passes `reproduction_rerun_gate`.
 
 ### P-20260613-011 - Always-on loop still required manual paper-build and evidence-gate chaining
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 09:02:00 +08:00
 - Source: Continuation review against the user requirement for a one-command 24h system that performs real research, paper-level output, and strict quality gating without manual step-by-step operation.
 - Symptom: Before task `73.1`, `autopilot` and `serve` ran literature refresh, similarity search, experiment execution, optional review, and publication audit, but operators still had to manually run `paper-build` and then `evidence-gate` to produce a PDF-level artifact and physical release verdict.
-- Impact: A long-running deployment could stop at a Markdown report and publication audit, leaving the strict PDF/evidence gate outside the automatic loop.
-- Evidence: `_run_autopilot_cycle()` wrote `publication_audit` into `cycle-summary.json` but did not write `paper_build` or `evidence_gate`.
+- Impact: Resolved for current `autopilot` and `serve` cycles. The automatic loop now writes paper-build and evidence-gate artifacts into `cycle-summary.json`; task `128.1` proves this path can reach release-allowed status through the one-command serve entrypoint.
+- Evidence: `_run_autopilot_cycle()` wrote `publication_audit` into `cycle-summary.json` but did not write `paper_build` or `evidence_gate`. Final task `128.1` live `serve --permission-mode allow-all --once` records paper build `status=compiled`, `paper_quality_gate.status=pass`, publication release gate `status=pass`, evidence gate `verdict=pass`, and `release_allowed=true`.
 - Root cause: Paper-build and evidence-gate started as standalone commands and had not yet been wired back into the always-on cycle.
-- Workaround: Operators could run `airesearcher paper-build` and `airesearcher evidence-gate` manually over a completed cycle.
-- Next action: Continue to improve the quality of the actual research method and external-source stability; automatic gates now expose blockers but do not make baseline experiments publishable.
-- Linked tasks: `73.1`
+- Workaround: None needed for current `autopilot`/`serve` cycle gating.
+- Next action: Continue to improve the quality of actual research methods and external-source stability; automatic gates expose blockers and do not make baseline-only experiments publishable.
+- Linked tasks: `73.1`, `128.1`, `134.1`
 - Resolution: Task `73.1` wires automatic LaTeX paper build and physical evidence gate execution into each `autopilot`/`serve` cycle, records both artifacts in `cycle-summary.json`, and echoes the gate verdict.
-- Verification: Focused autopilot CLI test passed. A real local `autopilot --no-review` single-cycle run wrote `paper_build.status=compiled` and `evidence_gate.verdict=blocked` into `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json`; the compiled PDF and evidence-gate JSON existed, and the gate correctly blocked release because review was skipped and publication audit failed.
+- Verification: Focused autopilot CLI test passed. A real local `autopilot --no-review` single-cycle run wrote `paper_build.status=compiled` and `evidence_gate.verdict=blocked` into `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json`; the compiled PDF and evidence-gate JSON existed, and the gate correctly blocked release because review was skipped and publication audit failed. PowerShell inspection of the task `128.1` real serve cycle confirmed the automatic path now passes `publication_release_gate`, `paper_pdf_gate`, `paper_quality_gate`, and evidence gate `release_allowed=True`.
 
 ### P-20260613-010 - Ruff flagged lock-file cleanup as SIM105
 
