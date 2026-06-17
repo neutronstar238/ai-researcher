@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-088 - Live literature refresh smoke still required Semantic Scholar
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:50:40 +08:00
+- Source: Opt-in live API smoke run with `AUTORESEARCH_LIVE_APIS=1`.
+- Symptom: `tests\smoke\test_literature_refresh_live.py` failed because the real refresh returned ArXiv and OpenAlex sources, while the test still asserted that Semantic Scholar was present.
+- Impact: The live smoke contradicted the current source policy and could fail a correct default deployment where Semantic Scholar is intentionally disabled or degraded.
+- Evidence: `python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q` failed with `assert {'arxiv', 'semantic_scholar'} <= {'arxiv', 'openalex'}`.
+- Root cause: The live smoke predates task `102.1`/`137.1`, which made Semantic Scholar optional and ArXiv/OpenAlex the default source pair.
+- Workaround: Before the fix, operators could run the direct client live smoke separately, but the daily refresh live smoke still misrepresented default readiness.
+- Next action: Keep direct Semantic Scholar smoke as optional-source telemetry, not a default daily-refresh requirement.
+- Linked tasks: `167.1`
+- Resolution: Updated the live daily refresh smoke to require ArXiv and OpenAlex fetch/document coverage instead of ArXiv and Semantic Scholar.
+- Verification: Re-running the opt-in live literature/similarity smoke passed with 3 tests against real APIs.
+
 ### P-20260618-087 - Prelaunch readiness recommended the direct autopilot loop
 
 - Status: Resolved

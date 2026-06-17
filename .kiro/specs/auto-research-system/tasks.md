@@ -2206,6 +2206,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-087`; tasks `163.1` through `165.1`; user requirement that the 24h system use dangerous-command approval gates._
     - _Verify: focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`, `python -m mypy src\autoresearch\cli\main.py`, and `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q` passed; real `npm run prelaunch` printed `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration` and correctly blocked on missing WeChat/Feishu channel configuration plus missing sent channel self-test evidence; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
 
+- [x] 167. Live source policy smoke alignment
+  - [x] 167.1 Align the live daily literature refresh smoke with ArXiv/OpenAlex defaults
+    - Update the opt-in live daily refresh smoke to require ArXiv and OpenAlex coverage instead of Semantic Scholar coverage.
+    - Preserve the separate optional live client/similarity smokes for Semantic Scholar telemetry when enabled or available.
+    - Run the live literature/similarity smoke against real APIs to prove the default source policy works outside mocks.
+    - _References: `P-20260618-088`; tasks `102.1` and `137.1`; user requirement that Semantic Scholar be lower-priority and optional while free public APIs carry the default literature loop._
+    - _Verify: first live run with `AUTORESEARCH_LIVE_APIS=1` failed because `test_literature_refresh_live.py` still required Semantic Scholar while the real refresh returned ArXiv/OpenAlex; after updating the smoke, `python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q` passed with 3 live tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

@@ -7623,3 +7623,26 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-087` added and resolved.
 - Follow-up:
   - Complete channel setup and a real sent channel self-test before using strict `npm run prelaunch` as the final green launch gate.
+
+### 2026-06-18 03:52:51 +08:00 - Codex - Task 167.1 Live source policy smoke alignment
+
+- Request: Continue live API validation and align opt-in live literature refresh smoke with current ArXiv/OpenAlex default source policy.
+- Files changed:
+  - `tests/smoke/test_literature_refresh_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated the opt-in live daily refresh smoke to require ArXiv and OpenAlex rather than Semantic Scholar.
+  - Kept direct optional Semantic Scholar telemetry in the separate live client and similarity tests.
+  - Recorded the initial real live failure where the default refresh returned ArXiv/OpenAlex and the test still required Semantic Scholar.
+- Verification:
+  - `$env:AUTORESEARCH_LIVE_APIS='1'; python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q; Remove-Item Env:\AUTORESEARCH_LIVE_APIS`: first run failed before the fix on `assert {'arxiv', 'semantic_scholar'} <= {'arxiv', 'openalex'}`; after the fix passed with 3 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-088` added and resolved.
+- Follow-up:
+  - Keep Semantic Scholar failures as optional-source telemetry unless the operator explicitly enables or keys it as a required source.
