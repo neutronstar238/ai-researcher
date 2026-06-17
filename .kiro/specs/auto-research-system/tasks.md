@@ -2241,6 +2241,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-090`; `P-20260618-091`; tasks `168.1` and `169.1`; user requirement that setup/channel onboarding avoid manual `.env` edits and guide the operator through QR setup._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_prompts_for_missing_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; first real readiness probe failed because a BOM-bearing temporary `.env` hid the first LLM key and was logged as `P-20260618-091`; the second no-BOM real probe printed `[NEXT] readiness_action.bind_wechat_target: airesearcher channels bind-target --channel wechat --env-path runs/manual-live/task170-readiness-bind-target-v2/.env`._
 
+- [x] 171. BOM-safe env onboarding
+  - [x] 171.1 Parse BOM-bearing `.env` files in CLI readiness/setup helpers
+    - Read CLI-managed `.env` files with UTF-8 BOM handling so the first key is not hidden when Windows editors write `EF BB BF`.
+    - Add a readiness regression test where the first line is `\ufeffAUTORESEARCH_LLM_BASE_URL=...`.
+    - Verify the real Node CLI readiness entrypoint against a temporary BOM-bearing `.env`.
+    - _References: `P-20260618-091`; task `170.1`; user requirement that setup/readiness be practical for normal deployment users instead of requiring manual `.env` expertise._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_env_file tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task171-bom-env\.env --vault runs\manual-live\task171-bom-env\vault --outputs-dir runs\manual-live\task171-bom-env\outputs --output runs\manual-live\task171-bom-env\readiness.json --require-channel-config` produced expected blocked readiness with `llm_credentials=pass` and `operator_channels=fail`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 517 passed and 4 skipped._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

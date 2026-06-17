@@ -7742,3 +7742,30 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-091` added and remains open for a follow-up env parser hardening task.
 - Follow-up:
   - Fix BOM-bearing `.env` parsing so editor-created env files do not hide the first key.
+
+### 2026-06-18 04:23:43 +08:00 - Codex - Task 171.1 BOM-safe env onboarding
+
+- Request: Continue V1.0 deployment hardening by fixing the real BOM-bearing `.env` failure discovered during task `170.1`.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed CLI-managed `.env` reads to use UTF-8 BOM handling.
+  - Added a readiness regression test where the first `.env` key is BOM-prefixed.
+  - Closed `P-20260618-091` after a real Node CLI readiness probe parsed the BOM-bearing base URL.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_env_file tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task171-bom-env\.env --vault runs\manual-live\task171-bom-env\vault --outputs-dir runs\manual-live\task171-bom-env\outputs --output runs\manual-live\task171-bom-env\readiness.json --require-channel-config`: produced expected blocked readiness with `llm_credentials=pass` and `operator_channels=fail`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 517 passed and 4 skipped.
+- Problems:
+  - `P-20260618-091` resolved.
+- Follow-up:
+  - Monitor whether any third-party dotenv consumers need separate BOM hardening; CLI readiness/setup parsing is fixed.
