@@ -1688,6 +1688,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert Path(kwargs["report_path"]).name == "manuscript.md"
         evidence_names = {Path(path).name for path in kwargs["evidence_paths"]}
         assert {
+            "cycle-summary.json",
             "review-evidence-context.json",
             "formal-reference-evidence.md",
             "report.md",

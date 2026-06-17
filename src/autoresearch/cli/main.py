@@ -3408,6 +3408,7 @@ def _run_autopilot_cycle(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_evidence_paths: list[Path | str] = [
+        summary_path,
         review_context_path,
         reference_evidence_path,
         Path(demo_result.report_path),

@@ -32,21 +32,37 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
-### P-20260616-070 - Live serve cycle blocked release on reviewer revision items
+### P-20260617-071 - Research-plan PDF compile log still reports an overfull line
 
 - Status: Open
+- Severity: Low
+- Discovered: 2026-06-17 23:04:00 +08:00
+- Source: Task `128.1` final live `serve --once` artifact audit.
+- Symptom: The paper-level PDF release gate passed with `overfull_hbox=0`, but the generated research-plan LaTeX logs contain `Overfull \hbox (42.71716pt too wide) in paragraph at lines 97--98`.
+- Impact: The final paper deliverable is not blocked, but the planning PDF can still have a layout blemish from long identifiers or paths. This should be fixed before claiming the research-plan PDF template has fully clean LaTeX layout.
+- Evidence: `rg` found the overfull entry in `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/task128_serve_final/research-plan/research-plan.compile.log`; `pdfinfo` confirmed the paper PDF itself has 14 pages and paper-build recorded `Overfull hbox: 0`.
+- Root cause: Pending investigation; likely long path, command, or identifier text in the research-plan TeX template is not wrapped or typeset in a breakable form.
+- Workaround: None yet. Treat this as a research-plan template quality issue, not as a paper release blocker.
+- Next action: Add a research-plan LaTeX layout gate or breakable rendering for long code/path text, then rerun a live research-plan compile and confirm no overfull warnings.
+- Linked tasks: follow-up after `128.1`
+- Resolution: Pending.
+- Verification: Pending.
+
+### P-20260616-070 - Live serve cycle blocked release on reviewer revision items
+
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-16 18:09:00 +08:00
 - Source: Real `task127_serve_live` always-on serve verification.
-- Symptom: `airesearcher serve --permission-mode allow-all --once` completed the research-plan, experiment, paper build, and review stages, but the live LLM reviewer returned `verdict=needs_revision`; publication audit reported `needs_revision`, evidence gate reported `blocked`, and 7 follow-up tasks were queued.
-- Impact: The serve entrypoint is correctly fail-closed, but this specific generated manuscript is not release-ready until the manuscript addresses reviewer issues about variance-shrinkage sensitivity and related-work/similarity positioning.
-- Evidence: `runs/manual-live/task127-serve-live/runs/cycle-20260616T100641Z/cycle-summary.json` shows `review.verdict=needs_revision`, `publication_audit.publishable=false`, `evidence_gate.release_allowed=false`, and follow-up issue notes under `runs/manual-live/task127-serve-live/vault/projects/task127_serve_live/issues/`.
-- Root cause: The manuscript text did not fully satisfy the evidence-constrained reviewer, even though the code execution, reproduction, PDF build, citation breadth, related-work breadth, and research-plan gates passed.
-- Workaround: None. Do not mark this run as paper-ready.
-- Next action: Improve manuscript generation/revision so it explicitly addresses variance-shrinkage sensitivity and positions similarity/related-work evidence without overclaiming.
-- Linked tasks: `127.1`
-- Resolution: Pending.
-- Verification: Pending.
+- Symptom: `airesearcher serve --permission-mode allow-all --once` completed the research-plan, experiment, paper build, and review stages, but the live LLM reviewer returned `verdict=needs_revision`; publication audit reported `needs_revision`, evidence gate reported `blocked`, and 7 follow-up tasks were queued. A later repair run reduced the blocker to the manuscript claiming a separate `Cycle record` artifact while the review bundle did not provide an explicitly named cycle record file.
+- Impact: Resolved for the Pendigits serve cycle. The serve entrypoint now reaches the strict release gates without weakening review, publication, or evidence checks.
+- Evidence: Original blocked run: `runs/manual-live/task127-serve-live/runs/cycle-20260616T100641Z/cycle-summary.json`. Repaired pass: `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` shows `review.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.release_allowed=true`, and `followup_tasks=[]`.
+- Root cause: The manuscript made evidence-language claims that were stricter than the artifacts visible to the reviewer: unsupported qualitative related-work positioning, no caveat that `variance_shrinkage=0.05` was a fixed configuration, and a `Cycle record` label that did not align with the real `cycle-summary.json` artifact.
+- Workaround: None needed after task `128.1`.
+- Next action: Continue hardening research-plan PDF layout separately in `P-20260617-071`.
+- Linked tasks: `127.1`, `128.1`
+- Resolution: Rewrote the related-work/similarity prose to stay within recorded comparison-status fields, added the fixed-configuration shrinkage caveat, renamed the evidence artifact to `Cycle summary`, and added `cycle-summary.json` to the LLM review evidence bundle.
+- Verification: Focused tests, full ruff/mypy/smoke/unit tests, and real `serve --permission-mode allow-all --once` under `runs/manual-live/task128-serve-final` all passed. The real run printed `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`.
 
 ### P-20260616-069 - Serve output hid the research-plan gate status
 

@@ -31,6 +31,8 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "The next system action should not be to submit the paper" not in manuscript
     assert "Representative retrieved records are retained" in manuscript
     assert "### Evidence and Artifact Availability" in manuscript
+    assert "| Cycle summary | Machine-readable cycle state and stage outputs |" in manuscript
+    assert "| Cycle record |" not in manuscript
     assert "### Data Analysis" in manuscript
     assert "![Validated metric comparison](analysis/validated-performance-metrics.pdf)" in manuscript
     assert "| Metric | Value | Evidence source |" in manuscript
@@ -42,6 +44,8 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
     assert "variance_shrinkage parameter of 0.0500" in manuscript
+    assert "fixed recorded configuration, not a tuned hyperparameter result" in manuscript
+    assert "does not include a sensitivity sweep" in manuscript
     assert "bound to the final manuscript" in manuscript
     assert "Current finding classifications are:" not in manuscript
     assert "Retrieved record 1:" not in manuscript
@@ -51,6 +55,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "parsed and classified part of the nearby-work trail" not in manuscript
     assert "records how many findings were classified" not in manuscript
     assert "Representative similarity findings are retained" in manuscript
+    assert "narrower and more adversarial" not in manuscript
+    assert "split into direct duplicates, adjacent mechanisms" not in manuscript
+    assert "comparison-status fields recorded in the inspection artifact" in manuscript
     assert "Prototype Calibration for Digits was retrieved" not in manuscript
     assert "pendigits_variance_calibrated_prototypes" not in manuscript
     assert "pendigits variance calibrated prototypes" in manuscript

@@ -1840,6 +1840,17 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that one command can keep AI-Researcher running 24h with visible agent/gate flow, while dangerous actions require `/approve`-style human approval._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 3 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real serve run `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task127-serve-live\vault --cache runs\manual-live\task127-serve-live\cache --output-dir runs\manual-live\task127-serve-live\runs --deliverables-dir runs\manual-live\task127-serve-live\outputs --state runs\manual-live\task127-serve-live\scheduler-state.json --approvals-state runs\manual-live\task127-serve-live\approvals.json --project-id task127_serve_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` printed `[OK] research_plan: passed`, generated the PDF deliverable, and correctly blocked release because the live LLM review verdict was `needs_revision`; direct approval-gate smoke with `node .\bin\airesearcher.mjs serve --permission-mode approve-dangerous --once ...` printed `[WAITING] approval_required`, wrote only `approvals.json`, and a propagated exit-code check confirmed `LASTEXIT=2`._
 
+- [x] 128. Review-driven manuscript claim repair
+  - [x] 128.1 Repair reviewer-blocking manuscript evidence claims and rerun live serve
+    - Remove unsupported related-work and similarity-positioning prose that overstated the retrieval process.
+    - Add an explicit caveat that the recorded `variance_shrinkage=0.05` value is a fixed configuration, not an optimized hyperparameter or sensitivity result.
+    - Rename the paper evidence table artifact from `Cycle record` to the real `Cycle summary` artifact.
+    - Add `cycle-summary.json` to the LLM review evidence bundle so the reviewer can inspect the machine-readable cycle state directly.
+    - Add focused tests for the manuscript wording and review evidence bundle.
+    - Rerun a real `serve --once` cycle with live literature/model review and the public Pendigits benchmark, and require review, publication audit, evidence gate, and follow-up queues to pass.
+    - _References: `P-20260616-070`; user requirement that release gates remain strict, outputs must not overclaim unsupported evidence, and the system should rerun real data/calls until the loop reaches a publication-quality gate._
+    - _Verify: `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\cli\main.py tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` passed with 2 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real serve run `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task128-serve-final\vault --cache runs\manual-live\task128-serve-final\cache --output-dir runs\manual-live\task128-serve-final\runs --deliverables-dir runs\manual-live\task128-serve-final\outputs --state runs\manual-live\task128-serve-final\scheduler-state.json --approvals-state runs\manual-live\task128-serve-final\approvals.json --project-id task128_serve_final --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`; `pdfinfo` confirmed the exported paper PDF has 14 pages; `rg` confirmed the final manuscript uses `Cycle summary`, the LLM evidence includes `cycle-summary.json`, and paper-build `compile.log` contains `RERUNS_COMPLETED: 1` and `ATTEMPT 2`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2264,6 +2275,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 94,
       "tasks": ["127.1"]
+    },
+    {
+      "id": 95,
+      "tasks": ["128.1"]
     }
   ]
 }

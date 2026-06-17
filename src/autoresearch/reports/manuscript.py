@@ -484,13 +484,14 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
         ),
         *doc_lines,
         (
-            "The similarity search is narrower and more adversarial than the broad "
-            "literature refresh, but this manuscript does not restate what the retriever "
-            "queried. Query strings, source responses, classification counts, cache "
-            "details, and source-specific errors are stored in the similarity note and "
-            "compact review context rather than promoted into this paper prose. The "
-            "retrieved distribution is a warning signal rather than a novelty claim. "
-            "When findings remain unknown, they are not used as evidence for originality."
+            "The project-start similarity search is a targeted adjacent-work retrieval "
+            "stage. This manuscript does not restate what the retriever queried or "
+            "compare it qualitatively with the broader literature refresh. Query strings, "
+            "source responses, classification counts, cache details, and source-specific "
+            "errors are stored in the similarity note and compact review context rather "
+            "than promoted into this paper prose. The retrieved distribution is a warning "
+            "signal rather than a novelty claim. When findings remain unknown, they are "
+            "not used as evidence for originality."
         ),
         _related_work_inspection_sentence(evidence),
         *finding_lines,
@@ -503,13 +504,13 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "permits, and keep validated sources available as formal bibliography records."
         ),
         (
-            "The related-work evidence is split into direct duplicates, adjacent "
-            "mechanisms, benchmark precedents, baseline obligations, and out-of-scope "
-            "noise where the available metadata permits that distinction. That split is "
-            "not merely a writing preference. A direct duplicate blocks novelty claims; "
-            "an adjacent mechanism motivates positioning and often a baseline; a "
-            "benchmark precedent verifies dataset protocol and metrics; and out-of-scope "
-            "noise remains visible to prevent repeated rediscovery of weak search hits."
+            "The related-work evidence uses the comparison-status fields recorded in the "
+            "inspection artifact, such as direct_method_candidate, contextual, "
+            "benchmark_or_baseline_context, metadata_only, or unknown. The manuscript "
+            "does not invent finer categories beyond those stored fields. Direct method "
+            "candidates require novelty positioning; contextual and benchmark or baseline "
+            "records motivate comparison checks; metadata-only and unknown rows remain "
+            "visible but do not support originality claims."
         ),
         (
             "The current manuscript therefore treats source classification as a research "
@@ -573,7 +574,10 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             f"hash, commit identifier, metrics path, artifact directory, and command used "
             f"for reproduction. The recorded metrics expose {_fmt(feature_count)} input "
             f"features and a variance_shrinkage parameter of {_fmt(variance_shrinkage)} "
-            f"for this cycle. These provenance fields are more important than prose "
+            f"for this cycle. That shrinkage value is a fixed recorded configuration, "
+            f"not a tuned hyperparameter result; this run does not include a sensitivity "
+            f"sweep over alternative shrinkage values and therefore cannot claim that "
+            f"0.0500 is optimal. These provenance fields are more important than prose "
             f"style because they let a later validator decide whether the same data and "
             f"code path produced the reported numbers."
         ),
@@ -965,7 +969,7 @@ def _write_analysis_artifacts(
 
 def _evidence_artifact_availability(analysis: _AnalysisArtifacts) -> list[str]:
     rows = [
-        ("Cycle record", "Machine-readable cycle state and stage outputs"),
+        ("Cycle summary", "Machine-readable cycle state and stage outputs"),
         ("Run record", "Command, exit code, metrics, artifacts, and logs"),
         ("Validation report", "Metric bounds, issues, and statistical notes"),
         ("Evidence map", "Bindings from claims and metrics to local evidence"),

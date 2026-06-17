@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:05:31 +08:00 - Codex - Task 128.1 review-driven manuscript repair
+
+- Request:
+  - Continue running the AI-Researcher loop until the live `serve` path addresses the reviewer blocker from task `127.1` without weakening release gates.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Rewrote related-work and similarity prose so the manuscript no longer overstates the retrieval process or invents finer related-work categories beyond recorded comparison-status fields.
+  - Added an explicit manuscript caveat that `variance_shrinkage=0.05` is a fixed recorded configuration, not an optimized hyperparameter or sensitivity-sweep result.
+  - Renamed the paper evidence table artifact from `Cycle record` to `Cycle summary`.
+  - Added `cycle-summary.json` to the LLM review evidence bundle so the reviewer can inspect the actual cycle state file directly.
+  - Added focused tests for the revised manuscript wording and review evidence bundle.
+  - Ran a real live `serve --once` cycle with network literature retrieval, real Pendigits benchmark execution, live model review, PDF output, publication audit, and evidence gate.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\cli\main.py tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed with 2 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real serve cycle: `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task128-serve-final\vault --cache runs\manual-live\task128-serve-final\cache --output-dir runs\manual-live\task128-serve-final\runs --deliverables-dir runs\manual-live\task128-serve-final\outputs --state runs\manual-live\task128-serve-final\scheduler-state.json --approvals-state runs\manual-live\task128-serve-final\approvals.json --project-id task128_serve_final --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`.
+  - `pdfinfo runs\manual-live\task128-serve-final\outputs\task128_serve_final\task128_serve_final-cycle-20260617T150322Z.pdf`: confirmed the exported paper PDF has 14 pages.
+  - `rg` on the live cycle confirmed the manuscript uses `Cycle summary`, the LLM review evidence includes `cycle-summary.json`, and paper-build `compile.log` contains `RERUNS_COMPLETED: 1` and `ATTEMPT 2`.
+- Problems:
+  - Resolved `P-20260616-070`.
+  - Added open `P-20260617-071` for a separate research-plan PDF overfull warning found during final artifact QA.
+- Follow-up:
+  - Fix research-plan LaTeX wrapping/layout so generated planning PDFs have clean compile logs as well as paper PDFs.
+
 ### 2026-06-16 18:11:03 +08:00 - Codex - Task 127.1 serve research-plan gate visibility
 
 - Request:
