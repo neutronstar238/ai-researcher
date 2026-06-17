@@ -170,7 +170,7 @@ npm run monitor
 airesearcher monitor
 ```
 
-监控台会显示最近 Agent 消息、活跃文件声明、研究流程状态、审批队列、follow-up 任务、git diff 和 output 预览。
+监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
 
 | 参数 | 作用 |
 | --- | --- |

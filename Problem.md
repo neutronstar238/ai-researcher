@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-077 - README monitor screenshot lagged behind release-flow monitor
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:46:36 +08:00
+- Source: Task `143.1` inspection of `README.md`, `README.zh-CN.md`, and `docs/assets/readme/cli-monitor.svg` after task `142.1`.
+- Symptom: The README monitor copy still described a generic research-stage flow, and the SVG screenshot still showed old task `119.1` examples plus pre-release flow rows such as inspiration and generic paper build instead of source, literature, research plan, citations, paper quality, and deliverables.
+- Impact: A new user reading the release page could miss the physical release-gate behavior that the actual `airesearcher monitor` command now exposes.
+- Evidence: `README.md` lines around the Operator Monitor section mentioned "research-stage flow"; `docs/assets/readme/cli-monitor.svg` contained `Task 119.1 V1.0 release readiness`, `Information Flow`, and old rows that did not include citation metadata or paper-quality status.
+- Root cause: Task `142.1` upgraded the real CLI monitor, but the README screenshot and monitor prose were not refreshed in the same commit.
+- Workaround: None needed after task `143.1`.
+- Next action: Keep README visual assets in sync when future operator-visible release stages are added.
+- Linked tasks: `143.1`
+- Resolution: Updated the English and Chinese monitor copy and refreshed the SVG console preview to show release gates, stage-specific artifacts, paper-quality status, and output previews.
+- Verification: SVG XML parsing, README/SVG keyword checks, README asset-link check, and `git diff --check` all passed.
+
 ### P-20260618-076 - Inline Python probes failed during monitor task inspection
 
 - Status: Resolved

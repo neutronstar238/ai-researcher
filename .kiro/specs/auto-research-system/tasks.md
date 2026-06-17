@@ -1986,6 +1986,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-075`, `P-20260618-076`; user request for a good CLI showing Agent messages, information flow, changes, previews, and release-quality evidence rather than hidden JSON._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed; real `node .\bin\airesearcher.mjs monitor --cycle-summary runs\autopilot\cycle-20260617T160833Z\cycle-summary.json --outputs-dir outputs\live_release_candidate_20260617_v2 --no-diff --max-agent-entries 1` rendered source, literature, plan, novelty, related work, citations, experiment, reproduction, review, publication, paper, evidence, follow-ups, and deliverables without Unicode truncation artifacts; structured `_cycle_stage_rows` over the same real summary showed `paper` status `compiled; quality=pass; pages=14`, `citations` evidence including `references.metadata.json`, and `deliverables` evidence including the manifest and PDF paths; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\unit\cli\test_main.py -q` passed with 56 tests; full `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, and 1 warning._
 
+- [x] 143. README operator console release-alignment
+  - [x] 143.1 Refresh monitor documentation and screenshot asset
+    - Treat the README operator-console image as release-facing product evidence, not as a decorative placeholder.
+    - Update English and Chinese monitor documentation to describe the release-critical stage table added by `142.1`.
+    - Refresh `docs/assets/readme/cli-monitor.svg` so the visible console preview names release gates, stage evidence paths, paper-quality status, and output previews instead of stale task `119.1` examples.
+    - Keep the asset lightweight, repository-native, and directly referenced by both README files.
+    - _References: `P-20260618-077`; user request for a visible, polished CLI that shows Agent messages, information flow, changes, previews, and release-quality evidence._
+    - _Verify: `python -c "import xml.etree.ElementTree as ET; ET.parse('docs/assets/readme/cli-monitor.svg'); print('svg ok')"` passed; `python -c "... readme monitor checks ok ..."` passed for README and SVG key terms; `python -c "... asset link ok ..."` passed for the README screenshot link; `git diff --check -- README.md README.zh-CN.md docs\assets\readme\cli-monitor.svg` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2470,6 +2479,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 109,
       "tasks": ["142.1"]
+    },
+    {
+      "id": 110,
+      "tasks": ["143.1"]
     }
   ]
 }

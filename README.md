@@ -190,8 +190,11 @@ npm run monitor
 airesearcher monitor
 ```
 
-The monitor shows recent agent messages, active file claims, research-stage flow, approval queue,
-open follow-up tasks, git changes, and output previews. Useful options:
+The monitor shows recent agent messages, active file claims, release-critical cycle stages,
+approval queue, open follow-up tasks, git changes, and output previews. Its flow table surfaces
+source preflight, literature refresh, research plan, novelty/similarity, related work, citations,
+experiment, reproduction, review, publication audit, paper build, evidence gate, follow-ups, and
+deliverables with stage-specific artifact paths and paper-quality status. Useful options:
 
 | Option | Purpose |
 | --- | --- |

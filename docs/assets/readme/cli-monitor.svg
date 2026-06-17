@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780" role="img" aria-labelledby="title desc">
   <title id="title">AI-Researcher operator console</title>
-  <desc id="desc">A terminal-style screenshot of the AI-Researcher monitor command showing agent messages, active agents, information flow, approvals, changes, and output previews.</desc>
+  <desc id="desc">A terminal-style screenshot of the AI-Researcher monitor command showing agent messages, active agents, release-critical information flow, approvals, changes, and output previews.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#10151d"/>
@@ -31,15 +31,15 @@
   <circle cx="80" cy="52" r="7" fill="#ffd166"/>
   <circle cx="104" cy="52" r="7" fill="#58d68d"/>
   <text x="132" y="61" class="title">AI-Researcher Operator Console</text>
-  <text x="132" y="86" class="sub">airesearcher monitor -- watch agents, queues, flow, diffs, and publication outputs</text>
+  <text x="132" y="86" class="sub">airesearcher monitor -- watch agents, release gates, evidence paths, diffs, and outputs</text>
 
   <rect x="52" y="112" width="562" height="180" class="panel cyan"/>
   <text x="74" y="140" class="panel-title">Agent Messages</text>
-  <text x="74" y="166" class="text">2026-06-15 - Codex - Task 119.1 V1.0 release readiness</text>
-  <text x="74" y="188" class="muted">Request: final Git cleanup, daily fetch, inspiration push, README.</text>
-  <text x="74" y="212" class="text">2026-06-15 - Codex - Task 118.1 paper artifact quality</text>
-  <text x="74" y="234" class="muted">Summary: references fixed, figures/tables added, PDFs passed gates.</text>
-  <text x="74" y="258" class="ok">Verification: ruff, mypy, pytest, live cycle artifacts</text>
+  <text x="74" y="166" class="text">2026-06-18 - Codex - Task 142.1 release-flow monitor</text>
+  <text x="74" y="188" class="muted">Request: show agent flow, artifacts, diffs, and preview outputs.</text>
+  <text x="74" y="212" class="text">2026-06-18 - Codex - Task 143.1 README console sync</text>
+  <text x="74" y="234" class="muted">Summary: screenshot reflects release stages and paper-quality status.</text>
+  <text x="74" y="258" class="ok">Verification: SVG parse, docs checks, diff check</text>
 
   <rect x="666" y="112" width="562" height="180" class="panel green"/>
   <text x="688" y="140" class="panel-title">Active Agents</text>
@@ -50,33 +50,34 @@
   <text x="688" y="252" class="text">Review Agent       evidence-gate           watching    outputs/</text>
 
   <rect x="52" y="318" width="562" height="190" class="panel magenta"/>
-  <text x="74" y="346" class="panel-title">Information Flow</text>
-  <text x="74" y="374" class="text">source discovery    <tspan class="ok">pass</tspan>       arXiv + OpenAlex</text>
-  <text x="74" y="398" class="text">inspiration         <tspan class="ok">ready</tspan>      Hugging Face + HN</text>
-  <text x="74" y="422" class="text">similarity check    <tspan class="ok">findings</tspan>   source-backed</text>
-  <text x="74" y="446" class="text">experiment          <tspan class="ok">run</tspan>        public benchmark</text>
-  <text x="74" y="470" class="text">paper build         <tspan class="ok">compiled</tspan>   outputs/project.pdf</text>
+  <text x="74" y="346" class="panel-title">Release Flow</text>
+  <text x="74" y="374" class="text">source        <tspan class="ok">pass</tspan>       source-preflight.md</text>
+  <text x="74" y="398" class="text">literature    <tspan class="ok">65 docs</tspan>    arXiv + OpenAlex notes</text>
+  <text x="74" y="422" class="text">plan          <tspan class="ok">passed</tspan>     research-plan.pdf</text>
+  <text x="74" y="446" class="text">citations     <tspan class="ok">verified</tspan>   references.metadata.json</text>
+  <text x="74" y="470" class="text">paper         <tspan class="ok">quality=pass</tspan> 14-page PDF</text>
+  <text x="74" y="494" class="text">deliverables  <tspan class="ok">15 files</tspan>   outputs/manifest.json</text>
 
   <rect x="666" y="318" width="562" height="190" class="panel yellow"/>
   <text x="688" y="346" class="panel-title">Approvals and Tasks</text>
   <text x="688" y="374" class="text">kind        id                         status      detail</text>
   <line x1="688" y1="386" x2="1198" y2="386" stroke="#334258"/>
-  <text x="688" y="410" class="text">approval    latest                     pending     dangerous run</text>
-  <text x="688" y="434" class="text">task        issue-follow-up            open        missing evidence</text>
+  <text x="688" y="410" class="text">approval    latest                     clear       no blocked command</text>
+  <text x="688" y="434" class="text">task        follow-ups                 0 open      release gate clean</text>
   <text x="688" y="458" class="text">push        feishu                     sent        inspiration digest</text>
-  <text x="688" y="482" class="text">push        wechat                     skipped     QR gateway offline</text>
+  <text x="688" y="482" class="text">push        wechat                     ready       QR adapter active</text>
 
   <rect x="52" y="534" width="562" height="170" class="panel red"/>
   <text x="74" y="562" class="panel-title">Changes</text>
   <text x="74" y="590" class="text">M src/autoresearch/cli/main.py</text>
-  <text x="74" y="614" class="text">A src/autoresearch/notifications.py</text>
-  <text x="74" y="638" class="text">M README.md / README.zh-CN.md</text>
-  <text x="74" y="662" class="muted">Diff preview can be disabled with --no-diff for clean monitoring.</text>
+  <text x="74" y="614" class="text">M tests/unit/cli/test_main.py</text>
+  <text x="74" y="638" class="text">M README.md / docs/assets/readme/cli-monitor.svg</text>
+  <text x="74" y="662" class="muted">Use --no-diff when the console should stay focused on gates.</text>
 
   <rect x="666" y="534" width="562" height="170" class="panel blue"/>
   <text x="688" y="562" class="panel-title">Preview Results</text>
-  <text x="688" y="590" class="text">cycle-summary.json        evidence graph and metrics</text>
-  <text x="688" y="614" class="text">publication-audit.json    pass / needs_revision</text>
-  <text x="688" y="638" class="text">paper-build.json          LaTeX quality report</text>
-  <text x="688" y="662" class="text">project-cycle.pdf         publishable artifact candidate</text>
+  <text x="688" y="590" class="text">cycle-summary.json        release-stage evidence map</text>
+  <text x="688" y="614" class="text">research-plan.pdf         audited executable plan</text>
+  <text x="688" y="638" class="text">paper-build.json          LaTeX + figure quality report</text>
+  <text x="688" y="662" class="text">AI-Researcher-cycle.pdf   publication artifact candidate</text>
 </svg>

@@ -62,6 +62,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:46:36 +08:00 - Codex - Task 143.1 README operator console release-alignment
+
+- Request:
+  - Continue running the project and keep the release-facing README/operator-console presentation aligned with the verified CLI monitor.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/assets/readme/cli-monitor.svg`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `143.1` and dependency-graph node `110`.
+  - Updated the English and Chinese Operator Monitor sections to describe release-critical cycle stages, stage-specific artifact paths, and paper-quality status.
+  - Refreshed the README SVG console preview from stale task `119.1` content to current release-flow examples: source preflight, literature, research plan, citations, paper quality, deliverables, and output previews.
+  - Recorded and resolved the release-page drift as `P-20260618-077`.
+- Verification:
+  - `python -c "import xml.etree.ElementTree as ET; ET.parse('docs/assets/readme/cli-monitor.svg'); print('svg ok')"`: passed.
+  - README/SVG key-term check for `release-critical cycle stages`, `paper-quality status`, `发布关键 cycle 阶段`, `Release Flow`, `references.metadata.json`, and `paper-build.json`: passed.
+  - README asset-link check for `docs/assets/readme/cli-monitor.svg`: passed.
+  - `git diff --check -- README.md README.zh-CN.md docs\assets\readme\cli-monitor.svg`: passed.
+- Problems:
+  - `P-20260618-077` added and resolved.
+- Follow-up:
+  - None.
+
 ### 2026-06-18 00:38:01 +08:00 - Codex - Task 142.1 operator console release-flow hardening
 
 - Request:
