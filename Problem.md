@@ -1074,19 +1074,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-006 - HKUDS AI-Researcher license text is not explicit enough for code reuse
 
-- Status: Open
+- Status: Mitigated
 - Severity: Medium
 - Discovered: 2026-06-13 00:52:01 +08:00
 - Source: Web review for task `62.1` after the user asked whether HKUDS AI-Researcher is open-source and how it differs from this project.
-- Symptom: The upstream repository is public and its `setup.cfg` package metadata declares `license = MIT`, but the repository file list did not expose a top-level `LICENSE` file during review. GitHub issue #94, opened on 2026-06-02, also asks the maintainers to add explicit license clarification.
+- Symptom: The upstream repository is public and its `setup.cfg` package metadata declares `license = MIT`, but the repository file list still does not expose a top-level `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE` file. GitHub issue #94, opened on 2026-06-02, also asks the maintainers to add explicit license clarification and remains open.
 - Impact: A future contributor could mistakenly treat public source visibility as enough permission to copy code, prompts, benchmark data, or generated examples into AI-Researcher.
-- Evidence: Reviewed `https://github.com/HKUDS/AI-Researcher`, raw upstream `README.md`, raw `setup.cfg`, and `https://github.com/HKUDS/AI-Researcher/issues/94`.
+- Evidence: Reviewed `https://github.com/HKUDS/AI-Researcher`, raw upstream `README.md`, raw `setup.cfg`, `https://github.com/HKUDS/AI-Researcher/issues/94`, GitHub license API endpoint `https://api.github.com/repos/HKUDS/AI-Researcher/license`, and the root contents endpoint on 2026-06-17. `setup.cfg` still declares `license = MIT`; the GitHub license API returned 404; the root contents check found no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`; issue #94 remains open.
 - Root cause: Upstream source and package metadata are not accompanied by an explicit repository license text in the reviewed state.
 - Workaround: Treat HKUDS AI-Researcher as a conceptual/paper reference only. Do not copy or adapt repository code, prompts, benchmark data, generated examples, or assets unless upstream adds explicit license text or written permission is obtained.
 - Next action: Re-check upstream license status before any future incorporation or derivative implementation that uses their repository material.
-- Linked tasks: `62.1`
-- Resolution: Not resolved upstream; `THIRD_PARTY_NOTICES.md` and README now record the conservative boundary.
-- Verification: Updated repository notices and README differentiation notes; focused text search and compliance tests were run for task `62.1`.
+- Linked tasks: `62.1`, `132.1`
+- Resolution: Mitigated for AI-Researcher by refreshing `THIRD_PARTY_NOTICES.md` with the 2026-06-17 API/root-contents evidence and adding a compliance regression test that keeps HKUDS AI-Researcher reference-only until a license file or written permission exists.
+- Verification: GitHub API/root-contents checks confirmed the missing license-text boundary; focused compliance tests passed for the updated third-party notice.
 
 ### P-20260613-005 - Live DeepSeek reviewer can truncate JSON at 2400 completion tokens
 

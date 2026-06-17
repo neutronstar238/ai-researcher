@@ -62,6 +62,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:30:49 +08:00 - Codex - Task 132.1 HKUDS AI-Researcher license boundary refresh
+
+- Request:
+  - Continue running the project and refresh the HKUDS AI-Researcher open-source/license boundary before any future reuse.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+  - `Agent.md`
+- Summary:
+  - Added task `132.1` and its task-dependency graph node.
+  - Re-checked HKUDS AI-Researcher on 2026-06-17 and kept it as conceptual/reference-only for this repository.
+  - Updated `THIRD_PARTY_NOTICES.md` with the current evidence: upstream `setup.cfg` still declares `license = MIT`, GitHub's license API returned 404, the repository root contents check found no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, and issue #94 remains open.
+  - Added a compliance regression test so the HKUDS AI-Researcher notice must keep the 404/open-issue evidence and the "Do not copy or adapt" boundary.
+  - No HKUDS AI-Researcher code, prompts, assets, benchmark data, generated examples, or figures were copied into this project.
+- Verification:
+  - Live web/API review: confirmed `setup.cfg` license metadata, GitHub license API 404, no top-level license/notice file in root contents, and issue #94 open as of 2026-06-17.
+  - `python -m ruff check tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m pytest tests\unit\compliance\test_licenses.py -q`: passed, 6 tests.
+  - `rg -n 'HKUDS AI-Researcher|GitHub license API returned 404|issue #94 remains open|Do not copy or adapt repository code|132\.1|P-20260613-006' THIRD_PARTY_NOTICES.md Problem.md .kiro\specs\auto-research-system\tasks.md tests\unit\compliance\test_licenses.py`: passed; expected references found.
+- Problems:
+  - `P-20260613-006` updated from open to mitigated for AI-Researcher; upstream license-text ambiguity remains unresolved, so future code reuse still requires a fresh check or written permission.
+- Follow-up:
+  - Re-check upstream before any derivative implementation that uses HKUDS AI-Researcher repository material.
+
 ### 2026-06-17 23:25:37 +08:00 - Codex - Task 131.1 publication problem-log reconciliation
 
 - Request:

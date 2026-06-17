@@ -1880,6 +1880,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-004`, `P-20260613-014`, `P-20260613-016`, task `128.1` live pass._
     - _Verify: `rg` confirmed the task `128.1` cycle summary records `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=true`, `followup_tasks=[]`, 65 literature documents, 57 similarity findings, 65 verified citations, a 14-page paper build, and a 3-page research plan; `Test-Path` confirmed the exported task `128.1` paper PDF exists; `rg` confirmed the task `76.1` negative shrinkage metrics and task `78.1` positive variance-calibrated metrics remain recorded._
 
+- [x] 132. HKUDS AI-Researcher license boundary refresh
+  - [x] 132.1 Re-check upstream license status and keep reference-only boundary executable
+    - Re-check HKUDS AI-Researcher's current upstream repository, `setup.cfg`, GitHub license API, root file list, and license-clarification issue before changing the repository boundary.
+    - Keep HKUDS AI-Researcher as conceptual/reference-only unless a top-level license file or written permission exists.
+    - Update `THIRD_PARTY_NOTICES.md` with the current evidence instead of copying upstream code, prompts, assets, benchmark data, or generated examples.
+    - Add a compliance test that fails if the reference-only boundary disappears from the third-party notice.
+    - Update `P-20260613-006` to distinguish project-side mitigation from unresolved upstream license text.
+    - _References: `P-20260613-006`; user request to understand differences from HKUDS AI-Researcher and whether it is open source._
+    - _Verify: Live web/API review on 2026-06-17 found `setup.cfg` still declares `license = MIT`, GitHub license API returned 404, root contents did not list `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, and issue #94 remains open; `python -m ruff check tests\unit\compliance\test_licenses.py` passed; `python -m pytest tests\unit\compliance\test_licenses.py -q` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2320,6 +2330,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 98,
       "tasks": ["131.1"]
+    },
+    {
+      "id": 99,
+      "tasks": ["132.1"]
     }
   ]
 }

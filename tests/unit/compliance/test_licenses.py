@@ -54,6 +54,17 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
     assert "Do not copy or adapt" in third_party
 
 
+def test_hkuds_ai_researcher_stays_reference_only_until_license_file_exists() -> None:
+    root = Path(__file__).resolve().parents[3]
+    third_party = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+    assert "HKUDS AI-Researcher" in third_party
+    assert "setup.cfg` declares `license = MIT" in third_party
+    assert "GitHub license API returned 404" in third_party
+    assert "issue #94 remains open" in third_party
+    assert "Do not copy or adapt repository code" in third_party
+
+
 def test_license_scanner_accepts_dataset_code_and_package_metadata(tmp_path: Path) -> None:
     dataset = tmp_path / "dataset"
     third_party = tmp_path / "vendor-lib"
