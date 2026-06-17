@@ -395,7 +395,7 @@ def test_channels_test_requires_sent_when_requested(
     )
 
     assert result.exit_code == 1, result.output
-    assert "[FAIL] channel_test: at least one channel was not sent" in result.stderr
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["records"][0]["status"] == "skipped"
 

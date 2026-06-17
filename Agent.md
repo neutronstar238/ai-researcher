@@ -7256,3 +7256,27 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-080` added and resolved.
 - Follow-up:
   - A later live deployment check should run `airesearcher channels test --channel feishu --require-sent` or the WeChat equivalent after real operator credentials/session state are available.
+
+### 2026-06-18 02:10:54 +08:00 - Codex - Task 154.1 CI stderr capture fix
+
+- Request: Continue running after the task `154.1` push and repair the failing GitHub Actions check without expanding scope.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected GitHub Actions run `27709729783` and confirmed the only failure was `test_channels_test_requires_sent_when_requested` on Python 3.10/Linux.
+  - Changed the failure-message assertion from `result.stderr` to `result.output`, which is stable when Click/Typer mixes stderr into the main captured stream.
+  - Recorded the CI-only portability failure in `Problem.md` and updated task `154.1` verification notes.
+- Verification:
+  - `gh run view 27709729783 --log-failed`: confirmed `ValueError: stderr not separately captured` was the only failure.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q`: passed, 1 test; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 503 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260618-081` added and resolved.
+- Follow-up:
+  - After this fix is pushed, watch the replacement GitHub Actions run to confirm Python 3.10/Linux is green.

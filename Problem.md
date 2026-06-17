@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-081 - CI Click runner did not separately capture channel-test stderr
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:09:00 +08:00
+- Source: GitHub Actions run `27709729783` for task `154.1`, job `Run smoke and unit tests` on Python 3.10/Linux.
+- Symptom: `tests/unit/cli/test_main.py::test_channels_test_requires_sent_when_requested` failed with `ValueError: stderr not separately captured`.
+- Impact: The channel self-test command behavior was correct, but the test was not portable across Typer/Click runner capture defaults.
+- Evidence: CI collected 507 items and ended with `1 failed, 498 passed, 8 skipped`; the only failure was the channel-test stderr assertion.
+- Root cause: The test accessed `result.stderr`, which raises when the runner mixes stderr into the main output stream.
+- Workaround: None needed after asserting against `result.output`.
+- Next action: Prefer `result.output` for CLI assertions unless a test explicitly constructs a runner with separate stderr capture.
+- Linked tasks: `154.1`
+- Resolution: Updated the failure-message assertion to read the mixed `result.output` stream.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q` passed locally after the fix; full gate and CI rerun are recorded in `Agent.md`.
+
 ### P-20260618-080 - Channel test fake sender left unused parameters
 
 - Status: Resolved
