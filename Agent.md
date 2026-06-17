@@ -62,6 +62,28 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:51:12 +08:00 - Codex - Task 137.1 optional Semantic Scholar default-source reconciliation
+
+- Request:
+  - Continue running the project and close stale external-source reliability risks with real evidence where possible.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `137.1` and its task-dependency graph node.
+  - Rechecked current source-selection code and tests: ArXiv/OpenAlex are the default sources, while Semantic Scholar is included only when explicitly enabled or keyed.
+  - Rechecked README guidance that Semantic Scholar is optional and lower priority.
+  - Updated `P-20260613-003` from mitigated to resolved for default discovery and release behavior while preserving Semantic Scholar 429 as an optional-source caveat when operators enable it.
+- Verification:
+  - `rg -n "Semantic Scholar|semantic_scholar|AUTORESEARCH_ENABLE_SEMANTIC|core free" src tests .kiro\specs\auto-research-system\tasks.md README.md README.zh-CN.md`: passed; expected implementation, test, task, and README references found.
+  - Real CLI `node .\bin\airesearcher.mjs literature-refresh --vault runs\manual-live\task137-default-sources\vault --cache runs\manual-live\task137-default-sources\cache --max-queries 1 --max-results-per-source 1`: passed; printed only `[FETCH] source=arxiv` and `[FETCH] source=openalex`, returned 2 documents, and wrote `runs\manual-live\task137-default-sources\vault\exploration\topics\literature_refresh_20260617.md`.
+  - Inspection of the generated evidence note confirmed two source refs, one ArXiv document, one OpenAlex document, and no Semantic Scholar fetch.
+- Problems:
+  - `P-20260613-003` resolved for default source behavior.
+- Follow-up:
+  - Keep Semantic Scholar optional; for deployments that enable it, continue relying on API keys, conservative rate limits, circuit breakers, and transparent optional-source caveats.
+
 ### 2026-06-17 23:48:14 +08:00 - Codex - Task 136.1 runtime session gate automation
 
 - Request:

@@ -1137,20 +1137,21 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-003 - Live full-loop run hit Semantic Scholar HTTP 429 while ArXiv succeeded
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 00:15:32 +08:00
 - Source: Real `airesearcher serve --once --permission-mode allow-all --review` full-loop verification for task `60.1`.
 - Symptom: The literature refresh and similarity-check stages both retrieved one ArXiv result, but Semantic Scholar returned `SourceRateLimitError: Semantic Scholar HTTP 429 rate limited; circuit open for 60.0s`.
-- Impact: The full loop still completed with source-backed ArXiv evidence and passed the live LLM evidence review, but cross-source novelty coverage was reduced for this run.
+- Impact: Resolved for default discovery and release behavior. ArXiv and OpenAlex are now the default free/public sources for literature refresh, similarity checks, and `autopilot`; Semantic Scholar is an optional lower-priority enhancement source only when explicitly enabled or keyed. A Semantic Scholar 429 can still reduce optional metadata breadth when the operator enables it, but it no longer acts as a required default-source blocker when ArXiv/OpenAlex breadth passes.
 - Evidence: `runs/manual-live/serve-full/cycle-20260612T161532Z/cycle-summary.json` recorded ArXiv success, Semantic Scholar 429 errors, `review.status = passed`, `review.quality_score = 1.0`, and `review.verdict = pass`.
 - Mitigation evidence: Task `64.1` added OpenAlex as a default fallback. A live OpenAlex query returned a real `openalex` result with DOI `https://doi.org/10.1017/s0140525x12000477`; live `literature-refresh` then fetched ArXiv plus OpenAlex while preserving the Semantic Scholar 429 error; live `similarity-check` also returned OpenAlex evidence for the Pendigits candidate.
+- Resolution evidence: Task `102.1` made Semantic Scholar opt-in by environment variable or API key and updated bilingual README guidance. Task `137.1` rechecked the current implementation and ran a bounded real default `literature-refresh`; the command printed only ArXiv and OpenAlex fetches, returned 2 documents, and wrote an Obsidian evidence note with ArXiv/OpenAlex provenance and no Semantic Scholar fetch.
 - Root cause: The live Semantic Scholar endpoint rate-limited the unauthenticated or current deployment request window.
-- Workaround: The existing Semantic Scholar circuit breaker prevents retry spam and preserves the rate-limit error in the run summary instead of fabricating missing source results. OpenAlex now provides an additional no-key default source when Semantic Scholar is unavailable.
-- Next action: For stronger full-loop novelty checks, configure `SEMANTIC_SCHOLAR_API_KEY`, optionally configure `OPENALEX_API_KEY`/`OPENALEX_MAILTO` for larger deployments, and rerun delayed audits after source circuit reset windows.
-- Linked tasks: `60.1`, `64.1`
-- Resolution: Not fully resolved; mitigated by visible source-level error recording and successful ArXiv-backed loop completion.
-- Verification: Live DeepSeek evidence review passed with quality score `1.0`, all findings cited known local evidence IDs, and no unsupported claims were reported.
+- Workaround: None needed for the default source path. If an operator enables Semantic Scholar, the circuit breaker still prevents retry spam and preserves rate-limit errors in run summaries instead of fabricating missing source results.
+- Next action: For stronger optional metadata coverage, configure `SEMANTIC_SCHOLAR_API_KEY`, optionally configure `OPENALEX_API_KEY`/`OPENALEX_MAILTO` for larger deployments, and rerun delayed optional-source audits after circuit reset windows.
+- Linked tasks: `60.1`, `64.1`, `102.1`, `137.1`
+- Resolution: Resolved for default behavior by making Semantic Scholar opt-in, keeping OpenAlex as the no-key default cross-source partner, and preserving optional-source errors as transparent caveats rather than default blockers.
+- Verification: Live DeepSeek evidence review passed with quality score `1.0` for the original ArXiv-backed run. Later focused tests and a real task `137.1` default `literature-refresh` verified the current default source set as ArXiv plus OpenAlex only.
 
 ### P-20260613-002 - Runtime approval test filename collided with existing approval test module
 

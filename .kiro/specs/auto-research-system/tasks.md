@@ -1928,6 +1928,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-009`; user request to make multi-agent traffic control a physical gate rather than relying on prompt discipline._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_blocks_overlapping_runtime_session_before_cycle -q` passed with 4 tests; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\unit\cli\test_main.py -q` passed with 56 tests; real CLI smoke `node .\bin\airesearcher.mjs sessions claim --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --session-id task136_active ...` allowed the first claim, real `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --sessions-state runs\manual-live\task136-runtime-session-gate\agent-sessions.json ...` exited `1` with `[OK] session_claim: blocked` and `[CONFLICT] session_id=task136_active` before any cycle started, real `node .\bin\airesearcher.mjs sessions release task136_active ...` released the session, and `node .\bin\airesearcher.mjs sessions list --include-released ...` showed only `status=released`; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 490 passed, 4 skipped, and 1 known external warning._
 
+- [x] 137. Optional Semantic Scholar default-source reconciliation
+  - [x] 137.1 Resolve stale Semantic Scholar 429 default-source risk using live default-source evidence
+    - Re-check the current implementation before changing `P-20260613-003`.
+    - Confirm the default automatic discovery clients are ArXiv and OpenAlex, and Semantic Scholar is included only when `AUTORESEARCH_ENABLE_SEMANTIC_SCHOLAR=1` or `SEMANTIC_SCHOLAR_API_KEY` is set.
+    - Confirm README guidance already describes Semantic Scholar as optional and lower priority.
+    - Run a real default `literature-refresh` smoke with bounded query/result counts and verify the fetch list contains ArXiv and OpenAlex only.
+    - Preserve Semantic Scholar 429 as an optional enhancement-source reliability caveat, not as a default release blocker when core free/public source breadth passes.
+    - _References: `P-20260613-003`; user request to prefer free APIs first and demote Semantic Scholar because 429s are common._
+    - _Verify: `rg -n "Semantic Scholar|semantic_scholar|AUTORESEARCH_ENABLE_SEMANTIC|core free" src tests .kiro\specs\auto-research-system\tasks.md README.md README.zh-CN.md` confirmed code, tests, tasks, and READMEs describe Semantic Scholar as optional; real CLI `node .\bin\airesearcher.mjs literature-refresh --vault runs\manual-live\task137-default-sources\vault --cache runs\manual-live\task137-default-sources\cache --max-queries 1 --max-results-per-source 1` printed only `[FETCH] source=arxiv` and `[FETCH] source=openalex`, wrote 2 documents, and wrote `runs\manual-live\task137-default-sources\vault\exploration\topics\literature_refresh_20260617.md` with ArXiv/OpenAlex provenance._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2388,6 +2398,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 103,
       "tasks": ["136.1"]
+    },
+    {
+      "id": 104,
+      "tasks": ["137.1"]
     }
   ]
 }
