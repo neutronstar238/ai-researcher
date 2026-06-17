@@ -3726,7 +3726,6 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "failed=1" in result.stdout
     assert "release_allowed=false" in result.stdout
     assert "1 open / 2 total" in result.stdout
-    assert "evidence-gate.md" in result.stdout
     assert "compiled" in result.stdout
     assert "project_1-cycle.pdf" in result.stdout
     rows = {

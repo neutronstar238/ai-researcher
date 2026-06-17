@@ -2273,6 +2273,11 @@ A task can be checked only when all applicable items are true:
     - Preserve compact terminal output while keeping full blocker messages and next actions available in the stage evidence text.
     - _References: `P-20260618-094`; real `serve --once` task174 cycle; user requirement that the CLI operator console show agent flow, output quality, and actionable gates during 24h autonomous operation._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 1 test after an initial assertion adjustment for Rich column truncation; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `node ./bin/airesearcher.mjs monitor --runtime-state runs\manual-live\task174-serve-no-push\approvals.json --scheduler-state runs\manual-live\task174-serve-no-push\scheduler-state.json --sessions-state runs\manual-live\task174-serve-no-push\sessions.json --outputs-dir runs\manual-live\task174-serve-no-push\outputs --cycle-summary runs\manual-live\task174-serve-no-push\runs\cycle-20260617T203842Z\cycle-summary.json --no-diff --max-agent-entries 2` rendered `publication` as `fail; score=0.327; target=ccf-b; blockers=19; first=literature_query_breadth`, `evidence` as `blocked; failed=2; release_allowed=false; first=review_gate`, and `follow-ups` as `5 open / 5 total`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 518 passed and 4 skipped._
+  - [x] 174.2 Stabilize monitor CI assertion for terminal-width truncation
+    - Remove the stdout assertion that required `evidence-gate.md` to survive Rich terminal column truncation.
+    - Keep exact path coverage in structured `_cycle_stage_rows()` assertions where terminal width cannot hide content.
+    - _References: `P-20260618-095`; failed GitHub Actions run `27718801671`; task `174.1`._
+    - _Verify: `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed locally; GitHub Actions failure evidence confirmed the previous assertion was the only failing test on the pushed `d230920` commit._
 
 ## Checkpoints
 

@@ -7854,3 +7854,25 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-094` added and resolved.
 - Follow-up:
   - Continue using real cycle summaries to validate operator monitor changes, especially blocked publication-quality cases rather than only all-pass fixtures.
+
+### 2026-06-18 04:53:48 +08:00 - Codex - Task 174.2 Monitor CI assertion stabilization
+
+- Request: Fix the GitHub Actions failure from the pushed monitor publication-blocker task before continuing further launch work.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed the brittle `result.stdout` assertion that required the full `evidence-gate.md` filename to survive Rich terminal table truncation on Linux CI.
+  - Kept exact path coverage in structured `_cycle_stage_rows()` assertions, where terminal width cannot hide artifact names.
+  - Recorded the CI failure as `P-20260618-095`.
+- Verification:
+  - GitHub Actions run `27718801671` failed only on `tests/unit/cli/test_main.py::test_monitor_renders_agent_flow_changes_and_preview`, where the Linux-rendered monitor stdout truncated `evidence-gate.md`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed locally after the assertion update.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+- Problems:
+  - `P-20260618-095` added and resolved.
+- Follow-up:
+  - Re-run full gates and push; confirm the next GitHub Actions run returns green.

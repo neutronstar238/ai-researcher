@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-095 - Monitor stdout assertion failed on Linux CI terminal truncation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:54:00 +08:00
+- Source: GitHub Actions run `27718801671` for commit `d230920`.
+- Symptom: `tests/unit/cli/test_main.py::test_monitor_renders_agent_flow_changes_and_preview` failed because `assert "evidence-gate.md" in result.stdout` did not hold on the Linux CI terminal rendering.
+- Impact: Local tests passed on Windows, but the pushed monitor improvement left CI red and blocked release confidence.
+- Evidence: CI logs showed the monitor rendered successfully, but Rich column width truncated the flow table before the full `evidence-gate.md` filename appeared in stdout.
+- Root cause: The test mixed compact terminal smoke assertions with exact artifact-path assertions; exact paths are unstable in rendered Rich columns when terminal width differs.
+- Workaround: None needed after the test update.
+- Next action: Keep exact path checks on structured `_cycle_stage_rows()` data and reserve stdout checks for short user-visible status fragments.
+- Linked tasks: `174.1`, `174.2`
+- Resolution: Removed the brittle stdout assertion while retaining structured assertions for `evidence-gate.md`.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed locally after the assertion change.
+
 ### P-20260618-094 - Monitor hid publication and evidence gate blockers from real serve cycle
 
 - Status: Resolved
