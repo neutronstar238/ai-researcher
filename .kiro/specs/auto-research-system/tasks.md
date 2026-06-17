@@ -2145,6 +2145,14 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `119.1`, `155.1`, `156.1`, `157.1`, and `158.1`; user requirement that deployment feel like a normal guided product entry rather than a sequence of manually discovered commands._
     - _Verify: `python -m pytest tests\unit\test_npm_scripts.py -q` passed with 1 test plus an expected coverage no-data warning because the test only inspects `package.json`; `npm run readiness -- --no-push-inspiration` passed on the real local checkout and printed `start_daily_loop` for no-push mode; `npm run channel:test -- --help` rendered the channel self-test CLI help through the Node wrapper; `npm run prelaunch` exited 1 as expected because this checkout has no configured WeChat/Feishu channel or latest sent channel-test artifact, and it printed `configure_operator_channel` as the repair action; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 507 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 160. Host Python warning cleanup
+  - [x] 160.1 Resolve local `RequestsDependencyWarning` verification noise
+    - Confirm the warning source with `pip check`, package metadata, and the installed `requests` compatibility code.
+    - Align the host/global Python environment to versions compatible with project and transitive requirements.
+    - Update `Problem.md` so future agents know the warning was a host dependency drift issue, not a project code failure.
+    - _References: `P-20260612-057`; user request to clean up final verification noise rather than leave known warnings unexplained._
+    - _Verify: `python -m pip check` initially failed because `langchain-community 0.3.31` requires `requests>=2.32.5` while host Python had `requests 2.31.0`; `python -m pip show requests urllib3 chardet charset-normalizer` confirmed host Python had `requests 2.31.0`, `urllib3 2.7.0`, `chardet 7.4.3`, and `charset-normalizer 3.4.7`; `python -m pip install "requests==2.32.5" "chardet==5.2.0"` succeeded; `python -m pip check` then returned `No broken requirements found`; `python -c "import requests; print(requests.__version__)"` printed `2.32.5` without `RequestsDependencyWarning`; `python -m pytest tests\unit\test_npm_scripts.py -q` passed with 1 test and no Requests warning; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 507 passed, 4 skipped, and only the LangGraph deprecation warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

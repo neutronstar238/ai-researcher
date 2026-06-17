@@ -7426,3 +7426,30 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Once the user scans WeChat or provides Feishu credentials, rerun `npm run channel:test -- --channel <channel> --require-sent` and `npm run prelaunch`.
+
+### 2026-06-18 03:03:09 +08:00 - Codex - Task 160.1 Host Python warning cleanup
+
+- Request: Continue final prelaunch cleanup by removing the recurring host `RequestsDependencyWarning` from local verification output where the repository can safely diagnose the cause.
+- Files changed:
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed the warning came from host/global Python dependency drift: `requests 2.31.0` plus `chardet 7.4.3`, while `langchain-community 0.3.31` requires `requests>=2.32.5`.
+  - Updated host Python packages to `requests 2.32.5` and `chardet 5.2.0`, satisfying `pip check` and requests compatibility constraints.
+  - Updated `P-20260612-057` from mitigated to resolved locally, while preserving guidance that other machines should use `airesearcher doctor` and `python -m pip check` to detect recurrence.
+- Verification:
+  - `python -m pip show requests urllib3 chardet charset-normalizer`: confirmed the pre-fix host versions were `requests 2.31.0`, `urllib3 2.7.0`, `chardet 7.4.3`, and `charset-normalizer 3.4.7`.
+  - `python -m pip check`: initially failed because `langchain-community 0.3.31` requires `requests>=2.32.5`.
+  - `python -m pip install "requests==2.32.5" "chardet==5.2.0"`: succeeded.
+  - `python -m pip check`: passed with `No broken requirements found`.
+  - `python -c "import requests; print(requests.__version__)"`: printed `2.32.5` without `RequestsDependencyWarning`.
+  - `python -m pytest tests\unit\test_npm_scripts.py -q`: passed, 1 test, no Requests warning; still showed the expected coverage no-data warning for this package-json-only test.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 507 passed, 4 skipped, 1 LangGraph warning, and no `RequestsDependencyWarning`.
+- Problems:
+  - `P-20260612-057` updated to resolved locally.
+- Follow-up:
+  - If another machine emits the warning, check active host Python packages before changing repository code.
