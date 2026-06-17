@@ -1975,6 +1975,17 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-073`, `P-20260618-074`; user requirement that PDF visual quality be physically gated rather than trusted to prompt self-discipline or one-off manual screenshots._
     - _Verify: `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py` passed; `python -m pytest tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py -q` passed with 8 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, and 1 warning. A real paper rebuild over `runs\autopilot\cycle-20260617T160833Z\paper-manuscript\manuscript.md` with `node .\bin\airesearcher.mjs paper-build ... --timeout-seconds 180` compiled a 14-page PDF, recorded `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, and `overfull_hbox_count=0`; visual rendering of page 8 confirmed the metric figure labels remain readable._
 
+- [x] 142. Operator console release-flow hardening
+  - [x] 142.1 Render release-critical cycle stages and artifact previews in `monitor`
+    - Treat the long-running CLI monitor as the product operator console for the autonomous research loop.
+    - Replace the previous summary-only information-flow table with stage rows for source preflight, literature refresh, research plan, novelty/similarity check, related-work inspection, citation package, experiment, reproduction check, LLM review, publication audit, paper build, evidence gate, follow-ups, and deliverables.
+    - Pull concise status details from real cycle-summary fields, including document/source counts, research-plan compile/audit/page status, related-work inspected/direct counts, citation blocked count, paper quality/page status, follow-up queue count, and deliverable count.
+    - Bind each stage to specific artifact evidence paths instead of pointing every row to `cycle-summary.json`.
+    - Keep the terminal UI readable in narrow Rich panels by using short stage labels, folding table text instead of Unicode ellipsis truncation, and shortening preview/evidence paths with ASCII `...`.
+    - Extend CLI tests with a release-like cycle summary fixture and structured assertions for citation metadata, deliverable manifest/PDF paths, and paper-quality status.
+    - _References: `P-20260618-075`, `P-20260618-076`; user request for a good CLI showing Agent messages, information flow, changes, previews, and release-quality evidence rather than hidden JSON._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed; real `node .\bin\airesearcher.mjs monitor --cycle-summary runs\autopilot\cycle-20260617T160833Z\cycle-summary.json --outputs-dir outputs\live_release_candidate_20260617_v2 --no-diff --max-agent-entries 1` rendered source, literature, plan, novelty, related work, citations, experiment, reproduction, review, publication, paper, evidence, follow-ups, and deliverables without Unicode truncation artifacts; structured `_cycle_stage_rows` over the same real summary showed `paper` status `compiled; quality=pass; pages=14`, `citations` evidence including `references.metadata.json`, and `deliverables` evidence including the manifest and PDF paths; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\unit\cli\test_main.py -q` passed with 56 tests; full `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, and 1 warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2455,6 +2466,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 108,
       "tasks": ["141.1"]
+    },
+    {
+      "id": 109,
+      "tasks": ["142.1"]
     }
   ]
 }

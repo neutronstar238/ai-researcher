@@ -2685,10 +2685,81 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     summary.write_text(
         json.dumps(
             {
-                "source_preflight": {"status": "pass"},
-                "review": {"status": "passed"},
-                "paper_build": {"status": "compiled"},
-                "evidence_gate": {"verdict": "pass"},
+                "source_preflight": {
+                    "status": "pass",
+                    "markdown_path": "runs/project_1/source-preflight.md",
+                },
+                "literature": {
+                    "document_count": 23,
+                    "fetches": [
+                        {"source": "arxiv", "paper_count": 10},
+                        {"source": "openalex", "paper_count": 13},
+                    ],
+                    "markdown_path": "vault/exploration/topics/literature_refresh.md",
+                },
+                "research_plan": {
+                    "compile_status": "compiled",
+                    "page_count": 4,
+                    "pdf_path": "runs/project_1/research-plan/research-plan.pdf",
+                    "audit": {"verdict": "passed"},
+                },
+                "similarity": {
+                    "finding_count": 2,
+                    "summary_path": "vault/projects/project_1/similarity.md",
+                },
+                "related_work_inspection": {
+                    "inspected_count": 23,
+                    "direct_method_count": 4,
+                    "markdown_path": "runs/project_1/related-work.md",
+                },
+                "citations": {
+                    "blocked_count": 0,
+                    "citations": [{"bibtex_key": "smith2026"}],
+                    "metadata_path": "runs/project_1/citations/references.metadata.json",
+                },
+                "demo": {
+                    "demo": "pendigits_variance_calibrated_prototypes",
+                    "report_path": "runs/project_1/demo/report.md",
+                    "validation_json_path": "runs/project_1/demo/validation.json",
+                },
+                "reproduction_check": {
+                    "status": "passed",
+                    "markdown_path": "runs/project_1/reproduction-check/reproduction.md",
+                },
+                "review": {
+                    "status": "passed",
+                    "vault_review": "vault/projects/project_1/review/llm-review.md",
+                },
+                "publication_audit": {
+                    "verdict": "pass",
+                    "output_path": "runs/project_1/publication-audit.json",
+                },
+                "paper_build": {
+                    "status": "compiled",
+                    "pdf_path": "runs/project_1/paper-build/paper.pdf",
+                    "paper_quality": {
+                        "passed": True,
+                        "page_count": 14,
+                        "figure_readability_issue_count": 0,
+                    },
+                },
+                "evidence_gate": {
+                    "verdict": "pass",
+                    "output_path": "runs/project_1/evidence-gate.json",
+                },
+                "followup_tasks": [
+                    {
+                        "status": "open",
+                        "issue_path": "vault/projects/project_1/issues/follow-up.md",
+                    }
+                ],
+                "deliverables": {
+                    "manifest_path": "outputs/project_1/manifest.json",
+                    "paths": {
+                        "paper_pdf": "outputs/project_1/paper.pdf",
+                        "research_plan_pdf": "outputs/project_1/research-plan.pdf",
+                    },
+                },
             }
         ),
         encoding="utf-8",
@@ -2722,8 +2793,27 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "approval_1" in result.stdout
     assert "task_open" in result.stdout
     assert "Research Loop" in result.stdout
+    assert "literature" in result.stdout
+    assert "plan" in result.stdout
+    assert "related work" in result.stdout
+    assert "citations" in result.stdout
+    assert "reproduction" in result.stdout
+    assert "follow-ups" in result.stdout
+    assert "deliverables" in result.stdout
+    assert "quality=pass" in result.stdout
     assert "compiled" in result.stdout
     assert "project_1-cycle.pdf" in result.stdout
+    rows = {
+        stage: (status, evidence)
+        for stage, status, evidence in cli_main._cycle_stage_rows(
+            json.loads(summary.read_text(encoding="utf-8")),
+            summary_path=summary,
+        )
+    }
+    assert "references.metadata.json" in rows["citations"][1]
+    assert "manifest.json" in rows["deliverables"][1]
+    assert "paper.pdf" in rows["deliverables"][1]
+    assert "quality=pass" in rows["paper"][0]
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:

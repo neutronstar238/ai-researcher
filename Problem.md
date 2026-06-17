@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-076 - Inline Python probes failed during monitor task inspection
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:31:00 +08:00
+- Source: Local command execution while inspecting the real cycle-summary shape for task `142.1`.
+- Symptom: One inline Python probe failed with `SyntaxError: unexpected character after line continuation character`; a later structured-row probe failed with `ModuleNotFoundError: No module named 'autoresearch'`.
+- Impact: No files were changed by either failed probe and no verification outcome was invalidated, but the command history would be misleading without a record.
+- Evidence: The first command embedded `\n` loop text inside `python -c`; the second imported `autoresearch.cli.main` without setting `PYTHONPATH=src` in the active shell.
+- Root cause: The probes used ad hoc inline Python in PowerShell without matching the active import environment.
+- Workaround: Use single-line Python expressions for quick JSON inspection and set `PYTHONPATH=src` before importing local package modules outside pytest.
+- Next action: Prefer tested CLI commands or PowerShell-native JSON inspection when possible.
+- Linked tasks: `142.1`
+- Resolution: Re-ran the cycle-summary inspection with valid one-line Python and re-ran the structured-row check with `$env:PYTHONPATH='src'`.
+- Verification: The corrected structured-row command printed all release stages, including `paper | compiled; quality=pass; pages=14`, citation metadata evidence, and deliverable manifest/PDF evidence.
+
+### P-20260618-075 - Operator monitor hid release-critical cycle stages and artifact paths
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:29:00 +08:00
+- Source: Task `142.1` inspection of `src/autoresearch/cli/main.py` and the real `runs/autopilot/cycle-20260617T160833Z/cycle-summary.json`.
+- Symptom: `airesearcher monitor` had an operator console, but its information-flow table only showed a short stage list and used the same cycle-summary filename as the evidence cell for each row. It did not surface the research plan, literature refresh, related-work inspection, citation package, reproduction check, deliverables manifest/PDF, follow-up queue, or paper-quality status.
+- Impact: Operators could not quickly confirm whether a long-running autonomous cycle had passed the release-critical gates without opening JSON artifacts by hand, weakening the "one command stays running" product experience.
+- Evidence: `_flow_table()` previously populated rows from `source_preflight`, `similarity`, `demo`, `review`, `publication_audit`, `paper_build`, and `evidence_gate`, all with `evidence_name = summary_path.name`.
+- Root cause: The monitor command predated the newer release-cycle fields and had not been reconciled with the publication, research-plan, citation, and deliverable gates.
+- Workaround: None needed after task `142.1`.
+- Next action: Keep operator-visible gates in `monitor` whenever new release-critical fields are added to `cycle-summary.json`.
+- Linked tasks: `142.1`
+- Resolution: Added release-like cycle stage extraction helpers, concise status summaries, stage-specific artifact evidence, ASCII-safe path shortening, and folding Rich table columns.
+- Verification: Focused CLI tests, full CLI unit tests, ruff, mypy, and real monitor execution against `runs/autopilot/cycle-20260617T160833Z/cycle-summary.json` passed.
+
 ### P-20260618-074 - PowerShell rejected a malformed quoted `rg` search during task 141
 
 - Status: Resolved

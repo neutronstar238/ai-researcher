@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:38:01 +08:00 - Codex - Task 142.1 operator console release-flow hardening
+
+- Request:
+  - Continue running the project and improve the CLI operator console so users can see Agent messages, information flow, changes, previews, and release-quality evidence without opening raw JSON.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `142.1` and dependency-graph node `109`.
+  - Reworked the `monitor` information-flow table to read release-cycle fields for source, literature, research plan, novelty, related work, citations, experiment, reproduction, review, publication audit, paper build, evidence gate, follow-ups, and deliverables.
+  - Added concise status summaries for document/source counts, plan compile/audit/page status, related-work inspected/direct counts, citation blocked counts, paper quality/page status, follow-up count, and deliverable count.
+  - Replaced summary-only evidence cells with stage-specific artifact paths and shortened path labels for readable Rich panels.
+  - Changed monitor tables and preview output to fold text and use ASCII `...` shortening so Windows terminal captures do not show Unicode truncation artifacts.
+  - Expanded the monitor unit test fixture to cover release-like cycle fields and assert citation metadata, deliverable manifest/PDF, and paper-quality binding.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed.
+  - Real CLI smoke `node .\bin\airesearcher.mjs monitor --cycle-summary runs\autopilot\cycle-20260617T160833Z\cycle-summary.json --outputs-dir outputs\live_release_candidate_20260617_v2 --no-diff --max-agent-entries 1`: passed and rendered all release-critical stages without Unicode truncation artifacts.
+  - Structured real summary check with `$env:PYTHONPATH='src'; python -c "... _cycle_stage_rows(...)"`: passed and showed `paper | compiled; quality=pass; pages=14`, citation metadata evidence, and deliverable manifest/PDF evidence.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed with 56 tests.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 492 passed, 4 skipped, and 1 known warning.
+- Problems:
+  - `P-20260618-075` added and resolved.
+  - `P-20260618-076` added and resolved.
+- Follow-up:
+  - Future monitor work can add a user-triggered screenshot/export mode for README assets, but this task leaves the current terminal UI verified and release-gate aware.
+
 ### 2026-06-18 00:24:00 +08:00 - Codex - Task 141.1 deterministic figure readability release gate
 
 - Request:

@@ -5608,7 +5608,7 @@ def _state_table(
 
     table = Table(title=title, expand=True, box=box.ASCII)
     for column in columns:
-        table.add_column(column)
+        table.add_column(column, overflow="fold")
     if not rows:
         table.add_row("-", "-", "-", "none")
         return table
@@ -5674,9 +5674,9 @@ def _flow_table(summary_path: Path | None) -> Any:
     from rich.table import Table
 
     table = Table(title="Research Loop", expand=True, box=box.ASCII)
-    table.add_column("stage")
-    table.add_column("status")
-    table.add_column("evidence")
+    table.add_column("stage", no_wrap=True)
+    table.add_column("status", overflow="fold")
+    table.add_column("evidence", overflow="fold")
     if summary_path is None or not summary_path.exists():
         for stage in (
             "source discovery",
@@ -5691,19 +5691,98 @@ def _flow_table(summary_path: Path | None) -> Any:
         return table
 
     payload = _read_json_mapping(summary_path)
-    evidence_name = summary_path.name
-    rows = [
-        ("source discovery", _nested_status(payload, "source_preflight"), evidence_name),
-        ("similarity check", _nested_status(payload, "similarity"), evidence_name),
-        ("experiment", _nested_status(payload, "demo"), evidence_name),
-        ("review", _nested_status(payload, "review"), evidence_name),
-        ("publication audit", _nested_status(payload, "publication_audit"), evidence_name),
-        ("paper build", _nested_status(payload, "paper_build"), evidence_name),
-        ("evidence gate", _nested_status(payload, "evidence_gate"), evidence_name),
-    ]
-    for stage, status, evidence in rows:
+    for stage, status, evidence in _cycle_stage_rows(payload, summary_path=summary_path):
         table.add_row(stage, status, evidence)
     return table
+
+
+def _cycle_stage_rows(
+    payload: Mapping[str, Any],
+    *,
+    summary_path: Path,
+) -> list[tuple[str, str, str]]:
+    return [
+        (
+            "source",
+            _nested_status(payload, "source_preflight"),
+            _cycle_evidence(payload, "source_preflight", ("markdown_path", "output_path"), summary_path),
+        ),
+        (
+            "literature",
+            _literature_status(payload),
+            _cycle_evidence(payload, "literature", ("markdown_path", "summary_path", "output_path"), summary_path),
+        ),
+        (
+            "plan",
+            _research_plan_status(payload),
+            _cycle_evidence(payload, "research_plan", ("pdf_path", "markdown_path", "json_path"), summary_path),
+        ),
+        (
+            "novelty",
+            _nested_status(payload, "similarity"),
+            _cycle_evidence(payload, "similarity", ("markdown_path", "summary_path", "output_path"), summary_path),
+        ),
+        (
+            "related work",
+            _related_work_status(payload),
+            _cycle_evidence(
+                payload,
+                "related_work_inspection",
+                ("markdown_path", "json_path", "citation_metadata_path"),
+                summary_path,
+            ),
+        ),
+        (
+            "citations",
+            _citation_status(payload),
+            _cycle_evidence(payload, "citations", ("bib_path", "metadata_path", "output_path"), summary_path),
+        ),
+        (
+            "experiment",
+            _nested_status(payload, "demo"),
+            _cycle_evidence(payload, "demo", ("report_path", "validation_json_path", "run_record_path"), summary_path),
+        ),
+        (
+            "reproduction",
+            _nested_status(payload, "reproduction_check"),
+            _cycle_evidence(payload, "reproduction_check", ("markdown_path", "json_path"), summary_path),
+        ),
+        (
+            "review",
+            _nested_status(payload, "review"),
+            _cycle_evidence(payload, "review", ("vault_review", "output_path"), summary_path),
+        ),
+        (
+            "publication",
+            _nested_status(payload, "publication_audit"),
+            _cycle_evidence(payload, "publication_audit", ("markdown_path", "json_path", "output_path"), summary_path),
+        ),
+        (
+            "paper",
+            _paper_build_status(payload),
+            _cycle_evidence(
+                payload,
+                "paper_build",
+                ("pdf_path", "output_pdf_path", "markdown_path", "json_path"),
+                summary_path,
+            ),
+        ),
+        (
+            "evidence",
+            _nested_status(payload, "evidence_gate"),
+            _cycle_evidence(payload, "evidence_gate", ("markdown_path", "json_path", "output_path"), summary_path),
+        ),
+        (
+            "follow-ups",
+            _followup_status(payload),
+            _followup_evidence(payload, summary_path),
+        ),
+        (
+            "deliverables",
+            _deliverables_status(payload),
+            _deliverables_evidence(payload, summary_path),
+        ),
+    ]
 
 
 def _nested_status(payload: Mapping[str, Any], key: str) -> str:
@@ -5726,6 +5805,185 @@ def _nested_status(payload: Mapping[str, Any], key: str) -> str:
     if direct is not None:
         return str(direct)
     return "unknown"
+
+
+def _literature_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("literature")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "literature")
+    document_count = value.get("document_count")
+    fetches = _mapping_list(value.get("fetches"))
+    sources = sorted({str(fetch.get("source")) for fetch in fetches if fetch.get("source")})
+    if document_count is not None and sources:
+        return f"documents={document_count}; sources={len(sources)}"
+    if document_count is not None:
+        return f"documents={document_count}"
+    return _nested_status(payload, "literature")
+
+
+def _research_plan_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("research_plan")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "research_plan")
+    status = str(value.get("compile_status") or _nested_status(payload, "research_plan"))
+    audit = value.get("audit")
+    if isinstance(audit, Mapping) and audit.get("verdict") is not None:
+        status = f"{status}; audit={audit['verdict']}"
+    page_count = value.get("page_count")
+    if page_count is not None:
+        status = f"{status}; pages={page_count}"
+    return status
+
+
+def _related_work_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("related_work_inspection")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "related_work_inspection")
+    inspected = value.get("inspected_count")
+    direct = value.get("direct_method_count")
+    if inspected is not None and direct is not None:
+        return f"inspected={inspected}; direct={direct}"
+    if inspected is not None:
+        return f"inspected={inspected}"
+    return _nested_status(payload, "related_work_inspection")
+
+
+def _citation_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("citations")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "citations")
+    blocked_count = value.get("blocked_count")
+    citations = _mapping_list(value.get("citations"))
+    if blocked_count is not None:
+        return f"verified={len(citations)}; blocked={blocked_count}"
+    if citations:
+        return f"verified={len(citations)}"
+    return _nested_status(payload, "citations")
+
+
+def _paper_build_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("paper_build")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "paper_build")
+    status = _nested_status(payload, "paper_build")
+    quality = value.get("paper_quality")
+    if isinstance(quality, Mapping):
+        passed = quality.get("passed")
+        if passed is not None:
+            status = f"{status}; quality={'pass' if passed else 'fail'}"
+        page_count = quality.get("page_count")
+        if page_count is not None:
+            status = f"{status}; pages={page_count}"
+        figure_issues = quality.get("figure_readability_issue_count")
+        if figure_issues is not None:
+            status = f"{status}; fig_issues={figure_issues}"
+    return status
+
+
+def _followup_status(payload: Mapping[str, Any]) -> str:
+    tasks = _mapping_list(payload.get("followup_tasks"))
+    if not tasks:
+        return "none"
+    statuses = [str(task.get("status", "open")) for task in tasks]
+    open_count = sum(1 for status in statuses if status not in {"completed", "closed", "done"})
+    return f"{open_count} open / {len(tasks)} total"
+
+
+def _deliverables_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("deliverables")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "deliverables")
+    paths = value.get("paths")
+    if isinstance(paths, Mapping) and paths:
+        return f"exported={len(paths)}"
+    if value.get("manifest_path") or value.get("output_dir"):
+        return "exported"
+    return "unknown"
+
+
+def _cycle_evidence(
+    payload: Mapping[str, Any],
+    key: str,
+    fields: tuple[str, ...],
+    summary_path: Path,
+) -> str:
+    value = payload.get(key)
+    paths: list[str] = []
+    if isinstance(value, Mapping):
+        for field in fields:
+            field_value = value.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+    return _format_evidence_paths(paths, fallback=summary_path.name)
+
+
+def _followup_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+    tasks = _mapping_list(payload.get("followup_tasks"))
+    paths: list[str] = []
+    for task in tasks[:3]:
+        for field in ("issue_path", "markdown_path", "path"):
+            field_value = task.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+                break
+    return _format_evidence_paths(paths, fallback=summary_path.name if tasks else "no queued follow-ups")
+
+
+def _deliverables_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+    value = payload.get("deliverables")
+    paths: list[str] = []
+    if isinstance(value, Mapping):
+        for field in ("manifest_path", "markdown_path"):
+            field_value = value.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+        nested_paths = value.get("paths")
+        if isinstance(nested_paths, Mapping):
+            for key in ("paper_pdf", "research_plan_pdf", "manuscript_markdown"):
+                nested_value = nested_paths.get(key)
+                if isinstance(nested_value, str) and nested_value.strip():
+                    paths.append(nested_value)
+    return _format_evidence_paths(paths, fallback=summary_path.name)
+
+
+def _format_evidence_paths(paths: list[str], *, fallback: str) -> str:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        text = _short_evidence_path(path)
+        if text in seen:
+            continue
+        cleaned.append(text)
+        seen.add(text)
+    if not cleaned:
+        return fallback
+    if len(cleaned) > 2:
+        return f"{cleaned[0]}, {cleaned[1]} (+{len(cleaned) - 2} more)"
+    return ", ".join(cleaned)
+
+
+def _short_evidence_path(path: str) -> str:
+    text = _relative_path_text(path).replace("\\", "/")
+    if len(text) <= 48:
+        return text
+    parts = [part for part in text.split("/") if part]
+    if len(parts) >= 2:
+        file_label = _short_file_name(parts[-1], limit=32)
+        tail = f".../{parts[-2]}/{file_label}"
+        if len(tail) <= 48:
+            return tail
+        return f".../{_short_file_name(parts[-1], limit=44)}"
+    if parts:
+        return _short_file_name(parts[-1], limit=48)
+    return text
+
+
+def _short_file_name(name: str, *, limit: int = 48) -> str:
+    if len(name) <= limit:
+        return name
+    suffix = Path(name).suffix
+    head_limit = max(limit - len(suffix) - 3, 8)
+    return f"{name[:head_limit]}...{suffix}"
 
 
 def _git_changes_text(*, max_diff_lines: int) -> str:
@@ -5784,7 +6042,7 @@ def _output_preview_text(outputs_dir: Path, *, summary_path: Path | None) -> str
     for path in files[:10]:
         size = path.stat().st_size
         marker = "PDF" if path.suffix.casefold() == ".pdf" else path.suffix.lstrip(".") or "file"
-        lines.append(f"{path.name} [{marker}]: {_relative_path_text(path)} ({size} bytes)")
+        lines.append(f"{_short_file_name(path.name)} [{marker}]: {_short_evidence_path(str(path))} ({size} bytes)")
     return "\n".join(lines)
 
 
