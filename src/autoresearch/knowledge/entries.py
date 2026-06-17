@@ -227,17 +227,25 @@ class MarkdownKnowledgeStore:
             if relative_path.endswith(".md"):
                 path_by_key[relative_path.removesuffix(".md")] = path
 
+        links_by_path: dict[Path, list[str]] = {}
         backlinks: dict[Path, set[str]] = {path: set() for path in entries}
         for path, entry in entries.items():
-            entry.links = extract_wiki_links(entry.body)
-            for target in entry.links:
+            links_by_path[path] = extract_wiki_links(entry.body)
+            for target in links_by_path[path]:
                 target_path = path_by_key.get(target)
                 if target_path is not None and target_path != path:
                     backlinks[target_path].add(entry.entry_id)
 
         for path, entry in entries.items():
-            entry.backlinks = sorted(backlinks[path])
-            path.write_text(entry.to_markdown(), encoding="utf-8")
+            next_links = links_by_path[path]
+            next_backlinks = sorted(backlinks[path])
+            if entry.links != next_links or entry.backlinks != next_backlinks:
+                entry.links = next_links
+                entry.backlinks = next_backlinks
+                path.write_text(entry.to_markdown(), encoding="utf-8")
+            else:
+                entry.links = next_links
+                entry.backlinks = next_backlinks
 
         self._write_topic_index(entries)
 
@@ -395,4 +403,4 @@ class MarkdownKnowledgeStore:
 
     def _is_internal_path(self, path: Path) -> bool:
         relative = path.relative_to(self.root)
-        return any(part.startswith(".") for part in relative.parts)
+        return any(part.startswith(".") or part == "_system" for part in relative.parts)

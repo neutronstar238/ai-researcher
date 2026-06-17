@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-112 - Vault rebuild treated `_system` templates as knowledge entries
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:58:00 +08:00
+- Source: Audit of remaining tracked `autoresearch-vault/` diffs after task `191.1`.
+- Symptom: `_system/templates/*.md` files had generated `entry_id`, `created_at`, `updated_at`, links, backlinks, and related-run fields even though they are Obsidian templates, not durable knowledge records. Rebuild also rewrote parsed entries even when links/backlinks were unchanged.
+- Impact: Template pollution can leak placeholder templates into the self-loop knowledge graph and create noisy, repeated vault diffs on every index rebuild.
+- Evidence: `git diff -- autoresearch-vault\_system\templates\experiment-record.md autoresearch-vault\_system\templates\skill-card.md` showed generated entry metadata inserted into template frontmatter.
+- Root cause: `MarkdownKnowledgeStore._read_all_entries()` skipped only dot-prefixed internal paths, and `rebuild_indexes()` wrote every parsed entry back through canonical serialization.
+- Workaround: None needed after excluding `_system` and avoiding unchanged-entry writes.
+- Next action: Keep generated runtime notes under exploration/project zones; keep `_system` for human/operator scaffolding only.
+- Linked tasks: `192.1`
+- Resolution: Updated `_is_internal_path()` to skip `_system`, refactored `rebuild_indexes()` to write entries only when computed links/backlinks changed, restored templates to placeholder-only frontmatter, and added regression coverage.
+- Verification: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed. `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed. `python -m mypy src\autoresearch\knowledge\entries.py` passed. Real vault rebuild succeeded. `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md` returned no matches.
+
 ### P-20260618-111 - Obsidian topic index admitted low-value operational keywords
 
 - Status: Resolved

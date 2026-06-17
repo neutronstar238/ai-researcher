@@ -2442,6 +2442,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-111`; user requirement that Obsidian be the self-loop/self-evolution substrate rather than an unreadable log dump._
     - _Verify: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed; `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed; `python -m mypy src\autoresearch\knowledge\entries.py` passed; real `python -c "import sys; from pathlib import Path; sys.path.insert(0, 'src'); from autoresearch.knowledge import MarkdownKnowledgeStore; MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()"` rebuilt the vault; `Select-String` confirmed the generated topic index no longer has headings for `adds`, `are`, `candidate_*`, `autopilot_*`, file-artifact keywords, or the long nearest-centroid reviewer sentence._
 
+- [x] 192. Vault rebuild skips system templates and avoids unchanged-entry churn
+  - [x] 192.1 Protect `_system` templates from knowledge-entry rebuild side effects
+    - Exclude `_system` from Markdown knowledge-entry scanning so Obsidian templates are never treated as durable knowledge records.
+    - Rebuild links/backlinks in memory, but write an entry file only when its computed links or backlinks actually changed.
+    - Add regression coverage proving `_system/templates/*.md` files stay byte-stable and do not contribute `template-noise` topics.
+    - Rebuild the real vault with the updated store and confirm templates do not contain generated `entry_id`, `created_at`, or `updated_at` fields.
+    - _References: `P-20260618-112`; user requirement that Obsidian templates/skills remain structured project assets rather than noisy self-loop records._
+    - _Verify: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed; `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed; `python -m mypy src\autoresearch\knowledge\entries.py` passed; real vault rebuild succeeded; `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md` returned no matches._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

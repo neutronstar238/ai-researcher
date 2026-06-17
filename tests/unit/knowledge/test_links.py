@@ -83,3 +83,53 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
     assert "source-circuit-breakers.json.lock" not in topic_index
     assert "[[paper_1|Paper One]]" in topic_index
     assert "[[skill_review|Review Skill]]" in topic_index
+
+
+def test_rebuild_indexes_skips_system_templates_and_preserves_unchanged_entries(
+    tmp_path,
+) -> None:  # type: ignore[no-untyped-def]
+    store = MarkdownKnowledgeStore(tmp_path)
+    template_path = tmp_path / "_system" / "templates" / "skill-card.md"
+    template_path.parent.mkdir(parents=True)
+    template_text = """---
+entry_id: template_skill
+entry_type: skill_card
+zone: exploration
+title: "{{skill_name}}"
+keywords:
+  - template-noise
+links: []
+backlinks: []
+created_at: '2026-06-18T00:00:00Z'
+updated_at: '2026-06-18T00:00:00Z'
+---
+
+# {{skill_name}}
+"""
+    template_path.write_text(template_text, encoding="utf-8")
+    entry_path = tmp_path / "papers" / "paper_1.md"
+    entry_path.parent.mkdir(parents=True)
+    entry_text = """---
+entry_id: paper_1
+entry_type: paper_note
+zone: exploration
+title: Paper One
+keywords:
+  - alignment
+links: []
+backlinks: []
+created_at: '2026-06-18T00:00:00Z'
+updated_at: '2026-06-18T00:00:00Z'
+---
+
+Paper body.
+"""
+    entry_path.write_text(entry_text, encoding="utf-8")
+
+    store.rebuild_indexes()
+
+    topic_index = (tmp_path / "exploration" / "index.md").read_text(encoding="utf-8")
+    assert template_path.read_text(encoding="utf-8") == template_text
+    assert entry_path.read_text(encoding="utf-8") == entry_text
+    assert "## alignment" in topic_index
+    assert "template-noise" not in topic_index

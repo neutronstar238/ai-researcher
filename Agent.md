@@ -8401,3 +8401,30 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-111`.
 - Follow-up:
   - Several older tracked vault template/progress notes remain modified from previous system memory writes and should be reviewed or committed as a separate focused memory-maintenance task rather than mixed into this topic-index guard.
+
+### 2026-06-18 07:58:33 +08:00 - Codex - Task 192.1 Vault rebuild template guard
+
+- Request: Continue launch-quality hardening after auditing remaining Obsidian vault diffs.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `tests/unit/knowledge/test_links.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed `MarkdownKnowledgeStore` so `_system` paths are excluded from durable knowledge-entry scanning.
+  - Refactored `rebuild_indexes()` to compute links/backlinks but write entry files only when those fields actually change.
+  - Added regression coverage that `_system/templates/*.md` stays byte-stable and never contributes `template-noise` to the topic index.
+  - Restored the real `_system/templates` frontmatter to placeholder-only shape during verification; no content diff remains for those templates.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q`: passed, 18 tests.
+  - `python -m pytest tests\unit\knowledge -q`: passed, 52 tests.
+  - `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\entries.py`: passed.
+  - Real vault rebuild with `MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()`: passed.
+  - `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md`: returned no matches.
+  - `git diff --check -- src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: no whitespace errors; CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-112`.
+- Follow-up:
+  - Older project-progress and literature-refresh vault notes are still dirty from previous memory writes; handle them in a separate memory-history commit if keeping them is desired.
