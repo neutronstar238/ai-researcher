@@ -25,6 +25,12 @@ from autoresearch.knowledge import (
     extract_reusable_skill_card,
 )
 from autoresearch.llm import LLMReviewResult, LLMSmokeResult
+from autoresearch.runtime import (
+    RuntimeActionRisk,
+    RuntimeApprovalDecision,
+    RuntimeApprovalRequest,
+    RuntimePermissionMode,
+)
 from autoresearch.schemas import ResearchCandidate, ResearchPlan
 
 
@@ -2717,7 +2723,10 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
     request_id = payload["requests"][0]["request_id"]
     assert payload["requests"][0]["status"] == "pending"
-    assert payload["requests"][0]["action_id"] == "serve:autopilot-cycle:project_1:tabular_baseline"
+    assert (
+        payload["requests"][0]["action_id"]
+        == "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+    )
 
     approve_result = runner.invoke(
         app,
@@ -2956,6 +2965,82 @@ def test_serve_watch_uses_approval_poll_interval_before_cycle(
     ) in result.stdout
     assert "[WAITING] approval_required:" in result.stdout
     assert "serve_cycle" not in result.stdout
+
+
+def test_serve_watch_requires_new_approval_for_next_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    action_ids: list[str] = []
+    sleeps: list[int] = []
+
+    def fake_approval(**kwargs: object) -> RuntimeApprovalDecision:
+        action_id = str(kwargs["action_id"])
+        action_ids.append(action_id)
+        if len(action_ids) == 1:
+            return RuntimeApprovalDecision(
+                allowed=True,
+                mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+                message="approved first cycle",
+            )
+        return RuntimeApprovalDecision(
+            allowed=False,
+            mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+            request=RuntimeApprovalRequest(
+                action_id=action_id,
+                command=str(kwargs["command"]),
+                risk=RuntimeActionRisk.DANGEROUS,
+                reason=str(kwargs["reason"]),
+            ),
+            message="second cycle approval required",
+        )
+
+    def fake_cycle(**_kwargs: object) -> dict[str, object]:
+        return {
+            "cycle_id": "cycle-one",
+            "summary_path": "runs/autopilot/cycle-one/cycle-summary.json",
+            "review": {"status": "skipped"},
+            "followups": {"task_count": 0},
+        }
+
+    def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        if seconds == 7:
+            raise typer.Exit(3)
+
+    monkeypatch.setattr(cli_main, "ensure_runtime_approval", fake_approval)
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fake_cycle)
+    monkeypatch.setattr(cli_main.time, "sleep", fake_sleep)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "serve",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--cycles",
+            "2",
+            "--interval-seconds",
+            "1",
+            "--approval-poll-seconds",
+            "7",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 3, result.output
+    assert action_ids == [
+        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1",
+        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-2",
+    ]
+    assert sleeps == [1, 7]
+    assert "[OK] serve_cycle: cycle-one" in result.stdout
+    assert "[WAITING] approval_required:" in result.stdout
 
 
 def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:

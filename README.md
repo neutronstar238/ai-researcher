@@ -141,6 +141,8 @@ airesearcher serve --permission-mode approve-dangerous --push-inspiration
 
 `serve` stays alive by default. It checks the approval queue, runs approved cycles, waits
 `86400` seconds between cycles, and records push status for the broad-inspiration digest.
+In `approve-dangerous` mode, each cycle attempt gets its own approval request; use
+`allow-all` only when you intentionally want unattended cycles without per-cycle approval.
 
 In another terminal, approve the first dangerous cycle:
 

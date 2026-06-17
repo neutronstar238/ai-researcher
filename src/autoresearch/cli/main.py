@@ -3161,7 +3161,6 @@ def serve(
 
     _load_optional_env(env_path)
     completed = 0
-    action_id = f"serve:autopilot-cycle:{project_id}:{demo}"
     command_text = _serve_command_text(
         project_id=project_id,
         demo=demo,
@@ -3200,6 +3199,11 @@ def serve(
     )
     try:
         while True:
+            action_id = _serve_cycle_action_id(
+                project_id=project_id,
+                demo=demo,
+                cycle_number=completed + 1,
+            )
             decision = ensure_runtime_approval(
                 state_path=approvals_state,
                 mode=permission_mode,
@@ -5747,6 +5751,12 @@ def _serve_command_text(
         f"{review_flag} "
         f"{push_flag}"
     )
+
+
+def _serve_cycle_action_id(*, project_id: str, demo: str, cycle_number: int) -> str:
+    """Return the approval action ID for one serve cycle attempt."""
+
+    return f"serve:autopilot-cycle:{project_id}:{demo}:cycle-{cycle_number}"
 
 
 def _serve_network_approval_metadata(

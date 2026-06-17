@@ -7535,3 +7535,33 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-084` added and resolved.
 - Follow-up:
   - When IM `/approve` wiring is implemented end to end, use this short approval poll path rather than changing the daily cycle interval.
+
+### 2026-06-18 03:34:43 +08:00 - Codex - Task 164.1 Per-cycle approval boundaries
+
+- Request: Continue always-on runtime hardening so `serve --permission-mode approve-dangerous` does not let one approval authorize every future daily cycle.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added per-cycle `serve` approval action IDs in the form `serve:autopilot-cycle:{project_id}:{demo}:cycle-{n}`.
+  - Moved approval ID calculation inside the `serve` loop so the next cycle attempt gets a new approval boundary after the previous cycle completes.
+  - Preserved retry semantics for the current cycle: approving `cycle-1` lets that same queued cycle run.
+  - Added a watch-mode regression test proving the second cycle requests `cycle-2` after `cycle-1` completes.
+  - Documented that `approve-dangerous` is per-cycle and `allow-all` is the intentional unattended mode.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q`: passed, 2 tests.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-085` added and resolved.
+- Follow-up:
+  - When IM approval cards are wired, include the cycle number/action ID in the operator-facing approval message.

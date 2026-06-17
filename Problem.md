@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-085 - Serve approval IDs were reused across daily cycles
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:31:12 +08:00
+- Source: Code inspection after task `163.1` separated approval polling from daily cycle waits.
+- Symptom: `serve --permission-mode approve-dangerous` used one fixed action ID for every cycle in the same project and demo.
+- Impact: After the operator approved the first dangerous cycle, later daily cycles with the same project and demo could reuse that approval instead of requiring a fresh per-cycle decision.
+- Evidence: The action ID was built once before the `while True` loop as `serve:autopilot-cycle:{project_id}:{demo}` and passed unchanged to `ensure_runtime_approval()`.
+- Root cause: The runtime approval key did not include the cycle attempt number.
+- Workaround: Before the fix, operators could use `--once` and restart manually for every cycle, but that defeated the intended 24h service mode.
+- Next action: When IM approvals are connected, display the per-cycle action ID and cycle number in the approval card.
+- Linked tasks: `164.1`
+- Resolution: Added per-cycle `serve` approval action IDs in the form `serve:autopilot-cycle:{project_id}:{demo}:cycle-{n}` and documented that `approve-dangerous` requires approval per cycle attempt.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q` passed and confirmed that a watched second cycle requests `cycle-2` after `cycle-1` completes.
+
 ### P-20260618-084 - Serve approval wait reused the 24h daily cycle interval
 
 - Status: Resolved

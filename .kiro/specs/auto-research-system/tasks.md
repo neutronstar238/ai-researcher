@@ -2180,6 +2180,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-084`; user requirement for `/approve`-style dangerous-command approval in a 24h service._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed with no issues in 1 source file; focused `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval -q` passed with 3 tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `python -m pytest tests\smoke tests\unit -q` passed with 509 passed, 4 skipped, and no Requests or LangGraph warning._
 
+- [x] 164. Per-cycle approval boundaries
+  - [x] 164.1 Require a fresh `serve` approval action ID for each cycle attempt
+    - Include the next cycle number in the `serve` dangerous-action approval ID instead of reusing one project/demo-level ID forever.
+    - Preserve the existing pending/approved retry behavior for the current cycle: approving `cycle-1` lets that same cycle run after restart or retry.
+    - Add a watch-mode regression test proving a second cycle queues/checks `cycle-2` after `cycle-1` completes.
+    - Document that `approve-dangerous` is per-cycle and `allow-all` is the intentional no-per-cycle-approval mode.
+    - _References: `P-20260618-085`; user requirement for `/approve` dangerous-command gates in a 24h always-on service._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed with no issues in 1 source file; focused `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q` passed with 2 tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
