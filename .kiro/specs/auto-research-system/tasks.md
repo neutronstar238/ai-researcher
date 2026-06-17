@@ -2257,6 +2257,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-092`; tasks `168.1`, `170.1`, and `171.1`; user requirement that setup/QR/prelaunch be usable by normal Windows deployment users and proceed to real push self-tests._
     - _Verify: initial real readiness probe against `runs\manual-live\task172-wechat-ready-action` failed with `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`; focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_wechat_qr_status_file tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real Node CLI readiness rerun against the same fixture reported `operator_channels=pass`, `channel_delivery_test=fail`, and `run_channel_self_test` for `--channel wechat`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 518 passed and 4 skipped._
 
+- [x] 173. Prelaunch QR action clarity
+  - [x] 173.1 Make readiness setup repair explicitly launch WeChat QR setup
+    - Add `--run-wechat-qr-setup` to the `configure_operator_channel` next action when readiness asks the operator to set up WeChat QR.
+    - Update the readiness regression test for missing channel configuration.
+    - Verify strict prelaunch still blocks without a real channel but now prints the direct QR setup command.
+    - _References: `P-20260618-093`; user requirement that setup show the WeChat QR code during configuration instead of relying on later manual commands._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `npm run prelaunch` still blocked as expected on missing channel configuration and missing sent evidence, but printed `[NEXT] readiness_action.configure_operator_channel: airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr --run-wechat-qr-setup`; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 518 passed and 4 skipped._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

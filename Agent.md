@@ -7797,3 +7797,30 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-092` added and resolved.
 - Follow-up:
   - Strict prelaunch still requires a real operator to run setup/QR pairing, bind the actual target, and run `channels test --require-sent`.
+
+### 2026-06-18 04:35:21 +08:00 - Codex - Task 173.1 Explicit QR setup prelaunch action
+
+- Request: Continue V1.0 onboarding hardening so the strict prelaunch repair command directly starts WeChat QR setup.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `--run-wechat-qr-setup` to the readiness `configure_operator_channel` next action.
+  - Updated the missing-channel readiness regression test.
+  - Verified strict prelaunch still blocks without real channel evidence but now prints the QR-starting setup command.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `npm run prelaunch`: still blocked as expected on missing operator channel and missing sent self-test evidence, but printed `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr --run-wechat-qr-setup`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-093` added and resolved.
+- Follow-up:
+  - A real prelaunch pass still requires the operator to complete QR pairing and run `channels test --require-sent`.

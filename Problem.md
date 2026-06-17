@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-093 - Prelaunch WeChat repair command did not explicitly launch QR setup
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:33:30 +08:00
+- Source: Strict `npm run prelaunch` after task `172.1`.
+- Symptom: Readiness correctly blocked on missing operator channel configuration, but the printed repair command was `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr` without the explicit QR-run flag.
+- Impact: Operators following the command literally could still be unsure whether the setup command would display the QR scanner step, especially in mixed interactive/non-interactive usage.
+- Evidence: `.airesearcher\readiness\report.json` showed `configure_operator_channel` without `--run-wechat-qr-setup`.
+- Root cause: The generic channel setup next-action command enabled QR mode but did not spell out the QR setup runner.
+- Workaround: No workaround needed after task `173.1`; before the fix, run `airesearcher setup --wechat --wechat-qr --run-wechat-qr-setup`.
+- Next action: None.
+- Linked tasks: `173.1`
+- Resolution: Added `--run-wechat-qr-setup` to the readiness operator-channel setup action.
+- Verification: `npm run prelaunch` now prints `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr --run-wechat-qr-setup`.
+
 ### P-20260618-092 - BOM-bearing WeChat QR status JSON is treated as missing
 
 - Status: Resolved

@@ -701,7 +701,7 @@ def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
     actions = {action["id"]: action for action in payload["next_actions"]}
     assert actions["configure_operator_channel"]["command"] == (
         f"airesearcher setup --config {config_path.as_posix()} "
-        f"--env-path {env_path.as_posix()} --wechat --wechat-qr"
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup"
     )
 
 

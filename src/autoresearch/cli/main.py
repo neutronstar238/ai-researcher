@@ -2094,7 +2094,7 @@ def _readiness_next_actions(
         "airesearcher setup "
         f"--config {_command_path(config_path)} --env-path {_command_path(env_path)}"
     )
-    channel_setup_command = setup_command + " --wechat --wechat-qr"
+    channel_setup_command = setup_command + " --wechat --wechat-qr --run-wechat-qr-setup"
     bind_wechat_target_command = (
         "airesearcher channels bind-target "
         f"--channel wechat --env-path {_command_path(env_path)}"
