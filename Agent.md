@@ -8316,3 +8316,29 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-107`.
 - Follow-up:
   - No follow-up for compact title readability; broader multi-venue template validation and multi-dataset evidence remain separate future tasks.
+
+### 2026-06-18 07:33:19 +08:00 - Codex - Task 189.1 Strict prelaunch operator-channel next actions
+
+- Request: Continue launch-readiness hardening and make the setup/prelaunch path guide users through WeChat or Feishu deployment without manual `.env` guessing.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Ran real readiness checks with the local `.env`; local no-push readiness passed, while strict prelaunch correctly blocked on missing operator-channel configuration and missing sent-delivery evidence.
+  - Updated `_readiness_next_actions()` so strict missing-channel prelaunch reports both the WeChat QR setup action and the follow-up `channels test --require-sent` action.
+  - Kept the readiness verdict blocked until a real channel is configured and a real sent-delivery self-test exists.
+  - Added a regression test for strict prelaunch with no configured channel.
+- Verification:
+  - `npm run readiness -- --no-push-inspiration --output runs/manual-live/prelaunch-readiness/local-readiness.json`: passed with env, LLM credentials, config, vault, outputs, daily loop, and scheduler state checks all passing.
+  - Initial `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch.json`: blocked with `operator_channels` and `channel_delivery_test` failures but only one next action; recorded as `P-20260618-108`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch-task189.json`: still blocked honestly because no WeChat/Feishu channel is configured and no sent-delivery test exists, and now prints both `configure_operator_channel` and `run_channel_self_test` next actions.
+- Problems:
+  - Added and resolved `P-20260618-108`.
+- Follow-up:
+  - Strict prelaunch will remain blocked until the operator completes QR/App setup and runs a real channel delivery self-test; do not mark push-ready without that evidence.

@@ -2413,6 +2413,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-107`; user requirement that citation evidence artifacts be readable and publication-facing, not only technically complete._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` passed; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task188-formal-title-cleanup\vault --cache runs\manual-live\task188-formal-title-cleanup\cache --output-dir runs\manual-live\task188-formal-title-cleanup\runs --deliverables-dir outputs --state runs\manual-live\task188-formal-title-cleanup\scheduler-state.json --approvals-state runs\manual-live\task188-formal-title-cleanup\approvals.json --sessions-state runs\manual-live\task188-formal-title-cleanup\sessions.json --project-id task188_formal_title_cleanup --timeout-seconds 120 --no-push-inspiration` passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, 15-page paper PDF, `paper_quality.passed=true`, `bibliography_item_count=10`, and zero overfull hboxes. The real `formal-reference-evidence.md` keeps full locators in `Metadata locator` and `Manuscript locator` columns while the `Title` cells no longer repeat DOI/URL strings._
 
+- [x] 189. Strict prelaunch reports the full operator-channel recovery path
+  - [x] 189.1 Add channel self-test next action when strict prelaunch has no configured channel
+    - When `readiness --push-inspiration --require-channel-config --require-channel-sent` has no ready channel and no sent-delivery artifact, list both the QR setup action and the follow-up `channels test --require-sent` action.
+    - Keep the readiness verdict blocked until a real channel is configured and a real sent-delivery result exists.
+    - Add regression coverage for the unconfigured strict prelaunch case.
+    - Rerun strict `npm run prelaunch` with the real local `.env` and confirm it blocks honestly while printing both next actions.
+    - _References: `P-20260618-108`; user requirement that first deployment be guided and that WeChat/Feishu setup happen through setup without manual `.env` editing._
+    - _Verify: focused readiness CLI tests passed; focused `ruff` and `mypy` passed. Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch-task189.json` remained blocked because no operator channel is configured and no sent-delivery self-test exists, while the report now lists both `configure_operator_channel` and `run_channel_self_test` next actions._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

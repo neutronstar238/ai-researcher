@@ -705,6 +705,64 @@ def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
     )
 
 
+def test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[NEXT] readiness_action.configure_operator_channel:" in result.output
+    assert "[NEXT] readiness_action.run_channel_self_test:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["configure_operator_channel"]["command"] == (
+        f"airesearcher setup --config {config_path.as_posix()} "
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup"
+    )
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel wechat "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
 def test_readiness_accepts_bom_prefixed_env_file(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"

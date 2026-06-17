@@ -2160,6 +2160,20 @@ def _readiness_next_actions(
                     command=channel_setup_command,
                     reason="Configure a delivery channel before running the channel self-test.",
                 )
+            if delivery_check.get("status") == "fail":
+                add(
+                    "run_channel_self_test",
+                    severity="required",
+                    command=(
+                        "airesearcher channels test "
+                        f"--channel wechat --output {_command_path(channel_test_result)} "
+                        "--require-sent"
+                    ),
+                    reason=(
+                        "After QR setup and target binding succeed, produce real sent-delivery "
+                        "evidence before treating push readiness as proven."
+                    ),
+                )
 
     if not any(check.get("status") in {"fail", "warn"} for check in checks):
         add(

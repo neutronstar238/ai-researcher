@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-108 - Strict prelaunch omitted the follow-up channel self-test action
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:31:08 +08:00
+- Source: Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch.json` run during launch-readiness self-check.
+- Symptom: Strict readiness correctly failed when no WeChat/Feishu channel was configured and no sent-delivery self-test existed, but `next_actions` listed only the QR setup command and did not also show the required `channels test --require-sent` command.
+- Impact: A first-time operator could complete QR setup and still miss the delivery-evidence step before leaving the 24h loop unattended.
+- Evidence: `runs\manual-live\prelaunch-readiness\strict-prelaunch.json` had two failures, `operator_channels` and `channel_delivery_test`, but only one `configure_operator_channel` next action.
+- Root cause: `_readiness_next_actions()` deduplicated the channel-configuration action for the missing-channel branch and only emitted a self-test command when at least one channel was already ready.
+- Workaround: Manually run `airesearcher channels test --channel wechat --output .airesearcher/channels/test-result.json --require-sent` after successful WeChat QR pairing and target binding.
+- Next action: None for strict-readiness guidance.
+- Linked tasks: `189.1`
+- Resolution: Added a strict missing-channel branch that also emits `run_channel_self_test` for the default WeChat QR setup path, without changing the blocked verdict.
+- Verification: Focused readiness CLI tests, ruff, and mypy passed. A real strict prelaunch rerun remained blocked honestly but now lists both `configure_operator_channel` and `run_channel_self_test`.
+
 ### P-20260618-107 - Compact formal-reference title cells repeated locator text
 
 - Status: Resolved
