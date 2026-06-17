@@ -2136,6 +2136,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `155.1`, `156.1`, and `157.1`; user requirement that setup and prelaunch checks guide operators through real push-readiness instead of relying on manual `.env` edits or hidden assumptions._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel` passed on the real local checkout and wrote `.airesearcher/readiness/report.json` with a `configure_operator_channel` next action but no premature `start_daily_loop` action while warnings remain; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 506 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 159. npm prelaunch onboarding shortcuts
+  - [x] 159.1 Add npm wrappers for channel self-test and readiness
+    - Add npm scripts for `channel:test`, `readiness`, and strict `prelaunch`.
+    - Document the npm shortcuts in English and Chinese README quick-start and CLI reference sections.
+    - Add a package-json unit test that guards the guided deployment script names and command wiring.
+    - Verify the npm readiness wrapper against the real local checkout and verify strict `prelaunch` blocks when channel config and sent evidence are absent.
+    - _References: tasks `119.1`, `155.1`, `156.1`, `157.1`, and `158.1`; user requirement that deployment feel like a normal guided product entry rather than a sequence of manually discovered commands._
+    - _Verify: `python -m pytest tests\unit\test_npm_scripts.py -q` passed with 1 test plus an expected coverage no-data warning because the test only inspects `package.json`; `npm run readiness -- --no-push-inspiration` passed on the real local checkout and printed `start_daily_loop` for no-push mode; `npm run channel:test -- --help` rendered the channel self-test CLI help through the Node wrapper; `npm run prelaunch` exited 1 as expected because this checkout has no configured WeChat/Feishu channel or latest sent channel-test artifact, and it printed `configure_operator_channel` as the repair action; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 507 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

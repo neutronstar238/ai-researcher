@@ -7397,3 +7397,32 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - After the user completes WeChat QR or Feishu setup, run `airesearcher channels test --channel <channel> --require-sent` and then strict readiness.
+
+### 2026-06-18 02:57:27 +08:00 - Codex - Task 159.1 npm prelaunch onboarding shortcuts
+
+- Request: Continue productizing first deployment so users can run normal npm-style commands for channel self-test and strict prelaunch checks.
+- Files changed:
+  - `package.json`
+  - `tests/unit/test_npm_scripts.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `npm run channel:test`, `npm run readiness`, and `npm run prelaunch`.
+  - Documented npm shortcuts in the English and Chinese README quick-start and CLI reference sections.
+  - Added a package-json unit test guarding the npm deployment script wiring.
+  - Confirmed the Node wrapper can run readiness and channel-test help, and confirmed strict prelaunch blocks this checkout until a real WeChat/Feishu channel and sent self-test evidence exist.
+- Verification:
+  - `python -m pytest tests\unit\test_npm_scripts.py -q`: passed, 1 test; expected coverage no-data warning because this test only inspects `package.json`; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `npm run readiness -- --no-push-inspiration`: passed on the real local checkout and printed a no-push `start_daily_loop` next action.
+  - `npm run channel:test -- --help`: passed and rendered the channel self-test CLI help through the Node wrapper.
+  - `npm run prelaunch`: exited 1 as expected because no WeChat/Feishu channel is configured and no latest sent channel-test artifact exists; printed `configure_operator_channel` as the repair action.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 507 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Once the user scans WeChat or provides Feishu credentials, rerun `npm run channel:test -- --channel <channel> --require-sent` and `npm run prelaunch`.

@@ -78,11 +78,23 @@ airesearcher setup
 - 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
-setup 之后可以运行 `airesearcher channels test --channel feishu --require-sent` 或
-`airesearcher channels test --channel wechat`，在无人值守前确认通道送达状态。
-随后运行 `airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent`，在启动 24h
-循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API
-、操作者通道配置和最近一次通道自检送达证据是否就绪。
+setup 之后先运行通道送达自检，再进入无人值守：
+
+```bash
+npm run channel:test -- --channel feishu --require-sent
+# 或
+airesearcher channels test --channel feishu --require-sent
+```
+
+随后运行严格上线前门禁：
+
+```bash
+npm run prelaunch
+# 或
+airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent
+```
+
+它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
 
 也可以非交互式部署：
 
@@ -225,6 +237,17 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:status` | 无 | 查看本地 operator 状态提示。 |
 
 ## 常用 CLI 参数
+
+常用 npm 快捷入口：
+
+| Script | 含义 |
+| --- | --- |
+| `npm run setup` | 引导式首次部署。 |
+| `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
+| `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
+| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、通道配置和送达证据。 |
+| `npm run serve` | 启动带审批门禁和灵感推送的 24h operator。 |
+| `npm run monitor` | 打开 operator 监控台。 |
 
 | 命令 | 参数 | 含义 |
 | --- | --- | --- |

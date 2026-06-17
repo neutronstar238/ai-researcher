@@ -91,12 +91,26 @@ Recommended channel setup:
   scripts record the setup state without blocking unless `--run-wechat-qr-setup` is passed.
 - Webhook URLs remain available as a fallback for environments that already use incoming webhooks.
 
-After setup, run `airesearcher channels test --channel feishu --require-sent` or
-`airesearcher channels test --channel wechat` to verify delivery state before leaving the service
-unattended.
-Then run `airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent` to write
-`.airesearcher/readiness/report.json` and confirm the daily loop, vault, output path, model API,
-operator-channel configuration, and latest channel self-test delivery evidence are ready.
+After setup, run a channel delivery self-test before leaving the service unattended:
+
+```bash
+npm run channel:test -- --channel feishu --require-sent
+# or
+airesearcher channels test --channel feishu --require-sent
+```
+
+Then run the strict prelaunch gate:
+
+```bash
+npm run prelaunch
+# or
+airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent
+```
+
+This writes `.airesearcher/readiness/report.json` and confirms the daily loop, vault, output
+path, model API, operator-channel configuration, and latest channel self-test delivery evidence
+are ready. When a check is missing, the report includes `next_actions` with executable repair
+commands.
 
 Non-interactive setup is also supported:
 
@@ -251,6 +265,17 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:status` | none | Shows local operator status guidance. |
 
 ## Key CLI Parameters
+
+Common npm shortcuts:
+
+| Script | Meaning |
+| --- | --- |
+| `npm run setup` | Guided first deployment. |
+| `npm run channel:test -- --channel feishu --require-sent` | Real delivery self-test for a configured channel. |
+| `npm run readiness -- --no-push-inspiration` | Local readiness report without requiring operator push. |
+| `npm run prelaunch` | Strict prelaunch gate: model, vault, daily loop, channel config, and sent evidence. |
+| `npm run serve` | Start the 24h operator with approval gates and inspiration push. |
+| `npm run monitor` | Show the operator console. |
 
 | Command | Parameter | Meaning |
 | --- | --- | --- |
