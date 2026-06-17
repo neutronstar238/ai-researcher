@@ -7646,3 +7646,36 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-088` added and resolved.
 - Follow-up:
   - Keep Semantic Scholar failures as optional-source telemetry unless the operator explicitly enables or keys it as a required source.
+
+### 2026-06-18 04:03:43 +08:00 - Codex - Task 168.1 WeChat QR OpenClaw delivery
+
+- Request: Continue V1.0 channel setup hardening so WeChat QR setup can support real delivery self-tests instead of stopping at `.env` status.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_notifications.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added setup-owned WeChat QR/OpenClaw fields for login command, channel id, outbound target, and message-send command.
+  - Let QR-mode notification delivery call `openclaw message send` when QR setup is completed and `AUTORESEARCH_WECHAT_OPENCLAW_TARGET` is configured.
+  - Kept QR-mode delivery fail-closed as `skipped` when QR completion or target binding is missing.
+  - Made readiness require both completed QR setup and an OpenClaw target before counting WeChat QR as push-ready.
+  - Updated English and Chinese README setup guidance and command parameters.
+- Verification:
+  - Web review of upstream OpenClaw WeChat docs and `@tencent-weixin/openclaw-weixin-cli` package metadata confirmed the quick installer can guide QR setup while OpenClaw also exposes explicit `openclaw channels login --channel openclaw-weixin` and `openclaw message send` paths.
+  - `python -m pytest tests\unit\test_notifications.py tests\unit\cli\test_main.py::test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q`: passed, 10 tests.
+  - `python -m ruff check src\autoresearch\notifications.py src\autoresearch\cli\main.py tests\unit\test_notifications.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\notifications.py src\autoresearch\cli\main.py`: passed with no issues in 2 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 512 passed and 4 skipped.
+- Problems:
+  - `P-20260618-089` added and resolved.
+- Follow-up:
+  - A real WeChat delivery self-test still requires the operator to complete pairing and provide the OpenClaw target; without that target, AI-Researcher now reports `skipped` instead of claiming sent delivery.

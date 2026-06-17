@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import ssl
+import subprocess
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -36,6 +38,7 @@ class InspirationReportLike(Protocol):
 WebhookSender = Callable[[str, Mapping[str, object], float], int]
 FeishuTokenGetter = Callable[[str, str, str, float], str]
 FeishuMessageSender = Callable[[str, str, str, str, float], int]
+CommandRunner = Callable[[list[str], float], int]
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,7 @@ def send_inspiration_digest(
     sender: WebhookSender | None = None,
     feishu_token_getter: FeishuTokenGetter | None = None,
     feishu_message_sender: FeishuMessageSender | None = None,
+    command_runner: CommandRunner | None = None,
     timeout_seconds: float = 10.0,
 ) -> tuple[NotificationSendRecord, ...]:
     """Send a compact inspiration digest to configured operator channels."""
@@ -74,6 +78,7 @@ def send_inspiration_digest(
     post_json = sender or _post_json
     get_feishu_token = feishu_token_getter or _feishu_tenant_access_token
     send_feishu_message = feishu_message_sender or _post_feishu_text_message
+    run_command = command_runner or _run_command
     digest = render_inspiration_digest(report)
     records: list[NotificationSendRecord] = []
     for channel in channels:
@@ -97,6 +102,7 @@ def send_inspiration_digest(
                     environment=environment,
                     digest=digest,
                     post_json=post_json,
+                    run_command=run_command,
                     timeout_seconds=timeout_seconds,
                 )
             )
@@ -117,6 +123,7 @@ def _send_wechat_digest(
     environment: Mapping[str, str],
     digest: str,
     post_json: WebhookSender,
+    run_command: CommandRunner,
     timeout_seconds: float,
 ) -> NotificationSendRecord:
     mode = str(environment.get("AUTORESEARCH_WECHAT_CONNECTION_MODE", "")).strip().casefold()
@@ -127,6 +134,12 @@ def _send_wechat_digest(
                 "npx -y @tencent-weixin/openclaw-weixin-cli install",
             )
         ).strip()
+        login_command = str(
+            environment.get(
+                "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND",
+                "openclaw channels login --channel openclaw-weixin",
+            )
+        ).strip()
         status_path = str(
             environment.get(
                 "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH",
@@ -134,13 +147,58 @@ def _send_wechat_digest(
             )
         ).strip()
         status_detail = _wechat_qr_status_detail(status_path)
+        if not status_detail.startswith("setup status completed"):
+            return NotificationSendRecord(
+                channel=channel,
+                status="skipped",
+                detail=(
+                    "wechat QR gateway configured but QR login is not completed; "
+                    f"{status_detail}; run `{command}` or `{login_command}`"
+                ),
+            )
+        openclaw_target = str(environment.get("AUTORESEARCH_WECHAT_OPENCLAW_TARGET", "")).strip()
+        if not openclaw_target:
+            return NotificationSendRecord(
+                channel=channel,
+                status="skipped",
+                detail=(
+                    "wechat QR gateway configured but missing "
+                    "AUTORESEARCH_WECHAT_OPENCLAW_TARGET for outbound delivery; "
+                    f"{status_detail}; run or verify `{login_command}` and bind the target"
+                ),
+            )
+        openclaw_channel = str(
+            environment.get("AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL", "openclaw-weixin")
+        ).strip()
+        message_command = str(
+            environment.get("AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND", "openclaw message send")
+        ).strip()
+        args = shlex.split(message_command) + [
+            "--channel",
+            openclaw_channel,
+            "--target",
+            openclaw_target,
+            "--message",
+            digest,
+        ]
+        try:
+            return_code = run_command(args, timeout_seconds)
+        except Exception as exc:  # noqa: BLE001 - outbound notification must report failures.
+            return NotificationSendRecord(
+                channel=channel,
+                status="failed",
+                detail=f"openclaw message send failed: {type(exc).__name__}: {exc}",
+            )
+        status = "sent" if return_code == 0 else "failed"
         return NotificationSendRecord(
             channel=channel,
-            status="skipped",
+            status=status,
             detail=(
-                "wechat QR gateway configured; "
-                f"{status_detail}; run or verify `{command}` for delivery"
+                "openclaw message send accepted"
+                if status == "sent"
+                else f"openclaw message send exited {return_code}"
             ),
+            status_code=return_code,
         )
     return _send_webhook_digest(
         channel=channel,
@@ -245,6 +303,11 @@ def _send_webhook_digest(
         detail="webhook accepted" if status == "sent" else "webhook returned non-2xx",
         status_code=status_code,
     )
+
+
+def _run_command(args: list[str], timeout_seconds: float) -> int:
+    completed = subprocess.run(args, check=False, timeout=timeout_seconds)
+    return completed.returncode
 
 
 def _wechat_qr_status_detail(status_path: str) -> str:

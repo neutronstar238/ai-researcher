@@ -213,6 +213,9 @@ LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
     },
 )
 WECHAT_QR_SETUP_COMMAND = "npx -y @tencent-weixin/openclaw-weixin-cli install"
+WECHAT_QR_LOGIN_COMMAND = "openclaw channels login --channel openclaw-weixin"
+WECHAT_OPENCLAW_CHANNEL = "openclaw-weixin"
+OPENCLAW_MESSAGE_SEND_COMMAND = "openclaw message send"
 WECHAT_QR_SESSION_PATH = ".airesearcher/channels/wechat/session.json"
 WECHAT_QR_SETUP_STATUS_PATH = ".airesearcher/channels/wechat/setup-status.json"
 FEISHU_DEFAULT_BASE_URL = "https://open.feishu.cn"
@@ -409,8 +412,12 @@ AUTORESEARCH_WECHAT_WEBHOOK_URL=
 AUTORESEARCH_WECHAT_APP_ID=
 AUTORESEARCH_WECHAT_APP_SECRET=
 AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=
+AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND=
 AUTORESEARCH_WECHAT_SESSION_PATH=
 AUTORESEARCH_WECHAT_SETUP_STATUS_PATH=
+AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=
+AUTORESEARCH_WECHAT_OPENCLAW_TARGET=
+AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=
 
 # Optional Feishu/Lark channel. The setup wizard defaults to App ID/App Secret.
 AUTORESEARCH_FEISHU_CONNECTION_MODE=
@@ -782,6 +789,13 @@ def deploy_setup(
             help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
         ),
     ] = False,
+    wechat_openclaw_target: Annotated[
+        str | None,
+        typer.Option(
+            "--wechat-openclaw-target",
+            help="Optional OpenClaw WeChat target for outbound self-tests and digests.",
+        ),
+    ] = None,
     run_wechat_qr_setup: Annotated[
         bool | None,
         typer.Option(
@@ -878,6 +892,8 @@ def deploy_setup(
         app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
         qr_setup=wechat_qr
         or existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE", "").casefold() == "qr",
+        home_chat_id=wechat_openclaw_target
+        or existing_env.get("AUTORESEARCH_WECHAT_OPENCLAW_TARGET"),
         non_interactive=non_interactive,
     )
     feishu_values = _channel_values(
@@ -931,6 +947,11 @@ def deploy_setup(
                         if wechat_values["connection_mode"] == "qr"
                         else None
                     ),
+                    home_chat_id_env=(
+                        "AUTORESEARCH_WECHAT_OPENCLAW_TARGET"
+                        if wechat_values["home_chat_id"]
+                        else None
+                    ),
                 ),
                 feishu=MessagingChannelConfig(
                     enabled=feishu_enabled,
@@ -979,10 +1000,20 @@ def deploy_setup(
         "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": WECHAT_QR_SETUP_COMMAND
         if wechat_values["connection_mode"] == "qr"
         else None,
+        "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND": WECHAT_QR_LOGIN_COMMAND
+        if wechat_values["connection_mode"] == "qr"
+        else None,
         "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH
         if wechat_values["connection_mode"] == "qr"
         else None,
         "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": WECHAT_QR_SETUP_STATUS_PATH
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL": WECHAT_OPENCLAW_CHANNEL
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_OPENCLAW_TARGET": wechat_values["home_chat_id"],
+        "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND": OPENCLAW_MESSAGE_SEND_COMMAND
         if wechat_values["connection_mode"] == "qr"
         else None,
         "AUTORESEARCH_FEISHU_CONNECTION_MODE": str(feishu_values["connection_mode"])
@@ -1071,6 +1102,13 @@ def setup(
             help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
         ),
     ] = False,
+    wechat_openclaw_target: Annotated[
+        str | None,
+        typer.Option(
+            "--wechat-openclaw-target",
+            help="Optional OpenClaw WeChat target for outbound self-tests and digests.",
+        ),
+    ] = None,
     run_wechat_qr_setup: Annotated[
         bool | None,
         typer.Option(
@@ -1169,6 +1207,7 @@ def setup(
             wechat_app_id=wechat_app_id,
             wechat_app_secret=wechat_app_secret,
             wechat_qr=wechat_qr,
+            wechat_openclaw_target=wechat_openclaw_target,
             run_wechat_qr_setup=run_wechat_qr_setup,
             feishu=feishu,
             feishu_webhook_url=feishu_webhook_url,
@@ -1187,6 +1226,7 @@ def setup(
         wechat_app_id = wizard["wechat_app_id"]
         wechat_app_secret = wizard["wechat_app_secret"]
         wechat_qr = bool(wizard["wechat_qr"])
+        wechat_openclaw_target = wizard["wechat_openclaw_target"]
         run_wechat_qr_setup = bool(wizard["run_wechat_qr_setup"])
         feishu = wizard["feishu"]
         feishu_webhook_url = wizard["feishu_webhook_url"]
@@ -1209,6 +1249,7 @@ def setup(
         wechat_app_id=wechat_app_id,
         wechat_app_secret=wechat_app_secret,
         wechat_qr=wechat_qr,
+        wechat_openclaw_target=wechat_openclaw_target,
         run_wechat_qr_setup=run_wechat_qr_setup,
         feishu=feishu,
         feishu_webhook_url=feishu_webhook_url,
@@ -1854,8 +1895,11 @@ def _operator_channel_readiness(
         _env_or_os(env_values, "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH")
         or WECHAT_QR_SETUP_STATUS_PATH
     )
+    wechat_openclaw_target = bool(_env_or_os(env_values, "AUTORESEARCH_WECHAT_OPENCLAW_TARGET"))
     wechat_qr_status = _wechat_qr_setup_status(wechat_status_path) if wechat_mode == "qr" else ""
-    wechat_qr_ready = wechat_mode == "qr" and wechat_qr_status == "completed"
+    wechat_qr_ready = (
+        wechat_mode == "qr" and wechat_qr_status == "completed" and wechat_openclaw_target
+    )
 
     feishu_mode = _env_or_os(env_values, "AUTORESEARCH_FEISHU_CONNECTION_MODE").casefold()
     feishu_webhook = bool(_env_or_os(env_values, "AUTORESEARCH_FEISHU_WEBHOOK_URL"))
@@ -1876,6 +1920,7 @@ def _operator_channel_readiness(
         "wechat_webhook_configured": wechat_webhook,
         "wechat_app_credentials_configured": wechat_app_credentials,
         "wechat_qr_status": wechat_qr_status or None,
+        "wechat_openclaw_target_configured": wechat_openclaw_target,
         "feishu_mode": feishu_mode or None,
         "feishu_webhook_configured": feishu_webhook,
         "feishu_app_credentials_configured": feishu_app_credentials,
@@ -5925,6 +5970,7 @@ def _collect_setup_wizard_values(
     wechat_app_id: str | None,
     wechat_app_secret: str | None,
     wechat_qr: bool,
+    wechat_openclaw_target: str | None,
     run_wechat_qr_setup: bool | None,
     feishu: bool | None,
     feishu_webhook_url: str | None,
@@ -5989,7 +6035,8 @@ def _collect_setup_wizard_values(
             else existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE")
             or existing_config.deployment.wechat.connection_mode
         ),
-        home_chat_id=None,
+        home_chat_id=wechat_openclaw_target
+        or existing_env.get("AUTORESEARCH_WECHAT_OPENCLAW_TARGET"),
         allowed_users=None,
         run_qr_setup=run_wechat_qr_setup,
     )
@@ -6022,6 +6069,7 @@ def _collect_setup_wizard_values(
         "wechat_app_id": wechat_values["app_id"],
         "wechat_app_secret": wechat_values["app_secret"],
         "wechat_qr": wechat_values["connection_mode"] == "qr",
+        "wechat_openclaw_target": wechat_values["home_chat_id"],
         "run_wechat_qr_setup": wechat_values["run_qr_setup"],
         "feishu": feishu_values["enabled"],
         "feishu_webhook_url": feishu_values["webhook_url"],
@@ -6141,7 +6189,11 @@ def _prompt_setup_channel_values(
                 "webhook_url": None,
                 "app_id": None,
                 "app_secret": None,
-                "home_chat_id": None,
+                "home_chat_id": typer.prompt(
+                    "WeChat OpenClaw target (optional; can be set after pairing)",
+                    default=home_chat_id or "",
+                ).strip()
+                or None,
                 "allowed_users": None,
                 "run_qr_setup": True if run_qr_setup is None else run_qr_setup,
             }

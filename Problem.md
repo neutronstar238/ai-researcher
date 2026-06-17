@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-089 - WeChat QR channel could not produce a real delivery self-test
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 04:02:05 +08:00
+- Source: Setup/channel inspection after verifying the WeChat QR wizard behavior against upstream OpenClaw WeChat documentation.
+- Symptom: `AUTORESEARCH_WECHAT_CONNECTION_MODE=qr` always produced a `skipped` notification record, even when the QR setup status was `completed`.
+- Impact: Operators could finish setup and scan/login, but strict prelaunch still had no path for a real WeChat QR delivery self-test unless they used a webhook or Feishu instead.
+- Evidence: `src/autoresearch/notifications.py` returned `skipped` for QR mode and only told the operator to run the setup command; it never attempted OpenClaw outbound delivery.
+- Root cause: The QR setup path tracked installer/login status but did not capture an outbound OpenClaw message target or call OpenClaw's message-send CLI.
+- Workaround: Before the fix, operators needed to use Feishu App credentials or a webhook channel for `--require-channel-sent`.
+- Next action: Keep direct OpenClaw CLI delivery optional and fail closed when target or QR completion evidence is missing.
+- Linked tasks: `168.1`
+- Resolution: Added setup-owned `AUTORESEARCH_WECHAT_OPENCLAW_TARGET`, OpenClaw channel/message command defaults, QR-mode `openclaw message send` delivery, and readiness gating that requires both completed QR status and a target.
+- Verification: Focused notification and CLI tests passed for real command construction, missing-target skip behavior, setup env output, wizard prompt flow, and readiness fail-closed behavior.
+
 ### P-20260618-088 - Live literature refresh smoke still required Semantic Scholar
 
 - Status: Resolved

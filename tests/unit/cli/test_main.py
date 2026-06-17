@@ -611,6 +611,65 @@ def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
     )
 
 
+def test_readiness_requires_wechat_qr_openclaw_target_for_push(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "completed_at": "2026-06-18T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr",
+                f"AUTORESEARCH_WECHAT_SETUP_STATUS_PATH={status_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "fail"
+    assert checks["operator_channels"]["evidence"]["wechat_qr_status"] == "completed"
+    assert checks["operator_channels"]["evidence"]["wechat_openclaw_target_configured"] is False
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -698,6 +757,8 @@ def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path
             "sk-test",
             "--wechat",
             "--wechat-qr",
+            "--wechat-openclaw-target",
+            "peer:wx_user",
             "--feishu",
             "--feishu-app-id",
             "cli_a_test",
@@ -721,6 +782,10 @@ def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path
     env_text = env_path.read_text(encoding="utf-8")
     assert "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr" in env_text
     assert "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=npx -y @tencent-weixin/openclaw-weixin-cli install" in env_text
+    assert "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND=openclaw channels login --channel openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=openclaw message send" in env_text
     assert "AUTORESEARCH_FEISHU_CONNECTION_MODE=websocket" in env_text
     assert "AUTORESEARCH_FEISHU_APP_ID=cli_a_test" in env_text
     assert "AUTORESEARCH_FEISHU_HOME_CHAT_ID=oc_test_chat" in env_text
@@ -924,7 +989,7 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
             "--skip-integrations",
             "--skip-slash",
         ],
-        input="\n\nresearch-model\nsk-guided\n2\n1\n",
+        input="\n\nresearch-model\nsk-guided\n2\n1\npeer:wx_user\n",
     )
 
     assert result.exit_code == 0, result.output
@@ -938,6 +1003,9 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
     config = ConfigParser().parse_file(config_path)
     assert isinstance(config, SystemConfig)
     assert config.deployment.wechat.connection_mode == "qr"
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:

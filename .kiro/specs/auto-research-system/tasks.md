@@ -2214,6 +2214,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-088`; tasks `102.1` and `137.1`; user requirement that Semantic Scholar be lower-priority and optional while free public APIs carry the default literature loop._
     - _Verify: first live run with `AUTORESEARCH_LIVE_APIS=1` failed because `test_literature_refresh_live.py` still required Semantic Scholar while the real refresh returned ArXiv/OpenAlex; after updating the smoke, `python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q` passed with 3 live tests; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for touched files and unrelated dirty vault files; `python -m pytest tests\smoke tests\unit -q` passed with 510 passed, 4 skipped, and no Requests or LangGraph warning._
 
+- [x] 168. WeChat QR delivery self-test path
+  - [x] 168.1 Add OpenClaw target-backed delivery for WeChat QR mode
+    - Add setup-owned environment fields for the OpenClaw WeChat message target, channel id, login command, and message-send command.
+    - Let QR-mode notification delivery call `openclaw message send` when QR login is completed and a target is configured.
+    - Keep QR-mode delivery `skipped` when login status or target binding is missing; do not claim sent delivery from setup status alone.
+    - Make readiness treat WeChat QR as push-ready only when QR setup completed and an OpenClaw target is configured.
+    - _References: `P-20260618-089`; user requirement that WeChat QR setup happen in `setup` and that channel self-tests use real delivery rather than `.env` hand-edit assumptions; upstream OpenClaw WeChat docs and `@tencent-weixin/openclaw-weixin-cli` installer behavior._
+    - _Verify: focused `python -m pytest tests\unit\test_notifications.py tests\unit\cli\test_main.py::test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q` passed with 10 tests; focused `python -m ruff check src\autoresearch\notifications.py src\autoresearch\cli\main.py tests\unit\test_notifications.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\notifications.py src\autoresearch\cli\main.py` passed with no issues._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

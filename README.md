@@ -87,8 +87,10 @@ Recommended channel setup:
   during setup if you already have it; otherwise message the bot and bind the home channel later
   through the adapter/gateway flow.
 - WeChat/Weixin: choose QR setup. In the interactive wizard, AI-Researcher starts the QR adapter
-  setup command immediately after writing config and waits for the scan/login result. Non-interactive
-  scripts record the setup state without blocking unless `--run-wechat-qr-setup` is passed.
+  setup command immediately after writing config and waits for the scan/login result. If you know
+  the OpenClaw message target, enter it during setup; otherwise bind it after pairing and rerun
+  setup with `--wechat-openclaw-target`. Non-interactive scripts record the setup state without
+  blocking unless `--run-wechat-qr-setup` is passed.
 - Webhook URLs remain available as a fallback for environments that already use incoming webhooks.
 
 After setup, run a channel delivery self-test before leaving the service unattended:
@@ -97,6 +99,8 @@ After setup, run a channel delivery self-test before leaving the service unatten
 npm run channel:test -- --channel feishu --require-sent
 # or
 airesearcher channels test --channel feishu --require-sent
+# WeChat QR deployments can test real delivery after pairing a target:
+airesearcher channels test --channel wechat --require-sent
 ```
 
 Then run the strict prelaunch gate:
@@ -287,6 +291,7 @@ Common npm shortcuts:
 | --- | --- | --- |
 | `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | Provider-agnostic LLM configuration. |
 | `setup` | `--wechat --wechat-qr` | WeChat/Weixin QR adapter onboarding; interactive setup starts the scan flow, while non-interactive scripts can add `--run-wechat-qr-setup`. |
+| `setup` | `--wechat-openclaw-target` | Optional OpenClaw WeChat message target used by real QR-mode self-tests and digest delivery. |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | Feishu/Lark App credential setup; `--feishu-home-chat-id` enables direct digest delivery. |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | Fallback incoming-webhook setup for existing deployments. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |
