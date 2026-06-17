@@ -2004,6 +2004,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260612-057`; user request to keep verification output clean without pretending local-only smoke tests are live external checks._
     - _Verify: `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, 1 LangGraph warning, and then reproduced the host Python 3.13 `RequestsDependencyWarning`; `python -m ruff check src tests` and `python -m mypy src\autoresearch` passed without the requests warning; `poetry run airesearcher doctor` reported the project Poetry set as `[OK] requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed` but Poetry still emitted the host Python 3.13 warning after exit; `node .\bin\airesearcher.mjs doctor` reported the host set as `[WARN] requests 2.31.0, urllib3 2.7.0, charset-normalizer 3.4.7, chardet 7.4.3` without importing requests or emitting `RequestsDependencyWarning`; no dependency or code change was made._
 
+- [x] 145. HKUDS AI-Researcher license boundary freshness
+  - [x] 145.1 Refresh upstream license evidence and compliance guard
+    - Re-check the current HKUDS AI-Researcher repository metadata, GitHub license API, root contents, `setup.cfg`, and issue #94 before changing the boundary.
+    - Keep the project as conceptual/reference-only unless GitHub exposes a top-level license file or upstream grants written permission.
+    - Update `THIRD_PARTY_NOTICES.md` with the latest reviewed date and `licenseInfo=null` evidence.
+    - Extend the compliance regression test so the ambiguous-license boundary remains executable.
+    - _References: `P-20260613-006`; user request to understand the difference from HKUDS AI-Researcher and verify whether it is open source._
+    - _Verify: Live web/API review on 2026-06-18 found repository metadata `licenseInfo=null`, GitHub license API returned 404, root contents listed no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, `setup.cfg` still declares `license = MIT`, and issue #94 is still `OPEN`; `python -m ruff check tests\unit\compliance\test_licenses.py` passed; `python -m pytest tests\unit\compliance\test_licenses.py -q` passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2496,6 +2505,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 111,
       "tasks": ["144.1"]
+    },
+    {
+      "id": 112,
+      "tasks": ["145.1"]
     }
   ]
 }

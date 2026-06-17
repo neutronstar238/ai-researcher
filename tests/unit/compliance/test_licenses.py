@@ -59,6 +59,7 @@ def test_hkuds_ai_researcher_stays_reference_only_until_license_file_exists() ->
     third_party = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
 
     assert "HKUDS AI-Researcher" in third_party
+    assert "licenseInfo=null" in third_party
     assert "setup.cfg` declares `license = MIT" in third_party
     assert "GitHub license API returned 404" in third_party
     assert "issue #94 remains open" in third_party

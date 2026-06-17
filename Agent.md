@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:58:47 +08:00 - Codex - Task 145.1 HKUDS license boundary freshness
+
+- Request:
+  - Continue running the project and re-check whether HKUDS AI-Researcher has become safe to treat as licensed source code before future agents compare or reuse it.
+- Files changed:
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `145.1` and dependency-graph node `112`.
+  - Rechecked current HKUDS AI-Researcher repository metadata, root contents, license API, `setup.cfg`, and issue #94.
+  - Updated third-party notices from the 2026-06-17 snapshot to a 2026-06-18 snapshot that also records `licenseInfo=null`.
+  - Extended the compliance regression test so the reference-only boundary includes the GitHub metadata signal, not only the 404 license API.
+  - Kept `P-20260613-006` mitigated rather than resolved because the repository is still public/source-available but lacks explicit top-level license text.
+- Verification:
+  - `gh repo view HKUDS/AI-Researcher --json nameWithOwner,licenseInfo,url,defaultBranchRef,updatedAt`: passed; `licenseInfo` was `null` and repository updated at `2026-06-17T14:49:10Z`.
+  - `gh api repos/HKUDS/AI-Researcher/contents --jq '.[].name'`: passed; no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE` appeared in the root file list.
+  - `gh api repos/HKUDS/AI-Researcher/license`: returned 404, as expected for missing recognized repository license text.
+  - `gh api repos/HKUDS/AI-Researcher/contents/setup.cfg ...`: passed and confirmed `license = MIT` remains in package metadata.
+  - `gh issue view 94 --repo HKUDS/AI-Researcher --json ...`: passed; issue #94 is still `OPEN`.
+  - `python -m ruff check tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m pytest tests\unit\compliance\test_licenses.py -q`: passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - `P-20260613-006` updated and kept mitigated.
+- Follow-up:
+  - Re-check upstream before any future incorporation; until then HKUDS AI-Researcher stays conceptual/reference-only.
+
 ### 2026-06-18 00:52:58 +08:00 - Codex - Task 144.1 host requests warning boundary re-audit
 
 - Request:
