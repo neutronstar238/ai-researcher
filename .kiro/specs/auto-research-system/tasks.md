@@ -1890,6 +1890,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-006`; user request to understand differences from HKUDS AI-Researcher and whether it is open source._
     - _Verify: Live web/API review on 2026-06-17 found `setup.cfg` still declares `license = MIT`, GitHub license API returned 404, root contents did not list `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, and issue #94 remains open; `python -m ruff check tests\unit\compliance\test_licenses.py` passed; `python -m pytest tests\unit\compliance\test_licenses.py -q` passed._
 
+- [x] 133. Similar-work breadth problem reconciliation
+  - [x] 133.1 Resolve stale classified-similar-work blocker using the latest real release evidence
+    - Re-inspect the latest real release-allowed Pendigits cycle before changing any problem status.
+    - Update `P-20260613-030` from task `95.1` history only if the current cycle proves the classified similar-work breadth target, publication audit, and evidence gate all pass.
+    - Keep Semantic Scholar source reliability tracked separately in `P-20260613-003`; do not conflate optional source 429 mitigation with resolved novelty evidence.
+    - Preserve the historical task `95.1` failure evidence while pointing future agents to the task `128.1` release pass.
+    - _References: `P-20260613-030`; task `128.1` live serve pass; user requirement that the system cross-search similar work broadly and not fabricate publication novelty._
+    - _Verify: PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json` confirmed publication audit `verdict=pass`, `publishable=True`, `similarity_classified_finding_breadth` message `18; target requires at least 10`, evidence gate `verdict=pass`, and `release_allowed=True`; `rg -n "P-20260613-030|133\.1|similarity_classified_finding_breadth|P-20260613-003" Problem.md .kiro\specs\auto-research-system\tasks.md` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2334,6 +2343,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 99,
       "tasks": ["132.1"]
+    },
+    {
+      "id": 100,
+      "tasks": ["133.1"]
     }
   ]
 }

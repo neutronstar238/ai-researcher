@@ -62,6 +62,28 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:33:51 +08:00 - Codex - Task 133.1 similar-work breadth problem reconciliation
+
+- Request:
+  - Continue running the project and reconcile stale similar-work breadth blockers against the latest real release evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `133.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` real serve cycle before changing `P-20260613-030`.
+  - Updated `P-20260613-030` from mitigated to resolved for the current default ArXiv/OpenAlex publication loop because the latest release-allowed Pendigits cycle passes the classified similar-work breadth target, publication audit, and evidence gate.
+  - Preserved the original task `95.1` failure evidence and kept optional Semantic Scholar source reliability separate under `P-20260613-003`.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed publication audit `verdict=pass`, `publishable=True`, `similarity_classified_finding_breadth` status `pass` with message `Evidence-classified similarity findings: 18; target requires at least 10.`, evidence gate `verdict=pass`, and `release_allowed=True`.
+  - `rg -n "P-20260613-030|133\.1|similarity_classified_finding_breadth|P-20260613-003" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-030` resolved for the current default required-source release path.
+  - `P-20260613-003` intentionally left mitigated for optional Semantic Scholar 429/source reliability.
+- Follow-up:
+  - Continue broadening release evidence across additional independent datasets and templates before making venue-specific submission claims.
+
 ### 2026-06-17 23:30:49 +08:00 - Codex - Task 132.1 HKUDS AI-Researcher license boundary refresh
 
 - Request:
