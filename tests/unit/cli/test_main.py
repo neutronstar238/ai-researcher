@@ -1945,13 +1945,28 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert any("Pendigits" in seed for seed in seeds)
     assert any("prototype" in seed for seed in seeds)
 
-    seed_document = SimpleNamespace(
-        id="doc_seed",
-        title="A Source Paper",
-        source_uri="https://example.test/source",
+    unrelated_document = SimpleNamespace(
+        id="doc_unrelated",
+        title="Variance function of boolean additive convolution",
+        source_uri="https://example.test/boolean-variance",
+        abstract="Boolean cumulants and variance functions for probability measures.",
+    )
+    domain_only_document = SimpleNamespace(
+        id="doc_domain_only",
+        title="Classical features for handwritten digit recognition",
+        source_uri="https://example.test/digit-features",
+        abstract="Handcrafted feature extraction techniques for digit recognition.",
+    )
+    relevant_document = SimpleNamespace(
+        id="doc_relevant",
+        title="Nearest centroid prototype classification for handwritten digits",
+        source_uri="https://example.test/pendigits-prototype",
+        abstract="Prototype classifiers for handwritten digit recognition with centroid distances.",
     )
     candidate = cli_main._autopilot_candidate_from_literature(
-        SimpleNamespace(documents=(seed_document,)),
+        SimpleNamespace(
+            documents=(unrelated_document, domain_only_document, relevant_document)
+        ),
         project_id="project_1",
         demo="pendigits_variance_calibrated_prototypes",
         now=datetime(2026, 6, 13, 2, 30, tzinfo=timezone.utc),
@@ -1963,6 +1978,14 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert "variance-calibrated prototypes" in candidate.metadata["method"]
     assert "nearest centroid" in candidate.metadata["baseline"]
     assert "Gaussian" in candidate.metadata["limitation"]
+    assert candidate.evidence_refs == [
+        "doc_relevant",
+        "https://example.test/pendigits-prototype",
+    ]
+    assert candidate.related_document_ids == ["doc_relevant"]
+    assert candidate.metadata["seed_document_title"] == (
+        "Nearest centroid prototype classification for handwritten digits"
+    )
 
 
 def test_autopilot_skin_demo_uses_method_aligned_search_contract() -> None:
@@ -2438,7 +2461,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
-    assert payload["candidate"]["related_document_ids"] == ["doc_seed"]
+    assert payload["candidate"]["related_document_ids"] == []
+    assert payload["candidate"]["evidence_refs"] == [
+        cli_main.METHOD_ALIGNED_SEED_NOT_FOUND_REF
+    ]
     assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"

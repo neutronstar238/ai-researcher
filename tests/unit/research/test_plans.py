@@ -6,6 +6,7 @@ from autoresearch.research import (
     generate_research_plan,
     render_research_plan_tex,
 )
+from autoresearch.research.plans import METHOD_ALIGNED_SEED_NOT_FOUND_REF
 from autoresearch.schemas import ResearchCandidate, ResearchPlan, ValidationStatus
 
 
@@ -106,6 +107,32 @@ def test_generate_research_plan_infers_classification_metric_without_placeholder
     assert "classification accuracy and macro_f1" in markdown
     assert "primary task metric" not in markdown
     assert "approved hold-out split" not in markdown
+
+
+def test_generate_research_plan_filters_unmatched_seed_marker_when_context_exists(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate("Variance-calibrated prototype classifiers for UCI Pendigits")
+    candidate = candidate.model_copy(
+        update={"evidence_refs": [METHOD_ALIGNED_SEED_NOT_FOUND_REF]}
+    )
+
+    artifact = generate_research_plan(
+        candidate=candidate,
+        project_id="project_1",
+        vault_root=tmp_path / "vault",
+        output_dir=tmp_path / "outputs",
+        compile_pdf=False,
+        similarity_summary=tmp_path / "runs" / "similarity.md",
+        literature_summary=tmp_path / "runs" / "literature.md",
+    )
+
+    markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
+    assert artifact.audit.passed is True
+    assert METHOD_ALIGNED_SEED_NOT_FOUND_REF not in artifact.plan.evidence_refs
+    assert METHOD_ALIGNED_SEED_NOT_FOUND_REF not in markdown
+    assert "similarity_summary:" in markdown
+    assert "literature_summary:" in markdown
 
 
 def test_research_plan_audit_blocks_project_title_and_contest_terms() -> None:

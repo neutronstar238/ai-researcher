@@ -155,6 +155,7 @@ DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
 DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
+METHOD_ALIGNED_SEED_NOT_FOUND_REF = "literature_refresh:method_aligned_seed_not_found"
 SERVE_NETWORK_APPROVED_DOMAINS = (
     "api.openalex.org",
     "api.semanticscholar.org",
@@ -5108,6 +5109,112 @@ def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:
     )
 
 
+def _autopilot_seed_document(documents: list[object], demo: str) -> object | None:
+    weighted_terms = _autopilot_seed_terms(demo)
+    if not weighted_terms:
+        return documents[0]
+    required_terms = _autopilot_required_seed_terms(demo)
+    best_score = -1
+    best_index = len(documents)
+    best_document: object | None = None
+    for index, document in enumerate(documents):
+        text = _autopilot_document_text(document)
+        if required_terms and not any(term in text for term in required_terms):
+            continue
+        score = sum(weight for term, weight in weighted_terms if term in text)
+        if score < 2:
+            continue
+        if best_document is None or score > best_score or (
+            score == best_score and index < best_index
+        ):
+            best_score = score
+            best_index = index
+            best_document = document
+    return best_document
+
+
+def _autopilot_required_seed_terms(demo: str) -> tuple[str, ...]:
+    if demo in {
+        "letter_variance_calibrated_prototypes",
+        "spambase_variance_calibrated_prototypes",
+        "skin_variance_calibrated_prototypes",
+        "pendigits_variance_calibrated_prototypes",
+        "pendigits_prototype_shrinkage",
+        "pendigits_centroid_baseline",
+    }:
+        return (
+            "prototype",
+            "centroid",
+            "nearest class mean",
+            "nearest-class-mean",
+            "mahalanobis",
+            "metric learning",
+        )
+    return ()
+
+
+def _autopilot_seed_terms(demo: str) -> tuple[tuple[str, int], ...]:
+    if demo == "letter_variance_calibrated_prototypes":
+        return (
+            ("letter recognition", 3),
+            ("character recognition", 3),
+            ("letter", 2),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("classifier", 1),
+            ("gaussian", 1),
+            ("mahalanobis", 1),
+        )
+    if demo == "spambase_variance_calibrated_prototypes":
+        return (
+            ("spambase", 3),
+            ("spam", 3),
+            ("email", 2),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("classifier", 1),
+            ("gaussian", 1),
+        )
+    if demo == "skin_variance_calibrated_prototypes":
+        return (
+            ("skin segmentation", 3),
+            ("skin", 3),
+            ("rgb", 2),
+            ("segmentation", 2),
+            ("bayesian", 1),
+            ("gaussian", 1),
+            ("classifier", 1),
+        )
+    if demo in {
+        "pendigits_variance_calibrated_prototypes",
+        "pendigits_prototype_shrinkage",
+        "pendigits_centroid_baseline",
+    }:
+        return (
+            ("pendigits", 3),
+            ("pen-based", 3),
+            ("handwritten digit", 3),
+            ("digit recognition", 3),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("nearest centroid", 2),
+            ("classifier", 1),
+            ("mahalanobis", 1),
+            ("metric learning", 1),
+        )
+    return ()
+
+
+def _autopilot_document_text(document: object) -> str:
+    parts = (
+        getattr(document, "title", ""),
+        getattr(document, "abstract", ""),
+        getattr(document, "venue", ""),
+        getattr(document, "source_uri", ""),
+    )
+    return " ".join(str(part) for part in parts if part).casefold()
+
+
 def _autopilot_candidate_from_literature(
     literature_report: object,
     *,
@@ -5119,10 +5226,14 @@ def _autopilot_candidate_from_literature(
     if not documents:
         msg = "autopilot requires at least one retrieved literature document"
         raise RuntimeError(msg)
-    seed = documents[0]
-    seed_title = str(getattr(seed, "title", "retrieved literature")).strip()
-    seed_uri = str(getattr(seed, "source_uri", seed_title)).strip()
+    seed = _autopilot_seed_document(documents, demo)
+    seed_title = str(getattr(seed, "title", "no method-aligned seed selected")).strip()
+    seed_uri = str(getattr(seed, "source_uri", "")).strip()
     seed_id = str(getattr(seed, "id", seed_uri)).strip()
+    seed_refs = [value for value in (seed_id, seed_uri) if value]
+    related_seed_ids = [seed_id] if seed_id else []
+    if not seed_refs:
+        seed_refs = [METHOD_ALIGNED_SEED_NOT_FOUND_REF]
     candidate_id = f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}"
     if demo == "letter_variance_calibrated_prototypes":
         return ResearchCandidate(
@@ -5140,8 +5251,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.45,
             feasibility_score=0.85,
             impact_score=0.55,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5176,8 +5287,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.4,
             feasibility_score=0.85,
             impact_score=0.5,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5214,8 +5325,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.4,
             feasibility_score=0.9,
             impact_score=0.5,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5252,8 +5363,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.45,
             feasibility_score=0.85,
             impact_score=0.55,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5288,8 +5399,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.35,
             feasibility_score=0.85,
             impact_score=0.45,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5320,8 +5431,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.2,
             feasibility_score=0.9,
             impact_score=0.35,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -5353,8 +5464,8 @@ def _autopilot_candidate_from_literature(
         novelty_score=0.55,
         feasibility_score=0.75,
         impact_score=0.65,
-        evidence_refs=[seed_id, seed_uri],
-        related_document_ids=[seed_id],
+        evidence_refs=seed_refs,
+        related_document_ids=related_seed_ids,
         status=CandidateStatus.READY_FOR_REVIEW,
         validation_status=ValidationStatus.PENDING,
         metadata={

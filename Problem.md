@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-104 - Autopilot seed evidence could pollute research plans with unrelated or domain-only papers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:50:00 +08:00
+- Source: Inspection of the real `task184_research_plan_specificity_v2`, `task185_aligned_seed_evidence`, and `task185_aligned_seed_evidence_v2` `serve --once` cycles.
+- Symptom: The research plan could inherit `evidence_refs` from whichever document appeared first in the online literature refresh, even when that paper was unrelated to the selected method. After the first fix selected by broad term score, the real `task185_aligned_seed_evidence` cycle no longer used the Boolean variance paper as the candidate seed, but it still allowed a domain-only handwritten-digit feature paper to become seed evidence for a prototype-calibration candidate.
+- Impact: A code agent could receive a research plan whose evidence sources looked source-backed but were not actually method-aligned, weakening novelty checks and making the Obsidian plan archive misleading.
+- Evidence: `task184_research_plan_specificity_v2` showed candidate seed evidence pointing to a Boolean variance paper (`http://arxiv.org/abs/2003.09703v1`). During focused testing, `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_runs_non_review_cycle_with_runtime_session -q` used a stale selector, and the corrected focused run exposed the `ResearchCandidate.evidence_refs` min-length schema failure when no aligned seed existed. The real `task185_aligned_seed_evidence` cycle passed all release gates but selected `A Classical Approach to Handcrafted Feature Extraction Techniques for Bangla Handwritten Digit Recognition` as seed evidence. The final real `task185_aligned_seed_evidence_v2` cycle selected `Prototype Completion for Few-Shot Learning` as the seed and the research-plan evidence sources no longer contained the fallback marker, Boolean variance seed, or domain-only Bangla seed.
+- Root cause: `_autopilot_candidate_from_literature()` used `documents[0]` as seed evidence. The first scoring implementation preferred high-weight domain terms such as `handwritten digit recognition` even when no strong method anchor such as prototype, centroid, Mahalanobis, or metric learning was present. `ResearchCandidate.evidence_refs` also requires at least one item, so an empty no-seed state could not be represented directly.
+- Workaround: Before the fix, manually inspect `candidate.json`, `research-plan.md`, and research-plan PDF evidence sources before treating a generated plan as code-agent-ready.
+- Next action: Continue tightening formal bibliography and related-work selection separately if future PDFs include context-only papers that are too broad for the target manuscript.
+- Linked tasks: `185.1`
+- Resolution: Added method-anchor seed selection, a truthful `literature_refresh:method_aligned_seed_not_found` fallback marker, research-plan filtering that drops that fallback when context summaries are available, and tests covering unrelated Boolean and domain-only handwritten-digit papers.
+- Verification: Focused CLI/research-plan tests, ruff, and mypy passed. The final real `task185_aligned_seed_evidence_v2` cycle passed research plan, LLM review, publication audit, evidence gate, reproduction check, and paper build quality; the research-plan PDF has 3 pages and the paper PDF has 15 pages with zero overfull hboxes.
+
 ### P-20260618-103 - Research-plan audit allowed placeholder metrics and manuscript listed an unsupported readiness artifact
 
 - Status: Resolved

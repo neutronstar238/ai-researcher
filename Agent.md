@@ -62,6 +62,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 07:01:17 +08:00 - Codex - Task 185.1 Autopilot seed evidence alignment
+
+- Request:
+  - Continue running launch-quality hardening so online literature evidence does not pollute research plans with unrelated or merely domain-adjacent seed papers.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/research/test_plans.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added method-anchor seed selection for known autopilot demos instead of using the first retrieved document.
+  - Added the explicit fallback marker `literature_refresh:method_aligned_seed_not_found` so missing aligned seeds remain auditable without fabricating a paper citation.
+  - Filtered that fallback marker out of generated research plans when real context evidence summaries are available.
+  - Added regression coverage proving unrelated Boolean variance and domain-only handwritten-digit papers cannot beat a prototype/centroid method paper for the Pendigits demo.
+  - Recorded task `185.1` and resolved `P-20260618-104`.
+- Verification:
+  - Earlier focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_runs_non_review_cycle_with_runtime_session -q`: failed because the second selector was stale.
+  - Earlier corrected focused run exposed the `ResearchCandidate.evidence_refs` min-length schema boundary when no aligned seed existed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\research\test_plans.py::test_generate_research_plan_filters_unmatched_seed_marker_when_context_exists -q`: passed.
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\research\plans.py tests\unit\cli\test_main.py tests\unit\research\test_plans.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\research\plans.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\research\test_plans.py -q`: passed, 82 tests.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task185-aligned-seed-evidence\vault --cache runs\manual-live\task185-aligned-seed-evidence\cache --output-dir runs\manual-live\task185-aligned-seed-evidence\runs --deliverables-dir outputs --state runs\manual-live\task185-aligned-seed-evidence\scheduler-state.json --approvals-state runs\manual-live\task185-aligned-seed-evidence\approvals.json --sessions-state runs\manual-live\task185-aligned-seed-evidence\sessions.json --project-id task185_aligned_seed_evidence --timeout-seconds 120 --no-push-inspiration`: passed all release gates but exposed a domain-only handwritten-digit seed.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task185-aligned-seed-evidence-v2\vault --cache runs\manual-live\task185-aligned-seed-evidence-v2\cache --output-dir runs\manual-live\task185-aligned-seed-evidence-v2\runs --deliverables-dir outputs --state runs\manual-live\task185-aligned-seed-evidence-v2\scheduler-state.json --approvals-state runs\manual-live\task185-aligned-seed-evidence-v2\approvals.json --sessions-state runs\manual-live\task185-aligned-seed-evidence-v2\sessions.json --project-id task185_aligned_seed_evidence_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and seed title `Prototype Completion for Few-Shot Learning`.
+  - `pdfinfo outputs\task185_aligned_seed_evidence_v2\task185_aligned_seed_evidence_v2-cycle-20260617T225914Z-research-plan.pdf`: 3 pages.
+  - `pdfinfo outputs\task185_aligned_seed_evidence_v2\task185_aligned_seed_evidence_v2-cycle-20260617T225914Z.pdf`: 15 pages.
+  - `pdftotext` on the final research-plan PDF confirmed method-aligned prototype evidence and no `method_aligned_seed_not_found`, Boolean variance seed, or domain-only Bangla seed in the research-plan evidence sources.
+  - Final `paper-build.json` reported `paper_quality.passed=true`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+  - `git diff --check -- src\autoresearch\cli\main.py src\autoresearch\research\plans.py tests\unit\cli\test_main.py tests\unit\research\test_plans.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+- Problems:
+  - Added and resolved `P-20260618-104`.
+- Follow-up:
+  - Formal bibliography selection can be tightened in a later task if broad context-only handwritten-recognition papers are judged too weak for the publication-facing reference list.
+
 ### 2026-06-18 01:48:45 +08:00 - Codex - Task 152.1 Operator monitor network approval visibility
 
 - Request:

@@ -64,6 +64,7 @@ PLACEHOLDER_PLAN_TERMS = (
     "approved hold-out split",
     "adjacent public benchmark selected",
 )
+METHOD_ALIGNED_SEED_NOT_FOUND_REF = "literature_refresh:method_aligned_seed_not_found"
 CONCRETE_METRIC_TERMS = (
     "accuracy",
     "macro_f1",
@@ -568,7 +569,14 @@ def _build_plan(
         _infer_target_route(candidate=candidate, dataset=dataset),
     )
     title = _derive_plan_title(candidate=candidate, method=method, dataset=dataset)
-    evidence_refs = tuple(dict.fromkeys([*candidate.evidence_refs, *context_refs]))
+    candidate_refs = [
+        ref
+        for ref in candidate.evidence_refs
+        if ref != METHOD_ALIGNED_SEED_NOT_FOUND_REF
+    ]
+    evidence_refs = tuple(dict.fromkeys([*candidate_refs, *context_refs]))
+    if not evidence_refs:
+        evidence_refs = (METHOD_ALIGNED_SEED_NOT_FOUND_REF,)
     references = tuple(_format_reference(ref) for ref in evidence_refs)
     experiments = (
         f"Reproduce the baseline ({baseline}) on {dataset} and record {metric}, "
@@ -767,6 +775,11 @@ def _context_refs(
 def _format_reference(ref: str) -> str:
     if ref.startswith(("http://", "https://", "doi:", "arxiv:", "pmid:")):
         return ref
+    if ref == METHOD_ALIGNED_SEED_NOT_FOUND_REF:
+        return (
+            "Evidence artifact: literature refresh recorded no method-aligned seed "
+            "document; require linked retrieval and similarity summaries before approval."
+        )
     return f"Evidence artifact: {ref}"
 
 
