@@ -7955,3 +7955,22 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-098` added and resolved.
 - Follow-up:
   - Push and confirm the next GitHub Actions run is green.
+
+### 2026-06-18 05:23:36 +08:00 - Codex - Task 177.1 Root outputs publication path verification
+
+- Request: Continue launch verification and confirm that publication PDFs land under the project-root `outputs/` folder with relative paths.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran a real default-Pendigits `serve --once` cycle with isolated vault/cache/run state while leaving `--deliverables-dir` unset so the CLI used the project-root `outputs/` default.
+  - Confirmed the cycle passed review, publication audit, and evidence gate, produced zero follow-up tasks, and exported the paper PDF to `outputs/task177_root_output/`.
+  - Confirmed the deliverables manifest records project-root-relative paths for the PDF, TeX, manuscript Markdown, paper build, evidence gate, publication audit, related work, and research plan artifacts.
+- Verification:
+  - `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task177-root-output\vault --cache runs\manual-live\task177-root-output\cache --output-dir runs\manual-live\task177-root-output\runs --state runs\manual-live\task177-root-output\scheduler-state.json --approvals-state runs\manual-live\task177-root-output\approvals.json --sessions-state runs\manual-live\task177-root-output\sessions.json --project-id task177_root_output --timeout-seconds 120 --no-push-inspiration`: passed; printed `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task177_root_output/task177_root_output-cycle-20260617T212210Z.pdf`.
+  - Manifest `outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z-manifest.json` includes `path_policy: Paths are written relative to the current project root when possible` and relative `outputs/...` artifact paths.
+  - `pdfinfo outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z.pdf`: reported 14 pages, 105039 bytes, PDF 1.7, unencrypted.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - The next operator-channel verification should use the same default deliverables path once WeChat or Feishu setup is paired by the user.
