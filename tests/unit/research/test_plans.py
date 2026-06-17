@@ -85,6 +85,29 @@ def test_generate_research_plan_writes_vault_markdown_and_outputs(tmp_path: Path
     assert payload["plan"]["validation_status"] == ValidationStatus.PASSED.value
 
 
+def test_generate_research_plan_infers_classification_metric_without_placeholder(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate("Variance-calibrated prototype classifiers for UCI Pendigits")
+    metadata = dict(candidate.metadata)
+    metadata.pop("metric")
+    candidate = candidate.model_copy(update={"metadata": metadata})
+
+    artifact = generate_research_plan(
+        candidate=candidate,
+        project_id="project_1",
+        vault_root=tmp_path / "vault",
+        output_dir=tmp_path / "outputs",
+        compile_pdf=False,
+    )
+
+    markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
+    assert artifact.audit.passed is True
+    assert "classification accuracy and macro_f1" in markdown
+    assert "primary task metric" not in markdown
+    assert "approved hold-out split" not in markdown
+
+
 def test_research_plan_audit_blocks_project_title_and_contest_terms() -> None:
     plan = _plan(
         title="AI-Researcher system",
@@ -111,6 +134,27 @@ def test_research_plan_audit_requires_baseline_metric_and_commands() -> None:
     assert any("baseline" in issue for issue in audit.issues)
     assert any("metrics" in issue for issue in audit.issues)
     assert any("command-oriented" in issue for issue in audit.issues)
+
+
+def test_research_plan_audit_blocks_placeholder_metric_and_target() -> None:
+    plan = _plan(
+        technical_details="Use a baseline and primary task metric on a source dataset.",
+        datasets={"source": "approved public benchmark", "target": "approved hold-out split"},
+        methods="Compare the method with a baseline using the primary task metric.",
+        experiments=[
+            "Run baseline and record the primary task metric.",
+            "Run method and compare the primary task metric.",
+            "Run ablation.",
+        ],
+        expected_results="Expected, not yet observed: primary task metric changes require real runs.",
+    )
+
+    audit = audit_research_plan(plan)
+
+    assert audit.passed is False
+    assert any("primary task metric" in issue for issue in audit.issues)
+    assert any("approved hold-out split" in issue for issue in audit.issues)
+    assert any("concrete evaluation metrics" in issue for issue in audit.issues)
 
 
 def test_research_plan_tex_uses_breakable_references_for_long_artifacts() -> None:

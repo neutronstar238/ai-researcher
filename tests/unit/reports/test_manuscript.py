@@ -33,6 +33,7 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "### Evidence and Artifact Availability" in manuscript
     assert "| Cycle summary | Machine-readable cycle state and stage outputs |" in manuscript
     assert "| Cycle record |" not in manuscript
+    assert "| Readiness report |" not in manuscript
     assert "### Data Analysis" in manuscript
     assert "![Validated metric comparison](analysis/validated-performance-metrics.pdf)" in manuscript
     assert "| Metric | Value | Evidence source |" in manuscript

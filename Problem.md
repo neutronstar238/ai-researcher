@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-103 - Research-plan audit allowed placeholder metrics and manuscript listed an unsupported readiness artifact
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:36:00 +08:00
+- Source: Real `task183_adjacent_positioning_v3`, `task184_research_plan_specificity`, and `task184_research_plan_specificity_v2` `serve --once` cycles.
+- Symptom: The real research-plan PDF compiled and passed the deterministic gate while still using the placeholder phrase `primary task metric`. After the research-plan metric was made specific, the first full rerun still blocked release because the manuscript Evidence and Artifact Availability table listed `Readiness report` even though no readiness evidence artifact was provided to the LLM review bundle.
+- Impact: A code agent could receive a plan that was too vague to execute rigorously, or a manuscript could fail evidence review because the static artifact table claimed an unavailable artifact.
+- Evidence: `task183_adjacent_positioning_v3` research-plan text used `Primary metric: primary task metric`. The first focused `tests\unit\research\test_plans.py` run after strict placeholder scanning failed until the default robustness/risk text was tied to an inferred validation route. The real `task184_research_plan_specificity` cycle produced a specific research-plan PDF but ended with reviewer `needs_revision`, publication audit `needs_revision`, evidence gate `blocked`, and three follow-up tasks because `Readiness report` was listed without evidence.
+- Root cause: `audit_research_plan()` only required the word `metric` rather than a concrete metric token and did not scan structured dataset source/target fields. `_build_plan()` defaulted missing metric metadata to `primary task metric` and used generic hold-out/benchmark wording in robustness/risk text. The manuscript artifact table also included a static readiness row independent of the actual review evidence bundle.
+- Workaround: Before the fix, manually inspect research-plan PDFs for placeholder terms and compare every artifact row in the manuscript with the evidence files supplied to `llm-review`.
+- Next action: If future cycles add a real readiness artifact to review evidence, add it dynamically rather than restoring a static manuscript row.
+- Linked tasks: `184.1`
+- Resolution: Added concrete metric inference for known classification, regression, retrieval, and system-loop candidates; added placeholder-term rejection and dataset source/target scanning to the research-plan audit; tied robustness text to the inferred validation route; replaced generic benchmark risk wording; and removed the static `Readiness report` row from the manuscript evidence table.
+- Verification: Focused research-plan/manuscript tests, ruff, and mypy passed. The final real `task184_research_plan_specificity_v2` cycle passed research-plan gate, LLM review (`verdict=pass`, `quality_score=1.0`), publication audit (`publishable=true`, `score=1.0`), evidence gate, and zero follow-up tasks. `pdftotext` confirmed the 3-page research-plan PDF uses `classification accuracy and macro_f1` without `primary task metric` or `approved hold-out`; the 15-page paper PDF no longer contains `Readiness report` and paper quality passed with zero overfull boxes.
+
 ### P-20260618-102 - Adjacent-work positioning warning was not tied to review-visible evidence
 
 - Status: Resolved

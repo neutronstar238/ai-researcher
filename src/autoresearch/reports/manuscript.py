@@ -1094,7 +1094,6 @@ def _evidence_artifact_availability(analysis: _AnalysisArtifacts) -> list[str]:
         ("Related-work inspection", "Source-backed abstract and overlap screening"),
         ("Similarity check", "Project-start adjacent-work retrieval trail"),
         ("Reproduction check", "Command-line rerun records and validation outputs"),
-        ("Readiness report", "Configured artifact-readiness report"),
         ("Paper build", "LaTeX/PDF compile status and layout quality report"),
     ]
     if analysis.paths():

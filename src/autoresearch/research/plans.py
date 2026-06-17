@@ -54,6 +54,33 @@ UNSUPPORTED_RESULT_TERMS = (
     "已达到",
     "显著优于所有",
 )
+PLACEHOLDER_PLAN_TERMS = (
+    "primary task metric",
+    "task-specific metric",
+    "approved public benchmark",
+    "available benchmark",
+    "strong public baseline",
+    "evidence-calibrated method",
+    "approved hold-out split",
+    "adjacent public benchmark selected",
+)
+CONCRETE_METRIC_TERMS = (
+    "accuracy",
+    "macro_f1",
+    "macro f1",
+    "micro_f1",
+    "micro f1",
+    "f1",
+    "auc",
+    "mae",
+    "rmse",
+    "precision",
+    "recall",
+    "error rate",
+    "evidence coverage",
+    "reproduction success rate",
+    "reviewer pass rate",
+)
 
 
 @dataclass(frozen=True)
@@ -210,6 +237,8 @@ def audit_research_plan(
             plan.problem_statement,
             plan.rationale,
             plan.technical_details,
+            str(plan.datasets.get("source", "")),
+            str(plan.datasets.get("target", "")),
             " ".join(plan.experiments),
             plan.expected_results,
             plan.code_agent_brief,
@@ -227,6 +256,9 @@ def audit_research_plan(
     for term in FORBIDDEN_TITLE_TERMS:
         if term in title_lower:
             issues.append(f"title must be a discovered research topic, not the system/project: {term}")
+    for term in PLACEHOLDER_PLAN_TERMS:
+        if term in full_text_lower:
+            issues.append(f"placeholder planning term found: {term}")
 
     if not plan.evidence_refs:
         issues.append("plan has no evidence_refs")
@@ -242,7 +274,7 @@ def audit_research_plan(
     )
     if "baseline" not in execution_text and "对照" not in execution_text:
         issues.append("plan must specify at least one baseline or control")
-    if not any(token in execution_text for token in ("metric", "accuracy", "f1", "auc", "mae")):
+    if not any(token in execution_text for token in CONCRETE_METRIC_TERMS):
         issues.append("plan must specify concrete evaluation metrics")
     if not any(token in execution_text for token in ("script", "command", "pytest", "python")):
         issues.append("plan must include a command-oriented code-agent brief")
@@ -524,8 +556,17 @@ def _build_plan(
     method = _metadata_value(candidate.metadata, "method", "evidence-calibrated method")
     dataset = _metadata_value(candidate.metadata, "dataset", "approved public benchmark")
     baseline = _metadata_value(candidate.metadata, "baseline", "strong public baseline")
-    metric = _metadata_value(candidate.metadata, "metric", "primary task metric")
+    metric = _metadata_value(
+        candidate.metadata,
+        "metric",
+        _infer_metric(candidate=candidate, method=method, dataset=dataset, baseline=baseline),
+    )
     limitation = _metadata_value(candidate.metadata, "limitation", candidate.research_gap)
+    target_route = _metadata_value(
+        candidate.metadata,
+        "target",
+        _infer_target_route(candidate=candidate, dataset=dataset),
+    )
     title = _derive_plan_title(candidate=candidate, method=method, dataset=dataset)
     evidence_refs = tuple(dict.fromkeys([*candidate.evidence_refs, *context_refs]))
     references = tuple(_format_reference(ref) for ref in evidence_refs)
@@ -536,8 +577,7 @@ def _build_plan(
         f"against the baseline using the same {metric} definition.",
         "Run an ablation that removes the main proposed mechanism so the claimed "
         "contribution can be isolated from prompt, data, and pipeline effects.",
-        "Run a robustness check with at least two seeds or an approved hold-out split, "
-        "then write metrics, logs, and failure cases into the vault.",
+        f"Run a robustness check on {target_route}, then write metrics, logs, and failure cases into the vault.",
     )
     code_agent_brief = (
         "Create a project-local experiment package under runs/<project-id>/research-plan/ "
@@ -571,10 +611,7 @@ def _build_plan(
         ),
         datasets={
             "source": dataset,
-            "target": (
-                "An approved hold-out split, rerun seed set, or adjacent public benchmark selected "
-                "after source-license and leakage checks."
-            ),
+            "target": target_route,
         },
         methods=(
             f"Use {baseline} as the first control, then evaluate {method} with the same preprocessing, "
@@ -590,7 +627,7 @@ def _build_plan(
         code_agent_brief=code_agent_brief,
         risks_and_alternatives=[
             "If the baseline cannot be reproduced, stop and write a failure note before changing the method.",
-            "If the dataset license, split, or provenance is unclear, switch to an approved public benchmark.",
+            "If the dataset license, split, or provenance is unclear, switch to a named public benchmark with recorded source metadata.",
             "If the proposed method does not improve the primary metric, analyze failure modes and keep the negative result.",
         ],
         references=list(references),
@@ -633,6 +670,71 @@ def _derive_plan_title(*, candidate: ResearchCandidate, method: str, dataset: st
     method_title = _smart_title(method) or "Evidence-Calibrated Method"
     dataset_title = _smart_title(dataset) or "Public Benchmark"
     return f"{method_title} for {dataset_title} with Evidence-Calibrated Evaluation"
+
+
+def _infer_metric(
+    *,
+    candidate: ResearchCandidate,
+    method: str,
+    dataset: str,
+    baseline: str,
+) -> str:
+    text = _candidate_context(candidate, method, dataset, baseline)
+    if any(
+        token in text
+        for token in (
+            "classification",
+            "classifier",
+            "digit",
+            "recognition",
+            "pendigits",
+            "letter",
+            "spambase",
+            "spam",
+            "skin",
+            "segmentation",
+        )
+    ):
+        return "classification accuracy and macro_f1"
+    if "regression" in text:
+        return "mean absolute error (MAE) and root mean squared error (RMSE)"
+    if any(token in text for token in ("retrieval", "search", "evidence graph", "citation")):
+        return "precision, recall, and evidence coverage"
+    if any(token in text for token in ("research loop", "agent", "self-evolving", "autonomous")):
+        return "evidence coverage, reproduction success rate, and reviewer pass rate"
+    return "task-specific metric"
+
+
+def _infer_target_route(*, candidate: ResearchCandidate, dataset: str) -> str:
+    text = _candidate_context(candidate, dataset)
+    if "pendigits" in text or "pen-based recognition" in text:
+        return "official UCI Pendigits train/test split plus one deterministic rerun on cached source files"
+    if "letter recognition" in text:
+        return "fixed stratified UCI Letter Recognition split with the recorded seed and a rerun check"
+    if "spambase" in text:
+        return "deterministic UCI Spambase train/test split with recorded seed and class-balance checks"
+    if "skin segmentation" in text:
+        return "deterministic UCI Skin Segmentation row-order split with RGB feature and class-balance checks"
+    if any(token in text for token in ("research loop", "agent", "self-evolving", "autonomous")):
+        return "three completed cycle summaries plus one held-out replay case from local run records"
+    return "named hold-out split with recorded seed, source-license check, and leakage check"
+
+
+def _candidate_context(candidate: ResearchCandidate, *parts: str) -> str:
+    metadata_text = " ".join(
+        str(value) for value in candidate.metadata.values() if isinstance(value, str)
+    )
+    return _normalize(
+        " ".join(
+            (
+                candidate.title,
+                candidate.description,
+                candidate.research_gap,
+                metadata_text,
+                *parts,
+            )
+        )
+    )
 
 
 def _metadata_value(metadata: Mapping[str, Any], key: str, default: str) -> str:

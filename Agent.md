@@ -8144,3 +8144,35 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-102`.
 - Follow-up:
   - The default publication cycle now has no adjacent-work warning and no paper-layout overflow; broader venue-template and multi-dataset validation remain separate future evidence tasks.
+
+### 2026-06-18 06:45:46 +08:00 - Codex - Task 184.1 Research-plan specificity and artifact evidence honesty
+
+- Request: Continue launch-quality hardening so the post-direction research plan is concrete enough for code-agent execution and every manuscript artifact claim is backed by review-visible evidence.
+- Files changed:
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added deterministic research-plan rejection for placeholder planning terms such as `primary task metric`, `task-specific metric`, `approved public benchmark`, and `approved hold-out split`.
+  - Added concrete metric and validation-route inference for known classification, regression, retrieval, and system-loop candidates when candidate metadata omits those fields.
+  - Included dataset source/target fields in research-plan audit text so vague structured fields cannot bypass the gate.
+  - Tied the default robustness step to the inferred validation route and removed generic benchmark fallback wording from risk text.
+  - Removed the static `Readiness report` row from the manuscript Evidence and Artifact Availability table because it was not provided as LLM review evidence.
+- Verification:
+  - Initial `python -m pytest tests\unit\research\test_plans.py -q` failed after adding placeholder scanning because the default robustness and risk wording still contained generic `approved hold-out split` / `approved public benchmark` text; fixed by tying robustness to the inferred target route and using named benchmark wording.
+  - `python -m pytest tests\unit\research\test_plans.py tests\unit\reports\test_manuscript.py -q`: passed with 7 tests.
+  - `python -m ruff check src\autoresearch\research\plans.py src\autoresearch\reports\manuscript.py tests\unit\research\test_plans.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\research\plans.py src\autoresearch\reports\manuscript.py`: passed with no issues in 2 source files.
+  - Real `task184_research_plan_specificity` cycle passed the specific research-plan gate but blocked release with LLM reviewer `needs_revision`, publication audit `needs_revision`, evidence gate `blocked`, and three follow-up tasks because `Readiness report` was listed without evidence.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task184-research-plan-specificity-v2\vault --cache runs\manual-live\task184-research-plan-specificity-v2\cache --output-dir runs\manual-live\task184-research-plan-specificity-v2\runs --deliverables-dir outputs --state runs\manual-live\task184-research-plan-specificity-v2\scheduler-state.json --approvals-state runs\manual-live\task184-research-plan-specificity-v2\approvals.json --sessions-state runs\manual-live\task184-research-plan-specificity-v2\sessions.json --project-id task184_research_plan_specificity_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, root outputs under `outputs/task184_research_plan_specificity_v2/`, and a 15-page paper PDF.
+  - `pdftotext` confirmed the research-plan PDF uses `classification accuracy and macro_f1` and does not contain `primary task metric` or `approved hold-out`; the paper PDF contains `Adjacent-Work Positioning` and does not contain `Readiness report`.
+  - `pdfinfo` confirmed the research-plan PDF has 3 pages and the paper PDF has 15 pages.
+  - Final paper-build quality recorded `passed=true`, `page_count=15`, `overfull_hbox_count=0`, and no failures.
+- Problems:
+  - Added and resolved `P-20260618-103`.
+- Follow-up:
+  - If a future readiness artifact is included in the LLM evidence bundle, add it dynamically to the artifact table rather than restoring a static row.
