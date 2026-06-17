@@ -8,6 +8,7 @@ import ssl
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
 import certifi
@@ -126,10 +127,20 @@ def _send_wechat_digest(
                 "npx -y @tencent-weixin/openclaw-weixin-cli install",
             )
         ).strip()
+        status_path = str(
+            environment.get(
+                "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH",
+                ".airesearcher/channels/wechat/setup-status.json",
+            )
+        ).strip()
+        status_detail = _wechat_qr_status_detail(status_path)
         return NotificationSendRecord(
             channel=channel,
             status="skipped",
-            detail=f"wechat QR gateway configured; run or verify `{command}` for delivery",
+            detail=(
+                "wechat QR gateway configured; "
+                f"{status_detail}; run or verify `{command}` for delivery"
+            ),
         )
     return _send_webhook_digest(
         channel=channel,
@@ -234,6 +245,25 @@ def _send_webhook_digest(
         detail="webhook accepted" if status == "sent" else "webhook returned non-2xx",
         status_code=status_code,
     )
+
+
+def _wechat_qr_status_detail(status_path: str) -> str:
+    if not status_path:
+        return "setup status path not configured"
+    path = Path(status_path)
+    if not path.exists():
+        return f"setup status missing at {status_path}"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"setup status unreadable at {status_path}: {type(exc).__name__}"
+    if not isinstance(payload, Mapping):
+        return f"setup status unreadable at {status_path}: invalid payload"
+    status = str(payload.get("status", "unknown"))
+    completed_at = payload.get("completed_at")
+    if completed_at:
+        return f"setup status {status} at {status_path} ({completed_at})"
+    return f"setup status {status} at {status_path}"
 
 
 def render_inspiration_digest(report: InspirationReportLike, *, max_items: int = 5) -> str:

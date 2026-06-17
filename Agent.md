@@ -7190,3 +7190,37 @@ This file defines the project development standard for coding agents and records
   - `P-20260611-002` added and resolved.
 - Follow-up:
   - Complete Phase 0 implementation tasks before treating `pytest`, `ruff`, `mypy`, or the `autoresearch` CLI as functional project gates.
+### 2026-06-18 01:57:00 +08:00 - Codex - Task 153.1 WeChat QR setup status evidence
+
+- Request: Continue implementation toward guided deployment, especially WeChat setup that starts QR onboarding during setup and exposes scan/login feedback instead of hiding it behind a later manual command.
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_notifications.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `AUTORESEARCH_WECHAT_SETUP_STATUS_PATH` to setup output and the public environment template.
+  - Added a WeChat QR setup status artifact at `.airesearcher/channels/wechat/setup-status.json`.
+  - Made the QR setup runner print an explicit wait message, run the configured command through parsed argv, and write running/completed/failed status with timestamps, command, session path, return code, and errors when present.
+  - Kept non-interactive setup non-blocking unless `--run-wechat-qr-setup` is explicitly supplied.
+  - Updated QR-mode WeChat inspiration push skips to include the setup-status state so operators can see whether setup is missing, running, completed, or unreadable.
+  - Updated English and Chinese README setup notes to point users to the QR setup status artifact.
+  - Marked task `153.1` complete in `tasks.md`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\test_notifications.py::test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q`: passed, 64 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 501 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - A future real IM adapter test should exercise an actual WeChat QR login session with the operator scanning the upstream adapter QR code, then verify push delivery through that active session.

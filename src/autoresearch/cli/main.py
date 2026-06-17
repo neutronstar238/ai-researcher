@@ -3,11 +3,12 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
@@ -208,6 +209,7 @@ LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
 )
 WECHAT_QR_SETUP_COMMAND = "npx -y @tencent-weixin/openclaw-weixin-cli install"
 WECHAT_QR_SESSION_PATH = ".airesearcher/channels/wechat/session.json"
+WECHAT_QR_SETUP_STATUS_PATH = ".airesearcher/channels/wechat/setup-status.json"
 FEISHU_DEFAULT_BASE_URL = "https://open.feishu.cn"
 
 DEFAULT_SLASH_COMMANDS = {
@@ -390,6 +392,7 @@ AUTORESEARCH_WECHAT_APP_ID=
 AUTORESEARCH_WECHAT_APP_SECRET=
 AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=
 AUTORESEARCH_WECHAT_SESSION_PATH=
+AUTORESEARCH_WECHAT_SETUP_STATUS_PATH=
 
 # Optional Feishu/Lark channel. The setup wizard defaults to App ID/App Secret.
 AUTORESEARCH_FEISHU_CONNECTION_MODE=
@@ -961,6 +964,9 @@ def deploy_setup(
         "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH
         if wechat_values["connection_mode"] == "qr"
         else None,
+        "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": WECHAT_QR_SETUP_STATUS_PATH
+        if wechat_values["connection_mode"] == "qr"
+        else None,
         "AUTORESEARCH_FEISHU_CONNECTION_MODE": str(feishu_values["connection_mode"])
         if feishu_values["connection_mode"]
         else None,
@@ -987,7 +993,7 @@ def deploy_setup(
     if wechat_enabled and wechat_values["connection_mode"] == "qr":
         typer.echo(f"[NEXT] wechat_qr_setup: {WECHAT_QR_SETUP_COMMAND}")
         if run_wechat_qr_setup:
-            _run_wechat_qr_setup()
+            _run_wechat_qr_setup(status_path=env_path.parent / WECHAT_QR_SETUP_STATUS_PATH)
 
 
 @app.command("setup")
@@ -6351,19 +6357,66 @@ def _channel_summary(enabled: bool, values: Mapping[str, object]) -> str:
     return f"enabled ({mode})"
 
 
-def _run_wechat_qr_setup() -> None:
+def _run_wechat_qr_setup(
+    *,
+    command: str = WECHAT_QR_SETUP_COMMAND,
+    session_path: str = WECHAT_QR_SESSION_PATH,
+    status_path: Path = Path(WECHAT_QR_SETUP_STATUS_PATH),
+    runner: Callable[..., subprocess.CompletedProcess[bytes]] | None = None,
+) -> None:
+    started_at = datetime.now(timezone.utc).isoformat()
+    args = shlex.split(command)
+    if not args:
+        typer.echo("[FAIL] wechat_qr_setup: empty command", err=True)
+        raise typer.Exit(1)
+    _write_wechat_qr_setup_status(
+        status_path,
+        {
+            "status": "running",
+            "command": command,
+            "session_path": session_path,
+            "started_at": started_at,
+        },
+    )
+    typer.echo("[WAIT] wechat_qr_setup: waiting for QR display and scan confirmation")
+    typer.echo(f"[OK] wechat_qr_status: {status_path}")
+    run = runner or subprocess.run
     try:
-        result = subprocess.run(
-            ["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"],
-            check=False,
-        )
+        result = run(args, check=False)
     except OSError as exc:
+        _write_wechat_qr_setup_status(
+            status_path,
+            {
+                "status": "failed",
+                "command": command,
+                "session_path": session_path,
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "error": str(exc),
+            },
+        )
         typer.echo(f"[FAIL] wechat_qr_setup: {exc}", err=True)
         raise typer.Exit(1) from exc
+    payload = {
+        "status": "completed" if result.returncode == 0 else "failed",
+        "command": command,
+        "session_path": session_path,
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "return_code": result.returncode,
+    }
+    _write_wechat_qr_setup_status(status_path, payload)
     if result.returncode != 0:
         typer.echo(f"[FAIL] wechat_qr_setup exited {result.returncode}", err=True)
+        typer.echo(f"[FAIL] wechat_qr_status: {status_path}", err=True)
         raise typer.Exit(result.returncode)
     typer.echo("[OK] wechat_qr_setup: completed")
+    typer.echo(f"[OK] wechat_qr_status: {status_path}")
+
+
+def _write_wechat_qr_setup_status(status_path: Path, payload: Mapping[str, object]) -> None:
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def _merge_env_file(env_path: Path, values: Mapping[str, object | None]) -> None:

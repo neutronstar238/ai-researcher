@@ -180,7 +180,8 @@ airesearcher inspiration-refresh \
 
 If the selected channel lacks the required delivery state, the command records `skipped` in the JSON
 output and does not claim delivery. Feishu App credentials can send directly when a home chat ID is
-configured; WeChat QR delivery depends on the QR adapter session being active.
+configured. WeChat QR setup writes `.airesearcher/channels/wechat/setup-status.json`; delivery
+still depends on the QR adapter session being active.
 
 ## Operator Monitor
 

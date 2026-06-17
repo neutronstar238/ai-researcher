@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -126,16 +127,32 @@ def test_send_inspiration_digest_reports_feishu_app_missing_home_chat() -> None:
     assert "missing AUTORESEARCH_FEISHU_HOME_CHAT_ID" in records[0].detail
 
 
-def test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook() -> None:
+def test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook(
+    tmp_path: Path,
+) -> None:
+    status_path = tmp_path / "setup-status.json"
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "command": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+                "session_path": ".airesearcher/channels/wechat/session.json",
+                "completed_at": "2026-06-18T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
     records = send_inspiration_digest(
         _report(),
         channels=("wechat",),
         env={
             "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
             "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+            "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": str(status_path),
         },
     )
 
     assert records[0].status == "skipped"
     assert "wechat QR gateway configured" in records[0].detail
+    assert "setup status completed" in records[0].detail
     assert "@tencent-weixin/openclaw-weixin-cli" in records[0].detail

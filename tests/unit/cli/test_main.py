@@ -427,6 +427,59 @@ def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path
     assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
 
 
+def test_deploy_setup_runs_wechat_qr_setup_with_status_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    calls: list[tuple[list[str], bool]] = []
+
+    def fake_run(args: list[str], *, check: bool) -> SimpleNamespace:
+        calls.append((args, check))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "deploy-setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--wechat",
+            "--wechat-qr",
+            "--run-wechat-qr-setup",
+            "--no-feishu",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        (["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"], False)
+    ]
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    status_payload = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_payload["status"] == "completed"
+    assert status_payload["return_code"] == 0
+    assert status_payload["session_path"] == ".airesearcher/channels/wechat/session.json"
+    assert "[WAIT] wechat_qr_setup: waiting for QR display" in result.stdout
+    assert f"[OK] wechat_qr_status: {status_path}" in result.stdout
+    assert "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH=.airesearcher/channels/wechat/setup-status.json" in (
+        env_path.read_text(encoding="utf-8")
+    )
+
+
 def test_deploy_setup_keeps_existing_env_example_template(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
@@ -543,7 +596,11 @@ def test_setup_guided_wizard_collects_provider_and_api_key(tmp_path: Path) -> No
 
 def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    monkeypatch.setattr(cli_main, "_run_wechat_qr_setup", lambda: calls.append("qr"))
+    monkeypatch.setattr(
+        cli_main,
+        "_run_wechat_qr_setup",
+        lambda **_kwargs: calls.append("qr"),
+    )
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
 

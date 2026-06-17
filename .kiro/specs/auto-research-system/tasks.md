@@ -2079,6 +2079,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `151.1`; user requirement for a visible CLI UI showing agent flow, changed content, and approval-gated execution state._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; the first focused pytest selector used a stale monitor test name and collected no tests, then `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 1 test and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 153. WeChat QR setup status evidence
+  - [x] 153.1 Record and surface WeChat QR setup status from guided deployment
+    - Add a setup-owned status artifact for WeChat QR onboarding at `.airesearcher/channels/wechat/setup-status.json`.
+    - Make the QR runner print an explicit waiting message before the upstream adapter displays the QR code and waits for scan/login.
+    - Record command, session path, timestamps, return code, and completion/failure status without storing secrets.
+    - Add `AUTORESEARCH_WECHAT_SETUP_STATUS_PATH` to setup output and `.env.example`.
+    - Make inspiration push skips for QR-mode WeChat include the setup-status state so operators can distinguish missing setup, running setup, and completed setup from real delivery.
+    - Update README onboarding notes to point users to the status artifact.
+    - _References: task `120.1`; user correction that WeChat QR setup should happen during setup and wait for scan feedback, not as a hidden later command._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py` passed; `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\test_notifications.py::test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q` passed with 64 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 501 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
