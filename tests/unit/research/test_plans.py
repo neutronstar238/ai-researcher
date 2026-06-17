@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from autoresearch.research import audit_research_plan, generate_research_plan
+from autoresearch.research import (
+    audit_research_plan,
+    generate_research_plan,
+    render_research_plan_tex,
+)
 from autoresearch.schemas import ResearchCandidate, ResearchPlan, ValidationStatus
 
 
@@ -107,3 +111,23 @@ def test_research_plan_audit_requires_baseline_metric_and_commands() -> None:
     assert any("baseline" in issue for issue in audit.issues)
     assert any("metrics" in issue for issue in audit.issues)
     assert any("command-oriented" in issue for issue in audit.issues)
+
+
+def test_research_plan_tex_uses_breakable_references_for_long_artifacts() -> None:
+    plan = _plan(
+        references=[
+            "https://example.org/source-paper",
+            "Evidence artifact: similarity_summary:runs/manual-live/task129-plan-layout/vault/exploration/topics/similarity_check_autopilot_task129_plan_layout_20260617150322.md",
+            "Evidence artifact: literature_summary:runs/manual-live/task129-plan-layout/vault/exploration/topics/literature_refresh_20260617.md",
+        ],
+        evidence_refs=["https://example.org/source-paper"],
+    )
+
+    tex = render_research_plan_tex(plan=plan, audit=audit_research_plan(plan))
+
+    assert r"\url{https://example.org/source-paper}" in tex
+    assert (
+        r"Evidence artifact: \url{similarity_summary:runs/manual-live/task129-plan-layout/vault/"
+        in tex
+    )
+    assert r"similarity\_summary:runs/manual-live" not in tex

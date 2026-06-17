@@ -1851,6 +1851,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260616-070`; user requirement that release gates remain strict, outputs must not overclaim unsupported evidence, and the system should rerun real data/calls until the loop reaches a publication-quality gate._
     - _Verify: `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\cli\main.py tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py` passed; focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` passed with 2 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 484 passed, 4 skipped, and 1 warning. Real serve run `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task128-serve-final\vault --cache runs\manual-live\task128-serve-final\cache --output-dir runs\manual-live\task128-serve-final\runs --deliverables-dir runs\manual-live\task128-serve-final\outputs --state runs\manual-live\task128-serve-final\scheduler-state.json --approvals-state runs\manual-live\task128-serve-final\approvals.json --project-id task128_serve_final --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`; `pdfinfo` confirmed the exported paper PDF has 14 pages; `rg` confirmed the final manuscript uses `Cycle summary`, the LLM evidence includes `cycle-summary.json`, and paper-build `compile.log` contains `RERUNS_COMPLETED: 1` and `ATTEMPT 2`._
 
+- [x] 129. Research-plan PDF layout hardening
+  - [x] 129.1 Render long evidence locators as breakable TeX URL text
+    - Investigate the research-plan PDF overfull warning found during task `128.1`.
+    - Keep HTTP(S) references and long evidence artifact locators breakable in LaTeX without adding a new package dependency.
+    - Add unit coverage proving long similarity/literature evidence references render through `\url{}` rather than escaped unbreakable text.
+    - Rerun a real `research-plan --compile-pdf` smoke with long similarity and literature summary paths and confirm the compile log has no `Overfull` or LaTeX error markers.
+    - _References: `P-20260617-071`; user requirement that generated PDFs be publication-quality and that layout problems be fixed rather than silently ignored._
+    - _Verify: `python -m ruff check src\autoresearch\research\plans.py tests\unit\research\test_plans.py` passed; `python -m pytest tests\unit\research\test_plans.py -q` passed with 4 tests; real research-plan compile `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\candidate.json --project-id task129_plan_layout --vault runs\manual-live\task129-plan-layout\vault --output-dir runs\manual-live\task129-plan-layout\outputs --similarity-summary runs\manual-live\task128-serve-final\vault\exploration\topics\similarity_check_autopilot_task128_serve_final_20260617150322.md --literature-summary runs\manual-live\task128-serve-final\vault\exploration\topics\literature_refresh_20260617.md --compile-pdf --timeout-seconds 180` passed with `compile_status: compiled` and 3 pages; `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.compile.log` returned no matches; `pdfinfo` confirmed the generated research-plan PDF is 3 pages A4; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 485 passed, 4 skipped, and 1 warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2279,6 +2288,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 95,
       "tasks": ["128.1"]
+    },
+    {
+      "id": 96,
+      "tasks": ["129.1"]
     }
   ]
 }

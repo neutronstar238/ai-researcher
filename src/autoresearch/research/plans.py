@@ -733,7 +733,12 @@ def _pdf_page_count(pdf_path: Path) -> int | None:
 
 def _tex_reference(value: str) -> str:
     if value.startswith(("http://", "https://")):
-        return rf"\url{{{_tex_escape(value)}}}"
+        return rf"\url{{{_tex_url_escape(value)}}}"
+    artifact_prefix = "Evidence artifact: "
+    if value.startswith(artifact_prefix):
+        artifact_ref = value[len(artifact_prefix) :]
+        if "/" in artifact_ref or "\\" in artifact_ref or ":" in artifact_ref:
+            return rf"{_tex_escape(artifact_prefix)}\url{{{_tex_url_escape(artifact_ref)}}}"
     return _tex_escape(value)
 
 
@@ -752,6 +757,11 @@ def _tex_escape(value: object) -> str:
         "^": r"\textasciicircum{}",
     }
     return "".join(replacements.get(char, char) for char in text)
+
+
+def _tex_url_escape(value: object) -> str:
+    text = str(value).replace("\\", "/")
+    return text.replace("{", "%7B").replace("}", "%7D").replace(" ", "%20")
 
 
 def _clean_title(value: str) -> str:

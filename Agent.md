@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:09:50 +08:00 - Codex - Task 129.1 research-plan PDF layout hardening
+
+- Request:
+  - Continue running the project and fix the research-plan PDF overfull warning discovered during task `128.1` artifact QA.
+- Files changed:
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/research/test_plans.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated research-plan TeX reference rendering so HTTP(S) references and long `Evidence artifact:` locators use breakable `\url{}` text.
+  - Kept short evidence artifact IDs as normal escaped text.
+  - Added unit coverage for long similarity/literature evidence summary locators.
+  - Re-ran a real `research-plan --compile-pdf` smoke using the task `128.1` candidate and long summary paths that previously produced overfull warnings.
+- Verification:
+  - `python -m ruff check src\autoresearch\research\plans.py tests\unit\research\test_plans.py`: passed.
+  - `python -m pytest tests\unit\research\test_plans.py -q`: passed with 4 tests.
+  - Real research-plan compile: `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\candidate.json --project-id task129_plan_layout --vault runs\manual-live\task129-plan-layout\vault --output-dir runs\manual-live\task129-plan-layout\outputs --similarity-summary runs\manual-live\task128-serve-final\vault\exploration\topics\similarity_check_autopilot_task128_serve_final_20260617150322.md --literature-summary runs\manual-live\task128-serve-final\vault\exploration\topics\literature_refresh_20260617.md --compile-pdf --timeout-seconds 180`: passed with `compile_status: compiled` and 3 pages.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.compile.log`: returned no matches.
+  - `pdfinfo runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.pdf`: confirmed 3 A4 pages.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 485 passed, 4 skipped, and 1 warning.
+- Problems:
+  - Resolved `P-20260617-071`.
+- Follow-up:
+  - Continue toward broader autonomous-loop hardening; keep scanning all generated PDFs and compile logs during live checks.
+
 ### 2026-06-17 23:05:31 +08:00 - Codex - Task 128.1 review-driven manuscript repair
 
 - Request:

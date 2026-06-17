@@ -34,19 +34,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260617-071 - Research-plan PDF compile log still reports an overfull line
 
-- Status: Open
+- Status: Resolved
 - Severity: Low
 - Discovered: 2026-06-17 23:04:00 +08:00
 - Source: Task `128.1` final live `serve --once` artifact audit.
 - Symptom: The paper-level PDF release gate passed with `overfull_hbox=0`, but the generated research-plan LaTeX logs contain `Overfull \hbox (42.71716pt too wide) in paragraph at lines 97--98`.
-- Impact: The final paper deliverable is not blocked, but the planning PDF can still have a layout blemish from long identifiers or paths. This should be fixed before claiming the research-plan PDF template has fully clean LaTeX layout.
+- Impact: Resolved for long evidence artifact locators. Planning PDFs should no longer receive overfull warnings from long similarity/literature summary paths rendered as ordinary text.
 - Evidence: `rg` found the overfull entry in `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/task128_serve_final/research-plan/research-plan.compile.log`; `pdfinfo` confirmed the paper PDF itself has 14 pages and paper-build recorded `Overfull hbox: 0`.
-- Root cause: Pending investigation; likely long path, command, or identifier text in the research-plan TeX template is not wrapped or typeset in a breakable form.
-- Workaround: None yet. Treat this as a research-plan template quality issue, not as a paper release blocker.
-- Next action: Add a research-plan LaTeX layout gate or breakable rendering for long code/path text, then rerun a live research-plan compile and confirm no overfull warnings.
-- Linked tasks: follow-up after `128.1`
-- Resolution: Pending.
-- Verification: Pending.
+- Root cause: `render_research_plan_tex()` only used `\url{}` for HTTP(S) references; generated evidence artifact locators such as `similarity_summary:runs/.../similarity_check_...md` were escaped as normal text, so LaTeX could not break the long path cleanly.
+- Workaround: None needed after task `129.1`.
+- Next action: Future PDF QA should keep scanning both paper-build and research-plan compile logs for overfull markers.
+- Linked tasks: `128.1`, `129.1`
+- Resolution: Added breakable `\url{}` rendering for evidence artifact locator references while preserving normal escaped text for short artifact IDs.
+- Verification: Unit tests passed; real `airesearcher research-plan --compile-pdf` under `runs/manual-live/task129-plan-layout` generated a 3-page A4 PDF, and `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error"` on `research-plan.compile.log` returned no matches.
 
 ### P-20260616-070 - Live serve cycle blocked release on reviewer revision items
 
