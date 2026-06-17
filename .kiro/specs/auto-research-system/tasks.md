@@ -2153,6 +2153,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260612-057`; user request to clean up final verification noise rather than leave known warnings unexplained._
     - _Verify: `python -m pip check` initially failed because `langchain-community 0.3.31` requires `requests>=2.32.5` while host Python had `requests 2.31.0`; `python -m pip show requests urllib3 chardet charset-normalizer` confirmed host Python had `requests 2.31.0`, `urllib3 2.7.0`, `chardet 7.4.3`, and `charset-normalizer 3.4.7`; `python -m pip install "requests==2.32.5" "chardet==5.2.0"` succeeded; `python -m pip check` then returned `No broken requirements found`; `python -c "import requests; print(requests.__version__)"` printed `2.32.5` without `RequestsDependencyWarning`; `python -m pytest tests\unit\test_npm_scripts.py -q` passed with 1 test and no Requests warning; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 507 passed, 4 skipped, and only the LangGraph deprecation warning._
 
+- [x] 161. Agent import warning hygiene
+  - [x] 161.1 Lazy-load LangGraph workflow exports from the agent package
+    - Remove eager workflow imports from `autoresearch.agents` so message, registry, and base-agent imports do not initialize LangGraph.
+    - Preserve public package exports for `ResearchWorkflow`, `ResearchWorkflowStage`, `ResearchWorkflowState`, and `WorkflowCheckpointStore` through lazy module attribute loading.
+    - Add a unit regression test proving ordinary agent message imports do not load `autoresearch.agents.workflow`.
+    - Keep true workflow execution tests available in the integration suite, where the third-party LangGraph deprecation warning remains scoped to explicit workflow use.
+    - _References: task `160.1`; recurring verification noise from the LangGraph `allowed_objects` warning after Requests warning cleanup._
+    - _Verify: `python -m pytest tests\unit\agents -q` passed with 6 tests and no warnings; `python -m pytest tests\integration\agents\test_workflow.py -q` passed with 1 test and retained the third-party LangGraph warning only for explicit workflow use; first broad `python -m pytest tests\smoke tests\unit -q` exposed `P-20260618-083` from a duplicate test module basename and was fixed by renaming the new test; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed with no issues in 104 source files; `git diff --check` passed with expected CRLF notices for unrelated dirty vault files and touched agent files; final `python -m pytest tests\smoke tests\unit -q` passed with 508 passed, 4 skipped, and no LangGraph or Requests warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

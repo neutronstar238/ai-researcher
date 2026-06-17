@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-083 - Agent import regression test reused an existing test module basename
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 03:10:00 +08:00
+- Source: Broad smoke/unit verification for task `161.1`.
+- Symptom: `python -m pytest tests\smoke tests\unit -q` failed during collection with an import file mismatch between `tests\smoke\test_imports.py` and `tests\unit\agents\test_imports.py`.
+- Impact: The lazy-import behavior was valid, but the full smoke/unit gate could not collect tests until the new test file had a unique module basename.
+- Evidence: Pytest reported `import file mismatch: imported module 'test_imports' ... is not the same as the test file we want to collect`.
+- Root cause: The new regression test used the same basename as the smoke import test in a non-package test tree.
+- Workaround: None needed after renaming the new test file.
+- Next action: Use unique test basenames under this repository's non-package test directories.
+- Linked tasks: `161.1`
+- Resolution: Renamed the new regression test to `tests/unit/agents/test_agent_imports.py`.
+- Verification: `python -m pytest tests\unit\agents -q` passed with 6 tests; `python -m pytest tests\smoke tests\unit -q` passed with 508 passed, 4 skipped, and no LangGraph or Requests warning.
+
 ### P-20260618-082 - Direct python module invocation lacks installed package path
 
 - Status: Resolved

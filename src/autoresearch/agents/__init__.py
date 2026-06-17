@@ -1,5 +1,7 @@
 """Agent runtime primitives."""
 
+from typing import TYPE_CHECKING, Any
+
 from .base import (
     AgentCapabilityError,
     AgentLifecycleState,
@@ -10,12 +12,29 @@ from .base import (
 )
 from .messages import AgentMessage, MessageRiskLevel
 from .registry import AgentRegistry, AgentRegistryError
-from .workflow import (
-    ResearchWorkflow,
-    ResearchWorkflowStage,
-    ResearchWorkflowState,
-    WorkflowCheckpointStore,
-)
+
+if TYPE_CHECKING:
+    from .workflow import (
+        ResearchWorkflow,
+        ResearchWorkflowStage,
+        ResearchWorkflowState,
+        WorkflowCheckpointStore,
+    )
+
+_WORKFLOW_EXPORTS = {
+    "ResearchWorkflow",
+    "ResearchWorkflowStage",
+    "ResearchWorkflowState",
+    "WorkflowCheckpointStore",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _WORKFLOW_EXPORTS:
+        from . import workflow
+
+        return getattr(workflow, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "AgentCapabilityError",

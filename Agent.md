@@ -7453,3 +7453,30 @@ This file defines the project development standard for coding agents and records
   - `P-20260612-057` updated to resolved locally.
 - Follow-up:
   - If another machine emits the warning, check active host Python packages before changing repository code.
+
+### 2026-06-18 03:14:24 +08:00 - Codex - Task 161.1 Agent import warning hygiene
+
+- Request: Continue final prelaunch cleanup by removing remaining LangGraph warning noise from the smoke/unit gate without hiding true workflow integration behavior.
+- Files changed:
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/unit/agents/test_agent_imports.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Converted package-level LangGraph workflow exports to lazy module attribute loading.
+  - Preserved `from autoresearch.agents import ResearchWorkflow` compatibility while preventing ordinary agent message imports from initializing `autoresearch.agents.workflow`.
+  - Added a regression test that checks message imports do not eagerly load the workflow module.
+  - Removed the earlier ineffective `pyproject.toml` warning-filter attempt and restored that file to a clean state.
+- Verification:
+  - `python -m pytest tests\unit\agents -q`: passed, 6 tests, no warnings.
+  - `python -m pytest tests\integration\agents\test_workflow.py -q`: passed, 1 test, with the third-party LangGraph deprecation warning still scoped to explicit workflow use.
+  - Initial `python -m pytest tests\smoke tests\unit -q`: failed during collection because the new test file reused the `test_imports.py` basename; recorded and resolved as `P-20260618-083`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for unrelated dirty vault files and touched agent files.
+  - Final `python -m pytest tests\smoke tests\unit -q`: passed, 508 passed, 4 skipped, no LangGraph warning, and no Requests warning.
+- Problems:
+  - `P-20260618-083` added and resolved.
+- Follow-up:
+  - The explicit workflow integration test still shows a third-party LangGraph `allowed_objects` deprecation warning; address that only when the installed LangGraph version exposes a stable configuration path or when the workflow implementation is updated.
