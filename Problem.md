@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-098 - CI ruff rejected tuple-style isinstance in review status helper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 05:18:00 +08:00
+- Source: GitHub Actions run `27720376566` for commit `fbdb9e4`.
+- Symptom: CI failed in `poetry run ruff check src tests` with `UP038 Use X | Y in isinstance call instead of (X, Y)` at `src/autoresearch/cli/main.py:6053`.
+- Impact: The review verdict and publication warning display fix worked locally but left the pushed CI red.
+- Evidence: CI log showed ruff stopping before mypy and tests; the only reported violation was the tuple-style `isinstance(score, (int, float))` check.
+- Root cause: Local ruff did not flag the rule, while the CI dependency set did; the helper used tuple-style `isinstance`.
+- Workaround: None needed after the style update.
+- Next action: Prefer `X | Y` in new `isinstance` union checks to match CI ruff.
+- Linked tasks: `176.1`, `176.2`
+- Resolution: Replaced `isinstance(score, (int, float))` with `isinstance(score, int | float)`.
+- Verification: Focused ruff, focused mypy, and full `python -m ruff check src tests` passed locally.
+
 ### P-20260618-097 - Review and publication gate console wording could overstate readiness
 
 - Status: Resolved

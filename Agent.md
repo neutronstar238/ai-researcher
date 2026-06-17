@@ -7934,3 +7934,24 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-097` added and resolved.
 - Follow-up:
   - The real pass cycle is release-gate clean, but its publication warning still notes adjacent-work positioning; keep the warning visible in monitor and paper review notes.
+
+### 2026-06-18 05:18:22 +08:00 - Codex - Task 176.2 CI ruff compatibility for review status helper
+
+- Request: Fix the GitHub Actions failure from the pushed review verdict and warning-gate display task.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Replaced tuple-style `isinstance(score, (int, float))` with `isinstance(score, int | float)` to satisfy the CI ruff `UP038` rule.
+  - Recorded the CI failure as `P-20260618-098`.
+- Verification:
+  - GitHub Actions run `27720376566` failed only in `poetry run ruff check src tests` with `UP038` at `src/autoresearch/cli/main.py:6053`.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m ruff check src tests`: passed.
+- Problems:
+  - `P-20260618-098` added and resolved.
+- Follow-up:
+  - Push and confirm the next GitHub Actions run is green.

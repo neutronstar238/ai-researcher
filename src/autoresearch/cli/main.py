@@ -6050,7 +6050,7 @@ def _review_status_display(review: object) -> tuple[str, str]:
     if isinstance(verdict, str) and verdict:
         parts.append(f"verdict={verdict}")
     score = review.get("quality_score")
-    if isinstance(score, (int, float)) and not isinstance(score, bool):
+    if isinstance(score, int | float) and not isinstance(score, bool):
         parts.append(f"quality={score:.3f}")
 
     failed_statuses = {"failed", "below_threshold"}

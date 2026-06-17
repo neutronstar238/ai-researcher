@@ -2296,6 +2296,10 @@ A task can be checked only when all applicable items are true:
     - Render publication warning evidence as `issue:` while preserving `blocker:` wording for true evidence-gate blockers.
     - _References: `P-20260618-097`; real task176 cycles `cycle-20260617T210513Z` and `cycle-20260617T210941Z`; user requirement that quality gates must not overstate paper readiness._
     - _Verify: first real default `serve --once --permission-mode allow-all` cycle exposed `review status=passed, verdict=needs_revision, quality_score=1.0` while evidence gate blocked release; second real default `serve --once --permission-mode allow-all` cycle after the display change printed `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and generated PDF `runs/manual-live/task176-review-status/outputs/task176_review_status/task176_review_status-cycle-20260617T210941Z.pdf`; real monitor rerun on that cycle displayed `publication pass; score=0.985; target=ccf-b; warnings=1` and `evidence pass; failed=0; release_allowed=true`; focused review/monitor tests passed; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 521 passed and 4 skipped._
+  - [x] 176.2 Stabilize review status helper for CI ruff version
+    - Replace tuple-style `isinstance(score, (int, float))` with `isinstance(score, int | float)` in the review status display helper.
+    - _References: `P-20260618-098`; failed GitHub Actions run `27720376566`; task `176.1`._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m ruff check src tests` passed._
 
 ## Checkpoints
 
