@@ -2051,6 +2051,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `60.1`, `147.1`, `148.1`; user requirement that `/approve` and communication-channel approvals map to the same permissioned local runtime._
     - _Verify: `python -m ruff check src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py` passed; `python -m pytest tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py -q` passed with 10 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`; `python -m mypy src\autoresearch\runtime\approval.py src\autoresearch\experiments\executor.py` passed; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 497 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 150. Serve-to-executor network approval propagation
+  - [x] 150.1 Pass approved runtime network metadata into autonomous demo tasks
+    - Convert the already-allowed `serve` runtime decision into auditable network metadata before each autonomous cycle starts.
+    - Pass the metadata through `_run_autopilot_cycle()` into `run_scientistbench_demo()` so generated `ExperimentTask` records and run records retain the approval mode, request ID, approving operator, scope, domains, and source URLs.
+    - Keep normal `airesearcher autopilot` and `airesearcher run-demo` behavior local by default; only the runtime-gated `serve` path injects the approval context.
+    - Merge runtime approval domains and source URLs with task-scoped public dataset metadata without overwriting the narrower UCI benchmark provenance.
+    - _References: tasks `147.1`, `148.1`, `149.1`; user requirement that always-on server/WeChat/Feishu approvals flow into actual execution gates, not just prompts._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py` passed; `python -m mypy src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py` passed; corrected focused pytest selectors passed with 5 tests; `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py -q` passed with 75 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 499 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

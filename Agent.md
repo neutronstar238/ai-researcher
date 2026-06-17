@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:37:46 +08:00 - Codex - Task 150.1 Serve-to-executor network approval propagation
+
+- Request:
+  - Continue running the project and make always-on `serve` approvals flow into actual experiment execution metadata.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `150.1` for serve-to-executor network approval propagation.
+  - Converted allowed `serve` runtime decisions into auditable network metadata before each autonomous cycle.
+  - Passed runtime network metadata through `_run_autopilot_cycle()` into `run_scientistbench_demo()` so generated `ExperimentTask` records and run records retain approval scope, mode, ID, approver, domains, and source URLs.
+  - Kept direct `airesearcher autopilot` and `airesearcher run-demo` local by default; only the runtime-gated `serve` path injects approval context.
+  - Merged runtime approval domains/source URLs with task-scoped UCI public dataset metadata without overwriting narrower benchmark provenance.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py`: initially failed with `F821 Undefined name decision`, then passed after moving the metadata construction into the `serve` loop.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py`: initially failed with `Name "decision" is not defined`, then passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\experiments\test_demos.py::test_merge_task_metadata_preserves_scoped_public_dataset_sources tests\unit\experiments\test_demos.py::test_run_scientistbench_demo_records_runtime_network_metadata -q`: passed with 5 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py -q`: passed with 75 tests and the known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 499 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - Added and resolved `P-20260618-079`.
+- Follow-up:
+  - Wire future WeChat/Feishu approval adapters to the same runtime approval decision path before launching `serve` cycles.
+
 ### 2026-06-18 01:25:28 +08:00 - Codex - Task 149.1 Runtime approval bridge for network metadata
 
 - Request:

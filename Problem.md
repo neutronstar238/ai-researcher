@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-079 - Serve approval metadata patch initially landed in autopilot loop
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 01:33:00 +08:00
+- Source: Focused verification for task `150.1`.
+- Symptom: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py` failed with `F821 Undefined name decision` in the `autopilot` loop. The first focused pytest command also used a stale test name and collected no tests.
+- Impact: The initial patch would have broken direct `airesearcher autopilot` execution and did not yet prove the intended `serve` path.
+- Evidence: Ruff and mypy both reported `decision` undefined at `src\autoresearch\cli\main.py`; pytest reported no match for `test_serve_requires_approval_before_running_cycle`.
+- Root cause: The runtime network metadata line was inserted in the direct autopilot loop instead of the `serve` loop after `ensure_runtime_approval()` returns an allowed decision; the test selector used an outdated function name.
+- Workaround: None needed after task `150.1`.
+- Next action: Keep focused CLI tests around both direct autopilot and approved serve paths when changing runtime approval propagation.
+- Linked tasks: `150.1`
+- Resolution: Moved metadata construction into the `serve` allowed branch, kept direct autopilot without injected runtime metadata, and re-ran the corrected focused test selectors.
+- Verification: Focused ruff, focused mypy, and corrected focused pytest selectors passed.
+
 ### P-20260618-078 - Executor network gate initially blocked trusted cached UCI demos
 
 - Status: Resolved

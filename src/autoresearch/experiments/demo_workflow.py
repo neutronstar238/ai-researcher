@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -60,10 +61,12 @@ def run_scientistbench_demo(
     output_dir: Path | str = Path("runs/demo"),
     timeout_seconds: int = 30,
     commit_sha: str | None = None,
+    task_metadata: Mapping[str, Any] | None = None,
 ) -> DemoWorkflowResult:
     """Run one local demo or public benchmark through the local MVP loop."""
 
     experiment_dir, task = _generate_demo(demo, Path(output_dir), timeout_seconds)
+    task = _merge_task_metadata(task, task_metadata)
     run = execute_experiment_task(
         experiment_dir,
         task,
@@ -168,6 +171,41 @@ def _generate_demo(
         )
     msg = f"unknown demo {demo!r}"
     raise ValueError(msg)
+
+
+def _merge_task_metadata(
+    task: ExperimentTask,
+    extra_metadata: Mapping[str, Any] | None,
+) -> ExperimentTask:
+    if not extra_metadata:
+        return task
+    metadata = dict(task.metadata)
+    for key, value in extra_metadata.items():
+        if key in {"approved_network_domains", "network_source_urls"}:
+            metadata[key] = _merge_metadata_sequence(metadata.get(key), value)
+            continue
+        if key == "network_access_scope" and metadata.get(key):
+            metadata[key] = (
+                f"{metadata[key]}; runtime approval scope: {value}"
+            )
+            continue
+        metadata[key] = value
+    return task.model_copy(update={"metadata": metadata})
+
+
+def _merge_metadata_sequence(current: object, extra: object) -> list[Any]:
+    values: list[Any] = []
+    for source in (current, extra):
+        if isinstance(source, str):
+            candidates: tuple[object, ...] = (source,)
+        elif isinstance(source, list | tuple):
+            candidates = tuple(source)
+        else:
+            candidates = ()
+        for candidate in candidates:
+            if candidate not in values:
+                values.append(candidate)
+    return values
 
 
 def _data_path(experiment_dir: Path, demo: str) -> Path:

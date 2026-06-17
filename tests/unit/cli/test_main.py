@@ -1508,6 +1508,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
         assert call_order == ["research_plan"]
+        assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
         experiment_dir = output_dir / "tabular-baseline"
         report_path = experiment_dir / "report" / "report.md"
@@ -2307,6 +2308,14 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     def fake_cycle(**kwargs: object) -> dict[str, object]:
         assert kwargs["project_id"] == "project_1"
         assert kwargs["review"] is False
+        metadata = kwargs["runtime_network_metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["network_access_approved"] is True
+        assert metadata["network_approval_mode"] == "approve-dangerous"
+        assert metadata["network_approval_id"] == request_id
+        assert metadata["network_approved_by"] == "tester"
+        assert "api.openalex.org" in metadata["approved_network_domains"]
+        assert "https://export.arxiv.org/api/query" in metadata["network_source_urls"]
         return {
             "cycle_id": "cycle-test",
             "summary_path": "runs/autopilot/cycle-test/cycle-summary.json",
@@ -2353,6 +2362,12 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
         assert kwargs["project_id"] == "project_1"
         assert kwargs["max_queries"] == cli_main.PUBLICATION_SEARCH_QUERIES
         assert kwargs["max_results_per_source"] == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        metadata = kwargs["runtime_network_metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["network_access_approved"] is True
+        assert metadata["network_approval_mode"] == "allow-all"
+        assert "network_approval_id" not in metadata
+        assert "api.openalex.org" in metadata["approved_network_domains"]
         return {
             "cycle_id": "cycle-allow-all",
             "summary_path": "runs/autopilot/cycle-allow-all/cycle-summary.json",

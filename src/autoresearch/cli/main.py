@@ -100,6 +100,7 @@ from autoresearch.runtime import (
     AgentSession,
     AgentSessionError,
     RuntimeActionRisk,
+    RuntimeApprovalDecision,
     RuntimeApprovalError,
     RuntimePermissionMode,
     approve_runtime_request,
@@ -107,6 +108,7 @@ from autoresearch.runtime import (
     ensure_runtime_approval,
     list_agent_sessions,
     list_runtime_approval_requests,
+    network_approval_metadata_from_decision,
     release_agent_session,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
@@ -146,6 +148,20 @@ DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
+SERVE_NETWORK_APPROVED_DOMAINS = (
+    "api.openalex.org",
+    "api.semanticscholar.org",
+    "archive.ics.uci.edu",
+    "export.arxiv.org",
+    "huggingface.co",
+)
+SERVE_NETWORK_SOURCE_URLS = (
+    "https://export.arxiv.org/api/query",
+    "https://api.openalex.org/works",
+    "https://api.semanticscholar.org/graph/v1/paper/search",
+    "https://huggingface.co/datasets",
+    "https://archive.ics.uci.edu/",
+)
 LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
     {
         "id": "deepseek",
@@ -2555,6 +2571,7 @@ def serve(
                 continue
 
             completed += 1
+            runtime_network_metadata = _serve_network_approval_metadata(decision)
             try:
                 summary = _run_autopilot_cycle(
                     config_path=config_path,
@@ -2574,6 +2591,7 @@ def serve(
                     review=review,
                     paper_template_id=paper_template_id,
                     push_inspiration=push_inspiration,
+                    runtime_network_metadata=runtime_network_metadata,
                 )
             except RuntimeError as exc:
                 typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
@@ -3207,6 +3225,7 @@ def _run_autopilot_cycle(
     review: bool,
     paper_template_id: str,
     push_inspiration: bool,
+    runtime_network_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
@@ -3360,6 +3379,7 @@ def _run_autopilot_cycle(
         demo=demo,
         output_dir=cycle_dir / "demo",
         timeout_seconds=timeout_seconds,
+        task_metadata=runtime_network_metadata,
     )
     reproduction_check = _run_cycle_reproduction_check(
         cycle_dir=cycle_dir,
@@ -5023,6 +5043,21 @@ def _serve_command_text(
         f"--paper-template-id {paper_template_id} "
         f"{review_flag} "
         f"{push_flag}"
+    )
+
+
+def _serve_network_approval_metadata(
+    decision: RuntimeApprovalDecision,
+) -> dict[str, Any]:
+    return network_approval_metadata_from_decision(
+        decision,
+        scope=(
+            "serve cycle online literature retrieval, source-backed similarity "
+            "checking, inspiration refresh, and approved public benchmark data "
+            "fallback downloads"
+        ),
+        approved_network_domains=SERVE_NETWORK_APPROVED_DOMAINS,
+        network_source_urls=SERVE_NETWORK_SOURCE_URLS,
     )
 
 
