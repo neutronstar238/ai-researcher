@@ -1965,6 +1965,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260617-072`; user PDF QA feedback that paper artifacts need readable citations, figures, and data analysis instead of text-only or malformed output._
     - _Verify: `python -m ruff check src\autoresearch\reports\figures.py tests\unit\reports\test_figures.py` passed; `python -m pytest tests\unit\reports\test_figures.py -q` passed with 3 tests; `python -m mypy src\autoresearch` passed; real `node .\bin\airesearcher.mjs autopilot --project-id live_release_candidate_20260617_v2 --demo pendigits_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id generic-article-one-column` passed source preflight, research plan, live LLM review, publication audit, evidence gate, and deliverable export; `pdfinfo` confirmed the release PDF has 14 pages; paper-build JSON recorded `figure_count=1`, `table_count=2`, `overfull_hbox_count=0`, `page_count=14`, and `paper_quality.passed=true`; visual PDF rendering confirmed the metric figure uses readable horizontal labels and the references/tables do not overflow; `pdftotext` confirmed numeric references and no old operational reference labels; `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error"` over paper and research-plan compile logs returned no matches; `python -m ruff check src tests` passed; `python -m pytest tests\smoke tests\unit -q` passed with 491 passed, 4 skipped, and 1 warning._
 
+- [x] 141. Deterministic figure readability release gate
+  - [x] 141.1 Block paper-quality pass when metric figure metadata exposes unreadable labels
+    - Promote the task `140.1` visual QA lesson into `paper_build` so future release PDFs cannot pass solely because a human happened not to inspect the figure page.
+    - Read adjacent source-backed figure metadata sidecars for Markdown image references.
+    - For `metric_bar` figures, fail `paper_quality` with `figure_label_readability` when long machine metric names lack a readable label, reuse raw snake-case labels, or use non-horizontal layout for long metric names.
+    - Preserve compatibility with external/non-metric figures by applying the strict label check only when `figure_type=metric_bar` metadata is present.
+    - Write issue counts and messages into `paper-build.json` and `paper-build.md` so the Obsidian paper-build note and release manifest expose the reason.
+    - _References: `P-20260618-073`, `P-20260618-074`; user requirement that PDF visual quality be physically gated rather than trusted to prompt self-discipline or one-off manual screenshots._
+    - _Verify: `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py` passed; `python -m pytest tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py -q` passed with 8 tests; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, and 1 warning. A real paper rebuild over `runs\autopilot\cycle-20260617T160833Z\paper-manuscript\manuscript.md` with `node .\bin\airesearcher.mjs paper-build ... --timeout-seconds 180` compiled a 14-page PDF, recorded `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, and `overfull_hbox_count=0`; visual rendering of page 8 confirmed the metric figure labels remain readable._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2441,6 +2451,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 107,
       "tasks": ["140.1"]
+    },
+    {
+      "id": 108,
+      "tasks": ["141.1"]
     }
   ]
 }

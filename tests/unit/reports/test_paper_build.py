@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -103,6 +104,61 @@ def test_build_latex_paper_flags_pseudo_reference_labels(tmp_path: Path) -> None
     assert "[Cycle summary]" not in tex
     assert artifact.quality.invalid_reference_label_count == 1
     assert "reference_format" in artifact.quality.failures
+
+
+def test_build_latex_paper_flags_unreadable_metric_figure_labels(tmp_path: Path) -> None:
+    analysis_dir = tmp_path / "analysis"
+    analysis_dir.mkdir()
+    (analysis_dir / "metrics.pdf").write_text("%PDF-1.4\n", encoding="utf-8")
+    (analysis_dir / "metrics.metadata.json").write_text(
+        json.dumps(
+            {
+                "figure_type": "metric_bar",
+                "metrics": [
+                    {"name": "accuracy_delta_vs_baseline", "value": 0.04},
+                    {
+                        "label": "zscore_centroid_accuracy",
+                        "name": "zscore_centroid_accuracy",
+                        "value": 0.95,
+                    },
+                ],
+                "style": {"orientation": "vertical"},
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    source = tmp_path / "report.md"
+    source.write_text(
+        _complete_markdown().replace(
+            "## Results\nThe results section reports only validated metrics.",
+            "## Results\n![Validated metric comparison](analysis/metrics.pdf)\n\n"
+            "The results section reports only validated metrics.",
+        ),
+        encoding="utf-8",
+    )
+
+    artifact = build_latex_paper_from_markdown(
+        source,
+        tmp_path / "paper",
+        compile_pdf=False,
+    )
+
+    assert artifact.quality.figure_readability_issue_count == 3
+    assert "figure_label_readability" in artifact.quality.failures
+    assert any(
+        "has no readable label" in issue
+        for issue in artifact.quality.figure_readability_issues
+    )
+    assert any("uses raw label" in issue for issue in artifact.quality.figure_readability_issues)
+    assert any(
+        "horizontal orientation" in issue
+        for issue in artifact.quality.figure_readability_issues
+    )
+    summary = Path(artifact.markdown_path).read_text(encoding="utf-8")
+    assert "Figure readability issues: `3`" in summary
+    assert "figure_label_readability" in summary
 
 
 def test_build_latex_paper_from_markdown_blocks_missing_sections(

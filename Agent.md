@@ -62,6 +62,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:24:00 +08:00 - Codex - Task 141.1 deterministic figure readability release gate
+
+- Request:
+  - Continue running the project and convert the latest PDF visual QA defect into a repeatable release gate.
+- Files changed:
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_paper_build.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `141.1` and its dependency-graph node.
+  - Extended paper-build quality reports with `figure_readability_issue_count` and `figure_readability_issues`.
+  - Added deterministic inspection of adjacent figure metadata sidecars for Markdown image references.
+  - Made `metric_bar` figures fail `paper_quality` with `figure_label_readability` when machine metric names lack readable labels, reuse raw snake-case labels, or use non-horizontal layout for long machine metric names.
+  - Wrote figure readability counts and issue messages into `paper-build.json` and `paper-build.md`.
+  - Added regression tests for an unreadable old-style metric figure metadata file and confirmed the current manuscript path is not blocked.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m pytest tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py -q`: passed, 8 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 492 tests passed, 4 skipped, 1 LangGraph/LangChain pending deprecation warning.
+  - Real `node .\bin\airesearcher.mjs paper-build runs\autopilot\cycle-20260617T160833Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task141-figure-readability-paper-build --template-id generic-article-one-column --vault runs\manual-live\task141-figure-readability-vault --project-id task141_figure_readability --timeout-seconds 180`: passed and compiled `runs\manual-live\task141-figure-readability-paper-build\main.pdf`.
+  - `rg -n "figure_readability|paper_quality|passed|page_count|overfull|failures" runs\manual-live\task141-figure-readability-paper-build\paper-build.json`: passed; JSON records `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, `overfull_hbox_count=0`, and `page_count=14`.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task141-figure-readability-paper-build\compile.log`: returned no matches, as expected.
+  - `pdfinfo runs\manual-live\task141-figure-readability-paper-build\main.pdf`: passed; 14 pages.
+  - Visual render of page 8 with `pdftoppm`: passed; metric figure labels are readable and page layout does not overlap. `pdftoppm` printed the known non-blocking `No display font for 'ArialUnicode'` warning while producing the PNG.
+- Problems:
+  - `P-20260618-073` added and resolved.
+  - `P-20260618-074` added and resolved.
+- Follow-up:
+  - Consider extending this metadata-driven gate to non-metric figures only after a concrete visual defect appears; do not overfit external figure handling preemptively.
+
 ### 2026-06-18 00:12:00 +08:00 - Codex - Task 140.1 publication figure readability hardening
 
 - Request:

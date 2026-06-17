@@ -77,6 +77,7 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "table_coverage" not in paper_artifact.quality.failures
     assert "bibliography_depth" not in paper_artifact.quality.failures
     assert "reference_format" not in paper_artifact.quality.failures
+    assert "figure_label_readability" not in paper_artifact.quality.failures
     tex = Path(paper_artifact.tex_path).read_text(encoding="utf-8")
     assert r"\includegraphics" in tex
     assert r"\begin{tabular}" in tex

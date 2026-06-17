@@ -115,6 +115,8 @@ class LatexPaperQualityReport:
     bibliography_item_count: int
     min_bibliography_items: int
     invalid_reference_label_count: int
+    figure_readability_issue_count: int
+    figure_readability_issues: tuple[str, ...]
     failures: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -140,6 +142,8 @@ class LatexPaperQualityReport:
             "bibliography_item_count": self.bibliography_item_count,
             "min_bibliography_items": self.min_bibliography_items,
             "invalid_reference_label_count": self.invalid_reference_label_count,
+            "figure_readability_issue_count": self.figure_readability_issue_count,
+            "figure_readability_issues": list(self.figure_readability_issues),
             "failures": list(self.failures),
         }
 
@@ -271,6 +275,7 @@ def build_latex_paper_from_markdown(
     quality = _build_quality_report(
         sections,
         source_markdown,
+        source_path.parent,
         pdf_path,
         log_path,
     )
@@ -464,6 +469,7 @@ def _render_markdown_sections_as_latex(
 def _build_quality_report(
     sections: dict[str, str],
     source_markdown: str,
+    source_dir: Path,
     pdf_path: Path | None,
     log_path: Path,
 ) -> LatexPaperQualityReport:
@@ -491,6 +497,7 @@ def _build_quality_report(
     references_body = sections.get("References", "")
     bibliography_item_count = _bibliography_item_count(references_body)
     invalid_reference_label_count = _invalid_reference_label_count(references_body)
+    figure_readability_issues = _figure_readability_issues(source_markdown, source_dir)
     failures: list[str] = []
     if page_count is None or page_count < PAPER_MIN_PAGES:
         failures.append("page_count")
@@ -513,6 +520,8 @@ def _build_quality_report(
         failures.append("bibliography_depth")
     if invalid_reference_label_count:
         failures.append("reference_format")
+    if figure_readability_issues:
+        failures.append("figure_label_readability")
     return LatexPaperQualityReport(
         passed=not failures,
         page_count=page_count,
@@ -535,6 +544,8 @@ def _build_quality_report(
         bibliography_item_count=bibliography_item_count,
         min_bibliography_items=PAPER_MIN_BIBLIOGRAPHY_ITEMS,
         invalid_reference_label_count=invalid_reference_label_count,
+        figure_readability_issue_count=len(figure_readability_issues),
+        figure_readability_issues=tuple(figure_readability_issues),
         failures=tuple(failures),
     )
 
@@ -614,6 +625,82 @@ def _invalid_reference_label_count(references_body: str) -> int:
         if match and _is_nonbibliographic_reference_label(match.group(1)):
             count += 1
     return count
+
+
+def _figure_readability_issues(markdown: str, source_dir: Path) -> list[str]:
+    issues: list[str] = []
+    for _alt_text, asset_path in _markdown_image_refs(markdown):
+        metadata_path = _figure_metadata_path(asset_path, source_dir)
+        if metadata_path is None or not metadata_path.exists():
+            continue
+        try:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            issues.append(f"{metadata_path.as_posix()}: figure metadata is not valid JSON")
+            continue
+        if not isinstance(payload, dict) or payload.get("figure_type") != "metric_bar":
+            continue
+        metrics = payload.get("metrics")
+        if not isinstance(metrics, list):
+            issues.append(f"{metadata_path.as_posix()}: metric_bar metadata has no metric list")
+            continue
+        style = payload.get("style")
+        orientation = (
+            str(style.get("orientation", "")).casefold()
+            if isinstance(style, dict)
+            else ""
+        )
+        long_machine_metric_names: list[str] = []
+        for item in metrics:
+            if not isinstance(item, dict):
+                continue
+            name_value = item.get("name")
+            label_value = item.get("label")
+            if not isinstance(name_value, str):
+                continue
+            name = name_value.strip()
+            if _metric_name_needs_readable_label(name):
+                long_machine_metric_names.append(name)
+                if not isinstance(label_value, str) or not label_value.strip():
+                    issues.append(f"{metadata_path.as_posix()}: metric `{name}` has no readable label")
+                    continue
+                label = label_value.strip()
+                if _looks_like_raw_metric_label(label, name):
+                    issues.append(
+                        f"{metadata_path.as_posix()}: metric `{name}` uses raw label `{label}`"
+                    )
+        if long_machine_metric_names and orientation != "horizontal":
+            issues.append(
+                f"{metadata_path.as_posix()}: long metric labels require horizontal orientation"
+            )
+    return issues
+
+
+def _markdown_image_refs(markdown: str) -> list[tuple[str, str]]:
+    refs: list[tuple[str, str]] = []
+    for line in markdown.splitlines():
+        image = _markdown_image_match(line.strip())
+        if image is not None:
+            refs.append(image)
+    return refs
+
+
+def _figure_metadata_path(asset_path: str, source_dir: Path) -> Path | None:
+    cleaned = asset_path.strip().strip("\"'")
+    if re.match(r"^[a-z]+://", cleaned, flags=re.IGNORECASE):
+        return None
+    source = Path(cleaned)
+    if not source.is_absolute():
+        source = source_dir / source
+    return source.with_suffix(".metadata.json")
+
+
+def _metric_name_needs_readable_label(name: str) -> bool:
+    return "_" in name or len(name) > 24
+
+
+def _looks_like_raw_metric_label(label: str, name: str) -> bool:
+    return label == name or "_" in label
 
 
 def _markdown_text_to_latex_lines(
@@ -969,6 +1056,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             f"minimum `{artifact.quality.min_bibliography_items}`"
         ),
         f"- Invalid reference labels: `{artifact.quality.invalid_reference_label_count}`",
+        f"- Figure readability issues: `{artifact.quality.figure_readability_issue_count}`",
         "",
         "## Missing Sections",
         "",
@@ -1001,6 +1089,15 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
                 f"- `{section}`: `{artifact.quality.section_word_counts[section]}` / "
                 f"minimum `{artifact.quality.section_min_words[section]}` words"
             )
+    if artifact.quality.figure_readability_issues:
+        lines.extend(
+            [
+                "",
+                "## Figure Readability Issues",
+                "",
+            ]
+        )
+        lines.extend(f"- {issue}" for issue in artifact.quality.figure_readability_issues)
     lines.extend(
         [
             "",
@@ -1012,6 +1109,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             "- Missing external LaTeX classes trigger recorded TeX Live or official archive recovery before the build is blocked.",
             "- Thin manuscripts, shallow technical sections, or LaTeX overfull boxes are blockers, not polish notes.",
             "- Missing source-backed figures, missing data-analysis tables, missing formal bibliography entries, or operational evidence labels inside References are release blockers.",
+            "- Source-backed metric figures must expose readable labels in metadata and use horizontal layout for long machine metric keys.",
             "",
         ]
     )

@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-074 - PowerShell rejected a malformed quoted `rg` search during task 141
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:17:00 +08:00
+- Source: Repository inspection while preparing task `141.1`.
+- Symptom: A parallel `rg` command for `LatexPaperQualityReport\(|paper_quality\"|figure_label|figure_readability|failures` failed with `The string is missing the terminator: "`.
+- Impact: No files were changed by the failed command and no verification result was invalidated, but the failure could confuse later command-history review if left unrecorded.
+- Evidence: PowerShell returned a parser error before running the search.
+- Root cause: The search pattern mixed PowerShell double-quote parsing with an escaped quote.
+- Workaround: Use single-quoted search patterns for `rg` in this repository's PowerShell shell.
+- Next action: Continue using PowerShell-friendly quoting for search commands.
+- Linked tasks: `141.1`
+- Resolution: Re-ran the search with a single-quoted pattern and continued the task.
+- Verification: `rg -n 'LatexPaperQualityReport\(|figure_label|figure_readability|failures' src tests` completed successfully.
+
+### P-20260618-073 - Paper quality gate did not inspect metric figure label readability metadata
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:15:00 +08:00
+- Source: Follow-up hardening after task `140.1` visually fixed the release PDF metric figure.
+- Symptom: `paper_build` checked figure count, table count, references, word count, page count, and overfull boxes, but it did not inspect source-backed metric figure metadata for human-readable labels. A future regression could reintroduce raw snake-case metric labels while `paper_quality.passed=true` remained possible.
+- Impact: Release PDFs could again require manual screenshot inspection to catch unreadable metric labels, weakening the evidence-first publication gate.
+- Evidence: `src/autoresearch/reports/paper_build.py` had no `figure_readability` or metric-label metadata checks before task `141.1`; task `140.1` had fixed the generator but not the release gate.
+- Root cause: The previous quality report counted Markdown figures but treated all figures as equivalent once present.
+- Workaround: None needed after task `141.1`.
+- Next action: Keep source-backed figure metadata in generated analysis artifacts and extend this pattern only when another concrete visual defect appears.
+- Linked tasks: `140.1`, `141.1`
+- Resolution: Added `figure_label_readability` as a deterministic `paper_quality` failure when `metric_bar` metadata is missing readable labels, exposes raw snake-case labels, or uses non-horizontal layout for long machine metric names.
+- Verification: Focused tests, ruff, mypy, full smoke/unit tests, and a real paper rebuild over `runs/autopilot/cycle-20260617T160833Z/paper-manuscript/manuscript.md` passed. The rebuild recorded `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, `overfull_hbox_count=0`, and a 14-page PDF; visual rendering of page 8 showed readable horizontal labels.
+
 ### P-20260617-072 - Metric figure labels were too small and truncated in release PDF
 
 - Status: Resolved
