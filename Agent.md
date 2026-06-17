@@ -8050,3 +8050,34 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-099` added and resolved.
 - Follow-up:
   - The References section is now locator-visible; future quality work should focus on stronger related-work relevance ranking, not URL placeholder cleanup.
+
+### 2026-06-18 05:58:19 +08:00 - Codex - Task 181.1 Formal reference relevance and template-readiness honesty
+
+- Request: Continue the launch-quality loop until the system itself can run a full cycle, produce a publication-facing PDF, keep references relevant, and avoid overclaiming untested LaTeX template compatibility.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed `seed_document_title` from the formal-reference relevance context so an unrelated seed/inspiration paper cannot pull weak references into the publication bibliography.
+  - Added task-anchor filtering for direct formal references around prototype/classifier, nearest/centroid, handwritten/digit/recognition, and adjacent metric-classifier evidence.
+  - Added a manuscript regression fixture proving a Boolean-variance seed citation is not rendered in formal References.
+  - Rewrote manuscript template-build prose so a passing generic article build only certifies the actually selected template, and does not imply ACM/IEEE/Springer venue-template compatibility without a separate run.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_and_vault_summary -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py`: passed.
+  - Real blocked check before the prose fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task181-reference-relevance-v2\vault --cache runs\manual-live\task181-reference-relevance-v2\cache --output-dir runs\manual-live\task181-reference-relevance-v2\runs --deliverables-dir outputs --state runs\manual-live\task181-reference-relevance-v2\scheduler-state.json --approvals-state runs\manual-live\task181-reference-relevance-v2\approvals.json --sessions-state runs\manual-live\task181-reference-relevance-v2\sessions.json --project-id task181_reference_relevance_v2 --timeout-seconds 120 --no-push-inspiration` returned `review_status: passed; verdict=needs_revision`, `publication_audit: needs_revision`, and `evidence_gate: blocked` because the LLM reviewer required a generic-template caveat.
+  - Real pass cycle after the fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task181-reference-relevance-v3\vault --cache runs\manual-live\task181-reference-relevance-v3\cache --output-dir runs\manual-live\task181-reference-relevance-v3\runs --deliverables-dir outputs --state runs\manual-live\task181-reference-relevance-v3\scheduler-state.json --approvals-state runs\manual-live\task181-reference-relevance-v3\approvals.json --sessions-state runs\manual-live\task181-reference-relevance-v3\sessions.json --project-id task181_reference_relevance_v3 --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task181_reference_relevance_v3/task181_reference_relevance_v3-cycle-20260617T215414Z.pdf`.
+  - `pdfinfo outputs\task181_reference_relevance_v3\task181_reference_relevance_v3-cycle-20260617T215414Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `pdftotext` inspection of the same PDF confirmed the formal References section excludes the Boolean variance seed, Catoni variance, Gaussian excursions, latent Gaussian model, and `source URL recorded in artifact` text.
+  - `python -m pytest tests\unit\reports -q`: passed with 89 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 521 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-100`.
+- Follow-up:
+  - The default generic-template cycle is now release-gate clean; future venue-readiness claims still require a separate external ACM/IEEE/Springer template cycle or a stability-matrix pass.

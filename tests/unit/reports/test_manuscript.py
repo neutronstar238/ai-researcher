@@ -44,12 +44,17 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "https://example.test/verified" in references_section
     assert "source URL recorded in artifact" not in references_section
     assert "[generic2026] Generic Visual Recognition Source" not in manuscript
+    assert "[seed2020] Variance function of boolean additive convolution" not in manuscript
     assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
     assert "variance_shrinkage parameter of 0.0500" in manuscript
     assert "fixed recorded configuration, not a tuned hyperparameter result" in manuscript
     assert "does not include a sensitivity sweep" in manuscript
     assert "bound to the final manuscript" in manuscript
+    assert "Conference-template compatibility is treated as an experimental artifact" not in manuscript
+    assert "compiled under compact ACM or IEEE templates" not in manuscript
+    assert "only certifies the template that was actually selected for this cycle" in manuscript
+    assert "not evidence that ACM, IEEE, Springer" in manuscript
     assert "Current finding classifications are:" not in manuscript
     assert "Retrieved record 1:" not in manuscript
     assert "was classified as" not in manuscript
@@ -153,6 +158,20 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "metadata_path": citation_metadata_path.as_posix(),
                 "blocked_document_ids": [],
                 "citations": [
+                    {
+                        "document_id": "doc_seed",
+                        "title": "Variance function of boolean additive convolution",
+                        "status": "verified_url",
+                        "bibtex_key": "seed2020",
+                        "doi": None,
+                        "url": "https://example.test/boolean-variance",
+                        "reason": None,
+                        "abstract": "Boolean additive convolution and probability measure variance functions.",
+                        "venue": None,
+                        "source_uri": "https://example.test/boolean-variance",
+                        "authors": ["S. Seed"],
+                        "tags": ["arxiv"],
+                    },
                     {
                         "document_id": "doc_generic",
                         "title": "Generic Visual Recognition Source",
@@ -262,6 +281,7 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "baseline": "nearest centroid classifier",
                 "benchmark": "UCI Pendigits",
                 "limitation": "single benchmark",
+                "seed_document_title": "Variance function of boolean additive convolution",
             },
         },
         "literature": {

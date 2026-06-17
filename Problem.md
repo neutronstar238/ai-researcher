@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-100 - Formal reference relevance and template-readiness wording were still too broad
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:46:00 +08:00
+- Source: Real `serve --once` PDF inspection for `task181_reference_relevance` and LLM review on `task181_reference_relevance_v2`.
+- Symptom: The generated formal References section no longer used placeholder URLs, but still admitted weakly related works such as empirical variance or Gaussian process papers because seed-document title tokens polluted the relevance context. After tightening reference filtering, the next real cycle passed the reference check but the LLM reviewer returned `needs_revision` because the manuscript implied conference-template compatibility from a generic paper build.
+- Impact: A publication-facing PDF could look formally clean while citing irrelevant literature, or could overstate venue/template readiness from insufficient template evidence.
+- Evidence: `pdftotext` on `outputs/task181_reference_relevance/task181_reference_relevance-cycle-20260617T214604Z.pdf` showed weak references such as Catoni variance and Gaussian-related works. The `task181_reference_relevance_v2` cycle then blocked release with `review_status: passed; verdict=needs_revision`, `publication_audit=needs_revision`, and `evidence_gate=blocked`; the LLM review specifically requested a caveat that the build used a generic article template, not a conference-specific template.
+- Root cause: `_reference_context()` included `seed_document_title`, so an unrelated seed paper about Boolean variance affected citation relevance. The manuscript generator also used static conference-template wording that could be read as compatibility evidence even when the selected paper build was the generic article template.
+- Workaround: Before the fix, inspect `citations/references.metadata.json`, `related-work-inspection.json`, and `llm-review.json` manually before treating a PDF as publication-facing.
+- Next action: Keep formal reference filtering anchored to the executed task, and treat every template family as separately evidenced.
+- Linked tasks: `181.1`
+- Resolution: Removed seed-document title from the formal reference context, added task-anchor checks for prototype/digit/nearest-centroid citation directness, filtered seed-style variance citations out of manuscript references, and rewrote template-build prose to say that the current build only certifies the selected template and does not prove ACM/IEEE/Springer compatibility without a separate run.
+- Verification: Focused report tests, focused ruff, and focused mypy passed. A real `task181_reference_relevance_v3` `serve --once` cycle passed LLM review (`verdict=pass`, `quality=1.000`), publication audit (`publishable=true`, score `0.985`), and evidence gate (`release_allowed=true`), produced a 14-page PDF under `outputs/`, and `pdftotext` confirmed the weak variance/Gaussian references and placeholder phrase were absent from formal References.
+
 ### P-20260618-099 - Formal references replaced URLs with artifact placeholders
 
 - Status: Resolved

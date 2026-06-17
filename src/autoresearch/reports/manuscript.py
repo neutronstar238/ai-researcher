@@ -52,6 +52,20 @@ REFERENCE_SUPPORT_TOKENS = frozenset(
     }
 )
 
+REFERENCE_TASK_ANCHOR_TOKENS = frozenset(
+    {
+        "character",
+        "classifier",
+        "classification",
+        "digit",
+        "handwritten",
+        "nearest",
+        "pendigit",
+        "prototype",
+        "recognition",
+    }
+)
+
 REFERENCE_GENERIC_TOKENS = frozenset(
     {
         "also",
@@ -603,15 +617,15 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "learning."
         ),
         (
-            "For a conference-style manuscript, the method also needs to state what the "
+            "For a submission-style manuscript, the method also needs to state what the "
             "system is not allowed to vary. The current cycle fixes the data source, "
             "the split policy, the baseline family, the comparison role, and the validator "
             "that reads the produced artifacts. The autonomous loop may choose a topic, "
             "retrieve sources, run the script, and draft the paper, but it may not "
             "silently relabel the benchmark, replace a failed baseline, or convert a "
             "single positive metric into a general theory. That constraint is especially "
-            "important when the same manuscript is compiled under compact ACM or IEEE "
-            "templates, because visual polish can otherwise hide a thin evidence model."
+            "important when a later cycle changes the LaTeX template or target venue, "
+            "because visual polish can otherwise hide a thin evidence model."
         ),
         (
             "Implementation-level constraints are reported only when they are present in "
@@ -732,14 +746,13 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "running."
         ),
         (
-            "Conference-template compatibility is treated as an experimental artifact, "
-            "not a cosmetic export. Compact two-column layouts reveal problems that a "
-            "single-column draft can hide: thin method sections collapse to too few pages, "
-            "machine identifiers can create overfull boxes, and missing technical detail "
-            "becomes visible when the paper is compressed. The paper build check therefore "
-            "checks page count, word count, required sections, technical term coverage, "
-            "and layout overflow after LaTeX compilation. A PDF is not release evidence "
-            "unless those checks pass under the selected template."
+            "Template-build evidence is treated as an experimental artifact, not a "
+            "cosmetic export. The current paper build only certifies the template that "
+            "was actually selected for this cycle; it is not evidence that ACM, IEEE, "
+            "Springer, or any other external venue template will compile without a "
+            "separate run. The paper build check therefore checks page count, word "
+            "count, required sections, technical term coverage, and layout overflow "
+            "after LaTeX compilation under the selected template."
         ),
         (
             "The experiment also records why empirical validity, source retrieval, "
@@ -750,13 +763,13 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "tied to the artifact that supports it."
         ),
         (
-            "For compact conference templates, the paper build is rerun after manuscript "
-            "changes rather than assumed from the Markdown word count. This matters "
-            "because double-column classes can compress a manuscript by several pages "
+            "For external or compact venue templates, the paper build must be rerun "
+            "after manuscript changes rather than inferred from the Markdown word "
+            "count. Double-column classes can compress a manuscript by several pages "
             "and can expose long machine identifiers that never overflow in a generic "
-            "article layout. The experimental evidence for template readiness is the "
-            "compiled template-specific PDF plus the parsed quality report, not the "
-            "existence of a `.tex` file."
+            "article layout. The experimental evidence for a venue template is a "
+            "compiled template-specific PDF plus the parsed quality report for that "
+            "same template, not the existence of a `.tex` file."
         ),
     ]
 
@@ -1259,7 +1272,6 @@ def _reference_context(
         "limitation",
         "novel_contribution",
         "contribution",
-        "seed_document_title",
     )
     texts = []
     texts.extend(
@@ -1337,22 +1349,24 @@ def _reference_row_is_direct(
     citation: dict[str, Any],
     context: tuple[set[str], set[str], set[str]],
 ) -> bool:
-    method_tokens, domain_tokens, _all_tokens = context
+    _method_tokens, _domain_tokens, _all_tokens = context
     citation_tokens = set(_semantic_tokens(_citation_reference_text(citation)))
     if not citation_tokens:
         return False
-    strong = citation_tokens & method_tokens & REFERENCE_DIRECT_METHOD_TOKENS
-    domain = citation_tokens & domain_tokens
-    if len(strong) >= 2:
-        return True
-    if strong and domain:
-        return True
     title_tag_tokens = set(_semantic_tokens(_citation_reference_title_tag_text(citation)))
     if {"nearest", "centroid"} <= title_tag_tokens:
         return True
+    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
+        return True
+    if title_tag_tokens & {"handwritten", "digit", "pendigit"} and title_tag_tokens & {
+        "classifier",
+        "classification",
+        "recognition",
+    }:
+        return True
     return bool(
-        "prototype" in title_tag_tokens
-        and citation_tokens & {"classifier", "classification"}
+        title_tag_tokens & {"centroid", "nearest", "prototype", "mahalanobi", "mahalanobis"}
+        and citation_tokens & REFERENCE_TASK_ANCHOR_TOKENS
     )
 
 
