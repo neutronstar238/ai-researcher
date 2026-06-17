@@ -8112,3 +8112,35 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-101`.
 - Follow-up:
   - The publication audit still keeps a non-blocking adjacent-work warning from similarity classification; a future task can add an explicit manuscript positioning table for adjacent-work findings if the user wants the warning resolved rather than merely visible.
+
+### 2026-06-18 06:30:15 +08:00 - Codex - Task 183.1 Adjacent-work positioning artifact
+
+- Request: Continue launch-quality hardening so adjacent-work novelty positioning is strict, evidence-backed, reviewer-visible, and PDF-safe.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added manuscript analysis artifacts `similarity-positioning-summary.json` and `similarity-positioning-summary.md` from parsed project-start similarity findings.
+  - Changed Related Work generation to pass all similarity findings into adjacent-work positioning, then render a short family/count/boundary table instead of long title rows.
+  - Updated publication audit so adjacent-work risk passes only when the manuscript has an Adjacent-Work Positioning subsection and the generated positioning artifact reports adjacent-work coverage.
+  - Added regression coverage where adjacent-work findings occur after the first eight similarity rows, preventing retrieval-order slicing from hiding adjacent work.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py`: passed.
+  - Real `task183_adjacent_positioning` cycle passed the main loop but showed the new table was missing because only the first eight similarity findings were passed into manuscript rendering.
+  - Real `task183_adjacent_positioning_v2` cycle generated the table but failed reviewer/evidence release readiness with `verdict=needs_revision`, four follow-up tasks, and `paper_quality.failures=['layout_overflow']` because long title rows were not review-visible and caused one overfull hbox.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task183-adjacent-positioning-v3\vault --cache runs\manual-live\task183-adjacent-positioning-v3\cache --output-dir runs\manual-live\task183-adjacent-positioning-v3\runs --deliverables-dir outputs --state runs\manual-live\task183-adjacent-positioning-v3\scheduler-state.json --approvals-state runs\manual-live\task183-adjacent-positioning-v3\approvals.json --sessions-state runs\manual-live\task183-adjacent-positioning-v3\sessions.json --project-id task183_adjacent_positioning_v3 --timeout-seconds 120 --no-push-inspiration`: passed with review verdict `pass`, quality `1.000`, publication audit `pass`, score `1.0`, evidence gate `pass`, and zero follow-up tasks.
+  - Final paper quality from `paper-build.json`: `passed=true`, `page_count=15`, `overfull_hbox_count=0`, `max_overfull_hbox_points=0.0`, failures `[]`.
+  - Final positioning artifact reported `finding_count=57`, `adjacent_work_count=14`, and classification counts `{'adjacent_work': 14, 'supporting_prior_work': 4, 'unknown': 39}`.
+  - `pdfinfo outputs\task183_adjacent_positioning_v3\task183_adjacent_positioning_v3-cycle-20260617T222724Z.pdf`: reported 15 pages.
+  - `pdftotext` confirmed the Adjacent-Work Positioning section is present and old placeholder/weak-reference strings such as `source URL recorded in artifact`, Boolean variance, Catoni variance, and seismic facies classification are absent.
+- Problems:
+  - Added and resolved `P-20260618-102`.
+- Follow-up:
+  - The default publication cycle now has no adjacent-work warning and no paper-layout overflow; broader venue-template and multi-dataset validation remain separate future evidence tasks.

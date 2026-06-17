@@ -63,6 +63,12 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "parsed and classified part of the nearby-work trail" not in manuscript
     assert "records how many findings were classified" not in manuscript
     assert "Representative similarity findings are retained" in manuscript
+    assert "### Adjacent-Work Positioning" in manuscript
+    assert "| Evidence view | Recorded count | Positioning boundary |" in manuscript
+    assert "| Prototype and centroid family | adjacent_work=1 |" in manuscript
+    assert "similarity-positioning-summary.json" in manuscript
+    assert "1 adjacent-work findings out of 10 parsed similarity findings" in manuscript
+    assert "Metric Learning for Digits | unknown" not in manuscript
     assert "narrower and more adversarial" not in manuscript
     assert "split into direct duplicates, adjacent mechanisms" not in manuscript
     assert "comparison-status fields recorded in the inspection artifact" in manuscript
@@ -72,6 +78,18 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert artifact.analysis_artifact_paths
     assert any(path.endswith("validated-performance-metrics.pdf") for path in artifact.analysis_artifact_paths)
     assert any(path.endswith("data-analysis-summary.md") for path in artifact.analysis_artifact_paths)
+    assert any(
+        path.endswith("similarity-positioning-summary.json")
+        for path in artifact.analysis_artifact_paths
+    )
+    positioning_json = next(
+        path
+        for path in artifact.analysis_artifact_paths
+        if path.endswith("similarity-positioning-summary.json")
+    )
+    positioning_payload = json.loads(Path(positioning_json).read_text(encoding="utf-8"))
+    assert positioning_payload["finding_count"] == 10
+    assert positioning_payload["adjacent_work_count"] == 1
 
     paper_artifact = build_latex_paper_from_markdown(
         artifact.markdown_path,
@@ -126,6 +144,19 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "",
                 "## Findings",
                 "",
+                *[
+                    "\n".join(
+                        [
+                            f"### Distractor {index}",
+                            "",
+                            "- Classification: `unknown`",
+                            "- Confidence: `0.10`",
+                            "- Source database: `arxiv`",
+                            "- Classification basis: pending verification",
+                        ]
+                    )
+                    for index in range(8)
+                ],
                 "### Prototype Calibration for Digits",
                 "",
                 "- Classification: `adjacent_work`",

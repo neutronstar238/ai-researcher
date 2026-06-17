@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-102 - Adjacent-work positioning warning was not tied to review-visible evidence
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:18:00 +08:00
+- Source: Real `task183_adjacent_positioning`, `task183_adjacent_positioning_v2`, and `task183_adjacent_positioning_v3` `serve --once` cycles.
+- Symptom: The first adjacent-work positioning implementation did not change the real manuscript because `_related_work()` passed only the first eight similarity findings, while the real adjacent-work rows appeared later in the similarity note. After passing all findings, the manuscript generated a long title-level adjacent-work table, but the LLM reviewer returned `needs_revision` because the row titles were not visible in compact review evidence and the statement `6 representative adjacent-work findings out of 14 parsed records` could be confused with the separate 65-row related-work inspection. The long table also caused one LaTeX overfull hbox.
+- Impact: The system could show a non-blocking adjacent-work warning even after a full green cycle, or could resolve the warning with prose that was not review-visible and not PDF-safe.
+- Evidence: `task183_adjacent_positioning` passed the cycle but publication audit still reported `Similarity check found 14 adjacent-work findings but only 0/6 representative rows were positioned in the manuscript.` `task183_adjacent_positioning_v2` wrote an Adjacent-Work Positioning table but ended with `review_status: needs_revision`, four follow-up tasks, and `paper_quality.failures=['layout_overflow']`.
+- Root cause: The manuscript generator sliced similarity findings before filtering for adjacent work. The first fix then made row-level title claims in the manuscript without adding a compact artifact to `analysis_artifact_paths`, so the review context could not bind those rows to evidence. The row-level table also carried long titles and basis strings into LaTeX.
+- Workaround: Before the fix, inspect the raw similarity note, manuscript, review evidence context, and paper-build JSON manually before treating an adjacent-work warning as resolved.
+- Next action: Keep adjacent-work positioning tied to generated artifacts that are included in LLM review evidence and avoid long unbreakable table content in publication PDFs.
+- Linked tasks: `183.1`
+- Resolution: Added `similarity-positioning-summary.json` and `.md` as manuscript analysis artifacts, passed all similarity findings into the manuscript positioning logic, changed the manuscript table to short family/count/boundary rows, and let publication audit pass adjacent-work risk only when the manuscript has an Adjacent-Work Positioning subsection and the positioning artifact reports adjacent-work coverage.
+- Verification: Focused manuscript/publication-audit tests, ruff, and mypy passed. The final real `task183_adjacent_positioning_v3` cycle passed LLM review (`verdict=pass`, `quality=1.000`), publication audit (`score=1.0`, `publishable=true`), evidence gate, and zero follow-up tasks. The generated 15-page PDF had `paper_quality.passed=true`, no overfull boxes, and `pdftotext` confirmed the positioning section was present while old placeholder and weak-reference strings were absent.
+
 ### P-20260618-101 - Related-work inspection overclassified weak variance and generic recognition papers
 
 - Status: Resolved

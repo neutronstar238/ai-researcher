@@ -132,6 +132,25 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     assert report.publishable is True
 
 
+def test_publication_audit_accepts_positioned_adjacent_work(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["similarity_duplicate_risk"].status.value == "pass"
+    assert "positions 6 representative adjacent-work rows" in checks[
+        "similarity_duplicate_risk"
+    ].message
+    assert report.verdict is PublicationAuditVerdict.PASS
+    assert report.publishable is True
+
+
 def test_publication_audit_blocks_missing_citation_package_for_ccfb(
     tmp_path: Path,
 ) -> None:
@@ -706,6 +725,29 @@ def _paper_style_report() -> str:
             "- Source-backed references.",
             "",
         ]
+    )
+
+
+def _paper_style_report_with_adjacent_positioning() -> str:
+    return _paper_style_report().replace(
+        "Source-backed related work.",
+        "\n".join(
+            [
+                "Source-backed related work.",
+                "",
+                "### Adjacent-Work Positioning",
+                "",
+                "| Retrieved work | Similarity status | Evidence basis | Positioning decision |",
+                "| --- | --- | --- | --- |",
+                *[
+                    (
+                        f"| Source {index} | adjacent_work | source-backed similarity "
+                        "classification | Representative adjacent-work boundary. |"
+                    )
+                    for index in range(6)
+                ],
+            ]
+        ),
     )
 
 
