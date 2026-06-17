@@ -62,6 +62,30 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:25:37 +08:00 - Codex - Task 131.1 publication problem-log reconciliation
+
+- Request:
+  - Continue running the project and keep the self-loop issue substrate aligned with the latest live publication-quality evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `131.1` to reconcile stale publication-readiness problem records after the task `128.1` live serve pass.
+  - Marked `P-20260613-016` resolved using the later live Pendigits variance-calibrated prototype cycle where review, publication audit, evidence gate, and follow-up queues passed.
+  - Marked `P-20260613-014` resolved as an archived negative result whose empirical-gain claims are now blocked by `method_effect_evidence`.
+  - Marked `P-20260613-004` resolved for the current real Pendigits loop while preserving future multi-dataset, stronger-baseline, and venue-template work as follow-up.
+- Verification:
+  - PowerShell JSON inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=True`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=True`, and `followup_tasks.Count=0`.
+  - `rg` on the task `128.1` cycle summary confirmed the demo is `pendigits_variance_calibrated_prototypes`, `literature.query_count=4`, 65 literature documents, 57 similarity findings, 65 verified citations, `paper_build.paper_quality.page_count=14`, and `research_plan.page_count=3`.
+  - `Test-Path runs\manual-live\task128-serve-final\outputs\task128_serve_final\task128_serve_final-cycle-20260617T150322Z.pdf`: returned `True`.
+  - `rg -n 'accuracy|baseline|delta'` on task `76.1` and task `78.1` metrics confirmed the negative shrinkage delta and separate positive variance-calibrated delta remain recorded.
+  - `rg` checks confirmed `P-20260613-004`, `P-20260613-014`, and `P-20260613-016` now show `Status: Resolved`, and task `131.1` is present in `tasks.md`.
+- Problems:
+  - Resolved stale records `P-20260613-004`, `P-20260613-014`, and `P-20260613-016`.
+- Follow-up:
+  - Continue tackling still-current open or mitigated problems such as HKUDS license uncertainty, OS-level network sandboxing, and cross-topic release robustness.
+
 ### 2026-06-17 23:20:15 +08:00 - Codex - Task 130.1 Requests dependency diagnostics
 
 - Request:

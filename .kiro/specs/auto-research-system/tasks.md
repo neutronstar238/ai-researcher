@@ -1870,6 +1870,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260612-057`; repeated verification warning that polluted local test output._
     - _Verify: `python -m ruff check src\autoresearch\observability\dependencies.py src\autoresearch\observability\__init__.py src\autoresearch\cli\main.py tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\observability\dependencies.py src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py::test_doctor_command_checks_local_scaffold -q` passed with 4 tests; `poetry run airesearcher doctor` reported `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`, while the host Python 3.13 still emitted the known external warning after command completion; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 488 passed, 4 skipped, and 1 warning._
 
+- [x] 131. Publication problem-log reconciliation
+  - [x] 131.1 Close stale publication-readiness problem records using latest live evidence
+    - Reconcile old open problem records that were created before the review-driven manuscript repair and final live serve pass.
+    - Mark the positive Pendigits method-effect publication-readiness blocker as resolved only if a later live cycle has review, publication audit, evidence gate, and follow-up queues passing.
+    - Mark the first negative shrinkage method candidate as resolved as an archived negative result rather than a still-open defect.
+    - Mark the broad live full-loop publication-readiness problem as resolved by the latest publishable live serve cycle, while preserving future multi-dataset/venue work as follow-up rather than weakening the historical evidence.
+    - Do not change runtime code or stale artifacts; this is a bookkeeping task to keep the self-loop issue substrate current.
+    - _References: `P-20260613-004`, `P-20260613-014`, `P-20260613-016`, task `128.1` live pass._
+    - _Verify: `rg` confirmed the task `128.1` cycle summary records `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=true`, `followup_tasks=[]`, 65 literature documents, 57 similarity findings, 65 verified citations, a 14-page paper build, and a 3-page research plan; `Test-Path` confirmed the exported task `128.1` paper PDF exists; `rg` confirmed the task `76.1` negative shrinkage metrics and task `78.1` positive variance-calibrated metrics remain recorded._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2306,6 +2316,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 97,
       "tasks": ["130.1"]
+    },
+    {
+      "id": 98,
+      "tasks": ["131.1"]
     }
   ]
 }
