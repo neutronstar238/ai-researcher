@@ -1043,6 +1043,7 @@ def deploy_setup(
     if wechat_enabled and wechat_values["connection_mode"] == "qr":
         typer.echo(f"[NEXT] wechat_qr_setup: {WECHAT_QR_SETUP_COMMAND}")
         if run_wechat_qr_setup:
+            typer.echo("[RUN] wechat_qr_setup: starting QR adapter setup now")
             _run_wechat_qr_setup(status_path=env_path.parent / WECHAT_QR_SETUP_STATUS_PATH)
     _echo_post_setup_next_steps(
         wechat_enabled=wechat_enabled,

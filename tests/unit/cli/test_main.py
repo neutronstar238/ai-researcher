@@ -1203,6 +1203,7 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
     assert calls == ["qr"]
     assert "[OK] wechat: enabled (qr)" in result.stdout
     assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+    assert "[RUN] wechat_qr_setup: starting QR adapter setup now" in result.stdout
     assert (
         "[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent"
         in result.stdout

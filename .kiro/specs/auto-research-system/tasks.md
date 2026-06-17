@@ -2309,6 +2309,14 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that publication-grade PDFs be generated under the project-root `outputs/` folder with relative paths._
     - _Verify: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task177-root-output\vault --cache runs\manual-live\task177-root-output\cache --output-dir runs\manual-live\task177-root-output\runs --state runs\manual-live\task177-root-output\scheduler-state.json --approvals-state runs\manual-live\task177-root-output\approvals.json --sessions-state runs\manual-live\task177-root-output\sessions.json --project-id task177_root_output --timeout-seconds 120 --no-push-inspiration` passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task177_root_output/task177_root_output-cycle-20260617T212210Z.pdf`; manifest `outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z-manifest.json` records relative paths; `pdfinfo outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z.pdf` reported 14 pages and PDF version 1.7._
 
+- [x] 178. Guided WeChat QR setup terminal clarity
+  - [x] 178.1 Show an explicit run-state line before launching the QR adapter setup
+    - Keep interactive setup behavior unchanged: choosing WeChat QR still starts the upstream QR setup runner after config and `.env` are written.
+    - Add a visible `[RUN] wechat_qr_setup` line immediately before the runner starts so operators can see that setup has moved from "next step" into the live scan/login phase.
+    - Extend the guided setup regression test to assert the explicit run-state line.
+    - _References: tasks `120.1`, `153.1`, and `173.1`; user requirement that choosing WeChat QR during setup should display the QR scan flow immediately rather than requiring a hidden later command._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

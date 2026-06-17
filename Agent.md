@@ -7974,3 +7974,24 @@ This file defines the project development standard for coding agents and records
   - None added or updated.
 - Follow-up:
   - The next operator-channel verification should use the same default deliverables path once WeChat or Feishu setup is paired by the user.
+
+### 2026-06-18 05:28:57 +08:00 - Codex - Task 178.1 Guided WeChat QR setup terminal clarity
+
+- Request: Continue V1.0 setup hardening so choosing WeChat QR during guided setup visibly starts the scan/login flow rather than looking like a deferred next command.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added an explicit `[RUN] wechat_qr_setup: starting QR adapter setup now` line immediately before `deploy_setup` invokes the QR setup runner.
+  - Extended the guided setup regression test to assert the run-state line while keeping the existing QR runner call assertion.
+  - Recorded task `178.1` as complete in the executable task plan.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - A real QR scan still requires the operator to run setup interactively and scan the upstream Weixin adapter code; after pairing, bind the OpenClaw target and run `channels test --channel wechat --require-sent`.
