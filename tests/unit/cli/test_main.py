@@ -2529,6 +2529,22 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert len(review_calls) == 1
 
 
+def test_review_status_display_blocks_needs_revision_verdict() -> None:
+    prefix, status = cli_main._review_status_display(
+        {"status": "passed", "verdict": "needs_revision", "quality_score": 1.0}
+    )
+
+    assert prefix == "[BLOCKED]"
+    assert status == "passed; verdict=needs_revision; quality=1.000"
+
+
+def test_review_status_display_keeps_skipped_review_compact() -> None:
+    prefix, status = cli_main._review_status_display({"status": "skipped"})
+
+    assert prefix == "[OK]"
+    assert status == "skipped"
+
+
 def test_autopilot_research_plan_gate_blocks_before_experiment(
     tmp_path: Path,
     monkeypatch,
@@ -3757,6 +3773,37 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "Reviewer verdict is `needs_revision`" in rows["evidence"][1]
     assert rows["follow-ups"][0] == "1 open / 2 total"
     assert "evidence-gate.md" in rows["follow-ups"][1]
+
+
+def test_publication_monitor_distinguishes_warnings_from_blockers(tmp_path: Path) -> None:
+    summary_path = tmp_path / "cycle-summary.json"
+    payload = {
+        "publication_audit": {
+            "verdict": "pass",
+            "score": 0.985,
+            "target": {"name": "ccf-b"},
+            "checks": [
+                {
+                    "check_id": "similarity_duplicate_risk",
+                    "status": "warning",
+                    "severity": "high",
+                    "message": "Similarity check found adjacent-work findings that need positioning.",
+                    "next_action": "Write a related-work comparison before publication review.",
+                }
+            ],
+            "output_path": "runs/project_1/publication-audit.json",
+        }
+    }
+
+    rows = {
+        stage: (status, evidence)
+        for stage, status, evidence in cli_main._cycle_stage_rows(payload, summary_path=summary_path)
+    }
+
+    assert "warnings=1" in rows["publication"][0]
+    assert "blockers=" not in rows["publication"][0]
+    assert "issue: Similarity check found adjacent-work findings" in rows["publication"][1]
+    assert "blocker:" not in rows["publication"][1]
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:

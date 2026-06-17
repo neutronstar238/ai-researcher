@@ -3128,7 +3128,8 @@ def autopilot(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_research_plan_status(summary)
-            typer.echo(f"[OK] review_status: {summary['review']['status']}")
+            review_prefix, review_status = _review_status_display(summary.get("review"))
+            typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
                 typer.echo(
                     "[OK] publication_audit: "
@@ -3390,7 +3391,8 @@ def serve(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_research_plan_status(summary)
-            typer.echo(f"[OK] review_status: {summary['review']['status']}")
+            review_prefix, review_status = _review_status_display(summary.get("review"))
+            typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
                 typer.echo(
                     "[OK] publication_audit: "
@@ -6038,6 +6040,29 @@ def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
     typer.echo(f"{prefix} research_plan: {verdict}")
 
 
+def _review_status_display(review: object) -> tuple[str, str]:
+    if not isinstance(review, Mapping):
+        return "[BLOCKED]", "missing"
+
+    status = str(review.get("status", "unknown"))
+    parts = [status]
+    verdict = review.get("verdict")
+    if isinstance(verdict, str) and verdict:
+        parts.append(f"verdict={verdict}")
+    score = review.get("quality_score")
+    if isinstance(score, (int, float)) and not isinstance(score, bool):
+        parts.append(f"quality={score:.3f}")
+
+    failed_statuses = {"failed", "below_threshold"}
+    pass_verdicts = {"pass", "passed"}
+    review_blocks_release = (
+        status in failed_statuses
+        or (status == "passed" and isinstance(verdict, str) and verdict not in pass_verdicts)
+    )
+    prefix = "[BLOCKED]" if review_blocks_release else "[OK]"
+    return prefix, "; ".join(parts)
+
+
 def _collect_setup_wizard_values(
     *,
     config_path: Path,
@@ -6675,6 +6700,7 @@ def _cycle_stage_rows(
                 "publication_audit",
                 ("markdown_path", "json_path", "output_path"),
                 summary_path,
+                issue_label="issue",
             ),
         ),
         (
@@ -6842,10 +6868,15 @@ def _publication_audit_status(payload: Mapping[str, Any]) -> str:
     target = value.get("target")
     if isinstance(target, Mapping) and target.get("name"):
         status = f"{status}; target={target['name']}"
-    blockers = _failed_gate_checks(value)
+    blockers = _blocking_gate_checks(value)
     if blockers:
         first_id = str(blockers[0].get("check_id") or "unnamed_check")
         status = f"{status}; blockers={len(blockers)}; first={_truncate_cell(first_id, limit=32)}"
+        return status
+    warnings = _failed_gate_checks(value)
+    if warnings:
+        first_id = str(warnings[0].get("check_id") or "unnamed_check")
+        status = f"{status}; warnings={len(warnings)}; first={_truncate_cell(first_id, limit=32)}"
     return status
 
 
@@ -6910,6 +6941,8 @@ def _gate_evidence(
     key: str,
     fields: tuple[str, ...],
     summary_path: Path,
+    *,
+    issue_label: str = "blocker",
 ) -> str:
     evidence = _cycle_evidence(payload, key, fields, summary_path)
     value = payload.get(key)
@@ -6922,14 +6955,14 @@ def _gate_evidence(
     parts: list[str] = []
     message = blocker.get("message")
     if isinstance(message, str) and message.strip():
-        parts.append(f"blocker: {message.strip()}")
+        parts.append(f"{issue_label}: {message.strip()}")
     next_action = blocker.get("next_action")
     if isinstance(next_action, str) and next_action.strip():
         parts.append(f"next: {next_action.strip()}")
     if not parts:
         check_id = blocker.get("check_id")
         if check_id is not None:
-            parts.append(f"blocker: {check_id}")
+            parts.append(f"{issue_label}: {check_id}")
     if not parts:
         return evidence
     detail = _truncate_cell("; ".join(parts), limit=160)
@@ -6943,6 +6976,16 @@ def _failed_gate_checks(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
         if status and status not in {"pass", "passed", "ok", "success"}:
             failed.append(check)
     return failed
+
+
+def _blocking_gate_checks(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    blocking: list[Mapping[str, Any]] = []
+    for check in _failed_gate_checks(value):
+        status = str(check.get("status") or "").casefold()
+        severity = str(check.get("severity") or "").casefold()
+        if status in {"fail", "failed", "blocked", "error"} or severity == "blocking":
+            blocking.append(check)
+    return blocking
 
 
 def _summary_followup_tasks(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:

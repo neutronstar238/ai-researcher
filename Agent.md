@@ -7906,3 +7906,31 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-096` added and resolved.
 - Follow-up:
   - Re-run a full `serve --once --permission-mode allow-all` cycle on the new default when operator-channel delivery is configured, then inspect publication/evidence gates for remaining publication-readiness blockers.
+
+### 2026-06-18 05:15:16 +08:00 - Codex - Task 176.1 Review verdict and publication warning console honesty
+
+- Request: Continue launch hardening with real full-cycle evidence and strict quality-gate wording.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added review status display text that includes review execution status, reviewer verdict, and quality score.
+  - Marked `serve` and `autopilot` review lines as `[BLOCKED]` when the LLM review ran successfully but returned a non-pass verdict such as `needs_revision`.
+  - Split monitor publication audit non-pass checks into blocking `blockers` and non-blocking `warnings`.
+  - Changed publication warning evidence text from `blocker:` to `issue:` while preserving blocker wording for true evidence-gate blockers.
+- Verification:
+  - Real default cycle before the display fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task176-default-serve\vault --cache runs\manual-live\task176-default-serve\cache --output-dir runs\manual-live\task176-default-serve\runs --deliverables-dir runs\manual-live\task176-default-serve\outputs --state runs\manual-live\task176-default-serve\scheduler-state.json --approvals-state runs\manual-live\task176-default-serve\approvals.json --sessions-state runs\manual-live\task176-default-serve\sessions.json --project-id task176_default_serve --timeout-seconds 120 --no-push-inspiration` completed with `review.status=passed`, `review.verdict=needs_revision`, `evidence_gate=blocked`, and five follow-up tasks.
+  - Real default cycle after the display fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task176-review-status\vault --cache runs\manual-live\task176-review-status\cache --output-dir runs\manual-live\task176-review-status\runs --deliverables-dir runs\manual-live\task176-review-status\outputs --state runs\manual-live\task176-review-status\scheduler-state.json --approvals-state runs\manual-live\task176-review-status\approvals.json --sessions-state runs\manual-live\task176-review-status\sessions.json --project-id task176_review_status --timeout-seconds 120 --no-push-inspiration` completed with `[OK] review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and PDF output under `runs\manual-live\task176-review-status\outputs`.
+  - Real monitor rerun on `cycle-20260617T210941Z` displayed `publication pass; score=0.985; target=ccf-b; warnings=1` and `issue: Similarity check...`, while `evidence` displayed `pass; failed=0; release_allowed=true`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_review_status_display_blocks_needs_revision_verdict tests\unit\cli\test_main.py::test_review_status_display_keeps_skipped_review_compact tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview tests\unit\cli\test_main.py::test_publication_monitor_distinguishes_warnings_from_blockers -q`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 521 passed and 4 skipped.
+- Problems:
+  - `P-20260618-097` added and resolved.
+- Follow-up:
+  - The real pass cycle is release-gate clean, but its publication warning still notes adjacent-work positioning; keep the warning visible in monitor and paper review notes.

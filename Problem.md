@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-097 - Review and publication gate console wording could overstate readiness
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:12:00 +08:00
+- Source: Real default `serve --once --permission-mode allow-all` cycle `runs/manual-live/task176-default-serve/runs/cycle-20260617T210513Z/cycle-summary.json`.
+- Symptom: The main CLI printed `[OK] review_status: passed` even though the LLM review artifact had `verdict=needs_revision`; the monitor also displayed `publication pass` with `blockers=1` for a `status=warning`, `severity=high` publication-audit check.
+- Impact: Operators could misread an executed-but-negative LLM review as paper readiness, or misread a non-blocking publication warning as a release blocker.
+- Evidence: The first task176 real cycle had `review.status=passed`, `review.verdict=needs_revision`, `review.quality_score=1.0`, `evidence_gate.verdict=blocked`, and five follow-up tasks. The later pass cycle had a publication-audit warning for adjacent-work positioning while `publication_audit.verdict=pass` and `evidence_gate.release_allowed=true`.
+- Root cause: `serve` and `autopilot` echoed only `review.status`, while monitor publication status treated all non-pass audit checks as blockers.
+- Workaround: Before the fix, inspect `llm-review.json`, `publication-audit.json`, and `evidence-gate.json` manually.
+- Next action: Keep CLI summaries aligned with release gates: execution success, reviewer verdict, warnings, and blockers are separate concepts.
+- Linked tasks: `176.1`
+- Resolution: Added review status display text with verdict and quality score; marked non-pass review verdicts as `[BLOCKED]`; split monitor publication checks into blocking blockers versus non-blocking warnings; and changed publication warning evidence text to `issue:`.
+- Verification: Focused review/monitor tests passed; real monitor rerun on `cycle-20260617T210941Z` displayed `warnings=1` and `issue:` for the publication warning while evidence gate remained `pass`.
+
 ### P-20260618-096 - Always-on default used toy baseline unsuitable for publication gates
 
 - Status: Resolved
