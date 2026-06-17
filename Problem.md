@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-106 - Compact formal-reference evidence truncated dotted URL locators
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:15:00 +08:00
+- Source: Follow-up inspection of `task186_formal_reference_directness_v2` after formal bibliography relevance was fixed.
+- Symptom: The publication PDF rendered full arXiv URLs, but the compact `formal-reference-evidence.md` table showed `Manuscript locator` values such as `http://arxiv` for arXiv references.
+- Impact: The audit artifact could make reference traceability look weaker than it actually was, and a reviewer or downstream gate could mistake a display extraction bug for missing citation evidence.
+- Evidence: `runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\formal-reference-evidence.md` showed arXiv rows with manuscript locators of exact backtick-wrapped `http://arxiv` even though the row title and PDF text contained full `http://arxiv.org/abs/...` URLs.
+- Root cause: `_autopilot_reference_title_and_locator()` used `https?://[^\s.]+`, so URL extraction stopped at the first dot in dotted domains.
+- Workaround: Before the fix, inspect the full title/reference line or PDF text rather than relying on the compact `Manuscript locator` column for arXiv rows.
+- Next action: None for the current locator truncation; future work can make the compact title column cleaner if row length becomes a reviewer readability issue.
+- Linked tasks: `187.1`
+- Resolution: Changed URL matching to consume the full non-whitespace URL and strip only trailing punctuation, and added a regression assertion for a dotted URL without the legacy DOI/URL marker.
+- Verification: Focused CLI test, ruff, and mypy passed. The real `task187_formal_locator_integrity` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; its `formal-reference-evidence.md` preserved full `http://arxiv.org/abs/...` manuscript locators, while the paper PDF stayed at 15 pages with zero overfull hboxes and 10 formal bibliography items.
+
 ### P-20260618-105 - Formal bibliography admitted broad domain-only handwritten-recognition references
 
 - Status: Resolved

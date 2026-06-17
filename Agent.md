@@ -62,6 +62,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 07:19:54 +08:00 - Codex - Task 187.1 Formal reference locator integrity
+
+- Request:
+  - Continue launch-quality hardening after the compact formal-reference evidence artifact still truncated arXiv manuscript locators.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Fixed `_autopilot_reference_title_and_locator()` so dotted URLs are captured as full non-whitespace locators and only trailing punctuation is stripped.
+  - Added regression coverage where a formal manuscript reference line contains a dotted URL without the legacy `DOI/URL evidence` marker.
+  - Recorded completed task `187.1` and resolved `P-20260618-106`.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task187-formal-locator-integrity\vault --cache runs\manual-live\task187-formal-locator-integrity\cache --output-dir runs\manual-live\task187-formal-locator-integrity\runs --deliverables-dir outputs --state runs\manual-live\task187-formal-locator-integrity\scheduler-state.json --approvals-state runs\manual-live\task187-formal-locator-integrity\approvals.json --sessions-state runs\manual-live\task187-formal-locator-integrity\sessions.json --project-id task187_formal_locator_integrity --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and root PDF output under `outputs/task187_formal_locator_integrity/`.
+  - `Get-Content -Raw runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\formal-reference-evidence.md`: confirmed full `http://arxiv.org/abs/...` manuscript locators and no exact backtick-wrapped `http://arxiv` fragments.
+  - `Get-Content -Raw runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\paper-build\paper-build.json`: reported `paper_quality.passed=true`, `bibliography_item_count=10`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `pdfinfo outputs\task187_formal_locator_integrity\task187_formal_locator_integrity-cycle-20260617T231659Z.pdf`: reported 15 pages.
+  - `pdftotext outputs\task187_formal_locator_integrity\task187_formal_locator_integrity-cycle-20260617T231659Z.pdf - | Select-String -Pattern 'Bangla|MLP|Handcrafted|Wahid|Basu|Boolean|Catoni|References|http://arxiv.org|https://doi.org|doi:'`: confirmed reference locator text remains present in the PDF and broad excluded references did not reappear.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed with 75 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-106`.
+- Follow-up:
+  - None for locator truncation.
+
 ### 2026-06-18 07:12:26 +08:00 - Codex - Task 186.1 Formal bibliography directness
 
 - Request:

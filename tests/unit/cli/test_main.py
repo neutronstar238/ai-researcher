@@ -2271,7 +2271,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
                     "",
                     (
                         "- [researcher2026] Evidence graphs for autonomous research. "
-                        "DOI/URL evidence: 10.1234/example."
+                        "https://example.test/paper.v1."
                     ),
                     (
                         "- [Citation package note] 2 additional verified record(s) remain in "
@@ -2501,6 +2501,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         encoding="utf-8"
     )
     assert "`researcher2026`" in formal_reference_note
+    assert "`https://example.test/paper.v1`" in formal_reference_note
+    assert "`https://example`" not in formal_reference_note
     assert "all_displayed_keys_present" in formal_reference_note
     review_context = json.loads(
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
@@ -2533,6 +2535,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert formal_references["displayed_references"][0]["key"] == "researcher2026"
     assert formal_references["displayed_references"][0]["citation_metadata_status"] == (
         "verified_doi"
+    )
+    assert formal_references["displayed_references"][0]["doi_or_url_evidence"] == (
+        "https://example.test/paper.v1"
     )
     assert (
         "Evidence graphs for autonomous research"

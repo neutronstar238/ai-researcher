@@ -4766,11 +4766,11 @@ def _autopilot_reference_title_and_locator(tail: str) -> tuple[str, str]:
         return title.strip(), locator.rstrip(".").strip()
     locator = ""
     locator_match = re.search(
-        r"(doi:\S+|https?://[^\s.]+|source URL recorded in artifact)",
+        r"(doi:\S+|https?://\S+|source URL recorded in artifact)",
         tail,
     )
     if locator_match is not None:
-        locator = locator_match.group(1).rstrip(".")
+        locator = locator_match.group(1).rstrip(".,;)")
     return tail.rstrip(".").strip(), locator
 
 
