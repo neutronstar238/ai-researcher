@@ -256,6 +256,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
+| `serve` | `--approval-poll-seconds 30` | 等待危险 cycle 审批时的轮询间隔；和每日 cycle 间隔分开。 |
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |

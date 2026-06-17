@@ -3148,6 +3148,14 @@ def serve(
         int,
         typer.Option("--interval-seconds", min=1, help="Delay between runtime checks or cycles."),
     ] = 86400,
+    approval_poll_seconds: Annotated[
+        int,
+        typer.Option(
+            "--approval-poll-seconds",
+            min=1,
+            help="Delay between approval queue checks while waiting for /approve.",
+        ),
+    ] = 30,
 ) -> None:
     """Run AI-Researcher as an always-on local/server operator service."""
 
@@ -3169,6 +3177,7 @@ def serve(
         cycles=cycles,
         interval_seconds=interval_seconds,
         push_inspiration=push_inspiration,
+        approval_poll_seconds=approval_poll_seconds,
     )
     resolved_sessions_state = _resolve_runtime_sessions_state(
         sessions_state,
@@ -3213,7 +3222,7 @@ def serve(
                 )
                 if not watch:
                     raise typer.Exit(code=2)
-                time.sleep(interval_seconds)
+                time.sleep(approval_poll_seconds)
                 continue
 
             completed += 1
@@ -5856,6 +5865,7 @@ def _echo_loop_plan(
     cycles: int,
     interval_seconds: int,
     push_inspiration: bool,
+    approval_poll_seconds: int | None = None,
 ) -> None:
     if not watch:
         mode = "single-cycle"
@@ -5866,11 +5876,17 @@ def _echo_loop_plan(
     else:
         mode = "watch-limited"
         cycle_detail = str(cycles)
+    approval_text = (
+        f", approval_poll_seconds={approval_poll_seconds}"
+        if approval_poll_seconds is not None
+        else ""
+    )
     typer.echo(
         "[OK] loop_plan: "
         f"command={command_name}, mode={mode}, cycles={cycle_detail}, "
         f"interval_seconds={interval_seconds}, "
         f"push_inspiration={str(push_inspiration).lower()}"
+        f"{approval_text}"
     )
 
 

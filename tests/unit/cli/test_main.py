@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 import autoresearch.cli.main as cli_main
@@ -2826,7 +2827,8 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
     assert "[OK] runtime_mode: allow-all" in result.stdout
     assert (
         "[OK] loop_plan: command=serve, mode=single-cycle, "
-        "cycles=1, interval_seconds=86400, push_inspiration=true"
+        "cycles=1, interval_seconds=86400, push_inspiration=true, "
+        "approval_poll_seconds=30"
     ) in result.stdout
     assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
@@ -2908,6 +2910,52 @@ def test_serve_blocks_overlapping_runtime_session_before_cycle(
     assert "[FAIL] runtime session claim overlaps an active agent session" in blocked.output
     assert "serve_cycle" not in blocked.stdout
     assert not approvals_state.exists()
+
+
+def test_serve_watch_uses_approval_poll_interval_before_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    sleeps: list[int] = []
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should wait for approval before running a cycle")
+
+    def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise typer.Exit(3)
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    monkeypatch.setattr(cli_main.time, "sleep", fake_sleep)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "serve",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--interval-seconds",
+            "86400",
+            "--approval-poll-seconds",
+            "7",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 3, result.output
+    assert sleeps == [7]
+    assert (
+        "[OK] loop_plan: command=serve, mode=watch-forever, "
+        "cycles=unbounded, interval_seconds=86400, push_inspiration=false, "
+        "approval_poll_seconds=7"
+    ) in result.stdout
+    assert "[WAITING] approval_required:" in result.stdout
+    assert "serve_cycle" not in result.stdout
 
 
 def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:

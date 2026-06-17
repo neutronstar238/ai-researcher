@@ -7506,3 +7506,32 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Once a WeChat or Feishu channel is configured and self-tested, run strict `npm run prelaunch`, then start `npm run serve` or `airesearcher serve --permission-mode approve-dangerous --push-inspiration` for the 24h loop.
+
+### 2026-06-18 03:25:55 +08:00 - Codex - Task 163.1 Runtime approval polling responsiveness
+
+- Request: Continue V1.0 hardening so dangerous-command approval in the always-on service does not wait for the 24h daily cycle interval.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `serve --approval-poll-seconds` with a 30-second default.
+  - Changed the pending-approval wait branch to sleep with `approval_poll_seconds` instead of the daily `interval_seconds`.
+  - Included `approval_poll_seconds` in `serve` loop-plan output.
+  - Documented the new parameter in the English and Chinese README command reference.
+  - Added a watch-mode regression test proving approval polling does not use the 86400-second daily interval.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing note for scoped commands that do not touch the LangChain/LangGraph override.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval -q`: passed, 3 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 509 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-084` added and resolved.
+- Follow-up:
+  - When IM `/approve` wiring is implemented end to end, use this short approval poll path rather than changing the daily cycle interval.

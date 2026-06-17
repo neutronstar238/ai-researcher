@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-084 - Serve approval wait reused the 24h daily cycle interval
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:25:55 +08:00
+- Source: Code inspection after task `162.1` made serve startup schedule output explicit.
+- Symptom: In watch mode, `serve` used `interval_seconds` both after completed cycles and while waiting for a dangerous-cycle approval.
+- Impact: With the documented default `--interval-seconds 86400`, a default `npm run serve` process could wait up to 24 hours before noticing that the operator approved a queued dangerous action.
+- Evidence: The `ensure_runtime_approval` wait branch called `time.sleep(interval_seconds)` before re-checking the approval queue.
+- Root cause: The service reused the daily cycle interval for two different waits: post-cycle scheduling and pending-approval polling.
+- Workaround: Before the fix, operators could lower `--interval-seconds`, but that also changed the daily cycle cadence.
+- Next action: Keep approval polling and daily cycle cadence separate when adding IM approval integration.
+- Linked tasks: `163.1`
+- Resolution: Added `serve --approval-poll-seconds` with a 30-second default, used it only for approval wait sleeps, and documented it in README files.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle -q` passed and confirmed the approval wait branch slept for `7`, not `86400`.
+
 ### P-20260618-083 - Agent import regression test reused an existing test module basename
 
 - Status: Resolved
