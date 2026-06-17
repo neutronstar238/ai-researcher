@@ -62,6 +62,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:12:00 +08:00 - Codex - Task 140.1 publication figure readability hardening
+
+- Request:
+  - Continue running the project, perform final publication-quality QA, and fix concrete output-quality issues instead of only trusting automated gates.
+- Files changed:
+  - `src/autoresearch/reports/figures.py`
+  - `tests/unit/reports/test_figures.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `140.1` and its task-dependency graph node.
+  - Reworked deterministic metric figures from vertical bars with truncated raw metric keys into horizontal source-backed bar charts with readable metric labels.
+  - Preserved raw metric keys, values, source path, and figure paths in metadata while adding human-readable labels and an explicit `horizontal` orientation.
+  - Added figure tests that prove long metric keys are rendered as readable labels in metadata and PDF output.
+  - Ran a real autonomous Pendigits cycle after the fix and confirmed the release PDF uses the improved figure while preserving publication audit and evidence-gate pass status.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\figures.py tests\unit\reports\test_figures.py`: passed.
+  - `python -m pytest tests\unit\reports\test_figures.py -q`: passed, 3 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - Manual figure generation without `PYTHONPATH=src`: failed with `ModuleNotFoundError: No module named 'autoresearch'`; retried with `$env:PYTHONPATH='src'` and passed.
+  - Real `node .\bin\airesearcher.mjs autopilot --project-id live_release_candidate_20260617_v2 --demo pendigits_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id generic-article-one-column`: passed source preflight, research-plan gate, live LLM review, publication audit, evidence gate, deliverable export, and session release.
+  - `pdfinfo outputs\live_release_candidate_20260617_v2\live_release_candidate_20260617_v2-cycle-20260617T160833Z.pdf`: passed; 14 pages.
+  - Paper-build JSON inspection: passed with `paper_quality.passed=true`, `figure_count=1`, `table_count=2`, `page_count=14`, `word_count=3861`, and `overfull_hbox_count=0`.
+  - Visual rendering of PDF pages 8, 12, and 14: passed; figure labels are readable, references are numeric, and tables do not overflow. `pdftoppm` still prints the known non-blocking `No display font for 'ArialUnicode'` renderer warning while producing PNGs.
+  - `pdftotext` reference scan: passed; no `[Cycle summary]`, `[Validation]`, or `[Literature refresh]` labels appear as formal references.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\autopilot\cycle-20260617T160833Z\paper-build\compile.log runs\autopilot\cycle-20260617T160833Z\live_release_candidate_20260617_v2\research-plan\research-plan.compile.log`: returned no matches.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 491 passed, 4 skipped, 1 warning.
+- Problems:
+  - Added and resolved `P-20260617-072`.
+- Follow-up:
+  - Consider adding a deterministic visual-readability gate for metric figures if future PDFs regress; current task keeps the fix focused on the observed release PDF issue.
+
 ### 2026-06-17 23:55:15 +08:00 - Codex - Task 139.1 code-agent trust-boundary reconciliation
 
 - Request:

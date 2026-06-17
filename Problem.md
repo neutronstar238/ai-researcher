@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260617-072 - Metric figure labels were too small and truncated in release PDF
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:05:00 +08:00
+- Source: Manual visual QA after real `live_release_candidate_20260617` autopilot cycle.
+- Symptom: The paper quality gate passed and the PDF had one figure, but Figure 1 used vertical bars with tiny truncated raw metric keys such as `accuracy_delta_...`, making the visual weaker than the surrounding paper artifact.
+- Impact: A release PDF could pass machine checks while still being hard for a reviewer to read, especially for long metric names. This weakened the "publication-ready" claim even though the underlying metric evidence was valid.
+- Evidence: Visual rendering of `outputs/live_release_candidate_20260617/live_release_candidate_20260617-cycle-20260617T160217Z.pdf` page 8 showed raw metric labels compressed below vertical bars.
+- Root cause: The deterministic lightweight figure generator rendered sorted raw metric keys as horizontal axis labels and truncated labels longer than 18 characters.
+- Workaround: None needed after task `140.1`.
+- Next action: Keep visual PDF rendering in release checks; consider promoting label readability into a deterministic paper-quality check if future artifacts regress.
+- Linked tasks: `140.1`
+- Resolution: Reworked metric figures into horizontal bar charts with human-readable labels while preserving raw metric keys in metadata.
+- Verification: Focused figure tests, ruff, mypy, full smoke/unit tests, and a real `live_release_candidate_20260617_v2` autonomous cycle passed. Visual rendering of the new release PDF confirmed readable metric labels; paper-build JSON recorded `paper_quality.passed=true`, `figure_count=1`, `table_count=2`, `page_count=14`, and `overfull_hbox_count=0`.
+
 ### P-20260617-071 - Research-plan PDF compile log still reports an overfull line
 
 - Status: Resolved

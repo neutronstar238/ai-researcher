@@ -1955,6 +1955,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260613-007`; user decision to move from cc-switch/Claude Code compatibility concerns to direct OpenCode while keeping AI-Researcher as code acceptance owner._
     - _Verify: real `node .\bin\airesearcher.mjs code-agents opencode list` printed backend `opencode-direct` with `validator=AI-Researcher`; real `node .\bin\airesearcher.mjs code-agents cc-switch list` printed backend `claude-code-via-cc-switch` with `validator=AI-Researcher`; `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q` passed with 9 tests._
 
+- [x] 140. Publication figure readability hardening
+  - [x] 140.1 Render source-backed metric figures with readable labels
+    - Treat the final PDF visual QA issue as a release-facing quality defect: generated metric figures must not expose truncated raw metric keys as tiny axis labels.
+    - Render metric figures as horizontal source-backed bar charts with human-readable labels while preserving raw metric keys and values in metadata.
+    - Keep the figure lightweight and deterministic so CI does not require a plotting dependency.
+    - Add focused tests proving long metric keys are mapped to readable labels and are not emitted as truncated raw labels inside the generated figure PDF.
+    - Re-run a real autonomous Pendigits cycle and visually inspect the generated paper PDF pages for figure readability, references, tables, page count, and overfull boxes.
+    - _References: `P-20260617-072`; user PDF QA feedback that paper artifacts need readable citations, figures, and data analysis instead of text-only or malformed output._
+    - _Verify: `python -m ruff check src\autoresearch\reports\figures.py tests\unit\reports\test_figures.py` passed; `python -m pytest tests\unit\reports\test_figures.py -q` passed with 3 tests; `python -m mypy src\autoresearch` passed; real `node .\bin\airesearcher.mjs autopilot --project-id live_release_candidate_20260617_v2 --demo pendigits_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id generic-article-one-column` passed source preflight, research plan, live LLM review, publication audit, evidence gate, and deliverable export; `pdfinfo` confirmed the release PDF has 14 pages; paper-build JSON recorded `figure_count=1`, `table_count=2`, `overfull_hbox_count=0`, `page_count=14`, and `paper_quality.passed=true`; visual PDF rendering confirmed the metric figure uses readable horizontal labels and the references/tables do not overflow; `pdftotext` confirmed numeric references and no old operational reference labels; `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error"` over paper and research-plan compile logs returned no matches; `python -m ruff check src tests` passed; `python -m pytest tests\smoke tests\unit -q` passed with 491 passed, 4 skipped, and 1 warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2427,6 +2437,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 106,
       "tasks": ["139.1"]
+    },
+    {
+      "id": 107,
+      "tasks": ["140.1"]
     }
   ]
 }
