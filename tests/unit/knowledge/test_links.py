@@ -20,7 +20,18 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
         entry_type=KnowledgeEntryType.PAPER_NOTE,
         zone=KnowledgeZone.EXPLORATION,
         title="Paper One",
-        keywords=["alignment"],
+        keywords=[
+            "alignment",
+            "are",
+            "adds",
+            "candidate_deepseek_live_similarity",
+            "autopilot_ai_researcher_task118_20260615023141",
+            (
+                "nearest-centroid baselines are reproducible and interpretable, but a publication "
+                "claim requires checking whether variance-calibrated prototype distance has already "
+                "been covered"
+            ),
+        ],
         body="A paper note.",
     )
     skill = KnowledgeEntry(
@@ -28,7 +39,13 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
         entry_type=KnowledgeEntryType.SKILL_CARD,
         zone=KnowledgeZone.EXPLORATION,
         title="Review Skill",
-        keywords=["alignment", "review"],
+        keywords=[
+            "alignment",
+            "review",
+            "similarity_classification_coverage",
+            "source-circuit-breakers.json.lock",
+            "source-preflight",
+        ],
         body="A skill card.",
     )
     experiment = KnowledgeEntry(
@@ -56,5 +73,13 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
     assert loaded_skill.backlinks == ["experiment_1"]
     assert {entry.entry_id for entry in alignment_entries} == {"paper_1", "skill_review"}
     assert "## alignment" in topic_index
+    assert "## similarity classification coverage" in topic_index
+    assert "## source-preflight" in topic_index
+    assert "## adds" not in topic_index
+    assert "## are" not in topic_index
+    assert "nearest-centroid baselines are reproducible" not in topic_index
+    assert "autopilot_ai_researcher_task118_20260615023141" not in topic_index
+    assert "candidate_deepseek_live_similarity" not in topic_index
+    assert "source-circuit-breakers.json.lock" not in topic_index
     assert "[[paper_1|Paper One]]" in topic_index
     assert "[[skill_review|Review Skill]]" in topic_index

@@ -15,6 +15,42 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 WIKI_LINK_PATTERN = re.compile(r"\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]")
+_TOPIC_INDEX_STOPWORDS = frozenset(
+    {
+        "a",
+        "add",
+        "adds",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "give",
+        "gives",
+        "in",
+        "into",
+        "is",
+        "large",
+        "need",
+        "of",
+        "on",
+        "or",
+        "second",
+        "the",
+        "to",
+        "with",
+    }
+)
+_FILE_ARTIFACT_PATTERN = re.compile(
+    r"(?:^|[\s/\\])[\w.-]+\.(?:csv|json|jsonl|lock|md|pdf|txt|yaml|yml)\b"
+)
+_LONG_DIGIT_PATTERN = re.compile(r"\d{8,}")
+_MAX_TOPIC_KEYWORD_LENGTH = 96
+_WORD_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 class KnowledgeEntryType(str, Enum):
@@ -56,6 +92,41 @@ def extract_wiki_links(markdown_body: str) -> list[str]:
     """Return Obsidian wiki-link targets from Markdown body text."""
 
     return sorted({match.group(1).strip() for match in WIKI_LINK_PATTERN.finditer(markdown_body)})
+
+
+def _topic_index_keyword(keyword: str) -> str | None:
+    normalized = re.sub(r"\s+", " ", keyword.strip()).casefold()
+    if not normalized:
+        return None
+
+    words = _WORD_PATTERN.findall(normalized)
+    if _looks_like_file_artifact(normalized) or _looks_like_operational_slug(
+        normalized, words
+    ):
+        return None
+    normalized = re.sub(r"_+", " ", normalized)
+    if len(normalized) > _MAX_TOPIC_KEYWORD_LENGTH:
+        return None
+    words = _WORD_PATTERN.findall(normalized)
+    if words and all(word in _TOPIC_INDEX_STOPWORDS for word in words):
+        return None
+    return normalized
+
+
+def _looks_like_file_artifact(value: str) -> bool:
+    return bool(_FILE_ARTIFACT_PATTERN.search(value))
+
+
+def _looks_like_operational_slug(value: str, words: list[str]) -> bool:
+    if _LONG_DIGIT_PATTERN.search(value):
+        return True
+    if value.startswith(("autopilot_", "candidate_", "cycle_", "run_")) and any(
+        any(character.isdigit() for character in word) for word in words
+    ):
+        return True
+    if value.startswith(("autopilot_", "candidate_")):
+        return True
+    return value.count("_") >= 3 and any(word.startswith("task") for word in words)
 
 
 class KnowledgeEntry(BaseModel):
@@ -188,7 +259,9 @@ class MarkdownKnowledgeStore:
         topics: dict[str, list[KnowledgeEntry]] = {}
         for entry in entries.values():
             for keyword in entry.keywords:
-                topics.setdefault(keyword.casefold(), []).append(entry)
+                topic = _topic_index_keyword(keyword)
+                if topic is not None:
+                    topics.setdefault(topic, []).append(entry)
 
         index_path = self.root / "exploration" / "index.md"
         index_path.parent.mkdir(parents=True, exist_ok=True)

@@ -8371,3 +8371,33 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-109` and `P-20260618-110`.
 - Follow-up:
   - None for default-source alignment; Semantic Scholar remains available only as an optional enhancement source when enabled by environment.
+
+### 2026-06-18 07:51:12 +08:00 - Codex - Task 191.1 Obsidian topic-index readability guard
+
+- Request: Continue launch-quality hardening and keep the Obsidian vault usable as the self-loop/self-evolution memory substrate.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `tests/unit/knowledge/test_links.py`
+  - `autoresearch-vault/exploration/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added topic-index keyword normalization so underscore-separated human keywords render as readable headings.
+  - Filtered stopword-only keywords, generated `candidate_*`/`autopilot_*`/timestamped run slugs, file-artifact names, and sentence-length reviewer notes from the generated Obsidian topic index.
+  - Preserved raw entry keywords for exact evidence recovery and `find_by_keyword()` lookup.
+  - Rebuilt the real `autoresearch-vault/exploration/index.md` using `MarkdownKnowledgeStore.rebuild_indexes()`.
+  - Added regression coverage that useful topics remain indexed while noisy operational keywords do not.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q`: passed, 17 tests.
+  - `python -m pytest tests\unit\knowledge -q`: passed, 51 tests.
+  - `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\entries.py`: passed.
+  - Initial direct vault rebuild command failed with `ModuleNotFoundError: No module named 'autoresearch'`; reran with `sys.path.insert(0, 'src')`.
+  - Real vault rebuild: `python -c "import sys; from pathlib import Path; sys.path.insert(0, 'src'); from autoresearch.knowledge import MarkdownKnowledgeStore; MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()"`: passed.
+  - `Select-String -Path autoresearch-vault\exploration\index.md -Pattern '^## (adds|are|gives|large|need|second)$|^## candidate_|^## autopilot_|^## .*\.(json|lock|pdf|md)|nearest-centroid baselines are reproducible'`: returned no matches.
+  - `git diff --check -- src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py autoresearch-vault\exploration\index.md .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: no whitespace errors; CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-111`.
+- Follow-up:
+  - Several older tracked vault template/progress notes remain modified from previous system memory writes and should be reviewed or committed as a separate focused memory-maintenance task rather than mixed into this topic-index guard.

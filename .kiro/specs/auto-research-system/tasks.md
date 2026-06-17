@@ -2432,6 +2432,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-109`; user requirement that Semantic Scholar be lower priority because 429s are common and that free APIs such as ArXiv/OpenAlex be default._
     - _Verify: focused config/network/default-source tests passed; focused `ruff` and `mypy` passed. Real `npm run readiness -- --no-push-inspiration --output runs/manual-live/task190-config-defaults/readiness.json` passed with the ignored local `config.yaml` parsed as `SystemConfig`. Real `node ./bin/airesearcher.mjs literature-refresh --vault runs\manual-live\task190-config-defaults\vault --cache runs\manual-live\task190-config-defaults\cache --max-queries 1 --max-results-per-source 1` fetched one ArXiv paper and one OpenAlex paper, wrote 2 documents, and did not query Semantic Scholar._
 
+- [x] 191. Obsidian topic index stays readable for self-loop retrieval
+  - [x] 191.1 Filter low-value operational keywords from the generated topic index
+    - Keep raw entry keywords intact for evidence recovery and exact lookup.
+    - Exclude stopword-only headings, generated run/candidate slugs, long timestamped identifiers, file-artifact names, and sentence-length reviewer notes from `autoresearch-vault/exploration/index.md`.
+    - Normalize underscore-separated human keywords into readable topic headings.
+    - Add regression coverage so useful topics such as `alignment`, `source-preflight`, and `similarity classification coverage` remain indexed while `adds`, `are`, `candidate_*`, `autopilot_*`, file names, and long prose do not.
+    - Rebuild the real project Obsidian vault index with the project store and inspect the generated headings.
+    - _References: `P-20260618-111`; user requirement that Obsidian be the self-loop/self-evolution substrate rather than an unreadable log dump._
+    - _Verify: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed; `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed; `python -m mypy src\autoresearch\knowledge\entries.py` passed; real `python -c "import sys; from pathlib import Path; sys.path.insert(0, 'src'); from autoresearch.knowledge import MarkdownKnowledgeStore; MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()"` rebuilt the vault; `Select-String` confirmed the generated topic index no longer has headings for `adds`, `are`, `candidate_*`, `autopilot_*`, file-artifact keywords, or the long nearest-centroid reviewer sentence._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

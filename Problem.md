@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-111 - Obsidian topic index admitted low-value operational keywords
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:48:00 +08:00
+- Source: Audit of tracked `autoresearch-vault/` changes before committing the next self-loop memory update.
+- Symptom: `autoresearch-vault/exploration/index.md` contained topic headings such as `## adds`, `## are`, generated `candidate_*`/`autopilot_*` slugs, file-artifact names, and a full nearest-centroid reviewer sentence.
+- Impact: The Obsidian vault is the self-loop and self-evolution memory substrate; noisy generated headings make browsing, retrieval, and future automatic topic selection less reliable.
+- Evidence: `Get-Content autoresearch-vault\exploration\index.md -TotalCount 140` and `Select-String -Pattern '^## '` showed low-value headings before the fix.
+- Root cause: `MarkdownKnowledgeStore._write_topic_index()` previously indexed every raw keyword exactly as written, without filtering stopwords, generated run slugs, file artifact names, or sentence-length review notes.
+- Workaround: None needed after filtering at topic-index generation time; raw keywords remain available in entry frontmatter for evidence recovery.
+- Next action: Keep future keyword generators conservative, but let the topic-index filter be the final UI guardrail for Obsidian readability.
+- Linked tasks: `191.1`
+- Resolution: Added topic-index keyword normalization/filtering in `src/autoresearch/knowledge/entries.py`, regression coverage in `tests/unit/knowledge/test_links.py`, and rebuilt the real vault index.
+- Verification: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed. `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed. `python -m mypy src\autoresearch\knowledge\entries.py` passed. Initial direct vault rebuild failed with `ModuleNotFoundError: No module named 'autoresearch'`; rerunning with `sys.path.insert(0, 'src')` succeeded. Final `Select-String` confirmed no topic headings for `adds`, `are`, `candidate_*`, `autopilot_*`, file-artifact keywords, or the long nearest-centroid reviewer sentence.
+
 ### P-20260618-110 - Focused pytest command used a stale CLI selector
 
 - Status: Resolved
