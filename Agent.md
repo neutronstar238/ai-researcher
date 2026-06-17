@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 00:52:58 +08:00 - Codex - Task 144.1 host requests warning boundary re-audit
+
+- Request:
+  - Continue running the project and remove or clearly bound remaining local verification noise without pretending a host-environment warning is a project dependency failure.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `144.1` and dependency-graph node `111`.
+  - Re-audited the lingering `RequestsDependencyWarning` with real local commands.
+  - Confirmed the project Poetry environment reports a healthy requests dependency set, while the raw warning comes from the host/global Python 3.13 environment used by Poetry or direct Python commands after process exit.
+  - Confirmed the npm wrapper's doctor command reports the host dependency mismatch as structured `[WARN]` output without importing `requests` or emitting the raw warning.
+  - Kept `P-20260612-057` mitigated rather than resolved because a full fix would require mutating or isolating global Python outside the repository.
+- Verification:
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 492 passed, 4 skipped, 1 LangGraph warning, then reproduced the host Python 3.13 `RequestsDependencyWarning` after command completion.
+  - `python -m ruff check src tests`: passed without the requests warning.
+  - `python -m mypy src\autoresearch`: passed without the requests warning.
+  - `python -W "ignore:urllib3 .*doesn't match a supported version!" -m pytest tests\unit\observability\test_dependencies.py -q`: passed but still reproduced the host warning after command completion, confirming a simple project-level pytest filter would not solve the boundary.
+  - `poetry run pytest tests\unit\observability\test_dependencies.py -q`: passed under Python 3.10 and still reproduced the host Python 3.13 warning after Poetry exited.
+  - `poetry run airesearcher doctor`: passed and reported the project Poetry set as `[OK] requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; Poetry still emitted the host Python 3.13 warning after exit.
+  - `node .\bin\airesearcher.mjs doctor`: passed and reported the host set as `[WARN] requests 2.31.0, urllib3 2.7.0, charset-normalizer 3.4.7, chardet 7.4.3` without emitting `RequestsDependencyWarning`.
+  - `poetry run python -c "import sys; print(sys.version); print(sys.executable)"`: confirmed the Poetry venv is Python 3.10.20, then Poetry still emitted the host Python 3.13 warning after exit.
+- Problems:
+  - `P-20260612-057` updated and kept mitigated.
+- Follow-up:
+  - Cleaning the host/global Python 3.13 package set is intentionally outside repository tasks; do it only as a separate environment-maintenance action.
+
 ### 2026-06-18 00:46:36 +08:00 - Codex - Task 143.1 README operator console release-alignment
 
 - Request:

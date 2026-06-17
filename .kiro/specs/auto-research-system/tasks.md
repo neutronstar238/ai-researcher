@@ -1995,6 +1995,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-077`; user request for a visible, polished CLI that shows Agent messages, information flow, changes, previews, and release-quality evidence._
     - _Verify: `python -c "import xml.etree.ElementTree as ET; ET.parse('docs/assets/readme/cli-monitor.svg'); print('svg ok')"` passed; `python -c "... readme monitor checks ok ..."` passed for README and SVG key terms; `python -c "... asset link ok ..."` passed for the README screenshot link; `git diff --check -- README.md README.zh-CN.md docs\assets\readme\cli-monitor.svg` passed._
 
+- [x] 144. Host requests warning boundary re-audit
+  - [x] 144.1 Reconfirm project dependency health without mutating host Python
+    - Reproduce the current `RequestsDependencyWarning` behavior in the active local shell.
+    - Confirm whether the warning is emitted by project code, the project Poetry virtual environment, the npm wrapper, or the host/global Python environment.
+    - Preserve the existing non-mutating boundary: do not change global site-packages and do not hide a real project dependency failure.
+    - Update `P-20260612-057` with current evidence and the recommended command boundary for future agents.
+    - _References: `P-20260612-057`; user request to keep verification output clean without pretending local-only smoke tests are live external checks._
+    - _Verify: `python -m pytest tests\smoke tests\unit -q` passed with 492 passed, 4 skipped, 1 LangGraph warning, and then reproduced the host Python 3.13 `RequestsDependencyWarning`; `python -m ruff check src tests` and `python -m mypy src\autoresearch` passed without the requests warning; `poetry run airesearcher doctor` reported the project Poetry set as `[OK] requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed` but Poetry still emitted the host Python 3.13 warning after exit; `node .\bin\airesearcher.mjs doctor` reported the host set as `[WARN] requests 2.31.0, urllib3 2.7.0, charset-normalizer 3.4.7, chardet 7.4.3` without importing requests or emitting `RequestsDependencyWarning`; no dependency or code change was made._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2483,6 +2492,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 110,
       "tasks": ["143.1"]
+    },
+    {
+      "id": 111,
+      "tasks": ["144.1"]
     }
   ]
 }
