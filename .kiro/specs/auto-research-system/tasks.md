@@ -2090,6 +2090,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `120.1`; user correction that WeChat QR setup should happen during setup and wait for scan feedback, not as a hidden later command._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py` passed; `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\test_notifications.py::test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q` passed with 64 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 501 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 154. Operator channel self-test command
+  - [x] 154.1 Add a setup-channel self-test command and slash template
+    - Add `airesearcher channels test` so operators can verify WeChat/Feishu delivery after setup without waiting for a full research cycle.
+    - Use the same `send_inspiration_digest()` path as inspiration pushes so the self-test does not drift from runtime delivery behavior.
+    - Load setup-written `.env`, support repeated `--channel`, write a JSON result artifact, and print each `sent`, `failed`, or `skipped` record.
+    - Add `--require-sent` so deployment scripts can fail when any selected channel is not actually sent.
+    - Add `/research:channel-test` slash-command template and README guidance in English and Chinese.
+    - _References: tasks `119.1`, `120.1`, and `153.1`; user requirement that setup-configured WeChat/Feishu channels should be operationally verifiable before 24h unattended runs._
+    - _Verify: Initial focused ruff found unused fake-sender arguments and was fixed under `P-20260618-080`; `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed after the fix; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 3 tests and the known host Python `RequestsDependencyWarning`; `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q` passed with 66 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 503 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-080 - Channel test fake sender left unused parameters
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:05:00 +08:00
+- Source: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` while verifying task `154.1`.
+- Symptom: Ruff reported `ARG001` for unused `report`, `channels`, and `timeout_seconds` arguments in the `test_channels_test_requires_sent_when_requested` fake sender.
+- Impact: The new channel self-test behavior passed focused pytest, but the lint gate could not pass until the test fake asserted the invocation contract.
+- Evidence: Ruff reported three `ARG001` findings in `tests/unit/cli/test_main.py`.
+- Root cause: The skipped-delivery fake returned a fixed record without checking the command passed the expected self-test report, channel tuple, and timeout.
+- Workaround: None needed after the test assertions were added.
+- Next action: None.
+- Linked tasks: `154.1`
+- Resolution: Added assertions for the self-test report source, selected channel tuple, and timeout value.
+- Verification: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed after the fix; the focused `channels test` pytest selectors also passed.
+
 ### P-20260618-079 - Serve approval metadata patch initially landed in autopilot loop
 
 - Status: Resolved

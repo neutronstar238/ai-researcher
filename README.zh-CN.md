@@ -78,6 +78,9 @@ airesearcher setup
 - 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
+setup 之后可以运行 `airesearcher channels test --channel feishu --require-sent` 或
+`airesearcher channels test --channel wechat`，在无人值守前确认通道送达状态。
+
 也可以非交互式部署：
 
 ```bash
@@ -212,6 +215,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:skill-polish-audit` | skill id | 在 promotion 前审计 skill card。 |
 | `/research:skill-watchlist` | 无 | 将外部科研 skill 候选写入 Obsidian 隔离观察清单。 |
 | `/research:channel-adapters` | 无 | 写入可选通信 adapter runbook。 |
+| `/research:channel-test` | `wechat` 或 `feishu` | 发送 setup 通道自检消息。 |
 | `/research:code-agent-backends` | 无 | 写入 OpenCode 后端集成契约。 |
 | `/research:scansci-pdf` | 无 | 写入 OA-first PDF 获取 manifest。 |
 | `/research:status` | 无 | 查看本地 operator 状态提示。 |
@@ -232,6 +236,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
+| `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |

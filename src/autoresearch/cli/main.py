@@ -27,7 +27,12 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
-from autoresearch.inspiration import InspirationRefreshConfig, run_inspiration_refresh
+from autoresearch.inspiration import (
+    InspirationItem,
+    InspirationRefreshConfig,
+    InspirationRefreshReport,
+    run_inspiration_refresh,
+)
 from autoresearch.integrations import (
     CCSwitchCodeAgentBackend,
     OpenClawChannelPlugin,
@@ -288,6 +293,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Telegram, Discord, Slack, WhatsApp, Teams, QQ, Signal, and Zalo channel plugins. "
         "Review upstream licenses, platform permissions, and secrets before installing any "
         "adapter outside AI-Researcher.",
+    ),
+    "research/channel-test.toml": (
+        "Send a setup-channel self-test message through the configured notification path.",
+        "Run `airesearcher channels test --channel {{args}} --require-sent` after setup. "
+        "Use `wechat`, `feishu`, or repeat `--channel` for several channels. A skipped "
+        "or failed result means the channel is not ready for unattended inspiration pushes.",
     ),
     "research/scansci-pdf.toml": (
         "Write the optional ScanSci PDF integration manifest with OA/legal-first defaults.",
@@ -1450,6 +1461,86 @@ def inspiration_refresh(
     if not report.items:
         typer.echo("[FAIL] inspiration refresh returned no source-backed items", err=True)
         raise typer.Exit(code=1)
+
+
+@channels_app.command("test")
+def channel_test(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup for channel credentials."),
+    ] = Path(".env"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="JSON self-test result output path."),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel: Annotated[
+        list[str] | None,
+        typer.Option("--channel", help="Operator channel to test. Repeat for multiple channels."),
+    ] = None,
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", min=1.0, help="Channel delivery timeout."),
+    ] = 10.0,
+    message: Annotated[
+        str,
+        typer.Option("--message", help="Self-test message body."),
+    ] = "AI-Researcher channel self-test",
+    require_sent: Annotated[
+        bool,
+        typer.Option(
+            "--require-sent/--allow-skipped",
+            help="Exit non-zero unless every selected channel reports sent.",
+        ),
+    ] = False,
+) -> None:
+    """Send a setup-channel self-test through the same notification path used by pushes."""
+
+    _load_optional_env(env_path)
+    selected_channels = tuple(channel or ("wechat", "feishu"))
+    report = _channel_test_report(message)
+    records = send_inspiration_digest(
+        report,
+        channels=selected_channels,
+        timeout_seconds=timeout_seconds,
+    )
+    payload = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "channels": selected_channels,
+        "require_sent": require_sent,
+        "records": [record.to_json_dict() for record in records],
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    for record in records:
+        typer.echo(
+            f"[PUSH] channel={record.channel} status={record.status} "
+            f"detail={record.detail}"
+        )
+    typer.echo(f"[OK] channel_test: {output}")
+    if require_sent and any(record.status != "sent" for record in records):
+        typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
+        raise typer.Exit(code=1)
+
+
+def _channel_test_report(message: str) -> InspirationRefreshReport:
+    timestamp = datetime.now(timezone.utc)
+    return InspirationRefreshReport(
+        queries=("channel self-test",),
+        fetches=(),
+        items=(
+            InspirationItem(
+                source="operator_self_test",
+                source_type="channel_test",
+                title=message,
+                url="",
+                query="channel self-test",
+                summary="Operator channel delivery self-test.",
+                score=1.0,
+                retrieved_at=timestamp,
+            ),
+        ),
+        summary_path=None,
+    )
 
 
 @app.command("similarity-check")

@@ -317,6 +317,89 @@ def test_inspiration_refresh_command_can_push_digest(tmp_path: Path, monkeypatch
     assert payload["pushes"][0]["status_code"] == 200
 
 
+def test_channels_test_command_sends_probe_and_writes_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "channels" / "test-result.json"
+    calls: list[tuple[tuple[str, ...], float, str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, timeout_seconds):
+        calls.append((tuple(channels), timeout_seconds, report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu app API accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "test",
+            "--channel",
+            "feishu",
+            "--timeout-seconds",
+            "2",
+            "--message",
+            "probe message",
+            "--output",
+            str(output),
+            "--require-sent",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), 2.0, "probe message")]
+    assert "[PUSH] channel=feishu status=sent detail=feishu app API accepted" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status_code"] == 200
+
+
+def test_channels_test_requires_sent_when_requested(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "channels" / "test-result.json"
+
+    def fake_send_inspiration_digest(report, *, channels, timeout_seconds):
+        assert report.items[0].source == "operator_self_test"
+        assert channels == ("wechat",)
+        assert timeout_seconds == 10.0
+        return (
+            cli_main.NotificationSendRecord(
+                channel="wechat",
+                status="skipped",
+                detail="setup status missing",
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "test",
+            "--channel",
+            "wechat",
+            "--output",
+            str(output),
+            "--require-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.stderr
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["records"][0]["status"] == "skipped"
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -740,6 +823,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "publication-stability.toml").is_file()
     assert (commands_dir / "research" / "approve.toml").is_file()
     assert (commands_dir / "research" / "channel-adapters.toml").is_file()
+    assert (commands_dir / "research" / "channel-test.toml").is_file()
     assert (commands_dir / "research" / "scansci-pdf.toml").is_file()
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
@@ -758,6 +842,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:publication-stability" in list_result.stdout
     assert "/research:approve" in list_result.stdout
     assert "/research:channel-adapters" in list_result.stdout
+    assert "/research:channel-test" in list_result.stdout
     assert "/research:scansci-pdf" in list_result.stdout
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
@@ -806,6 +891,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher channels adapters init" in (
         commands_dir / "research" / "channel-adapters.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher channels test" in (
+        commands_dir / "research" / "channel-test.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher pdf-sources scansci-pdf init" in (
         commands_dir / "research" / "scansci-pdf.toml"

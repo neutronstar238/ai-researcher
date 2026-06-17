@@ -7224,3 +7224,35 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - A future real IM adapter test should exercise an actual WeChat QR login session with the operator scanning the upstream adapter QR code, then verify push delivery through that active session.
+
+### 2026-06-18 02:05:39 +08:00 - Codex - Task 154.1 Operator channel self-test command
+
+- Request: Continue implementation toward one-time setup plus unattended operation by adding a direct post-setup WeChat/Feishu channel self-test command.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher channels test` to send a setup-channel probe through the same `send_inspiration_digest()` path used by inspiration pushes.
+  - Added support for repeated `--channel`, `--timeout-seconds`, `--message`, JSON `--output`, and `--require-sent` for deployment scripts that must fail on skipped/failed delivery.
+  - Added a real `InspirationRefreshReport`-shaped self-test payload so rendering and notification behavior stays aligned with runtime push behavior.
+  - Added `/research:channel-test` slash-command template and README guidance in English and Chinese.
+  - Marked task `154.1` complete in `tasks.md`.
+- Verification:
+  - Initial `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: failed on unused fake-sender arguments; fixed under `P-20260618-080`.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed after the fix.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q`: passed, 66 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 503 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260618-080` added and resolved.
+- Follow-up:
+  - A later live deployment check should run `airesearcher channels test --channel feishu --require-sent` or the WeChat equivalent after real operator credentials/session state are available.
