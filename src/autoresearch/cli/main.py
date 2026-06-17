@@ -5822,7 +5822,7 @@ def _cycle_stage_rows(
         ),
         (
             "experiment",
-            _nested_status(payload, "demo"),
+            _experiment_status(payload),
             _cycle_evidence(payload, "demo", ("report_path", "validation_json_path", "run_record_path"), summary_path),
         ),
         (
@@ -5942,6 +5942,37 @@ def _citation_status(payload: Mapping[str, Any]) -> str:
     if citations:
         return f"verified={len(citations)}"
     return _nested_status(payload, "citations")
+
+
+def _experiment_status(payload: Mapping[str, Any]) -> str:
+    status = _nested_status(payload, "demo")
+    value = payload.get("demo")
+    if not isinstance(value, Mapping):
+        return status
+    network = value.get("network_approval")
+    if not isinstance(network, Mapping):
+        return status
+    details: list[str] = []
+    mode = network.get("network_approval_mode")
+    if mode is not None:
+        details.append(f"network={mode}")
+    approval_id = network.get("network_approval_id")
+    if approval_id is not None:
+        details.append(f"approval={_short_file_name(str(approval_id), limit=24)}")
+    domains = network.get("approved_network_domains")
+    if isinstance(domains, list | tuple) and domains:
+        details.append(f"domains={len(domains)}")
+    preflight = network.get("preflight")
+    if isinstance(preflight, Mapping):
+        approved = preflight.get("approved")
+        if approved is not None:
+            details.append(f"preflight={'pass' if approved else 'blocked'}")
+        finding_count = preflight.get("finding_count")
+        if finding_count is not None:
+            details.append(f"findings={finding_count}")
+    if not details:
+        return status
+    return f"{status}; {'; '.join(details)}"
 
 
 def _paper_build_status(payload: Mapping[str, Any]) -> str:

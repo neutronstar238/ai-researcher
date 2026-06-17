@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:48:45 +08:00 - Codex - Task 152.1 Operator monitor network approval visibility
+
+- Request:
+  - Continue running the project and make approval-gated execution state visible in the operator CLI UI.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `152.1` for Rich monitor network approval visibility.
+  - Extended the monitor experiment row to summarize `demo.network_approval`.
+  - Showed approval mode, shortened approval ID, approved domain count, preflight pass/blocked state, and finding count when present.
+  - Kept raw preflight finding bodies out of the monitor and in the detailed run record.
+  - Updated the monitor fixture and structured row assertions to prove the approval/preflight state appears in the operator console.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_command_renders_operator_console -q`: failed because the selector used a stale test name and collected no tests.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed with 1 test and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - When WeChat/Feishu adapters start approving runtime requests, add channel identity to the same approval summary if it becomes useful to operators.
+
 ### 2026-06-18 01:43:46 +08:00 - Codex - Task 151.1 Cycle-summary network approval audit visibility
 
 - Request:

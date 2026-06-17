@@ -2791,6 +2791,20 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                     "demo": "pendigits_variance_calibrated_prototypes",
                     "report_path": "runs/project_1/demo/report.md",
                     "validation_json_path": "runs/project_1/demo/validation.json",
+                    "network_approval": {
+                        "network_access_approved": True,
+                        "network_approval_mode": "approve-dangerous",
+                        "network_approval_id": "runtime-approval-1234567890",
+                        "network_approved_by": "operator",
+                        "approved_network_domains": [
+                            "archive.ics.uci.edu",
+                            "api.openalex.org",
+                        ],
+                        "preflight": {
+                            "approved": True,
+                            "finding_count": 1,
+                        },
+                    },
                 },
                 "reproduction_check": {
                     "status": "passed",
@@ -2871,6 +2885,8 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "follow-ups" in result.stdout
     assert "deliverables" in result.stdout
     assert "quality=pass" in result.stdout
+    assert "network=approve-dangerous" in result.stdout
+    assert "preflight=pass" in result.stdout
     assert "compiled" in result.stdout
     assert "project_1-cycle.pdf" in result.stdout
     rows = {
@@ -2884,6 +2900,9 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "manifest.json" in rows["deliverables"][1]
     assert "paper.pdf" in rows["deliverables"][1]
     assert "quality=pass" in rows["paper"][0]
+    assert "network=approve-dangerous" in rows["experiment"][0]
+    assert "domains=2" in rows["experiment"][0]
+    assert "findings=1" in rows["experiment"][0]
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:

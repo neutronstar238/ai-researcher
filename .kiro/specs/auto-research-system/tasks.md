@@ -2070,6 +2070,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `148.1`, `149.1`, `150.1`; user requirement that approvals and execution evidence are visible rather than hidden behind prompt self-discipline._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_demo_network_summary_promotes_approval_audit_fields -q` passed with 2 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 152. Operator monitor network approval visibility
+  - [x] 152.1 Surface experiment network approval status in the Rich monitor
+    - Extend the monitor experiment row status to summarize `demo.network_approval`.
+    - Show approval mode, shortened approval ID, approved domain count, preflight pass/blocked state, and finding count when present.
+    - Keep the monitor compact and leave raw preflight finding bodies in the detailed run record.
+    - Update the monitor fixture to prove approval/preflight details appear in the operator console and structured stage rows.
+    - _References: task `151.1`; user requirement for a visible CLI UI showing agent flow, changed content, and approval-gated execution state._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; the first focused pytest selector used a stale monitor test name and collected no tests, then `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 1 test and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
