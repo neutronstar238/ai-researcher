@@ -62,6 +62,34 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 01:43:46 +08:00 - Codex - Task 151.1 Cycle-summary network approval audit visibility
+
+- Request:
+  - Continue running the project and make runtime approval evidence visible from cycle-level artifacts.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `151.1` for cycle-summary network approval audit visibility.
+  - Added a cycle helper that reads the demo `run-record.json` and extracts only auditable network approval/preflight summary fields.
+  - Added `demo.network_approval` to cycle summaries only when approval or network preflight metadata exists.
+  - Kept ordinary tabular `airesearcher autopilot` summaries free of a noisy network approval section.
+  - Extended candidate review summaries with network approval fields so reviewers can see the execution permission boundary without raw preflight finding bodies.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_demo_network_summary_promotes_approval_audit_fields -q`: passed with 2 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Consider surfacing `demo.network_approval` in the Rich monitor once more runtime approval fields are useful to operators.
+
 ### 2026-06-18 01:37:46 +08:00 - Codex - Task 150.1 Serve-to-executor network approval propagation
 
 - Request:

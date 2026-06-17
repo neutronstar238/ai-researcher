@@ -1806,6 +1806,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "dataset/community/news signals only; not scholarly evidence"
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert "network_approval" not in payload["demo"]
     assert Path(payload["review_context_path"]).name == "review-evidence-context.json"
     assert Path(payload["formal_reference_evidence_path"]).name == "formal-reference-evidence.md"
     formal_reference_note = Path(payload["formal_reference_evidence_path"]).read_text(
@@ -2252,6 +2253,60 @@ def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monke
 
     assert result.exit_code == 1
     assert "[FAIL] autopilot_cycle: autopilot requires at least one retrieved literature document" in result.output
+
+
+def test_autopilot_demo_network_summary_promotes_approval_audit_fields(
+    tmp_path: Path,
+) -> None:
+    run_record = tmp_path / "run-record.json"
+    run_record.write_text(
+        json.dumps(
+            {
+                "task_metadata": {
+                    "network_access_approved": True,
+                    "network_access_scope": "serve cycle approval",
+                    "network_approval_mode": "approve-dangerous",
+                    "network_approval_id": "runtime-approval-1",
+                    "network_approved_by": "operator",
+                    "approved_network_domains": ["archive.ics.uci.edu"],
+                    "network_source_urls": ["https://archive.ics.uci.edu/data.csv"],
+                    "unrelated": "ignored",
+                },
+                "run": {
+                    "metadata": {
+                        "network_preflight": {
+                            "approved": True,
+                            "finding_count": 1,
+                            "network_approval_mode": "approve-dangerous",
+                            "network_approval_id": "runtime-approval-1",
+                            "network_approved_by": "operator",
+                            "findings": [{"module": "urllib"}],
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = cli_main._autopilot_demo_network_summary(run_record)
+    review_summary = cli_main._autopilot_candidate_review_summary(
+        {
+            "candidate": {"title": "Network approved candidate"},
+            "demo": {"run_record_path": run_record.as_posix()},
+        }
+    )
+
+    assert summary["network_access_approved"] is True
+    assert summary["network_approval_id"] == "runtime-approval-1"
+    assert summary["approved_network_domains"] == ["archive.ics.uci.edu"]
+    assert summary["preflight"]["approved"] is True
+    assert summary["preflight"]["finding_count"] == 1
+    assert "findings" not in summary["preflight"]
+    assert review_summary["task_metadata"]["network_approval_id"] == "runtime-approval-1"
+    assert review_summary["task_metadata"]["network_source_urls"] == [
+        "https://archive.ics.uci.edu/data.csv"
+    ]
 
 
 def test_serve_queues_dangerous_action_until_runtime_approval(

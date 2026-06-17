@@ -3442,6 +3442,9 @@ def _run_autopilot_cycle(
             "tasks": [],
         },
     }
+    network_approval = _autopilot_demo_network_summary(demo_result.run_record_path)
+    if network_approval:
+        summary["demo"]["network_approval"] = network_approval
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -3795,6 +3798,13 @@ def _autopilot_candidate_review_summary(summary: dict[str, Any]) -> dict[str, An
         "split_policy",
         "feature_count",
         "real_dataset",
+        "network_access_approved",
+        "network_access_scope",
+        "network_approval_mode",
+        "network_approval_id",
+        "network_approved_by",
+        "approved_network_domains",
+        "network_source_urls",
     )
     return {
         "title": candidate.get("title"),
@@ -3805,6 +3815,44 @@ def _autopilot_candidate_review_summary(summary: dict[str, Any]) -> dict[str, An
         "recorded_metrics": _autopilot_selected_mapping(metrics, metric_keys),
         "run_record_path": mapping(summary.get("demo")).get("run_record_path"),
     }
+
+
+def _autopilot_demo_network_summary(run_record_path: Path | str) -> dict[str, Any]:
+    def mapping(value: object) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    path = Path(run_record_path)
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    task_metadata = mapping(payload.get("task_metadata"))
+    run_metadata = mapping(mapping(payload.get("run")).get("metadata"))
+    network_preflight = mapping(run_metadata.get("network_preflight"))
+    keys = (
+        "network_access_approved",
+        "network_access_scope",
+        "network_approval_mode",
+        "network_approval_id",
+        "network_approved_by",
+        "approved_network_domains",
+        "network_source_urls",
+    )
+    summary = _autopilot_selected_mapping(task_metadata, keys)
+    if network_preflight:
+        summary["preflight"] = _autopilot_selected_mapping(
+            network_preflight,
+            (
+                "approved",
+                "finding_count",
+                "network_access_scope",
+                "network_approval_mode",
+                "network_approval_id",
+                "network_approved_by",
+                "approved_network_domains",
+                "network_source_urls",
+            ),
+        )
+    return summary
 
 
 def _autopilot_selected_mapping(

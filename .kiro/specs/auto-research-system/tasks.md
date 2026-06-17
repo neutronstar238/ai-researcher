@@ -2060,6 +2060,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `147.1`, `148.1`, `149.1`; user requirement that always-on server/WeChat/Feishu approvals flow into actual execution gates, not just prompts._
     - _Verify: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py` passed; `python -m mypy src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py` passed; corrected focused pytest selectors passed with 5 tests; `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py -q` passed with 75 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 499 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
 
+- [x] 151. Cycle-summary network approval audit visibility
+  - [x] 151.1 Promote demo network approval metadata into cycle summaries and review context
+    - Read the generated demo `run-record.json` after the experiment stage and extract only auditable network approval fields.
+    - Add `demo.network_approval` to `cycle-summary.json` only when approval or network preflight metadata exists.
+    - Preserve direct tabular `airesearcher autopilot` output without a noisy network approval section.
+    - Include the same approval fields in the candidate review evidence summary so LLM and deterministic reviewers can see the execution permission boundary.
+    - Avoid copying raw preflight finding bodies into the summary; keep them in the detailed run record.
+    - _References: tasks `148.1`, `149.1`, `150.1`; user requirement that approvals and execution evidence are visible rather than hidden behind prompt self-discipline._
+    - _Verify: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_demo_network_summary_promotes_approval_audit_fields -q` passed with 2 tests and the known host Python `RequestsDependencyWarning`; `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
