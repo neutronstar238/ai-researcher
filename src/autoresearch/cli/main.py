@@ -3218,7 +3218,9 @@ def serve(
             if not decision.allowed:
                 request = decision.request
                 request_id = request.request_id if request is not None else "unknown"
+                visible_action_id = request.action_id if request is not None else action_id
                 typer.echo(f"[WAITING] approval_required: {request_id}")
+                typer.echo(f"[WAITING] action_id: {visible_action_id}")
                 typer.echo(f"[WAITING] state: {approvals_state}")
                 typer.echo(
                     "[WAITING] approve: "

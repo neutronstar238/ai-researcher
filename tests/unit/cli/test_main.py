@@ -2718,6 +2718,10 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
 
     assert pending_result.exit_code == 2, pending_result.output
     assert "[WAITING] approval_required:" in pending_result.stdout
+    assert (
+        "[WAITING] action_id: "
+        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+    ) in pending_result.stdout
     assert "[OK] session_claim: allowed" in pending_result.stdout
     assert "[OK] session_release:" in pending_result.stdout
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
@@ -2964,6 +2968,10 @@ def test_serve_watch_uses_approval_poll_interval_before_cycle(
         "approval_poll_seconds=7"
     ) in result.stdout
     assert "[WAITING] approval_required:" in result.stdout
+    assert (
+        "[WAITING] action_id: "
+        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+    ) in result.stdout
     assert "serve_cycle" not in result.stdout
 
 
@@ -3041,6 +3049,10 @@ def test_serve_watch_requires_new_approval_for_next_cycle(
     assert sleeps == [1, 7]
     assert "[OK] serve_cycle: cycle-one" in result.stdout
     assert "[WAITING] approval_required:" in result.stdout
+    assert (
+        "[WAITING] action_id: "
+        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-2"
+    ) in result.stdout
 
 
 def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:

@@ -143,6 +143,8 @@ airesearcher serve --permission-mode approve-dangerous --push-inspiration
 `86400` seconds between cycles, and records push status for the broad-inspiration digest.
 In `approve-dangerous` mode, each cycle attempt gets its own approval request; use
 `allow-all` only when you intentionally want unattended cycles without per-cycle approval.
+The waiting output and `runtime list` show the per-cycle `action_id`, so operators can
+see exactly which cycle is being approved.
 
 In another terminal, approve the first dangerous cycle:
 

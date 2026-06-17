@@ -7565,3 +7565,31 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-085` added and resolved.
 - Follow-up:
   - When IM approval cards are wired, include the cycle number/action ID in the operator-facing approval message.
+
+### 2026-06-18 03:39:59 +08:00 - Codex - Task 165.1 Approval operator visibility
+
+- Request: Continue V1.0 approval-gate hardening by making per-cycle approval boundaries visible from the immediate `serve` waiting output.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `[WAITING] action_id: ...` to the `serve` approval wait output.
+  - Covered first-cycle approval waits and second-cycle watch-mode approval waits in CLI tests.
+  - Updated the English and Chinese README to state that waiting output and `runtime list` show the per-cycle action ID.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q`: passed, 3 tests.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-086` added and resolved.
+- Follow-up:
+  - Reuse the same action ID field in future WeChat/Feishu approval cards.
