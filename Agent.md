@@ -8342,3 +8342,32 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-108`.
 - Follow-up:
   - Strict prelaunch will remain blocked until the operator completes QR/App setup and runs a real channel delivery self-test; do not mark push-ready without that evidence.
+
+### 2026-06-18 07:39:47 +08:00 - Codex - Task 190.1 Default source configuration alignment
+
+- Request: Continue launch-hardening so default project configuration matches the current ArXiv/OpenAlex-first literature policy and keeps Semantic Scholar optional.
+- Files changed:
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/experiments/network.py`
+  - `tests/unit/config/test_models.py`
+  - `tests/unit/experiments/test_network.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - Local ignored file for verification only: `config.yaml`
+- Summary:
+  - Changed `SystemConfig` literature defaults to `["arxiv", "openalex"]`.
+  - Added `export.arxiv.org` and `api.openalex.org` to config-model network defaults, and added `api.openalex.org` to the sandbox default network allowlist.
+  - Repaired the ignored local `config.yaml` used by this workspace so real readiness could validate the same free-source policy without committing local deployment config.
+  - Added config and network tests for OpenAlex defaults.
+- Verification:
+  - Initial focused pytest command failed because `test_literature_clients_default_to_arxiv_openalex` was a stale selector; recorded and resolved as `P-20260618-110`.
+  - `python -m pytest tests\unit\config\test_models.py tests\unit\config\test_parser.py tests\unit\experiments\test_network.py tests\unit\cli\test_main.py::test_autopilot_literature_clients_default_to_core_free_sources tests\unit\literature\test_refresh.py::test_daily_refresh_default_sources_include_openalex_fallback tests\unit\research\test_similarity.py::test_project_similarity_default_sources_include_openalex_fallback -q`: passed, 29 tests.
+  - Focused `python -m ruff check src\autoresearch\config\models.py src\autoresearch\experiments\network.py tests\unit\config\test_models.py tests\unit\experiments\test_network.py`: passed.
+  - Focused `python -m mypy src\autoresearch\config\models.py src\autoresearch\experiments\network.py`: passed with no issues in 2 source files.
+  - Real `npm run readiness -- --no-push-inspiration --output runs/manual-live/task190-config-defaults/readiness.json`: passed and parsed the repaired ignored local `config.yaml` as `SystemConfig`.
+  - Real `node ./bin/airesearcher.mjs literature-refresh --vault runs\manual-live\task190-config-defaults\vault --cache runs\manual-live\task190-config-defaults\cache --max-queries 1 --max-results-per-source 1`: fetched one ArXiv paper and one OpenAlex paper, wrote 2 documents, and did not query Semantic Scholar.
+- Problems:
+  - Added and resolved `P-20260618-109` and `P-20260618-110`.
+- Follow-up:
+  - None for default-source alignment; Semantic Scholar remains available only as an optional enhancement source when enabled by environment.

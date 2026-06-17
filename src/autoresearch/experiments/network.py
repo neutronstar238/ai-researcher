@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from autoresearch.observability import AuditEvent, AuditEventType, AuditLog
 
 DEFAULT_ALLOWED_DOMAINS = (
+    "api.openalex.org",
     "api.semanticscholar.org",
     "arxiv.org",
     "export.arxiv.org",

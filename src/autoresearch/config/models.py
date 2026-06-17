@@ -29,6 +29,8 @@ class ComputeConfig(BaseModel):
     allowed_network_domains: list[str] = Field(
         default_factory=lambda: [
             "arxiv.org",
+            "export.arxiv.org",
+            "api.openalex.org",
             "api.semanticscholar.org",
             "pypi.org",
             "files.pythonhosted.org",
@@ -51,7 +53,7 @@ class KnowledgeBaseConfig(BaseModel):
 class LiteratureConfig(BaseModel):
     """Literature retrieval defaults for the trusted-loop MVP."""
 
-    databases: list[str] = Field(default_factory=lambda: ["arxiv", "semantic_scholar"])
+    databases: list[str] = Field(default_factory=lambda: ["arxiv", "openalex"])
     max_results_per_source: int = Field(default=20, ge=1)
     request_timeout_seconds: int = Field(default=30, ge=1)
     cache_ttl_hours: int = Field(default=24, ge=1)

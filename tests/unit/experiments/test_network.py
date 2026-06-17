@@ -14,6 +14,7 @@ from autoresearch.observability import AuditEventType, AuditLog
     "url",
     [
         "https://export.arxiv.org/api/query?search_query=cat:cs.AI",
+        "https://api.openalex.org/works?search=prototype%20classifier",
         "https://api.semanticscholar.org/graph/v1/paper/search",
         "https://pypi.org/simple/pyyaml/",
         "https://files.pythonhosted.org/packages/example.tar.gz",

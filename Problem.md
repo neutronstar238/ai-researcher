@@ -32,6 +32,38 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-110 - Focused pytest command used a stale CLI selector
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:39:00 +08:00
+- Source: Focused verification for task `190.1`.
+- Symptom: `python -m pytest ... tests\unit\cli\test_main.py::test_literature_clients_default_to_arxiv_openalex -q` exited with `ERROR: not found` and collected no target test.
+- Impact: The first focused verification command did not exercise the intended CLI default-client coverage.
+- Evidence: Pytest reported no match for `test_literature_clients_default_to_arxiv_openalex`.
+- Root cause: The actual test name is `test_autopilot_literature_clients_default_to_core_free_sources`.
+- Workaround: Use `rg` to locate the exact test name before running the focused selector.
+- Next action: None.
+- Linked tasks: `190.1`
+- Resolution: Reran focused verification with the correct selector and adjacent default-source tests.
+- Verification: `python -m pytest tests\unit\config\test_models.py tests\unit\config\test_parser.py tests\unit\experiments\test_network.py tests\unit\cli\test_main.py::test_autopilot_literature_clients_default_to_core_free_sources tests\unit\literature\test_refresh.py::test_daily_refresh_default_sources_include_openalex_fallback tests\unit\research\test_similarity.py::test_project_similarity_default_sources_include_openalex_fallback -q` passed.
+
+### P-20260618-109 - Configuration defaults still treated Semantic Scholar as a default source
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:37:00 +08:00
+- Source: Launch-readiness self-check after task `189.1`.
+- Symptom: Runtime code and README describe ArXiv plus OpenAlex as default free/public sources with Semantic Scholar optional, but `SystemConfig` still listed `semantic_scholar` as a default literature database and omitted `api.openalex.org` from network defaults. The ignored local `config.yaml` in this workspace had the same stale values.
+- Impact: A first-deploy user or downstream config writer could reintroduce Semantic Scholar as a required source, increasing 429 risk and contradicting current default-source behavior.
+- Evidence: `tests\unit\config\test_models.py` asserted the stale default; `src\autoresearch\experiments\network.py` did not allow `api.openalex.org`; ignored local `config.yaml` had `literature.databases: [arxiv, semantic_scholar]`.
+- Root cause: Earlier source-policy changes updated runtime client selection and docs but did not update the configuration model and checked-in root config.
+- Workaround: Before this fix, rely on runtime literature client defaults rather than root config for source selection.
+- Next action: None for default source alignment.
+- Linked tasks: `190.1`
+- Resolution: Changed committed config defaults to ArXiv plus OpenAlex, added `export.arxiv.org` and `api.openalex.org` to default network domains, added tests, and repaired the ignored local `config.yaml` for live verification without force-adding it to Git.
+- Verification: Focused config/network/default-source tests, ruff, and mypy passed. Real readiness parsed the repaired ignored local `config.yaml`, and real live literature refresh fetched from ArXiv/OpenAlex without Semantic Scholar.
+
 ### P-20260618-108 - Strict prelaunch omitted the follow-up channel self-test action
 
 - Status: Resolved

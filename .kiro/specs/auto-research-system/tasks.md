@@ -2422,6 +2422,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-108`; user requirement that first deployment be guided and that WeChat/Feishu setup happen through setup without manual `.env` editing._
     - _Verify: focused readiness CLI tests passed; focused `ruff` and `mypy` passed. Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch-task189.json` remained blocked because no operator channel is configured and no sent-delivery self-test exists, while the report now lists both `configure_operator_channel` and `run_channel_self_test` next actions._
 
+- [x] 190. Default configuration matches ArXiv plus OpenAlex source policy
+  - [x] 190.1 Replace stale Semantic Scholar defaults in config and network allowlist
+    - Change `SystemConfig` literature defaults from ArXiv plus Semantic Scholar to ArXiv plus OpenAlex.
+    - Add `export.arxiv.org` and `api.openalex.org` to config-model network defaults; repair the ignored local `config.yaml` used for live readiness without force-adding it to Git.
+    - Keep Semantic Scholar available as an optional source only when enabled by environment.
+    - Add config and network tests for the OpenAlex default.
+    - Rerun a real `literature-refresh` with default sources and confirm ArXiv/OpenAlex participate without Semantic Scholar.
+    - _References: `P-20260618-109`; user requirement that Semantic Scholar be lower priority because 429s are common and that free APIs such as ArXiv/OpenAlex be default._
+    - _Verify: focused config/network/default-source tests passed; focused `ruff` and `mypy` passed. Real `npm run readiness -- --no-push-inspiration --output runs/manual-live/task190-config-defaults/readiness.json` passed with the ignored local `config.yaml` parsed as `SystemConfig`. Real `node ./bin/airesearcher.mjs literature-refresh --vault runs\manual-live\task190-config-defaults\vault --cache runs\manual-live\task190-config-defaults\cache --max-queries 1 --max-results-per-source 1` fetched one ArXiv paper and one OpenAlex paper, wrote 2 documents, and did not query Semantic Scholar._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
