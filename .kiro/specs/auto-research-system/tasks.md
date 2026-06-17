@@ -2223,6 +2223,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-089`; user requirement that WeChat QR setup happen in `setup` and that channel self-tests use real delivery rather than `.env` hand-edit assumptions; upstream OpenClaw WeChat docs and `@tencent-weixin/openclaw-weixin-cli` installer behavior._
     - _Verify: focused `python -m pytest tests\unit\test_notifications.py tests\unit\cli\test_main.py::test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q` passed with 10 tests; focused `python -m ruff check src\autoresearch\notifications.py src\autoresearch\cli\main.py tests\unit\test_notifications.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\notifications.py src\autoresearch\cli\main.py` passed with no issues._
 
+- [x] 169. Post-pairing channel target binding
+  - [x] 169.1 Add a channels command for binding delivery targets after setup
+    - Add `airesearcher channels bind-target --channel wechat --target <target>` to write WeChat QR OpenClaw delivery target fields into `.env`.
+    - Add `airesearcher channels bind-target --channel feishu --target <chat-id>` to write the Feishu/Lark home chat ID after a bot conversation reveals it.
+    - Reject unsupported channels and empty targets.
+    - Document the command in English and Chinese README channel setup tables.
+    - _References: `P-20260618-090`; task `168.1`; user requirement that setup and channel configuration be CLI-owned rather than manual `.env` editing._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_feishu_home_chat tests\unit\cli\test_main.py::test_channels_bind_target_rejects_unknown_channel tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result -q` passed with 4 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; real `node ./bin/airesearcher.mjs channels bind-target --env-path runs\manual-live\task169-bind-target\.env --channel wechat --target peer:wx_user` passed and printed the channel-test next step._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

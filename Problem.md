@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-090 - Post-pairing channel targets still required rerunning setup or editing `.env`
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:09:09 +08:00
+- Source: Strict `npm run prelaunch` after task `168.1`.
+- Symptom: Prelaunch correctly blocked on missing operator channel configuration and missing channel self-test evidence, but the documented repair path for a post-pairing WeChat OpenClaw target still required rerunning setup or editing `.env`.
+- Impact: A normal operator who scans WeChat first and only learns the OpenClaw message target after pairing did not have a small command for binding that target before running `channels test`.
+- Evidence: `npm run prelaunch` printed `configure_operator_channel: airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr` and no smaller target-binding command existed.
+- Root cause: Setup collected target values, but the channels command group only tested delivery and did not update channel target state.
+- Workaround: Before the fix, rerun `airesearcher setup --wechat --wechat-qr --wechat-openclaw-target ...` or edit `.env`.
+- Next action: Keep channel target binding separate from third-party plugin installation; target binding only writes local `.env`.
+- Linked tasks: `169.1`
+- Resolution: Added `airesearcher channels bind-target --channel wechat|feishu --target ... --env-path .env`, writing WeChat OpenClaw target fields or Feishu home chat ID without hand-editing `.env`.
+- Verification: Focused CLI tests and a real Node entrypoint invocation against a temporary `.env` passed.
+
 ### P-20260618-089 - WeChat QR channel could not produce a real delivery self-test
 
 - Status: Resolved

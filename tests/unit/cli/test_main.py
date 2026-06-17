@@ -407,6 +407,78 @@ def test_channels_test_requires_sent_when_requested(
     assert payload["records"][0]["status"] == "skipped"
 
 
+def test_channels_bind_target_writes_wechat_openclaw_target(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("AUTORESEARCH_LLM_API_KEY=sk-test\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "wechat",
+            "--target",
+            "peer:wx_user",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    env_text = env_path.read_text(encoding="utf-8")
+    assert "AUTORESEARCH_LLM_API_KEY=sk-test" in env_text
+    assert "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=openclaw message send" in env_text
+    assert "[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent" in (
+        result.stdout
+    )
+
+
+def test_channels_bind_target_writes_feishu_home_chat(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "feishu",
+            "--target",
+            "oc_test_chat",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AUTORESEARCH_FEISHU_HOME_CHAT_ID=oc_test_chat" in env_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_channels_bind_target_rejects_unknown_channel(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--channel",
+            "discord",
+            "--target",
+            "target",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "unsupported channel for target binding" in result.output
+
+
 def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"

@@ -1574,6 +1574,53 @@ def channel_test(
         raise typer.Exit(code=1)
 
 
+@channels_app.command("bind-target")
+def channel_bind_target(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup for channel credentials."),
+    ] = Path(".env"),
+    channel: Annotated[
+        str,
+        typer.Option("--channel", help="Channel to bind: wechat or feishu."),
+    ] = "wechat",
+    target: Annotated[
+        str,
+        typer.Option("--target", help="OpenClaw target or Feishu/Lark home chat ID."),
+    ] = "",
+) -> None:
+    """Bind a post-pairing channel target without hand-editing `.env`."""
+
+    normalized = channel.casefold().strip()
+    target_value = target.strip()
+    if not target_value:
+        raise typer.BadParameter("--target is required")
+    if normalized in {"wechat", "weixin", "openclaw-weixin"}:
+        _merge_env_file(
+            env_path,
+            {
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
+                "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": WECHAT_QR_SETUP_COMMAND,
+                "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND": WECHAT_QR_LOGIN_COMMAND,
+                "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH,
+                "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": WECHAT_QR_SETUP_STATUS_PATH,
+                "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL": WECHAT_OPENCLAW_CHANNEL,
+                "AUTORESEARCH_WECHAT_OPENCLAW_TARGET": target_value,
+                "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND": OPENCLAW_MESSAGE_SEND_COMMAND,
+            },
+        )
+        typer.echo(f"[OK] channel_target: wechat -> {target_value}")
+        typer.echo("[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent")
+        return
+    if normalized in {"feishu", "lark"}:
+        _merge_env_file(env_path, {"AUTORESEARCH_FEISHU_HOME_CHAT_ID": target_value})
+        typer.echo(f"[OK] channel_target: feishu -> {target_value}")
+        typer.echo("[NEXT] channel_test: airesearcher channels test --channel feishu --require-sent")
+        return
+    msg = f"unsupported channel for target binding: {channel}"
+    raise typer.BadParameter(msg)
+
+
 def _channel_test_report(message: str) -> InspirationRefreshReport:
     timestamp = datetime.now(timezone.utc)
     return InspirationRefreshReport(

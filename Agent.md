@@ -7679,3 +7679,35 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-089` added and resolved.
 - Follow-up:
   - A real WeChat delivery self-test still requires the operator to complete pairing and provide the OpenClaw target; without that target, AI-Researcher now reports `skipped` instead of claiming sent delivery.
+
+### 2026-06-18 04:10:31 +08:00 - Codex - Task 169.1 Post-pairing channel target binding
+
+- Request: Continue V1.0 channel setup hardening so users can bind WeChat/Feishu delivery targets through CLI instead of hand-editing `.env`.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher channels bind-target` for post-pairing delivery target updates.
+  - Wrote WeChat QR OpenClaw target/channel/message command fields for `--channel wechat`.
+  - Wrote Feishu/Lark home chat ID for `--channel feishu`.
+  - Rejected empty targets and unsupported channels.
+  - Documented the command in English and Chinese README tables.
+- Verification:
+  - `npm run prelaunch`: still blocked as expected on this machine because no WeChat/Feishu channel is configured and no sent channel self-test result exists; it confirmed the remaining deployment-state gap after task `168.1`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_feishu_home_chat tests\unit\cli\test_main.py::test_channels_bind_target_rejects_unknown_channel tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result -q`: passed, 4 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `node ./bin/airesearcher.mjs channels bind-target --env-path runs\manual-live\task169-bind-target\.env --channel wechat --target peer:wx_user`: passed and printed the channel-test next step.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 515 passed and 4 skipped.
+- Problems:
+  - `P-20260618-090` added and resolved.
+- Follow-up:
+  - Strict prelaunch still needs a real operator channel and sent self-test on this machine; the new command makes the post-pairing target-binding step CLI-owned.

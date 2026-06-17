@@ -88,8 +88,8 @@ Recommended channel setup:
   through the adapter/gateway flow.
 - WeChat/Weixin: choose QR setup. In the interactive wizard, AI-Researcher starts the QR adapter
   setup command immediately after writing config and waits for the scan/login result. If you know
-  the OpenClaw message target, enter it during setup; otherwise bind it after pairing and rerun
-  setup with `--wechat-openclaw-target`. Non-interactive scripts record the setup state without
+  the OpenClaw message target, enter it during setup; otherwise bind it after pairing with
+  `airesearcher channels bind-target --channel wechat --target <target>`. Non-interactive scripts record the setup state without
   blocking unless `--run-wechat-qr-setup` is passed.
 - Webhook URLs remain available as a fallback for environments that already use incoming webhooks.
 
@@ -294,6 +294,8 @@ Common npm shortcuts:
 | `setup` | `--wechat-openclaw-target` | Optional OpenClaw WeChat message target used by real QR-mode self-tests and digest delivery. |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | Feishu/Lark App credential setup; `--feishu-home-chat-id` enables direct digest delivery. |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | Fallback incoming-webhook setup for existing deployments. |
+| `channels bind-target` | `--channel wechat --target <target>` | Bind the OpenClaw WeChat target after QR pairing without editing `.env`. |
+| `channels bind-target` | `--channel feishu --target <chat-id>` | Bind a Feishu/Lark home chat ID after the bot conversation creates one. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |
 | `serve` | `--approval-poll-seconds 30` | Poll interval while waiting for dangerous-cycle approval; separate from the daily cycle interval. |
 | `serve` / `autopilot` | `--interval-seconds 86400` | Daily loop interval. |

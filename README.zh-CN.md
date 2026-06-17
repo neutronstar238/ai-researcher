@@ -75,7 +75,7 @@ airesearcher setup
 推荐通道配置：
 
 - 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。
-- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后再用 `--wechat-openclaw-target` 重新写入。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
+- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后运行 `airesearcher channels bind-target --channel wechat --target <target>`。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
 setup 之后先运行通道送达自检，再进入无人值守：
@@ -261,6 +261,8 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `setup` | `--wechat-openclaw-target` | 可选 OpenClaw 微信消息 target，用于 QR 模式下真实通道自检和摘要推送。 |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
+| `channels bind-target` | `--channel wechat --target <target>` | 微信 QR 配对后绑定 OpenClaw target，不需要手动编辑 `.env`。 |
+| `channels bind-target` | `--channel feishu --target <chat-id>` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
 | `serve` | `--approval-poll-seconds 30` | 等待危险 cycle 审批时的轮询间隔；和每日 cycle 间隔分开。 |
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
