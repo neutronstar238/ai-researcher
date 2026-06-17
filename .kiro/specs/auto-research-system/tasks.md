@@ -2317,6 +2317,14 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `120.1`, `153.1`, and `173.1`; user requirement that choosing WeChat QR during setup should display the QR scan flow immediately rather than requiring a hidden later command._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed._
 
+- [x] 179. Repository hygiene for launch artifacts
+  - [x] 179.1 Ignore local Codex attachment scratch files
+    - Confirm generated runtime artifacts, outputs, caches, and PDFs are not tracked by Git.
+    - Add `.codex-remote-attachments/` to `.gitignore` so local screenshots and uploaded reference images cannot be accidentally committed.
+    - Keep existing local attachment files in place; this task only changes ignore rules.
+    - _References: user requirement that the GitHub repository keep only necessary code and project files._
+    - _Verify: `git ls-files outputs runs htmlcov .cache tmp .pytest_cache .mypy_cache .ruff_cache .airesearcher .codex-remote-attachments` returned no tracked paths; tracked artifact pattern scan returned no matches; after the ignore update, `git status --short` no longer lists `.codex-remote-attachments/`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

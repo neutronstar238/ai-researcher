@@ -7995,3 +7995,24 @@ This file defines the project development standard for coding agents and records
   - None added or updated.
 - Follow-up:
   - A real QR scan still requires the operator to run setup interactively and scan the upstream Weixin adapter code; after pairing, bind the OpenClaw target and run `channels test --channel wechat --require-sent`.
+
+### 2026-06-18 05:33:30 +08:00 - Codex - Task 179.1 Repository hygiene for launch artifacts
+
+- Request: Continue launch readiness and make sure GitHub only keeps necessary code/project files rather than local screenshots or generated run artifacts.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed generated runtime directories, outputs, caches, and document artifacts are not tracked by Git.
+  - Added `.codex-remote-attachments/` to `.gitignore` so local uploaded images/screenshots cannot be accidentally staged.
+  - Recorded task `179.1` in the executable task plan.
+- Verification:
+  - `git count-objects -v` before cleanup showed `count: 130`; `git gc` completed; `git count-objects -v` after cleanup showed `count: 0`, `garbage: 0`.
+  - `git ls-files outputs runs htmlcov .cache tmp .pytest_cache .mypy_cache .ruff_cache .airesearcher .codex-remote-attachments`: returned no tracked paths.
+  - `git ls-files | rg -n "(^|/)(runs|outputs|htmlcov|\\.cache|\\.pytest_cache|\\.mypy_cache|\\.ruff_cache|\\.airesearcher|tmp|node_modules|__pycache__)(/|$)|\\.(pyc|pyo|pdf|zip|tar|gz)$"`: returned no matches.
+  - `git status --short`: no longer lists `.codex-remote-attachments/` after the ignore update; only pre-existing dirty vault files remain outside this task.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - Leave the existing local attachment directory alone unless the user explicitly asks for local cleanup.
