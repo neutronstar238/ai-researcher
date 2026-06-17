@@ -76,6 +76,7 @@ from autoresearch.llm import (
     write_llm_review_note,
 )
 from autoresearch.notifications import NotificationSendRecord, send_inspiration_digest
+from autoresearch.observability import diagnose_requests_dependency_set
 from autoresearch.reports import (
     EvidenceGateVerdict,
     LatexPaperBuildStatus,
@@ -428,12 +429,18 @@ def doctor() -> None:
             str(config.knowledge_base.vault_path),
         ),
     ]
+    dependency_check = diagnose_requests_dependency_set()
 
     failed = False
     for name, ok, detail in checks:
         label = "OK" if ok else "FAIL"
         typer.echo(f"[{label}] {name}: {detail}")
         failed = failed or not ok
+    typer.echo(
+        f"[{dependency_check.status.value}] "
+        f"{dependency_check.name}: {dependency_check.detail}"
+    )
+    failed = failed or dependency_check.blocks_doctor
 
     if failed:
         raise typer.Exit(code=1)

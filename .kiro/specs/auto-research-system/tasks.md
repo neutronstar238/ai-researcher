@@ -1860,6 +1860,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260617-071`; user requirement that generated PDFs be publication-quality and that layout problems be fixed rather than silently ignored._
     - _Verify: `python -m ruff check src\autoresearch\research\plans.py tests\unit\research\test_plans.py` passed; `python -m pytest tests\unit\research\test_plans.py -q` passed with 4 tests; real research-plan compile `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\candidate.json --project-id task129_plan_layout --vault runs\manual-live\task129-plan-layout\vault --output-dir runs\manual-live\task129-plan-layout\outputs --similarity-summary runs\manual-live\task128-serve-final\vault\exploration\topics\similarity_check_autopilot_task128_serve_final_20260617150322.md --literature-summary runs\manual-live\task128-serve-final\vault\exploration\topics\literature_refresh_20260617.md --compile-pdf --timeout-seconds 180` passed with `compile_status: compiled` and 3 pages; `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.compile.log` returned no matches; `pdfinfo` confirmed the generated research-plan PDF is 3 pages A4; `python -m mypy src\autoresearch` passed; `python -m ruff check src tests` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 485 passed, 4 skipped, and 1 warning._
 
+- [x] 130. Verification dependency diagnostics
+  - [x] 130.1 Surface Requests dependency warning source in `doctor`
+    - Add a dependency diagnostic that uses package metadata instead of importing `requests`, so the check does not create the warning it is trying to explain.
+    - Report the Requests, urllib3, charset-normalizer, and chardet set in `airesearcher doctor`.
+    - Treat unsupported combinations as `[WARN]` rather than a failing doctor gate when the declared runtime dependencies are present; fail only if required declared packages are missing.
+    - Keep the project Poetry environment separate from the host/global Python warning and document that boundary in `Problem.md`.
+    - Add focused unit coverage for the locked Poetry set, the observed unsupported chardet set, and missing Requests.
+    - _References: `P-20260612-057`; repeated verification warning that polluted local test output._
+    - _Verify: `python -m ruff check src\autoresearch\observability\dependencies.py src\autoresearch\observability\__init__.py src\autoresearch\cli\main.py tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py` passed; `python -m mypy src\autoresearch\observability\dependencies.py src\autoresearch\cli\main.py` passed; `python -m pytest tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py::test_doctor_command_checks_local_scaffold -q` passed with 4 tests; `poetry run airesearcher doctor` reported `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`, while the host Python 3.13 still emitted the known external warning after command completion; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 488 passed, 4 skipped, and 1 warning._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -2292,6 +2302,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 96,
       "tasks": ["129.1"]
+    },
+    {
+      "id": 97,
+      "tasks": ["130.1"]
     }
   ]
 }

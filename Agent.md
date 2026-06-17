@@ -62,6 +62,38 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-17 23:20:15 +08:00 - Codex - Task 130.1 Requests dependency diagnostics
+
+- Request:
+  - Continue running the project and close the long-standing `RequestsDependencyWarning` verification noise as far as the repository can own it.
+- Files changed:
+  - `src/autoresearch/observability/dependencies.py`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/observability/test_dependencies.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a metadata-based Requests dependency diagnostic that checks `requests`, `urllib3`, `charset-normalizer`, and `chardet` without importing `requests`.
+  - Exposed the diagnostic in `airesearcher doctor`, using `[WARN]` for unsupported installed combinations and `[FAIL]` only when required declared packages are missing.
+  - Added focused unit coverage for the locked Poetry set, the observed unsupported global chardet set, and missing Requests.
+  - Updated `P-20260612-057` to `Mitigated`: the project Poetry environment is clean and diagnosable, while the host/global Python 3.13 environment still emits the warning after commands complete.
+- Verification:
+  - `python -m ruff check src\autoresearch\observability\dependencies.py src\autoresearch\observability\__init__.py src\autoresearch\cli\main.py tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\observability\dependencies.py src\autoresearch\cli\main.py`: passed with the existing non-failing unused override note.
+  - `python -m pytest tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py::test_doctor_command_checks_local_scaffold -q`: passed with 4 tests; the host Python 3.13 warning still appeared after test completion.
+  - `python -m autoresearch.cli.main doctor`: failed with `ModuleNotFoundError` because the package is not installed on bare Python without `PYTHONPATH`; reran the real project entrypoint instead.
+  - `poetry run airesearcher doctor`: passed and reported `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; the host Python 3.13 warning still appeared after command completion.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 488 passed, 4 skipped, and 1 warning; the host Python 3.13 warning still appeared after command completion.
+- Problems:
+  - Updated `P-20260612-057` from `Open` to `Mitigated`.
+- Follow-up:
+  - If warning-free host logs become a release requirement, isolate or clean the global Python 3.13 environment outside the repository rather than changing project code.
+
 ### 2026-06-17 23:09:50 +08:00 - Codex - Task 129.1 research-plan PDF layout hardening
 
 - Request:

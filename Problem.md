@@ -1587,19 +1587,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260612-057 - Requests dependency warning appears during verification
 
-- Status: Open
+- Status: Mitigated
 - Severity: Low
 - Discovered: 2026-06-12 13:30:54 +08:00
 - Source: `poetry run ruff check ...`, `poetry run mypy src`, and `poetry run pytest ...`.
 - Symptom: Python emitted `RequestsDependencyWarning` stating `urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version`.
-- Impact: Task `32.1` verification still passed, but future real-network smoke tests may produce noisy output or dependency-sensitive behavior if this environment mismatch remains.
-- Evidence: The warning appeared after focused ruff, focused mypy, focused pytest, full ruff, and full pytest commands; full pytest still reported `281 passed, 3 skipped`.
-- Root cause: The active test environment has a `requests` dependency combination that `requests` warns is outside its supported range.
-- Workaround: Treat the warning as non-blocking for non-network authorization work; keep real external API tests mandatory for external-source tasks.
-- Next action: Resolve or pin the `requests` transitive dependency set in a dedicated dependency-maintenance task before relying on warning-free live network output.
-- Linked tasks: `32.1`
-- Resolution: Not resolved in task `32.1`; no authorization code path uses `requests`.
-- Verification: `poetry run ruff check src tests` passed; `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `281 passed, 3 skipped` despite the warning.
+- Impact: The project now diagnoses the dependency set explicitly, but local command output can still be noisy because the host/global Python 3.13 environment emits the warning after project commands complete.
+- Evidence: Earlier verification runs emitted the warning after focused ruff, focused mypy, focused pytest, full ruff, and full pytest commands. Task `130.1` investigation found the Poetry environment reports `requests 2.32.5`, `urllib3 2.7.0`, `charset-normalizer 3.4.7`, and no `chardet`, while the host/global Python 3.13 environment has `requests 2.31.0` plus unsupported `chardet 7.4.3`.
+- Root cause: The project Poetry dependency set is compatible, but the host/global Python environment still has a Requests/chardet combination that can emit `RequestsDependencyWarning`.
+- Workaround: Use `poetry run ...` or the `node .\bin\airesearcher.mjs ...` wrapper for project commands, and use `airesearcher doctor` to distinguish the project dependency set from host/global Python noise.
+- Next action: If warning-free host logs become required, clean or isolate the global Python 3.13 environment outside the repository; do not mutate global site-packages as part of normal project tasks.
+- Linked tasks: `32.1`, `130.1`
+- Resolution: Task `130.1` added a metadata-based Requests dependency diagnostic to `airesearcher doctor` without importing `requests`; unsupported combinations report `[WARN]`, while missing required packages still fail doctor.
+- Verification: Focused ruff, mypy, dependency tests, and CLI doctor tests passed. `poetry run airesearcher doctor` reported the project Poetry set as `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; full `python -m ruff check src tests`, `python -m mypy src\autoresearch`, and `python -m pytest tests\smoke tests\unit -q` passed. The host Python 3.13 warning still appeared after command completion, so this remains mitigated rather than fully resolved.
 
 ### P-20260612-056 - Dashboard test import order failed ruff
 
