@@ -2279,6 +2279,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-095`; failed GitHub Actions run `27718801671`; task `174.1`._
     - _Verify: `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed locally; GitHub Actions failure evidence confirmed the previous assertion was the only failing test on the pushed `d230920` commit._
 
+- [x] 175. Default autonomous loop uses a real public benchmark, not the toy smoke fixture
+  - [x] 175.1 Switch `serve` and `autopilot` defaults to Pendigits variance-calibrated prototypes
+    - Add a shared CLI default demo constant for long-running research loops.
+    - Set `serve` and `autopilot` to default to `pendigits_variance_calibrated_prototypes` while leaving `run-demo` on `tabular_baseline` for explicit quick smoke runs.
+    - Update approval-action tests, autopilot single-cycle tests, and docs so default cycle IDs, inspiration queries, reproduction checks, and candidate summaries follow the real benchmark default.
+    - Document in English and Chinese README that `tabular_baseline` is only for tiny local smoke and that the always-on loop defaults to UCI Pendigits with at least 1,000 validation rows.
+    - _References: `P-20260618-096`; real task174 cycle publication blockers caused by toy data scale; user requirement that default unattended operation run real research/data rather than agent-assumed smoke fixtures._
+    - _Verify: real approval-blocking smoke `node ./bin/airesearcher.mjs serve --once --permission-mode approve-dangerous --approvals-state runs\manual-live\task175-default-demo\approvals.json --state runs\manual-live\task175-default-demo\scheduler-state.json --sessions-state runs\manual-live\task175-default-demo\sessions.json --project-id task175_default_demo --no-review` exited 1 as expected and printed `serve:autopilot-cycle:task175_default_demo:pendigits_variance_calibrated_prototypes:cycle-1`; real public benchmark `node ./bin/airesearcher.mjs run-demo --demo pendigits_variance_calibrated_prototypes --output-dir runs\manual-live\task175-pendigits-demo --timeout-seconds 120` passed with 3,498 test rows, 10,992 dataset rows, accuracy 0.823327615780446, baseline accuracy 0.7775871926815323, and validation status passed; focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` passed after replacing toy-demo test expectations; broad `python -m ruff check src tests`, `python -m mypy src\autoresearch`, `git diff --check`, and `python -m pytest tests\smoke tests\unit -q` passed with 518 passed and 4 skipped._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

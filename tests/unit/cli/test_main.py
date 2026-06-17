@@ -2024,6 +2024,8 @@ def test_autopilot_literature_clients_default_to_core_free_sources(
 
 
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
+    default_demo = cli_main.DEFAULT_RESEARCH_DEMO
+    default_demo_slug = default_demo.replace("_", "-")
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
     inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
@@ -2063,6 +2065,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         assert len(config.seed_queries) == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert any("Pendigits" in query for query in config.seed_queries)
         return SimpleNamespace(
             queries=(SimpleNamespace(text="evidence graph autonomous research"),),
             fetches=(fetch,),
@@ -2132,7 +2135,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         queries = tuple(kwargs["queries"])
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
-        assert any("Evidence-bound self-evolving research" in query for query in queries)
+        assert any(default_demo in query for query in queries)
         return InspirationRefreshReport(
             queries=queries[:1],
             fetches=(
@@ -2161,9 +2164,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
         assert call_order == ["research_plan"]
+        assert kwargs["demo"] == default_demo
         assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
-        experiment_dir = output_dir / "tabular-baseline"
+        experiment_dir = output_dir / default_demo_slug
         report_path = experiment_dir / "report" / "report.md"
         validation_path = experiment_dir / "validation" / "validation-report.json"
         evidence_path = experiment_dir / "evidence" / "evidence-map.json"
@@ -2196,7 +2200,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             encoding="utf-8",
         )
         return SimpleNamespace(
-            demo="tabular_baseline",
+            demo=default_demo,
             experiment_dir=experiment_dir,
             report_path=report_path,
             evidence_map_path=evidence_path,
@@ -2300,13 +2304,13 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_reproduction_check(**kwargs: object) -> dict[str, object]:
-        assert kwargs["demo"] == "tabular_baseline"
+        assert kwargs["demo"] == default_demo
         check_dir = Path(kwargs["cycle_dir"]) / "reproduction-check"
-        run_record_path = check_dir / "rerun" / "tabular-baseline" / "run" / "run-record.json"
+        run_record_path = check_dir / "rerun" / default_demo_slug / "run" / "run-record.json"
         validation_path = (
             check_dir
             / "rerun"
-            / "tabular-baseline"
+            / default_demo_slug
             / "validation"
             / "validation-report.json"
         )
@@ -2479,9 +2483,14 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert review_context["audit_summary"]["research_plan"]["passed"] is True
     assert review_context["audit_summary"]["research_plan"]["compile_status"] == "compiled"
     candidate_summary = review_context["audit_summary"]["candidate"]
-    assert candidate_summary["title"].startswith("Evidence-bound self-evolving research loop")
-    assert "durable evidence memory" in candidate_summary["research_gap"]
-    assert candidate_summary["metadata"]["method"] == "evidence-bound autonomous research loop"
+    assert candidate_summary["title"] == "Variance-calibrated prototype classifiers for UCI Pendigits"
+    assert "variance-calibrated prototype distance" in candidate_summary["research_gap"]
+    assert candidate_summary["metadata"]["benchmark"] == "UCI Pendigits"
+    assert candidate_summary["metadata"]["demo"] == default_demo
+    assert (
+        candidate_summary["metadata"]["method"]
+        == "diagonal variance-calibrated prototypes with variance shrinkage"
+    )
     assert candidate_summary["task_metadata"]["proposed_method"] == "evidence graph verifier"
     assert candidate_summary["recorded_metrics"]["feature_count"] == 12.0
     assert candidate_summary["recorded_metrics"]["variance_shrinkage"] == 1.0
@@ -2996,7 +3005,7 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     assert "[WAITING] approval_required:" in pending_result.stdout
     assert (
         "[WAITING] action_id: "
-        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
     ) in pending_result.stdout
     assert "[OK] session_claim: allowed" in pending_result.stdout
     assert "[OK] session_release:" in pending_result.stdout
@@ -3005,7 +3014,7 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     assert payload["requests"][0]["status"] == "pending"
     assert (
         payload["requests"][0]["action_id"]
-        == "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+        == f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
     )
 
     approve_result = runner.invoke(
@@ -3246,7 +3255,7 @@ def test_serve_watch_uses_approval_poll_interval_before_cycle(
     assert "[WAITING] approval_required:" in result.stdout
     assert (
         "[WAITING] action_id: "
-        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1"
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
     ) in result.stdout
     assert "serve_cycle" not in result.stdout
 
@@ -3319,15 +3328,15 @@ def test_serve_watch_requires_new_approval_for_next_cycle(
 
     assert result.exit_code == 3, result.output
     assert action_ids == [
-        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-1",
-        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-2",
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1",
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-2",
     ]
     assert sleeps == [1, 7]
     assert "[OK] serve_cycle: cycle-one" in result.stdout
     assert "[WAITING] approval_required:" in result.stdout
     assert (
         "[WAITING] action_id: "
-        "serve:autopilot-cycle:project_1:tabular_baseline:cycle-2"
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-2"
     ) in result.stdout
 
 

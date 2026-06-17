@@ -152,6 +152,10 @@ In `approve-dangerous` mode, each cycle attempt gets its own approval request; u
 The waiting output and `runtime list` show the per-cycle `action_id`, so operators can
 see exactly which cycle is being approved.
 
+The always-on research loop defaults to `pendigits_variance_calibrated_prototypes`, a real
+UCI Pendigits public benchmark path with method-aligned literature queries and at least
+1,000 validation rows. Use `--demo tabular_baseline` only for tiny local smoke runs.
+
 In another terminal, approve the first dangerous cycle:
 
 ```bash
@@ -175,6 +179,9 @@ Use the daily autopilot loop directly when you do not need the approval service 
 ```bash
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
+
+`autopilot` uses the same default public benchmark as `serve`; pass `--demo <id>` to choose
+another benchmark or `--demo tabular_baseline` for the fast toy fixture.
 
 Each cycle can run:
 
@@ -298,6 +305,7 @@ Common npm shortcuts:
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | Bind a Feishu/Lark home chat ID after the bot conversation creates one; prompts when `--target` is omitted. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |
 | `serve` | `--approval-poll-seconds 30` | Poll interval while waiting for dangerous-cycle approval; separate from the daily cycle interval. |
+| `serve` / `autopilot` | `--demo pendigits_variance_calibrated_prototypes` | Default public benchmark for research cycles; use `tabular_baseline` only for smoke runs. |
 | `serve` / `autopilot` | `--interval-seconds 86400` | Daily loop interval. |
 | `serve` / `autopilot` | `--cycles 0` | Run forever when combined with watch mode. |
 | `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |

@@ -130,6 +130,8 @@ airesearcher serve --permission-mode approve-dangerous --push-inspiration
 在 `approve-dangerous` 模式下，每一次 cycle 尝试都会生成独立审批请求；只有明确希望无需逐轮审批地无人值守运行时，才使用 `allow-all`。
 等待输出和 `runtime list` 会显示逐轮 `action_id`，方便操作者确认正在审批的是哪一轮 cycle。
 
+常驻研究循环默认使用 `pendigits_variance_calibrated_prototypes`，也就是 UCI Pendigits 真实公开 benchmark 路径，包含方法对齐的文献检索和不少于 1,000 行验证数据。`--demo tabular_baseline` 只建议用于很小的本地 smoke。
+
 另开一个终端审批第一轮危险动作：
 
 ```bash
@@ -152,6 +154,8 @@ airesearcher serve --permission-mode allow-all --push-inspiration
 ```bash
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
+
+`autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
 
 每一轮 cycle 可以执行：
 
@@ -265,6 +269,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标；省略 `--target` 会交互询问。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
 | `serve` | `--approval-poll-seconds 30` | 等待危险 cycle 审批时的轮询间隔；和每日 cycle 间隔分开。 |
+| `serve` / `autopilot` | `--demo pendigits_variance_calibrated_prototypes` | 默认公开 benchmark；`tabular_baseline` 仅建议用于 smoke。 |
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |

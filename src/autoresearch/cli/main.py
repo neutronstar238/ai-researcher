@@ -154,6 +154,7 @@ DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
+DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
 SERVE_NETWORK_APPROVED_DOMAINS = (
     "api.openalex.org",
     "api.semanticscholar.org",
@@ -3006,7 +3007,7 @@ def autopilot(
     demo: Annotated[
         str,
         typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
-    ] = "tabular_baseline",
+    ] = DEFAULT_RESEARCH_DEMO,
     max_queries: Annotated[
         int,
         typer.Option(
@@ -3211,7 +3212,7 @@ def serve(
     demo: Annotated[
         str,
         typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
-    ] = "tabular_baseline",
+    ] = DEFAULT_RESEARCH_DEMO,
     max_queries: Annotated[
         int,
         typer.Option(

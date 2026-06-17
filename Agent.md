@@ -7876,3 +7876,33 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-095` added and resolved.
 - Follow-up:
   - Re-run full gates and push; confirm the next GitHub Actions run returns green.
+
+### 2026-06-18 05:01:33 +08:00 - Codex - Task 175.1 Default real benchmark loop
+
+- Request: Continue the launch hardening work so the system actually runs real public data in the autonomous loop rather than relying on local toy smoke fixtures.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"` for long-running CLI loops.
+  - Changed `serve` and `autopilot` defaults to the real UCI Pendigits benchmark while keeping `run-demo` on `tabular_baseline` for explicit quick smoke runs.
+  - Updated CLI tests so approval action IDs, autopilot inspiration queries, reproduction checks, and candidate summaries follow the shared default demo.
+  - Updated English and Chinese README guidance to explain that the always-on loop defaults to UCI Pendigits and that `tabular_baseline` is for tiny local smoke only.
+- Verification:
+  - Initial `python -m pytest tests\smoke tests\unit -q` failed because `test_autopilot_command_runs_one_non_review_cycle` still asserted toy-demo inspiration/reproduction/candidate expectations.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed after updating the test to the real default benchmark.
+  - Real approval-blocking smoke: `node ./bin/airesearcher.mjs serve --once --permission-mode approve-dangerous --approvals-state runs\manual-live\task175-default-demo\approvals.json --state runs\manual-live\task175-default-demo\scheduler-state.json --sessions-state runs\manual-live\task175-default-demo\sessions.json --project-id task175_default_demo --no-review` exited 1 as expected and printed `serve:autopilot-cycle:task175_default_demo:pendigits_variance_calibrated_prototypes:cycle-1`.
+  - Real public benchmark: `node ./bin/airesearcher.mjs run-demo --demo pendigits_variance_calibrated_prototypes --output-dir runs\manual-live\task175-pendigits-demo --timeout-seconds 120` passed with 3,498 test rows, 10,992 dataset rows, accuracy 0.823327615780446, baseline accuracy 0.7775871926815323, z-score centroid accuracy 0.7850200114351058, and validation status passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-096` added and resolved.
+- Follow-up:
+  - Re-run a full `serve --once --permission-mode allow-all` cycle on the new default when operator-channel delivery is configured, then inspect publication/evidence gates for remaining publication-readiness blockers.

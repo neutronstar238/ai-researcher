@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-096 - Always-on default used toy baseline unsuitable for publication gates
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:01:00 +08:00
+- Source: Real task174 `serve --once` cycle and task175 default-loop review.
+- Symptom: The unattended `serve` and `autopilot` commands defaulted to `tabular_baseline`, while `run-demo` also used the same tiny fixture for local smoke.
+- Impact: A deployed 24h operator could start a nominally real research loop but produce toy-scale evidence, making publication gates fail on data scale and weakening user trust in autonomous output quality.
+- Evidence: The task174 real cycle publication audit reported `literature_query_breadth`, data-size, and reproducibility-readiness blockers; the toy fixture has only a tiny local validation surface and is useful for smoke tests rather than research-quality cycles.
+- Root cause: The CLI reused the historical smoke default for both quick local demos and always-on autonomous operation.
+- Workaround: Before the fix, operators could manually pass `--demo pendigits_variance_calibrated_prototypes`.
+- Next action: Keep future long-running defaults tied to public, source-backed benchmarks and reserve toy demos for explicit smoke commands.
+- Linked tasks: `174.1`, `175.1`
+- Resolution: Added `DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"` and used it for `serve` and `autopilot`; kept `run-demo` default as `tabular_baseline`; updated tests and README guidance.
+- Verification: Real Pendigits run passed with 3,498 test rows, 10,992 dataset rows, accuracy 0.823327615780446, baseline accuracy 0.7775871926815323, and validation status passed; full smoke/unit tests passed with 518 passed and 4 skipped.
+
 ### P-20260618-095 - Monitor stdout assertion failed on Linux CI terminal truncation
 
 - Status: Resolved
