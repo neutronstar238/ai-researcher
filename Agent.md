@@ -7281,3 +7281,35 @@ This file defines the project development standard for coding agents and records
   - `P-20260618-081` added and resolved.
 - Follow-up:
   - None for this CI fix.
+
+### 2026-06-18 02:26:06 +08:00 - Codex - Task 155.1 Deployment readiness preflight
+
+- Request: Continue toward V1.0 readiness by checking whether daily scheduled retrieval and inspiration push are actually ready before 24h operation.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher readiness` to write `.airesearcher/readiness/report.json` with checks for `.env`, provider-agnostic LLM values, setup config, Obsidian vault, writable `outputs/`, planned daily loop command, scheduler state, and WeChat/Feishu channel configuration.
+  - Added `--push-inspiration` and `--require-channel-config` so operators can fail fast when inspiration push delivery is required.
+  - Added `/research:readiness` slash-command template and English/Chinese README guidance.
+  - Added focused CLI tests for ready deployment materials, required-channel failure, and slash template generation.
+  - Ran the new readiness command against the current local checkout; it reported the model/config/vault/output/daily-loop checks ready and warned that no WeChat/Feishu delivery channel is currently configured.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m autoresearch.cli.main readiness --allow-missing-channel`: failed because the package is not installed into the active interpreter outside the Poetry/console entrypoint; recorded under `P-20260618-082`.
+  - `poetry run airesearcher readiness --allow-missing-channel`: passed and wrote `.airesearcher/readiness/report.json`; one warning remains for missing operator channel delivery config.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 505 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260618-082` added and resolved.
+- Follow-up:
+  - Configure and self-test a real WeChat or Feishu channel before using `readiness --require-channel-config` as a hard pass gate for push delivery.

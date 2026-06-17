@@ -300,6 +300,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Use `wechat`, `feishu`, or repeat `--channel` for several channels. A skipped "
         "or failed result means the channel is not ready for unattended inspiration pushes.",
     ),
+    "research/readiness.toml": (
+        "Check whether the local deployment is ready for the daily unattended research loop.",
+        "Run `airesearcher readiness --push-inspiration --require-channel-config` after setup "
+        "and channel testing. Inspect `.airesearcher/readiness/report.json` before leaving "
+        "the service running for 24h operation.",
+    ),
     "research/scansci-pdf.toml": (
         "Write the optional ScanSci PDF integration manifest with OA/legal-first defaults.",
         "Run `airesearcher pdf-sources scansci-pdf init --output integrations/scansci-pdf/pdf-source.json` "
@@ -1541,6 +1547,347 @@ def _channel_test_report(message: str) -> InspirationRefreshReport:
         ),
         summary_path=None,
     )
+
+
+@app.command("readiness")
+def readiness(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup."),
+    ] = Path(".env"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by setup."),
+    ] = Path("config.yaml"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root expected by the daily loop."),
+    ] = Path("autoresearch-vault"),
+    outputs_dir: Annotated[
+        Path,
+        typer.Option("--outputs-dir", help="Directory where publication artifacts are written."),
+    ] = Path("outputs"),
+    scheduler_state: Annotated[
+        Path,
+        typer.Option("--scheduler-state", help="Local scheduler follow-up state file."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="JSON readiness report path."),
+    ] = Path(".airesearcher/readiness/report.json"),
+    interval_seconds: Annotated[
+        int,
+        typer.Option("--interval-seconds", min=60, help="Planned unattended loop interval."),
+    ] = 86400,
+    push_inspiration: Annotated[
+        bool,
+        typer.Option(
+            "--push-inspiration/--no-push-inspiration",
+            help="Check operator-channel readiness for inspiration pushes.",
+        ),
+    ] = True,
+    require_channel_config: Annotated[
+        bool,
+        typer.Option(
+            "--require-channel-config/--allow-missing-channel",
+            help="Fail readiness when push is enabled but no WeChat/Feishu channel is configured.",
+        ),
+    ] = False,
+) -> None:
+    """Write a preflight report for the 24h unattended research loop."""
+
+    env_values = _read_env_file(env_path)
+    checks: list[dict[str, object]] = []
+
+    _add_readiness_check(
+        checks,
+        check_id="env_file",
+        status="pass" if env_path.exists() else "fail",
+        detail=f"env file found at {env_path}" if env_path.exists() else f"missing env file: {env_path}",
+        evidence={"path": env_path.as_posix()},
+    )
+    _add_readiness_result(checks, "llm_credentials", _llm_readiness(env_values))
+    _add_readiness_result(checks, "config_file", _config_file_readiness(config_path))
+    _add_readiness_check(
+        checks,
+        check_id="vault",
+        status="pass" if vault.is_dir() else "fail",
+        detail=f"vault directory found at {vault}" if vault.is_dir() else f"missing vault directory: {vault}",
+        evidence={"path": vault.as_posix()},
+    )
+    _add_readiness_result(checks, "outputs_dir", _writable_directory_readiness(outputs_dir))
+    _add_readiness_result(
+        checks,
+        "daily_loop",
+        _daily_loop_readiness(
+            interval_seconds=interval_seconds,
+            push_inspiration=push_inspiration,
+        ),
+    )
+    _add_readiness_result(
+        checks,
+        "operator_channels",
+        _operator_channel_readiness(
+            env_values,
+            push_inspiration=push_inspiration,
+            require_channel_config=require_channel_config,
+        ),
+    )
+    _add_readiness_result(checks, "scheduler_state", _scheduler_state_readiness(scheduler_state))
+
+    failure_count = sum(1 for check in checks if check["status"] == "fail")
+    warning_count = sum(1 for check in checks if check["status"] == "warn")
+    planned_command = _readiness_daily_command(
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
+    report = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ready" if failure_count == 0 else "blocked",
+        "failure_count": failure_count,
+        "warning_count": warning_count,
+        "planned_daily_command": planned_command,
+        "checks": checks,
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+
+    for check in checks:
+        status = str(check["status"])
+        prefix = {"pass": "[OK]", "warn": "[WARN]", "fail": "[FAIL]"}.get(status, "[INFO]")
+        typer.echo(
+            f"{prefix} readiness.{check['id']}: {check['detail']}",
+            err=status == "fail",
+        )
+    typer.echo(f"[OK] readiness_report: {output}")
+    typer.echo(f"[OK] planned_daily_command: {planned_command}")
+    if failure_count:
+        typer.echo("[FAIL] readiness: blocked", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("[OK] readiness: ready")
+
+
+def _add_readiness_check(
+    checks: list[dict[str, object]],
+    *,
+    check_id: str,
+    status: str,
+    detail: str,
+    evidence: Mapping[str, object] | None = None,
+) -> None:
+    checks.append(
+        {
+            "id": check_id,
+            "status": status,
+            "detail": detail,
+            "evidence": dict(evidence or {}),
+        }
+    )
+
+
+def _add_readiness_result(
+    checks: list[dict[str, object]],
+    check_id: str,
+    result: Mapping[str, object],
+) -> None:
+    evidence = result.get("evidence")
+    _add_readiness_check(
+        checks,
+        check_id=check_id,
+        status=str(result.get("status") or "fail"),
+        detail=str(result.get("detail") or "missing readiness detail"),
+        evidence=evidence if isinstance(evidence, Mapping) else {},
+    )
+
+
+def _llm_readiness(env_values: Mapping[str, str]) -> dict[str, object]:
+    required = {
+        "AUTORESEARCH_LLM_BASE_URL": _env_or_os(env_values, "AUTORESEARCH_LLM_BASE_URL"),
+        "AUTORESEARCH_LLM_MODEL_NAME": _env_or_os(env_values, "AUTORESEARCH_LLM_MODEL_NAME"),
+        "AUTORESEARCH_LLM_API_KEY": _env_or_os(env_values, "AUTORESEARCH_LLM_API_KEY"),
+    }
+    missing = [key for key, value in required.items() if not value]
+    provider = _env_or_os(env_values, "AUTORESEARCH_LLM_PROVIDER") or "openai-compatible"
+    if missing:
+        return {
+            "status": "fail",
+            "detail": "missing model API values: " + ", ".join(missing),
+            "evidence": {"provider": provider, "missing": missing},
+        }
+    return {
+        "status": "pass",
+        "detail": "model API base URL, model name, and API key are configured",
+        "evidence": {
+            "provider": provider,
+            "base_url": required["AUTORESEARCH_LLM_BASE_URL"],
+            "model_name": required["AUTORESEARCH_LLM_MODEL_NAME"],
+            "api_key_present": True,
+        },
+    }
+
+
+def _config_file_readiness(config_path: Path) -> dict[str, object]:
+    if not config_path.exists():
+        return {
+            "status": "fail",
+            "detail": f"missing config file: {config_path}",
+            "evidence": {"path": config_path.as_posix()},
+        }
+    try:
+        ConfigParser().parse_file(config_path, model_type=SystemConfig)
+    except ValueError as exc:
+        return {
+            "status": "fail",
+            "detail": f"config file is not valid: {exc}",
+            "evidence": {"path": config_path.as_posix()},
+        }
+    return {
+        "status": "pass",
+        "detail": f"config file parsed as SystemConfig: {config_path}",
+        "evidence": {"path": config_path.as_posix()},
+    }
+
+
+def _writable_directory_readiness(directory: Path) -> dict[str, object]:
+    try:
+        was_present = directory.exists()
+        if was_present and not directory.is_dir():
+            return {
+                "status": "fail",
+                "detail": f"output path is not a directory: {directory}",
+                "evidence": {"path": directory.as_posix()},
+            }
+        directory.mkdir(parents=True, exist_ok=True)
+        probe = directory / ".airesearcher-readiness.tmp"
+        probe.write_text("ok\n", encoding="utf-8")
+        probe.unlink()
+    except OSError as exc:
+        return {
+            "status": "fail",
+            "detail": f"output directory is not writable: {exc}",
+            "evidence": {"path": directory.as_posix()},
+        }
+    created_suffix = " (created)" if not was_present else ""
+    return {
+        "status": "pass",
+        "detail": f"output directory is writable{created_suffix}: {directory}",
+        "evidence": {"path": directory.as_posix(), "created": not was_present},
+    }
+
+
+def _daily_loop_readiness(*, interval_seconds: int, push_inspiration: bool) -> dict[str, object]:
+    command = _readiness_daily_command(
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
+    if interval_seconds < 3600:
+        return {
+            "status": "warn",
+            "detail": "planned interval is below one hour; unattended daily runs usually use 86400 seconds",
+            "evidence": {"interval_seconds": interval_seconds, "command": command},
+        }
+    return {
+        "status": "pass",
+        "detail": f"planned unattended loop interval is {interval_seconds} seconds",
+        "evidence": {"interval_seconds": interval_seconds, "command": command},
+    }
+
+
+def _operator_channel_readiness(
+    env_values: Mapping[str, str],
+    *,
+    push_inspiration: bool,
+    require_channel_config: bool,
+) -> dict[str, object]:
+    if not push_inspiration:
+        return {
+            "status": "pass",
+            "detail": "inspiration push is disabled for the planned daily command",
+            "evidence": {"push_inspiration": False},
+        }
+
+    wechat_mode = _env_or_os(env_values, "AUTORESEARCH_WECHAT_CONNECTION_MODE").casefold()
+    wechat_webhook = bool(_env_or_os(env_values, "AUTORESEARCH_WECHAT_WEBHOOK_URL"))
+    wechat_app_credentials = bool(
+        _env_or_os(env_values, "AUTORESEARCH_WECHAT_APP_ID")
+        and _env_or_os(env_values, "AUTORESEARCH_WECHAT_APP_SECRET")
+    )
+    wechat_status_path = Path(
+        _env_or_os(env_values, "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH")
+        or WECHAT_QR_SETUP_STATUS_PATH
+    )
+    wechat_qr_status = _wechat_qr_setup_status(wechat_status_path) if wechat_mode == "qr" else ""
+    wechat_qr_ready = wechat_mode == "qr" and wechat_qr_status == "completed"
+
+    feishu_mode = _env_or_os(env_values, "AUTORESEARCH_FEISHU_CONNECTION_MODE").casefold()
+    feishu_webhook = bool(_env_or_os(env_values, "AUTORESEARCH_FEISHU_WEBHOOK_URL"))
+    feishu_app_credentials = bool(
+        _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_ID")
+        and _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_SECRET")
+    )
+
+    ready_channels: list[str] = []
+    if wechat_webhook or wechat_app_credentials or wechat_qr_ready:
+        ready_channels.append("wechat")
+    if feishu_webhook or feishu_app_credentials:
+        ready_channels.append("feishu")
+
+    evidence = {
+        "push_inspiration": True,
+        "wechat_mode": wechat_mode or None,
+        "wechat_webhook_configured": wechat_webhook,
+        "wechat_app_credentials_configured": wechat_app_credentials,
+        "wechat_qr_status": wechat_qr_status or None,
+        "feishu_mode": feishu_mode or None,
+        "feishu_webhook_configured": feishu_webhook,
+        "feishu_app_credentials_configured": feishu_app_credentials,
+        "ready_channels": ready_channels,
+    }
+    if ready_channels:
+        return {
+            "status": "pass",
+            "detail": "operator channel configured: " + ", ".join(ready_channels),
+            "evidence": evidence,
+        }
+    status = "fail" if require_channel_config else "warn"
+    return {
+        "status": status,
+        "detail": "push is enabled but no WeChat/Feishu channel is configured or QR-ready",
+        "evidence": evidence,
+    }
+
+
+def _scheduler_state_readiness(state_path: Path) -> dict[str, object]:
+    if not state_path.exists():
+        return {
+            "status": "warn",
+            "detail": f"scheduler follow-up state does not exist yet: {state_path}",
+            "evidence": {"path": state_path.as_posix(), "task_count": 0},
+        }
+    payload = _read_json_mapping(state_path)
+    tasks = _mapping_list(payload.get("tasks"))
+    return {
+        "status": "pass",
+        "detail": f"scheduler follow-up state is readable with {len(tasks)} task(s)",
+        "evidence": {"path": state_path.as_posix(), "task_count": len(tasks)},
+    }
+
+
+def _readiness_daily_command(*, interval_seconds: int, push_inspiration: bool) -> str:
+    push_flag = "--push-inspiration" if push_inspiration else "--no-push-inspiration"
+    return (
+        "airesearcher autopilot --watch --cycles 0 "
+        f"--interval-seconds {interval_seconds} {push_flag}"
+    )
+
+
+def _env_or_os(env_values: Mapping[str, str], key: str) -> str:
+    return (env_values.get(key) or os.getenv(key) or "").strip()
+
+
+def _wechat_qr_setup_status(status_path: Path) -> str:
+    payload = _read_json_mapping(status_path)
+    return str(payload.get("status") or "").strip().casefold()
 
 
 @app.command("similarity-check")

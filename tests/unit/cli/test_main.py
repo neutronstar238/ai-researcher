@@ -400,6 +400,116 @@ def test_channels_test_requires_sent_when_requested(
     assert payload["records"][0]["status"] == "skipped"
 
 
+def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    outputs_dir = tmp_path / "outputs"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    output = tmp_path / ".airesearcher" / "readiness" / "report.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text(
+        json.dumps({"tasks": [{"task_id": "daily", "status": "open"}]}),
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_PROVIDER=openai-compatible",
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=webhook",
+                "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(outputs_dir),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] readiness: ready" in result.stdout
+    assert "[OK] planned_daily_command:" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["status"] == "ready"
+    assert payload["failure_count"] == 0
+    assert payload["planned_daily_command"] == (
+        "airesearcher autopilot --watch --cycles 0 "
+        "--interval-seconds 86400 --push-inspiration"
+    )
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["operator_channels"]["evidence"]["ready_channels"] == ["feishu"]
+    assert checks["outputs_dir"]["evidence"]["created"] is True
+
+
+def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert payload["status"] == "blocked"
+    assert checks["operator_channels"]["status"] == "fail"
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -791,6 +901,7 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     scansci_payload = json.loads(scansci_manifest.read_text(encoding="utf-8"))
     assert scansci_payload["default_policy"]["mode"] == "oa_first_legal_only"
     assert (commands / "research" / "autopilot.toml").is_file()
+    assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
     assert "[OK] next: airesearcher serve --permission-mode approve-dangerous" in result.stdout
 
@@ -824,6 +935,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "approve.toml").is_file()
     assert (commands_dir / "research" / "channel-adapters.toml").is_file()
     assert (commands_dir / "research" / "channel-test.toml").is_file()
+    assert (commands_dir / "research" / "readiness.toml").is_file()
     assert (commands_dir / "research" / "scansci-pdf.toml").is_file()
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
@@ -843,6 +955,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:approve" in list_result.stdout
     assert "/research:channel-adapters" in list_result.stdout
     assert "/research:channel-test" in list_result.stdout
+    assert "/research:readiness" in list_result.stdout
     assert "/research:scansci-pdf" in list_result.stdout
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
@@ -894,6 +1007,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher channels test" in (
         commands_dir / "research" / "channel-test.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher readiness" in (
+        commands_dir / "research" / "readiness.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher pdf-sources scansci-pdf init" in (
         commands_dir / "research" / "scansci-pdf.toml"

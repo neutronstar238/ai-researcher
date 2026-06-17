@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-082 - Direct python module invocation lacks installed package path
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:26:00 +08:00
+- Source: Real local readiness verification for task `155.1`.
+- Symptom: `python -m autoresearch.cli.main readiness --allow-missing-channel` failed with `ModuleNotFoundError: No module named 'autoresearch'`.
+- Impact: The first real local readiness command did not run through a plain Python module invocation because the package is not installed into the active interpreter outside the project entrypoint.
+- Evidence: Python returned `Error while finding module specification for 'autoresearch.cli.main'`.
+- Root cause: The active interpreter does not automatically add `src/` for direct module execution; project commands are expected to use the Poetry console entrypoint or an installed package.
+- Workaround: Use `poetry run airesearcher ...` or install the package before direct module invocation.
+- Next action: Keep README examples on `airesearcher` and npm entrypoints rather than direct `python -m` commands.
+- Linked tasks: `155.1`
+- Resolution: Re-ran the same readiness check through `poetry run airesearcher readiness --allow-missing-channel`.
+- Verification: `poetry run airesearcher readiness --allow-missing-channel` passed and wrote `.airesearcher/readiness/report.json`.
+
 ### P-20260618-081 - CI Click runner did not separately capture channel-test stderr
 
 - Status: Resolved

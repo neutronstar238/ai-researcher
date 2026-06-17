@@ -94,6 +94,9 @@ Recommended channel setup:
 After setup, run `airesearcher channels test --channel feishu --require-sent` or
 `airesearcher channels test --channel wechat` to verify delivery state before leaving the service
 unattended.
+Then run `airesearcher readiness --push-inspiration --require-channel-config` to write
+`.airesearcher/readiness/report.json` and confirm the daily loop, vault, output path, model API,
+and operator-channel configuration are ready.
 
 Non-interactive setup is also supported:
 
@@ -242,6 +245,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:skill-watchlist` | none | Writes external research-skill candidates into the Obsidian quarantine watchlist. |
 | `/research:channel-adapters` | none | Writes optional messaging adapter runbooks. |
 | `/research:channel-test` | `wechat` or `feishu` | Sends a setup-channel self-test message. |
+| `/research:readiness` | none | Writes the deployment readiness report before 24h operation. |
 | `/research:code-agent-backends` | none | Writes OpenCode backend integration contracts. |
 | `/research:scansci-pdf` | none | Writes OA-first PDF retrieval manifest. |
 | `/research:status` | none | Shows local operator status guidance. |
@@ -263,6 +267,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--output` | Writes the preflight report for unattended daily operation. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
