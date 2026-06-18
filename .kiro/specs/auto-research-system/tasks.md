@@ -2562,6 +2562,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-117`; tasks `196.1`, `198.1`, `199.1`, and `202.1`; user requirement that setup/readiness be a guided deploy flow and not push hidden `.env` work onto the operator._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_feishu_home_chat_for_app_gateway tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real Node readiness probe under `runs\manual-live\task203-feishu-readiness` blocked on missing Feishu home chat and missing sent evidence, with next actions `bind_feishu_target` then `run_channel_self_test`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 204. Generated Obsidian vault copy uses current project name
+  - [x] 204.1 Align generated vault index wording with AI-Researcher
+    - Change the first-run exploration and project index copy from old `AutoResearch` wording to `AI-Researcher`.
+    - Add regression coverage that reads the generated index Markdown files and asserts the current project name appears.
+    - Verify through the real Node `obsidian-setup` CLI entrypoint, not only direct unit calls.
+    - Record the stale-name defect and the stale CLI flag verification miss in `Problem.md`.
+    - _References: `P-20260618-118`; user requirement to rename product-facing project text to AI-Researcher while preserving the canonical `autoresearch-vault/` knowledge path._
+    - _Verify: focused `python -m pytest tests\unit\knowledge\test_vault.py -q` passed with 6 tests; focused `python -m ruff check src\autoresearch\knowledge\vault.py tests\unit\knowledge\test_vault.py` passed; focused `python -m mypy src\autoresearch\knowledge\vault.py` passed. Initial real CLI probe with stale `--local-snippet` failed and was recorded; corrected real `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --write-local-snippet` passed. Generated `exploration/index.md` and `projects/project-001/index.md` contain `AI-Researcher`, and `rg -n "knowledge index for AutoResearch" runs\manual-live\task204-vault-naming\autoresearch-vault` returned no matches. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

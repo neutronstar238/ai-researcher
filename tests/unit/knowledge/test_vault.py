@@ -21,6 +21,14 @@ def test_create_vault_layout_creates_required_obsidian_paths(tmp_path: Path) -> 
     assert layout.project == vault_root / "projects" / "project-001"
     assert (layout.exploration / "index.md").is_file()
     assert (layout.project / "index.md").is_file()
+    assert (
+        "Global cross-project knowledge index for AI-Researcher."
+        in (layout.exploration / "index.md").read_text(encoding="utf-8")
+    )
+    assert (
+        "Project knowledge index for AI-Researcher."
+        in (layout.project / "index.md").read_text(encoding="utf-8")
+    )
 
     for directory in EXPLORATION_DIRECTORIES:
         assert (vault_root / "exploration" / directory).is_dir()

@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-118 - Generated vault index copy still used old AutoResearch name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:42:00 +08:00
+- Source: Launch-readiness polish after the user required product-facing project naming to be `AI-Researcher`.
+- Symptom: `create_vault_layout()` wrote first-run Obsidian index copy containing `Global cross-project knowledge index for AutoResearch.` and `Project knowledge index for AutoResearch.`.
+- Impact: A new user running setup or Obsidian vault generation could see stale project naming in the knowledge base's first visible index files, even though README and generated home/dashboard assets use AI-Researcher.
+- Evidence: `rg -n "knowledge index for AutoResearch" src\autoresearch\knowledge tests\unit\knowledge README.md README.zh-CN.md .kiro\specs\auto-research-system\tasks.md` found the stale strings in `src\autoresearch\knowledge\vault.py`.
+- Root cause: The original vault layout helper predated the product-facing rename and only the richer Obsidian assets had been updated.
+- Workaround: None needed after the fix.
+- Next action: Keep tests reading generated Markdown copy whenever project-facing names change.
+- Linked tasks: `204.1`
+- Resolution: Updated generated exploration and project index copy to `AI-Researcher` and added regression assertions in `tests\unit\knowledge\test_vault.py`.
+- Verification: Focused vault tests, ruff, and mypy passed. An initial real CLI smoke with stale `--local-snippet` failed because the actual flag is `--write-local-snippet`; rerunning the real Node `obsidian-setup` command with `--write-local-snippet` succeeded and generated index files containing `AI-Researcher`, with no matches for `knowledge index for AutoResearch` under the generated vault.
+
 ### P-20260618-117 - Readiness treated Feishu App credentials as delivery-ready without home chat
 
 - Status: Resolved

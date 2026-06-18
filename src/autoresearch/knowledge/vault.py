@@ -110,11 +110,11 @@ def create_vault_layout(vault_root: Path | str, project_id: str) -> VaultLayout:
 
     _write_if_missing(
         exploration / "index.md",
-        "# Exploration Index\n\nGlobal cross-project knowledge index for AutoResearch.\n",
+        "# Exploration Index\n\nGlobal cross-project knowledge index for AI-Researcher.\n",
     )
     _write_if_missing(
         project / "index.md",
-        f"# {project_id}\n\nProject knowledge index for AutoResearch.\n",
+        f"# {project_id}\n\nProject knowledge index for AI-Researcher.\n",
     )
 
     return VaultLayout(root=root, exploration=exploration, project=project)

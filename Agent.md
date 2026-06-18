@@ -62,6 +62,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 09:42:41 +08:00 - Codex - Task 204.1 Generated vault naming
+
+- Request: Continue launch-readiness work and align first-run Obsidian vault copy with the AI-Researcher project name.
+- Files changed:
+  - `src/autoresearch/knowledge/vault.py`
+  - `tests/unit/knowledge/test_vault.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed the generated exploration and project index copy from stale `AutoResearch` wording to `AI-Researcher`.
+  - Added regression assertions that read the generated index Markdown files and verify the current project-facing name.
+  - Added completed task `204.1` and resolved `P-20260618-118`.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_vault.py -q`: passed, 6 tests.
+  - `python -m ruff check src\autoresearch\knowledge\vault.py tests\unit\knowledge\test_vault.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\vault.py`: passed.
+  - Real CLI probe `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --local-snippet`: failed because the real option is `--write-local-snippet`; this was recorded in `P-20260618-118`.
+  - Corrected real CLI probe `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --write-local-snippet`: passed and generated vault assets.
+  - `Get-Content` on generated `exploration/index.md` and `projects/project-001/index.md`: confirmed both index files say `AI-Researcher`.
+  - `rg -n "knowledge index for AutoResearch" runs\manual-live\task204-vault-naming\autoresearch-vault`: returned no matches.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-118`.
+- Follow-up:
+  - None for generated vault naming.
+
 ### 2026-06-18 07:19:54 +08:00 - Codex - Task 187.1 Formal reference locator integrity
 
 - Request:
