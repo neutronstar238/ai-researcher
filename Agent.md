@@ -8719,3 +8719,33 @@ This file defines the project development standard for coding agents and records
   - None added; the real probe was an expected fail-closed missing-target case.
 - Follow-up:
   - Real sent-delivery success still requires an operator to bind a WeChat OpenClaw target or Feishu home chat ID after platform pairing.
+
+### 2026-06-18 09:35:06 +08:00 - Codex - Task 203.1 Feishu App readiness target gate
+
+- Request: Continue launch-readiness work by keeping readiness checks aligned with actual Feishu App delivery requirements.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed operator-channel readiness so Feishu App ID/App Secret alone are not considered delivery-ready without `AUTORESEARCH_FEISHU_HOME_CHAT_ID`.
+  - Added `feishu_home_chat_configured` evidence to the readiness report.
+  - Added `bind_feishu_target` next-action generation when Feishu App credentials exist but the home chat target is missing.
+  - Preserved webhook-mode Feishu readiness behavior.
+  - Added regression coverage for strict readiness with Feishu App credentials but no home chat.
+  - Added and resolved `P-20260618-117`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_feishu_home_chat_for_app_gateway tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q`: passed, 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real Node readiness probe `node .\bin\airesearcher.mjs readiness --config runs\manual-live\task202-channel-next-actions\config.yaml --env-path runs\manual-live\task202-channel-next-actions\.env --vault runs\manual-live\task203-feishu-readiness\vault --outputs-dir runs\manual-live\task203-feishu-readiness\outputs --channel-test-result runs\manual-live\task203-feishu-readiness\channels\test-result.json --output runs\manual-live\task203-feishu-readiness\readiness.json --require-channel-config --require-channel-sent`: exited 1 by design and produced next actions `bind_feishu_target` then `run_channel_self_test`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-117`.
+- Follow-up:
+  - Real Feishu App delivery still requires the operator to bind a home chat ID after the platform bot conversation exists.

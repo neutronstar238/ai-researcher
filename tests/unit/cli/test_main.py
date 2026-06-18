@@ -665,6 +665,70 @@ def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
     )
 
 
+def test_readiness_requires_feishu_home_chat_for_app_gateway(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=websocket",
+                "AUTORESEARCH_FEISHU_APP_ID=cli_a_test",
+                "AUTORESEARCH_FEISHU_APP_SECRET=secret",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    assert "[NEXT] readiness_action.bind_feishu_target:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "fail"
+    evidence = checks["operator_channels"]["evidence"]
+    assert evidence["feishu_app_credentials_configured"] is True
+    assert evidence["feishu_home_chat_configured"] is False
+    assert evidence["ready_channels"] == []
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["bind_feishu_target"]["command"] == (
+        f"airesearcher channels bind-target --channel feishu --env-path {env_path.as_posix()}"
+    )
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel feishu "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
 def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"

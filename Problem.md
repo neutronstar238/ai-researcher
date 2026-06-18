@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-117 - Readiness treated Feishu App credentials as delivery-ready without home chat
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 09:32:00 +08:00
+- Source: Code inspection and real readiness probe while hardening setup-time channel delivery repair actions.
+- Symptom: `readiness --require-channel-config --require-channel-sent` counted Feishu App ID/App Secret as a ready channel even when `AUTORESEARCH_FEISHU_HOME_CHAT_ID` was missing.
+- Impact: Prelaunch guidance could send operators straight to `channels test`, where delivery would be skipped, instead of first telling them to bind the Feishu/Lark home chat target required by the App API sender.
+- Evidence: The notification sender requires `AUTORESEARCH_FEISHU_HOME_CHAT_ID` for Feishu App delivery, while `_operator_channel_readiness()` previously added `feishu` to `ready_channels` when only App credentials existed.
+- Root cause: Operator-channel readiness used credential presence as a proxy for delivery readiness, but Feishu App delivery also needs the chat target.
+- Workaround: None needed after the fix.
+- Next action: Keep readiness definitions aligned with actual notification sender requirements.
+- Linked tasks: `203.1`
+- Resolution: Required `AUTORESEARCH_FEISHU_HOME_CHAT_ID` alongside Feishu App credentials before marking Feishu ready, added `feishu_home_chat_configured` evidence, and added `bind_feishu_target` next-action generation when the home chat target is missing.
+- Verification: Focused readiness tests passed; real Node readiness probe with Feishu App credentials but no home chat wrote a blocked report containing `bind_feishu_target` then `run_channel_self_test`; broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed.
+
 ### P-20260618-116 - Operator monitor showed oldest Agent.md entries instead of latest work
 
 - Status: Resolved

@@ -2551,6 +2551,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `196.1`, `198.1`, and `199.1`; user requirement that setup be a guided deployment flow instead of hidden manual `.env` work._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real Node setup probe under `runs\manual-live\task202-channel-next-actions` wrote channel-test evidence, exited 1 by design for missing Feishu home chat, and printed `bind_feishu_target`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 535 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 203. Readiness channel configuration matches real delivery requirements
+  - [x] 203.1 Require Feishu home chat before marking App-mode delivery ready
+    - Change `readiness` so Feishu App ID/App Secret alone are not treated as a ready push channel.
+    - Add `feishu_home_chat_configured` evidence to the operator-channel readiness report.
+    - When Feishu App credentials are present but home chat is missing, emit `bind_feishu_target` before `run_channel_self_test`.
+    - Keep webhook-mode Feishu readiness unchanged.
+    - Add regression coverage for Feishu App mode without `AUTORESEARCH_FEISHU_HOME_CHAT_ID`.
+    - Record the resolved mismatch in `Problem.md`.
+    - _References: `P-20260618-117`; tasks `196.1`, `198.1`, `199.1`, and `202.1`; user requirement that setup/readiness be a guided deploy flow and not push hidden `.env` work onto the operator._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_feishu_home_chat_for_app_gateway tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q` passed with 3 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real Node readiness probe under `runs\manual-live\task203-feishu-readiness` blocked on missing Feishu home chat and missing sent evidence, with next actions `bind_feishu_target` then `run_channel_self_test`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

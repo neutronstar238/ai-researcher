@@ -2079,11 +2079,12 @@ def _operator_channel_readiness(
         _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_ID")
         and _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_SECRET")
     )
+    feishu_home_chat = bool(_env_or_os(env_values, "AUTORESEARCH_FEISHU_HOME_CHAT_ID"))
 
     ready_channels: list[str] = []
     if wechat_webhook or wechat_app_credentials or wechat_qr_ready:
         ready_channels.append("wechat")
-    if feishu_webhook or feishu_app_credentials:
+    if feishu_webhook or (feishu_app_credentials and feishu_home_chat):
         ready_channels.append("feishu")
 
     evidence = {
@@ -2096,6 +2097,7 @@ def _operator_channel_readiness(
         "feishu_mode": feishu_mode or None,
         "feishu_webhook_configured": feishu_webhook,
         "feishu_app_credentials_configured": feishu_app_credentials,
+        "feishu_home_chat_configured": feishu_home_chat,
         "ready_channels": ready_channels,
     }
     if ready_channels:
@@ -2228,6 +2230,10 @@ def _readiness_next_actions(
         "airesearcher channels bind-target "
         f"--channel wechat --env-path {_command_path(env_path)}"
     )
+    bind_feishu_target_command = (
+        "airesearcher channels bind-target "
+        f"--channel feishu --env-path {_command_path(env_path)}"
+    )
     delivery_check = checks_by_id.get("channel_delivery_test")
     should_run_setup_channel_test = bool(
         delivery_check and delivery_check.get("status") == "fail"
@@ -2249,14 +2255,23 @@ def _readiness_next_actions(
 
     operator_check = checks_by_id.get("operator_channels")
     if operator_check and operator_check.get("status") in {"warn", "fail"}:
-        if _readiness_missing_wechat_qr_target(operator_check):
+        missing_wechat_target = _readiness_missing_wechat_qr_target(operator_check)
+        missing_feishu_target = _readiness_missing_feishu_home_chat(operator_check)
+        if missing_wechat_target:
             add(
                 "bind_wechat_target",
                 severity="required" if operator_check.get("status") == "fail" else "recommended",
                 command=bind_wechat_target_command,
                 reason="Bind the OpenClaw WeChat target discovered after QR pairing.",
             )
-        else:
+        if missing_feishu_target:
+            add(
+                "bind_feishu_target",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=bind_feishu_target_command,
+                reason="Bind the Feishu/Lark home chat discovered after bot pairing.",
+            )
+        if not (missing_wechat_target or missing_feishu_target):
             add(
                 "configure_operator_channel",
                 severity="required" if operator_check.get("status") == "fail" else "recommended",
@@ -2278,14 +2293,23 @@ def _readiness_next_actions(
                 reason="Produce real sent-delivery evidence before treating push readiness as proven.",
             )
         else:
-            if _readiness_missing_wechat_qr_target(operator_check):
+            missing_wechat_target = _readiness_missing_wechat_qr_target(operator_check)
+            missing_feishu_target = _readiness_missing_feishu_home_chat(operator_check)
+            if missing_wechat_target:
                 add(
                     "bind_wechat_target",
                     severity="required",
                     command=bind_wechat_target_command,
                     reason="Bind the OpenClaw WeChat target before running the channel self-test.",
                 )
-            else:
+            if missing_feishu_target:
+                add(
+                    "bind_feishu_target",
+                    severity="required",
+                    command=bind_feishu_target_command,
+                    reason="Bind the Feishu/Lark home chat before running the channel self-test.",
+                )
+            if not (missing_wechat_target or missing_feishu_target):
                 add(
                     "configure_operator_channel",
                     severity="required",
@@ -2293,16 +2317,24 @@ def _readiness_next_actions(
                     reason="Configure a delivery channel before running the channel self-test.",
                 )
             if delivery_check.get("status") == "fail":
+                post_bind_channels = []
+                if missing_wechat_target:
+                    post_bind_channels.append("wechat")
+                if missing_feishu_target:
+                    post_bind_channels.append("feishu")
+                if not post_bind_channels:
+                    post_bind_channels.append("wechat")
+                channel_flags = " ".join(f"--channel {channel}" for channel in post_bind_channels)
                 add(
                     "run_channel_self_test",
                     severity="required",
                     command=(
                         "airesearcher channels test "
-                        f"--channel wechat --output {_command_path(channel_test_result)} "
+                        f"{channel_flags} --output {_command_path(channel_test_result)} "
                         "--require-sent"
                     ),
                     reason=(
-                        "After QR setup and target binding succeed, produce real sent-delivery "
+                        "After channel setup and target binding succeed, produce real sent-delivery "
                         "evidence before treating push readiness as proven."
                     ),
                 )
@@ -2336,6 +2368,19 @@ def _readiness_missing_wechat_qr_target(check: Mapping[str, object] | None) -> b
         str(evidence.get("wechat_mode") or "").casefold() == "qr"
         and str(evidence.get("wechat_qr_status") or "").casefold() == "completed"
         and evidence.get("wechat_openclaw_target_configured") is False
+    )
+
+
+def _readiness_missing_feishu_home_chat(check: Mapping[str, object] | None) -> bool:
+    if not isinstance(check, Mapping):
+        return False
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    return (
+        evidence.get("feishu_app_credentials_configured") is True
+        and evidence.get("feishu_home_chat_configured") is False
+        and evidence.get("feishu_webhook_configured") is False
     )
 
 
