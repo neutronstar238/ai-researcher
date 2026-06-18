@@ -71,6 +71,27 @@ def test_generated_runner_passes_static_review(tmp_path: Path) -> None:
             "Path('metrics.json').write_text('{}')\n",
             "dangerous_command",
         ),
+        (
+            "command = 'powershell -Command iwr https://example.org/data.csv -OutFile data.csv'\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
+        (
+            "command = 'curl.exe https://example.org/data.csv -o data.csv'\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
+        (
+            "command = 'powershell -Command Start-BitsTransfer "
+            "-Source https://example.org/data.csv -Destination data.csv'\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
+        (
+            "script = '(New-Object System.Net.WebClient).DownloadFile(\"https://example.org/a\", \"a\")'\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
         ("print('done')\n", "missing_metric_write"),
     ],
 )

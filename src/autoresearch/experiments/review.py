@@ -62,6 +62,15 @@ DANGEROUS_COMMAND_MARKERS = (
     "invoke-webrequest",
     "invoke-restmethod",
 )
+DANGEROUS_COMMAND_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"(?<![a-z0-9_-])(iwr|irm|curl\.exe|wget\.exe)(?:\s|\(|$)",
+        r"(?<![a-z0-9_-])start-bitstransfer(?:\s|\(|$)",
+        r"(system\.)?net\.webclient",
+        r"\.(downloadfile|downloadstring)\s*\(",
+    )
+)
 NETWORK_IMPORT_ROOTS = {"aiohttp", "httpx", "requests", "socket", "urllib"}
 SECRET_MARKERS = (".env", "api_key", "id_rsa", "secret", "token")
 PATH_TRAVERSAL_PATTERN = re.compile(r"(^|[\\/])\.\.([\\/]|$)")
@@ -236,11 +245,17 @@ def _review_string_literals(tree: ast.AST) -> list[CodeReviewFinding]:
             findings.append(
                 _finding("secret_read", f"references secret-like path or key {value!r}", node)
             )
-        if any(marker in normalized for marker in DANGEROUS_COMMAND_MARKERS):
+        if _contains_dangerous_command_marker(normalized):
             findings.append(
                 _finding("dangerous_command", f"contains shell command marker {value!r}", node)
             )
     return findings
+
+
+def _contains_dangerous_command_marker(normalized: str) -> bool:
+    return any(marker in normalized for marker in DANGEROUS_COMMAND_MARKERS) or any(
+        pattern.search(normalized) for pattern in DANGEROUS_COMMAND_PATTERNS
+    )
 
 
 def _review_metric_write(tree: ast.AST) -> list[CodeReviewFinding]:

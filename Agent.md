@@ -62,6 +62,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:13:40 +08:00 - Codex - Task 209.1 Windows downloader alias static review
+
+- Request: Continue generated-code execution hardening by closing common Windows downloader string bypasses.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added bounded dangerous-command regex patterns for PowerShell aliases `iwr` and `irm`, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and .NET `WebClient` downloader strings.
+  - Kept these findings classified as `dangerous_command` so executor static preflight blocks the generated code before subprocess launch.
+  - Added regression coverage for `iwr`, `curl.exe`, `Start-BitsTransfer`, and `System.Net.WebClient.DownloadFile` generated-code strings.
+  - Added completed task `209.1` and resolved `P-20260618-123`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py -q`: passed, 14 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-123`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened Windows downloader alias review.
+
 ### 2026-06-18 10:08:09 +08:00 - Codex - Task 208.1 PowerShell web command markers
 
 - Request: Continue generated-code execution hardening for Windows command paths.

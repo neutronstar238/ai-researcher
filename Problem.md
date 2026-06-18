@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-123 - Static review missed Windows downloader aliases and .NET downloader strings
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:13:40 +08:00
+- Source: Follow-up review of Windows command paths after task `208.1` added explicit PowerShell web request command names.
+- Symptom: Static review could flag `Invoke-WebRequest` and `Invoke-RestMethod`, but common Windows downloader forms such as `iwr`, `irm`, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and `.NET WebClient.DownloadFile` were not covered.
+- Impact: Generated experiment code could hide retrieval behavior in common Windows aliases or .NET downloader snippets while avoiding the existing string-marker review path.
+- Evidence: `DANGEROUS_COMMAND_MARKERS` contained literal command names only and had no bounded regex patterns for aliases, `.exe` variants, BITS, or WebClient downloader strings.
+- Root cause: The earlier marker list handled obvious command spellings but not common Windows alias and .NET forms.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `209.1`
+- Resolution: Added bounded dangerous-command regex patterns for PowerShell aliases, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and .NET `WebClient`/`DownloadFile`/`DownloadString` strings; added regression tests for representative generated-code strings.
+- Verification: Focused static-review tests, ruff, and mypy passed; broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
 ### P-20260618-122 - Static review missed PowerShell web request command markers
 
 - Status: Resolved

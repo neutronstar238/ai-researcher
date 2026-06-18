@@ -2608,6 +2608,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-122`; `P-20260611-014`; user requirement for real execution guardrails and dangerous-operation gates._
     - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py -q` passed with 10 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 542 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 209. Static review catches Windows downloader aliases
+  - [x] 209.1 Flag PowerShell aliases, `curl.exe`, BITS, and .NET downloader strings
+    - Add bounded generated-code command patterns for PowerShell aliases `iwr` and `irm`, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and .NET `WebClient` downloader calls.
+    - Keep these string patterns classified as `dangerous_command` so executor preflight blocks them before local subprocess launch.
+    - Add regression coverage for `iwr`, `curl.exe`, `Start-BitsTransfer`, and `System.Net.WebClient.DownloadFile`.
+    - Keep the change scoped to static review; OS/container/proxy enforcement remains tracked by `P-20260611-014`.
+    - _References: `P-20260618-123`; `P-20260611-014`; user requirement for hard execution guardrails rather than prompt-only safety._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py -q` passed with 14 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 546 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
