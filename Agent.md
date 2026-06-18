@@ -8550,3 +8550,25 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-115`.
 - Follow-up:
   - A real external delivery success still requires the operator to pair WeChat QR or provide real Feishu app/webhook credentials during setup; setup now offers and records that test instead of leaving it as a manual afterthought.
+
+### 2026-06-18 08:51:38 +08:00 - Codex - Task 197.1 README setup self-test guidance
+
+- Request: Continue launch-readiness work by keeping V1.0 user-facing documentation aligned with the setup-time channel self-test behavior.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Updated the English and Chinese V1.0 scope tables so guided setup includes the optional real channel self-test.
+  - Updated the guided setup walkthrough from eight to nine steps, adding the self-test decision after channel configuration.
+  - Clarified that interactive setup asks whether to send the test immediately, scripted setup can use `--run-channel-test` to fail closed, and `--skip-channel-test` defers the check.
+  - Added setup command-reference rows for `--run-channel-test`, `--skip-channel-test`, and `--channel-test-output` in both README files.
+  - Kept deferred `channels test --require-sent` guidance for operators who still need to finish QR pairing or chat binding after setup.
+- Verification:
+  - `git diff --check`: passed.
+  - `rg -n "optional real channel self-test|--run-channel-test|--skip-channel-test|可选真实通道自检|立即发送通道送达自检|发送或延后送达自检" README.md README.zh-CN.md`: found the English and Chinese setup summary, workflow, and command-reference entries.
+- Problems:
+  - None added.
+- Follow-up:
+  - None for README setup self-test wording.
