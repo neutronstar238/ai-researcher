@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-119 - Source package docstrings still described the product as AutoResearch
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:47:00 +08:00
+- Source: Post-task `204.1` stale-name scan.
+- Symptom: Several source module/class/function docstrings described the local runtime, lifecycle schemas, CLI package, and logging context as `AutoResearch`.
+- Impact: Generated API documentation, source inspection, and future agent scans could make the repository appear to have mixed product names after the user renamed the project to `AI-Researcher`.
+- Evidence: `rg -n "AutoResearch" src\autoresearch` found docstring hits in `cli\__init__.py`, `config\models.py`, `config\parser.py`, `schemas\__init__.py`, `schemas\models.py`, and `observability\logging.py`.
+- Root cause: The product rename had been applied to README and runtime-generated assets before these early scaffold docstrings were revisited.
+- Workaround: None needed after the fix.
+- Next action: Preserve package/import names such as `autoresearch` for compatibility, but avoid using `AutoResearch` as product prose unless referring to an external project.
+- Linked tasks: `205.1`
+- Resolution: Updated the affected source docstrings to `AI-Researcher` while leaving package/module names and logger namespaces unchanged.
+- Verification: `rg -n "AutoResearch" src\autoresearch` returned no matches; focused ruff and mypy checks passed.
+
 ### P-20260618-118 - Generated vault index copy still used old AutoResearch name
 
 - Status: Resolved

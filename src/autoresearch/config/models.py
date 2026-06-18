@@ -1,4 +1,4 @@
-"""Pydantic configuration models for the AutoResearch local-first runtime."""
+"""Pydantic configuration models for the AI-Researcher local-first runtime."""
 
 from __future__ import annotations
 

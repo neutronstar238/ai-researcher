@@ -1,4 +1,4 @@
-"""Pydantic schemas for the AutoResearch lifecycle."""
+"""Pydantic schemas for the AI-Researcher lifecycle."""
 
 from __future__ import annotations
 

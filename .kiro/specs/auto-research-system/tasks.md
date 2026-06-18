@@ -2571,6 +2571,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-118`; user requirement to rename product-facing project text to AI-Researcher while preserving the canonical `autoresearch-vault/` knowledge path._
     - _Verify: focused `python -m pytest tests\unit\knowledge\test_vault.py -q` passed with 6 tests; focused `python -m ruff check src\autoresearch\knowledge\vault.py tests\unit\knowledge\test_vault.py` passed; focused `python -m mypy src\autoresearch\knowledge\vault.py` passed. Initial real CLI probe with stale `--local-snippet` failed and was recorded; corrected real `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --write-local-snippet` passed. Generated `exploration/index.md` and `projects/project-001/index.md` contain `AI-Researcher`, and `rg -n "knowledge index for AutoResearch" runs\manual-live\task204-vault-naming\autoresearch-vault` returned no matches. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 205. Source package prose uses current project name
+  - [x] 205.1 Align source docstrings with AI-Researcher naming
+    - Update explanatory module/class/function docstrings that describe this project as `AutoResearch`.
+    - Preserve Python package/module names, logger namespaces, command names, external project references, and historical planning file names.
+    - Verify that `src/autoresearch` no longer contains stale `AutoResearch` product prose.
+    - _References: `P-20260618-119`; user requirement to use AI-Researcher as the project name while keeping compatibility names where needed._
+    - _Verify: `rg -n "AutoResearch" src\autoresearch` returned no matches; focused `python -m ruff check src\autoresearch\cli\__init__.py src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\__init__.py src\autoresearch\schemas\models.py` passed; focused `python -m mypy src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\models.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

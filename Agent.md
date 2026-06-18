@@ -62,6 +62,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 09:47:56 +08:00 - Codex - Task 205.1 Source docstring naming
+
+- Request: Continue launch-readiness naming cleanup while preserving compatibility names.
+- Files changed:
+  - `src/autoresearch/cli/__init__.py`
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/config/parser.py`
+  - `src/autoresearch/observability/logging.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/schemas/models.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated explanatory source docstrings from `AutoResearch` to `AI-Researcher`.
+  - Preserved the `autoresearch` Python package/module names and logger namespace for compatibility.
+  - Added completed task `205.1` and resolved `P-20260618-119`.
+- Verification:
+  - `rg -n "AutoResearch" src\autoresearch`: returned no matches.
+  - `python -m ruff check src\autoresearch\cli\__init__.py src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\__init__.py src\autoresearch\schemas\models.py`: passed.
+  - `python -m mypy src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\models.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-119`.
+- Follow-up:
+  - None for source docstring naming.
+
 ### 2026-06-18 09:42:41 +08:00 - Codex - Task 204.1 Generated vault naming
 
 - Request: Continue launch-readiness work and align first-run Obsidian vault copy with the AI-Researcher project name.

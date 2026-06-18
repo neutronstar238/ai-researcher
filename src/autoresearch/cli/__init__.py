@@ -1,1 +1,1 @@
-"""Command-line interface package for AutoResearch."""
+"""Command-line interface package for AI-Researcher."""

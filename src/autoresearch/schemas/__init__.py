@@ -1,4 +1,4 @@
-"""Core lifecycle schemas for AutoResearch."""
+"""Core lifecycle schemas for AI-Researcher."""
 
 from .models import (
     ALLOWED_STRATEGY_TARGETS,
