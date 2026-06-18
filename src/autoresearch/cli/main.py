@@ -6781,7 +6781,7 @@ def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
     if not entries:
         return "Agent.md exists, but no change-log entries were found."
     rendered: list[str] = []
-    for entry in entries[:max_entries]:
+    for entry in reversed(entries[-max_entries:]):
         rendered.append("\n".join(entry[:7]))
     return "\n\n".join(rendered)
 

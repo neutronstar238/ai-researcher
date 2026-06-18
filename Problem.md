@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-116 - Operator monitor showed oldest Agent.md entries instead of latest work
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:13:00 +08:00
+- Source: Real `node .\bin\airesearcher.mjs monitor` render over the `task200_post_setup_cycle` live cycle.
+- Symptom: The `Agent Messages` panel displayed older entries such as Task `187.1` and Task `186.1` while newer Task `199.1` and Task `198.1` entries existed at the end of `Agent.md`.
+- Impact: The operator console could mislead users during long-running work by showing stale agent activity instead of the latest handoff and verification notes.
+- Evidence: The real monitor output rendered Task `187.1` and `186.1` with `--max-agent-entries 2`; after the fix, the same command filtered for task IDs rendered Task `199.1` and `198.1`.
+- Root cause: `_recent_agent_entries_text()` collected `Agent.md` entries in file order and rendered `entries[:max_entries]`, which selects the oldest entries when the log is append-only.
+- Workaround: None needed after the fix.
+- Next action: Keep monitor tests covering append-only Agent.md ordering whenever the log parser changes.
+- Linked tasks: `200.1`
+- Resolution: Changed `_recent_agent_entries_text()` to render `reversed(entries[-max_entries:])` so the newest append-only entries appear first.
+- Verification: Focused monitor tests passed; real monitor rerender showed Task `199.1` and Task `198.1`; broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed.
+
 ### P-20260618-115 - Setup channel self-test leaked `.env` values into process-wide notification tests
 
 - Status: Resolved

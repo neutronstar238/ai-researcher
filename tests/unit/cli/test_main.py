@@ -4096,6 +4096,36 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "evidence-gate.md" in rows["follow-ups"][1]
 
 
+def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) -> None:
+    agent_log = tmp_path / "Agent.md"
+    agent_log.write_text(
+        "\n".join(
+            [
+                "### 2026-06-14 22:30:00 +08:00 - Codex - Task 117.1",
+                "- Request: old setup work",
+                "- Summary:",
+                "- Verification:",
+                "### 2026-06-18 08:59:16 +08:00 - Codex - Task 198.1",
+                "- Request: strict readiness setup self-test",
+                "- Summary:",
+                "- Verification:",
+                "### 2026-06-18 09:06:10 +08:00 - Codex - Task 199.1",
+                "- Request: guided setup self-test defaults",
+                "- Summary:",
+                "- Verification:",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    text = cli_main._recent_agent_entries_text(agent_log, max_entries=2)
+
+    assert "Task 199.1" in text
+    assert "Task 198.1" in text
+    assert "Task 117.1" not in text
+    assert text.index("Task 199.1") < text.index("Task 198.1")
+
+
 def test_publication_monitor_distinguishes_warnings_from_blockers(tmp_path: Path) -> None:
     summary_path = tmp_path / "cycle-summary.json"
     payload = {

@@ -2522,6 +2522,15 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `196.1`, `197.1`, and `198.1`; user expectation that first deploy should be a guided, evidence-producing setup flow rather than a manual afterthought._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_channel_self_test_defaults_to_yes tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_run_channel_test_writes_sent_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_fails_after_writing_artifact -q` passed with 4 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real Node setup probe under `runs\manual-live\task199-setup-default-channel-test` accepted the default `[Y/n]` self-test prompt, attempted a real Feishu webhook send to `127.0.0.1:9`, wrote `.airesearcher/channels/test-result.json`, and exited 1 by design with a failed send record. README keyword check found the default-on self-test wording in both English and Chinese pages. Broad `python -m pytest tests\smoke tests\unit -q` passed with 533 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 200. Operator console agent activity is current
+  - [x] 200.1 Show newest Agent.md entries first in `monitor`
+    - Fix the monitor Agent Messages panel so append-only `Agent.md` logs show the newest entries first.
+    - Add a regression test with three Agent.md entries proving `max_entries=2` returns Task `199.1` before Task `198.1` and excludes old Task `117.1`.
+    - Verify against a real release-like monitor render after a successful live cycle.
+    - Record the stale-agent-panel defect in `Problem.md`.
+    - _References: `P-20260618-116`; user requirement for a visible CLI UI showing current agent messages, information flow, changes, and previews during long-running operation._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real monitor over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 2` rendered Task `199.1` and Task `198.1` instead of old Task `187.1` and `186.1`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

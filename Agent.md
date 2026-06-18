@@ -8630,3 +8630,34 @@ This file defines the project development standard for coding agents and records
   - None added; the real Node setup probe was an expected fail-closed negative test against an unreachable webhook.
 - Follow-up:
   - Real successful external delivery still needs the operator to provide a reachable Feishu endpoint or complete WeChat QR target binding during setup.
+
+### 2026-06-18 09:15:12 +08:00 - Codex - Task 200.1 Monitor latest Agent.md entries
+
+- Request: Continue launch-readiness work and keep the operator console honest during long-running operation.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran a fresh real `serve --once` cycle after setup/readiness changes; it passed research-plan generation, LLM review, publication audit, evidence gate, and paper build, producing a PDF in `outputs/task200_post_setup_cycle/`.
+  - Found that the `monitor` Agent Messages panel was showing the oldest append-only `Agent.md` entries instead of the newest entries.
+  - Changed `_recent_agent_entries_text()` to render the latest `Agent.md` entries first.
+  - Added regression coverage for append-only Agent.md ordering.
+  - Recorded and resolved `P-20260618-116`.
+- Verification:
+  - Real full cycle `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task200-post-setup-cycle\vault --cache runs\manual-live\task200-post-setup-cycle\cache --output-dir runs\manual-live\task200-post-setup-cycle\runs --deliverables-dir outputs --state runs\manual-live\task200-post-setup-cycle\scheduler-state.json --approvals-state runs\manual-live\task200-post-setup-cycle\approvals.json --sessions-state runs\manual-live\task200-post-setup-cycle\sessions.json --project-id task200_post_setup_cycle --timeout-seconds 180 --no-push-inspiration`: exited 0 with review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, and PDF output `outputs/task200_post_setup_cycle/task200_post_setup_cycle-cycle-20260618T011001Z.pdf`.
+  - Paper-build inspection reported `status=compiled`, `paper_quality.passed=true`, 15 pages, 3957 words, 1 figure, 3 tables, 10 bibliography items, and 0 overfull hboxes.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real monitor rerender over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 2` showed Task `199.1` and Task `198.1`, not stale Task `187.1` or `186.1`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 534 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-116`.
+- Follow-up:
+  - The real full cycle is release-allowed by current gates; external IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.
