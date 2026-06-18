@@ -2460,6 +2460,14 @@ A task can be checked only when all applicable items are true:
     - _References: user requirement that project data and conclusions accumulate as Markdown in the Obsidian vault._
     - _Verify: parsed 13 changed vault entries with `KnowledgeEntry.from_markdown()`, confirmed 30 source refs in the literature refresh note and related task IDs `82.1` through `93.1`; `rg` placeholder/noise scan returned no matches; `git diff --check` for the 13 vault notes passed._
 
+- [x] 194. Repository text line endings are pinned for vault automation
+  - [x] 194.1 Add `.gitattributes` and clear line-ending-only vault status
+    - Add a small `.gitattributes` policy that pins common text files, especially Markdown vault files, to LF.
+    - Refresh the remaining line-ending-only vault files without staging semantic content changes.
+    - Confirm the only staged content is `.gitattributes` and `git status` is otherwise clean before commit.
+    - _References: `P-20260618-113`; repeated CRLF warnings from automated vault writes._
+    - _Verify: `git ls-files --eol` reported the checked vault files as `i/lf w/lf attr/text eol=lf`; after `git add`, `git diff --cached --stat` showed only `.gitattributes`; `git status --short` showed only `.gitattributes` staged before documentation log updates._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

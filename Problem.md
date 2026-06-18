@@ -34,7 +34,7 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260618-113 - Line-ending-only vault files remain dirty after content-memory commits
 
-- Status: Open
+- Status: Resolved
 - Severity: Low
 - Discovered: 2026-06-18 08:02:00 +08:00
 - Source: `git status --short` and `git update-index --refresh` after tasks `191.1` and `192.1`.
@@ -42,11 +42,11 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Impact: Future agents may confuse line-ending/status noise with unreviewed semantic vault changes.
 - Evidence: `git update-index --refresh` reported `needs update` for those files; `git diff --name-status -- autoresearch-vault` listed only 13 real content diffs.
 - Root cause: The workspace has mixed line-ending state for tracked Markdown files, and Git reports them as needing update even when no content diff is present.
-- Workaround: Stage and commit only files that appear in `git diff --name-status` for content tasks; handle line-ending normalization as a separate repository-maintenance task if desired.
-- Next action: Decide whether to add a `.gitattributes` Markdown policy and run a dedicated normalization commit.
-- Linked tasks: `193.1`
-- Resolution: Pending.
-- Verification: Pending.
+- Workaround: No longer needed after adding `.gitattributes` and refreshing the affected vault paths.
+- Next action: Continue to keep semantic vault updates separate from repository-format maintenance.
+- Linked tasks: `193.1`, `194.1`
+- Resolution: Added `.gitattributes` with LF policies for Markdown and common source/config text files. Refreshed the affected vault paths with `git add`, which left no staged semantic content changes for those files.
+- Verification: `git ls-files --eol` reported the checked vault paths as `i/lf w/lf attr/text eol=lf`; `git diff --cached --stat` after staging the affected vault paths showed only `.gitattributes`; `git status --short` showed no remaining vault modifications after staging.
 
 ### P-20260618-112 - Vault rebuild treated `_system` templates as knowledge entries
 

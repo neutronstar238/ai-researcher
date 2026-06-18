@@ -8462,3 +8462,24 @@ This file defines the project development standard for coding agents and records
   - Added open line-ending follow-up `P-20260618-113`.
 - Follow-up:
   - Decide later whether to add `.gitattributes` and normalize Markdown line endings in a dedicated maintenance commit.
+
+### 2026-06-18 08:07:32 +08:00 - Codex - Task 194.1 Text line-ending policy
+
+- Request: Clear the remaining vault line-ending-only status without mixing it into semantic memory commits.
+- Files changed:
+  - `.gitattributes`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `.gitattributes` to pin Markdown vault files and common source/config text files to LF.
+  - Normalized and staged the remaining line-ending-only vault paths to refresh index state; no semantic vault content was staged.
+  - Resolved `P-20260618-113`.
+- Verification:
+  - `git ls-files --eol` reported the checked vault files as `i/lf w/lf attr/text eol=lf`.
+  - After staging the affected vault paths, `git diff --cached --stat` showed only `.gitattributes`.
+  - `git status --short` showed only `.gitattributes` staged before task/problem/agent log updates.
+- Problems:
+  - Resolved `P-20260618-113`.
+- Follow-up:
+  - None for vault line-ending status.
