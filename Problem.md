@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-114 - Manuscript adjacent-work table reported counts not present in evidence artifact
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-18 08:12:00 +08:00
+- Source: Real `task195_full_cycle` `serve --once` run with live online retrieval, real Pendigits execution, live DeepSeek LLM evidence review, publication audit, LaTeX build, and evidence gate.
+- Symptom: The cycle executed successfully but the LLM evidence review returned `verdict=needs_revision`; publication audit returned `needs_revision`; evidence gate returned `blocked`.
+- Impact: The automated research loop could generate a polished PDF while still being blocked from release because the manuscript made unsupported adjacent-work subfamily count claims. This is exactly the kind of evidence drift the publication gate is intended to catch.
+- Evidence: `runs/manual-live/task195-full-cycle/runs/cycle-20260618T001200Z/llm-review.json` reported that the Adjacent-Work Positioning table claimed `Metric and Mahalanobis family` and `Other adjacent source-backed hits` counts of zero, while `similarity-positioning-summary.json` only contained total adjacent-work rows and did not record those subfamily counts. `publication-audit.json` failed `review_verdict_strength`, and `evidence-gate.json` failed `review_gate` plus `publication_release_gate`.
+- Root cause: `_similarity_finding_lines()` rendered hard-coded prototype/metric/other table rows from ad hoc local counts, while `_similarity_positioning_summary()` did not persist matching family-count evidence. `_positioning_family()` also let broad source-query text influence family assignment instead of first honoring structured `query family overlap ...` evidence.
+- Workaround: Before the fix, treat manuscript Adjacent-Work Positioning rows as suspect unless the generated `similarity-positioning-summary.json` explicitly records matching family counts.
+- Next action: Keep future manuscript tables directly backed by generated JSON artifacts, and prefer deleting unsupported table rows over broadening reviewer tolerance.
+- Linked tasks: `195.1`
+- Resolution: Added `adjacent_work_family_counts` to `similarity-positioning-summary.json`, changed manuscript rendering to include only nonzero adjacent-work family rows backed by those counts, and made structured overlap-family evidence take priority over source-query prose.
+- Verification: Focused manuscript/publication/evidence/paper tests, ruff, and mypy passed. Real `task195_full_cycle_v2` and final real `task195_full_cycle_v3` full cycles passed LLM review, publication audit, evidence gate, and paper quality with zero follow-up tasks. Final `task195_full_cycle_v3` produced `outputs/task195_full_cycle_v3/task195_full_cycle_v3-cycle-20260618T002038Z.pdf`, `publishable=true`, `release_allowed=true`, 15 pages, 3957 words, zero overfull hboxes, and no matches for `adjacent_work=0`, old operational reference labels, or placeholder locator text in the generated manuscript. Broad `python -m pytest tests\smoke tests\unit -q` passed with 529 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed.
+
 ### P-20260618-113 - Line-ending-only vault files remain dirty after content-memory commits
 
 - Status: Resolved

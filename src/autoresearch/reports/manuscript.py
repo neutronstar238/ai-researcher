@@ -1037,17 +1037,20 @@ def _write_analysis_artifacts(
 def _similarity_positioning_summary(evidence: _ManuscriptEvidence) -> dict[str, Any]:
     counts: dict[str, int] = {}
     rows: list[dict[str, str]] = []
+    family_counts: dict[str, int] = {}
     for finding in evidence.similarity_findings:
         classification = _clean_text(finding.get("classification", "")).casefold() or "unknown"
         counts[classification] = counts.get(classification, 0) + 1
         if classification != "adjacent_work":
             continue
+        family = _positioning_family(finding)
+        family_counts[family] = family_counts.get(family, 0) + 1
         rows.append(
             {
                 "title": _clean_text(finding.get("title", "")),
                 "source": _clean_text(finding.get("source", "")),
                 "classification": classification,
-                "family": _positioning_family(finding),
+                "family": family,
                 "basis": _clean_text(finding.get("basis", "")),
                 "positioning_decision": _positioning_decision(finding),
             }
@@ -1062,6 +1065,7 @@ def _similarity_positioning_summary(evidence: _ManuscriptEvidence) -> dict[str, 
         "finding_count": len(evidence.similarity_findings),
         "classification_counts": dict(sorted(counts.items())),
         "adjacent_work_count": counts.get("adjacent_work", 0),
+        "adjacent_work_family_counts": dict(sorted(family_counts.items())),
         "positioning_rows": rows,
     }
 
@@ -1086,7 +1090,7 @@ def _similarity_positioning_markdown(summary: dict[str, Any]) -> list[str]:
             "",
             "## Positioning Rows",
             "",
-            "| Family | Counted status | Boundary |",
+            "| Family | Adjacent-work rows | Boundary |",
             "| --- | --- | --- |",
         ]
     )
@@ -1098,7 +1102,8 @@ def _similarity_positioning_markdown(summary: dict[str, Any]) -> list[str]:
         family_seen.add(family)
         lines.append(
             "| "
-            f"{_table_cell(family)} | adjacent_work | "
+            f"{_table_cell(family)} | "
+            f"{_int(_dict(summary.get('adjacent_work_family_counts')).get(family))} | "
             f"{_table_cell(_text(row.get('positioning_decision')))} |"
         )
     if not rows:
@@ -1670,9 +1675,29 @@ def _similarity_finding_lines(
         if positioning_artifact_path is not None
         else "the similarity positioning artifact"
     )
-    prototype_count = _family_count(findings, "prototype and centroid family")
-    metric_count = _family_count(findings, "metric and Mahalanobis family")
-    other_count = max(adjacent_count - prototype_count - metric_count, 0)
+    family_counts = _adjacent_work_family_counts(findings)
+    family_boundaries = {
+        "prototype and centroid family": (
+            "Treat as adjacent method family; compare objective and benchmark before novelty claims."
+        ),
+        "metric and Mahalanobis family": (
+            "Treat as adjacent distance-family baseline; keep the empirical claim single-cycle."
+        ),
+        "benchmark-overlap family": (
+            "Treat as shared benchmark context; do not claim task novelty from retrieval alone."
+        ),
+        "other adjacent source-backed hit": (
+            "Keep as retrieval boundaries, not as proof for or against originality."
+        ),
+    }
+    table_rows = [
+        (
+            f"| {_table_cell(family)} | adjacent_work={count} | "
+            f"{_table_cell(family_boundaries.get(family, 'Preserve as an adjacent boundary for later comparison.'))} |"
+        )
+        for family, count in sorted(family_counts.items())
+        if count > 0
+    ]
     lines = [
         (
             "Representative similarity findings are retained in the runtime similarity "
@@ -1687,18 +1712,7 @@ def _similarity_finding_lines(
         "",
         "| Evidence view | Recorded count | Positioning boundary |",
         "| --- | ---: | --- |",
-        (
-            f"| Prototype and centroid family | adjacent_work={prototype_count} | "
-            "Treat as adjacent method family; compare objective and benchmark before novelty claims. |"
-        ),
-        (
-            f"| Metric and Mahalanobis family | adjacent_work={metric_count} | "
-            "Treat as adjacent distance-family baseline; keep the empirical claim single-cycle. |"
-        ),
-        (
-            f"| Other adjacent source-backed hits | adjacent_work={other_count} | "
-            "Keep as retrieval boundaries, not as proof for or against originality. |"
-        ),
+        *table_rows,
     ]
     return [
         *lines,
@@ -1726,11 +1740,17 @@ def _positioning_decision(finding: dict[str, str]) -> str:
 def _positioning_family(finding: dict[str, str]) -> str:
     basis = _clean_text(finding.get("basis", "")).casefold()
     title = _clean_text(finding.get("title", "")).casefold()
-    text = f"{title} {basis}"
-    if any(token in text for token in ("prototype", "centroid", "nearest centroid")):
+    if "query family overlap mahalanobis_metric" in basis:
+        return "metric and Mahalanobis family"
+    if "query family overlap prototype_classification" in basis:
         return "prototype and centroid family"
+    if "query family overlap benchmark" in basis:
+        return "benchmark-overlap family"
+    text = f"{title} {basis}"
     if any(token in text for token in ("mahalanobis", "metric", "distance", "nearest neighbor")):
         return "metric and Mahalanobis family"
+    if any(token in text for token in ("prototype", "centroid", "nearest centroid")):
+        return "prototype and centroid family"
     if any(token in text for token in ("pendigits", "handwritten", "digit", "benchmark")):
         return "benchmark-overlap family"
     return "other adjacent source-backed hit"
@@ -1744,13 +1764,14 @@ def _similarity_positioning_counts(findings: tuple[dict[str, str], ...]) -> dict
     return counts
 
 
-def _family_count(findings: tuple[dict[str, str], ...], family: str) -> int:
-    return sum(
-        1
-        for finding in findings
-        if _clean_text(finding.get("classification", "")).casefold() == "adjacent_work"
-        and _positioning_family(finding) == family
-    )
+def _adjacent_work_family_counts(findings: tuple[dict[str, str], ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        if _clean_text(finding.get("classification", "")).casefold() != "adjacent_work":
+            continue
+        family = _positioning_family(finding)
+        counts[family] = counts.get(family, 0) + 1
+    return counts
 
 
 def _table_cell(value: str | None) -> str:

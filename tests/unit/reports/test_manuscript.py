@@ -5,6 +5,7 @@ from autoresearch.reports import (
     build_latex_paper_from_markdown,
     compose_publication_manuscript,
 )
+from autoresearch.reports.manuscript import _positioning_family
 
 
 def test_compose_publication_manuscript_writes_evidence_bound_draft(
@@ -67,7 +68,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "Representative similarity findings are retained" in manuscript
     assert "### Adjacent-Work Positioning" in manuscript
     assert "| Evidence view | Recorded count | Positioning boundary |" in manuscript
-    assert "| Prototype and centroid family | adjacent_work=1 |" in manuscript
+    assert "| prototype and centroid family | adjacent_work=1 |" in manuscript
+    assert "| metric and Mahalanobis family | adjacent_work=0 |" not in manuscript
+    assert "| other adjacent source-backed hit | adjacent_work=0 |" not in manuscript
     assert "similarity-positioning-summary.json" in manuscript
     assert "1 adjacent-work findings out of 10 parsed similarity findings" in manuscript
     assert "Metric Learning for Digits | unknown" not in manuscript
@@ -92,6 +95,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     positioning_payload = json.loads(Path(positioning_json).read_text(encoding="utf-8"))
     assert positioning_payload["finding_count"] == 10
     assert positioning_payload["adjacent_work_count"] == 1
+    assert positioning_payload["adjacent_work_family_counts"] == {
+        "prototype and centroid family": 1
+    }
 
     paper_artifact = build_latex_paper_from_markdown(
         artifact.markdown_path,
@@ -113,6 +119,19 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert r"\bibitem{source2026}" in tex
     assert r"\url{https://example.test/verified}" in tex
     assert "[Cycle summary]" not in tex
+
+
+def test_positioning_family_prefers_structured_overlap_family() -> None:
+    finding = {
+        "title": "Clustering and Prototype Based Classification",
+        "basis": (
+            "query family overlap prototype_classification: document terms prototype, "
+            "prototype classifier; source query `mahalanobis distance metric gaussian "
+            "prototype classifiers uci pendigits` (limitation_risk_search)"
+        ),
+    }
+
+    assert _positioning_family(finding) == "prototype and centroid family"
 
 
 def _write_cycle(tmp_path: Path) -> Path:

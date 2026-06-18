@@ -8483,3 +8483,35 @@ This file defines the project development standard for coding agents and records
   - Resolved `P-20260618-113`.
 - Follow-up:
   - None for vault line-ending status.
+
+### 2026-06-18 08:22:14 +08:00 - Codex - Task 195.1 Evidence-bound adjacent-work family counts
+
+- Request: Continue launch-quality hardening until the autonomous loop can pass its own real review, publication-audit, evidence-gate, and paper-output quality gates.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Investigated the real `task195_full_cycle` block: the cycle ran, but live LLM review returned `needs_revision` because the manuscript rendered adjacent-work family counts that were not present in the generated similarity-positioning evidence artifact.
+  - Added `adjacent_work_family_counts` to `similarity-positioning-summary.json`.
+  - Changed the manuscript Adjacent-Work Positioning table to render only nonzero adjacent-work family rows backed by generated counts, removing unsupported zero-count rows.
+  - Made adjacent-work family classification prefer structured `query family overlap ...` evidence over broad source-query prose.
+  - Added regression tests for zero-count omission and structured overlap-family precedence.
+- Verification:
+  - Real blocked baseline: `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task195-full-cycle\vault --cache runs\manual-live\task195-full-cycle\cache --output-dir runs\manual-live\task195-full-cycle\runs --deliverables-dir outputs --state runs\manual-live\task195-full-cycle\scheduler-state.json --approvals-state runs\manual-live\task195-full-cycle\approvals.json --sessions-state runs\manual-live\task195-full-cycle\sessions.json --project-id task195_full_cycle --timeout-seconds 120 --no-push-inspiration` completed mechanically but produced `review_status: passed; verdict=needs_revision`, `publication_audit: needs_revision`, `evidence_gate: blocked`, and 7 follow-up tasks.
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_paper_build.py -q`: passed, 39 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py`: passed with no issues in 1 source file.
+  - Real intermediate `task195_full_cycle_v2` cycle passed review, publication audit, evidence gate, zero follow-ups, and root PDF output.
+  - Final real `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task195-full-cycle-v3\vault --cache runs\manual-live\task195-full-cycle-v3\cache --output-dir runs\manual-live\task195-full-cycle-v3\runs --deliverables-dir outputs --state runs\manual-live\task195-full-cycle-v3\scheduler-state.json --approvals-state runs\manual-live\task195-full-cycle-v3\approvals.json --sessions-state runs\manual-live\task195-full-cycle-v3\sessions.json --project-id task195_full_cycle_v3 --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task195_full_cycle_v3/task195_full_cycle_v3-cycle-20260618T002038Z.pdf`.
+  - Final artifact inspection: publication audit reported `publishable=true`, `score=1.0`, and `verdict=pass`; evidence gate reported `failed_check_count=0`, `release_allowed=true`, and `verdict=pass`; paper build reported 15 pages, 3957 words, 1 figure, 3 tables, 10 bibliography items, and 0 overfull hboxes.
+  - `Select-String` over the final manuscript found no `adjacent_work=0`, old operational reference labels, `source URL recorded in artifact`, or placeholder evidence labels.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 529 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - Added and resolved `P-20260618-114`.
+- Follow-up:
+  - The final real cycle is release-allowed by current gates, but external IM delivery still requires the user to complete a real WeChat/Feishu channel pairing and sent-message self-test in the setup flow before unattended push deployment is considered ready.

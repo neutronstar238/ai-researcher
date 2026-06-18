@@ -2468,6 +2468,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-113`; repeated CRLF warnings from automated vault writes._
     - _Verify: `git ls-files --eol` reported the checked vault files as `i/lf w/lf attr/text eol=lf`; after `git add`, `git diff --cached --stat` showed only `.gitattributes`; `git status --short` showed only `.gitattributes` staged before documentation log updates._
 
+- [x] 195. Adjacent-work family counts are bound to generated evidence
+  - [x] 195.1 Remove unsupported zero-count positioning rows from publication manuscripts
+    - Add `adjacent_work_family_counts` to the generated `similarity-positioning-summary.json` artifact.
+    - Render the manuscript Adjacent-Work Positioning table only from nonzero adjacent-work family counts recorded by the generated similarity-positioning artifact.
+    - Prefer structured `query family overlap ...` evidence in similarity bases over broad source-query text when classifying adjacent-work families.
+    - Add regression coverage proving zero-count metric/other family rows are not rendered and structured prototype overlap wins over a Mahalanobis source-query string.
+    - Rerun real default-Pendigits `serve --once` cycles with live online retrieval, real UCI execution, live LLM review, publication audit, evidence gate, LaTeX build, and root `outputs/` PDF export.
+    - _References: `P-20260618-114`; live LLM evidence review blocked `task195_full_cycle` because the manuscript reported adjacent-work subfamily counts that were not directly present in the evidence artifact._
+    - _Verify: focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_paper_build.py -q` passed with 39 tests; focused `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py` passed; focused `python -m mypy src\autoresearch\reports\manuscript.py` passed. Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task195-full-cycle-v3\vault --cache runs\manual-live\task195-full-cycle-v3\cache --output-dir runs\manual-live\task195-full-cycle-v3\runs --deliverables-dir outputs --state runs\manual-live\task195-full-cycle-v3\scheduler-state.json --approvals-state runs\manual-live\task195-full-cycle-v3\approvals.json --sessions-state runs\manual-live\task195-full-cycle-v3\sessions.json --project-id task195_full_cycle_v3 --timeout-seconds 120 --no-push-inspiration` passed with review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and PDF output `outputs/task195_full_cycle_v3/task195_full_cycle_v3-cycle-20260618T002038Z.pdf`; paper quality reported 15 pages, 3957 words, one figure, three tables, ten bibliography items, and zero overfull hboxes. Broad `python -m pytest tests\smoke tests\unit -q` passed with 529 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
