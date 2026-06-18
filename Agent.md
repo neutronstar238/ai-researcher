@@ -8600,3 +8600,33 @@ This file defines the project development standard for coding agents and records
   - None added; the real strict readiness probe was an expected fail-closed negative test for missing channel configuration and missing sent evidence.
 - Follow-up:
   - A real sent-delivery success still requires an operator to complete QR pairing or Feishu credentials during setup; strict readiness now gives the correct setup-time command to produce that evidence.
+
+### 2026-06-18 09:06:10 +08:00 - Codex - Task 199.1 Guided setup self-test defaults
+
+- Request: Continue launch-readiness work so first-deploy setup behaves like a guided evidence-producing flow, with real channel delivery validation enabled by default after a channel is configured.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed the interactive setup wizard's channel delivery self-test confirmation from default `No` to default `Yes` whenever a WeChat or Feishu channel is enabled.
+  - Kept explicit skip behavior intact through wizard input `n` and `--skip-channel-test`.
+  - Added an interactive regression test proving Feishu webhook setup sends a self-test when the user accepts the default prompt.
+  - Updated English and Chinese README setup guidance and command-reference rows to state that interactive setup defaults to sending the delivery self-test.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_channel_self_test_defaults_to_yes tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_run_channel_test_writes_sent_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_fails_after_writing_artifact -q`: passed, 4 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - README keyword check `rg -n "default-on real channel self-test|defaults to sending|interactive setup defaults|默认开启的真实通道自检|默认会|默认选择发送|交互式 setup 默认发送" README.md README.zh-CN.md`: found the updated English and Chinese setup sections and command-reference rows.
+  - Real Node CLI interactive negative setup under `runs\manual-live\task199-setup-default-channel-test`: accepted the default `[Y/n]` self-test prompt, attempted Feishu webhook delivery to `http://127.0.0.1:9/webhook`, wrote `.airesearcher/channels/test-result.json`, and exited 1 by design with a failed send record.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 533 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; the real Node setup probe was an expected fail-closed negative test against an unreachable webhook.
+- Follow-up:
+  - Real successful external delivery still needs the operator to provide a reachable Feishu endpoint or complete WeChat QR target binding during setup.

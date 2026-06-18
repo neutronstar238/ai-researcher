@@ -1279,6 +1279,69 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
     )
 
 
+def test_setup_guided_channel_self_test_defaults_to_yes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[tuple[str, ...], str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert timeout_seconds == 10.0
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        calls.append((tuple(channels), report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu webhook accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--integrations-dir",
+            str(tmp_path / "integrations"),
+            "--commands-dir",
+            str(tmp_path / "commands"),
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+        input=(
+            "\n"
+            "\n"
+            "research-model\n"
+            "sk-guided\n"
+            "3\n"
+            "2\n"
+            "https://feishu.example.test/webhook\n"
+            "\n"
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), "AI-Researcher setup channel self-test")]
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.stdout
+    assert "[PUSH] channel=feishu status=sent detail=feishu webhook accepted" in result.stdout
+    channel_result_path = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["records"][0]["status"] == "sent"
+
+
 def test_setup_run_channel_test_writes_sent_artifact(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -6614,7 +6614,7 @@ def _prompt_setup_channel_test(
         return run_channel_test
     return typer.confirm(
         "Send a real channel delivery self-test now?",
-        default=False,
+        default=True,
     )
 
 

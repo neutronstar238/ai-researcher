@@ -21,7 +21,7 @@ automatically.
 
 | Area | V1.0 behavior |
 | --- | --- |
-| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, WeChat QR or Feishu App credentials, optional real channel self-test, vault path, integration manifests, and slash templates. |
+| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, WeChat QR or Feishu App credentials, default-on real channel self-test, vault path, integration manifests, and slash templates. |
 | Always-on loop | `airesearcher serve` and `airesearcher autopilot --watch` run a daily loop with online literature search, inspiration refresh, experiments, review, audit, paper build, and follow-up tasks. |
 | Inspiration push | `--push-inspiration` sends a compact digest through setup-configured WeChat/Feishu channels. Missing delivery state is recorded as `skipped`, not faked. |
 | Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
@@ -73,7 +73,7 @@ The wizard walks through:
 3. Enter `AUTORESEARCH_LLM_MODEL_NAME`.
 4. Enter `AUTORESEARCH_LLM_API_KEY`.
 5. Optionally configure WeChat by QR adapter onboarding, or Feishu/Lark with App ID and App Secret.
-6. If a channel is enabled, choose whether setup should send a real delivery self-test immediately.
+6. If a channel is enabled, confirm the default real delivery self-test or explicitly skip it.
 7. Initialize `autoresearch-vault/`.
 8. Write integration runbooks under `integrations/`.
 9. Write local slash command templates under `.airesearcher/commands/`.
@@ -86,20 +86,20 @@ Recommended channel setup:
 
 - Feishu/Lark: choose the App ID + App Secret mode in `airesearcher setup`. Add a home chat ID
   during setup if you already have it; otherwise message the bot and bind the home channel later
-  through the adapter/gateway flow. When the channel is complete, the wizard can send a real
-  self-test before it exits.
+  through the adapter/gateway flow. When the channel is complete, the wizard defaults to sending a
+  real self-test before it exits.
 - WeChat/Weixin: choose QR setup. In the interactive wizard, AI-Researcher starts the QR adapter
   setup command immediately after writing config and waits for the scan/login result. If you know
   the OpenClaw message target, enter it during setup; otherwise bind it after pairing with
   `airesearcher channels bind-target --channel wechat --target <target>`. Non-interactive scripts record the setup state without
   blocking unless `--run-wechat-qr-setup` is passed. Once the QR login and target are ready, setup
-  can send the same real self-test used by the 24h push gate.
+  defaults to sending the same real self-test used by the 24h push gate.
 - Webhook URLs remain available as a fallback for environments that already use incoming webhooks.
 
-The guided wizard asks whether to send the channel delivery self-test during setup. For scripted
-deployments, pass `--run-channel-test` to fail closed unless every enabled channel reports `sent`,
-or `--skip-channel-test` to defer it. If you defer, run the same test before leaving the service
-unattended:
+The guided wizard asks whether to send the channel delivery self-test during setup and defaults to
+Yes when a channel is enabled. For scripted deployments, pass `--run-channel-test` to fail closed
+unless every enabled channel reports `sent`, or `--skip-channel-test` to defer it. If you defer,
+run the same test before leaving the service unattended:
 
 ```bash
 npm run channel:test -- --channel feishu --require-sent
@@ -307,7 +307,7 @@ Common npm shortcuts:
 | `setup` | `--wechat-openclaw-target` | Optional OpenClaw WeChat message target used by real QR-mode self-tests and digest delivery. |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | Feishu/Lark App credential setup; `--feishu-home-chat-id` enables direct digest delivery. |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | Fallback incoming-webhook setup for existing deployments. |
-| `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | Send or defer the setup delivery self-test; a failed send writes JSON evidence before exiting nonzero. |
+| `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | Send or defer the setup delivery self-test; interactive setup defaults to sending it, and a failed send writes JSON evidence before exiting nonzero. |
 | `channels bind-target` | `--channel wechat [--target <target>]` | Bind the OpenClaw WeChat target after QR pairing without editing `.env`; prompts when `--target` is omitted. |
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | Bind a Feishu/Lark home chat ID after the bot conversation creates one; prompts when `--target` is omitted. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |

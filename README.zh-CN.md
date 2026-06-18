@@ -14,7 +14,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 
 | 模块 | V1.0 行为 |
 | --- | --- |
-| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、可选真实通道自检、vault 路径、集成 manifest 和 slash 模板。 |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest 和 slash 模板。 |
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
@@ -66,7 +66,7 @@ airesearcher setup
 3. 填写 `AUTORESEARCH_LLM_MODEL_NAME`。
 4. 填写 `AUTORESEARCH_LLM_API_KEY`。
 5. 可选配置微信扫码通道，或用 App ID/App Secret 配置飞书/Lark。
-6. 如果启用了通信通道，选择是否在 setup 阶段立即发送真实送达自检。
+6. 如果启用了通信通道，确认默认立即发送的真实送达自检，或显式跳过。
 7. 初始化 `autoresearch-vault/`。
 8. 写入 `integrations/` 下的集成 runbook。
 9. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
@@ -75,11 +75,11 @@ airesearcher setup
 
 推荐通道配置：
 
-- 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。通道状态完整后，向导可以在退出前发送真实送达自检。
-- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后运行 `airesearcher channels bind-target --channel wechat --target <target>`。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。当 QR 登录和 target 都准备好后，setup 可以发送与 24h 推送门禁相同的真实自检。
+- 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。通道状态完整后，向导默认会在退出前发送真实送达自检。
+- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后运行 `airesearcher channels bind-target --channel wechat --target <target>`。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。当 QR 登录和 target 都准备好后，setup 默认会发送与 24h 推送门禁相同的真实自检。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
-引导式 setup 会询问是否立即发送通道送达自检。脚本化部署可以传入 `--run-channel-test`，要求所有启用通道都返回 `sent`，否则写入 JSON 证据后失败；也可以传入 `--skip-channel-test` 延后。若选择延后，进入无人值守前请运行同一条自检：
+引导式 setup 会询问是否立即发送通道送达自检，并在启用通道时默认选择发送。脚本化部署可以传入 `--run-channel-test`，要求所有启用通道都返回 `sent`，否则写入 JSON 证据后失败；也可以传入 `--skip-channel-test` 延后。若选择延后，进入无人值守前请运行同一条自检：
 
 ```bash
 npm run channel:test -- --channel feishu --require-sent
@@ -266,7 +266,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `setup` | `--wechat-openclaw-target` | 可选 OpenClaw 微信消息 target，用于 QR 模式下真实通道自检和摘要推送。 |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
-| `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | 在 setup 阶段发送或延后送达自检；发送失败会先写 JSON 证据，再非零退出。 |
+| `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | 在 setup 阶段发送或延后送达自检；交互式 setup 默认发送，失败会先写 JSON 证据，再非零退出。 |
 | `channels bind-target` | `--channel wechat [--target <target>]` | 微信 QR 配对后绑定 OpenClaw target，不需要手动编辑 `.env`；省略 `--target` 会交互询问。 |
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标；省略 `--target` 会交互询问。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
