@@ -6762,12 +6762,17 @@ def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
         return f"No agent log found at {_relative_path_text(agent_log)}."
     entries: list[list[str]] = []
     current: list[str] = []
+    capture_detail = False
+    captured_detail = False
     for line in agent_log.read_text(encoding="utf-8", errors="replace").splitlines():
         if re.match(r"^### \d{4}-\d{2}-\d{2}", line):
             if current:
                 entries.append(current)
             current = [line.removeprefix("### ").strip()]
+            capture_detail = False
+            captured_detail = False
             continue
+        stripped = line.strip()
         if current and (
             line.startswith("- Request:")
             or line.startswith("- Summary:")
@@ -6775,14 +6780,25 @@ def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
             or line.startswith("- Problems:")
             or line.startswith("- Follow-up:")
         ):
-            current.append(line.strip())
+            current.append(_truncate_cell(stripped, limit=180))
+            capture_detail = stripped in {
+                "- Summary:",
+                "- Verification:",
+                "- Problems:",
+                "- Follow-up:",
+            }
+            captured_detail = False
+            continue
+        if current and capture_detail and not captured_detail and line.startswith("  - "):
+            current.append(_truncate_cell(stripped, limit=180))
+            captured_detail = True
     if current:
         entries.append(current)
     if not entries:
         return "Agent.md exists, but no change-log entries were found."
     rendered: list[str] = []
     for entry in reversed(entries[-max_entries:]):
-        rendered.append("\n".join(entry[:7]))
+        rendered.append("\n".join(entry[:12]))
     return "\n\n".join(rendered)
 
 

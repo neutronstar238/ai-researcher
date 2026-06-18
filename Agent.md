@@ -8661,3 +8661,30 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-116`.
 - Follow-up:
   - The real full cycle is release-allowed by current gates; external IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.
+
+### 2026-06-18 09:21:47 +08:00 - Codex - Task 201.1 Monitor agent detail bullets
+
+- Request: Continue launch-readiness work so the operator console shows actionable recent Agent.md detail, not only section headers.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Extended `_recent_agent_entries_text()` so the monitor Agent Messages panel includes the first concrete detail bullet under Summary, Verification, Problems, and Follow-up for each recent Agent.md entry.
+  - Kept newest-first ordering from task `200.1`.
+  - Truncated long detail lines before rendering, preventing command-heavy verification evidence from overflowing the console layout.
+  - Updated the newest-first regression test to assert that detail bullets from recent entries appear while stale entries remain excluded.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real monitor render `node .\bin\airesearcher.mjs monitor --runtime-state runs\manual-live\task200-post-setup-cycle\approvals.json --scheduler-state runs\manual-live\task200-post-setup-cycle\scheduler-state.json --sessions-state runs\manual-live\task200-post-setup-cycle\sessions.json --outputs-dir outputs\task200_post_setup_cycle --cycle-summary runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json --no-diff --max-agent-entries 1`: exited 0 and showed the latest Agent entry with Summary, Verification, Problems, and Follow-up detail bullets; long command-heavy lines were truncated.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 534 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; this task hardened the operator UX after the resolved stale-entry defect `P-20260618-116`.
+- Follow-up:
+  - External IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.

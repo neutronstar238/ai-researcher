@@ -2531,6 +2531,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-116`; user requirement for a visible CLI UI showing current agent messages, information flow, changes, and previews during long-running operation._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real monitor over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 2` rendered Task `199.1` and Task `198.1` instead of old Task `187.1` and `186.1`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 201. Operator console agent messages are actionable
+  - [x] 201.1 Include compact detail bullets in the `monitor` Agent Messages panel
+    - Extend the monitor Agent Messages panel beyond bare section headers so operators can see the first concrete Summary, Verification, Problems, and Follow-up bullet from each recent `Agent.md` entry.
+    - Keep newest-first ordering from task `200.1`.
+    - Truncate long detail lines so command-heavy verification evidence cannot overflow the console layout.
+    - Add regression coverage proving recent entries include their first detail bullet while old entries remain excluded.
+    - Verify against a real monitor render from the latest successful full-cycle run.
+    - _References: task `200.1`; user requirement for a good-looking CLI that shows agent messages, information flow, changed content, and preview results during autonomous operation._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real monitor over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 1` rendered the latest Agent entry with Summary, Verification, Problems, and Follow-up detail bullets and truncated long command lines. Broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

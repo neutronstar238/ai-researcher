@@ -4108,11 +4108,15 @@ def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) ->
                 "### 2026-06-18 08:59:16 +08:00 - Codex - Task 198.1",
                 "- Request: strict readiness setup self-test",
                 "- Summary:",
+                "  - Attached setup self-test output to readiness remediation.",
                 "- Verification:",
+                "  - Focused readiness tests passed.",
                 "### 2026-06-18 09:06:10 +08:00 - Codex - Task 199.1",
                 "- Request: guided setup self-test defaults",
                 "- Summary:",
+                "  - Defaulted the setup channel self-test prompt to yes.",
                 "- Verification:",
+                "  - Guided setup default test passed.",
             ]
         ),
         encoding="utf-8",
@@ -4123,6 +4127,8 @@ def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) ->
     assert "Task 199.1" in text
     assert "Task 198.1" in text
     assert "Task 117.1" not in text
+    assert "Defaulted the setup channel self-test prompt to yes." in text
+    assert "Attached setup self-test output to readiness remediation." in text
     assert text.index("Task 199.1") < text.index("Task 198.1")
 
 
