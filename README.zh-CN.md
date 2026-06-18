@@ -79,7 +79,7 @@ airesearcher setup
 - 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后运行 `airesearcher channels bind-target --channel wechat --target <target>`。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。当 QR 登录和 target 都准备好后，setup 默认会发送与 24h 推送门禁相同的真实自检。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
 
-引导式 setup 会询问是否立即发送通道送达自检，并在启用通道时默认选择发送。脚本化部署可以传入 `--run-channel-test`，要求所有启用通道都返回 `sent`，否则写入 JSON 证据后失败；也可以传入 `--skip-channel-test` 延后。若选择延后，进入无人值守前请运行同一条自检：
+引导式 setup 会询问是否立即发送通道送达自检，并在启用通道时默认选择发送。脚本化部署可以传入 `--run-channel-test`，要求所有启用通道都返回 `sent`，否则写入 JSON 证据后失败；也可以传入 `--skip-channel-test` 延后。若自检发现缺少 WeChat OpenClaw target 或 Feishu home chat ID，CLI 会打印对应的 `channels bind-target` 命令，操作者不需要手动编辑 `.env`。若选择延后，进入无人值守前请运行同一条自检：
 
 ```bash
 npm run channel:test -- --channel feishu --require-sent

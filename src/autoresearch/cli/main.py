@@ -1088,6 +1088,7 @@ def deploy_setup(
             )
         typer.echo(f"[OK] channel_test: {channel_test_path}")
         if any(record.status != "sent" for record in records):
+            _echo_channel_test_next_actions(records, env_path=env_path)
             typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
             raise typer.Exit(code=1)
     _echo_post_setup_next_steps(
@@ -1633,6 +1634,7 @@ def channel_test(
         )
     typer.echo(f"[OK] channel_test: {output}")
     if require_sent and any(record.status != "sent" for record in records):
+        _echo_channel_test_next_actions(records, env_path=env_path)
         typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
         raise typer.Exit(code=1)
 
@@ -1731,6 +1733,38 @@ def _run_channel_delivery_self_test(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return records
+
+
+def _echo_channel_test_next_actions(
+    records: Iterable[NotificationSendRecord],
+    *,
+    env_path: Path,
+) -> None:
+    emitted: set[str] = set()
+    env_arg = _command_path(env_path)
+    for record in records:
+        channel = record.channel.casefold()
+        detail = record.detail.casefold()
+        if (
+            channel in {"wechat", "weixin", "wecom"}
+            and "autoresearch_wechat_openclaw_target" in detail
+            and "bind_wechat_target" not in emitted
+        ):
+            typer.echo(
+                "[NEXT] bind_wechat_target: "
+                f"airesearcher channels bind-target --channel wechat --env-path {env_arg}"
+            )
+            emitted.add("bind_wechat_target")
+        if (
+            channel in {"feishu", "lark"}
+            and "autoresearch_feishu_home_chat_id" in detail
+            and "bind_feishu_target" not in emitted
+        ):
+            typer.echo(
+                "[NEXT] bind_feishu_target: "
+                f"airesearcher channels bind-target --channel feishu --env-path {env_arg}"
+            )
+            emitted.add("bind_feishu_target")
 
 
 @app.command("readiness")

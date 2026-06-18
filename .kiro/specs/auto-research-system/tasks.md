@@ -2541,6 +2541,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `200.1`; user requirement for a good-looking CLI that shows agent messages, information flow, changed content, and preview results during autonomous operation._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real monitor over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 1` rendered the latest Agent entry with Summary, Verification, Problems, and Follow-up detail bullets and truncated long command lines. Broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 202. Channel self-test failures are actionable during setup
+  - [x] 202.1 Print bind-target next actions for missing channel delivery targets
+    - When `channels test --require-sent` or setup-time `--run-channel-test` fails because WeChat QR lacks `AUTORESEARCH_WECHAT_OPENCLAW_TARGET`, print the exact `airesearcher channels bind-target --channel wechat --env-path ...` repair command.
+    - When the same path fails because Feishu App mode lacks `AUTORESEARCH_FEISHU_HOME_CHAT_ID`, print the matching `airesearcher channels bind-target --channel feishu --env-path ...` command.
+    - Keep fail-closed self-test behavior and JSON evidence writing unchanged.
+    - Update README setup guidance in English and Chinese so operators know missing targets are repaired through CLI, not manual `.env` edits.
+    - Add regression coverage for WeChat and Feishu missing-target next actions.
+    - _References: tasks `196.1`, `198.1`, and `199.1`; user requirement that setup be a guided deployment flow instead of hidden manual `.env` work._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action -q` passed with 2 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real Node setup probe under `runs\manual-live\task202-channel-next-actions` wrote channel-test evidence, exited 1 by design for missing Feishu home chat, and printed `bind_feishu_target`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 535 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

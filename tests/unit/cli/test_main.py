@@ -384,7 +384,10 @@ def test_channels_test_requires_sent_when_requested(
             cli_main.NotificationSendRecord(
                 channel="wechat",
                 status="skipped",
-                detail="setup status missing",
+                detail=(
+                    "wechat QR gateway configured but missing "
+                    "AUTORESEARCH_WECHAT_OPENCLAW_TARGET for outbound delivery"
+                ),
             ),
         )
 
@@ -404,7 +407,11 @@ def test_channels_test_requires_sent_when_requested(
     )
 
     assert result.exit_code == 1, result.output
-    assert "[PUSH] channel=wechat status=skipped detail=setup status missing" in result.output
+    assert "missing AUTORESEARCH_WECHAT_OPENCLAW_TARGET" in result.output
+    assert (
+        f"[NEXT] bind_wechat_target: airesearcher channels bind-target --channel wechat "
+        f"--env-path {(Path('.env')).as_posix()}"
+    ) in result.output
     assert f"[OK] channel_test: {output}" in result.output
     assert "[FAIL] channel_test: at least one channel was not sent" in result.output
     payload = json.loads(output.read_text(encoding="utf-8"))
@@ -1468,6 +1475,77 @@ def test_setup_run_channel_test_fails_after_writing_artifact(
     assert payload["channels"] == ["feishu"]
     assert payload["require_sent"] is True
     assert payload["records"][0]["status"] == "failed"
+
+
+def test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_APP_ID"] == "cli_a_test"
+        assert tuple(channels) == ("feishu",)
+        assert timeout_seconds == 10.0
+        assert report.items[0].title == "AI-Researcher setup channel self-test"
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="skipped",
+                detail=(
+                    "feishu app credentials configured; missing "
+                    "AUTORESEARCH_FEISHU_HOME_CHAT_ID for outbound delivery"
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-app-id",
+            "cli_a_test",
+            "--feishu-app-secret",
+            "secret",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "missing AUTORESEARCH_FEISHU_HOME_CHAT_ID" in result.output
+    assert (
+        f"[NEXT] bind_feishu_target: airesearcher channels bind-target --channel feishu "
+        f"--env-path {env_path.as_posix()}"
+    ) in result.output
+    assert f"[OK] channel_test: {channel_result_path}" in result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["records"][0]["status"] == "skipped"
 
 
 def test_setup_run_channel_test_requires_enabled_channel_before_writing(tmp_path: Path) -> None:

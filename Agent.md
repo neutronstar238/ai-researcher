@@ -8688,3 +8688,34 @@ This file defines the project development standard for coding agents and records
   - None added; this task hardened the operator UX after the resolved stale-entry defect `P-20260618-116`.
 - Follow-up:
   - External IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.
+
+### 2026-06-18 09:29:12 +08:00 - Codex - Task 202.1 Channel self-test bind-target next actions
+
+- Request: Continue launch-readiness work by making setup-time channel self-test failures actionable without requiring manual `.env` editing.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `_echo_channel_test_next_actions()` and wired it into both `airesearcher channels test --require-sent` and setup-time `--run-channel-test` fail-closed paths.
+  - When WeChat QR delivery is blocked by a missing `AUTORESEARCH_WECHAT_OPENCLAW_TARGET`, the CLI now prints `airesearcher channels bind-target --channel wechat --env-path ...`.
+  - When Feishu App delivery is blocked by a missing `AUTORESEARCH_FEISHU_HOME_CHAT_ID`, the CLI now prints `airesearcher channels bind-target --channel feishu --env-path ...`.
+  - Preserved JSON self-test evidence writing and nonzero exit behavior.
+  - Updated English and Chinese README setup guidance to state that missing targets are repaired through CLI rather than manual `.env` edits.
+  - Added regression coverage for WeChat and Feishu missing-target next actions.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real Node setup probe `node .\bin\airesearcher.mjs setup --config runs\manual-live\task202-channel-next-actions\config.yaml --env-path runs\manual-live\task202-channel-next-actions\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --feishu --feishu-app-id cli_a_test --feishu-app-secret secret --non-interactive --run-channel-test --channel-test-output channel-test.json --skip-obsidian --skip-integrations --skip-slash`: exited 1 by design after writing `runs\manual-live\task202-channel-next-actions\channel-test.json` and printing `bind_feishu_target`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 535 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; the real probe was an expected fail-closed missing-target case.
+- Follow-up:
+  - Real sent-delivery success still requires an operator to bind a WeChat OpenClaw target or Feishu home chat ID after platform pairing.

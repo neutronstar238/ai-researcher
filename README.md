@@ -99,7 +99,9 @@ Recommended channel setup:
 The guided wizard asks whether to send the channel delivery self-test during setup and defaults to
 Yes when a channel is enabled. For scripted deployments, pass `--run-channel-test` to fail closed
 unless every enabled channel reports `sent`, or `--skip-channel-test` to defer it. If you defer,
-run the same test before leaving the service unattended:
+run the same test before leaving the service unattended. If the self-test finds a missing WeChat
+OpenClaw target or Feishu home chat ID, the CLI prints the matching `channels bind-target` command
+so the operator can finish setup without editing `.env` by hand:
 
 ```bash
 npm run channel:test -- --channel feishu --require-sent
