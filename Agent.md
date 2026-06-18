@@ -8428,3 +8428,37 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-112`.
 - Follow-up:
   - Older project-progress and literature-refresh vault notes are still dirty from previous memory writes; handle them in a separate memory-history commit if keeping them is desired.
+
+### 2026-06-18 08:02:56 +08:00 - Codex - Task 193.1 Persist validated vault memory notes
+
+- Request: Continue by handling the remaining content-bearing Obsidian vault diffs without mixing in line-ending-only noise.
+- Files changed:
+  - `autoresearch-vault/exploration/topics/literature_refresh_20260612.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-82-1-source-preflight-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-83-1-malformed-source-state-fail-closed.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-84-1-atomic-source-state-writes.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-85-1-source-state-mutation-lock.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-86-1-similarity-classification-coverage.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-87-1-similarity-token-overlap-classifier.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-88-1-classified-similarity-breadth.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-89-1-lifecycle-trace-evidence-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-90-1-llm-quality-retry-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-91-1-llm-review-repair-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-92-1-evidence-gate-review-override.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-93-1-publication-audit-review-override.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Preserved the real online literature refresh note with 30 ArXiv/OpenAlex/DOI source refs and Semantic Scholar circuit-breaker evidence.
+  - Preserved project-progress memory notes for tasks `82.1` through `93.1`.
+  - Kept line-ending-only vault files out of this commit and recorded that status separately.
+- Verification:
+  - Parsed all 13 changed vault notes with `KnowledgeEntry.from_markdown()`.
+  - Validation script reported `parsed_entries 13`, `literature_source_refs 30`, and related task IDs `82.1` through `93.1`.
+  - `rg -n "template-noise|\{\{|\}\}|entry_87cf|entry_58ebb|method_aligned_seed_not_found|source URL recorded in artifact" autoresearch-vault\exploration\topics\literature_refresh_20260612.md autoresearch-vault\projects\ai_researcher_system\progress`: returned no matches.
+  - `git diff --check` over the 13 content-bearing vault notes: passed.
+- Problems:
+  - Added open line-ending follow-up `P-20260618-113`.
+- Follow-up:
+  - Decide later whether to add `.gitattributes` and normalize Markdown line endings in a dedicated maintenance commit.

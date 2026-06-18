@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:35:00Z'
 entry_id: progress_task_88_1_classified_similarity_breadth
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 88.1 classified similarity breadth gate
-tags:
-  - progress
-  - publication-audit
-  - novelty
-  - evidence-gate
 keywords:
-  - similarity_classified_finding_breadth
-  - classified findings
-  - novelty
-  - publication audit
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/reports/publication_audit.py
-  - runs/manual-live/publication-audit-task88/publication-audit.json
-related_task_ids:
-  - "88.1"
-related_run_ids: []
+- similarity_classified_finding_breadth
+- classified findings
+- novelty
+- publication audit
 links: []
-backlinks: []
-created_at: "2026-06-13T03:35:00Z"
-updated_at: "2026-06-13T03:35:00Z"
+project_id: ai_researcher_system
+related_run_ids: []
+related_task_ids:
+- '88.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/reports/publication_audit.py
+- runs/manual-live/publication-audit-task88/publication-audit.json
+tags:
+- progress
+- publication-audit
+- novelty
+- evidence-gate
+title: Task 88.1 classified similarity breadth gate
+updated_at: '2026-06-13T03:35:00Z'
+zone: project
 ---
 
 # Task 88.1 Classified Similarity Breadth Gate

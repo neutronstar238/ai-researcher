@@ -1,26 +1,32 @@
 ---
+backlinks: []
+created_at: '2026-06-14T14:00:21.960925Z'
 entry_id: task_93_1_publication_audit_review_override
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 93.1 publication-audit review override
-tags:
-  - publication-audit
-  - review-gate
-  - scale-lite
-  - completed
 keywords:
-  - publication-audit
-  - llm-review
-  - evidence gate
-  - review override
-source_refs:
-  - src/autoresearch/reports/publication_audit.py
-  - src/autoresearch/cli/main.py
-  - runs/manual-live/publication-audit-task93-review-override/publication-audit.json
+- publication-audit
+- llm-review
+- evidence gate
+- review override
+links: []
+project_id: ai_researcher_system
+related_run_ids: []
 related_task_ids:
-  - "93.1"
+- '93.1'
+source_refs:
+- src/autoresearch/reports/publication_audit.py
+- src/autoresearch/cli/main.py
+- runs/manual-live/publication-audit-task93-review-override/publication-audit.json
+tags:
+- publication-audit
+- review-gate
+- scale-lite
+- completed
+title: Task 93.1 publication-audit review override
+updated_at: '2026-06-14T14:00:21.960929Z'
+zone: project
 ---
+
 # Task 93.1 Publication-Audit Review Override
 
 ## Summary

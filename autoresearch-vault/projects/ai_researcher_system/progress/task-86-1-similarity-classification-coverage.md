@@ -1,31 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:19:51Z'
 entry_id: progress_task_86_1_similarity_classification_coverage
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 86.1 similarity classification coverage gate
-tags:
-  - progress
-  - publication-audit
-  - novelty
-  - scale-lite
 keywords:
-  - similarity_classification_coverage
-  - unknown
-  - novelty
-  - evidence gate
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/reports/publication_audit.py
-  - runs/manual-live/publication-audit-task86/publication-audit.json
-related_task_ids:
-  - "86.1"
+- similarity_classification_coverage
+- unknown
+- novelty
+- evidence gate
+links: []
+project_id: ai_researcher_system
 related_run_ids: []
-links:
-  - publication_audit_task86_similarity_classification_cycle-20260613t030125z
-backlinks: []
-created_at: "2026-06-13T03:19:51Z"
-updated_at: "2026-06-13T03:19:51Z"
+related_task_ids:
+- '86.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/reports/publication_audit.py
+- runs/manual-live/publication-audit-task86/publication-audit.json
+tags:
+- progress
+- publication-audit
+- novelty
+- scale-lite
+title: Task 86.1 similarity classification coverage gate
+updated_at: '2026-06-13T03:19:51Z'
+zone: project
 ---
 
 # Task 86.1 Similarity Classification Coverage Gate

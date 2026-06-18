@@ -1,31 +1,31 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:01:25Z'
 entry_id: task_84_1_atomic_source_state_writes
 entry_type: project_progress
-zone: project
-title: Task 84.1 atomic source state writes
-project_id: ai_researcher_system
-tags:
-  - source-preflight
-  - circuit-breaker
-  - atomic-write
-  - evidence-gate
-  - completed
 keywords:
-  - source-circuit-breakers.json
-  - atomic replace
-  - temporary files
-  - SCALE-lite
-source_refs:
-  - src/autoresearch/literature/clients.py
-  - tests/unit/literature/test_clients.py
-related_task_ids:
-  - "84.1"
-related_run_ids:
-  - cycle-20260613T030125Z
-created_at: "2026-06-13T03:01:25Z"
-updated_at: "2026-06-13T03:01:25Z"
+- source-circuit-breakers.json
+- atomic replace
+- temporary files
+- SCALE-lite
 links: []
-backlinks: []
+project_id: ai_researcher_system
+related_run_ids:
+- cycle-20260613T030125Z
+related_task_ids:
+- '84.1'
+source_refs:
+- src/autoresearch/literature/clients.py
+- tests/unit/literature/test_clients.py
+tags:
+- source-preflight
+- circuit-breaker
+- atomic-write
+- evidence-gate
+- completed
+title: Task 84.1 atomic source state writes
+updated_at: '2026-06-13T03:01:25Z'
+zone: project
 ---
 
 # Task 84.1 Atomic Source State Writes

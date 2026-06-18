@@ -2451,6 +2451,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-112`; user requirement that Obsidian templates/skills remain structured project assets rather than noisy self-loop records._
     - _Verify: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed; `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed; `python -m mypy src\autoresearch\knowledge\entries.py` passed; real vault rebuild succeeded; `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md` returned no matches._
 
+- [x] 193. Persist validated Obsidian historical memory notes
+  - [x] 193.1 Commit live literature refresh and project progress memory entries
+    - Keep the real online `literature_refresh_20260612` note with ArXiv/OpenAlex/Semantic Scholar circuit-breaker evidence.
+    - Keep project progress entries for tasks `82.1` through `93.1` so the vault carries prior source-preflight, similarity, lifecycle, LLM-review, evidence-gate, and publication-audit lessons.
+    - Validate all changed notes through `KnowledgeEntry.from_markdown()` before commit.
+    - Keep line-ending-only vault status out of this content commit.
+    - _References: user requirement that project data and conclusions accumulate as Markdown in the Obsidian vault._
+    - _Verify: parsed 13 changed vault entries with `KnowledgeEntry.from_markdown()`, confirmed 30 source refs in the literature refresh note and related task IDs `82.1` through `93.1`; `rg` placeholder/noise scan returned no matches; `git diff --check` for the 13 vault notes passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

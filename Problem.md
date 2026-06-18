@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-113 - Line-ending-only vault files remain dirty after content-memory commits
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-06-18 08:02:00 +08:00
+- Source: `git status --short` and `git update-index --refresh` after tasks `191.1` and `192.1`.
+- Symptom: Several vault files such as `autoresearch-vault/Home.md`, `_system` templates, dashboards, and paper notes appear as modified in `git status`, while `git diff --name-status -- autoresearch-vault` does not list them as content changes and commands report CRLF conversion warnings.
+- Impact: Future agents may confuse line-ending/status noise with unreviewed semantic vault changes.
+- Evidence: `git update-index --refresh` reported `needs update` for those files; `git diff --name-status -- autoresearch-vault` listed only 13 real content diffs.
+- Root cause: The workspace has mixed line-ending state for tracked Markdown files, and Git reports them as needing update even when no content diff is present.
+- Workaround: Stage and commit only files that appear in `git diff --name-status` for content tasks; handle line-ending normalization as a separate repository-maintenance task if desired.
+- Next action: Decide whether to add a `.gitattributes` Markdown policy and run a dedicated normalization commit.
+- Linked tasks: `193.1`
+- Resolution: Pending.
+- Verification: Pending.
+
 ### P-20260618-112 - Vault rebuild treated `_system` templates as knowledge entries
 
 - Status: Resolved

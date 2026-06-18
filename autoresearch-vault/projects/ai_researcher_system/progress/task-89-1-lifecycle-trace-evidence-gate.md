@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:48:00Z'
 entry_id: progress_task_89_1_lifecycle_trace_evidence_gate
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 89.1 lifecycle trace evidence gate
-tags:
-  - progress
-  - evidence-gate
-  - scale-lite
-  - release-gate
 keywords:
-  - lifecycle_trace
-  - define plan build verify review ship
-  - physical evidence gate
-  - no evidence no release
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/reports/evidence_gate.py
-  - runs/manual-live/evidence-gate-task89/evidence-gate.json
-related_task_ids:
-  - "89.1"
-related_run_ids: []
+- lifecycle_trace
+- define plan build verify review ship
+- physical evidence gate
+- no evidence no release
 links: []
-backlinks: []
-created_at: "2026-06-13T03:48:00Z"
-updated_at: "2026-06-13T03:48:00Z"
+project_id: ai_researcher_system
+related_run_ids: []
+related_task_ids:
+- '89.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/reports/evidence_gate.py
+- runs/manual-live/evidence-gate-task89/evidence-gate.json
+tags:
+- progress
+- evidence-gate
+- scale-lite
+- release-gate
+title: Task 89.1 lifecycle trace evidence gate
+updated_at: '2026-06-13T03:48:00Z'
+zone: project
 ---
 
 # Task 89.1 Lifecycle Trace Evidence Gate
