@@ -53,7 +53,15 @@ DANGEROUS_CALLS = {
     "subprocess.run",
 }
 DANGEROUS_IMPORT_ROOTS = {"subprocess"}
-DANGEROUS_COMMAND_MARKERS = ("rm -rf", "del /", "remove-item", "curl ", "wget ")
+DANGEROUS_COMMAND_MARKERS = (
+    "rm -rf",
+    "del /",
+    "remove-item",
+    "curl ",
+    "wget ",
+    "invoke-webrequest",
+    "invoke-restmethod",
+)
 NETWORK_IMPORT_ROOTS = {"aiohttp", "httpx", "requests", "socket", "urllib"}
 SECRET_MARKERS = (".env", "api_key", "id_rsa", "secret", "token")
 PATH_TRAVERSAL_PATTERN = re.compile(r"(^|[\\/])\.\.([\\/]|$)")

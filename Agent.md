@@ -62,6 +62,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:08:09 +08:00 - Codex - Task 208.1 PowerShell web command markers
+
+- Request: Continue generated-code execution hardening for Windows command paths.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `Invoke-WebRequest` and `Invoke-RestMethod` markers to generated-code dangerous command review.
+  - Kept the classification as `dangerous_command`, matching existing `curl` and `wget` handling.
+  - Added static review regression coverage for a PowerShell web request command string.
+  - Added completed task `208.1` and resolved `P-20260618-122`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py -q`: passed, 10 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 542 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-122`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened Windows command-marker review.
+
 ### 2026-06-18 10:02:09 +08:00 - Codex - Task 207.1 Dynamic import static review
 
 - Request: Continue executor hardening against generated-code workarounds.

@@ -2599,6 +2599,15 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-121`; `P-20260611-014`; user requirement to harden execution gates against AI-generated workarounds rather than trusting prompt discipline._
     - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py -q` passed with 18 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py src\autoresearch\experiments\executor.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 541 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 208. Static review catches PowerShell web command markers
+  - [x] 208.1 Flag PowerShell web request commands
+    - Add PowerShell `Invoke-WebRequest` and `Invoke-RestMethod` markers to generated-code string-literal review.
+    - Classify those command strings as `dangerous_command`, matching existing `curl` and `wget` treatment.
+    - Add regression coverage for a generated-code PowerShell web request command string.
+    - Keep `P-20260611-014` mitigated rather than resolved because this is a static executor gate, not OS/container/proxy-level network interception.
+    - _References: `P-20260618-122`; `P-20260611-014`; user requirement for real execution guardrails and dangerous-operation gates._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py -q` passed with 10 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 542 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

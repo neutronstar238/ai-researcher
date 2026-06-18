@@ -66,6 +66,11 @@ def test_generated_runner_passes_static_review(tmp_path: Path) -> None:
             "Path('metrics.json').write_text('{}')\n",
             "dangerous_command",
         ),
+        (
+            "command = 'powershell -Command Invoke-WebRequest https://example.org/data.csv'\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
         ("print('done')\n", "missing_metric_write"),
     ],
 )

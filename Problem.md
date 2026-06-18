@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-122 - Static review missed PowerShell web request command markers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:08:09 +08:00
+- Source: Follow-up Windows command hardening after executor-level static preflight and dynamic import review.
+- Symptom: Static review treated `curl` and `wget` string markers as dangerous commands, but did not flag PowerShell web request commands such as `Invoke-WebRequest` or `Invoke-RestMethod`.
+- Impact: Generated code on Windows could hide web retrieval behind a PowerShell command string and avoid the existing string-marker review path.
+- Evidence: `DANGEROUS_COMMAND_MARKERS` covered shell deletion, `curl`, and `wget`, but lacked PowerShell web command markers.
+- Root cause: The original dangerous-command marker list was Unix/common-CLI biased and did not include Windows PowerShell download primitives.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `208.1`
+- Resolution: Added `invoke-webrequest` and `invoke-restmethod` markers to generated-code static review and added a regression test for a PowerShell `Invoke-WebRequest` command string.
+- Verification: Focused static-review test, ruff, and mypy checks passed; broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
 ### P-20260618-121 - Static review missed dynamic imports of network and command modules
 
 - Status: Resolved
