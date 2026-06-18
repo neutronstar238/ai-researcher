@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-124 - Root Obsidian vault default project links still pointed to old project ID
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 10:21:40 +08:00
+- Source: Repository-wide old-name scan after post-hardening readiness and vault checks.
+- Symptom: `autoresearch-vault/Home.md`, the research-loop dashboard, and several `_system/templates` entries still pointed to `projects/autoresearch-system` or used `project_id: autoresearch-system` even though the active project memory area is `projects/ai_researcher_system`.
+- Impact: A new operator opening the checked-in Obsidian vault could follow the default dashboard into the stale project ID rather than the current AI-Researcher system project area.
+- Evidence: `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system` matched the stale vault links and template defaults.
+- Root cause: Earlier project-name cleanup updated generated vault copy and source prose but did not update the checked-in root vault homepage/dashboard/template defaults.
+- Workaround: None needed after the fix.
+- Next action: Keep historical `projects/autoresearch-system` records in place, but do not use them as the default project entrypoint.
+- Linked tasks: `211.1`
+- Resolution: Updated the root vault homepage, dashboard, daily-cycle template, issue-note template, and experiment-record template to use `ai_researcher_system`; added a lightweight `projects/ai_researcher_system/index.md` project index.
+- Verification: Focused `rg` checks confirmed the stale default project ID no longer appears in `autoresearch-vault\Home.md` or `autoresearch-vault\_system`; `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md` returned true; `git diff --check` passed before commit.
+
 ### P-20260618-123 - Static review missed Windows downloader aliases and .NET downloader strings
 
 - Status: Resolved

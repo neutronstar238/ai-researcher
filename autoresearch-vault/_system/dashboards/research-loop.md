@@ -12,9 +12,9 @@
 
 ## Queues
 
-- Open issues: `projects/autoresearch-system/issues/`
-- Review notes: `projects/autoresearch-system/review/`
-- Experiment records: `projects/autoresearch-system/experiments/`
+- Open issues: `projects/ai_researcher_system/issues/`
+- Review notes: `projects/ai_researcher_system/review/`
+- Experiment records: `projects/ai_researcher_system/experiments/`
 - Skill library: `exploration/skills/`
 - Strategy library: `exploration/strategy_cards/`
 
@@ -24,7 +24,7 @@ Install Dataview manually in Obsidian, then use these snippets in a local dashbo
 
 ```dataview
 TABLE entry_type, updated_at, tags
-FROM "projects/autoresearch-system/issues"
+FROM "projects/ai_researcher_system/issues"
 WHERE status != "closed"
 SORT updated_at DESC
 ```

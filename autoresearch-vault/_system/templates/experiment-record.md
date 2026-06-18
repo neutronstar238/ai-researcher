@@ -1,7 +1,7 @@
 ---
 entry_type: experiment_record
 zone: project
-project_id: autoresearch-system
+project_id: ai_researcher_system
 title: "{experiment_name}"
 tags:
   - experiment

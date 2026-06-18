@@ -62,6 +62,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:21:40 +08:00 - Codex - Task 211.1 Root vault current project defaults
+
+- Request: Continue consistency hardening so the checked-in Obsidian vault routes new operators to the current AI-Researcher project memory area.
+- Files changed:
+  - `autoresearch-vault/Home.md`
+  - `autoresearch-vault/_system/dashboards/research-loop.md`
+  - `autoresearch-vault/_system/templates/daily-cycle.md`
+  - `autoresearch-vault/_system/templates/experiment-record.md`
+  - `autoresearch-vault/_system/templates/issue-note.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated root vault homepage, dashboard, and template defaults from the stale `autoresearch-system` project ID to `ai_researcher_system`.
+  - Added a lightweight project index so the root homepage's current-project link resolves inside the existing `projects/ai_researcher_system` area.
+  - Left historical `projects/autoresearch-system` records untouched.
+  - Added completed task `211.1` and resolved `P-20260618-124`.
+- Verification:
+  - `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system`: returned no matches.
+  - `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md`: returned true.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-124`.
+- Follow-up:
+  - Historical old-ID vault records remain available for provenance; new defaults should use `ai_researcher_system`.
+
 ### 2026-06-18 10:21:40 +08:00 - Codex - Task 210.1 Network sandbox mitigation trail
 
 - Request: Continue project hardening by keeping the OS-level network sandbox problem entry accurate after tasks `206.1` through `209.1`.

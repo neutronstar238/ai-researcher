@@ -1,6 +1,6 @@
 # Daily Research Cycle
 
-Project: [[projects/autoresearch-system/index|autoresearch-system]]
+Project: [[projects/ai_researcher_system/index|ai_researcher_system]]
 
 ## Inputs
 

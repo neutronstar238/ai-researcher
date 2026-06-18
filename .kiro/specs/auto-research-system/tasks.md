@@ -2625,6 +2625,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260611-014`; tasks `206.1`, `207.1`, `208.1`, `209.1`; user requirement for evidence-backed safety gates and accurate project memory._
     - _Verify: `rg -n "206\\.1|207\\.1|208\\.1|209\\.1|Windows downloader aliases|OS-level enforcement|post-hardening" Problem.md .kiro\specs\auto-research-system\tasks.md Agent.md` confirmed the updated mitigation trail; `git diff --check` passed._
 
+- [x] 211. Root Obsidian vault defaults use current project ID
+  - [x] 211.1 Point checked-in vault homepage, dashboard, and templates at `ai_researcher_system`
+    - Update `autoresearch-vault/Home.md`, `_system/dashboards/research-loop.md`, and `_system/templates/*` defaults that still route operators to `projects/autoresearch-system`.
+    - Add a lightweight `projects/ai_researcher_system/index.md` so the default homepage link resolves to the current project area.
+    - Leave historical `projects/autoresearch-system` records untouched.
+    - _References: `P-20260618-124`; user requirement that Obsidian is the unified memory substrate for the AI-Researcher self-loop._
+    - _Verify: `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system` returned no matches; `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md` returned true; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
