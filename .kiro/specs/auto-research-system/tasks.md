@@ -2579,6 +2579,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-119`; user requirement to use AI-Researcher as the project name while keeping compatibility names where needed._
     - _Verify: `rg -n "AutoResearch" src\autoresearch` returned no matches; focused `python -m ruff check src\autoresearch\cli\__init__.py src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\__init__.py src\autoresearch\schemas\models.py` passed; focused `python -m mypy src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\models.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 206. Executor security preflight is fail-closed
+  - [x] 206.1 Block dangerous static findings at executor entry
+    - Reuse generated-code static review inside `execute_experiment_task()`.
+    - Fail closed on `dangerous_command`, `path_traversal`, and `secret_read` findings before launching the local subprocess.
+    - Preserve the existing approved-network path for `unrestricted_network` findings.
+    - Record structured `static_preflight` metadata when blocking execution.
+    - Add regression tests proving dangerous subprocess/curl and secret-read code cannot write `metrics.json`.
+    - _References: `P-20260618-120`; `P-20260611-014`; user requirement for real evidence gates and physical execution guardrails rather than relying on prompt self-discipline._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q` passed with 25 tests; focused `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py` passed; focused `python -m mypy src\autoresearch\experiments\executor.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 538 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

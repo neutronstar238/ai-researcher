@@ -18,6 +18,9 @@ from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 from autoresearch.schemas.provenance import file_hash
 
 NETWORK_ACCESS_APPROVAL_KEY = "network_access_approved"
+STATIC_PREFLIGHT_BLOCK_CATEGORIES = frozenset(
+    {"dangerous_command", "path_traversal", "secret_read"}
+)
 
 
 def execute_experiment_task(
@@ -60,7 +63,22 @@ def execute_experiment_task(
             "memory_limit_mb": memory_limit_mb,
         },
     )
-    network_findings = _network_preflight_findings(root, entrypoint_path)
+    preflight_findings = _preflight_findings(root, entrypoint_path)
+    static_findings = _static_preflight_findings(preflight_findings)
+    if static_findings:
+        run = _with_static_preflight_metadata(run, findings=static_findings)
+        return _finish_run(
+            run,
+            root,
+            status=ExecutionStatus.FAILED,
+            exit_code=None,
+            stdout="",
+            stderr=_static_preflight_message(static_findings),
+            limit_violations=["static_preflight"],
+            error_type="StaticPreflightDenied",
+        )
+
+    network_findings = _network_preflight_findings(preflight_findings)
     if network_findings:
         approved = task.metadata.get(NETWORK_ACCESS_APPROVAL_KEY) is True
         run = _with_network_preflight_metadata(
@@ -141,17 +159,42 @@ def execute_experiment_task(
     )
 
 
-def _network_preflight_findings(
+def _preflight_findings(
     experiment_dir: Path,
     entrypoint_path: Path,
 ) -> tuple[CodeReviewFinding, ...]:
     entrypoint = entrypoint_path.relative_to(experiment_dir).as_posix()
     result = review_generated_code(experiment_dir, entrypoint=entrypoint)
+    return result.findings
+
+
+def _static_preflight_findings(
+    findings: tuple[CodeReviewFinding, ...],
+) -> tuple[CodeReviewFinding, ...]:
     return tuple(
         finding
-        for finding in result.findings
-        if finding.category == "unrestricted_network"
+        for finding in findings
+        if finding.category in STATIC_PREFLIGHT_BLOCK_CATEGORIES
     )
+
+
+def _network_preflight_findings(
+    findings: tuple[CodeReviewFinding, ...],
+) -> tuple[CodeReviewFinding, ...]:
+    return tuple(finding for finding in findings if finding.category == "unrestricted_network")
+
+
+def _with_static_preflight_metadata(
+    run: ExecutionRun,
+    *,
+    findings: tuple[CodeReviewFinding, ...],
+) -> ExecutionRun:
+    metadata = dict(run.metadata)
+    metadata["static_preflight"] = {
+        "finding_count": len(findings),
+        "findings": [finding.to_dict() for finding in findings],
+    }
+    return run.model_copy(update={"metadata": metadata})
 
 
 def _with_network_preflight_metadata(
@@ -180,6 +223,20 @@ def _with_network_preflight_metadata(
             preflight_metadata[key] = task_metadata[key]
     metadata["network_preflight"] = preflight_metadata
     return run.model_copy(update={"metadata": metadata})
+
+
+def _static_preflight_message(findings: tuple[CodeReviewFinding, ...]) -> str:
+    details = "; ".join(
+        f"line {finding.line}: {finding.category}: {finding.message}"
+        if finding.line is not None
+        else f"{finding.category}: {finding.message}"
+        for finding in findings
+    )
+    return (
+        "Generated experiment code failed static security preflight. "
+        f"Findings: {details}. "
+        "Regenerate or quarantine the experiment before local execution."
+    )
 
 
 def _network_preflight_message(findings: tuple[CodeReviewFinding, ...]) -> str:

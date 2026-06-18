@@ -62,6 +62,35 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 09:56:22 +08:00 - Codex - Task 206.1 Executor static security preflight
+
+- Request: Continue launch-readiness hardening by converting generated-code safety review from workflow discipline into an executor gate.
+- Files changed:
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Reused generated-code static review inside `execute_experiment_task()`.
+  - Added a fail-closed executor preflight for `dangerous_command`, `path_traversal`, and `secret_read` findings before subprocess launch.
+  - Preserved the existing approval-controlled network preflight path for `unrestricted_network` findings.
+  - Recorded structured `static_preflight` metadata on blocked runs.
+  - Added regressions proving dangerous subprocess/curl and secret-read code cannot write `metrics.json`.
+  - Added completed task `206.1` and resolved `P-20260618-120`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q`: passed, 25 tests.
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\executor.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 538 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-120`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened the executor-level static gate.
+
 ### 2026-06-18 09:47:56 +08:00 - Codex - Task 205.1 Source docstring naming
 
 - Request: Continue launch-readiness naming cleanup while preserving compatibility names.

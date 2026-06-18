@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-120 - Executor did not fail closed on non-network static security findings
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-18 10:00:00 +08:00
+- Source: Security hardening pass over the generated-code executor while reviewing mitigated sandbox/network limitations.
+- Symptom: `review_generated_code()` could flag `dangerous_command`, `secret_read`, and `path_traversal`, but `execute_experiment_task()` only failed closed on `unrestricted_network` findings. A caller that skipped the earlier quarantine step could still launch code with dangerous subprocess calls or secret reads.
+- Impact: The system's evidence-first loop depended too heavily on workflow discipline. The executor should be a physical gate for dangerous generated code, not only a runner.
+- Evidence: `src\autoresearch\experiments\executor.py` filtered review findings to category `unrestricted_network`; `tests\unit\experiments\test_review.py` already proved the static reviewer finds dangerous subprocess and secret access patterns.
+- Root cause: Task `147.1` hardened the executor for network import approval but did not promote other static security review categories into the executor's pre-launch deny path.
+- Workaround: None needed after the fix.
+- Next action: Keep OS/container-level sandbox enforcement tracked separately under `P-20260611-014`.
+- Linked tasks: `206.1`
+- Resolution: Reused static review in the executor, blocked `dangerous_command`, `path_traversal`, and `secret_read` findings before subprocess launch, and recorded `static_preflight` metadata.
+- Verification: Focused executor/review/network tests passed; new executor regressions confirmed dangerous subprocess/curl and secret-read code is blocked before `metrics.json` can be written. Broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
 ### P-20260618-119 - Source package docstrings still described the product as AutoResearch
 
 - Status: Resolved

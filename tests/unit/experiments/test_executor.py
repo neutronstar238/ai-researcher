@@ -135,6 +135,56 @@ def test_execute_experiment_task_allows_approved_network_import(
     assert preflight["network_approved_by"] == "unit-test"
 
 
+def test_execute_experiment_task_blocks_dangerous_static_finding(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import subprocess
+        from pathlib import Path
+
+        subprocess.run(["curl", "https://example.org"], check=False)
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.exit_code is None
+    assert run.error_type == "StaticPreflightDenied"
+    assert run.limit_violations == ["static_preflight"]
+    assert "dangerous_command" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+    assert run.metadata["static_preflight"]["finding_count"] >= 1
+
+
+def test_execute_experiment_task_blocks_secret_static_finding(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import os
+        from pathlib import Path
+
+        os.getenv("API_KEY")
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.error_type == "StaticPreflightDenied"
+    assert run.limit_violations == ["static_preflight"]
+    assert "secret_read" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+
+
 def test_execute_experiment_task_enforces_timeout_and_cleans_process(
     tmp_path: Path,
 ) -> None:
