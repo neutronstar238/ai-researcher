@@ -2186,9 +2186,20 @@ def _readiness_next_actions(
         f"--config {_command_path(config_path)} --env-path {_command_path(env_path)}"
     )
     channel_setup_command = setup_command + " --wechat --wechat-qr --run-wechat-qr-setup"
+    channel_setup_with_test_command = (
+        channel_setup_command
+        + f" --run-channel-test --channel-test-output {_command_path(channel_test_result)}"
+    )
     bind_wechat_target_command = (
         "airesearcher channels bind-target "
         f"--channel wechat --env-path {_command_path(env_path)}"
+    )
+    delivery_check = checks_by_id.get("channel_delivery_test")
+    should_run_setup_channel_test = bool(
+        delivery_check and delivery_check.get("status") == "fail"
+    )
+    channel_setup_repair_command = (
+        channel_setup_with_test_command if should_run_setup_channel_test else channel_setup_command
     )
 
     for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
@@ -2215,11 +2226,10 @@ def _readiness_next_actions(
             add(
                 "configure_operator_channel",
                 severity="required" if operator_check.get("status") == "fail" else "recommended",
-                command=channel_setup_command,
+                command=channel_setup_repair_command,
                 reason="Configure at least one WeChat or Feishu channel before push delivery.",
             )
 
-    delivery_check = checks_by_id.get("channel_delivery_test")
     if delivery_check and delivery_check.get("status") in {"warn", "fail"}:
         ready_channels = _readiness_ready_channels(operator_check)
         if ready_channels:
@@ -2245,7 +2255,7 @@ def _readiness_next_actions(
                 add(
                     "configure_operator_channel",
                     severity="required",
-                    command=channel_setup_command,
+                    command=channel_setup_repair_command,
                     reason="Configure a delivery channel before running the channel self-test.",
                 )
             if delivery_check.get("status") == "fail":

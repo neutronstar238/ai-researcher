@@ -8572,3 +8572,31 @@ This file defines the project development standard for coding agents and records
   - None added.
 - Follow-up:
   - None for README setup self-test wording.
+
+### 2026-06-18 08:59:16 +08:00 - Codex - Task 198.1 Strict readiness setup self-test remediation
+
+- Request: Continue launch-readiness work so strict prelaunch/readiness remediation starts the WeChat QR setup and delivery self-test during `setup`, instead of leaving delivery evidence as a hidden manual step.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed strict readiness next-action generation so `configure_operator_channel` includes `--run-channel-test --channel-test-output <readiness channel-test path>` when the channel delivery check is failing.
+  - Kept ordinary `--require-channel-config` remediation unchanged, so non-strict channel setup still only configures and launches QR pairing.
+  - Preserved the separate `run_channel_self_test` action as an explicit retry path after QR pairing or target binding.
+  - Added regression coverage proving strict and non-strict readiness repair commands differ correctly.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real setup probe `node .\bin\airesearcher.mjs setup --config runs\manual-live\task198-readiness-setup-action\config.yaml --env-path runs\manual-live\task198-readiness-setup-action\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-obsidian --skip-integrations --skip-slash`: exited 0 and wrote config/env files.
+  - Real strict readiness probe `node .\bin\airesearcher.mjs readiness --config runs\manual-live\task198-readiness-setup-action\config.yaml --env-path runs\manual-live\task198-readiness-setup-action\.env --vault runs\manual-live\task198-readiness-setup-action\autoresearch-vault --outputs-dir runs\manual-live\task198-readiness-setup-action\outputs --channel-test-result runs\manual-live\task198-readiness-setup-action\channel-test.json --output runs\manual-live\task198-readiness-setup-action\strict-readiness.json --require-channel-config --require-channel-sent`: exited 1 by design and printed `configure_operator_channel` with `--run-wechat-qr-setup --run-channel-test --channel-test-output runs/manual-live/task198-readiness-setup-action/channel-test.json`.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 79 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 532 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - None added; the real strict readiness probe was an expected fail-closed negative test for missing channel configuration and missing sent evidence.
+- Follow-up:
+  - A real sent-delivery success still requires an operator to complete QR pairing or Feishu credentials during setup; strict readiness now gives the correct setup-time command to produce that evidence.

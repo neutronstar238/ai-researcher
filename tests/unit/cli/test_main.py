@@ -759,7 +759,8 @@ def test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured(
     actions = {action["id"]: action for action in payload["next_actions"]}
     assert actions["configure_operator_channel"]["command"] == (
         f"airesearcher setup --config {config_path.as_posix()} "
-        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup"
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup "
+        f"--run-channel-test --channel-test-output {channel_test_result.as_posix()}"
     )
     assert actions["run_channel_self_test"]["command"] == (
         "airesearcher channels test --channel wechat "

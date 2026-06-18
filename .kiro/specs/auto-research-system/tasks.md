@@ -2502,6 +2502,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `196.1`; user requirement that setup should not look like a deferred manual checklist after choosing a channel._
     - _Verify: `git diff --check` passed; `rg -n "optional real channel self-test|--run-channel-test|--skip-channel-test|可选真实通道自检|立即发送通道送达自检|发送或延后送达自检" README.md README.zh-CN.md` found the English and Chinese setup summary, workflow, and command-reference entries._
 
+- [x] 198. Strict readiness repair commands include setup-time delivery evidence
+  - [x] 198.1 Attach channel self-test output to strict setup remediation
+    - When `readiness --require-channel-sent` is blocked because no operator channel is configured, make `configure_operator_channel` invoke `airesearcher setup --wechat --wechat-qr --run-wechat-qr-setup --run-channel-test`.
+    - Include the same `--channel-test-output` path used by the strict readiness report so the first deploy flow produces machine-readable delivery evidence.
+    - Keep non-strict channel-configuration remediation unchanged so ordinary `--require-channel-config` does not force a delivery test.
+    - Preserve the separate follow-up `channels test --require-sent` action for operators who need to retry after QR pairing or target binding.
+    - Add regression coverage for strict and non-strict readiness repair command differences.
+    - _References: tasks `156.1`, `158.1`, `173.1`, and `196.1`; user requirement that choosing WeChat setup should display QR and wait for scan during setup, not defer real delivery evidence to a hidden manual `.env` step._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q` passed with 3 tests; `python -m pytest tests\unit\cli\test_main.py -q` passed with 79 tests; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed. Real CLI setup plus strict readiness probe under `runs\manual-live\task198-readiness-setup-action` exited blocked by design and printed `configure_operator_channel` with `--run-wechat-qr-setup --run-channel-test --channel-test-output runs/manual-live/task198-readiness-setup-action/channel-test.json`; broad `python -m pytest tests\smoke tests\unit -q` passed with 532 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
