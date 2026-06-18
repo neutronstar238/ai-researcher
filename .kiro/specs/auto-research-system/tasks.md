@@ -2617,6 +2617,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-123`; `P-20260611-014`; user requirement for hard execution guardrails rather than prompt-only safety._
     - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py -q` passed with 14 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 546 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 210. Network sandbox mitigation trail is current
+  - [x] 210.1 Refresh `P-20260611-014` with executor/static-review mitigations
+    - Update the OS-level network sandbox problem entry so it records tasks `206.1` through `209.1` as mitigation, not resolution.
+    - Keep the distinction clear: executor/static-review gates are useful physical gates, but they are not OS/container/proxy-level network interception.
+    - Record the real post-hardening `serve --once` cycle as verification that the normal research loop still runs after the static-review hardening.
+    - _References: `P-20260611-014`; tasks `206.1`, `207.1`, `208.1`, `209.1`; user requirement for evidence-backed safety gates and accurate project memory._
+    - _Verify: `rg -n "206\\.1|207\\.1|208\\.1|209\\.1|Windows downloader aliases|OS-level enforcement|post-hardening" Problem.md .kiro\specs\auto-research-system\tasks.md Agent.md` confirmed the updated mitigation trail; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

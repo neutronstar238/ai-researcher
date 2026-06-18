@@ -62,6 +62,26 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:21:40 +08:00 - Codex - Task 210.1 Network sandbox mitigation trail
+
+- Request: Continue project hardening by keeping the OS-level network sandbox problem entry accurate after tasks `206.1` through `209.1`.
+- Files changed:
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Updated `P-20260611-014` to include executor/static-review mitigations from tasks `206.1`, `207.1`, `208.1`, and `209.1`.
+  - Preserved the status as `Mitigated` because the project still lacks OS/container/proxy-level network interception.
+  - Recorded the real post-hardening `serve --once` run as verification that the normal research loop still passes after static-review hardening.
+  - Added completed task `210.1`.
+- Verification:
+  - `rg -n "206\\.1|207\\.1|208\\.1|209\\.1|Windows downloader aliases|OS-level enforcement|post-hardening" Problem.md .kiro\specs\auto-research-system\tasks.md Agent.md`: confirmed the updated mitigation trail.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260611-014`; no new problem added.
+- Follow-up:
+  - Full OS/container/proxy-level network enforcement remains future sandbox work.
+
 ### 2026-06-18 10:13:40 +08:00 - Codex - Task 209.1 Windows downloader alias static review
 
 - Request: Continue generated-code execution hardening by closing common Windows downloader string bypasses.
