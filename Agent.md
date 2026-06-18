@@ -8515,3 +8515,38 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-114`.
 - Follow-up:
   - The final real cycle is release-allowed by current gates, but external IM delivery still requires the user to complete a real WeChat/Feishu channel pairing and sent-message self-test in the setup flow before unattended push deployment is considered ready.
+
+### 2026-06-18 08:37:04 +08:00 - Codex - Task 196.1 Setup channel delivery self-test
+
+- Request: Continue launch-readiness work, specifically making setup validate WeChat/Feishu delivery during the guided first-deploy flow instead of only telling users to run a later command.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `--run-channel-test/--skip-channel-test`, `--channel-test-output`, and `--channel-test-timeout-seconds` to `airesearcher setup` and `airesearcher deploy-setup`.
+  - Added a guided setup prompt that asks whether to send a real channel delivery self-test immediately after WeChat or Feishu configuration is written.
+  - Reused the production notification sending path and wrote JSON self-test evidence beside the selected `.env` path by default.
+  - Preserved evidence-first failure behavior: setup and `channels test --require-sent` print per-channel records and write the result artifact before failing closed when a selected channel is not `sent`.
+  - Kept channel self-test `.env` loading local to the send call and fixed `send_inspiration_digest(env={})` so explicit empty environments no longer fall back to process-wide `os.environ`.
+  - Added regression coverage for guided QR setup, setup channel-test success, setup channel-test failure, no-channel setup rejection before writes, and `channels test` success/failure evidence.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_run_channel_test_writes_sent_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_fails_after_writing_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q`: passed, 6 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real CLI negative setup self-test `node .\bin\airesearcher.mjs setup --config runs\manual-live\task196-setup-channel-test\config.yaml --env-path runs\manual-live\task196-setup-channel-test\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --feishu --feishu-webhook-url http://127.0.0.1:9/webhook --non-interactive --run-channel-test --channel-test-output channel-test.json --channel-test-timeout-seconds 1 --skip-obsidian --skip-integrations --skip-slash`: exited 1 by design after printing the Feishu failure and writing `runs\manual-live\task196-setup-channel-test\channel-test.json`.
+  - Real CLI no-channel setup `node .\bin\airesearcher.mjs setup --config runs\manual-live\task196-setup-channel-test-ok\config.yaml --env-path runs\manual-live\task196-setup-channel-test-ok\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-obsidian --skip-integrations --skip-slash`: exited 0.
+  - Initial GitHub Actions run `27729038684` failed in smoke/unit tests; CI logs identified ANSI-sensitive CLI assertion and process-wide notification environment leakage.
+  - CI-failure regression `python -m pytest tests\unit\cli\test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing tests\unit\test_notifications.py::test_send_inspiration_digest_records_missing_webhook_without_network -q`: passed, 2 tests.
+  - Targeted `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py`: passed.
+  - Targeted `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py`: passed.
+  - Full local CI mirror `python -m pytest tests\smoke tests\unit -q`: passed, 532 tests passed and 4 skipped.
+  - Full `python -m ruff check src tests`: passed.
+  - Full `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - Added and resolved `P-20260618-115`.
+- Follow-up:
+  - A real external delivery success still requires the operator to pair WeChat QR or provide real Feishu app/webhook credentials during setup; setup now offers and records that test instead of leaving it as a manual afterthought.

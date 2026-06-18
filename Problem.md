@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-115 - Setup channel self-test leaked `.env` values into process-wide notification tests
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 08:41:00 +08:00
+- Source: GitHub Actions run `27729038684` for commit `610ba53`.
+- Symptom: CI `Run smoke and unit tests` failed after the setup channel self-test change. `test_setup_run_channel_test_requires_enabled_channel_before_writing` used an ANSI-sensitive exact option-string assertion, and `test_send_inspiration_digest_records_missing_webhook_without_network` observed Feishu status `failed` instead of `skipped`.
+- Impact: The feature was functionally correct locally, but CI could fail on Linux/Rich output and test order could leak setup `.env` values into unrelated notification tests.
+- Evidence: CI log reported `FAILED tests/unit/cli/test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing` because Rich styled `--run-channel-test` with ANSI escape codes, and `FAILED tests/unit/test_notifications.py::test_send_inspiration_digest_records_missing_webhook_without_network` because records were `['skipped', 'failed']` instead of `['skipped', 'skipped']`.
+- Root cause: `send_inspiration_digest()` used `env or os.environ`, so explicit `env={}` fell back to global `os.environ`. The setup channel self-test helper also used `_load_optional_env(..., override=True)`, which wrote test `.env` values into the process environment.
+- Workaround: None needed after the fix.
+- Next action: Keep notification tests using explicit `env={}` when asserting no configured delivery target; keep channel self-test execution environment local to the call.
+- Linked tasks: `196.1`
+- Resolution: Changed `send_inspiration_digest()` to use `os.environ` only when `env is None`, changed channel delivery self-test to pass a merged local environment mapping instead of mutating `os.environ`, and relaxed the CLI test assertion to the stable error substring.
+- Verification: Focused failing tests passed; `python -m pytest tests\smoke tests\unit -q` passed with 532 passed and 4 skipped; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
 ### P-20260618-114 - Manuscript adjacent-work table reported counts not present in evidence artifact
 
 - Status: Resolved

@@ -330,7 +330,8 @@ def test_channels_test_command_sends_probe_and_writes_result(
     output = tmp_path / "channels" / "test-result.json"
     calls: list[tuple[tuple[str, ...], float, str]] = []
 
-    def fake_send_inspiration_digest(report, *, channels, timeout_seconds):
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
         calls.append((tuple(channels), timeout_seconds, report.items[0].title))
         return (
             cli_main.NotificationSendRecord(
@@ -374,7 +375,8 @@ def test_channels_test_requires_sent_when_requested(
 ) -> None:
     output = tmp_path / "channels" / "test-result.json"
 
-    def fake_send_inspiration_digest(report, *, channels, timeout_seconds):
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
         assert report.items[0].source == "operator_self_test"
         assert channels == ("wechat",)
         assert timeout_seconds == 10.0
@@ -402,6 +404,8 @@ def test_channels_test_requires_sent_when_requested(
     )
 
     assert result.exit_code == 1, result.output
+    assert "[PUSH] channel=wechat status=skipped detail=setup status missing" in result.output
+    assert f"[OK] channel_test: {output}" in result.output
     assert "[FAIL] channel_test: at least one channel was not sent" in result.output
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["records"][0]["status"] == "skipped"
@@ -1254,7 +1258,7 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
             "--skip-integrations",
             "--skip-slash",
         ],
-        input="\n\nresearch-model\nsk-guided\n2\n1\npeer:wx_user\n",
+        input="\n\nresearch-model\nsk-guided\n2\n1\npeer:wx_user\nn\n",
     )
 
     assert result.exit_code == 0, result.output
@@ -1272,6 +1276,170 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
     assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_path.read_text(
         encoding="utf-8"
     )
+
+
+def test_setup_run_channel_test_writes_sent_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+    calls: list[tuple[tuple[str, ...], float, str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        calls.append((tuple(channels), timeout_seconds, report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu webhook accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-webhook-url",
+            "https://feishu.example.test/webhook",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), 10.0, "AI-Researcher setup channel self-test")]
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.stdout
+    assert "[PUSH] channel=feishu status=sent detail=feishu webhook accepted" in result.stdout
+    assert f"[OK] channel_test: {channel_result_path}" in result.stdout
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status"] == "sent"
+
+
+def test_setup_run_channel_test_fails_after_writing_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        assert tuple(channels) == ("feishu",)
+        assert timeout_seconds == 10.0
+        assert report.items[0].title == "AI-Researcher setup channel self-test"
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="failed",
+                detail="webhook refused connection",
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-webhook-url",
+            "https://feishu.example.test/webhook",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.output
+    assert "[PUSH] channel=feishu status=failed detail=webhook refused connection" in result.output
+    assert f"[OK] channel_test: {channel_result_path}" in result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status"] == "failed"
+
+
+def test_setup_run_channel_test_requires_enabled_channel_before_writing(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--non-interactive",
+            "--run-channel-test",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "requires at least one enabled channel" in result.output
+    assert not config_path.exists()
+    assert not env_path.exists()
 
 
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:

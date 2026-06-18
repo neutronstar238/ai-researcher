@@ -74,7 +74,7 @@ def send_inspiration_digest(
 ) -> tuple[NotificationSendRecord, ...]:
     """Send a compact inspiration digest to configured operator channels."""
 
-    environment = env or os.environ
+    environment = os.environ if env is None else env
     post_json = sender or _post_json
     get_feishu_token = feishu_token_getter or _feishu_tenant_access_token
     send_feishu_message = feishu_message_sender or _post_feishu_text_message

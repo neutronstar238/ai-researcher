@@ -843,6 +843,24 @@ def deploy_setup(
         bool,
         typer.Option("--non-interactive", help="Fail on missing required inputs instead of prompting."),
     ] = False,
+    run_channel_test: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-channel-test/--skip-channel-test",
+            help="Send a real setup channel self-test after writing channel config.",
+        ),
+    ] = None,
+    channel_test_output: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-output",
+            help="JSON result path for the setup channel self-test.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel_test_timeout_seconds: Annotated[
+        float,
+        typer.Option("--channel-test-timeout-seconds", min=1.0, help="Channel test timeout."),
+    ] = 10.0,
 ) -> None:
     """Run first-deploy setup for model API credentials and chat channels."""
 
@@ -914,6 +932,12 @@ def deploy_setup(
         allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
         non_interactive=non_interactive,
     )
+    channels_to_test = _setup_channels_to_test(
+        wechat_enabled=wechat_enabled,
+        feishu_enabled=feishu_enabled,
+    )
+    if run_channel_test and not channels_to_test:
+        raise typer.BadParameter("--run-channel-test requires at least one enabled channel")
 
     config = existing_config
     config = config.model_copy(
@@ -1046,6 +1070,26 @@ def deploy_setup(
         if run_wechat_qr_setup:
             typer.echo("[RUN] wechat_qr_setup: starting QR adapter setup now")
             _run_wechat_qr_setup(status_path=env_path.parent / WECHAT_QR_SETUP_STATUS_PATH)
+    if run_channel_test and channels_to_test:
+        channel_test_path = _setup_relative_path(env_path, channel_test_output)
+        typer.echo("[RUN] channel_test: sending setup delivery self-test now")
+        records = _run_channel_delivery_self_test(
+            env_path=env_path,
+            output=channel_test_path,
+            channels=channels_to_test,
+            timeout_seconds=channel_test_timeout_seconds,
+            message="AI-Researcher setup channel self-test",
+            require_sent=True,
+        )
+        for record in records:
+            typer.echo(
+                f"[PUSH] channel={record.channel} status={record.status} "
+                f"detail={record.detail}"
+            )
+        typer.echo(f"[OK] channel_test: {channel_test_path}")
+        if any(record.status != "sent" for record in records):
+            typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
+            raise typer.Exit(code=1)
     _echo_post_setup_next_steps(
         wechat_enabled=wechat_enabled,
         feishu_enabled=feishu_enabled,
@@ -1153,6 +1197,24 @@ def setup(
         str | None,
         typer.Option("--feishu-allowed-users", help="Optional comma-separated Feishu operator IDs."),
     ] = None,
+    run_channel_test: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-channel-test/--skip-channel-test",
+            help="Send a real setup channel self-test after writing channel config.",
+        ),
+    ] = None,
+    channel_test_output: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-output",
+            help="JSON result path for the setup channel self-test.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel_test_timeout_seconds: Annotated[
+        float,
+        typer.Option("--channel-test-timeout-seconds", min=1.0, help="Channel test timeout."),
+    ] = 10.0,
     vault: Annotated[
         Path,
         typer.Option("--vault", help="Obsidian vault root to initialize."),
@@ -1219,6 +1281,7 @@ def setup(
             feishu_connection_mode=feishu_connection_mode,
             feishu_home_chat_id=feishu_home_chat_id,
             feishu_allowed_users=feishu_allowed_users,
+            run_channel_test=run_channel_test,
         )
         provider = wizard["provider"]
         base_url = wizard["base_url"]
@@ -1238,6 +1301,7 @@ def setup(
         feishu_connection_mode = str(wizard["feishu_connection_mode"] or "")
         feishu_home_chat_id = wizard["feishu_home_chat_id"]
         feishu_allowed_users = wizard["feishu_allowed_users"]
+        run_channel_test = bool(wizard["run_channel_test"])
         non_interactive = True
 
     deploy_setup(
@@ -1262,6 +1326,9 @@ def setup(
         feishu_home_chat_id=feishu_home_chat_id,
         feishu_allowed_users=feishu_allowed_users,
         non_interactive=non_interactive,
+        run_channel_test=run_channel_test,
+        channel_test_output=channel_test_output,
+        channel_test_timeout_seconds=channel_test_timeout_seconds,
     )
     if init_obsidian:
         create_obsidian_vault_assets(
@@ -1550,22 +1617,15 @@ def channel_test(
 ) -> None:
     """Send a setup-channel self-test through the same notification path used by pushes."""
 
-    _load_optional_env(env_path)
     selected_channels = tuple(channel or ("wechat", "feishu"))
-    report = _channel_test_report(message)
-    records = send_inspiration_digest(
-        report,
+    records = _run_channel_delivery_self_test(
+        env_path=env_path,
+        output=output,
         channels=selected_channels,
         timeout_seconds=timeout_seconds,
+        message=message,
+        require_sent=require_sent,
     )
-    payload = {
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-        "channels": selected_channels,
-        "require_sent": require_sent,
-        "records": [record.to_json_dict() for record in records],
-    }
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     for record in records:
         typer.echo(
             f"[PUSH] channel={record.channel} status={record.status} "
@@ -1643,6 +1703,34 @@ def _channel_test_report(message: str) -> InspirationRefreshReport:
         ),
         summary_path=None,
     )
+
+
+def _run_channel_delivery_self_test(
+    *,
+    env_path: Path,
+    output: Path,
+    channels: tuple[str, ...],
+    timeout_seconds: float,
+    message: str,
+    require_sent: bool,
+) -> tuple[NotificationSendRecord, ...]:
+    environment = _merged_optional_env(env_path)
+    report = _channel_test_report(message)
+    records = send_inspiration_digest(
+        report,
+        channels=channels,
+        env=environment,
+        timeout_seconds=timeout_seconds,
+    )
+    payload = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "channels": channels,
+        "require_sent": require_sent,
+        "records": [record.to_json_dict() for record in records],
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return records
 
 
 @app.command("readiness")
@@ -6213,6 +6301,7 @@ def _collect_setup_wizard_values(
     feishu_connection_mode: str | None,
     feishu_home_chat_id: str | None,
     feishu_allowed_users: str | None,
+    run_channel_test: bool | None,
 ) -> dict[str, Any]:
     existing_config = _load_or_default_config(config_path)
     existing_env = _read_env_file(env_path)
@@ -6290,6 +6379,11 @@ def _collect_setup_wizard_values(
         allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
         run_qr_setup=False,
     )
+    channel_test_value = _prompt_setup_channel_test(
+        wechat_enabled=bool(wechat_values["enabled"]),
+        feishu_enabled=bool(feishu_values["enabled"]),
+        run_channel_test=run_channel_test,
+    )
 
     typer.echo("Step 4/4: write local AI-Researcher assets.")
     typer.echo("The wizard will write config.yaml, .env, integration manifests, and slash commands.")
@@ -6312,6 +6406,7 @@ def _collect_setup_wizard_values(
         "feishu_connection_mode": feishu_values["connection_mode"],
         "feishu_home_chat_id": feishu_values["home_chat_id"],
         "feishu_allowed_users": feishu_values["allowed_users"],
+        "run_channel_test": channel_test_value,
     }
 
 
@@ -6495,6 +6590,22 @@ def _prompt_setup_channel_values(
             "run_qr_setup": False,
         }
     return _empty_channel_values(enabled=False)
+
+
+def _prompt_setup_channel_test(
+    *,
+    wechat_enabled: bool,
+    feishu_enabled: bool,
+    run_channel_test: bool | None,
+) -> bool:
+    if not (wechat_enabled or feishu_enabled):
+        return False
+    if run_channel_test is not None:
+        return run_channel_test
+    return typer.confirm(
+        "Send a real channel delivery self-test now?",
+        default=False,
+    )
 
 
 def _prompt_choice_index(
@@ -7530,6 +7641,21 @@ def _echo_post_setup_next_steps(*, wechat_enabled: bool, feishu_enabled: bool) -
     typer.echo("[NEXT] readiness: airesearcher readiness --no-push-inspiration")
 
 
+def _setup_channels_to_test(*, wechat_enabled: bool, feishu_enabled: bool) -> tuple[str, ...]:
+    channels: list[str] = []
+    if wechat_enabled:
+        channels.append("wechat")
+    if feishu_enabled:
+        channels.append("feishu")
+    return tuple(channels)
+
+
+def _setup_relative_path(env_path: Path, path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return env_path.parent / path
+
+
 def _merge_env_file(env_path: Path, values: Mapping[str, object | None]) -> None:
     existing = _read_env_file(env_path)
     for key, value in values.items():
@@ -7553,6 +7679,12 @@ def _ensure_env_example(env_path: Path) -> tuple[Path, bool]:
 def _load_optional_env(env_path: Path) -> None:
     if env_path.exists():
         load_dotenv(env_path, override=True)
+
+
+def _merged_optional_env(env_path: Path) -> dict[str, str]:
+    environment = dict(os.environ)
+    environment.update(_read_env_file(env_path))
+    return environment
 
 
 def _read_env_file(env_path: Path) -> dict[str, str]:
