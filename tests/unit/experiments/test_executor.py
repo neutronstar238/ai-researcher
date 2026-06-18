@@ -185,6 +185,29 @@ def test_execute_experiment_task_blocks_secret_static_finding(
     assert not (tmp_path / "metrics.json").exists()
 
 
+def test_execute_experiment_task_blocks_dynamic_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        from pathlib import Path
+
+        __import__("socket")
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.error_type == "NetworkPreflightDenied"
+    assert run.limit_violations == ["network_preflight"]
+    assert "dynamically imports network module socket" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+
+
 def test_execute_experiment_task_enforces_timeout_and_cleans_process(
     tmp_path: Path,
 ) -> None:

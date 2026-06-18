@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260618-121 - Static review missed dynamic imports of network and command modules
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:02:00 +08:00
+- Source: Follow-up hardening after task `206.1` added executor-level static preflight.
+- Symptom: Static review flagged ordinary `import socket` and `import subprocess`, but not dynamic forms such as `__import__("socket")` or `importlib.import_module("subprocess")`.
+- Impact: Generated code could evade the import-node review path while still reaching network or command-execution capabilities.
+- Evidence: `review_generated_code()` reviewed `ast.Import`, `ast.ImportFrom`, known dangerous call names, attributes, and string markers, but did not inspect dynamic import call arguments.
+- Root cause: Dynamic import helpers were not part of the original static review threat model.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `207.1`
+- Resolution: Added dynamic import review for `__import__()` and `importlib.import_module()` string arguments, classifying known network targets as `unrestricted_network` and command-execution targets as `dangerous_command`.
+- Verification: Focused review/executor tests passed; regressions prove dynamic `socket` import is blocked by executor network preflight and dynamic `subprocess` import is flagged by static review. Broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
 ### P-20260618-120 - Executor did not fail closed on non-network static security findings
 
 - Status: Resolved

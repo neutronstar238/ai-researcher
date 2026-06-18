@@ -189,6 +189,7 @@ def _review_calls(tree: ast.AST) -> list[CodeReviewFinding]:
                     node,
                 )
             )
+        findings.extend(_review_dynamic_import(node, call_name))
     return findings
 
 
@@ -267,6 +268,42 @@ def _is_write_call(node: ast.AST) -> bool:
 
 def _is_expanduser_call(node: ast.Call) -> bool:
     return isinstance(node.func, ast.Attribute) and node.func.attr == "expanduser"
+
+
+def _review_dynamic_import(node: ast.Call, call_name: str) -> list[CodeReviewFinding]:
+    if call_name not in {"__import__", "importlib.import_module"}:
+        return []
+    module_name = _first_string_arg(node)
+    if not module_name:
+        return []
+    root = module_name.split(".", maxsplit=1)[0]
+    findings: list[CodeReviewFinding] = []
+    if root in DANGEROUS_IMPORT_ROOTS:
+        findings.append(
+            _finding(
+                "dangerous_command",
+                f"dynamically imports command execution module {module_name}",
+                node,
+            )
+        )
+    if root in NETWORK_IMPORT_ROOTS:
+        findings.append(
+            _finding(
+                "unrestricted_network",
+                f"dynamically imports network module {module_name}",
+                node,
+            )
+        )
+    return findings
+
+
+def _first_string_arg(node: ast.Call) -> str | None:
+    if not node.args:
+        return None
+    first_arg = node.args[0]
+    if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+        return first_arg.value
+    return None
 
 
 def _call_name(node: ast.AST) -> str:

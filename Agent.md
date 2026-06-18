@@ -62,6 +62,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:02:09 +08:00 - Codex - Task 207.1 Dynamic import static review
+
+- Request: Continue executor hardening against generated-code workarounds.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added static review detection for `__import__()` and `importlib.import_module()` string targets.
+  - Classified dynamic imports of known network modules as `unrestricted_network`.
+  - Classified dynamic imports of command-execution modules as `dangerous_command`.
+  - Added review regressions for dynamic `socket` and `subprocess` imports.
+  - Added executor coverage proving dynamic network imports cannot write `metrics.json` without approval.
+  - Added completed task `207.1` and resolved `P-20260618-121`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py -q`: passed, 18 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py src\autoresearch\experiments\executor.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 541 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-121`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened dynamic-import review.
+
 ### 2026-06-18 09:56:22 +08:00 - Codex - Task 206.1 Executor static security preflight
 
 - Request: Continue launch-readiness hardening by converting generated-code safety review from workflow discipline into an executor gate.

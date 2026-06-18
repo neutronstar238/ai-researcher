@@ -2589,6 +2589,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-120`; `P-20260611-014`; user requirement for real evidence gates and physical execution guardrails rather than relying on prompt self-discipline._
     - _Verify: focused `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q` passed with 25 tests; focused `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py` passed; focused `python -m mypy src\autoresearch\experiments\executor.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 538 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 207. Static review detects dynamic import bypasses
+  - [x] 207.1 Flag dynamic imports of network and command modules
+    - Detect `__import__()` and `importlib.import_module()` when they target known network modules or command-execution modules.
+    - Classify dynamic network imports as `unrestricted_network` so the executor's existing approval gate blocks them unless approved.
+    - Classify dynamic command-execution imports as `dangerous_command` so the executor's static preflight blocks them unconditionally.
+    - Add static review tests for dynamic `socket` and `subprocess` imports.
+    - Add executor coverage proving dynamic network imports cannot write `metrics.json` without approval.
+    - _References: `P-20260618-121`; `P-20260611-014`; user requirement to harden execution gates against AI-generated workarounds rather than trusting prompt discipline._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py -q` passed with 18 tests; focused `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py` passed; focused `python -m mypy src\autoresearch\experiments\review.py src\autoresearch\experiments\executor.py` passed. Broad `python -m pytest tests\smoke tests\unit -q` passed with 541 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

@@ -57,6 +57,15 @@ def test_generated_runner_passes_static_review(tmp_path: Path) -> None:
             "import requests\nPath('metrics.json').write_text('{}')\n",
             "unrestricted_network",
         ),
+        (
+            "__import__('socket')\nPath('metrics.json').write_text('{}')\n",
+            "unrestricted_network",
+        ),
+        (
+            "import importlib\nimportlib.import_module('subprocess')\n"
+            "Path('metrics.json').write_text('{}')\n",
+            "dangerous_command",
+        ),
         ("print('done')\n", "missing_metric_write"),
     ],
 )
