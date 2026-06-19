@@ -27,6 +27,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "LearnPrompt/luban-skill",
         "aiming-lab/SimpleMem",
         "AMAP-ML/SkillClaw",
+        "stanford-iris-lab/meta-harness",
         "code-yeongyu/oh-my-openagent",
         "alibaba/page-agent",
         "brycewang-stanford/Auto-Empirical-Research-Skills",
@@ -52,6 +53,8 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         assert required in third_party
     assert "copy, vendor, adapt, or redistribute" in third_party
     assert "Do not copy or adapt" in third_party
+    assert "search/held-out evaluation split" in third_party
+    assert "Do not vendor Meta-Harness source code" in third_party
 
 
 def test_hkuds_ai_researcher_stays_reference_only_until_license_file_exists() -> None:

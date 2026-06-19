@@ -2633,6 +2633,16 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260618-124`; user requirement that Obsidian is the unified memory substrate for the AI-Researcher self-loop._
     - _Verify: `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system` returned no matches; `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md` returned true; `git diff --check` passed._
 
+- [x] 212. Meta-Harness harness-search reference quarantine
+  - [x] 212.1 Add Meta-Harness as a controlled self-evolution reference
+    - Live-check `stanford-iris-lab/meta-harness`, its license, README, onboarding prompt, and paper before documenting it.
+    - Treat Meta-Harness as a MIT design reference only: do not copy, vendor, adapt, install, or redistribute upstream code, prompts, proposer wrappers, reference experiments, assets, benchmark data, or generated harnesses.
+    - Add a quarantined Obsidian watchlist candidate for harness-search ideas: domain-spec-first onboarding, fixed base model/tool boundary, candidate source/scores/traces archive, proposer interaction logs, search/held-out split, anti-leakage review, and Pareto-aware promotion.
+    - Update README, Chinese README, changelog, third-party notices, compliance tests, and skill-watchlist tests so future agents preserve the reference-only boundary.
+    - Record the risk that uncontrolled harness search can become self-modifying production policy without held-out validation, and resolve it with shadow evaluation, evidence gates, and rollback requirements.
+    - _References: user request to learn from `meta-harness`; Phase 4 controlled self-evolution; `P-20260619-001`._
+    - _Verify: Live web review checked `https://github.com/stanford-iris-lab/meta-harness`, raw `LICENSE`, raw `ONBOARDING.md`, raw `README.md`, and arXiv `2603.28052`; upstream is MIT and frames Meta-Harness as fixed-base-model harness-code search with candidate source, scores, and traces, plus onboarding rules for domain spec, evaluation split, trace logging, and leakage caution. Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q` passed with 18 tests; focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py` passed; focused `python -m mypy src\autoresearch\knowledge\skills.py` passed. Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task212-meta-harness-watchlist-vault --source-note "2026-06-19 Meta-Harness reference smoke"` passed and wrote 15 quarantined candidates; `rg` confirmed the generated watchlist contains `Meta-Harness`, `harness-search-reference`, `domain_spec-style`, `trace archive`, and held-out leakage gates. Broad `python -m pytest tests\smoke tests\unit -q` passed with 546 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

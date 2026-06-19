@@ -844,6 +844,39 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
             tags=("skill-evolution", "collective-learning"),
         ),
         ExternalSkillCandidate(
+            candidate_id="meta_harness_harness_search_reference",
+            name="Meta-Harness",
+            purpose=(
+                "Harness-search reference for controlled self-evolution: keep "
+                "the base model fixed while searching over retrieval, memory, "
+                "context construction, planning, and tool-use scaffolding."
+            ),
+            source_refs=(
+                "https://github.com/stanford-iris-lab/meta-harness",
+                "https://arxiv.org/abs/2603.28052",
+                "https://raw.githubusercontent.com/stanford-iris-lab/meta-harness/main/ONBOARDING.md",
+            ),
+            license_status="MIT; reviewed 2026-06-19; no upstream code or prompt text adopted",
+            adoption_stage="harness-search-reference",
+            expected_benefit=(
+                "Adds a domain-spec-first candidate harness loop with full "
+                "trace archive evidence, anti-leakage checks, and Pareto-aware "
+                "promotion criteria."
+            ),
+            risk_notes=(
+                "Harness search can overfit when search-set and held-out evidence are mixed.",
+                "Full proposer traces may contain secrets, credentials, or unsafe commands.",
+                "Candidate harness code must stay in shadow evaluation until release gates pass.",
+            ),
+            validation_gates=(
+                "Write a domain_spec-style plan before implementation: fixed base model, allowed harness surface, budget, metrics, and baselines.",
+                "Store candidate source, scores, proposer logs, execution traces, config hashes, and data splits in an auditable trace archive.",
+                "Keep search-set feedback separate from held-out evaluation and block promotion if held-out data leaks into proposer context.",
+                "Promote only through skill-evolve, shadow evaluation, publication audit, evidence gate, and rollback records.",
+            ),
+            tags=("harness-search", "self-evolution", "trace-archive", "anti-leakage"),
+        ),
+        ExternalSkillCandidate(
             candidate_id="oh_my_openagent_agent_harness",
             name="oh-my-openagent / LazyCodex",
             purpose=(

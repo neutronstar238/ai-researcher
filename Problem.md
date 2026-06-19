@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260619-001 - Harness search can bypass controlled self-evolution if treated as production self-modification
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-19 10:42:00 +08:00
+- Source: Live review of `stanford-iris-lab/meta-harness` while responding to the request to learn from Meta-Harness.
+- Symptom: Meta-Harness-style outer loops intentionally search over executable harness code using prior candidate source, scores, and traces. If copied naively, that pattern could be misread as permission for AI-Researcher to rewrite production retrieval, memory, planning, or tool-use policy without held-out validation.
+- Impact: Uncontrolled harness search could overfit to search-set traces, leak held-out data into proposer context, promote unsafe tool behavior, or turn self-evolution into prompt-only self-modifying production policy.
+- Evidence: Upstream documentation and paper describe a proposer that inspects prior candidate source, scores, and execution traces through the filesystem, plus onboarding rules that require a domain spec, fixed base model, evaluation split, baselines, trace logging, and leakage caution.
+- Root cause: AI-Researcher already has shadow evaluation and skill-evolution gates, but did not name Meta-Harness as a reference-only harness-search pattern with explicit anti-leakage and trace-archive boundaries.
+- Workaround: None needed after the reference-only guardrail update.
+- Next action: If a future task implements actual harness-search automation, keep candidate harnesses in ignored run artifacts plus Obsidian summaries, scrub secrets from traces, and require shadow evaluation, evidence gates, held-out evaluation, and rollback before promotion.
+- Linked tasks: `212.1`
+- Resolution: Added Meta-Harness as a quarantined external watchlist candidate and third-party reference only; documented fixed-model, domain-spec, trace-archive, search/held-out split, anti-leakage, evidence-gate, and rollback requirements in README, README.zh-CN, changelog, and compliance tests.
+- Verification: Focused skill/compliance tests, ruff, and mypy passed; real `airesearcher skill-watchlist` wrote a quarantined Meta-Harness candidate with domain spec, trace archive, and held-out leakage gates; broad smoke/unit tests, ruff, mypy, and diff checks passed for task `212.1`.
+
 ### P-20260618-124 - Root Obsidian vault default project links still pointed to old project ID
 
 - Status: Resolved

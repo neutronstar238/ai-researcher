@@ -8969,3 +8969,39 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260618-117`.
 - Follow-up:
   - Real Feishu App delivery still requires the operator to bind a home chat ID after the platform bot conversation exists.
+
+### 2026-06-19 16:23:13 +08:00 - Codex - Task 212.1 Meta-Harness reference quarantine
+
+- Request: Learn from `meta-harness` while keeping AI-Researcher aligned with controlled self-evolution, Obsidian evidence, license boundaries, and release gates.
+- Files changed:
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `THIRD_PARTY_NOTICES.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `CHANGELOG.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Live-reviewed `stanford-iris-lab/meta-harness`, its MIT license, onboarding guidance, README, and arXiv paper before changing project files.
+  - Added `Meta-Harness` as a quarantined external watchlist candidate, focused on domain-spec-first harness search around a fixed base model/tool surface.
+  - Added validation gates for candidate source/scores/traces archives, proposer logs, search/held-out split, anti-leakage review, shadow evaluation, evidence gates, and rollback before promotion.
+  - Updated README, Chinese README, changelog, third-party notices, and compliance tests to keep Meta-Harness reference-only with no vendored code, prompts, reference experiments, assets, benchmark data, proposer wrappers, or generated harnesses.
+  - Added and resolved `P-20260619-001` for the risk of uncontrolled harness search becoming production self-modification without held-out validation.
+- Verification:
+  - Live web review checked `https://github.com/stanford-iris-lab/meta-harness`, raw `LICENSE`, raw `ONBOARDING.md`, raw `README.md`, and arXiv `2603.28052`.
+  - Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q`: passed, 18 tests.
+  - Focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - Focused `python -m mypy src\autoresearch\knowledge\skills.py`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task212-meta-harness-watchlist-vault --source-note "2026-06-19 Meta-Harness reference smoke"`: passed, wrote 15 quarantined candidates.
+  - Real artifact grep `rg -n "Meta-Harness|harness-search-reference|domain_spec-style|trace archive|held-out data leaks|shadow evaluation|https://github.com/stanford-iris-lab/meta-harness" runs\manual-live\task212-meta-harness-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated Obsidian watchlist contains the Meta-Harness source refs and gates.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260619-001`.
+- Follow-up:
+  - Future actual harness-search implementation should create a separate candidate trace archive and domain spec, not promote generated harness code directly into production policy.
