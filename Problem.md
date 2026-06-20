@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260620-001 - LightAgent-style self-learning traces can pollute project memory without scope filters
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-20 12:02:41 +08:00
+- Source: Live review of `wanxingai/LightAgent` while responding to the request to learn from Light.
+- Symptom: LightAgent-style systems combine self-learning memory, trace observability, LightSwarm delegation, and tool logs. If those ideas are copied naively, trace summaries, tool outputs, reflection notes, and delegated-agent state could be stored as ordinary project memory.
+- Impact: AI-Researcher's Obsidian vault could receive untrusted or sensitive trace data, cross-agent role state, or reflection outputs as if they were verified project knowledge, causing role drift, shared-memory pollution, hidden feedback loops, or unsupported future prompts.
+- Evidence: Upstream LightAgent docs recommend separating trace, user memory, agent/reflection memory, and delegation state; trace docs warn that tool arguments and outputs may contain sensitive data; the multi-agent failure map highlights role blending, shared-memory pollution, hidden loops, and unreadable logs.
+- Root cause: AI-Researcher already has evidence gates and Obsidian provenance conventions, but did not name LightAgent/LightFlow as a reference-only pattern with explicit trace-safe memory boundaries.
+- Workaround: None needed after the reference-only guardrail update.
+- Next action: If a future task adapts LightFlow-style orchestration or trace events, store only evidence-safe summaries in Obsidian, keep raw traces in ignored run artifacts, require source/scope/trust metadata, and block trace/reflection/delegation records from prompt context unless an admission gate promotes them.
+- Linked tasks: `213.1`
+- Resolution: Added LightAgent/LightFlow as a quarantined external watchlist candidate and third-party reference only; documented LightFlow DAG, trace events, memory/trace/delegation scoping, failure-map diagnostics, no-dependency/no-vendor boundaries, and evidence-safe vault ingestion requirements.
+- Verification: Focused skill/compliance tests, ruff, and mypy passed; real `airesearcher skill-watchlist` wrote a quarantined LightAgent/LightFlow candidate with trace observability, memory/trace/delegation boundaries, shared-memory pollution checks, and evidence-safe vault summary gates; broad smoke/unit tests, ruff, mypy, and diff checks passed for task `213.1`.
+
 ### P-20260619-001 - Harness search can bypass controlled self-evolution if treated as production self-modification
 
 - Status: Resolved

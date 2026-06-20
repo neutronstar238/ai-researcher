@@ -877,6 +877,52 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
             tags=("harness-search", "self-evolution", "trace-archive", "anti-leakage"),
         ),
         ExternalSkillCandidate(
+            candidate_id="lightagent_lightflow_trace_reference",
+            name="LightAgent / LightFlow",
+            purpose=(
+                "Lightweight agent-runtime reference for Skills, deterministic "
+                "DAG-style workflow steps, opt-in trace observability, and "
+                "memory/trace/delegation boundaries."
+            ),
+            source_refs=(
+                "https://github.com/wanxingai/LightAgent",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/LICENSE",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/lightflow.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/tracing.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/memory_trace_swarm_boundaries.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/multi_agent_failure_map.md",
+            ),
+            license_status=(
+                "Apache-2.0; reviewed 2026-06-20; no upstream code, docs text, "
+                "examples, traces, or assets adopted"
+            ),
+            adoption_stage="lightweight-agent-runtime-reference",
+            expected_benefit=(
+                "Gives small, auditable patterns for explicit step dependencies, "
+                "step-local retries, trace IDs/events, memory provenance filters, "
+                "and multi-agent failure diagnostics."
+            ),
+            risk_notes=(
+                "Lightweight runtime examples must not bypass AI-Researcher evidence gates.",
+                "Trace events and tool logs can contain secrets or sensitive source data.",
+                "Self-learning memory can pollute Obsidian if user, trace, reflection, and delegation scopes are mixed.",
+            ),
+            validation_gates=(
+                "Do not add LightAgent as a runtime dependency or copy its examples by default.",
+                "If a LightFlow-style idea is adapted, map it onto AI-Researcher's existing lifecycle trace, approval gate, and release gate.",
+                "Separate trace, user/project memory, reflection memory, and delegation state with provenance before Obsidian ingestion.",
+                "Add failure-map checks for role drift, shared-memory pollution, hidden hand-off loops, and unreadable agent logs.",
+                "Scrub secrets from trace events and store only evidence-safe summaries in the vault.",
+            ),
+            tags=(
+                "agent-runtime",
+                "lightflow",
+                "trace-observability",
+                "memory-boundary",
+                "multi-agent-diagnostics",
+            ),
+        ),
+        ExternalSkillCandidate(
             candidate_id="oh_my_openagent_agent_harness",
             name="oh-my-openagent / LazyCodex",
             purpose=(

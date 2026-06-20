@@ -9005,3 +9005,39 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260619-001`.
 - Follow-up:
   - Future actual harness-search implementation should create a separate candidate trace archive and domain spec, not promote generated harness code directly into production policy.
+
+### 2026-06-20 12:02:41 +08:00 - Codex - Task 213.1 LightAgent reference quarantine
+
+- Request: Learn from the Light project; interpreted through live search as `wanxingai/LightAgent`, the closest matching lightweight AI-agent project.
+- Files changed:
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `THIRD_PARTY_NOTICES.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `CHANGELOG.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Live-reviewed `wanxingai/LightAgent`, raw Apache-2.0 license text, README, LightFlow docs, trace docs, memory/trace/swarm boundary docs, and multi-agent failure map before changing project files.
+  - Added `LightAgent / LightFlow` as a quarantined external watchlist candidate focused on lightweight DAG steps, step-local retries, opt-in trace events, memory provenance filters, and multi-agent failure diagnostics.
+  - Added validation gates requiring no default LightAgent dependency, no copied examples/docs/assets, trace-safe summaries, provenance filters before Obsidian ingestion, and failure-map checks for role drift, shared-memory pollution, hidden hand-off loops, and unreadable logs.
+  - Updated README, Chinese README, changelog, third-party notices, and compliance tests to keep LightAgent reference-only under Apache-2.0 handling rules.
+  - Added and resolved `P-20260620-001` for the risk of self-learning traces and delegated-agent state polluting project memory without scope filters.
+- Verification:
+  - Live web review checked `https://github.com/wanxingai/LightAgent`, raw `LICENSE`, raw `README.md`, raw `docs/lightflow.md`, raw `docs/tracing.md`, raw `docs/memory_trace_swarm_boundaries.md`, and raw `docs/multi_agent_failure_map.md`.
+  - Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q`: passed, 18 tests.
+  - Focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - Focused `python -m mypy src\autoresearch\knowledge\skills.py`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task213-lightagent-watchlist-vault --source-note "2026-06-20 LightAgent reference smoke"`: passed, wrote 16 quarantined candidates.
+  - Real artifact grep `rg -n "LightAgent|LightFlow|lightweight-agent-runtime-reference|trace observability|memory/trace/delegation|shared-memory pollution|evidence-safe summaries|https://github.com/wanxingai/LightAgent" runs\manual-live\task213-lightagent-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated Obsidian watchlist contains the LightAgent source refs and gates.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260620-001`.
+- Follow-up:
+  - Future LightFlow-style implementation should be a separate AI-Researcher design task that maps step DAGs and trace events onto existing lifecycle traces, approvals, evidence gates, and Obsidian provenance rules.

@@ -28,6 +28,7 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "aiming-lab/SimpleMem",
         "AMAP-ML/SkillClaw",
         "stanford-iris-lab/meta-harness",
+        "wanxingai/LightAgent",
         "code-yeongyu/oh-my-openagent",
         "alibaba/page-agent",
         "brycewang-stanford/Auto-Empirical-Research-Skills",
@@ -55,6 +56,8 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
     assert "Do not copy or adapt" in third_party
     assert "search/held-out evaluation split" in third_party
     assert "Do not vendor Meta-Harness source code" in third_party
+    assert "Apache-2.0; raw `LICENSE` reviewed on 2026-06-20" in third_party
+    assert "Do not vendor LightAgent source code" in third_party
 
 
 def test_hkuds_ai_researcher_stays_reference_only_until_license_file_exists() -> None:

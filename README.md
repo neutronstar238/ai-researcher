@@ -392,8 +392,9 @@ the publication audit and evidence gate to pass on the same cycle artifacts.
 AI-Researcher references several open-source projects as design inspiration or optional ecosystem
 integration points, including HKUDS AI-Researcher, AutoResearch, Horizon-style daily refreshers,
 AutoResearchClaw, SkillOpt, OpenClaw channel plugins, OpenCode, Hermes Agent, Luban Skill style
-guides, SimpleMem/Omni-SimpleMem, SkillClaw, Auto-Empirical Research Skills, paper-craft-skills,
-Meta-Harness, oh-my-openagent/LazyCodex, PageAgent, citation-management, and Deep-Research-skills.
+guides, SimpleMem/Omni-SimpleMem, SkillClaw, LightAgent/LightFlow, Auto-Empirical Research Skills,
+paper-craft-skills, Meta-Harness, oh-my-openagent/LazyCodex, PageAgent, citation-management, and
+Deep-Research-skills.
 External skill, harness-search, and source-adapter ideas are first recorded with
 `airesearcher skill-watchlist` as
 quarantined Obsidian candidates; they
@@ -405,10 +406,15 @@ freeze the base model and tool surface, archive candidate source/scores/traces, 
 held-out evaluation separate, and promote only through AI-Researcher's existing shadow-evaluation,
 evidence-gate, and rollback workflow.
 
+LightAgent-style ideas are limited to lightweight orchestration and diagnostics: explicit
+step dependencies, step-local retries, opt-in trace events, and strict separation between trace
+records, project memory, reflection memory, and delegation state before anything enters the
+Obsidian vault.
+
 Their license and incorporation status are tracked in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This repository does not vendor OpenClaw,
-OpenCode, Hermes Agent, AutoResearchClaw, Meta-Harness, oh-my-openagent/LazyCodex, PageAgent,
-channel plugin source code, or third-party skill content.
+OpenCode, Hermes Agent, AutoResearchClaw, Meta-Harness, LightAgent, oh-my-openagent/LazyCodex,
+PageAgent, channel plugin source code, or third-party skill content.
 
 ## Development
 

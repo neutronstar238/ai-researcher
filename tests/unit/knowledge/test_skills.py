@@ -117,6 +117,10 @@ def test_write_external_skill_watchlist_keeps_candidates_quarantined(
     assert "harness-search-reference" in markdown
     assert "domain_spec-style plan" in markdown
     assert "held-out data leaks into proposer context" in markdown
+    assert "LightAgent / LightFlow" in markdown
+    assert "lightweight-agent-runtime-reference" in markdown
+    assert "memory/trace/delegation boundaries" in markdown
+    assert "shared-memory pollution" in markdown
     assert "oh-my-openagent / LazyCodex" in markdown
     assert "reference-only-license-risk" in markdown
     assert "PageAgent" in markdown
@@ -125,9 +129,10 @@ def test_write_external_skill_watchlist_keeps_candidates_quarantined(
     assert "https://github.com/aiming-lab/SimpleMem" in entry.source_refs
     assert "https://github.com/AMAP-ML/SkillClaw" in entry.source_refs
     assert "https://github.com/stanford-iris-lab/meta-harness" in entry.source_refs
+    assert "https://github.com/wanxingai/LightAgent" in entry.source_refs
     assert "https://github.com/code-yeongyu/oh-my-openagent" in entry.source_refs
     assert "https://github.com/alibaba/page-agent" in entry.source_refs
-    assert len(watchlist.candidate_ids) >= 15
+    assert len(watchlist.candidate_ids) >= 16
 
 
 def test_write_external_skill_watchlist_requires_evidence_fields(tmp_path: Path) -> None:
