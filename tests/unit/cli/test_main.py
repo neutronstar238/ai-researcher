@@ -651,7 +651,10 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert scansci_payload["default_policy"]["mode"] == "oa_first_legal_only"
     assert (commands / "research" / "autopilot.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
-    assert "[OK] next: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
+    assert "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    assert "[NEXT] 3. When approval is requested, run: airesearcher runtime approve latest" in result.stdout
+    assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
 
 
 def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
@@ -1998,7 +2001,10 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     )
 
     assert pending_result.exit_code == 2, pending_result.output
-    assert "[WAITING] approval_required:" in pending_result.stdout
+    assert "[WAITING] runtime approval required" in pending_result.stdout
+    assert "[WAITING] request_id:" in pending_result.stdout
+    assert "[NEXT] approve latest: airesearcher runtime approve latest" in pending_result.stdout
+    assert "[WAITING] run serve again after approval" in pending_result.stdout
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
     request_id = payload["requests"][0]["request_id"]
     assert payload["requests"][0]["status"] == "pending"

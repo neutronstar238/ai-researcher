@@ -13,6 +13,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from autoresearch.process import windows_no_window_kwargs
+
 from .latex_templates import (
     LatexTemplateDependencyResolution,
     LatexTemplateDependencyStatus,
@@ -548,6 +550,7 @@ def _pdf_page_count(pdf_path: Path | None, log_text: str) -> int | None:
                 text=True,
                 check=False,
                 timeout=10,
+                **windows_no_window_kwargs(),
             )
         except (OSError, subprocess.TimeoutExpired):
             completed = None
@@ -873,6 +876,7 @@ def _compile_latex(
             text=True,
             check=False,
             timeout=timeout_seconds,
+            **windows_no_window_kwargs(),
         )
     except subprocess.TimeoutExpired as exc:
         log_path.write_text(str(exc), encoding="utf-8")
@@ -999,6 +1003,7 @@ def _template_class_available(template: LatexTemplateSpec) -> bool:
             text=True,
             check=False,
             timeout=10,
+            **windows_no_window_kwargs(),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False

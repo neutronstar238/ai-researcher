@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.experiments.demos import (
     LETTER_VARIANCE_CALIBRATED_TASK_ID,
     PENDIGITS_CENTROID_BASELINE_TASK_ID,
@@ -575,6 +576,7 @@ def _current_commit_sha() -> str | None:
             capture_output=True,
             text=True,
             timeout=5,
+            **windows_no_window_kwargs(),
         )
     except Exception:
         return None

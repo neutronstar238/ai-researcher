@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.evidence import EvidenceGraph, EvidenceGraphError
 from autoresearch.schemas import ValidationStatus
 
@@ -211,6 +212,7 @@ def _compile_latex(tex_path: Path) -> Path:
         capture_output=True,
         text=True,
         check=False,
+        **windows_no_window_kwargs(),
     )
     pdf_path = tex_path.with_suffix(".pdf")
     if result.returncode != 0 or not pdf_path.exists():
