@@ -64,6 +64,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-23 19:38:00 +08:00 - Codex - Task 233.1 Runtime heartbeat watchdog
+
+- Request: Continue Loop Engineering evolution by borrowing long-horizon AutoResearch protocol ideas without over-engineering, so long-running loops can expose state, heartbeat, and stall evidence instead of relying on prompt-only self-discipline.
+- Files changed:
+  - `src/autoresearch/runtime/heartbeat.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/runtime/test_heartbeat.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a bounded runtime heartbeat state contract with run ID, normalized stage, progress signature, progress SHA-256, timestamp, message, and artifact refs.
+  - Added stale-stage and repeated-progress detection with explicit actions: `continue`, `inspect`, and `repair_or_pivot`.
+  - Added `airesearcher runtime heartbeat write` and `airesearcher runtime heartbeat check` commands with JSON report output and nonzero exit for stale or stalled stages.
+  - Documented the watchdog in English and Chinese README files and added task `233.1` to the dependency graph.
+  - Kept the evidence boundary explicit: heartbeat reports prove runtime progress health only, not scientific results, novelty, benchmark metrics, citation validity, tool invocation, or publication readiness.
+- Verification:
+  - Initial focused pytest and ruff exposed a test-threshold mistake and import ordering issue; fixed and recorded as `P-20260623-014`.
+  - Focused `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\runtime\heartbeat.py src\autoresearch\runtime\__init__.py src\autoresearch\cli\main.py tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed with no issues in 5 source files.
+  - Real CLI wrote three changing heartbeat events with `node .\bin\airesearcher.mjs runtime heartbeat write --state runs\manual-live\task233-heartbeat-v1\runtime-heartbeats.json ...`.
+  - Real CLI `node .\bin\airesearcher.mjs runtime heartbeat check --state runs\manual-live\task233-heartbeat-v1\runtime-heartbeats.json --stale-after-seconds 999999 --stall-repetition-threshold 3 --output runs\manual-live\task233-heartbeat-v1\runtime-heartbeat-report.json`: passed with `stale=0`, `stalled=0`, `events=3`, and stage status `healthy`.
+  - Artifact inspection confirmed `runtime-heartbeat-report.json` has `passed=true`, `stalled_count=0`, `status=healthy`, and evidence policy text that says the report cannot support scientific results.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 608 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-014`.
+  - Existing README.zh-CN line-ending/encoding maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future `serve`/`autopilot` stage workers can call the heartbeat writer automatically during long network, experiment, review, and paper-build stages; publication and evidence gates must still rely on validated research artifacts.
+
 ### 2026-06-23 16:03:12 +08:00 - Codex - Task 230.1 Reusable Agent profile bundles
 
 - Request: Continue adding custom skills and MCP imports for specific Agents while preserving scientific, evidence-first thinking instead of drifting into software-only orchestration.

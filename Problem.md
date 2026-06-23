@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-014 - Heartbeat focused verification needed threshold and import-order fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 18:05:00 +08:00
+- Source: Focused verification for task `233.1`.
+- Symptom: The first focused heartbeat pytest expected the research-plan stage to be stalled, but the test threshold also made it stale; focused ruff also reported import ordering in `src/autoresearch/cli/main.py`.
+- Impact: Product behavior was not released with the issue, but the heartbeat watchdog task could not pass verification until the focused test isolated stale and stalled cases correctly and imports were normalized.
+- Evidence: `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall -q` failed one assertion; `python -m ruff check ...` reported one fixable `I001` in `src/autoresearch/cli/main.py`.
+- Root cause: The initial test used `stale_after_seconds=120`, making both stages stale before the stalled assertion; new CLI imports were inserted manually.
+- Workaround: None needed after the fix.
+- Next action: Keep separate threshold coverage for stale and stalled heartbeat states.
+- Linked tasks: `233.1`
+- Resolution: Raised the stale threshold in the test so the research-plan stage is fresh but repeated, then ran ruff import normalization.
+- Verification: Focused heartbeat pytest passed with 3 tests; focused ruff passed; focused mypy passed with no issues in 5 source files.
+
 ### P-20260623-013 - Loop contract gate treated override wording as missing non-bypass policy
 
 - Status: Resolved

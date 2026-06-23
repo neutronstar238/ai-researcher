@@ -2861,6 +2861,19 @@ A task can be checked only when all applicable items are true:
     - _References: user request to keep AI thinking scientific rather than over-engineered while allowing custom skills and MCP to be assigned to specific Agents; tasks `226.1`, `228.1`, `230.1`, and `231.1`._
     - _Verify: focused Agent profile and CLI tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real CLI set validation, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 233. Runtime heartbeat watchdog
+  - [x] 233.1 Detect stale and stalled long-running loop stages
+    - Add a runtime heartbeat state file contract for long-running `serve`, `autopilot`, and future worker stages.
+    - Store bounded per-stage heartbeat events with run ID, normalized stage, progress signature hash, timestamp, message, and artifact refs.
+    - Detect stale stages when the latest heartbeat exceeds a configurable age threshold.
+    - Detect stalled stages when the same progress signature repeats beyond a configurable threshold.
+    - Return explicit actions: continue, inspect, or repair/pivot before the system keeps spending budget.
+    - Add `airesearcher runtime heartbeat write` and `airesearcher runtime heartbeat check`.
+    - Keep heartbeat evidence scoped to runtime health only; it must not support scientific results, novelty claims, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN with the watchdog commands and evidence boundary.
+    - _References: Victor Chen AutoResearch long-horizon protocol concepts; tasks `21.1`, `51.1`, `231.1`, and `232.1`; user request to keep loops genuinely running with quality gates instead of prompt-only self-discipline._
+    - _Verify: focused runtime heartbeat and CLI tests, ruff, mypy, real CLI heartbeat report, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3449,6 +3462,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 135,
       "tasks": ["232.1"]
+    },
+    {
+      "id": 136,
+      "tasks": ["233.1"]
     }
   ]
 }

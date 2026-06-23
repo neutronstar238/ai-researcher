@@ -162,6 +162,12 @@ In `approve-dangerous` mode, each cycle attempt gets its own approval request; u
 The waiting output and `runtime list` show the per-cycle `action_id`, so operators can
 see exactly which cycle is being approved.
 
+Long-running loops can also emit stage heartbeats into a local state file. The heartbeat
+watchdog detects stale stages and repeated progress signatures, then recommends inspection
+or repair/pivot before the loop keeps spending budget. Heartbeat reports are runtime health
+evidence only; they do not prove scientific results, citations, tool calls, novelty, or
+publication readiness.
+
 The always-on research loop defaults to `pendigits_variance_calibrated_prototypes`, a real
 UCI Pendigits public benchmark path with method-aligned literature queries and at least
 1,000 validation rows. Use `--demo tabular_baseline` only for tiny local smoke runs.
@@ -462,6 +468,8 @@ Common npm shortcuts:
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
 | `runtime approve` | `latest` or request id | Approves queued dangerous work. |
+| `runtime heartbeat write` | `--run-id`, `--stage`, `--progress`, `--artifact-ref`, `--state` | Records one stage progress signal for long-running loop watchdogs. |
+| `runtime heartbeat check` | `--state`, `--stale-after-seconds`, `--stall-repetition-threshold`, `--output` | Writes a heartbeat watchdog report and exits nonzero when a loop stage is stale or stalled. |
 
 ## Outputs And Repository Hygiene
 

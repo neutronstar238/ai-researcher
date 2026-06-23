@@ -4626,6 +4626,65 @@ def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) 
     assert "[REQUEST] status=approved" in list_all_result.stdout
 
 
+def test_runtime_heartbeat_cli_write_and_check_detects_stall(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "runtime-heartbeats.json"
+    report_path = tmp_path / "reports" / "runtime-heartbeat-report.json"
+    runner = CliRunner()
+
+    for index in range(3):
+        write_result = runner.invoke(
+            app,
+            [
+                "runtime",
+                "heartbeat",
+                "write",
+                "--state",
+                str(state),
+                "--run-id",
+                "cycle-1",
+                "--stage",
+                "literature",
+                "--progress",
+                "same-query-page",
+                "--message",
+                f"attempt {index}",
+                "--artifact-ref",
+                "runs/cycle-1/literature-refresh.md",
+            ],
+        )
+        assert write_result.exit_code == 0, write_result.output
+        assert "[OK] heartbeat: cycle-1/literature" in write_result.stdout
+
+    check_result = runner.invoke(
+        app,
+        [
+            "runtime",
+            "heartbeat",
+            "check",
+            "--state",
+            str(state),
+            "--stale-after-seconds",
+            "999999",
+            "--stall-repetition-threshold",
+            "3",
+            "--output",
+            str(report_path),
+        ],
+    )
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert check_result.exit_code == 1, check_result.output
+    assert "[OK] heartbeat_watchdog: failed" in check_result.stdout
+    assert (
+        "[HEARTBEAT] cycle-1/literature: stalled; action=repair_or_pivot; repeated=3"
+        in check_result.stdout
+    )
+    assert payload["passed"] is False
+    assert payload["stalled_count"] == 1
+    assert payload["stages"][0]["status"] == "stalled"
+    assert "cannot support scientific results" in payload["evidence_policy"]
+
+
 def test_sessions_cli_blocks_overlapping_claim_until_release(tmp_path: Path) -> None:
     state = tmp_path / ".airesearcher" / "agent-sessions.json"
     runner = CliRunner()

@@ -137,6 +137,8 @@ from autoresearch.research import (
     run_project_similarity_check,
 )
 from autoresearch.runtime import (
+    DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
+    DEFAULT_HEARTBEAT_STALL_REPETITIONS,
     AgentSession,
     AgentSessionError,
     RuntimeActionRisk,
@@ -146,10 +148,13 @@ from autoresearch.runtime import (
     approve_runtime_request,
     claim_agent_session,
     ensure_runtime_approval,
+    evaluate_runtime_heartbeats,
     list_agent_sessions,
     list_runtime_approval_requests,
     network_approval_metadata_from_decision,
     release_agent_session,
+    write_runtime_heartbeat,
+    write_runtime_heartbeat_report,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
 from autoresearch.schemas import CandidateStatus, ResearchCandidate, ResearchPlan, ValidationStatus
@@ -164,6 +169,7 @@ agent_mcp_evidence_app = typer.Typer(help="Record and validate MCP tool invocati
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
+runtime_heartbeat_app = typer.Typer(help="Record and check long-running loop heartbeats.")
 sessions_app = typer.Typer(help="Coordinate concurrent agent file claims.")
 channels_app = typer.Typer(help="Manage communication channel integration manifests.")
 channel_adapters_app = typer.Typer(help="Manage optional messaging channel adapter runbooks.")
@@ -186,11 +192,13 @@ channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
 pdf_sources_app.add_typer(scansci_pdf_app, name="scansci-pdf")
+runtime_app.add_typer(runtime_heartbeat_app, name="heartbeat")
 agents_app.add_typer(agent_profiles_app, name="profile")
 agents_app.add_typer(agent_mcp_evidence_app, name="mcp-evidence")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
+DEFAULT_RUNTIME_HEARTBEATS_PATH = Path(".airesearcher/runtime-heartbeats.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
@@ -4617,6 +4625,105 @@ def approve_runtime(
         raise typer.Exit(code=1) from exc
     typer.echo(f"[OK] approved: {request.request_id}")
     typer.echo(f"[OK] action_id: {request.action_id}")
+
+
+@runtime_heartbeat_app.command("write")
+def write_runtime_heartbeat_command(
+    run_id: Annotated[
+        str,
+        typer.Option("--run-id", help="Loop run or cycle ID emitting this heartbeat."),
+    ],
+    stage: Annotated[
+        str,
+        typer.Option("--stage", help="Research-loop stage emitting this heartbeat."),
+    ],
+    progress: Annotated[
+        str,
+        typer.Option("--progress", help="Compact progress signature for stall detection."),
+    ],
+    message: Annotated[
+        str | None,
+        typer.Option("--message", help="Optional operator-readable progress note."),
+    ] = None,
+    artifact_ref: Annotated[
+        list[str] | None,
+        typer.Option("--artifact-ref", help="Evidence artifact path or URI. Repeat as needed."),
+    ] = None,
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime heartbeat JSON state file."),
+    ] = DEFAULT_RUNTIME_HEARTBEATS_PATH,
+) -> None:
+    """Append one long-running loop heartbeat event."""
+
+    try:
+        event = write_runtime_heartbeat(
+            state_path=state,
+            run_id=run_id,
+            stage=stage,
+            progress=progress,
+            message=message,
+            artifact_refs=artifact_ref or (),
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] runtime heartbeat failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"[OK] heartbeat: {event.run_id}/{event.stage}")
+    typer.echo(f"[OK] progress_sha256: {event.progress_sha256}")
+    typer.echo(f"[OK] state: {state}")
+
+
+@runtime_heartbeat_app.command("check")
+def check_runtime_heartbeats(
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime heartbeat JSON state file to inspect."),
+    ] = DEFAULT_RUNTIME_HEARTBEATS_PATH,
+    stale_after_seconds: Annotated[
+        int,
+        typer.Option(
+            "--stale-after-seconds",
+            help="Seconds after which a stage heartbeat is stale.",
+        ),
+    ] = DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
+    stall_repetition_threshold: Annotated[
+        int,
+        typer.Option(
+            "--stall-repetition-threshold",
+            help="Repeated identical progress signatures before a stage is stalled.",
+        ),
+    ] = DEFAULT_HEARTBEAT_STALL_REPETITIONS,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional JSON watchdog report path."),
+    ] = None,
+) -> None:
+    """Check runtime heartbeats for stale or repeated progress."""
+
+    report = evaluate_runtime_heartbeats(
+        state_path=state,
+        stale_after_seconds=stale_after_seconds,
+        stall_repetition_threshold=stall_repetition_threshold,
+    )
+    if output is not None:
+        write_runtime_heartbeat_report(report, output)
+    status = "passed" if report.passed else "failed"
+    typer.echo(f"[OK] heartbeat_watchdog: {status}")
+    typer.echo(
+        f"[OK] stages: {report.stage_count}; stale={report.stale_count}; "
+        f"stalled={report.stalled_count}; events={report.event_count}"
+    )
+    for stage_report in report.stages:
+        typer.echo(
+            f"[HEARTBEAT] {stage_report.run_id}/{stage_report.stage}: "
+            f"{stage_report.status.value}; action={stage_report.action.value}; "
+            f"repeated={stage_report.repeated_progress_count}; "
+            f"age_seconds={stage_report.age_seconds:.0f}"
+        )
+    if output is not None:
+        typer.echo(f"[OK] report: {output}")
+    if not report.passed:
+        raise typer.Exit(code=1)
 
 
 @sessions_app.command("claim")

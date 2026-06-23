@@ -142,6 +142,10 @@ airesearcher runtime list
 airesearcher runtime approve latest --approved-by operator
 ```
 
+长时间运行的循环也可以把各阶段心跳写入本地状态文件。`runtime heartbeat check`
+会检测过期阶段和重复进度签名，并在卡住时要求检查、修复或转向；该报告只证明
+运行健康状态，不能证明科研结论、引用、工具调用、创新性或发表就绪。
+
 如果这是完全可信的本地机器，也可以使用：
 
 ```bash
@@ -369,6 +373,8 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
 | `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
+| `runtime heartbeat write` | `--run-id`, `--stage`, `--progress`, `--artifact-ref`, `--state` | 记录长任务某个阶段的一次进度心跳。 |
+| `runtime heartbeat check` | `--state`, `--stale-after-seconds`, `--stall-repetition-threshold`, `--output` | 写出心跳 watchdog 报告；发现过期或卡住阶段时非零退出。 |
 
 ## 输出和仓库卫生
 
