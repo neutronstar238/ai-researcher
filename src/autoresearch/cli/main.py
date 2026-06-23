@@ -27,12 +27,14 @@ from autoresearch.agents import (
     McpInvocationStatus,
     append_mcp_invocation_evidence,
     build_agent_profile_from_bundle,
+    build_agent_profiles_from_set_bundle,
     build_agent_stage_context_packet,
     build_mcp_invocation_evidence,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
     load_agent_profile,
     load_agent_profile_bundle,
+    load_agent_profile_set_bundle,
     load_mcp_invocation_evidence,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
@@ -872,6 +874,119 @@ def import_agent_profile_command(
     if vault is not None:
         note_path = write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
         typer.echo(f"[OK] vault_note: {note_path}")
+
+
+@agent_profiles_app.command("import-set")
+def import_agent_profile_set_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Declarative Agent profile-set bundle (.json, .yaml, .yml, or .toml)."
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Directory for generated profile JSON files."),
+    ] = Path(".airesearcher/agents"),
+    validation_output: Annotated[
+        Path | None,
+        typer.Option("--validation-output", help="Optional profile-set validation JSON path."),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for generated profile notes."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for optional vault notes."),
+    ] = "ai_researcher_system",
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless generated profiles cover the bundle's required stages.",
+        ),
+    ] = True,
+) -> None:
+    """Import a reusable multi-Agent skill/MCP profile-set bundle."""
+
+    try:
+        bundle = load_agent_profile_set_bundle(bundle_path)
+        profiles = build_agent_profiles_from_set_bundle(bundle)
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile_set_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    profile_paths: list[Path] = []
+    try:
+        for profile in profiles:
+            profile_path = write_agent_profile(
+                profile,
+                output_dir / f"{_safe_path_segment(profile.agent_id)}.json",
+            )
+            profile_paths.append(profile_path)
+            if vault is not None:
+                write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+
+        env = _merged_optional_env(env_path)
+        readiness_reports = [
+            evaluate_agent_profile_readiness(
+                profile,
+                profile_path=profile_path,
+                base_dir=base_dir,
+                env=env,
+            )
+            for profile, profile_path in zip(profiles, profile_paths, strict=True)
+        ]
+        validation = evaluate_agent_profile_set(
+            profiles,
+            required_stages=bundle.required_stages,
+            readiness_reports=readiness_reports,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    report_path = validation_output or (output_dir / "profile-set-validation.json")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(validation.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    typer.echo(f"[OK] agent_profile_set_import: {bundle.profile_set_id}")
+    typer.echo(f"[OK] source_bundle: {bundle_path}")
+    typer.echo(f"[OK] profiles: {len(profile_paths)}")
+    for profile_path in profile_paths:
+        typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        typer.echo(f"[OK] vault_project_agents: {vault / 'projects' / project_id / 'agents'}")
+    typer.echo(f"[OK] profile_set_report: {report_path}")
+    verdict = "passed" if validation.passed else "failed"
+    typer.echo(f"[OK] agent_profile_set: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {validation.covered_stage_count}/"
+        f"{len(validation.required_stages)}; profiles={validation.profile_count}"
+    )
+    for row in validation.stage_coverage:
+        status = "covered" if row.covered else "missing"
+        agents = ", ".join(row.agent_ids) if row.agent_ids else "-"
+        typer.echo(f"[STAGE] {row.stage}: {status}; agents={agents}")
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if require_complete and not validation.passed:
+        raise typer.Exit(1)
 
 
 @agent_profiles_app.command("inspect")

@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-002 - Profile-set import CLI used the wrong safe-path helper name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 01:52:00 +08:00
+- Source: Focused verification for task `238.1`.
+- Symptom: The first focused CLI tests for `agents profile import-set` failed with `NameError("name '_safe_path_part' is not defined")`.
+- Impact: The new import-set command could not write per-Agent profile files until the helper name matched the CLI module.
+- Evidence: `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_rejects_duplicate_agent_ids tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_fails_missing_required_stage -q` failed two CLI tests with the NameError.
+- Root cause: The command used `_safe_path_part`, which exists in the Agent profile module, instead of the CLI module's existing `_safe_path_segment` helper.
+- Workaround: None needed after using `_safe_path_segment`.
+- Next action: Keep focused CLI tests around any new command that derives file names from user-facing IDs.
+- Linked tasks: `238.1`
+- Resolution: Replaced `_safe_path_part(profile.agent_id)` with `_safe_path_segment(profile.agent_id)` in `import_agent_profile_set_command`.
+- Verification: The focused profile-set bundle/API/CLI tests passed, real CLI `agents profile import-set` produced 3 profiles and a 9/9 validation report, broad smoke/unit tests passed, broad ruff passed, and broad mypy passed.
+
 ### P-20260624-001 - Runtime profile-set preflight focused checks exposed test and typing fixes
 
 - Status: Resolved

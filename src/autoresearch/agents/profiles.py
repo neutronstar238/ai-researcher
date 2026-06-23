@@ -380,6 +380,38 @@ class AgentProfileBundle(BaseModel):
         return self
 
 
+class AgentProfileSetBundle(BaseModel):
+    """Reusable declaration for a stage-covered Agent profile team."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    profile_set_id: str = "research-agent-team"
+    description: str | None = None
+    required_stages: tuple[str, ...] = DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES
+    profiles: tuple[AgentProfileBundle, ...]
+
+    @field_validator("profile_set_id")
+    @classmethod
+    def _validate_profile_set_id(cls, value: str) -> str:
+        return _validate_identifier(value, "profile_set_id")
+
+    @field_validator("required_stages")
+    @classmethod
+    def _validate_required_stages(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(normalize_profile_stage(stage) for stage in value))
+
+    @model_validator(mode="after")
+    def _validate_profile_set_bundle(self) -> AgentProfileSetBundle:
+        if not self.profiles:
+            msg = "agent profile set bundle must declare at least one profile"
+            raise ValueError(msg)
+        duplicate_agent_ids = _duplicate_values(profile.agent_id for profile in self.profiles)
+        if duplicate_agent_ids:
+            msg = "duplicate agent profile bundles: " + ", ".join(duplicate_agent_ids)
+            raise ValueError(msg)
+        return self
+
+
 class AgentProfile(BaseModel):
     """Runtime profile that assigns custom skills and MCP tools to one agent."""
 
@@ -626,6 +658,17 @@ def load_agent_profile_bundle(path: Path | str) -> AgentProfileBundle:
         raise ValueError(f"Invalid agent profile bundle {bundle_path}: {exc}") from exc
 
 
+def load_agent_profile_set_bundle(path: Path | str) -> AgentProfileSetBundle:
+    """Load a declarative Agent profile-set bundle from JSON, YAML, or TOML."""
+
+    bundle_path = Path(path)
+    payload = _load_bundle_mapping(bundle_path)
+    try:
+        return AgentProfileSetBundle.model_validate(payload)
+    except ValueError as exc:
+        raise ValueError(f"Invalid agent profile set bundle {bundle_path}: {exc}") from exc
+
+
 def build_agent_profile_from_bundle(bundle: AgentProfileBundle) -> AgentProfile:
     """Convert a declarative bundle into a runtime Agent profile."""
 
@@ -667,6 +710,14 @@ def build_agent_profile_from_bundle(bundle: AgentProfileBundle) -> AgentProfile:
         skills=skill_bindings,
         mcp_servers=mcp_servers,
     )
+
+
+def build_agent_profiles_from_set_bundle(
+    bundle: AgentProfileSetBundle,
+) -> tuple[AgentProfile, ...]:
+    """Convert a declarative profile-set bundle into runtime Agent profiles."""
+
+    return tuple(build_agent_profile_from_bundle(profile) for profile in bundle.profiles)
 
 
 def evaluate_agent_profile_readiness(

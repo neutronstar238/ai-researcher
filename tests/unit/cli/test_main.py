@@ -363,6 +363,138 @@ def test_agent_profile_import_cli_writes_standard_profile(tmp_path: Path) -> Non
     assert "`citation-db`" in note_path.read_text(encoding="utf-8")
 
 
+def test_agent_profile_import_set_cli_writes_profiles_and_validation(
+    tmp_path: Path,
+) -> None:
+    skill_dir = tmp_path / "skills"
+    skill_dir.mkdir()
+    (skill_dir / "source.md").write_text("# Source\nBind claims to sources.\n", encoding="utf-8")
+    (skill_dir / "review.md").write_text(
+        "# Review\nBlock unsupported publication claims.\n",
+        encoding="utf-8",
+    )
+    bundle_path = tmp_path / "bundles" / "ccfb-team.yaml"
+    output_dir = tmp_path / "profiles"
+    validation_path = tmp_path / "reports" / "profile-set-validation.json"
+    vault_root = tmp_path / "vault"
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: ccfb-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+                "        import_policy: read_only_context",
+                "  - agent_id: review-agent",
+                "    role: validator_agent",
+                "    thinking_mode: reviewer",
+                "    assigned_stages:",
+                "      - review",
+                "    skills:",
+                "      - skill_id: review-skill",
+                "        source: skills/review.md",
+                "        import_policy: read_only_context",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(output_dir),
+            "--validation-output",
+            str(validation_path),
+            "--base-dir",
+            str(tmp_path),
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_set_import: ccfb-team" in result.stdout
+    assert "[OK] profiles: 2" in result.stdout
+    assert "[OK] agent_profile_set: passed" in result.stdout
+    assert "[OK] stage_coverage: 2/2; profiles=2" in result.stdout
+    assert "[STAGE] review: covered; agents=review-agent" in result.stdout
+    assert (output_dir / "literature-agent.json").is_file()
+    assert (output_dir / "review-agent.json").is_file()
+    assert (
+        vault_root / "projects" / "project-a" / "agents" / "literature-agent.md"
+    ).is_file()
+    payload = json.loads(validation_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["profile_count"] == 2
+    assert payload["required_stages"] == ["literature", "review"]
+    assert payload["stage_coverage"][0]["agent_ids"] == ["literature-agent"]
+
+
+def test_agent_profile_import_set_cli_fails_missing_required_stage(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    bundle_path = tmp_path / "team.yaml"
+    validation_path = tmp_path / "profiles" / "profile-set-validation.json"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: incomplete-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                f"        source: {skill_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "profiles"),
+            "--validation-output",
+            str(validation_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[OK] agent_profile_set: failed" in result.stdout
+    assert "[FAIL] missing required stage coverage: review" in result.stdout
+    payload = json.loads(validation_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is False
+    assert payload["missing_stages"] == ["review"]
+
+
 def test_agent_mcp_evidence_cli_add_list_and_validate(tmp_path: Path) -> None:
     profile_path = tmp_path / "profiles" / "literature-agent.json"
     ledger_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations.jsonl"

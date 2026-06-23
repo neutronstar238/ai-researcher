@@ -18,10 +18,12 @@ from autoresearch.agents import (
     McpApprovalPolicy,
     SkillImportPolicy,
     build_agent_profile_from_bundle,
+    build_agent_profiles_from_set_bundle,
     build_agent_stage_context_packet,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
     load_agent_profile_bundle,
+    load_agent_profile_set_bundle,
     materialize_agent_skill_contexts,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
@@ -466,6 +468,87 @@ def test_agent_profile_bundle_import_keeps_scientific_contract(tmp_path: Path) -
     assert any("falsifiable research claims" in item for item in profile.thinking_contract)
     assert context["materialized_skills"][0]["status"] == "loaded"
     assert context["mcp_runtime_contracts"][0]["tool_invocation_evidence_required"] is True
+
+
+def test_agent_profile_set_bundle_builds_multiple_profiles(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "skills"
+    skill_dir.mkdir()
+    (skill_dir / "source-tracing.md").write_text("# Source\nBind sources.\n", encoding="utf-8")
+    (skill_dir / "review.md").write_text("# Review\nBlock unsupported claims.\n", encoding="utf-8")
+    bundle_path = tmp_path / "bundles" / "ccfb-team.yaml"
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: ccfb-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source-tracing.md",
+                "        import_policy: read_only_context",
+                "  - agent_id: review-agent",
+                "    role: validator_agent",
+                "    thinking_mode: reviewer",
+                "    assigned_stages:",
+                "      - review",
+                "    thinking_contract_additions:",
+                "      - Reject prose that outruns experiment evidence.",
+                "    skills:",
+                "      - skill_id: review-skill",
+                "        source: skills/review.md",
+                "        import_policy: read_only_context",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    bundle = load_agent_profile_set_bundle(bundle_path)
+    profiles = build_agent_profiles_from_set_bundle(bundle)
+
+    assert bundle.profile_set_id == "ccfb-team"
+    assert bundle.required_stages == ("literature", "review")
+    assert [profile.agent_id for profile in profiles] == [
+        "literature-agent",
+        "review-agent",
+    ]
+    assert profiles[1].role == AgentRole.VALIDATOR_AGENT
+    assert profiles[1].thinking_mode.value == "reviewer"
+    assert profiles[1].assigned_stages == ("review",)
+    assert any("outruns experiment evidence" in item for item in profiles[1].thinking_contract)
+
+
+def test_agent_profile_set_bundle_rejects_duplicate_agent_ids(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "duplicate-team.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: duplicate-team",
+                "profiles:",
+                "  - agent_id: reviewer",
+                "    assigned_stages: [review]",
+                "    skills:",
+                "      - skill_id: review-skill",
+                "        source: '[[Review Skill]]'",
+                "  - agent_id: reviewer",
+                "    assigned_stages: [publication-audit]",
+                "    skills:",
+                "      - skill_id: audit-skill",
+                "        source: '[[Audit Skill]]'",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate agent profile bundles: reviewer"):
+        load_agent_profile_set_bundle(bundle_path)
 
 
 def test_agent_profile_readiness_passes_for_existing_local_skill_and_env(

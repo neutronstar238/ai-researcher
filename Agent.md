@@ -9938,3 +9938,39 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - A future full Agent-team bundle can use `--require-agent-profile-set` as a deployment preflight for unattended publication-grade runs; profile-set coverage remains process metadata and still cannot prove scientific claims without downstream evidence gates.
+
+### 2026-06-24 01:57:43 +08:00 - Codex - Task 238.1 Reusable Agent profile-set bundle import
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfileSetBundle` for reusable JSON/YAML/TOML multi-Agent team declarations.
+  - Added `load_agent_profile_set_bundle()` and `build_agent_profiles_from_set_bundle()` so a single team bundle can produce multiple standard Agent profiles while preserving the default scientific thinking contract.
+  - Added `airesearcher agents profile import-set <bundle> --output-dir <dir>` to write one profile JSON per Agent plus a `profile-set-validation.json` report.
+  - The import command evaluates readiness and the profile-set stage matrix immediately, exits nonzero by default when bundle-required stages are missing, and exposes `--allow-incomplete` only for dry runs or debugging.
+  - Updated README/README.zh-CN and added task `238.1` with the process-metadata evidence boundary.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_rejects_duplicate_agent_ids tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_fails_missing_required_stage -q` failed because the new CLI command used `_safe_path_part` instead of the CLI module's `_safe_path_segment`; fixed and reran successfully with 4 passed.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task238-profile-set-import-v1\ccfb-team.yaml --output-dir runs\manual-live\task238-profile-set-import-v1\profiles --validation-output runs\manual-live\task238-profile-set-import-v1\profile-set-validation.json --base-dir runs\manual-live\task238-profile-set-import-v1 --vault runs\manual-live\task238-profile-set-import-v1\vault --project-id task238_profile_set_import`: passed and wrote 3 profiles, 3 vault notes, and a 9/9 stage-coverage validation report.
+  - Artifact inspection confirmed `passed=true`, `profile_count=3`, `covered_stage_count=9`, `missing_stages=[]`, and the evidence policy still excludes scientific results, novelty claims, benchmark metrics, citation validity, MCP invocation, and publication readiness.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 616 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-002` for the safe-path helper name issue caught by focused CLI tests.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future runtime setup can offer profile-set bundle templates during `airesearcher setup`, but the bundle import must remain a process-metadata preflight and cannot replace literature, experiment, reproduction, review, publication-audit, or evidence-gate artifacts.

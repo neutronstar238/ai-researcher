@@ -2919,6 +2919,18 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `232.1`, `235.1`, and `236.1`; user request to assign custom skills/MCPs to specific Agents while moving toward publishable CCF-B/SCI-Q2 output gates._
     - _Verify: focused autopilot profile-set tests, ruff, mypy, real require-gate smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 238. Reusable Agent profile-set bundles
+  - [x] 238.1 Import multi-Agent skill/MCP bundles into validated profile sets
+    - Add a JSON/YAML/TOML `AgentProfileSetBundle` schema with `profiles` entries that reuse the single-Agent `AgentProfileBundle` contract.
+    - Convert a profile-set bundle into multiple standard `AgentProfile` JSON artifacts without weakening the default scientific thinking contract.
+    - Add `airesearcher agents profile import-set <bundle> --output-dir <dir>` so operators can deploy a named Agent team from one reusable file.
+    - Write one profile JSON per Agent plus `profile-set-validation.json` immediately after import.
+    - Fail by default when bundle-required stages are missing, duplicate Agent IDs exist, readiness fails, or the research/evidence-first contract is not met; expose `--allow-incomplete` only for debugging or dry runs.
+    - Keep profile-set import scoped to process metadata and responsibility routing; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the profile-set bundle command and evidence boundary.
+    - _References: tasks `230.1`, `232.1`, `235.1`, `236.1`, and `237.1`; user request to assign custom skills and MCPs to specific Agents while keeping CCF-B/SCI-Q2 evidence gates strict._
+    - _Verify: focused profile-set bundle/API/CLI tests, ruff, mypy, real CLI import-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3527,6 +3539,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 140,
       "tasks": ["237.1"]
+    },
+    {
+      "id": 141,
+      "tasks": ["238.1"]
     }
   ]
 }
