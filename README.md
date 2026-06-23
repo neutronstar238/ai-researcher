@@ -127,9 +127,9 @@ airesearcher readiness --push-inspiration --require-channel-config --require-cha
 ```
 
 This writes `.airesearcher/readiness/report.json` and confirms the daily loop, vault, output
-path, model API, operator-channel configuration, and latest channel self-test delivery evidence
-are ready. When a check is missing, the report includes `next_actions` with executable repair
-commands.
+path, model API, setup-generated Agent team, operator-channel configuration, and latest channel
+self-test delivery evidence are ready. When a check is missing, the report includes `next_actions`
+with executable repair commands.
 The planned daily command uses the approval-gated `serve` runtime, not the lower-level direct
 `autopilot` entry point.
 
@@ -462,7 +462,7 @@ Common npm shortcuts:
 | `npm run setup` | Guided first deployment. |
 | `npm run channel:test -- --channel feishu --require-sent` | Real delivery self-test for a configured channel. |
 | `npm run readiness -- --no-push-inspiration` | Local readiness report without requiring operator push. |
-| `npm run prelaunch` | Strict prelaunch gate: model, vault, daily loop, channel config, and sent evidence. |
+| `npm run prelaunch` | Strict prelaunch gate: model, vault, daily loop, setup Agent team, channel config, and sent evidence. |
 | `npm run serve` | Start the 24h operator with approval gates, inspiration push, and auto-loading of the setup-generated Agent team when present. |
 | `npm run monitor` | Show the operator console. |
 
@@ -493,7 +493,7 @@ Common npm shortcuts:
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
-| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--require-agent-team`, `--output` | Writes the preflight report for unattended daily operation, including the setup-generated Agent team gate when required. |
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
 | `agents profile import` | bundle `.json/.yaml/.toml`, `--output`, `--vault`, `--project-id` | Converts a reusable declarative Agent bundle into the same profile JSON used by `validate`, `inspect`, `serve`, and `autopilot`. The default scientific thinking contract is preserved and bundle additions are appended. |
 | `agents profile import-set` | profile-set bundle `.json/.yaml/.toml`, `--output-dir`, `--validation-output`, `--base-dir`, `--vault`, `--project-id`, `--allow-incomplete` | Converts a reusable multi-Agent bundle into one profile JSON per agent plus a profile-set validation report; exits nonzero by default when required research stages are missing or readiness fails. |

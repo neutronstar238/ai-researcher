@@ -3116,6 +3116,13 @@ def readiness(
         Path,
         typer.Option("--scheduler-state", help="Local scheduler follow-up state file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    agent_team_bundle: Annotated[
+        Path,
+        typer.Option(
+            "--agent-team-bundle",
+            help="Setup-generated Agent team bundle expected by the runtime default loader.",
+        ),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
     channel_test_result: Annotated[
         Path,
         typer.Option(
@@ -3152,6 +3159,13 @@ def readiness(
             help="Fail readiness unless the latest channel self-test includes a sent record.",
         ),
     ] = False,
+    require_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-team/--allow-missing-agent-team",
+            help="Fail readiness unless the setup-generated Agent team bundle is present and valid.",
+        ),
+    ] = False,
 ) -> None:
     """Write a preflight report for the 24h unattended research loop."""
 
@@ -3185,6 +3199,11 @@ def readiness(
     )
     _add_readiness_result(
         checks,
+        "agent_team",
+        _agent_team_readiness(agent_team_bundle, require_agent_team=require_agent_team),
+    )
+    _add_readiness_result(
+        checks,
         "operator_channels",
         _operator_channel_readiness(
             env_values,
@@ -3215,6 +3234,7 @@ def readiness(
         config_path=config_path,
         env_path=env_path,
         channel_test_result=channel_test_result,
+        agent_team_bundle=agent_team_bundle,
     )
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -3368,6 +3388,88 @@ def _daily_loop_readiness(*, interval_seconds: int, push_inspiration: bool) -> d
         "status": "pass",
         "detail": f"planned unattended loop interval is {interval_seconds} seconds",
         "evidence": {"interval_seconds": interval_seconds, "command": command},
+    }
+
+
+def _agent_team_readiness(
+    bundle_path: Path,
+    *,
+    require_agent_team: bool,
+) -> dict[str, object]:
+    evidence: dict[str, object] = {
+        "path": bundle_path.as_posix(),
+        "exists": bundle_path.exists(),
+        "require_agent_team": require_agent_team,
+        "default_auto_load": bundle_path == DEFAULT_AGENT_TEAM_BUNDLE_PATH,
+    }
+    if not bundle_path.exists():
+        status = "fail" if require_agent_team else "pass"
+        detail = (
+            f"missing setup Agent team bundle: {bundle_path}"
+            if require_agent_team
+            else f"setup Agent team bundle not found and not required: {bundle_path}"
+        )
+        return {"status": status, "detail": detail, "evidence": evidence}
+
+    try:
+        bundle = load_agent_profile_set_bundle(bundle_path)
+        profiles = build_agent_profiles_from_set_bundle(bundle)
+        readiness_reports = tuple(
+            evaluate_agent_profile_readiness(
+                profile,
+                base_dir=bundle_path.parent,
+                env=os.environ,
+            )
+            for profile in profiles
+        )
+        validation = evaluate_agent_profile_set(
+            profiles,
+            readiness_reports=readiness_reports,
+        )
+    except (OSError, ValueError) as exc:
+        evidence["error"] = str(exc)
+        return {
+            "status": "fail",
+            "detail": f"setup Agent team bundle is not valid: {exc}",
+            "evidence": evidence,
+        }
+
+    validation_payload = validation.model_dump(mode="json")
+    failed_readiness = [
+        report.agent_id for report in readiness_reports if not report.passed
+    ]
+    evidence.update(
+        {
+            "profile_set_id": bundle.profile_set_id,
+            "profile_count": len(profiles),
+            "covered_stage_count": validation.covered_stage_count,
+            "required_stage_count": len(validation.required_stages),
+            "missing_stages": list(validation.missing_stages),
+            "readiness_failed_agent_ids": failed_readiness,
+            "validation": validation_payload,
+            "readiness": [
+                report.model_dump(mode="json") for report in readiness_reports
+            ],
+        }
+    )
+    if validation.passed:
+        return {
+            "status": "pass",
+            "detail": (
+                "setup Agent team is valid: "
+                f"{bundle.profile_set_id} covers "
+                f"{validation.covered_stage_count}/{len(validation.required_stages)} stages"
+            ),
+            "evidence": evidence,
+        }
+    return {
+        "status": "fail",
+        "detail": (
+            "setup Agent team is incomplete: "
+            f"missing={','.join(validation.missing_stages) or '-'}; "
+            f"readiness_failed={','.join(failed_readiness) or '-'}"
+        ),
+        "evidence": evidence,
     }
 
 
@@ -3526,6 +3628,7 @@ def _readiness_next_actions(
     config_path: Path,
     env_path: Path,
     channel_test_result: Path,
+    agent_team_bundle: Path,
 ) -> list[dict[str, str]]:
     checks_by_id = {str(check.get("id")): check for check in checks}
     actions: list[dict[str, str]] = []
@@ -3568,6 +3671,22 @@ def _readiness_next_actions(
     channel_setup_repair_command = (
         channel_setup_with_test_command if should_run_setup_channel_test else channel_setup_command
     )
+    agent_team_check = checks_by_id.get("agent_team")
+    agent_team_evidence = (
+        agent_team_check.get("evidence")
+        if isinstance(agent_team_check, Mapping)
+        else {}
+    )
+    agent_team_exists = (
+        bool(agent_team_evidence.get("exists"))
+        if isinstance(agent_team_evidence, Mapping)
+        else agent_team_bundle.exists()
+    )
+    agent_team_repair_command = (
+        "airesearcher agents profile team-template "
+        f"--output {_command_path(agent_team_bundle)}"
+        + (" --overwrite" if agent_team_exists else "")
+    )
 
     for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
         check = checks_by_id.get(check_id)
@@ -3579,6 +3698,17 @@ def _readiness_next_actions(
                 reason="Create or repair first-deploy configuration before starting the loop.",
             )
             break
+
+    if agent_team_check and agent_team_check.get("status") in {"warn", "fail"}:
+        add(
+            "generate_agent_team",
+            severity="required" if agent_team_check.get("status") == "fail" else "recommended",
+            command=agent_team_repair_command,
+            reason=(
+                "Generate or repair the setup-default Agent team bundle before relying on "
+                "runtime auto-loading."
+            ),
+        )
 
     operator_check = checks_by_id.get("operator_channels")
     if operator_check and operator_check.get("status") in {"warn", "fail"}:

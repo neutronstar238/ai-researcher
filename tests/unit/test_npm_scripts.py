@@ -12,5 +12,5 @@ def test_npm_scripts_expose_guided_prelaunch_commands() -> None:
     assert scripts["readiness"] == "node ./bin/airesearcher.mjs readiness"
     assert scripts["prelaunch"] == (
         "node ./bin/airesearcher.mjs readiness "
-        "--push-inspiration --require-channel-config --require-channel-sent"
+        "--push-inspiration --require-channel-config --require-channel-sent --require-agent-team"
     )

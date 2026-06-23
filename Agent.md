@@ -10112,3 +10112,38 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Runtime default-team auto-loading remains process-routing scaffolding. It cannot replace evidence from real retrieval, experiments, reproduction, citations, review, publication audit, paper build, or evidence gate artifacts.
+
+### 2026-06-24 02:46:32 +08:00 - Codex - Task 243.1 Prelaunch Agent team readiness gate
+
+- Request: Continue hardening setup-once operation so strict prelaunch detects missing or broken setup-default Agent teams before the 24h runtime starts.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `package.json`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_npm_scripts.py`
+  - `Agent.md`
+- Summary:
+  - Added `--agent-team-bundle` and `--require-agent-team` to `airesearcher readiness`.
+  - Added an `agent_team` readiness check that validates bundle parsing, per-Agent readiness, and default CCF-B/Q2 profile-set stage coverage.
+  - Missing default teams remain non-blocking in ordinary readiness unless `--require-agent-team` is set; existing broken or incomplete bundles fail because runtime auto-loading would block.
+  - Added `generate_agent_team` next action using `airesearcher agents profile team-template --output ...`, with `--overwrite` only when a broken bundle already exists.
+  - Updated `npm run prelaunch` to include `--require-agent-team`.
+  - Updated README/README.zh-CN and added task `243.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_setup_agent_team_when_enabled tests\unit\cli\test_main.py::test_readiness_validates_setup_agent_team_bundle tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\test_npm_scripts.py::test_npm_scripts_expose_guided_prelaunch_commands -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py tests\unit\test_npm_scripts.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real setup from a clean deployment directory, `python -m autoresearch.cli.main setup --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-integrations --skip-slash`, passed and wrote `.airesearcher/agents/ccfb-team.yaml`.
+  - Real readiness from that deployment directory, `python -m autoresearch.cli.main readiness --no-push-inspiration --require-agent-team --output .airesearcher\readiness\report.json`, passed with `readiness.agent_team: setup Agent team is valid: ccfb-runtime-team covers 9/9 stages`. The first-run scheduler state warning remained non-blocking.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 623 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The prelaunch Agent team gate validates runtime routing readiness only. It must not be interpreted as evidence for scientific conclusions, novelty, metrics, citations, MCP invocation, publication audit, paper build, or evidence gate acceptance.

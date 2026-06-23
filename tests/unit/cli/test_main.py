@@ -1500,6 +1500,136 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     assert checks["outputs_dir"]["evidence"]["created"] is True
 
 
+def test_readiness_requires_setup_agent_team_when_enabled(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text('{"tasks": []}\n', encoding="utf-8")
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--agent-team-bundle",
+            str(agent_team_bundle),
+            "--output",
+            str(output),
+            "--no-push-inspiration",
+            "--require-agent-team",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.agent_team:" in result.output
+    assert "[NEXT] readiness_action.generate_agent_team:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["agent_team"]["status"] == "fail"
+    assert checks["agent_team"]["evidence"]["exists"] is False
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["generate_agent_team"]["command"] == (
+        f"airesearcher agents profile team-template --output {agent_team_bundle.as_posix()}"
+    )
+
+
+def test_readiness_validates_setup_agent_team_bundle(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text('{"tasks": []}\n', encoding="utf-8")
+    cli_main._write_default_agent_team_template(
+        output=agent_team_bundle,
+        skill_dir=None,
+        profile_set_id="ccfb-runtime-team",
+        overwrite=False,
+        allow_existing=False,
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--agent-team-bundle",
+            str(agent_team_bundle),
+            "--output",
+            str(output),
+            "--no-push-inspiration",
+            "--require-agent-team",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] readiness.agent_team:" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["agent_team"]["status"] == "pass"
+    assert checks["agent_team"]["evidence"]["profile_set_id"] == "ccfb-runtime-team"
+    assert checks["agent_team"]["evidence"]["covered_stage_count"] == 9
+    assert checks["agent_team"]["evidence"]["missing_stages"] == []
+    assert payload["next_actions"] == [
+        {
+            "id": "start_daily_loop",
+            "severity": "next",
+            "command": payload["planned_daily_command"],
+            "reason": "All hard readiness checks passed; start the unattended daily loop when ready.",
+        }
+    ]
+
+
 def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"

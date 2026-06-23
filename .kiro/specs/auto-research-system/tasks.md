@@ -2978,6 +2978,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `240.1` and `241.1`; user request for setup once, then run the 24h operator without copying long command flags._
     - _Verify: focused runtime default-team tests, focused ruff, focused mypy, real setup plus npm-style runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 243. Prelaunch Agent team readiness gate
+  - [x] 243.1 Validate the setup-generated Agent team during strict prelaunch
+    - Add a readiness check for the setup-generated Agent team bundle path.
+    - Validate bundle parsing, profile readiness, and default CCF-B/Q2 profile-set stage coverage.
+    - Keep ordinary readiness compatible when the bundle is missing and not required, but fail strict prelaunch via `--require-agent-team`.
+    - Add a `generate_agent_team` next action that points to `agents profile team-template` and uses `--overwrite` only when a broken bundle already exists.
+    - Update the npm `prelaunch` script and README/README.zh-CN to include the Agent team gate.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - _References: tasks `241.1` and `242.1`; user request for deployment once, then a reliable 24h operator startup._
+    - _Verify: focused readiness/npm-script tests, focused ruff, focused mypy, real setup plus strict prelaunch smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3606,6 +3617,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 145,
       "tasks": ["242.1"]
+    },
+    {
+      "id": 146,
+      "tasks": ["243.1"]
     }
   ]
 }

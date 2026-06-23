@@ -14,7 +14,7 @@
     "doctor": "node ./bin/airesearcher.mjs doctor",
     "channel:test": "node ./bin/airesearcher.mjs channels test",
     "readiness": "node ./bin/airesearcher.mjs readiness",
-    "prelaunch": "node ./bin/airesearcher.mjs readiness --push-inspiration --require-channel-config --require-channel-sent",
+    "prelaunch": "node ./bin/airesearcher.mjs readiness --push-inspiration --require-channel-config --require-channel-sent --require-agent-team",
     "test": "python -m pytest tests/smoke tests/unit"
   },
   "engines": {

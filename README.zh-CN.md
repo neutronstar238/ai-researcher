@@ -102,7 +102,7 @@ npm run prelaunch
 airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent
 ```
 
-它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
+它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、setup 默认 Agent 团队、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
 报告里的计划日循环命令会使用带审批门禁的 `serve` runtime，而不是更底层的直接 `autopilot` 入口。
 
 也可以非交互式部署：
@@ -343,7 +343,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `npm run setup` | 引导式首次部署。 |
 | `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
 | `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
-| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、通道配置和送达证据。 |
+| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、setup 默认 Agent 团队、通道配置和送达证据。 |
 | `npm run serve` | 启动带审批门禁、灵感推送和 setup 默认 Agent 团队自动加载的 24h operator。 |
 | `npm run monitor` | 打开 operator 监控台。 |
 
@@ -374,7 +374,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
-| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--require-agent-team`, `--output` | 写入无人值守每日循环的上线前检查报告；需要时会检查 setup 默认 Agent 团队。 |
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | 把自定义 skill、MCP server、可选闭环阶段责任和单 Agent 工具策略绑定给某个 Agent；MCP tool 必须显式白名单，密钥值仍保留在环境变量中。 |
 | `agents profile import` | `.json/.yaml/.toml` bundle、`--output`、`--vault`、`--project-id` | 把可复用声明式 Agent bundle 转成 `validate`、`inspect`、`serve` 和 `autopilot` 都能加载的标准 profile JSON；默认科研思维契约会保留，bundle 只追加补充项。 |
 | `agents profile import-set` | profile-set bundle `.json/.yaml/.toml`、`--output-dir`、`--validation-output`、`--base-dir`、`--vault`、`--project-id`、`--allow-incomplete` | 把可复用多 Agent bundle 转成每个 Agent 一个 profile JSON，并写出 profile-set validation report；默认在必需研究阶段缺失或 readiness 失败时非零退出。 |
