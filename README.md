@@ -294,6 +294,10 @@ status, while `stage_runtime_contexts` and `stage_agent_contexts` carry the boun
 assigned worker. Non-local sources stay as references, and secret-like local files are marked
 `blocked` without copying their content into artifacts. To preview exactly what an agent would
 receive, run `agents profile inspect --materialize-skills --base-dir . <profile.json>`.
+During `serve` and `autopilot`, AI-Researcher also writes portable packet files under each cycle's
+`agent-stage-contexts/` directory. Each packet contains only the agents assigned to that stage, the
+bounded skill excerpts, MCP contracts, readiness summary, and an explicit process-metadata evidence
+policy.
 
 MCP bindings also emit `mcp_runtime_contracts`. A contract records the command hash, allowed tools,
 approval policy, required env-key names, and whether runtime approval or isolated operator approval
@@ -456,7 +460,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
-| `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, and monitor. Repeat for multiple agents. |
+| `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, monitor, and per-cycle `agent-stage-contexts/` packet artifacts. Repeat for multiple agents. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |

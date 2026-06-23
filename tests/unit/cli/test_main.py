@@ -3521,6 +3521,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "research-plan.tex",
             "paper-build.json",
             "runtime-heartbeat-report.json",
+            "manifest.json",
+            "literature.json",
+            "similarity.json",
+            "review.json",
             "literature-agent.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
@@ -3734,6 +3738,34 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert stage_contexts["review"][0]["mcp_runtime_contracts"][0][
         "tool_invocation_evidence_required"
     ] is True
+    packet_manifest = payload["agent_stage_context_packets"]
+    assert packet_manifest["packet_set_kind"] == (
+        "agent_stage_context_packet_set_process_metadata"
+    )
+    assert packet_manifest["packet_count"] == 3
+    assert Path(packet_manifest["manifest_path"]).name == "manifest.json"
+    packet_rows = {row["stage"]: row for row in packet_manifest["packets"]}
+    assert sorted(packet_rows) == ["literature", "review", "similarity"]
+    assert packet_rows["review"]["agent_ids"] == ["literature-agent"]
+    assert packet_rows["review"]["skill_ids"] == ["source-tracing"]
+    assert packet_rows["review"]["mcp_server_ids"] == ["page-agent"]
+    review_packet = json.loads(
+        Path(packet_rows["review"]["path"]).read_text(encoding="utf-8")
+    )
+    assert review_packet["packet_kind"] == "agent_stage_context_packet_process_metadata"
+    assert review_packet["stage"] == "review"
+    assert review_packet["project_id"] == "project_1"
+    assert review_packet["cycle_id"] == payload["cycle_id"]
+    assert review_packet["agent_ids"] == ["literature-agent"]
+    assert review_packet["agents"][0]["materialized_skills"][0]["content"].startswith(
+        "# Source Tracing"
+    )
+    assert "publication readiness" in review_packet["evidence_policy"]
+    manifest_payload = json.loads(
+        Path(packet_manifest["manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert manifest_payload["packet_count"] == 3
+    assert manifest_payload["packet_paths"] == packet_manifest["packet_paths"]
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -3785,6 +3817,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "stage": "literature",
         "agent_ids": ["literature-agent"],
     }
+    assert review_context["agent_stage_context_packets"]["packet_count"] == 3
+    assert review_context["agent_stage_context_packets"]["packets"][0]["path"]
+    assert review_context["audit_summary"]["agent_stage_context_packets"][
+        "packet_count"
+    ] == 3
     assert review_context["stage_agent_contexts"]["literature"][0]["agent_id"] == (
         "literature-agent"
     )

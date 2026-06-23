@@ -2898,6 +2898,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to assign custom skills and MCPs to specific Agents without over-engineering the scientific reasoning loop; tasks `228.1`, `230.1`, `232.1`, and `234.1`._
     - _Verify: focused Agent profile/API/CLI tests, ruff, mypy, real CLI stage-context export, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 236. Runtime Agent stage context packet artifacts
+  - [x] 236.1 Write per-stage Agent context packets during each `serve`/`autopilot` cycle
+    - Generate `agent-stage-contexts/<stage>.json` artifacts for every loop stage with assigned Agents after profiles are loaded.
+    - Write `agent-stage-contexts/manifest.json` and add its summary to `cycle-summary.json`.
+    - Include packet manifest and packet files in review evidence context/bundles so downstream stage workers and reviewers can inspect routing without treating it as scientific proof.
+    - Keep packet evidence scoped to process metadata only; packets must not prove results, novelty, metrics, citations, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the automatic packet artifact behavior.
+    - _References: task `235.1`; user request for custom skills/MCPs assigned to specific Agents while preserving evidence-first scientific gates._
+    - _Verify: focused autopilot CLI regression, ruff, mypy, real autopilot packet artifact smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3498,6 +3508,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 138,
       "tasks": ["235.1"]
+    },
+    {
+      "id": 139,
+      "tasks": ["236.1"]
     }
   ]
 }

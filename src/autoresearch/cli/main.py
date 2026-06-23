@@ -1452,6 +1452,67 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
     }
 
 
+def _write_agent_stage_context_packets(
+    *,
+    profile_contexts: tuple[dict[str, Any], ...],
+    cycle_dir: Path,
+    project_id: str,
+    cycle_id: str,
+) -> dict[str, Any]:
+    packet_dir = cycle_dir / "agent-stage-contexts"
+    packet_rows: list[dict[str, Any]] = []
+    for stage in AGENT_PROFILE_ASSIGNABLE_STAGES:
+        packet = build_agent_stage_context_packet(
+            profile_contexts,
+            stage,
+            project_id=project_id,
+            cycle_id=cycle_id,
+        )
+        if int(packet.get("agent_count", 0) or 0) <= 0:
+            continue
+        packet_dir.mkdir(parents=True, exist_ok=True)
+        packet_path = packet_dir / f"{stage}.json"
+        packet_path.write_text(json.dumps(packet, indent=2, sort_keys=True), encoding="utf-8")
+        packet_rows.append(
+            {
+                "stage": stage,
+                "path": packet_path.as_posix(),
+                "agent_count": packet.get("agent_count", 0),
+                "agent_ids": _string_list(packet.get("agent_ids")),
+                "skill_ids": _string_list(packet.get("skill_ids")),
+                "materialized_skill_ids": _string_list(
+                    packet.get("materialized_skill_ids")
+                ),
+                "mcp_server_ids": _string_list(packet.get("mcp_server_ids")),
+                "readiness": packet.get("readiness") if isinstance(
+                    packet.get("readiness"),
+                    Mapping,
+                ) else {},
+            }
+        )
+
+    manifest: dict[str, Any] = {
+        "packet_set_kind": "agent_stage_context_packet_set_process_metadata",
+        "cycle_id": cycle_id,
+        "project_id": project_id,
+        "packet_dir": packet_dir.as_posix(),
+        "packet_count": len(packet_rows),
+        "packets": packet_rows,
+        "packet_paths": [str(row["path"]) for row in packet_rows],
+        "manifest_path": None,
+        "evidence_policy": (
+            "Stage context packets route bounded Agent skill/MCP context to assigned "
+            "research-loop stages only; they cannot prove scientific results, novelty, "
+            "metrics, citations, tool invocation, or publication readiness."
+        ),
+    }
+    if packet_rows:
+        manifest_path = packet_dir / "manifest.json"
+        manifest["manifest_path"] = manifest_path.as_posix()
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    return manifest
+
+
 def _agent_profile_stage_assignments(
     profile_contexts: tuple[dict[str, Any], ...],
 ) -> dict[str, Any]:
@@ -5297,17 +5358,31 @@ def _run_autopilot_cycle(
         base_dir=Path.cwd(),
     )
     agent_profiles = _agent_profiles_summary(agent_profile_contexts)
+    agent_stage_context_packets = _write_agent_stage_context_packets(
+        profile_contexts=agent_profile_contexts,
+        cycle_dir=cycle_dir,
+        project_id=project_id,
+        cycle_id=cycle_id,
+    )
+    agent_profile_artifact_refs = (
+        agent_stage_context_packets.get("manifest_path"),
+        *_string_list(agent_stage_context_packets.get("packet_paths")),
+        *(
+            profile.get("profile_path")
+            for profile in _mapping_list(agent_profiles.get("profiles"))
+        ),
+    )
     runtime_heartbeat = _write_cycle_runtime_heartbeat(
         heartbeat_state=heartbeat_state,
         cycle_id=cycle_id,
         stage="agent-profiles",
-        progress=f"profile_count={len(agent_profile_contexts)}",
+        progress=(
+            f"profile_count={len(agent_profile_contexts)};"
+            f"stage_packets={agent_stage_context_packets['packet_count']}"
+        ),
         report_path=heartbeat_report_path,
         message="Agent profile context loaded for this cycle.",
-        artifact_refs=(
-            profile.get("profile_path")
-            for profile in _mapping_list(agent_profiles.get("profiles"))
-        ),
+        artifact_refs=agent_profile_artifact_refs,
     )
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
@@ -5360,6 +5435,7 @@ def _run_autopilot_cycle(
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
             "agent_profiles": agent_profiles,
+            "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
             "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_source_preflight"},
@@ -5512,6 +5588,7 @@ def _run_autopilot_cycle(
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
             "agent_profiles": agent_profiles,
+            "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
             "candidate_path": candidate_path.as_posix(),
             "literature": {
@@ -5652,6 +5729,7 @@ def _run_autopilot_cycle(
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
         "agent_profiles": agent_profiles,
+        "agent_stage_context_packets": agent_stage_context_packets,
         "source_preflight": source_preflight,
         "candidate_path": candidate_path.as_posix(),
         "literature": {
@@ -5820,6 +5898,7 @@ def _run_autopilot_cycle(
         "cycle_id": cycle_id,
         "project_id": project_id,
         "agent_profiles": summary["agent_profiles"],
+        "agent_stage_context_packets": summary["agent_stage_context_packets"],
         "stage_agent_contexts": summary["agent_profiles"].get("stage_runtime_contexts", {}),
         "candidate": summary["candidate"],
         "literature": summary["literature"],
@@ -5878,6 +5957,8 @@ def _run_autopilot_cycle(
         summary["loop_report"].get("json_path"),
         summary["loop_report"].get("markdown_path"),
         summary["runtime_heartbeat"].get("report_path"),
+        summary["agent_stage_context_packets"].get("manifest_path"),
+        *_string_list(summary["agent_stage_context_packets"].get("packet_paths")),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
         *[
@@ -6122,6 +6203,7 @@ def _autopilot_review_audit_summary(
     )
     return {
         "agent_profiles": mapping(summary.get("agent_profiles")),
+        "agent_stage_context_packets": mapping(summary.get("agent_stage_context_packets")),
         "candidate": _autopilot_candidate_review_summary(summary),
         "literature": {
             "query_count": literature.get("query_count"),

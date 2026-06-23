@@ -9873,3 +9873,34 @@ This file defines the project development standard for coding agents and records
   - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future asynchronous stage workers can consume these packets directly, but any actual MCP call must still produce MCP invocation evidence and any publication claim must still pass literature, experiment, reproduction, review, publication-audit, and evidence gates.
+
+### 2026-06-24 01:34:34 +08:00 - Codex - Task 236.1 Runtime Agent stage context packet artifacts
+
+- Request: Continue implementing the Agent skill/MCP routing work so custom Agent context is usable by the real self-loop runtime rather than only by a manual export command.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added automatic per-cycle `agent-stage-contexts/<stage>.json` packet generation for every `serve`/`autopilot` stage with assigned Agents.
+  - Added `agent-stage-contexts/manifest.json` and embedded the packet manifest in `cycle-summary.json`.
+  - Added packet manifest and packet files to review evidence context and review evidence bundles so downstream stage workers and reviewers can inspect responsibility routing.
+  - Kept packet evidence scoped to process metadata only; packets explicitly cannot prove results, novelty, metrics, citations, MCP invocation, or publication readiness.
+  - Updated README/README.zh-CN and added task `236.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI wrote a `literature-agent` profile and ran `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task236-runtime-stage-packets-v1\vault --cache runs\manual-live\task236-runtime-stage-packets-v1\cache --output-dir runs\manual-live\task236-runtime-stage-packets-v1\runs --deliverables-dir runs\manual-live\task236-runtime-stage-packets-v1\outputs --state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\runtime-heartbeats.json --project-id task236_stage_packets --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile runs\manual-live\task236-runtime-stage-packets-v1\profiles\literature-agent.json --no-review --cycles 1`: passed with cycle `cycle-20260623T173316Z`.
+  - Real artifact inspection confirmed `packet_count=3`, manifest path `agent-stage-contexts/manifest.json`, packet paths for literature/similarity/review, review packet kind `agent_stage_context_packet_process_metadata`, agent `literature-agent`, skill `source-tracing`, MCP `page-agent`, readiness passed, and evidence policy excluding scientific proof/publication readiness.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 611 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future asynchronous stage workers can read these packet artifacts directly, but any actual external tool action still needs MCP invocation evidence and any publication claim still needs literature, experiment, reproduction, review, publication-audit, and evidence-gate support.
