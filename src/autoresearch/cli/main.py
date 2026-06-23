@@ -990,6 +990,79 @@ def import_agent_profile_set_command(
         raise typer.Exit(1)
 
 
+@agent_profiles_app.command("team-template")
+def write_agent_profile_team_template_command(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile-set team bundle YAML output path."),
+    ] = Path(".airesearcher/agents/ccfb-team.yaml"),
+    skill_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--skill-dir",
+            help="Directory for generated local skill files. Defaults to <output-dir>/skills.",
+        ),
+    ] = None,
+    profile_set_id: Annotated[
+        str,
+        typer.Option("--profile-set-id", help="Profile-set ID written into the bundle."),
+    ] = "ccfb-runtime-team",
+    overwrite: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite/--no-overwrite",
+            help="Overwrite existing template or skill files.",
+        ),
+    ] = False,
+) -> None:
+    """Write a default CCF-B/Q2 runtime Agent team bundle template."""
+
+    skill_root = skill_dir or (output.parent / "skills")
+    skill_paths = {
+        "source": skill_root / "source.md",
+        "experiment": skill_root / "experiment.md",
+        "review": skill_root / "review.md",
+    }
+    candidate_paths = (output, *skill_paths.values())
+    existing_paths = [path for path in candidate_paths if path.exists()]
+    if existing_paths and not overwrite:
+        existing = ", ".join(path.as_posix() for path in existing_paths)
+        typer.echo(f"[FAIL] agent_profile_team_template: refusing to overwrite {existing}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        _validate_identifier_like(profile_set_id, "profile_set_id")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        skill_root.mkdir(parents=True, exist_ok=True)
+        skill_paths["source"].write_text(_DEFAULT_SOURCE_SKILL_TEXT, encoding="utf-8")
+        skill_paths["experiment"].write_text(_DEFAULT_EXPERIMENT_SKILL_TEXT, encoding="utf-8")
+        skill_paths["review"].write_text(_DEFAULT_REVIEW_SKILL_TEXT, encoding="utf-8")
+        output.write_text(
+            _default_agent_team_bundle_yaml(
+                profile_set_id=profile_set_id,
+                bundle_path=output,
+                source_skill_path=skill_paths["source"],
+                experiment_skill_path=skill_paths["experiment"],
+                review_skill_path=skill_paths["review"],
+            ),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        typer.echo(f"[FAIL] agent_profile_team_template: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile_team_template: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"[OK] agent_profile_team_template: {profile_set_id}")
+    typer.echo(f"[OK] bundle: {output}")
+    typer.echo(f"[OK] skills: {len(skill_paths)}")
+    for path in skill_paths.values():
+        typer.echo(f"[OK] skill: {path}")
+    typer.echo(f"[NEXT] import: airesearcher agents profile import-set {output}")
+    typer.echo(f"[NEXT] runtime: --agent-profile-set-bundle {output}")
+
+
 @agent_profiles_app.command("inspect")
 def inspect_agent_profile_command(
     profile_path: Annotated[
@@ -8124,6 +8197,112 @@ def _sanitize_output_paths(text: str) -> str:
 def _safe_path_segment(value: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip()).strip("-._")
     return slug or "ai-researcher"
+
+
+def _validate_identifier_like(value: str, field_name: str) -> str:
+    cleaned = value.strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}", cleaned):
+        msg = f"{field_name} must start with a letter or digit and contain only letters, digits, _, ., :, or -"
+        raise ValueError(msg)
+    return cleaned
+
+
+def _default_agent_team_bundle_yaml(
+    *,
+    profile_set_id: str,
+    bundle_path: Path,
+    source_skill_path: Path,
+    experiment_skill_path: Path,
+    review_skill_path: Path,
+) -> str:
+    bundle_dir = bundle_path.parent
+    source_ref = _yaml_single_quote(_path_ref_for_bundle(source_skill_path, bundle_dir=bundle_dir))
+    experiment_ref = _yaml_single_quote(
+        _path_ref_for_bundle(experiment_skill_path, bundle_dir=bundle_dir)
+    )
+    review_ref = _yaml_single_quote(_path_ref_for_bundle(review_skill_path, bundle_dir=bundle_dir))
+    return (
+        f"profile_set_id: {_yaml_single_quote(profile_set_id)}\n"
+        "description: Default CCF-B/Q2 runtime Agent team for evidence-first research cycles.\n"
+        "profiles:\n"
+        "  - agent_id: literature-agent\n"
+        "    role: project_agent\n"
+        "    description: Source-backed literature, similarity, and research-plan agent.\n"
+        "    assigned_stages:\n"
+        "      - literature\n"
+        "      - similarity\n"
+        "      - research-plan\n"
+        "    skills:\n"
+        "      - skill_id: source-tracing\n"
+        f"        source: {source_ref}\n"
+        "        import_policy: read_only_context\n"
+        "    mcp_servers:\n"
+        "      - server_id: page-agent\n"
+        "        command:\n"
+        "          - npx\n"
+        "          - -y\n"
+        "          - page-agent\n"
+        "        allowed_tools:\n"
+        "          - browser.search\n"
+        "          - browser.open\n"
+        "        approval_policy: read_only\n"
+        "  - agent_id: experiment-agent\n"
+        "    role: project_agent\n"
+        "    description: Protocol, experiment, reproduction, and citation agent.\n"
+        "    assigned_stages:\n"
+        "      - loop-campaign\n"
+        "      - experiment\n"
+        "      - reproduction\n"
+        "      - citations\n"
+        "    skills:\n"
+        "      - skill_id: experiment-protocol\n"
+        f"        source: {experiment_ref}\n"
+        "        import_policy: read_only_context\n"
+        "  - agent_id: review-agent\n"
+        "    role: validator_agent\n"
+        "    thinking_mode: reviewer\n"
+        "    description: Review, publication-audit, and evidence-gate agent.\n"
+        "    assigned_stages:\n"
+        "      - review\n"
+        "      - publication-audit\n"
+        "      - evidence-gate\n"
+        "    thinking_contract_additions:\n"
+        "      - Block publication prose unless artifacts prove the claim.\n"
+        "    skills:\n"
+        "      - skill_id: evidence-review\n"
+        f"        source: {review_ref}\n"
+        "        import_policy: read_only_context\n"
+    )
+
+
+def _path_ref_for_bundle(path: Path, *, bundle_dir: Path) -> str:
+    try:
+        return Path(os.path.relpath(path.resolve(), start=bundle_dir.resolve())).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _yaml_single_quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+_DEFAULT_SOURCE_SKILL_TEXT = """# Source Tracing
+
+Use retrieved literature records, source URLs, DOI metadata, and local evidence artifacts only.
+Do not invent novelty, citations, benchmark results, or undocumented tool outputs.
+"""
+
+_DEFAULT_EXPERIMENT_SKILL_TEXT = """# Experiment Protocol
+
+Treat every experiment as protocol-as-code with explicit datasets, baselines, metrics, budget,
+metadata completeness, reproduction delta, and rollback criteria.
+"""
+
+_DEFAULT_REVIEW_SKILL_TEXT = """# Evidence Review
+
+Block publication claims unless the cycle contains physical artifacts for literature, experiments,
+reproduction, citations, manuscript, audit, paper build, and evidence gate.
+"""
 
 
 def _render_deliverables_markdown(manifest: dict[str, Any]) -> str:

@@ -446,6 +446,71 @@ def test_agent_profile_import_set_cli_writes_profiles_and_validation(
     assert payload["stage_coverage"][0]["agent_ids"] == ["literature-agent"]
 
 
+def test_agent_profile_team_template_writes_importable_bundle(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_team_template: ccfb-runtime-team" in result.stdout
+    assert "[NEXT] runtime: --agent-profile-set-bundle" in result.stdout
+    assert bundle_path.is_file()
+    bundle_text = bundle_path.read_text(encoding="utf-8")
+    assert "profile_set_id: 'ccfb-runtime-team'" in bundle_text
+    assert "import_policy: read_only_context" in bundle_text
+    assert "approval_policy: read_only" in bundle_text
+    assert (bundle_path.parent / "skills" / "source.md").is_file()
+    assert (bundle_path.parent / "skills" / "experiment.md").is_file()
+    assert (bundle_path.parent / "skills" / "review.md").is_file()
+
+    second_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    assert second_result.exit_code == 1
+    assert "refusing to overwrite" in second_result.stderr
+
+    import_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "profiles"),
+            "--validation-output",
+            str(tmp_path / "validation.json"),
+            "--base-dir",
+            str(bundle_path.parent),
+        ],
+    )
+
+    assert import_result.exit_code == 0, import_result.output
+    assert "[OK] profiles: 3" in import_result.stdout
+    assert "[OK] agent_profile_set: passed" in import_result.stdout
+    assert "[OK] stage_coverage: 9/9; profiles=3" in import_result.stdout
+    validation = json.loads((tmp_path / "validation.json").read_text(encoding="utf-8"))
+    assert validation["passed"] is True
+    assert validation["missing_stages"] == []
+
+
 def test_agent_profile_import_set_cli_fails_missing_required_stage(
     tmp_path: Path,
 ) -> None:

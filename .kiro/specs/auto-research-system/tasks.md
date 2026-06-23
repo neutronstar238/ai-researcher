@@ -2943,6 +2943,18 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `216.1`, `236.1`, `237.1`, and `238.1`; user request for one-step unattended Agent team loading while preserving strict publication evidence gates._
     - _Verify: focused runtime bundle CLI tests, ruff, mypy, real runtime bundle autopilot smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 240. Default runtime Agent team template
+  - [x] 240.1 Add a CLI-generated editable CCF-B/Q2 Agent team bundle
+    - Add `airesearcher agents profile team-template` to write a default three-Agent profile-set bundle plus local skill Markdown files.
+    - Cover literature/similarity/research-plan, loop-campaign/experiment/reproduction/citations, and review/publication-audit/evidence-gate stages.
+    - Include a read-only `page-agent` MCP contract for the literature agent without storing secrets.
+    - Refuse to overwrite existing bundle or skill files unless `--overwrite` is explicitly passed.
+    - Ensure the generated bundle can be imported with `agents profile import-set` and loaded directly by `serve`/`autopilot --agent-profile-set-bundle`.
+    - Keep the generated template editable scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the template command and runtime usage.
+    - _References: tasks `238.1` and `239.1`; user request for guided deployment and one-step unattended Agent team loading._
+    - _Verify: focused CLI template/import/runtime tests, ruff, mypy, real template generation/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3559,6 +3571,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 142,
       "tasks": ["239.1"]
+    },
+    {
+      "id": 143,
+      "tasks": ["240.1"]
     }
   ]
 }

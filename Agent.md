@@ -10009,3 +10009,37 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Setup can later offer a guided team-bundle template, but runtime bundle loading must remain process metadata and cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence gate artifacts.
+
+### 2026-06-24 02:21:00 +08:00 - Codex - Task 240.1 Default runtime Agent team template
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving one-step unattended Agent team loading and specific-Agent custom skill/MCP assignment.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile team-template` to write an editable default three-Agent CCF-B/Q2 profile-set bundle and three local skill Markdown files.
+  - The generated bundle covers literature/similarity/research-plan, loop-campaign/experiment/reproduction/citations, and review/publication-audit/evidence-gate stages.
+  - The literature Agent includes a read-only `page-agent` MCP contract with explicit allowed tools and no stored secrets.
+  - The command refuses to overwrite an existing bundle or generated skill file unless `--overwrite` is passed.
+  - The generated bundle is compatible with `agents profile import-set` and direct runtime `--agent-profile-set-bundle` loading.
+  - Updated README/README.zh-CN and added task `240.1` with the template's process-metadata/evidence boundary.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml`: passed and wrote the bundle plus `source.md`, `experiment.md`, and `review.md`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml --output-dir runs\manual-live\task240-team-template-v1\profiles --validation-output runs\manual-live\task240-team-template-v1\profile-set-validation.json --base-dir runs\manual-live\task240-team-template-v1\agents`: passed with 3 profiles and `stage_coverage: 9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task240-team-template-v1\vault --cache runs\manual-live\task240-team-template-v1\cache --output-dir runs\manual-live\task240-team-template-v1\runs --deliverables-dir runs\manual-live\task240-team-template-v1\outputs --state runs\manual-live\task240-team-template-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task240-team-template-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task240-team-template-v1\.airesearcher\runtime-heartbeats.json --project-id task240_team_template --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session`: passed with cycle `cycle-20260623T181826Z`, one bundle, three generated profiles, profile readiness pass, profile-set gate `covered=9/9`, ten stage-context packets, and the expected toy/no-review publication-audit fail plus evidence-gate block.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 618 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A future `setup` wizard step can call or recommend `agents profile team-template` so first-time operators get the editable Agent team bundle without memorizing the command.
