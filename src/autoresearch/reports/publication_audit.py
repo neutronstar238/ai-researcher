@@ -1135,16 +1135,51 @@ def _similarity_checks(
             )
         )
     elif adjacent_work:
-        checks.append(
-            PublicationAuditCheck(
-                "similarity_duplicate_risk",
-                PublicationAuditCheckStatus.WARNING,
-                "high",
-                f"Similarity check found {adjacent_work} adjacent-work findings that need positioning.",
-                ("cycle_summary.similarity.summary_path",),
-                "Write a related-work comparison before publication review.",
-            )
+        positioned_count, manuscript_path = _similarity_adjacent_positioning_count(
+            summary,
+            base_dir,
         )
+        required_positioned = min(adjacent_work, 6)
+        manuscript_ref = (
+            manuscript_path.as_posix()
+            if manuscript_path is not None
+            else "cycle_summary.paper_manuscript.markdown_path"
+        )
+        if positioned_count >= required_positioned:
+            checks.append(
+                PublicationAuditCheck(
+                    "similarity_duplicate_risk",
+                    PublicationAuditCheckStatus.PASS,
+                    "info",
+                    (
+                        f"Similarity check found {adjacent_work} adjacent-work findings; "
+                        f"the manuscript positions {positioned_count} representative "
+                        "adjacent-work rows."
+                    ),
+                    (
+                        "cycle_summary.similarity.summary_path",
+                        manuscript_ref,
+                    ),
+                )
+            )
+        else:
+            checks.append(
+                PublicationAuditCheck(
+                    "similarity_duplicate_risk",
+                    PublicationAuditCheckStatus.WARNING,
+                    "high",
+                    (
+                        f"Similarity check found {adjacent_work} adjacent-work findings "
+                        f"but only {positioned_count}/{required_positioned} representative "
+                        "rows were positioned in the manuscript."
+                    ),
+                    (
+                        "cycle_summary.similarity.summary_path",
+                        manuscript_ref,
+                    ),
+                    "Write a related-work comparison before publication review.",
+                )
+            )
     else:
         checks.append(
             PublicationAuditCheck(
@@ -1156,6 +1191,42 @@ def _similarity_checks(
             )
         )
     return checks
+
+
+def _similarity_adjacent_positioning_count(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> tuple[int, Path | None]:
+    manuscript_path = _manuscript_path(summary, base_dir)
+    if manuscript_path is None or not manuscript_path.exists():
+        return 0, manuscript_path
+    text = manuscript_path.read_text(encoding="utf-8", errors="ignore")
+    match = re.search(
+        r"(?ims)^#{3,6}\s+adjacent-work positioning\s*$"
+        r"(?P<section>.*?)(?=^#{1,6}\s+|\Z)",
+        text,
+    )
+    if not match:
+        return 0, manuscript_path
+    section = match.group("section")
+    table_count = sum(
+        1
+        for line in section.splitlines()
+        if line.strip().startswith("|") and "adjacent_work" in line.casefold()
+    )
+    artifact_count = _similarity_positioning_artifact_count(summary, base_dir)
+    return max(table_count, artifact_count), manuscript_path
+
+
+def _similarity_positioning_artifact_count(summary: dict[str, Any], base_dir: Path) -> int:
+    paper_manuscript = _dict(summary.get("paper_manuscript"))
+    for raw_path in _list(paper_manuscript.get("analysis_artifact_paths")):
+        path = _resolve_path(raw_path, base_dir)
+        if path is None or path.name != "similarity-positioning-summary.json":
+            continue
+        payload = _read_json_if_exists(path)
+        return _int(payload.get("adjacent_work_count"))
+    return 0
 
 
 def _script_and_data_checks(

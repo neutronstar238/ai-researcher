@@ -11,6 +11,7 @@ from .approval import (
     ensure_runtime_approval,
     list_runtime_approval_requests,
     load_runtime_approval_requests,
+    network_approval_metadata_from_decision,
     write_runtime_approval_requests,
 )
 from .sessions import (
@@ -45,6 +46,7 @@ __all__ = [
     "list_runtime_approval_requests",
     "load_agent_sessions",
     "load_runtime_approval_requests",
+    "network_approval_metadata_from_decision",
     "release_agent_session",
     "write_agent_sessions",
     "write_runtime_approval_requests",

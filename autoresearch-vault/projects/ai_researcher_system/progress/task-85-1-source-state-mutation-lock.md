@@ -1,33 +1,33 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:09:42Z'
 entry_id: task_85_1_source_state_mutation_lock
 entry_type: project_progress
-zone: project
-title: Task 85.1 source state mutation lock
-project_id: ai_researcher_system
-tags:
-  - source-preflight
-  - circuit-breaker
-  - state-lock
-  - concurrency
-  - completed
 keywords:
-  - source-circuit-breakers.json.lock
-  - state_locked
-  - read-modify-write
-  - SCALE-lite
-source_refs:
-  - src/autoresearch/literature/clients.py
-  - src/autoresearch/cli/main.py
-  - tests/unit/literature/test_clients.py
-  - tests/unit/cli/test_main.py
-related_task_ids:
-  - "85.1"
-related_run_ids:
-  - cycle-20260613T030942Z
-created_at: "2026-06-13T03:09:42Z"
-updated_at: "2026-06-13T03:09:42Z"
+- source-circuit-breakers.json.lock
+- state_locked
+- read-modify-write
+- SCALE-lite
 links: []
-backlinks: []
+project_id: ai_researcher_system
+related_run_ids:
+- cycle-20260613T030942Z
+related_task_ids:
+- '85.1'
+source_refs:
+- src/autoresearch/literature/clients.py
+- src/autoresearch/cli/main.py
+- tests/unit/literature/test_clients.py
+- tests/unit/cli/test_main.py
+tags:
+- source-preflight
+- circuit-breaker
+- state-lock
+- concurrency
+- completed
+title: Task 85.1 source state mutation lock
+updated_at: '2026-06-13T03:09:42Z'
+zone: project
 ---
 
 # Task 85.1 Source State Mutation Lock

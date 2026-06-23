@@ -1,32 +1,32 @@
 ---
+backlinks: []
+created_at: '2026-06-13T02:38:32Z'
 entry_id: task_82_1_source_preflight_gate
 entry_type: project_progress
-zone: project
-title: Task 82.1 source cooldown preflight gate
-project_id: ai_researcher_system
-tags:
-  - source-preflight
-  - evidence-gate
-  - rate-limit
-  - completed
 keywords:
-  - source preflight
-  - Semantic Scholar
-  - SCALE-lite
-  - cooldown
-source_refs:
-  - src/autoresearch/cli/main.py
-  - src/autoresearch/literature/clients.py
-  - tests/unit/cli/test_main.py
-  - tests/unit/literature/test_clients.py
-related_task_ids:
-  - "82.1"
-related_run_ids:
-  - cycle-20260613T023832Z
-created_at: "2026-06-13T02:38:32Z"
-updated_at: "2026-06-13T02:38:32Z"
+- source preflight
+- Semantic Scholar
+- SCALE-lite
+- cooldown
 links: []
-backlinks: []
+project_id: ai_researcher_system
+related_run_ids:
+- cycle-20260613T023832Z
+related_task_ids:
+- '82.1'
+source_refs:
+- src/autoresearch/cli/main.py
+- src/autoresearch/literature/clients.py
+- tests/unit/cli/test_main.py
+- tests/unit/literature/test_clients.py
+tags:
+- source-preflight
+- evidence-gate
+- rate-limit
+- completed
+title: Task 82.1 source cooldown preflight gate
+updated_at: '2026-06-13T02:38:32Z'
+zone: project
 ---
 
 # Task 82.1 Source Cooldown Preflight Gate

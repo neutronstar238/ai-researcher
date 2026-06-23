@@ -3,8 +3,7 @@ from textwrap import dedent
 
 import pytest
 
-from autoresearch.experiments import execute_experiment_task
-from autoresearch.experiments import executor
+from autoresearch.experiments import execute_experiment_task, executor
 from autoresearch.schemas import ExecutionStatus, ExperimentTask
 
 
@@ -66,6 +65,147 @@ def test_execute_experiment_task_records_nonzero_exit(tmp_path: Path) -> None:
     assert run.exit_code == 3
     assert run.error_type == "NonZeroExit"
     assert "bad experiment" in run.stderr
+
+
+def test_execute_experiment_task_blocks_unapproved_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import socket
+        from pathlib import Path
+
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.exit_code is None
+    assert run.error_type == "NetworkPreflightDenied"
+    assert run.limit_violations == ["network_preflight"]
+    assert "imports network module socket" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+    assert run.metadata["network_preflight"]["approved"] is False
+
+
+def test_execute_experiment_task_allows_approved_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import socket
+        from pathlib import Path
+
+        print(socket.AF_INET)
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+    task = _task().model_copy(
+        update={
+            "metadata": {
+                "network_access_approved": True,
+                "network_access_scope": "approved test socket import",
+                "approved_network_domains": ["example.org"],
+                "network_source_urls": ["https://example.org/data.csv"],
+                "network_approval_mode": "approve-dangerous",
+                "network_approval_id": "approval-001",
+                "network_approved_by": "unit-test",
+            }
+        }
+    )
+
+    run = execute_experiment_task(tmp_path, task)
+
+    assert run.status is ExecutionStatus.SUCCESS
+    assert run.error_type is None
+    preflight = run.metadata["network_preflight"]
+    assert preflight["approved"] is True
+    assert preflight["finding_count"] == 1
+    assert preflight["network_access_scope"] == "approved test socket import"
+    assert preflight["approved_network_domains"] == ["example.org"]
+    assert preflight["network_source_urls"] == ["https://example.org/data.csv"]
+    assert preflight["network_approval_mode"] == "approve-dangerous"
+    assert preflight["network_approval_id"] == "approval-001"
+    assert preflight["network_approved_by"] == "unit-test"
+
+
+def test_execute_experiment_task_blocks_dangerous_static_finding(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import subprocess
+        from pathlib import Path
+
+        subprocess.run(["curl", "https://example.org"], check=False)
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.exit_code is None
+    assert run.error_type == "StaticPreflightDenied"
+    assert run.limit_violations == ["static_preflight"]
+    assert "dangerous_command" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+    assert run.metadata["static_preflight"]["finding_count"] >= 1
+
+
+def test_execute_experiment_task_blocks_secret_static_finding(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        import os
+        from pathlib import Path
+
+        os.getenv("API_KEY")
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.error_type == "StaticPreflightDenied"
+    assert run.limit_violations == ["static_preflight"]
+    assert "secret_read" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+
+
+def test_execute_experiment_task_blocks_dynamic_network_import(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        from pathlib import Path
+
+        __import__("socket")
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    run = execute_experiment_task(tmp_path, _task())
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.error_type == "NetworkPreflightDenied"
+    assert run.limit_violations == ["network_preflight"]
+    assert "dynamically imports network module socket" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
 
 
 def test_execute_experiment_task_enforces_timeout_and_cleans_process(

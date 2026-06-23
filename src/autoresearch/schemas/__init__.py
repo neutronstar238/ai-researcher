@@ -1,4 +1,4 @@
-"""Core lifecycle schemas for AutoResearch."""
+"""Core lifecycle schemas for AI-Researcher."""
 
 from .models import (
     ALLOWED_STRATEGY_TARGETS,
@@ -15,6 +15,8 @@ from .models import (
     KnowledgeNode,
     PaperDraft,
     ResearchCandidate,
+    ResearchPlan,
+    ResearchPlanStatus,
     ResultBundle,
     StrategyCard,
     TaskStatus,
@@ -36,6 +38,8 @@ __all__ = [
     "KnowledgeNode",
     "PaperDraft",
     "ResearchCandidate",
+    "ResearchPlan",
+    "ResearchPlanStatus",
     "ResultBundle",
     "PROHIBITED_STRATEGY_TARGETS",
     "StrategyCard",

@@ -27,7 +27,10 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         "LearnPrompt/luban-skill",
         "aiming-lab/SimpleMem",
         "AMAP-ML/SkillClaw",
+        "stanford-iris-lab/meta-harness",
+        "wanxingai/LightAgent",
         "code-yeongyu/oh-my-openagent",
+        "alibaba/page-agent",
         "brycewang-stanford/Auto-Empirical-Research-Skills",
         "zsyggg/paper-craft-skills",
         "benchflow-ai/skillsbench citation-management skill",
@@ -51,6 +54,22 @@ def test_project_notice_tracks_third_party_reference_policy() -> None:
         assert required in third_party
     assert "copy, vendor, adapt, or redistribute" in third_party
     assert "Do not copy or adapt" in third_party
+    assert "search/held-out evaluation split" in third_party
+    assert "Do not vendor Meta-Harness source code" in third_party
+    assert "Apache-2.0; raw `LICENSE` reviewed on 2026-06-20" in third_party
+    assert "Do not vendor LightAgent source code" in third_party
+
+
+def test_hkuds_ai_researcher_stays_reference_only_until_license_file_exists() -> None:
+    root = Path(__file__).resolve().parents[3]
+    third_party = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+    assert "HKUDS AI-Researcher" in third_party
+    assert "licenseInfo=null" in third_party
+    assert "setup.cfg` declares `license = MIT" in third_party
+    assert "GitHub license API returned 404" in third_party
+    assert "issue #94 remains open" in third_party
+    assert "Do not copy or adapt repository code" in third_party
 
 
 def test_license_scanner_accepts_dataset_code_and_package_metadata(tmp_path: Path) -> None:

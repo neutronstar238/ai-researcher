@@ -21,8 +21,10 @@ from autoresearch.experiments import (
     generate_spambase_variance_calibrated_demo,
     generate_tabular_baseline_demo,
     generate_text_classifier_stub_demo,
+    run_scientistbench_demo,
     validate_result_bundle,
 )
+from autoresearch.experiments.demo_workflow import _merge_task_metadata
 from autoresearch.schemas import ExecutionStatus, TaskStatus, ValidationStatus, file_hash
 
 
@@ -142,6 +144,82 @@ def test_text_classifier_stub_demo_runs_collects_and_validates(tmp_path: Path) -
     assert report.status is ValidationStatus.PASSED
     for expected_output in task.expected_outputs:
         assert (experiment_dir / expected_output).exists()
+
+
+def test_public_uci_tasks_define_scoped_network_approval() -> None:
+    tasks = [
+        create_pendigits_centroid_baseline_task(),
+        create_pendigits_prototype_shrinkage_task(),
+        create_pendigits_variance_calibrated_task(),
+        create_letter_variance_calibrated_task(),
+        create_spambase_variance_calibrated_task(),
+        create_skin_variance_calibrated_task(),
+    ]
+
+    for task in tasks:
+        metadata = task.metadata
+        assert metadata["network_access_approved"] is True
+        assert metadata["approved_network_domains"] == ["archive.ics.uci.edu"]
+        assert metadata["network_source_urls"]
+        assert "cached files are preferred" in metadata["network_access_scope"]
+        assert metadata["real_dataset"] is True
+
+
+def test_merge_task_metadata_preserves_scoped_public_dataset_sources() -> None:
+    task = create_pendigits_centroid_baseline_task()
+
+    merged = _merge_task_metadata(
+        task,
+        {
+            "network_access_approved": True,
+            "network_access_scope": "serve cycle broad approval",
+            "network_approval_mode": "approve-dangerous",
+            "network_approval_id": "runtime-approval-1",
+            "network_approved_by": "operator",
+            "approved_network_domains": ["api.openalex.org", "archive.ics.uci.edu"],
+            "network_source_urls": ["https://api.openalex.org/works"],
+        },
+    )
+
+    metadata = merged.metadata
+    assert metadata["network_access_approved"] is True
+    assert metadata["network_approval_mode"] == "approve-dangerous"
+    assert metadata["network_approval_id"] == "runtime-approval-1"
+    assert metadata["network_approved_by"] == "operator"
+    assert metadata["approved_network_domains"] == [
+        "archive.ics.uci.edu",
+        "api.openalex.org",
+    ]
+    assert "cached files are preferred" in metadata["network_access_scope"]
+    assert "runtime approval scope: serve cycle broad approval" in metadata[
+        "network_access_scope"
+    ]
+    assert (
+        "https://archive.ics.uci.edu/ml/machine-learning-databases/pendigits/pendigits.tra"
+        in metadata["network_source_urls"]
+    )
+    assert "https://api.openalex.org/works" in metadata["network_source_urls"]
+
+
+def test_run_scientistbench_demo_records_runtime_network_metadata(
+    tmp_path: Path,
+) -> None:
+    result = run_scientistbench_demo(
+        "tabular_baseline",
+        output_dir=tmp_path,
+        timeout_seconds=5,
+        task_metadata={
+            "network_access_approved": True,
+            "network_access_scope": "serve cycle approval",
+            "network_approval_mode": "allow-all",
+        },
+    )
+
+    run_record = json.loads(result.run_record_path.read_text(encoding="utf-8"))
+
+    assert result.task.metadata["network_access_approved"] is True
+    assert result.task.metadata["network_approval_mode"] == "allow-all"
+    assert run_record["task_metadata"]["network_access_scope"] == "serve cycle approval"
 
 
 def test_create_pendigits_centroid_baseline_task_defines_real_benchmark_contract() -> None:

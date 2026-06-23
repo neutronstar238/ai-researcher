@@ -37,7 +37,7 @@ class ConfigFormat(str, Enum):
 
 
 class ConfigParser:
-    """Parse and format AutoResearch configuration models."""
+    """Parse and format AI-Researcher configuration models."""
 
     def parse_file(
         self,

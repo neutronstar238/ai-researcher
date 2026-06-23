@@ -19,7 +19,9 @@ def test_system_config_defaults_are_local_first() -> None:
     assert config.knowledge_base.vault_path == Path("autoresearch-vault")
     assert config.compute.prefer_local is True
     assert config.compute.sandbox_enabled is True
-    assert config.literature.databases == ["arxiv", "semantic_scholar"]
+    assert "export.arxiv.org" in config.compute.allowed_network_domains
+    assert "api.openalex.org" in config.compute.allowed_network_domains
+    assert config.literature.databases == ["arxiv", "openalex"]
     assert config.deployment.llm.provider == "openai-compatible"
     assert config.deployment.llm.api_key_env == "AUTORESEARCH_LLM_API_KEY"
     assert config.deployment.slash_commands_dir == Path(".airesearcher/commands")

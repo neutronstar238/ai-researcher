@@ -1,7 +1,7 @@
 ---
 entry_type: issue_note
 zone: project
-project_id: autoresearch-system
+project_id: ai_researcher_system
 title: "{issue_title}"
 tags:
   - issue

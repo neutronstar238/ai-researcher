@@ -117,6 +117,8 @@ class LatexPaperQualityReport:
     bibliography_item_count: int
     min_bibliography_items: int
     invalid_reference_label_count: int
+    figure_readability_issue_count: int
+    figure_readability_issues: tuple[str, ...]
     failures: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -142,6 +144,8 @@ class LatexPaperQualityReport:
             "bibliography_item_count": self.bibliography_item_count,
             "min_bibliography_items": self.min_bibliography_items,
             "invalid_reference_label_count": self.invalid_reference_label_count,
+            "figure_readability_issue_count": self.figure_readability_issue_count,
+            "figure_readability_issues": list(self.figure_readability_issues),
             "failures": list(self.failures),
         }
 
@@ -273,6 +277,7 @@ def build_latex_paper_from_markdown(
     quality = _build_quality_report(
         sections,
         source_markdown,
+        source_path.parent,
         pdf_path,
         log_path,
     )
@@ -466,6 +471,7 @@ def _render_markdown_sections_as_latex(
 def _build_quality_report(
     sections: dict[str, str],
     source_markdown: str,
+    source_dir: Path,
     pdf_path: Path | None,
     log_path: Path,
 ) -> LatexPaperQualityReport:
@@ -493,6 +499,7 @@ def _build_quality_report(
     references_body = sections.get("References", "")
     bibliography_item_count = _bibliography_item_count(references_body)
     invalid_reference_label_count = _invalid_reference_label_count(references_body)
+    figure_readability_issues = _figure_readability_issues(source_markdown, source_dir)
     failures: list[str] = []
     if page_count is None or page_count < PAPER_MIN_PAGES:
         failures.append("page_count")
@@ -515,6 +522,8 @@ def _build_quality_report(
         failures.append("bibliography_depth")
     if invalid_reference_label_count:
         failures.append("reference_format")
+    if figure_readability_issues:
+        failures.append("figure_label_readability")
     return LatexPaperQualityReport(
         passed=not failures,
         page_count=page_count,
@@ -537,6 +546,8 @@ def _build_quality_report(
         bibliography_item_count=bibliography_item_count,
         min_bibliography_items=PAPER_MIN_BIBLIOGRAPHY_ITEMS,
         invalid_reference_label_count=invalid_reference_label_count,
+        figure_readability_issue_count=len(figure_readability_issues),
+        figure_readability_issues=tuple(figure_readability_issues),
         failures=tuple(failures),
     )
 
@@ -617,6 +628,82 @@ def _invalid_reference_label_count(references_body: str) -> int:
         if match and _is_nonbibliographic_reference_label(match.group(1)):
             count += 1
     return count
+
+
+def _figure_readability_issues(markdown: str, source_dir: Path) -> list[str]:
+    issues: list[str] = []
+    for _alt_text, asset_path in _markdown_image_refs(markdown):
+        metadata_path = _figure_metadata_path(asset_path, source_dir)
+        if metadata_path is None or not metadata_path.exists():
+            continue
+        try:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            issues.append(f"{metadata_path.as_posix()}: figure metadata is not valid JSON")
+            continue
+        if not isinstance(payload, dict) or payload.get("figure_type") != "metric_bar":
+            continue
+        metrics = payload.get("metrics")
+        if not isinstance(metrics, list):
+            issues.append(f"{metadata_path.as_posix()}: metric_bar metadata has no metric list")
+            continue
+        style = payload.get("style")
+        orientation = (
+            str(style.get("orientation", "")).casefold()
+            if isinstance(style, dict)
+            else ""
+        )
+        long_machine_metric_names: list[str] = []
+        for item in metrics:
+            if not isinstance(item, dict):
+                continue
+            name_value = item.get("name")
+            label_value = item.get("label")
+            if not isinstance(name_value, str):
+                continue
+            name = name_value.strip()
+            if _metric_name_needs_readable_label(name):
+                long_machine_metric_names.append(name)
+                if not isinstance(label_value, str) or not label_value.strip():
+                    issues.append(f"{metadata_path.as_posix()}: metric `{name}` has no readable label")
+                    continue
+                label = label_value.strip()
+                if _looks_like_raw_metric_label(label, name):
+                    issues.append(
+                        f"{metadata_path.as_posix()}: metric `{name}` uses raw label `{label}`"
+                    )
+        if long_machine_metric_names and orientation != "horizontal":
+            issues.append(
+                f"{metadata_path.as_posix()}: long metric labels require horizontal orientation"
+            )
+    return issues
+
+
+def _markdown_image_refs(markdown: str) -> list[tuple[str, str]]:
+    refs: list[tuple[str, str]] = []
+    for line in markdown.splitlines():
+        image = _markdown_image_match(line.strip())
+        if image is not None:
+            refs.append(image)
+    return refs
+
+
+def _figure_metadata_path(asset_path: str, source_dir: Path) -> Path | None:
+    cleaned = asset_path.strip().strip("\"'")
+    if re.match(r"^[a-z]+://", cleaned, flags=re.IGNORECASE):
+        return None
+    source = Path(cleaned)
+    if not source.is_absolute():
+        source = source_dir / source
+    return source.with_suffix(".metadata.json")
+
+
+def _metric_name_needs_readable_label(name: str) -> bool:
+    return "_" in name or len(name) > 24
+
+
+def _looks_like_raw_metric_label(label: str, name: str) -> bool:
+    return label == name or "_" in label
 
 
 def _markdown_text_to_latex_lines(
@@ -727,9 +814,14 @@ def _latex_inline(text: str) -> str:
 def _latex_inline_with_urls(text: str) -> str:
     parts: list[str] = []
     cursor = 0
-    for match in re.finditer(r"https?://[^\s.)]+[^\s.);,]", text):
+    for match in re.finditer(r"https?://\S+", text):
+        raw_url = match.group(0)
+        url = raw_url.rstrip(".,);]")
+        trailing = raw_url[len(url) :]
         parts.append(_latex_inline(text[cursor:match.start()]))
-        parts.append(rf"\url{{{match.group(0)}}}")
+        parts.append(rf"\url{{{url}}}")
+        if trailing:
+            parts.append(_latex_inline(trailing))
         cursor = match.end()
     parts.append(_latex_inline(text[cursor:]))
     return "".join(parts)
@@ -868,31 +960,72 @@ def _compile_latex(
     *,
     timeout_seconds: int,
 ) -> tuple[LatexPaperBuildStatus, Path | None, str | None]:
-    try:
-        completed = subprocess.run(
-            command,
-            cwd=tex_path.parent,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout_seconds,
-            **windows_no_window_kwargs(),
+    attempts: list[tuple[int, subprocess.CompletedProcess[str]]] = []
+    reruns_completed = 0
+    pdf_path = tex_path.with_suffix(".pdf")
+    for attempt in range(1, 3):
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=tex_path.parent,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_seconds,
+                **windows_no_window_kwargs(),
+            )
+        except subprocess.TimeoutExpired as exc:
+            log_path.write_text(str(exc), encoding="utf-8")
+            return (
+                LatexPaperBuildStatus.FAILED,
+                None,
+                f"compile timed out after {timeout_seconds}s",
+            )
+        attempts.append((attempt, completed))
+        if completed.returncode != 0 or not pdf_path.exists():
+            log_path.write_text(_compile_log_text(attempts), encoding="utf-8")
+            return (
+                LatexPaperBuildStatus.FAILED,
+                None,
+                f"LaTeX compile failed with exit code {completed.returncode}",
+            )
+        if attempt == 1 and _latex_log_requests_rerun(completed.stdout + completed.stderr):
+            reruns_completed += 1
+            continue
+        log_path.write_text(
+            _compile_log_text([(attempt, completed)], reruns_completed=reruns_completed),
+            encoding="utf-8",
         )
-    except subprocess.TimeoutExpired as exc:
-        log_path.write_text(str(exc), encoding="utf-8")
-        return LatexPaperBuildStatus.FAILED, None, f"compile timed out after {timeout_seconds}s"
+        return LatexPaperBuildStatus.COMPILED, pdf_path, None
     log_path.write_text(
-        "STDOUT:\n" + completed.stdout + "\nSTDERR:\n" + completed.stderr,
+        _compile_log_text(attempts[-1:], reruns_completed=reruns_completed),
         encoding="utf-8",
     )
-    pdf_path = tex_path.with_suffix(".pdf")
-    if completed.returncode == 0 and pdf_path.exists():
-        return LatexPaperBuildStatus.COMPILED, pdf_path, None
-    return (
-        LatexPaperBuildStatus.FAILED,
-        None,
-        f"LaTeX compile failed with exit code {completed.returncode}",
+    return LatexPaperBuildStatus.COMPILED, pdf_path, None
+
+
+def _compile_log_text(
+    attempts: list[tuple[int, subprocess.CompletedProcess[str]]],
+    *,
+    reruns_completed: int = 0,
+) -> str:
+    sections: list[str] = [f"RERUNS_COMPLETED: {reruns_completed}"]
+    for attempt, completed in attempts:
+        sections.append(
+            f"ATTEMPT {attempt}\n"
+            f"STDOUT:\n{completed.stdout}\n"
+            f"STDERR:\n{completed.stderr}"
+        )
+    return "\n\n".join(sections)
+
+
+def _latex_log_requests_rerun(log_text: str) -> bool:
+    rerun_markers = (
+        "Rerun to get cross-references right",
+        "Rerun to get citations correct",
+        "Label(s) may have changed",
     )
+    return any(marker in log_text for marker in rerun_markers)
 
 
 def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
@@ -932,6 +1065,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             f"minimum `{artifact.quality.min_bibliography_items}`"
         ),
         f"- Invalid reference labels: `{artifact.quality.invalid_reference_label_count}`",
+        f"- Figure readability issues: `{artifact.quality.figure_readability_issue_count}`",
         "",
         "## Missing Sections",
         "",
@@ -964,6 +1098,15 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
                 f"- `{section}`: `{artifact.quality.section_word_counts[section]}` / "
                 f"minimum `{artifact.quality.section_min_words[section]}` words"
             )
+    if artifact.quality.figure_readability_issues:
+        lines.extend(
+            [
+                "",
+                "## Figure Readability Issues",
+                "",
+            ]
+        )
+        lines.extend(f"- {issue}" for issue in artifact.quality.figure_readability_issues)
     lines.extend(
         [
             "",
@@ -975,6 +1118,7 @@ def _render_build_markdown(artifact: LatexPaperBuildArtifact) -> str:
             "- Missing external LaTeX classes trigger recorded TeX Live or official archive recovery before the build is blocked.",
             "- Thin manuscripts, shallow technical sections, or LaTeX overfull boxes are blockers, not polish notes.",
             "- Missing source-backed figures, missing data-analysis tables, missing formal bibliography entries, or operational evidence labels inside References are release blockers.",
+            "- Source-backed metric figures must expose readable labels in metadata and use horizontal layout for long machine metric keys.",
             "",
         ]
     )

@@ -14,10 +14,11 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 
 | 模块 | V1.0 行为 |
 | --- | --- |
-| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、vault 路径、集成 manifest 和 slash 模板。 |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest 和 slash 模板。 |
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
+| 研究计划门禁 | 用户确认研究方向后，`airesearcher research-plan` 会先把可执行研究计划写入 vault，并在 `outputs/<project-id>/research-plan/` 下生成 LaTeX/PDF，之后才允许代码 Agent 做实验。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
@@ -65,17 +66,39 @@ airesearcher setup
 3. 填写 `AUTORESEARCH_LLM_MODEL_NAME`。
 4. 填写 `AUTORESEARCH_LLM_API_KEY`。
 5. 可选配置微信扫码通道，或用 App ID/App Secret 配置飞书/Lark。
-6. 初始化 `autoresearch-vault/`。
-7. 写入 `integrations/` 下的集成 runbook。
-8. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
+6. 如果启用了通信通道，确认默认立即发送的真实送达自检，或显式跳过。
+7. 初始化 `autoresearch-vault/`。
+8. 写入 `integrations/` 下的集成 runbook。
+9. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
 
 向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
 
 推荐通道配置：
 
-- 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。
-- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。
+- 飞书/Lark：在 `airesearcher setup` 中选择 App ID + App Secret 模式。如果已经知道 home chat ID，可以在 setup 阶段填写；否则后续通过 adapter/gateway 与机器人对话后再绑定 home channel。通道状态完整后，向导默认会在退出前发送真实送达自检。
+- 微信/Weixin：选择 QR setup。交互式向导会在写完配置后立刻启动二维码适配器 setup 命令并等待扫码/登录结果；如果已经知道 OpenClaw 消息 target，可以在 setup 阶段填写，否则配对后运行 `airesearcher channels bind-target --channel wechat --target <target>`。非交互脚本默认只记录配置状态，除非额外传入 `--run-wechat-qr-setup`。当 QR 登录和 target 都准备好后，setup 默认会发送与 24h 推送门禁相同的真实自检。
 - Webhook URL 仍作为已有 incoming webhook 部署的兼容 fallback。
+
+引导式 setup 会询问是否立即发送通道送达自检，并在启用通道时默认选择发送。脚本化部署可以传入 `--run-channel-test`，要求所有启用通道都返回 `sent`，否则写入 JSON 证据后失败；也可以传入 `--skip-channel-test` 延后。若自检发现缺少 WeChat OpenClaw target 或 Feishu home chat ID，CLI 会打印对应的 `channels bind-target` 命令，操作者不需要手动编辑 `.env`。若选择延后，进入无人值守前请运行同一条自检：
+
+```bash
+npm run channel:test -- --channel feishu --require-sent
+# 或
+airesearcher channels test --channel feishu --require-sent
+# 微信 QR 部署在配对 target 后也可以做真实送达自检：
+airesearcher channels test --channel wechat --require-sent
+```
+
+随后运行严格上线前门禁：
+
+```bash
+npm run prelaunch
+# 或
+airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent
+```
+
+它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
+报告里的计划日循环命令会使用带审批门禁的 `serve` runtime，而不是更底层的直接 `autopilot` 入口。
 
 也可以非交互式部署：
 
@@ -105,6 +128,10 @@ airesearcher serve --permission-mode approve-dangerous --push-inspiration
 ```
 
 `serve` 默认持续运行。它会检查审批队列，执行已批准的 cycle，每次 cycle 间隔默认 `86400` 秒，并记录灵感摘要推送状态。
+在 `approve-dangerous` 模式下，每一次 cycle 尝试都会生成独立审批请求；只有明确希望无需逐轮审批地无人值守运行时，才使用 `allow-all`。
+等待输出和 `runtime list` 会显示逐轮 `action_id`，方便操作者确认正在审批的是哪一轮 cycle。
+
+常驻研究循环默认使用 `pendigits_variance_calibrated_prototypes`，也就是 UCI Pendigits 真实公开 benchmark 路径，包含方法对齐的文献检索和不少于 1,000 行验证数据。`--demo tabular_baseline` 只建议用于很小的本地 smoke。
 
 另开一个终端审批第一轮危险动作：
 
@@ -129,21 +156,26 @@ airesearcher serve --permission-mode allow-all --push-inspiration
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
+`autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
+
 每一轮 cycle 可以执行：
 
 1. 来源冷却和 preflight 检查。
 2. ArXiv 和 OpenAlex 文献刷新，Semantic Scholar 作为可选低优先级来源。
 3. 有来源支撑的相似工作和创新性检查。
-4. Hugging Face 和 Hacker News 灵感抓取。
-5. 本地 demo 或真实公开 benchmark 实验。
-6. 命令行复现实验检查。
-7. 可选真实 LLM 证据评审。
-8. publication audit。
-9. LaTeX 论文构建。
-10. physical evidence gate。
-11. Obsidian review、issue、skill、strategy 写入。
-12. scheduler follow-up 合并。
-13. 可选微信/飞书灵感摘要推送。
+4. 用户确认方向后的研究计划生成与门禁。
+5. Hugging Face 和 Hacker News 灵感抓取。
+6. 本地 demo 或真实公开 benchmark 实验。
+7. 命令行复现实验检查。
+8. 可选真实 LLM 证据评审。
+9. publication audit。
+10. LaTeX 论文构建。
+11. physical evidence gate。
+12. Obsidian review、issue、skill、strategy 写入。
+13. scheduler follow-up 合并。
+14. 可选微信/飞书灵感摘要推送。
+
+V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 
 单次灵感抓取并推送：
 
@@ -166,7 +198,7 @@ npm run monitor
 airesearcher monitor
 ```
 
-监控台会显示最近 Agent 消息、活跃文件声明、研究流程状态、审批队列、follow-up 任务、git diff 和 output 预览。
+监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
 
 | 参数 | 作用 |
 | --- | --- |
@@ -195,6 +227,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:refresh-literature` | 可选主题 | 联网刷新 ArXiv/OpenAlex 文献。 |
 | `/research:inspiration-refresh` | 查询文本 | 抓取非学术灵感来源并可推送摘要。 |
 | `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索。 |
+| `/research:research-plan` | candidate JSON + project id | 把确认方向后的研究计划写入 Obsidian 和 `outputs/`。 |
 | `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
 | `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
 | `/research:publication-stability` | 多个 cycle summary | 检查跨 cycle、模板和数据集的稳定性。 |
@@ -207,19 +240,38 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:skill-polish-audit` | skill id | 在 promotion 前审计 skill card。 |
 | `/research:skill-watchlist` | 无 | 将外部科研 skill 候选写入 Obsidian 隔离观察清单。 |
 | `/research:channel-adapters` | 无 | 写入可选通信 adapter runbook。 |
+| `/research:channel-test` | `wechat` 或 `feishu` | 发送 setup 通道自检消息。 |
+| `/research:readiness` | 无 | 在 24h 常驻运行前写入部署就绪检查报告。 |
 | `/research:code-agent-backends` | 无 | 写入 OpenCode 后端集成契约。 |
 | `/research:scansci-pdf` | 无 | 写入 OA-first PDF 获取 manifest。 |
 | `/research:status` | 无 | 查看本地 operator 状态提示。 |
 
 ## 常用 CLI 参数
 
+常用 npm 快捷入口：
+
+| Script | 含义 |
+| --- | --- |
+| `npm run setup` | 引导式首次部署。 |
+| `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
+| `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
+| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、通道配置和送达证据。 |
+| `npm run serve` | 启动带审批门禁和灵感推送的 24h operator。 |
+| `npm run monitor` | 打开 operator 监控台。 |
+
 | 命令 | 参数 | 含义 |
 | --- | --- | --- |
 | `setup` | `--provider`, `--base-url`, `--model-name`, `--api-key` | 供应商无关的大模型配置。 |
-| `setup` | `--wechat --wechat-qr` | 微信/Weixin 扫码适配器配置；交互式 setup 会启动扫码流程，非交互脚本可额外使用 `--run-wechat-qr-setup`。 |
+| `setup` | `--wechat --wechat-qr` | 微信/Weixin 扫码适配器配置；交互式 setup 会启动扫码流程，非交互脚本可额外使用 `--run-wechat-qr-setup`；扫码状态写入 `.airesearcher/channels/wechat/setup-status.json`。 |
+| `setup` | `--wechat-openclaw-target` | 可选 OpenClaw 微信消息 target，用于 QR 模式下真实通道自检和摘要推送。 |
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
+| `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | 在 setup 阶段发送或延后送达自检；交互式 setup 默认发送，失败会先写 JSON 证据，再非零退出。 |
+| `channels bind-target` | `--channel wechat [--target <target>]` | 微信 QR 配对后绑定 OpenClaw target，不需要手动编辑 `.env`；省略 `--target` 会交互询问。 |
+| `channels bind-target` | `--channel feishu [--target <chat-id>]` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标；省略 `--target` 会交互询问。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
+| `serve` | `--approval-poll-seconds 30` | 等待危险 cycle 审批时的轮询间隔；和每日 cycle 间隔分开。 |
+| `serve` / `autopilot` | `--demo pendigits_variance_calibrated_prototypes` | 默认公开 benchmark；`tabular_baseline` 仅建议用于 smoke。 |
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |
@@ -227,6 +279,10 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
+| `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
+| `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
+| `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
 | `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
 
@@ -269,6 +325,10 @@ outputs/<project-id>/
 
 通过门禁的 cycle 可以包含：
 
+- vault 中的 `research-plan/research-plan.md`
+- `research-plan/research-plan.tex`
+- `research-plan/research-plan.pdf`
+- `research-plan/research-plan.json`
 - `<project-id>-<cycle-id>.pdf`
 - 生成的 `.tex`
 - `paper-build.json`
@@ -281,9 +341,13 @@ outputs/<project-id>/
 
 ## 外部参考与许可证
 
-AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode、Hermes Agent、Luban Skill 风格指南、SimpleMem/Omni-SimpleMem、SkillClaw、oh-my-openagent/LazyCodex、Auto-Empirical Research Skills、paper-craft-skills、citation-management 和 Deep-Research-skills。外部 skill 线索会先通过 `airesearcher skill-watchlist` 进入 Obsidian 隔离观察清单；在许可证、安全、真实证据和回滚门禁通过之前，不会安装、复制或 promotion。
+AI-Researcher 参考了多个开源项目的设计思路或生态集成方式，包括 HKUDS AI-Researcher、AutoResearch、Horizon 风格每日刷新、AutoResearchClaw、SkillOpt、OpenClaw 通道插件、OpenCode、Hermes Agent、Luban Skill 风格指南、SimpleMem/Omni-SimpleMem、SkillClaw、LightAgent/LightFlow、Meta-Harness、oh-my-openagent/LazyCodex、PageAgent、Auto-Empirical Research Skills、paper-craft-skills、citation-management 和 Deep-Research-skills。外部 skill、harness-search 或来源适配器线索会先通过 `airesearcher skill-watchlist` 进入 Obsidian 隔离观察清单；在许可证、安全、真实证据和回滚门禁通过之前，不会安装、复制或 promotion。
 
-这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、Hermes Agent、AutoResearchClaw、oh-my-openagent/LazyCodex、任何第三方通道插件源码或第三方 skill 内容。
+Meta-Harness 风格的启发只进入受控自进化路径：先写 domain spec，固定 base model 和工具边界，归档候选源码、分数和执行 trace，隔离 search set 与 held-out 评估，并且只允许通过 AI-Researcher 现有的 shadow evaluation、evidence gate 和 rollback 流程后再提升。
+
+LightAgent 风格的启发只进入轻量编排和诊断路径：显式步骤依赖、步骤内重试、可选 trace events，以及 trace、项目记忆、反思记忆、委派状态进入 Obsidian 前的严格分层和来源过滤。
+
+这些项目的许可证和是否纳入源码的状态记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不 vendor OpenClaw、OpenCode、Hermes Agent、AutoResearchClaw、Meta-Harness、LightAgent、oh-my-openagent/LazyCodex、PageAgent、任何第三方通道插件源码或第三方 skill 内容。
 
 ## 开发
 

@@ -32,6 +32,1030 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-001 - PR 1 merge conflicts and approval shortcut guidance
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-23 09:07:46 +08:00
+- Source: Processing GitHub PR #1 (`codex/fix-windows-process-ui-flow`) against current `origin/main`.
+- Symptom: GitHub reported the PR as `CONFLICTING`; merging `origin/main` into the PR branch produced content conflicts in `src/autoresearch/cli/main.py`, `src/autoresearch/experiments/executor.py`, `src/autoresearch/reports/paper_build.py`, and `tests/unit/cli/test_main.py`. Copilot also noted that approval guidance printed `airesearcher runtime approve latest` without `--state`.
+- Impact: The PR could not be merged from GitHub, and users running `serve --approvals-state <custom-path>` could approve the wrong runtime approvals queue if they followed the old shortcut.
+- Evidence: `git merge origin/main` reported content conflicts in the four files above. `gh api repos/neutronstar238/ai-researcher/pulls/1/comments --paginate` returned Copilot review comments `3456337138` and `3456337159` requesting `--state` in approval guidance and matching tests.
+- Root cause: The PR branch changed Windows subprocess handling and CLI guidance while `origin/main` independently added serve loop/session handling, LaTeX rerun support, static executor preflight, and newer setup/readiness tests.
+- Workaround: None needed after this merge resolution.
+- Next action: Push the resolved PR branch and re-check GitHub mergeability.
+- Linked tasks: GitHub PR #1 handling, no `.kiro` task ID.
+- Resolution: Resolved merge conflicts by preserving both Windows no-window subprocess kwargs and current mainline loop/session/static-preflight/LaTeX-rerun behavior. Updated runtime approval waiting, setup next steps, approval bridge output, OpenClaw guidance, and tests so `approve latest` guidance includes `--state`.
+- Verification: Focused PR tests passed (`108 passed` across CLI, executor, paper build, process helper, and OpenClaw integration tests). Broad `python -m pytest tests\smoke tests\unit -q` passed with `549 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
+### P-20260620-001 - LightAgent-style self-learning traces can pollute project memory without scope filters
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-20 12:02:41 +08:00
+- Source: Live review of `wanxingai/LightAgent` while responding to the request to learn from Light.
+- Symptom: LightAgent-style systems combine self-learning memory, trace observability, LightSwarm delegation, and tool logs. If those ideas are copied naively, trace summaries, tool outputs, reflection notes, and delegated-agent state could be stored as ordinary project memory.
+- Impact: AI-Researcher's Obsidian vault could receive untrusted or sensitive trace data, cross-agent role state, or reflection outputs as if they were verified project knowledge, causing role drift, shared-memory pollution, hidden feedback loops, or unsupported future prompts.
+- Evidence: Upstream LightAgent docs recommend separating trace, user memory, agent/reflection memory, and delegation state; trace docs warn that tool arguments and outputs may contain sensitive data; the multi-agent failure map highlights role blending, shared-memory pollution, hidden loops, and unreadable logs.
+- Root cause: AI-Researcher already has evidence gates and Obsidian provenance conventions, but did not name LightAgent/LightFlow as a reference-only pattern with explicit trace-safe memory boundaries.
+- Workaround: None needed after the reference-only guardrail update.
+- Next action: If a future task adapts LightFlow-style orchestration or trace events, store only evidence-safe summaries in Obsidian, keep raw traces in ignored run artifacts, require source/scope/trust metadata, and block trace/reflection/delegation records from prompt context unless an admission gate promotes them.
+- Linked tasks: `213.1`
+- Resolution: Added LightAgent/LightFlow as a quarantined external watchlist candidate and third-party reference only; documented LightFlow DAG, trace events, memory/trace/delegation scoping, failure-map diagnostics, no-dependency/no-vendor boundaries, and evidence-safe vault ingestion requirements.
+- Verification: Focused skill/compliance tests, ruff, and mypy passed; real `airesearcher skill-watchlist` wrote a quarantined LightAgent/LightFlow candidate with trace observability, memory/trace/delegation boundaries, shared-memory pollution checks, and evidence-safe vault summary gates; broad smoke/unit tests, ruff, mypy, and diff checks passed for task `213.1`.
+
+### P-20260619-001 - Harness search can bypass controlled self-evolution if treated as production self-modification
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-19 10:42:00 +08:00
+- Source: Live review of `stanford-iris-lab/meta-harness` while responding to the request to learn from Meta-Harness.
+- Symptom: Meta-Harness-style outer loops intentionally search over executable harness code using prior candidate source, scores, and traces. If copied naively, that pattern could be misread as permission for AI-Researcher to rewrite production retrieval, memory, planning, or tool-use policy without held-out validation.
+- Impact: Uncontrolled harness search could overfit to search-set traces, leak held-out data into proposer context, promote unsafe tool behavior, or turn self-evolution into prompt-only self-modifying production policy.
+- Evidence: Upstream documentation and paper describe a proposer that inspects prior candidate source, scores, and execution traces through the filesystem, plus onboarding rules that require a domain spec, fixed base model, evaluation split, baselines, trace logging, and leakage caution.
+- Root cause: AI-Researcher already has shadow evaluation and skill-evolution gates, but did not name Meta-Harness as a reference-only harness-search pattern with explicit anti-leakage and trace-archive boundaries.
+- Workaround: None needed after the reference-only guardrail update.
+- Next action: If a future task implements actual harness-search automation, keep candidate harnesses in ignored run artifacts plus Obsidian summaries, scrub secrets from traces, and require shadow evaluation, evidence gates, held-out evaluation, and rollback before promotion.
+- Linked tasks: `212.1`
+- Resolution: Added Meta-Harness as a quarantined external watchlist candidate and third-party reference only; documented fixed-model, domain-spec, trace-archive, search/held-out split, anti-leakage, evidence-gate, and rollback requirements in README, README.zh-CN, changelog, and compliance tests.
+- Verification: Focused skill/compliance tests, ruff, and mypy passed; real `airesearcher skill-watchlist` wrote a quarantined Meta-Harness candidate with domain spec, trace archive, and held-out leakage gates; broad smoke/unit tests, ruff, mypy, and diff checks passed for task `212.1`.
+
+### P-20260618-124 - Root Obsidian vault default project links still pointed to old project ID
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 10:21:40 +08:00
+- Source: Repository-wide old-name scan after post-hardening readiness and vault checks.
+- Symptom: `autoresearch-vault/Home.md`, the research-loop dashboard, and several `_system/templates` entries still pointed to `projects/autoresearch-system` or used `project_id: autoresearch-system` even though the active project memory area is `projects/ai_researcher_system`.
+- Impact: A new operator opening the checked-in Obsidian vault could follow the default dashboard into the stale project ID rather than the current AI-Researcher system project area.
+- Evidence: `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system` matched the stale vault links and template defaults.
+- Root cause: Earlier project-name cleanup updated generated vault copy and source prose but did not update the checked-in root vault homepage/dashboard/template defaults.
+- Workaround: None needed after the fix.
+- Next action: Keep historical `projects/autoresearch-system` records in place, but do not use them as the default project entrypoint.
+- Linked tasks: `211.1`
+- Resolution: Updated the root vault homepage, dashboard, daily-cycle template, issue-note template, and experiment-record template to use `ai_researcher_system`; added a lightweight `projects/ai_researcher_system/index.md` project index.
+- Verification: Focused `rg` checks confirmed the stale default project ID no longer appears in `autoresearch-vault\Home.md` or `autoresearch-vault\_system`; `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md` returned true; `git diff --check` passed before commit.
+
+### P-20260618-123 - Static review missed Windows downloader aliases and .NET downloader strings
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:13:40 +08:00
+- Source: Follow-up review of Windows command paths after task `208.1` added explicit PowerShell web request command names.
+- Symptom: Static review could flag `Invoke-WebRequest` and `Invoke-RestMethod`, but common Windows downloader forms such as `iwr`, `irm`, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and `.NET WebClient.DownloadFile` were not covered.
+- Impact: Generated experiment code could hide retrieval behavior in common Windows aliases or .NET downloader snippets while avoiding the existing string-marker review path.
+- Evidence: `DANGEROUS_COMMAND_MARKERS` contained literal command names only and had no bounded regex patterns for aliases, `.exe` variants, BITS, or WebClient downloader strings.
+- Root cause: The earlier marker list handled obvious command spellings but not common Windows alias and .NET forms.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `209.1`
+- Resolution: Added bounded dangerous-command regex patterns for PowerShell aliases, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and .NET `WebClient`/`DownloadFile`/`DownloadString` strings; added regression tests for representative generated-code strings.
+- Verification: Focused static-review tests, ruff, and mypy passed; broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
+### P-20260618-122 - Static review missed PowerShell web request command markers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:08:09 +08:00
+- Source: Follow-up Windows command hardening after executor-level static preflight and dynamic import review.
+- Symptom: Static review treated `curl` and `wget` string markers as dangerous commands, but did not flag PowerShell web request commands such as `Invoke-WebRequest` or `Invoke-RestMethod`.
+- Impact: Generated code on Windows could hide web retrieval behind a PowerShell command string and avoid the existing string-marker review path.
+- Evidence: `DANGEROUS_COMMAND_MARKERS` covered shell deletion, `curl`, and `wget`, but lacked PowerShell web command markers.
+- Root cause: The original dangerous-command marker list was Unix/common-CLI biased and did not include Windows PowerShell download primitives.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `208.1`
+- Resolution: Added `invoke-webrequest` and `invoke-restmethod` markers to generated-code static review and added a regression test for a PowerShell `Invoke-WebRequest` command string.
+- Verification: Focused static-review test, ruff, and mypy checks passed; broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
+### P-20260618-121 - Static review missed dynamic imports of network and command modules
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 10:02:00 +08:00
+- Source: Follow-up hardening after task `206.1` added executor-level static preflight.
+- Symptom: Static review flagged ordinary `import socket` and `import subprocess`, but not dynamic forms such as `__import__("socket")` or `importlib.import_module("subprocess")`.
+- Impact: Generated code could evade the import-node review path while still reaching network or command-execution capabilities.
+- Evidence: `review_generated_code()` reviewed `ast.Import`, `ast.ImportFrom`, known dangerous call names, attributes, and string markers, but did not inspect dynamic import call arguments.
+- Root cause: Dynamic import helpers were not part of the original static review threat model.
+- Workaround: None needed after the fix.
+- Next action: Continue treating OS/container-level isolation as a separate hardening layer under `P-20260611-014`.
+- Linked tasks: `207.1`
+- Resolution: Added dynamic import review for `__import__()` and `importlib.import_module()` string arguments, classifying known network targets as `unrestricted_network` and command-execution targets as `dangerous_command`.
+- Verification: Focused review/executor tests passed; regressions prove dynamic `socket` import is blocked by executor network preflight and dynamic `subprocess` import is flagged by static review. Broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
+### P-20260618-120 - Executor did not fail closed on non-network static security findings
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-18 10:00:00 +08:00
+- Source: Security hardening pass over the generated-code executor while reviewing mitigated sandbox/network limitations.
+- Symptom: `review_generated_code()` could flag `dangerous_command`, `secret_read`, and `path_traversal`, but `execute_experiment_task()` only failed closed on `unrestricted_network` findings. A caller that skipped the earlier quarantine step could still launch code with dangerous subprocess calls or secret reads.
+- Impact: The system's evidence-first loop depended too heavily on workflow discipline. The executor should be a physical gate for dangerous generated code, not only a runner.
+- Evidence: `src\autoresearch\experiments\executor.py` filtered review findings to category `unrestricted_network`; `tests\unit\experiments\test_review.py` already proved the static reviewer finds dangerous subprocess and secret access patterns.
+- Root cause: Task `147.1` hardened the executor for network import approval but did not promote other static security review categories into the executor's pre-launch deny path.
+- Workaround: None needed after the fix.
+- Next action: Keep OS/container-level sandbox enforcement tracked separately under `P-20260611-014`.
+- Linked tasks: `206.1`
+- Resolution: Reused static review in the executor, blocked `dangerous_command`, `path_traversal`, and `secret_read` findings before subprocess launch, and recorded `static_preflight` metadata.
+- Verification: Focused executor/review/network tests passed; new executor regressions confirmed dangerous subprocess/curl and secret-read code is blocked before `metrics.json` can be written. Broad smoke/unit tests, ruff, mypy, and diff checks passed before commit.
+
+### P-20260618-119 - Source package docstrings still described the product as AutoResearch
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:47:00 +08:00
+- Source: Post-task `204.1` stale-name scan.
+- Symptom: Several source module/class/function docstrings described the local runtime, lifecycle schemas, CLI package, and logging context as `AutoResearch`.
+- Impact: Generated API documentation, source inspection, and future agent scans could make the repository appear to have mixed product names after the user renamed the project to `AI-Researcher`.
+- Evidence: `rg -n "AutoResearch" src\autoresearch` found docstring hits in `cli\__init__.py`, `config\models.py`, `config\parser.py`, `schemas\__init__.py`, `schemas\models.py`, and `observability\logging.py`.
+- Root cause: The product rename had been applied to README and runtime-generated assets before these early scaffold docstrings were revisited.
+- Workaround: None needed after the fix.
+- Next action: Preserve package/import names such as `autoresearch` for compatibility, but avoid using `AutoResearch` as product prose unless referring to an external project.
+- Linked tasks: `205.1`
+- Resolution: Updated the affected source docstrings to `AI-Researcher` while leaving package/module names and logger namespaces unchanged.
+- Verification: `rg -n "AutoResearch" src\autoresearch` returned no matches; focused ruff and mypy checks passed.
+
+### P-20260618-118 - Generated vault index copy still used old AutoResearch name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:42:00 +08:00
+- Source: Launch-readiness polish after the user required product-facing project naming to be `AI-Researcher`.
+- Symptom: `create_vault_layout()` wrote first-run Obsidian index copy containing `Global cross-project knowledge index for AutoResearch.` and `Project knowledge index for AutoResearch.`.
+- Impact: A new user running setup or Obsidian vault generation could see stale project naming in the knowledge base's first visible index files, even though README and generated home/dashboard assets use AI-Researcher.
+- Evidence: `rg -n "knowledge index for AutoResearch" src\autoresearch\knowledge tests\unit\knowledge README.md README.zh-CN.md .kiro\specs\auto-research-system\tasks.md` found the stale strings in `src\autoresearch\knowledge\vault.py`.
+- Root cause: The original vault layout helper predated the product-facing rename and only the richer Obsidian assets had been updated.
+- Workaround: None needed after the fix.
+- Next action: Keep tests reading generated Markdown copy whenever project-facing names change.
+- Linked tasks: `204.1`
+- Resolution: Updated generated exploration and project index copy to `AI-Researcher` and added regression assertions in `tests\unit\knowledge\test_vault.py`.
+- Verification: Focused vault tests, ruff, and mypy passed. An initial real CLI smoke with stale `--local-snippet` failed because the actual flag is `--write-local-snippet`; rerunning the real Node `obsidian-setup` command with `--write-local-snippet` succeeded and generated index files containing `AI-Researcher`, with no matches for `knowledge index for AutoResearch` under the generated vault.
+
+### P-20260618-117 - Readiness treated Feishu App credentials as delivery-ready without home chat
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 09:32:00 +08:00
+- Source: Code inspection and real readiness probe while hardening setup-time channel delivery repair actions.
+- Symptom: `readiness --require-channel-config --require-channel-sent` counted Feishu App ID/App Secret as a ready channel even when `AUTORESEARCH_FEISHU_HOME_CHAT_ID` was missing.
+- Impact: Prelaunch guidance could send operators straight to `channels test`, where delivery would be skipped, instead of first telling them to bind the Feishu/Lark home chat target required by the App API sender.
+- Evidence: The notification sender requires `AUTORESEARCH_FEISHU_HOME_CHAT_ID` for Feishu App delivery, while `_operator_channel_readiness()` previously added `feishu` to `ready_channels` when only App credentials existed.
+- Root cause: Operator-channel readiness used credential presence as a proxy for delivery readiness, but Feishu App delivery also needs the chat target.
+- Workaround: None needed after the fix.
+- Next action: Keep readiness definitions aligned with actual notification sender requirements.
+- Linked tasks: `203.1`
+- Resolution: Required `AUTORESEARCH_FEISHU_HOME_CHAT_ID` alongside Feishu App credentials before marking Feishu ready, added `feishu_home_chat_configured` evidence, and added `bind_feishu_target` next-action generation when the home chat target is missing.
+- Verification: Focused readiness tests passed; real Node readiness probe with Feishu App credentials but no home chat wrote a blocked report containing `bind_feishu_target` then `run_channel_self_test`; broad `python -m pytest tests\smoke tests\unit -q` passed with 536 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed.
+
+### P-20260618-116 - Operator monitor showed oldest Agent.md entries instead of latest work
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 09:13:00 +08:00
+- Source: Real `node .\bin\airesearcher.mjs monitor` render over the `task200_post_setup_cycle` live cycle.
+- Symptom: The `Agent Messages` panel displayed older entries such as Task `187.1` and Task `186.1` while newer Task `199.1` and Task `198.1` entries existed at the end of `Agent.md`.
+- Impact: The operator console could mislead users during long-running work by showing stale agent activity instead of the latest handoff and verification notes.
+- Evidence: The real monitor output rendered Task `187.1` and `186.1` with `--max-agent-entries 2`; after the fix, the same command filtered for task IDs rendered Task `199.1` and `198.1`.
+- Root cause: `_recent_agent_entries_text()` collected `Agent.md` entries in file order and rendered `entries[:max_entries]`, which selects the oldest entries when the log is append-only.
+- Workaround: None needed after the fix.
+- Next action: Keep monitor tests covering append-only Agent.md ordering whenever the log parser changes.
+- Linked tasks: `200.1`
+- Resolution: Changed `_recent_agent_entries_text()` to render `reversed(entries[-max_entries:])` so the newest append-only entries appear first.
+- Verification: Focused monitor tests passed; real monitor rerender showed Task `199.1` and Task `198.1`; broad `python -m pytest tests\smoke tests\unit -q` passed with 534 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed.
+
+### P-20260618-115 - Setup channel self-test leaked `.env` values into process-wide notification tests
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 08:41:00 +08:00
+- Source: GitHub Actions run `27729038684` for commit `610ba53`.
+- Symptom: CI `Run smoke and unit tests` failed after the setup channel self-test change. `test_setup_run_channel_test_requires_enabled_channel_before_writing` used an ANSI-sensitive exact option-string assertion, and `test_send_inspiration_digest_records_missing_webhook_without_network` observed Feishu status `failed` instead of `skipped`.
+- Impact: The feature was functionally correct locally, but CI could fail on Linux/Rich output and test order could leak setup `.env` values into unrelated notification tests.
+- Evidence: CI log reported `FAILED tests/unit/cli/test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing` because Rich styled `--run-channel-test` with ANSI escape codes, and `FAILED tests/unit/test_notifications.py::test_send_inspiration_digest_records_missing_webhook_without_network` because records were `['skipped', 'failed']` instead of `['skipped', 'skipped']`.
+- Root cause: `send_inspiration_digest()` used `env or os.environ`, so explicit `env={}` fell back to global `os.environ`. The setup channel self-test helper also used `_load_optional_env(..., override=True)`, which wrote test `.env` values into the process environment.
+- Workaround: None needed after the fix.
+- Next action: Keep notification tests using explicit `env={}` when asserting no configured delivery target; keep channel self-test execution environment local to the call.
+- Linked tasks: `196.1`
+- Resolution: Changed `send_inspiration_digest()` to use `os.environ` only when `env is None`, changed channel delivery self-test to pass a merged local environment mapping instead of mutating `os.environ`, and relaxed the CLI test assertion to the stable error substring.
+- Verification: Focused failing tests passed; `python -m pytest tests\smoke tests\unit -q` passed with 532 passed and 4 skipped; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
+### P-20260618-114 - Manuscript adjacent-work table reported counts not present in evidence artifact
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-18 08:12:00 +08:00
+- Source: Real `task195_full_cycle` `serve --once` run with live online retrieval, real Pendigits execution, live DeepSeek LLM evidence review, publication audit, LaTeX build, and evidence gate.
+- Symptom: The cycle executed successfully but the LLM evidence review returned `verdict=needs_revision`; publication audit returned `needs_revision`; evidence gate returned `blocked`.
+- Impact: The automated research loop could generate a polished PDF while still being blocked from release because the manuscript made unsupported adjacent-work subfamily count claims. This is exactly the kind of evidence drift the publication gate is intended to catch.
+- Evidence: `runs/manual-live/task195-full-cycle/runs/cycle-20260618T001200Z/llm-review.json` reported that the Adjacent-Work Positioning table claimed `Metric and Mahalanobis family` and `Other adjacent source-backed hits` counts of zero, while `similarity-positioning-summary.json` only contained total adjacent-work rows and did not record those subfamily counts. `publication-audit.json` failed `review_verdict_strength`, and `evidence-gate.json` failed `review_gate` plus `publication_release_gate`.
+- Root cause: `_similarity_finding_lines()` rendered hard-coded prototype/metric/other table rows from ad hoc local counts, while `_similarity_positioning_summary()` did not persist matching family-count evidence. `_positioning_family()` also let broad source-query text influence family assignment instead of first honoring structured `query family overlap ...` evidence.
+- Workaround: Before the fix, treat manuscript Adjacent-Work Positioning rows as suspect unless the generated `similarity-positioning-summary.json` explicitly records matching family counts.
+- Next action: Keep future manuscript tables directly backed by generated JSON artifacts, and prefer deleting unsupported table rows over broadening reviewer tolerance.
+- Linked tasks: `195.1`
+- Resolution: Added `adjacent_work_family_counts` to `similarity-positioning-summary.json`, changed manuscript rendering to include only nonzero adjacent-work family rows backed by those counts, and made structured overlap-family evidence take priority over source-query prose.
+- Verification: Focused manuscript/publication/evidence/paper tests, ruff, and mypy passed. Real `task195_full_cycle_v2` and final real `task195_full_cycle_v3` full cycles passed LLM review, publication audit, evidence gate, and paper quality with zero follow-up tasks. Final `task195_full_cycle_v3` produced `outputs/task195_full_cycle_v3/task195_full_cycle_v3-cycle-20260618T002038Z.pdf`, `publishable=true`, `release_allowed=true`, 15 pages, 3957 words, zero overfull hboxes, and no matches for `adjacent_work=0`, old operational reference labels, or placeholder locator text in the generated manuscript. Broad `python -m pytest tests\smoke tests\unit -q` passed with 529 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed.
+
+### P-20260618-113 - Line-ending-only vault files remain dirty after content-memory commits
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 08:02:00 +08:00
+- Source: `git status --short` and `git update-index --refresh` after tasks `191.1` and `192.1`.
+- Symptom: Several vault files such as `autoresearch-vault/Home.md`, `_system` templates, dashboards, and paper notes appear as modified in `git status`, while `git diff --name-status -- autoresearch-vault` does not list them as content changes and commands report CRLF conversion warnings.
+- Impact: Future agents may confuse line-ending/status noise with unreviewed semantic vault changes.
+- Evidence: `git update-index --refresh` reported `needs update` for those files; `git diff --name-status -- autoresearch-vault` listed only 13 real content diffs.
+- Root cause: The workspace has mixed line-ending state for tracked Markdown files, and Git reports them as needing update even when no content diff is present.
+- Workaround: No longer needed after adding `.gitattributes` and refreshing the affected vault paths.
+- Next action: Continue to keep semantic vault updates separate from repository-format maintenance.
+- Linked tasks: `193.1`, `194.1`
+- Resolution: Added `.gitattributes` with LF policies for Markdown and common source/config text files. Refreshed the affected vault paths with `git add`, which left no staged semantic content changes for those files.
+- Verification: `git ls-files --eol` reported the checked vault paths as `i/lf w/lf attr/text eol=lf`; `git diff --cached --stat` after staging the affected vault paths showed only `.gitattributes`; `git status --short` showed no remaining vault modifications after staging.
+
+### P-20260618-112 - Vault rebuild treated `_system` templates as knowledge entries
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:58:00 +08:00
+- Source: Audit of remaining tracked `autoresearch-vault/` diffs after task `191.1`.
+- Symptom: `_system/templates/*.md` files had generated `entry_id`, `created_at`, `updated_at`, links, backlinks, and related-run fields even though they are Obsidian templates, not durable knowledge records. Rebuild also rewrote parsed entries even when links/backlinks were unchanged.
+- Impact: Template pollution can leak placeholder templates into the self-loop knowledge graph and create noisy, repeated vault diffs on every index rebuild.
+- Evidence: `git diff -- autoresearch-vault\_system\templates\experiment-record.md autoresearch-vault\_system\templates\skill-card.md` showed generated entry metadata inserted into template frontmatter.
+- Root cause: `MarkdownKnowledgeStore._read_all_entries()` skipped only dot-prefixed internal paths, and `rebuild_indexes()` wrote every parsed entry back through canonical serialization.
+- Workaround: None needed after excluding `_system` and avoiding unchanged-entry writes.
+- Next action: Keep generated runtime notes under exploration/project zones; keep `_system` for human/operator scaffolding only.
+- Linked tasks: `192.1`
+- Resolution: Updated `_is_internal_path()` to skip `_system`, refactored `rebuild_indexes()` to write entries only when computed links/backlinks changed, restored templates to placeholder-only frontmatter, and added regression coverage.
+- Verification: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed. `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed. `python -m mypy src\autoresearch\knowledge\entries.py` passed. Real vault rebuild succeeded. `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md` returned no matches.
+
+### P-20260618-111 - Obsidian topic index admitted low-value operational keywords
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:48:00 +08:00
+- Source: Audit of tracked `autoresearch-vault/` changes before committing the next self-loop memory update.
+- Symptom: `autoresearch-vault/exploration/index.md` contained topic headings such as `## adds`, `## are`, generated `candidate_*`/`autopilot_*` slugs, file-artifact names, and a full nearest-centroid reviewer sentence.
+- Impact: The Obsidian vault is the self-loop and self-evolution memory substrate; noisy generated headings make browsing, retrieval, and future automatic topic selection less reliable.
+- Evidence: `Get-Content autoresearch-vault\exploration\index.md -TotalCount 140` and `Select-String -Pattern '^## '` showed low-value headings before the fix.
+- Root cause: `MarkdownKnowledgeStore._write_topic_index()` previously indexed every raw keyword exactly as written, without filtering stopwords, generated run slugs, file artifact names, or sentence-length review notes.
+- Workaround: None needed after filtering at topic-index generation time; raw keywords remain available in entry frontmatter for evidence recovery.
+- Next action: Keep future keyword generators conservative, but let the topic-index filter be the final UI guardrail for Obsidian readability.
+- Linked tasks: `191.1`
+- Resolution: Added topic-index keyword normalization/filtering in `src/autoresearch/knowledge/entries.py`, regression coverage in `tests/unit/knowledge/test_links.py`, and rebuilt the real vault index.
+- Verification: `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q` passed. `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py` passed. `python -m mypy src\autoresearch\knowledge\entries.py` passed. Initial direct vault rebuild failed with `ModuleNotFoundError: No module named 'autoresearch'`; rerunning with `sys.path.insert(0, 'src')` succeeded. Final `Select-String` confirmed no topic headings for `adds`, `are`, `candidate_*`, `autopilot_*`, file-artifact keywords, or the long nearest-centroid reviewer sentence.
+
+### P-20260618-110 - Focused pytest command used a stale CLI selector
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:39:00 +08:00
+- Source: Focused verification for task `190.1`.
+- Symptom: `python -m pytest ... tests\unit\cli\test_main.py::test_literature_clients_default_to_arxiv_openalex -q` exited with `ERROR: not found` and collected no target test.
+- Impact: The first focused verification command did not exercise the intended CLI default-client coverage.
+- Evidence: Pytest reported no match for `test_literature_clients_default_to_arxiv_openalex`.
+- Root cause: The actual test name is `test_autopilot_literature_clients_default_to_core_free_sources`.
+- Workaround: Use `rg` to locate the exact test name before running the focused selector.
+- Next action: None.
+- Linked tasks: `190.1`
+- Resolution: Reran focused verification with the correct selector and adjacent default-source tests.
+- Verification: `python -m pytest tests\unit\config\test_models.py tests\unit\config\test_parser.py tests\unit\experiments\test_network.py tests\unit\cli\test_main.py::test_autopilot_literature_clients_default_to_core_free_sources tests\unit\literature\test_refresh.py::test_daily_refresh_default_sources_include_openalex_fallback tests\unit\research\test_similarity.py::test_project_similarity_default_sources_include_openalex_fallback -q` passed.
+
+### P-20260618-109 - Configuration defaults still treated Semantic Scholar as a default source
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:37:00 +08:00
+- Source: Launch-readiness self-check after task `189.1`.
+- Symptom: Runtime code and README describe ArXiv plus OpenAlex as default free/public sources with Semantic Scholar optional, but `SystemConfig` still listed `semantic_scholar` as a default literature database and omitted `api.openalex.org` from network defaults. The ignored local `config.yaml` in this workspace had the same stale values.
+- Impact: A first-deploy user or downstream config writer could reintroduce Semantic Scholar as a required source, increasing 429 risk and contradicting current default-source behavior.
+- Evidence: `tests\unit\config\test_models.py` asserted the stale default; `src\autoresearch\experiments\network.py` did not allow `api.openalex.org`; ignored local `config.yaml` had `literature.databases: [arxiv, semantic_scholar]`.
+- Root cause: Earlier source-policy changes updated runtime client selection and docs but did not update the configuration model and checked-in root config.
+- Workaround: Before this fix, rely on runtime literature client defaults rather than root config for source selection.
+- Next action: None for default source alignment.
+- Linked tasks: `190.1`
+- Resolution: Changed committed config defaults to ArXiv plus OpenAlex, added `export.arxiv.org` and `api.openalex.org` to default network domains, added tests, and repaired the ignored local `config.yaml` for live verification without force-adding it to Git.
+- Verification: Focused config/network/default-source tests, ruff, and mypy passed. Real readiness parsed the repaired ignored local `config.yaml`, and real live literature refresh fetched from ArXiv/OpenAlex without Semantic Scholar.
+
+### P-20260618-108 - Strict prelaunch omitted the follow-up channel self-test action
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:31:08 +08:00
+- Source: Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch.json` run during launch-readiness self-check.
+- Symptom: Strict readiness correctly failed when no WeChat/Feishu channel was configured and no sent-delivery self-test existed, but `next_actions` listed only the QR setup command and did not also show the required `channels test --require-sent` command.
+- Impact: A first-time operator could complete QR setup and still miss the delivery-evidence step before leaving the 24h loop unattended.
+- Evidence: `runs\manual-live\prelaunch-readiness\strict-prelaunch.json` had two failures, `operator_channels` and `channel_delivery_test`, but only one `configure_operator_channel` next action.
+- Root cause: `_readiness_next_actions()` deduplicated the channel-configuration action for the missing-channel branch and only emitted a self-test command when at least one channel was already ready.
+- Workaround: Manually run `airesearcher channels test --channel wechat --output .airesearcher/channels/test-result.json --require-sent` after successful WeChat QR pairing and target binding.
+- Next action: None for strict-readiness guidance.
+- Linked tasks: `189.1`
+- Resolution: Added a strict missing-channel branch that also emits `run_channel_self_test` for the default WeChat QR setup path, without changing the blocked verdict.
+- Verification: Focused readiness CLI tests, ruff, and mypy passed. A real strict prelaunch rerun remained blocked honestly but now lists both `configure_operator_channel` and `run_channel_self_test`.
+
+### P-20260618-107 - Compact formal-reference title cells repeated locator text
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:22:00 +08:00
+- Source: Follow-up inspection after fixing `P-20260618-106`.
+- Symptom: `formal-reference-evidence.md` preserved full `Manuscript locator` values, but the `Title` column still repeated DOI and URL locator strings, making the compact citation evidence table noisy and harder to review.
+- Impact: The LLM review evidence and human audit artifact were technically correct but less readable, which weakens the project goal of publication-facing, traceable, reviewer-friendly evidence.
+- Evidence: `runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\formal-reference-evidence.md` had rows whose `Title` cells included URL/DOI strings that were already present in `Metadata locator` and `Manuscript locator`.
+- Root cause: `_autopilot_reference_title_and_locator()` extracted the first locator but returned the original reference tail as the title for non-legacy reference lines.
+- Workaround: Before the fix, read the dedicated locator columns and ignore duplicated locator text in the title column.
+- Next action: None for compact title readability.
+- Linked tasks: `188.1`
+- Resolution: Removed all DOI/URL locator substrings from the returned compact title after extracting the first locator, while preserving the locator column.
+- Verification: Focused CLI test, ruff, and mypy passed. The real `task188_formal_title_cleanup` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; its `formal-reference-evidence.md` keeps full locators in locator columns while the `Title` cells no longer repeat DOI/URL strings.
+
+### P-20260618-106 - Compact formal-reference evidence truncated dotted URL locators
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 07:15:00 +08:00
+- Source: Follow-up inspection of `task186_formal_reference_directness_v2` after formal bibliography relevance was fixed.
+- Symptom: The publication PDF rendered full arXiv URLs, but the compact `formal-reference-evidence.md` table showed `Manuscript locator` values such as `http://arxiv` for arXiv references.
+- Impact: The audit artifact could make reference traceability look weaker than it actually was, and a reviewer or downstream gate could mistake a display extraction bug for missing citation evidence.
+- Evidence: `runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\formal-reference-evidence.md` showed arXiv rows with manuscript locators of exact backtick-wrapped `http://arxiv` even though the row title and PDF text contained full `http://arxiv.org/abs/...` URLs.
+- Root cause: `_autopilot_reference_title_and_locator()` used `https?://[^\s.]+`, so URL extraction stopped at the first dot in dotted domains.
+- Workaround: Before the fix, inspect the full title/reference line or PDF text rather than relying on the compact `Manuscript locator` column for arXiv rows.
+- Next action: None for the current locator truncation; future work can make the compact title column cleaner if row length becomes a reviewer readability issue.
+- Linked tasks: `187.1`
+- Resolution: Changed URL matching to consume the full non-whitespace URL and strip only trailing punctuation, and added a regression assertion for a dotted URL without the legacy DOI/URL marker.
+- Verification: Focused CLI test, ruff, and mypy passed. The real `task187_formal_locator_integrity` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; its `formal-reference-evidence.md` preserved full `http://arxiv.org/abs/...` manuscript locators, while the paper PDF stayed at 15 pages with zero overfull hboxes and 10 formal bibliography items.
+
+### P-20260618-105 - Formal bibliography admitted broad domain-only handwritten-recognition references
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 07:04:00 +08:00
+- Source: Inspection of the real `task185_aligned_seed_evidence_v2` publication PDF and formal reference evidence artifact.
+- Symptom: The generated publication-facing References section still included broad context-only handwritten-recognition papers such as `wahid2022` and `basu2012` even after candidate seed evidence and research-plan evidence had been made method-aligned.
+- Impact: A final PDF could look citation-rich while padding the formal bibliography with papers that are domain-adjacent but not direct evidence for variance-calibrated prototypes, nearest-centroid baselines, metric recognition, or comparable method mechanisms.
+- Evidence: `runs\manual-live\task185-aligned-seed-evidence-v2\runs\cycle-20260617T225914Z\formal-reference-evidence.md` listed `wahid2022` and `basu2012` among 12 displayed references. During investigation, `Get-Content -Raw runs\manual-live\task185-aligned-seed-evidence-v2\runs\cycle-20260617T225914Z\paper-manuscript\analysis\formal-reference-evidence.md` failed because `formal-reference-evidence.md` lives at the cycle root, not under `paper-manuscript\analysis`.
+- Root cause: `_reference_row_is_direct()` treated title/tag overlap on handwritten/digit/pendigit plus classifier/classification/recognition as sufficient for direct publication references, even when no title-level method anchor such as prototype, centroid, nearest, Mahalanobis, metric, distance, or KNN was present.
+- Workaround: Before the fix, manually inspect `formal-reference-evidence.md` at the cycle root and demote broad handwritten-recognition references when checking a publication PDF.
+- Next action: Keep formal bibliography directness aligned with related-work directness, and fix separate locator-display artifacts if the compact evidence table's `Manuscript locator` column needs full URL rendering.
+- Linked tasks: `186.1`
+- Resolution: Added title/tag-level method anchor constants, removed the broad domain-only directness rule, and added a regression fixture where a verified handwritten Bangla MLP classifier paper remains available as citation metadata but is excluded from formal References.
+- Verification: Focused manuscript tests, ruff, and mypy passed. The real `task186_formal_reference_directness_v2` cycle passed research plan, LLM review, publication audit, evidence gate, and paper build quality; the paper PDF has 15 pages, zero overfull hboxes, and 10 formal bibliography items. `formal-reference-evidence.md` no longer lists `wahid2022` or `basu2012`, and `pdftotext` confirmed the final PDF keeps method-direct prototype/nearest/metric/KNN sources while omitting broad Bangla/MLP/domain-only entries.
+
+### P-20260618-104 - Autopilot seed evidence could pollute research plans with unrelated or domain-only papers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:50:00 +08:00
+- Source: Inspection of the real `task184_research_plan_specificity_v2`, `task185_aligned_seed_evidence`, and `task185_aligned_seed_evidence_v2` `serve --once` cycles.
+- Symptom: The research plan could inherit `evidence_refs` from whichever document appeared first in the online literature refresh, even when that paper was unrelated to the selected method. After the first fix selected by broad term score, the real `task185_aligned_seed_evidence` cycle no longer used the Boolean variance paper as the candidate seed, but it still allowed a domain-only handwritten-digit feature paper to become seed evidence for a prototype-calibration candidate.
+- Impact: A code agent could receive a research plan whose evidence sources looked source-backed but were not actually method-aligned, weakening novelty checks and making the Obsidian plan archive misleading.
+- Evidence: `task184_research_plan_specificity_v2` showed candidate seed evidence pointing to a Boolean variance paper (`http://arxiv.org/abs/2003.09703v1`). During focused testing, `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_runs_non_review_cycle_with_runtime_session -q` used a stale selector, and the corrected focused run exposed the `ResearchCandidate.evidence_refs` min-length schema failure when no aligned seed existed. The real `task185_aligned_seed_evidence` cycle passed all release gates but selected `A Classical Approach to Handcrafted Feature Extraction Techniques for Bangla Handwritten Digit Recognition` as seed evidence. The final real `task185_aligned_seed_evidence_v2` cycle selected `Prototype Completion for Few-Shot Learning` as the seed and the research-plan evidence sources no longer contained the fallback marker, Boolean variance seed, or domain-only Bangla seed.
+- Root cause: `_autopilot_candidate_from_literature()` used `documents[0]` as seed evidence. The first scoring implementation preferred high-weight domain terms such as `handwritten digit recognition` even when no strong method anchor such as prototype, centroid, Mahalanobis, or metric learning was present. `ResearchCandidate.evidence_refs` also requires at least one item, so an empty no-seed state could not be represented directly.
+- Workaround: Before the fix, manually inspect `candidate.json`, `research-plan.md`, and research-plan PDF evidence sources before treating a generated plan as code-agent-ready.
+- Next action: Continue tightening formal bibliography and related-work selection separately if future PDFs include context-only papers that are too broad for the target manuscript.
+- Linked tasks: `185.1`
+- Resolution: Added method-anchor seed selection, a truthful `literature_refresh:method_aligned_seed_not_found` fallback marker, research-plan filtering that drops that fallback when context summaries are available, and tests covering unrelated Boolean and domain-only handwritten-digit papers.
+- Verification: Focused CLI/research-plan tests, ruff, and mypy passed. The final real `task185_aligned_seed_evidence_v2` cycle passed research plan, LLM review, publication audit, evidence gate, reproduction check, and paper build quality; the research-plan PDF has 3 pages and the paper PDF has 15 pages with zero overfull hboxes.
+
+### P-20260618-103 - Research-plan audit allowed placeholder metrics and manuscript listed an unsupported readiness artifact
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:36:00 +08:00
+- Source: Real `task183_adjacent_positioning_v3`, `task184_research_plan_specificity`, and `task184_research_plan_specificity_v2` `serve --once` cycles.
+- Symptom: The real research-plan PDF compiled and passed the deterministic gate while still using the placeholder phrase `primary task metric`. After the research-plan metric was made specific, the first full rerun still blocked release because the manuscript Evidence and Artifact Availability table listed `Readiness report` even though no readiness evidence artifact was provided to the LLM review bundle.
+- Impact: A code agent could receive a plan that was too vague to execute rigorously, or a manuscript could fail evidence review because the static artifact table claimed an unavailable artifact.
+- Evidence: `task183_adjacent_positioning_v3` research-plan text used `Primary metric: primary task metric`. The first focused `tests\unit\research\test_plans.py` run after strict placeholder scanning failed until the default robustness/risk text was tied to an inferred validation route. The real `task184_research_plan_specificity` cycle produced a specific research-plan PDF but ended with reviewer `needs_revision`, publication audit `needs_revision`, evidence gate `blocked`, and three follow-up tasks because `Readiness report` was listed without evidence.
+- Root cause: `audit_research_plan()` only required the word `metric` rather than a concrete metric token and did not scan structured dataset source/target fields. `_build_plan()` defaulted missing metric metadata to `primary task metric` and used generic hold-out/benchmark wording in robustness/risk text. The manuscript artifact table also included a static readiness row independent of the actual review evidence bundle.
+- Workaround: Before the fix, manually inspect research-plan PDFs for placeholder terms and compare every artifact row in the manuscript with the evidence files supplied to `llm-review`.
+- Next action: If future cycles add a real readiness artifact to review evidence, add it dynamically rather than restoring a static manuscript row.
+- Linked tasks: `184.1`
+- Resolution: Added concrete metric inference for known classification, regression, retrieval, and system-loop candidates; added placeholder-term rejection and dataset source/target scanning to the research-plan audit; tied robustness text to the inferred validation route; replaced generic benchmark risk wording; and removed the static `Readiness report` row from the manuscript evidence table.
+- Verification: Focused research-plan/manuscript tests, ruff, and mypy passed. The final real `task184_research_plan_specificity_v2` cycle passed research-plan gate, LLM review (`verdict=pass`, `quality_score=1.0`), publication audit (`publishable=true`, `score=1.0`), evidence gate, and zero follow-up tasks. `pdftotext` confirmed the 3-page research-plan PDF uses `classification accuracy and macro_f1` without `primary task metric` or `approved hold-out`; the 15-page paper PDF no longer contains `Readiness report` and paper quality passed with zero overfull boxes.
+
+### P-20260618-102 - Adjacent-work positioning warning was not tied to review-visible evidence
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:18:00 +08:00
+- Source: Real `task183_adjacent_positioning`, `task183_adjacent_positioning_v2`, and `task183_adjacent_positioning_v3` `serve --once` cycles.
+- Symptom: The first adjacent-work positioning implementation did not change the real manuscript because `_related_work()` passed only the first eight similarity findings, while the real adjacent-work rows appeared later in the similarity note. After passing all findings, the manuscript generated a long title-level adjacent-work table, but the LLM reviewer returned `needs_revision` because the row titles were not visible in compact review evidence and the statement `6 representative adjacent-work findings out of 14 parsed records` could be confused with the separate 65-row related-work inspection. The long table also caused one LaTeX overfull hbox.
+- Impact: The system could show a non-blocking adjacent-work warning even after a full green cycle, or could resolve the warning with prose that was not review-visible and not PDF-safe.
+- Evidence: `task183_adjacent_positioning` passed the cycle but publication audit still reported `Similarity check found 14 adjacent-work findings but only 0/6 representative rows were positioned in the manuscript.` `task183_adjacent_positioning_v2` wrote an Adjacent-Work Positioning table but ended with `review_status: needs_revision`, four follow-up tasks, and `paper_quality.failures=['layout_overflow']`.
+- Root cause: The manuscript generator sliced similarity findings before filtering for adjacent work. The first fix then made row-level title claims in the manuscript without adding a compact artifact to `analysis_artifact_paths`, so the review context could not bind those rows to evidence. The row-level table also carried long titles and basis strings into LaTeX.
+- Workaround: Before the fix, inspect the raw similarity note, manuscript, review evidence context, and paper-build JSON manually before treating an adjacent-work warning as resolved.
+- Next action: Keep adjacent-work positioning tied to generated artifacts that are included in LLM review evidence and avoid long unbreakable table content in publication PDFs.
+- Linked tasks: `183.1`
+- Resolution: Added `similarity-positioning-summary.json` and `.md` as manuscript analysis artifacts, passed all similarity findings into the manuscript positioning logic, changed the manuscript table to short family/count/boundary rows, and let publication audit pass adjacent-work risk only when the manuscript has an Adjacent-Work Positioning subsection and the positioning artifact reports adjacent-work coverage.
+- Verification: Focused manuscript/publication-audit tests, ruff, and mypy passed. The final real `task183_adjacent_positioning_v3` cycle passed LLM review (`verdict=pass`, `quality=1.000`), publication audit (`score=1.0`, `publishable=true`), evidence gate, and zero follow-up tasks. The generated 15-page PDF had `paper_quality.passed=true`, no overfull boxes, and `pdftotext` confirmed the positioning section was present while old placeholder and weak-reference strings were absent.
+
+### P-20260618-101 - Related-work inspection overclassified weak variance and generic recognition papers
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 06:00:00 +08:00
+- Source: Real `task181_reference_relevance_v3` related-work inspection rerun and direct-candidate list review.
+- Symptom: Formal manuscript references were already filtered, but `related-work-inspection.json` still counted weak records such as Boolean variance, Catoni variance, generic handwritten recognition, and seismic facies classification as `direct_method_candidate` in some passes. During verification, an initial focused pytest selector did not exist, a direct Python rerun failed without `src` on `sys.path`, and the first regression fixture accidentally included handwritten-digit wording that made the seed look like benchmark context.
+- Impact: Publication audit could overestimate direct related-work screening depth even when the formal bibliography was cleaner.
+- Evidence: The real `task181_reference_relevance_v3` inspection initially produced broad direct-candidate lists; a rerun after partial tightening still classified `Latent space classification of seismic facies` as direct because `prototype` appeared in abstract overlap while the title only had generic classification wording. The failed commands were `python -m pytest tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_related_work_inspection_breadth -q` and a Python import rerun without `PYTHONPATH`.
+- Root cause: Related-work context treated demo IDs and candidate prose as dataset context, and directness allowed weak abstract method overlap plus generic title classification/recognition anchors. Stopword filtering also left generic tokens such as `and` and `the` in overlap fields.
+- Workaround: Before the fix, compare formal References with `related-work-inspection.json` manually and do not treat `direct_method_count` as strict novelty evidence.
+- Next action: Keep related-work directness aligned with formal-reference directness and prefer title-level method anchors for direct candidate classification.
+- Linked tasks: `182.1`
+- Resolution: Removed candidate title/research-gap/demo text from dataset context, added stronger title/domain anchoring for direct related-work candidates, removed generic handwritten-recognition-only directness, and expanded stopword filtering for generic overlap terms.
+- Verification: Focused related-work tests, ruff, and mypy passed. A real full `serve --once` cycle for `task182_related_work_directness` passed review, publication audit, and evidence gate; its related-work inspection reported 9 direct candidates, with Boolean variance and Catoni variance demoted to contextual statuses, and `pdftotext` confirmed weak references were absent from the generated 14-page PDF References section.
+
+### P-20260618-100 - Formal reference relevance and template-readiness wording were still too broad
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:46:00 +08:00
+- Source: Real `serve --once` PDF inspection for `task181_reference_relevance` and LLM review on `task181_reference_relevance_v2`.
+- Symptom: The generated formal References section no longer used placeholder URLs, but still admitted weakly related works such as empirical variance or Gaussian process papers because seed-document title tokens polluted the relevance context. After tightening reference filtering, the next real cycle passed the reference check but the LLM reviewer returned `needs_revision` because the manuscript implied conference-template compatibility from a generic paper build.
+- Impact: A publication-facing PDF could look formally clean while citing irrelevant literature, or could overstate venue/template readiness from insufficient template evidence.
+- Evidence: `pdftotext` on `outputs/task181_reference_relevance/task181_reference_relevance-cycle-20260617T214604Z.pdf` showed weak references such as Catoni variance and Gaussian-related works. The `task181_reference_relevance_v2` cycle then blocked release with `review_status: passed; verdict=needs_revision`, `publication_audit=needs_revision`, and `evidence_gate=blocked`; the LLM review specifically requested a caveat that the build used a generic article template, not a conference-specific template.
+- Root cause: `_reference_context()` included `seed_document_title`, so an unrelated seed paper about Boolean variance affected citation relevance. The manuscript generator also used static conference-template wording that could be read as compatibility evidence even when the selected paper build was the generic article template.
+- Workaround: Before the fix, inspect `citations/references.metadata.json`, `related-work-inspection.json`, and `llm-review.json` manually before treating a PDF as publication-facing.
+- Next action: Keep formal reference filtering anchored to the executed task, and treat every template family as separately evidenced.
+- Linked tasks: `181.1`
+- Resolution: Removed seed-document title from the formal reference context, added task-anchor checks for prototype/digit/nearest-centroid citation directness, filtered seed-style variance citations out of manuscript references, and rewrote template-build prose to say that the current build only certifies the selected template and does not prove ACM/IEEE/Springer compatibility without a separate run.
+- Verification: Focused report tests, focused ruff, and focused mypy passed. A real `task181_reference_relevance_v3` `serve --once` cycle passed LLM review (`verdict=pass`, `quality=1.000`), publication audit (`publishable=true`, score `0.985`), and evidence gate (`release_allowed=true`), produced a 14-page PDF under `outputs/`, and `pdftotext` confirmed the weak variance/Gaussian references and placeholder phrase were absent from formal References.
+
+### P-20260618-099 - Formal references replaced URLs with artifact placeholders
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:36:00 +08:00
+- Source: Text extraction from `outputs/task177_root_output/task177_root_output-cycle-20260617T212210Z.pdf` and focused manuscript test updates.
+- Symptom: The latest PDF no longer put operational labels such as `[Cycle summary]` in References, but formal bibliography lines still contained phrases such as `source URL recorded in artifact` instead of actual source URLs. A first attempted pytest command also used a non-existent test selector, so no tests ran for that command.
+- Impact: Publication-facing references looked like placeholders and weakened DOI/URL traceability even though citation metadata contained real URLs.
+- Evidence: `pdftotext` on the task177 PDF showed multiple references ending with `source URL recorded in artifact`; the first focused test command reported `ERROR: not found` for `test_build_latex_paper_from_markdown_writes_tex_without_compiling`.
+- Root cause: Citation parsing used the generic `_clean_text()` helper for `url` and `source_uri`, and that helper intentionally replaces HTTP URLs in prose with `source URL recorded in artifact`. After preserving URLs in manuscript references, the LaTeX URL converter also wrapped only `https://example` from `https://example.test/verified` because its regex excluded dots too aggressively.
+- Workaround: Before the fix, inspect citation metadata JSON or BibTeX artifacts for the real URLs.
+- Next action: Keep formal bibliography locator fields on the dedicated locator-cleaning path; keep prose URL elision separate from reference formatting.
+- Linked tasks: `180.1`
+- Resolution: Added `_clean_locator_text()` for DOI/URL/source URI fields, used it during citation parsing and formal reference rendering, and changed LaTeX URL wrapping to strip trailing punctuation after matching the full non-whitespace URL.
+- Verification: Focused report tests passed after an intermediate expected failure exposed the TeX URL splitting issue; full `tests\unit\reports` passed with 89 tests; full `tests\smoke tests\unit` passed with 521 passed and 4 skipped; a real `serve --once` cycle for `task180_reference_urls` passed review, publication audit, and evidence gate, generated a 14-page PDF, and `pdftotext` showed real arXiv/DOI URLs in References without the placeholder phrase.
+
+### P-20260618-098 - CI ruff rejected tuple-style isinstance in review status helper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 05:18:00 +08:00
+- Source: GitHub Actions run `27720376566` for commit `fbdb9e4`.
+- Symptom: CI failed in `poetry run ruff check src tests` with `UP038 Use X | Y in isinstance call instead of (X, Y)` at `src/autoresearch/cli/main.py:6053`.
+- Impact: The review verdict and publication warning display fix worked locally but left the pushed CI red.
+- Evidence: CI log showed ruff stopping before mypy and tests; the only reported violation was the tuple-style `isinstance(score, (int, float))` check.
+- Root cause: Local ruff did not flag the rule, while the CI dependency set did; the helper used tuple-style `isinstance`.
+- Workaround: None needed after the style update.
+- Next action: Prefer `X | Y` in new `isinstance` union checks to match CI ruff.
+- Linked tasks: `176.1`, `176.2`
+- Resolution: Replaced `isinstance(score, (int, float))` with `isinstance(score, int | float)`.
+- Verification: Focused ruff, focused mypy, and full `python -m ruff check src tests` passed locally.
+
+### P-20260618-097 - Review and publication gate console wording could overstate readiness
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:12:00 +08:00
+- Source: Real default `serve --once --permission-mode allow-all` cycle `runs/manual-live/task176-default-serve/runs/cycle-20260617T210513Z/cycle-summary.json`.
+- Symptom: The main CLI printed `[OK] review_status: passed` even though the LLM review artifact had `verdict=needs_revision`; the monitor also displayed `publication pass` with `blockers=1` for a `status=warning`, `severity=high` publication-audit check.
+- Impact: Operators could misread an executed-but-negative LLM review as paper readiness, or misread a non-blocking publication warning as a release blocker.
+- Evidence: The first task176 real cycle had `review.status=passed`, `review.verdict=needs_revision`, `review.quality_score=1.0`, `evidence_gate.verdict=blocked`, and five follow-up tasks. The later pass cycle had a publication-audit warning for adjacent-work positioning while `publication_audit.verdict=pass` and `evidence_gate.release_allowed=true`.
+- Root cause: `serve` and `autopilot` echoed only `review.status`, while monitor publication status treated all non-pass audit checks as blockers.
+- Workaround: Before the fix, inspect `llm-review.json`, `publication-audit.json`, and `evidence-gate.json` manually.
+- Next action: Keep CLI summaries aligned with release gates: execution success, reviewer verdict, warnings, and blockers are separate concepts.
+- Linked tasks: `176.1`
+- Resolution: Added review status display text with verdict and quality score; marked non-pass review verdicts as `[BLOCKED]`; split monitor publication checks into blocking blockers versus non-blocking warnings; and changed publication warning evidence text to `issue:`.
+- Verification: Focused review/monitor tests passed; real monitor rerun on `cycle-20260617T210941Z` displayed `warnings=1` and `issue:` for the publication warning while evidence gate remained `pass`.
+
+### P-20260618-096 - Always-on default used toy baseline unsuitable for publication gates
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 05:01:00 +08:00
+- Source: Real task174 `serve --once` cycle and task175 default-loop review.
+- Symptom: The unattended `serve` and `autopilot` commands defaulted to `tabular_baseline`, while `run-demo` also used the same tiny fixture for local smoke.
+- Impact: A deployed 24h operator could start a nominally real research loop but produce toy-scale evidence, making publication gates fail on data scale and weakening user trust in autonomous output quality.
+- Evidence: The task174 real cycle publication audit reported `literature_query_breadth`, data-size, and reproducibility-readiness blockers; the toy fixture has only a tiny local validation surface and is useful for smoke tests rather than research-quality cycles.
+- Root cause: The CLI reused the historical smoke default for both quick local demos and always-on autonomous operation.
+- Workaround: Before the fix, operators could manually pass `--demo pendigits_variance_calibrated_prototypes`.
+- Next action: Keep future long-running defaults tied to public, source-backed benchmarks and reserve toy demos for explicit smoke commands.
+- Linked tasks: `174.1`, `175.1`
+- Resolution: Added `DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"` and used it for `serve` and `autopilot`; kept `run-demo` default as `tabular_baseline`; updated tests and README guidance.
+- Verification: Real Pendigits run passed with 3,498 test rows, 10,992 dataset rows, accuracy 0.823327615780446, baseline accuracy 0.7775871926815323, and validation status passed; full smoke/unit tests passed with 518 passed and 4 skipped.
+
+### P-20260618-095 - Monitor stdout assertion failed on Linux CI terminal truncation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:54:00 +08:00
+- Source: GitHub Actions run `27718801671` for commit `d230920`.
+- Symptom: `tests/unit/cli/test_main.py::test_monitor_renders_agent_flow_changes_and_preview` failed because `assert "evidence-gate.md" in result.stdout` did not hold on the Linux CI terminal rendering.
+- Impact: Local tests passed on Windows, but the pushed monitor improvement left CI red and blocked release confidence.
+- Evidence: CI logs showed the monitor rendered successfully, but Rich column width truncated the flow table before the full `evidence-gate.md` filename appeared in stdout.
+- Root cause: The test mixed compact terminal smoke assertions with exact artifact-path assertions; exact paths are unstable in rendered Rich columns when terminal width differs.
+- Workaround: None needed after the test update.
+- Next action: Keep exact path checks on structured `_cycle_stage_rows()` data and reserve stdout checks for short user-visible status fragments.
+- Linked tasks: `174.1`, `174.2`
+- Resolution: Removed the brittle stdout assertion while retaining structured assertions for `evidence-gate.md`.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed locally after the assertion change.
+
+### P-20260618-094 - Monitor hid publication and evidence gate blockers from real serve cycle
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 04:39:00 +08:00
+- Source: Real `serve --once` no-push cycle `runs/manual-live/task174-serve-no-push/runs/cycle-20260617T203842Z/cycle-summary.json` inspected through `airesearcher monitor`.
+- Symptom: The operator monitor showed `publication=fail` and `evidence=blocked`, but did not summarize the failed check count, first blocker, next action, or real `followups.tasks` count. The stage row also showed `follow-ups none` even though the scheduler queue contained five open issue follow-up tasks.
+- Impact: A long-running operator could see that the cycle was not publishable without seeing why, which weakens the launch requirement that the CLI surface show quality gates, output status, and actionable next work during autonomous operation.
+- Evidence: Before the fix, the real monitor run showed `publication fail`, `evidence blocked`, and `follow-ups none` while `publication_audit.checks` contained nineteen failed checks, `evidence_gate.failed_check_count` was two, and `followups.task_count` was five.
+- Root cause: `_cycle_stage_rows()` used generic nested status rendering for release gates and `_followup_status()` only read the legacy `followup_tasks` key rather than current `followups.tasks` written by serve cycles.
+- Workaround: Before this fix, inspect `publication-audit.json`, `evidence-gate.json`, and `scheduler-state.json` manually.
+- Next action: Keep future monitor changes covered against real cycle-summary shapes rather than only handcrafted all-pass fixtures.
+- Linked tasks: `142.1`, `152.1`, `174.1`
+- Resolution: Added publication and evidence gate status helpers that summarize score, target, failed-check count, `release_allowed`, and first failed check; added gate evidence text with the first blocker message and next action; and added follow-up parsing for both `followup_tasks` and `followups.tasks`.
+- Verification: Focused monitor test, ruff, and mypy passed; real monitor rerun against `task174` displayed `publication fail; score=0.327; target=ccf-b; blockers=19; first=literature_query_breadth`, `evidence blocked; failed=2; release_allowed=false; first=review_gate`, and `follow-ups 5 open / 5 total`.
+
+### P-20260618-093 - Prelaunch WeChat repair command did not explicitly launch QR setup
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:33:30 +08:00
+- Source: Strict `npm run prelaunch` after task `172.1`.
+- Symptom: Readiness correctly blocked on missing operator channel configuration, but the printed repair command was `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr` without the explicit QR-run flag.
+- Impact: Operators following the command literally could still be unsure whether the setup command would display the QR scanner step, especially in mixed interactive/non-interactive usage.
+- Evidence: `.airesearcher\readiness\report.json` showed `configure_operator_channel` without `--run-wechat-qr-setup`.
+- Root cause: The generic channel setup next-action command enabled QR mode but did not spell out the QR setup runner.
+- Workaround: No workaround needed after task `173.1`; before the fix, run `airesearcher setup --wechat --wechat-qr --run-wechat-qr-setup`.
+- Next action: None.
+- Linked tasks: `173.1`
+- Resolution: Added `--run-wechat-qr-setup` to the readiness operator-channel setup action.
+- Verification: `npm run prelaunch` now prints `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr --run-wechat-qr-setup`.
+
+### P-20260618-092 - BOM-bearing WeChat QR status JSON is treated as missing
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:28:00 +08:00
+- Source: Real temporary readiness verification for a completed WeChat QR setup with an OpenClaw target.
+- Symptom: Readiness reported `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`, so `operator_channels` failed and the next action incorrectly returned to full setup.
+- Impact: Operators who completed QR setup through a BOM-writing Windows tool could be asked to repeat setup instead of running the next channel delivery self-test.
+- Evidence: `runs\manual-live\task172-wechat-ready-action\readiness.json` showed `wechat_qr_status=null` even though `setup-status.json` contained `{"status":"completed"}`.
+- Root cause: `_read_json_mapping` decoded JSON status files with plain UTF-8 and swallowed `JSONDecodeError` from a leading UTF-8 BOM.
+- Workaround: No workaround needed after task `172.1`; before the fix, save status JSON without BOM or regenerate it through the CLI.
+- Next action: None.
+- Linked tasks: `172.1`
+- Resolution: Changed the shared JSON mapping reader to decode with UTF-8 BOM handling.
+- Verification: Added `test_readiness_accepts_bom_prefixed_wechat_qr_status_file`; real Node CLI readiness against the same QR-ready fixture reported `operator_channels=pass` and emitted `run_channel_self_test` for `--channel wechat`.
+
+### P-20260618-091 - BOM-bearing `.env` first key is not parsed
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:15:25 +08:00
+- Source: Real temporary readiness verification for task `170.1`.
+- Symptom: A `.env` file written by PowerShell `Set-Content -Encoding UTF8` began with `EF BB BF`, and readiness failed to read `AUTORESEARCH_LLM_BASE_URL` from the first line.
+- Impact: Operators who create or rewrite `.env` with a BOM-bearing editor could see false missing-credential failures on the first key.
+- Evidence: `Format-Hex runs\manual-live\task170-readiness-bind-target\.env` showed `EF BB BF` before `AUTORESEARCH_LLM_BASE_URL`; the readiness report listed `missing model API values: AUTORESEARCH_LLM_BASE_URL`.
+- Root cause: The env parser does not strip an initial UTF-8 BOM before parsing the first key.
+- Workaround: No workaround needed after task `171.1`; before the fix, use `airesearcher setup`/`channels bind-target`, or save `.env` as UTF-8 without BOM.
+- Next action: None for CLI readiness/setup parsing; monitor whether third-party dotenv consumers need separate hardening.
+- Linked tasks: `170.1`, `171.1`
+- Resolution: Changed the CLI `.env` reader to decode with UTF-8 BOM handling so the first key is parsed normally.
+- Verification: Added `test_readiness_accepts_bom_prefixed_env_file`; real Node CLI readiness against `runs\manual-live\task171-bom-env\.env` reported `llm_credentials=pass` and only remained blocked on the expected missing operator channel.
+
+### P-20260618-090 - Post-pairing channel targets still required rerunning setup or editing `.env`
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 04:09:09 +08:00
+- Source: Strict `npm run prelaunch` after task `168.1`.
+- Symptom: Prelaunch correctly blocked on missing operator channel configuration and missing channel self-test evidence, but the documented repair path for a post-pairing WeChat OpenClaw target still required rerunning setup or editing `.env`.
+- Impact: A normal operator who scans WeChat first and only learns the OpenClaw message target after pairing did not have a small command for binding that target before running `channels test`.
+- Evidence: `npm run prelaunch` printed `configure_operator_channel: airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr` and no smaller target-binding command existed.
+- Root cause: Setup collected target values, but the channels command group only tested delivery and did not update channel target state.
+- Workaround: Before the fix, rerun `airesearcher setup --wechat --wechat-qr --wechat-openclaw-target ...` or edit `.env`.
+- Next action: Keep channel target binding separate from third-party plugin installation; target binding only writes local `.env`.
+- Linked tasks: `169.1`
+- Resolution: Added `airesearcher channels bind-target --channel wechat|feishu --target ... --env-path .env`, writing WeChat OpenClaw target fields or Feishu home chat ID without hand-editing `.env`.
+- Verification: Focused CLI tests and a real Node entrypoint invocation against a temporary `.env` passed.
+
+### P-20260618-089 - WeChat QR channel could not produce a real delivery self-test
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 04:02:05 +08:00
+- Source: Setup/channel inspection after verifying the WeChat QR wizard behavior against upstream OpenClaw WeChat documentation.
+- Symptom: `AUTORESEARCH_WECHAT_CONNECTION_MODE=qr` always produced a `skipped` notification record, even when the QR setup status was `completed`.
+- Impact: Operators could finish setup and scan/login, but strict prelaunch still had no path for a real WeChat QR delivery self-test unless they used a webhook or Feishu instead.
+- Evidence: `src/autoresearch/notifications.py` returned `skipped` for QR mode and only told the operator to run the setup command; it never attempted OpenClaw outbound delivery.
+- Root cause: The QR setup path tracked installer/login status but did not capture an outbound OpenClaw message target or call OpenClaw's message-send CLI.
+- Workaround: Before the fix, operators needed to use Feishu App credentials or a webhook channel for `--require-channel-sent`.
+- Next action: Keep direct OpenClaw CLI delivery optional and fail closed when target or QR completion evidence is missing.
+- Linked tasks: `168.1`
+- Resolution: Added setup-owned `AUTORESEARCH_WECHAT_OPENCLAW_TARGET`, OpenClaw channel/message command defaults, QR-mode `openclaw message send` delivery, and readiness gating that requires both completed QR status and a target.
+- Verification: Focused notification and CLI tests passed for real command construction, missing-target skip behavior, setup env output, wizard prompt flow, and readiness fail-closed behavior.
+
+### P-20260618-088 - Live literature refresh smoke still required Semantic Scholar
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:50:40 +08:00
+- Source: Opt-in live API smoke run with `AUTORESEARCH_LIVE_APIS=1`.
+- Symptom: `tests\smoke\test_literature_refresh_live.py` failed because the real refresh returned ArXiv and OpenAlex sources, while the test still asserted that Semantic Scholar was present.
+- Impact: The live smoke contradicted the current source policy and could fail a correct default deployment where Semantic Scholar is intentionally disabled or degraded.
+- Evidence: `python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q` failed with `assert {'arxiv', 'semantic_scholar'} <= {'arxiv', 'openalex'}`.
+- Root cause: The live smoke predates task `102.1`/`137.1`, which made Semantic Scholar optional and ArXiv/OpenAlex the default source pair.
+- Workaround: Before the fix, operators could run the direct client live smoke separately, but the daily refresh live smoke still misrepresented default readiness.
+- Next action: Keep direct Semantic Scholar smoke as optional-source telemetry, not a default daily-refresh requirement.
+- Linked tasks: `167.1`
+- Resolution: Updated the live daily refresh smoke to require ArXiv and OpenAlex fetch/document coverage instead of ArXiv and Semantic Scholar.
+- Verification: Re-running the opt-in live literature/similarity smoke passed with 3 tests against real APIs.
+
+### P-20260618-087 - Prelaunch readiness recommended the direct autopilot loop
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:44:11 +08:00
+- Source: Real `npm run prelaunch` check during V1.0 launch-entry inspection.
+- Symptom: The readiness report's `planned_daily_command` was `airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+- Impact: Operators following the strict prelaunch report would start the lower-level loop directly and bypass the `serve` runtime's dangerous-action approval queue, despite README recommending `npm run serve`.
+- Evidence: The generated `.airesearcher/readiness/report.json` contained the direct autopilot command before the fix.
+- Root cause: `_readiness_daily_command()` predated the approval-gated `serve` runtime and was not updated when `serve` became the preferred 24h entry point.
+- Workaround: Before the fix, operators could manually run `npm run serve` instead of the readiness report's planned command.
+- Next action: Keep `autopilot` documented as an expert/direct loop, but keep prelaunch and V1.0 defaults on `serve`.
+- Linked tasks: `166.1`
+- Resolution: Changed readiness `planned_daily_command` to `airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 ...` and documented that prelaunch plans the approval-gated runtime.
+- Verification: `npm run prelaunch` still blocked correctly on missing channel setup, but printed `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+
+### P-20260618-086 - Serve waiting output hid the per-cycle approval action ID
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 03:38:46 +08:00
+- Source: Post-task `164.1` operator-visibility inspection.
+- Symptom: When `serve` waited for approval, it printed the request ID and approval command but not the per-cycle `action_id`.
+- Impact: Operators could still run `airesearcher runtime list` to see the action ID, but the immediate waiting output did not show whether the paused request was for `cycle-1`, `cycle-2`, or a later attempt.
+- Evidence: The wait branch printed `[WAITING] approval_required`, `[WAITING] state`, and `[WAITING] approve` only.
+- Root cause: The wait message was written before per-cycle action IDs were added and was not updated to display the new operator-facing boundary.
+- Workaround: Before the fix, operators could inspect `airesearcher runtime list`.
+- Next action: Reuse the same action ID field in future WeChat/Feishu approval cards.
+- Linked tasks: `165.1`
+- Resolution: Added `[WAITING] action_id: ...` to the `serve` approval wait output and documented that waiting output plus `runtime list` show the per-cycle ID.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q` passed and asserted the waiting output includes `cycle-1` and `cycle-2` action IDs.
+
+### P-20260618-085 - Serve approval IDs were reused across daily cycles
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:31:12 +08:00
+- Source: Code inspection after task `163.1` separated approval polling from daily cycle waits.
+- Symptom: `serve --permission-mode approve-dangerous` used one fixed action ID for every cycle in the same project and demo.
+- Impact: After the operator approved the first dangerous cycle, later daily cycles with the same project and demo could reuse that approval instead of requiring a fresh per-cycle decision.
+- Evidence: The action ID was built once before the `while True` loop as `serve:autopilot-cycle:{project_id}:{demo}` and passed unchanged to `ensure_runtime_approval()`.
+- Root cause: The runtime approval key did not include the cycle attempt number.
+- Workaround: Before the fix, operators could use `--once` and restart manually for every cycle, but that defeated the intended 24h service mode.
+- Next action: When IM approvals are connected, display the per-cycle action ID and cycle number in the approval card.
+- Linked tasks: `164.1`
+- Resolution: Added per-cycle `serve` approval action IDs in the form `serve:autopilot-cycle:{project_id}:{demo}:cycle-{n}` and documented that `approve-dangerous` requires approval per cycle attempt.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q` passed and confirmed that a watched second cycle requests `cycle-2` after `cycle-1` completes.
+
+### P-20260618-084 - Serve approval wait reused the 24h daily cycle interval
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 03:25:55 +08:00
+- Source: Code inspection after task `162.1` made serve startup schedule output explicit.
+- Symptom: In watch mode, `serve` used `interval_seconds` both after completed cycles and while waiting for a dangerous-cycle approval.
+- Impact: With the documented default `--interval-seconds 86400`, a default `npm run serve` process could wait up to 24 hours before noticing that the operator approved a queued dangerous action.
+- Evidence: The `ensure_runtime_approval` wait branch called `time.sleep(interval_seconds)` before re-checking the approval queue.
+- Root cause: The service reused the daily cycle interval for two different waits: post-cycle scheduling and pending-approval polling.
+- Workaround: Before the fix, operators could lower `--interval-seconds`, but that also changed the daily cycle cadence.
+- Next action: Keep approval polling and daily cycle cadence separate when adding IM approval integration.
+- Linked tasks: `163.1`
+- Resolution: Added `serve --approval-poll-seconds` with a 30-second default, used it only for approval wait sleeps, and documented it in README files.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle -q` passed and confirmed the approval wait branch slept for `7`, not `86400`.
+
+### P-20260618-083 - Agent import regression test reused an existing test module basename
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 03:10:00 +08:00
+- Source: Broad smoke/unit verification for task `161.1`.
+- Symptom: `python -m pytest tests\smoke tests\unit -q` failed during collection with an import file mismatch between `tests\smoke\test_imports.py` and `tests\unit\agents\test_imports.py`.
+- Impact: The lazy-import behavior was valid, but the full smoke/unit gate could not collect tests until the new test file had a unique module basename.
+- Evidence: Pytest reported `import file mismatch: imported module 'test_imports' ... is not the same as the test file we want to collect`.
+- Root cause: The new regression test used the same basename as the smoke import test in a non-package test tree.
+- Workaround: None needed after renaming the new test file.
+- Next action: Use unique test basenames under this repository's non-package test directories.
+- Linked tasks: `161.1`
+- Resolution: Renamed the new regression test to `tests/unit/agents/test_agent_imports.py`.
+- Verification: `python -m pytest tests\unit\agents -q` passed with 6 tests; `python -m pytest tests\smoke tests\unit -q` passed with 508 passed, 4 skipped, and no LangGraph or Requests warning.
+
+### P-20260618-082 - Direct python module invocation lacks installed package path
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:26:00 +08:00
+- Source: Real local readiness verification for task `155.1`.
+- Symptom: `python -m autoresearch.cli.main readiness --allow-missing-channel` failed with `ModuleNotFoundError: No module named 'autoresearch'`.
+- Impact: The first real local readiness command did not run through a plain Python module invocation because the package is not installed into the active interpreter outside the project entrypoint.
+- Evidence: Python returned `Error while finding module specification for 'autoresearch.cli.main'`.
+- Root cause: The active interpreter does not automatically add `src/` for direct module execution; project commands are expected to use the Poetry console entrypoint or an installed package.
+- Workaround: Use `poetry run airesearcher ...` or install the package before direct module invocation.
+- Next action: Keep README examples on `airesearcher` and npm entrypoints rather than direct `python -m` commands.
+- Linked tasks: `155.1`
+- Resolution: Re-ran the same readiness check through `poetry run airesearcher readiness --allow-missing-channel`.
+- Verification: `poetry run airesearcher readiness --allow-missing-channel` passed and wrote `.airesearcher/readiness/report.json`.
+
+### P-20260618-081 - CI Click runner did not separately capture channel-test stderr
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:09:00 +08:00
+- Source: GitHub Actions run `27709729783` for task `154.1`, job `Run smoke and unit tests` on Python 3.10/Linux.
+- Symptom: `tests/unit/cli/test_main.py::test_channels_test_requires_sent_when_requested` failed with `ValueError: stderr not separately captured`.
+- Impact: The channel self-test command behavior was correct, but the test was not portable across Typer/Click runner capture defaults.
+- Evidence: CI collected 507 items and ended with `1 failed, 498 passed, 8 skipped`; the only failure was the channel-test stderr assertion.
+- Root cause: The test accessed `result.stderr`, which raises when the runner mixes stderr into the main output stream.
+- Workaround: None needed after asserting against `result.output`.
+- Next action: Prefer `result.output` for CLI assertions unless a test explicitly constructs a runner with separate stderr capture.
+- Linked tasks: `154.1`
+- Resolution: Updated the failure-message assertion to read the mixed `result.output` stream.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q` passed locally after the fix; `python -m pytest tests\smoke tests\unit -q` passed locally; GitHub Actions run `27710036107` passed after the fix.
+
+### P-20260618-080 - Channel test fake sender left unused parameters
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 02:05:00 +08:00
+- Source: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` while verifying task `154.1`.
+- Symptom: Ruff reported `ARG001` for unused `report`, `channels`, and `timeout_seconds` arguments in the `test_channels_test_requires_sent_when_requested` fake sender.
+- Impact: The new channel self-test behavior passed focused pytest, but the lint gate could not pass until the test fake asserted the invocation contract.
+- Evidence: Ruff reported three `ARG001` findings in `tests/unit/cli/test_main.py`.
+- Root cause: The skipped-delivery fake returned a fixed record without checking the command passed the expected self-test report, channel tuple, and timeout.
+- Workaround: None needed after the test assertions were added.
+- Next action: None.
+- Linked tasks: `154.1`
+- Resolution: Added assertions for the self-test report source, selected channel tuple, and timeout value.
+- Verification: `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed after the fix; the focused `channels test` pytest selectors also passed.
+
+### P-20260618-079 - Serve approval metadata patch initially landed in autopilot loop
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 01:33:00 +08:00
+- Source: Focused verification for task `150.1`.
+- Symptom: `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py` failed with `F821 Undefined name decision` in the `autopilot` loop. The first focused pytest command also used a stale test name and collected no tests.
+- Impact: The initial patch would have broken direct `airesearcher autopilot` execution and did not yet prove the intended `serve` path.
+- Evidence: Ruff and mypy both reported `decision` undefined at `src\autoresearch\cli\main.py`; pytest reported no match for `test_serve_requires_approval_before_running_cycle`.
+- Root cause: The runtime network metadata line was inserted in the direct autopilot loop instead of the `serve` loop after `ensure_runtime_approval()` returns an allowed decision; the test selector used an outdated function name.
+- Workaround: None needed after task `150.1`.
+- Next action: Keep focused CLI tests around both direct autopilot and approved serve paths when changing runtime approval propagation.
+- Linked tasks: `150.1`
+- Resolution: Moved metadata construction into the `serve` allowed branch, kept direct autopilot without injected runtime metadata, and re-ran the corrected focused test selectors.
+- Verification: Focused ruff, focused mypy, and corrected focused pytest selectors passed.
+
+### P-20260618-078 - Executor network gate initially blocked trusted cached UCI demos
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 01:16:00 +08:00
+- Source: Full `python -m pytest tests\smoke tests\unit -q` verification during task `147.1`.
+- Symptom: Six UCI demo tests failed with `FileNotFoundError` for generated CSV files such as `pendigits_centroid_baseline.csv`, `letter_variance_calibrated_prototypes.csv`, `spambase_variance_calibrated_prototypes.csv`, and `skin_variance_calibrated_prototypes.csv`.
+- Impact: The new executor network preflight correctly blocked raw network imports, but it also stopped trusted built-in public benchmark scripts before they could use already-cached UCI fixture files in local tests.
+- Evidence: The failing demo scripts import `from urllib.request import urlopen` because they can download public UCI data when cache files are absent. The tests write cache files before execution, but static preflight happens before runtime cache checks.
+- Root cause: Built-in UCI demo tasks did not carry explicit network approval metadata, so they were indistinguishable from arbitrary generated code with raw network imports.
+- Workaround: None needed after task `147.1`.
+- Next action: When the runtime `/approve` flow is wired, keep using the same `network_access_approved` key and preserve source URL/domain scope metadata.
+- Linked tasks: `147.1`
+- Resolution: Added scoped network approval metadata to built-in UCI demo tasks, including `network_access_approved=True`, `approved_network_domains`, `network_source_urls`, and a cache-first `network_access_scope`.
+- Verification: `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q` passed with 22 tests; `python -m pytest tests\smoke tests\unit -q` then passed with 494 passed and 4 skipped.
+
+### P-20260618-077 - README monitor screenshot lagged behind release-flow monitor
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:46:36 +08:00
+- Source: Task `143.1` inspection of `README.md`, `README.zh-CN.md`, and `docs/assets/readme/cli-monitor.svg` after task `142.1`.
+- Symptom: The README monitor copy still described a generic research-stage flow, and the SVG screenshot still showed old task `119.1` examples plus pre-release flow rows such as inspiration and generic paper build instead of source, literature, research plan, citations, paper quality, and deliverables.
+- Impact: A new user reading the release page could miss the physical release-gate behavior that the actual `airesearcher monitor` command now exposes.
+- Evidence: `README.md` lines around the Operator Monitor section mentioned "research-stage flow"; `docs/assets/readme/cli-monitor.svg` contained `Task 119.1 V1.0 release readiness`, `Information Flow`, and old rows that did not include citation metadata or paper-quality status.
+- Root cause: Task `142.1` upgraded the real CLI monitor, but the README screenshot and monitor prose were not refreshed in the same commit.
+- Workaround: None needed after task `143.1`.
+- Next action: Keep README visual assets in sync when future operator-visible release stages are added.
+- Linked tasks: `143.1`
+- Resolution: Updated the English and Chinese monitor copy and refreshed the SVG console preview to show release gates, stage-specific artifacts, paper-quality status, and output previews.
+- Verification: SVG XML parsing, README/SVG keyword checks, README asset-link check, and `git diff --check` all passed.
+
+### P-20260618-076 - Inline Python probes failed during monitor task inspection
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:31:00 +08:00
+- Source: Local command execution while inspecting the real cycle-summary shape for task `142.1`.
+- Symptom: One inline Python probe failed with `SyntaxError: unexpected character after line continuation character`; a later structured-row probe failed with `ModuleNotFoundError: No module named 'autoresearch'`.
+- Impact: No files were changed by either failed probe and no verification outcome was invalidated, but the command history would be misleading without a record.
+- Evidence: The first command embedded `\n` loop text inside `python -c`; the second imported `autoresearch.cli.main` without setting `PYTHONPATH=src` in the active shell.
+- Root cause: The probes used ad hoc inline Python in PowerShell without matching the active import environment.
+- Workaround: Use single-line Python expressions for quick JSON inspection and set `PYTHONPATH=src` before importing local package modules outside pytest.
+- Next action: Prefer tested CLI commands or PowerShell-native JSON inspection when possible.
+- Linked tasks: `142.1`
+- Resolution: Re-ran the cycle-summary inspection with valid one-line Python and re-ran the structured-row check with `$env:PYTHONPATH='src'`.
+- Verification: The corrected structured-row command printed all release stages, including `paper | compiled; quality=pass; pages=14`, citation metadata evidence, and deliverable manifest/PDF evidence.
+
+### P-20260618-075 - Operator monitor hid release-critical cycle stages and artifact paths
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:29:00 +08:00
+- Source: Task `142.1` inspection of `src/autoresearch/cli/main.py` and the real `runs/autopilot/cycle-20260617T160833Z/cycle-summary.json`.
+- Symptom: `airesearcher monitor` had an operator console, but its information-flow table only showed a short stage list and used the same cycle-summary filename as the evidence cell for each row. It did not surface the research plan, literature refresh, related-work inspection, citation package, reproduction check, deliverables manifest/PDF, follow-up queue, or paper-quality status.
+- Impact: Operators could not quickly confirm whether a long-running autonomous cycle had passed the release-critical gates without opening JSON artifacts by hand, weakening the "one command stays running" product experience.
+- Evidence: `_flow_table()` previously populated rows from `source_preflight`, `similarity`, `demo`, `review`, `publication_audit`, `paper_build`, and `evidence_gate`, all with `evidence_name = summary_path.name`.
+- Root cause: The monitor command predated the newer release-cycle fields and had not been reconciled with the publication, research-plan, citation, and deliverable gates.
+- Workaround: None needed after task `142.1`.
+- Next action: Keep operator-visible gates in `monitor` whenever new release-critical fields are added to `cycle-summary.json`.
+- Linked tasks: `142.1`
+- Resolution: Added release-like cycle stage extraction helpers, concise status summaries, stage-specific artifact evidence, ASCII-safe path shortening, and folding Rich table columns.
+- Verification: Focused CLI tests, full CLI unit tests, ruff, mypy, and real monitor execution against `runs/autopilot/cycle-20260617T160833Z/cycle-summary.json` passed.
+
+### P-20260618-074 - PowerShell rejected a malformed quoted `rg` search during task 141
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-18 00:17:00 +08:00
+- Source: Repository inspection while preparing task `141.1`.
+- Symptom: A parallel `rg` command for `LatexPaperQualityReport\(|paper_quality\"|figure_label|figure_readability|failures` failed with `The string is missing the terminator: "`.
+- Impact: No files were changed by the failed command and no verification result was invalidated, but the failure could confuse later command-history review if left unrecorded.
+- Evidence: PowerShell returned a parser error before running the search.
+- Root cause: The search pattern mixed PowerShell double-quote parsing with an escaped quote.
+- Workaround: Use single-quoted search patterns for `rg` in this repository's PowerShell shell.
+- Next action: Continue using PowerShell-friendly quoting for search commands.
+- Linked tasks: `141.1`
+- Resolution: Re-ran the search with a single-quoted pattern and continued the task.
+- Verification: `rg -n 'LatexPaperQualityReport\(|figure_label|figure_readability|failures' src tests` completed successfully.
+
+### P-20260618-073 - Paper quality gate did not inspect metric figure label readability metadata
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:15:00 +08:00
+- Source: Follow-up hardening after task `140.1` visually fixed the release PDF metric figure.
+- Symptom: `paper_build` checked figure count, table count, references, word count, page count, and overfull boxes, but it did not inspect source-backed metric figure metadata for human-readable labels. A future regression could reintroduce raw snake-case metric labels while `paper_quality.passed=true` remained possible.
+- Impact: Release PDFs could again require manual screenshot inspection to catch unreadable metric labels, weakening the evidence-first publication gate.
+- Evidence: `src/autoresearch/reports/paper_build.py` had no `figure_readability` or metric-label metadata checks before task `141.1`; task `140.1` had fixed the generator but not the release gate.
+- Root cause: The previous quality report counted Markdown figures but treated all figures as equivalent once present.
+- Workaround: None needed after task `141.1`.
+- Next action: Keep source-backed figure metadata in generated analysis artifacts and extend this pattern only when another concrete visual defect appears.
+- Linked tasks: `140.1`, `141.1`
+- Resolution: Added `figure_label_readability` as a deterministic `paper_quality` failure when `metric_bar` metadata is missing readable labels, exposes raw snake-case labels, or uses non-horizontal layout for long machine metric names.
+- Verification: Focused tests, ruff, mypy, full smoke/unit tests, and a real paper rebuild over `runs/autopilot/cycle-20260617T160833Z/paper-manuscript/manuscript.md` passed. The rebuild recorded `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, `overfull_hbox_count=0`, and a 14-page PDF; visual rendering of page 8 showed readable horizontal labels.
+
+### P-20260617-072 - Metric figure labels were too small and truncated in release PDF
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-18 00:05:00 +08:00
+- Source: Manual visual QA after real `live_release_candidate_20260617` autopilot cycle.
+- Symptom: The paper quality gate passed and the PDF had one figure, but Figure 1 used vertical bars with tiny truncated raw metric keys such as `accuracy_delta_...`, making the visual weaker than the surrounding paper artifact.
+- Impact: A release PDF could pass machine checks while still being hard for a reviewer to read, especially for long metric names. This weakened the "publication-ready" claim even though the underlying metric evidence was valid.
+- Evidence: Visual rendering of `outputs/live_release_candidate_20260617/live_release_candidate_20260617-cycle-20260617T160217Z.pdf` page 8 showed raw metric labels compressed below vertical bars.
+- Root cause: The deterministic lightweight figure generator rendered sorted raw metric keys as horizontal axis labels and truncated labels longer than 18 characters.
+- Workaround: None needed after task `140.1`.
+- Next action: Keep visual PDF rendering in release checks; consider promoting label readability into a deterministic paper-quality check if future artifacts regress.
+- Linked tasks: `140.1`
+- Resolution: Reworked metric figures into horizontal bar charts with human-readable labels while preserving raw metric keys in metadata.
+- Verification: Focused figure tests, ruff, mypy, full smoke/unit tests, and a real `live_release_candidate_20260617_v2` autonomous cycle passed. Visual rendering of the new release PDF confirmed readable metric labels; paper-build JSON recorded `paper_quality.passed=true`, `figure_count=1`, `table_count=2`, `page_count=14`, and `overfull_hbox_count=0`.
+
+### P-20260617-071 - Research-plan PDF compile log still reports an overfull line
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-17 23:04:00 +08:00
+- Source: Task `128.1` final live `serve --once` artifact audit.
+- Symptom: The paper-level PDF release gate passed with `overfull_hbox=0`, but the generated research-plan LaTeX logs contain `Overfull \hbox (42.71716pt too wide) in paragraph at lines 97--98`.
+- Impact: Resolved for long evidence artifact locators. Planning PDFs should no longer receive overfull warnings from long similarity/literature summary paths rendered as ordinary text.
+- Evidence: `rg` found the overfull entry in `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/task128_serve_final/research-plan/research-plan.compile.log`; `pdfinfo` confirmed the paper PDF itself has 14 pages and paper-build recorded `Overfull hbox: 0`.
+- Root cause: `render_research_plan_tex()` only used `\url{}` for HTTP(S) references; generated evidence artifact locators such as `similarity_summary:runs/.../similarity_check_...md` were escaped as normal text, so LaTeX could not break the long path cleanly.
+- Workaround: None needed after task `129.1`.
+- Next action: Future PDF QA should keep scanning both paper-build and research-plan compile logs for overfull markers.
+- Linked tasks: `128.1`, `129.1`
+- Resolution: Added breakable `\url{}` rendering for evidence artifact locator references while preserving normal escaped text for short artifact IDs.
+- Verification: Unit tests passed; real `airesearcher research-plan --compile-pdf` under `runs/manual-live/task129-plan-layout` generated a 3-page A4 PDF, and `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error"` on `research-plan.compile.log` returned no matches.
+
+### P-20260616-070 - Live serve cycle blocked release on reviewer revision items
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-06-16 18:09:00 +08:00
+- Source: Real `task127_serve_live` always-on serve verification.
+- Symptom: `airesearcher serve --permission-mode allow-all --once` completed the research-plan, experiment, paper build, and review stages, but the live LLM reviewer returned `verdict=needs_revision`; publication audit reported `needs_revision`, evidence gate reported `blocked`, and 7 follow-up tasks were queued. A later repair run reduced the blocker to the manuscript claiming a separate `Cycle record` artifact while the review bundle did not provide an explicitly named cycle record file.
+- Impact: Resolved for the Pendigits serve cycle. The serve entrypoint now reaches the strict release gates without weakening review, publication, or evidence checks.
+- Evidence: Original blocked run: `runs/manual-live/task127-serve-live/runs/cycle-20260616T100641Z/cycle-summary.json`. Repaired pass: `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` shows `review.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.release_allowed=true`, and `followup_tasks=[]`.
+- Root cause: The manuscript made evidence-language claims that were stricter than the artifacts visible to the reviewer: unsupported qualitative related-work positioning, no caveat that `variance_shrinkage=0.05` was a fixed configuration, and a `Cycle record` label that did not align with the real `cycle-summary.json` artifact.
+- Workaround: None needed after task `128.1`.
+- Next action: Continue hardening research-plan PDF layout separately in `P-20260617-071`.
+- Linked tasks: `127.1`, `128.1`
+- Resolution: Rewrote the related-work/similarity prose to stay within recorded comparison-status fields, added the fixed-configuration shrinkage caveat, renamed the evidence artifact to `Cycle summary`, and added `cycle-summary.json` to the LLM review evidence bundle.
+- Verification: Focused tests, full ruff/mypy/smoke/unit tests, and real `serve --permission-mode allow-all --once` under `runs/manual-live/task128-serve-final` all passed. The real run printed `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`.
+
+### P-20260616-069 - Serve output hid the research-plan gate status
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 18:00:00 +08:00
+- Source: Task `127.1` inspection after autopilot started enforcing the research-plan gate.
+- Symptom: `airesearcher autopilot` printed `[OK] research_plan: passed` or `[BLOCKED] research_plan: failed`, but `airesearcher serve` only printed source preflight, review, publication, evidence, follow-up, and deliverable status.
+- Impact: Operators running the intended always-on service could not see whether a cycle had passed the mandatory post-direction research-plan gate without opening `cycle-summary.json`.
+- Evidence: Before the fix, `serve()` in `src/autoresearch/cli/main.py` did not echo `summary["research_plan"]`, while `autopilot()` had an inline research-plan echo block.
+- Root cause: Task `125.1` added CLI output for the direct autopilot command but did not share that status output with the serve command.
+- Workaround: None needed after the fix.
+- Next action: Keep future operator-visible gates in shared echo helpers when both `autopilot` and `serve` use the same cycle summary.
+- Linked tasks: `127.1`
+- Resolution: Added `_echo_research_plan_status()` and called it from both `autopilot` and `serve`.
+- Verification: Focused CLI tests passed; full smoke/unit tests passed; real `serve --permission-mode allow-all --once` printed `[OK] research_plan: passed`.
+
+### P-20260616-068 - Paper build logs retained first-pass LaTeX rerun warnings
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-16 17:52:00 +08:00
+- Source: Live `task126_pendigits_live` publication-grade PDF audit after the paper build passed.
+- Symptom: The generated PDF was valid and the paper quality gate passed, but `compile.log` still contained `LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.` from the first `pdflatex` pass.
+- Impact: Operators could misread a successful paper build as having unresolved reference instability, especially during final release QA.
+- Evidence: `rg` on `runs/manual-live/task126-pendigits-live/runs/cycle-20260616T094744Z/paper-build/compile.log` found the label rerun warning even though the paper build had `overfull_hbox=0`, quality passed, and a 14-page PDF.
+- Root cause: `_compile_latex` ran the selected LaTeX engine once and wrote that first-pass log directly.
+- Workaround: None needed after the fix.
+- Next action: Keep release paper-build logs focused on the final stable attempt and rely on failed-build logs for full diagnostic output.
+- Linked tasks: `126.1`
+- Resolution: `_compile_latex` now detects first-pass label/cross-reference/citation rerun markers, executes one additional pass, and writes the final successful attempt with `RERUNS_COMPLETED`.
+- Verification: Unit test `test_compile_latex_reruns_when_cross_references_need_second_pass` passed; real `airesearcher paper-build` on the Pendigits manuscript produced a 14-page PDF and a final `compile.log` containing `RERUNS_COMPLETED: 1` and `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches.
+
+### P-20260616-067 - Autopilot could execute experiments without consuming the research-plan gate
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 17:18:00 +08:00
+- Source: Follow-up from task `124.1` while wiring the post-direction research-plan gate into the always-on loop.
+- Symptom: `airesearcher research-plan` could generate and audit a rigorous plan, but `airesearcher autopilot` still advanced from similarity checking into inspiration refresh, demo execution, paper build, and review without requiring that plan artifact.
+- Impact: The always-on cycle could still run code-agent or experiment work from a broad candidate rather than from a durable, audited, Obsidian-backed research plan.
+- Evidence: Before the fix, `_run_autopilot_cycle` in `src/autoresearch/cli/main.py` called literature refresh, candidate generation, similarity, inspiration refresh, and `run_scientistbench_demo` without a research-plan gate between similarity and execution.
+- Root cause: Task `124.1` added the standalone plan generator and audit commands, but did not yet integrate them into the autopilot execution path.
+- Workaround: None needed after the fix.
+- Next action: Keep future code-agent and external experiment adapters behind the same `research_plan_gate` fail-closed contract.
+- Linked tasks: `125.1`
+- Resolution: Added research-plan generation to autopilot before inspiration and experiment execution; blocked the cycle when the plan audit fails or PDF compilation is not successful; added plan artifacts to summaries, review context, evidence inputs, CLI status, and deliverables.
+- Verification: Focused autopilot tests passed for both the normal path and the blocked-before-experiment path; full `python -m pytest tests\smoke tests\unit -q` passed with 483 passed, 4 skipped, and 1 warning; real `airesearcher autopilot` smoke under `runs/manual-live/task125-autopilot-plan` printed `[OK] research_plan: passed`, compiled a 3-page plan PDF, ran the demo only after the plan gate, and exported plan Markdown/JSON/TEX/PDF in the deliverables manifest.
+
+### P-20260616-066 - Verification caught research-plan import ordering and timeout-output typing
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-16 16:53:00 +08:00
+- Source: Verification for task `124.1`.
+- Symptom: `python -m ruff check ...` first reported an import-order issue in `src/autoresearch/research/plans.py`; `python -m mypy src\autoresearch` then reported a `str-bytes-safe` error for `subprocess.TimeoutExpired` stdout/stderr logging.
+- Impact: The new research-plan module could not pass repository quality gates until formatting and timeout logging were corrected.
+- Evidence: Ruff reported one fixable `I001` finding; mypy reported `If x = b'abc' then f"{x}" ...` at `src\autoresearch\research\plans.py`.
+- Root cause: The new module import block needed ruff normalization, and timeout output can be `bytes` even when the normal subprocess call uses `text=True`.
+- Workaround: None after the fix.
+- Next action: Keep ruff and mypy in the task completion gate.
+- Linked tasks: `124.1`
+- Resolution: Ran ruff's import fix and added explicit bytes-to-text handling for timeout logs.
+- Verification: `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; full `python -m pytest tests\smoke tests\unit -q` passed with 482 passed, 4 skipped, and 1 warning.
+
+### P-20260616-065 - Research directions could skip a rigorous executable plan gate
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 16:30:00 +08:00
+- Source: User clarified that after confirming a research direction, the loop must first generate a detailed, scientific, feasible research plan for code agents and experiments.
+- Symptom: The CLI had candidate, similarity, experiment, paper, and audit surfaces, but no first-class research-plan artifact or gate between a confirmed direction and code-agent execution.
+- Impact: Code agents could start implementation from a broad candidate without a durable plan, baseline, metric, dataset route, evidence list, risk alternatives, or PDF/Markdown plan artifact.
+- Evidence: `src/autoresearch/cli/main.py` exposed `similarity-check` and `run-demo`; schemas included `ResearchCandidate` and `Hypothesis`, but no `ResearchPlan`; the vault entry types had no `research_plan` entry.
+- Root cause: Previous loop work focused on literature, similarity, experiments, and final paper build, leaving the post-direction planning step implicit.
+- Workaround: None needed after the new gate.
+- Next action: Wire future autopilot cycles to require a passed research-plan artifact before invoking code-agent experiment execution.
+- Linked tasks: `124.1`
+- Resolution: Added `ResearchPlan`, `research/plans.py`, `research-plan` and `research-plan-audit` CLI commands, `/research:research-plan`, vault Markdown output, `outputs/<project-id>/research-plan/` JSON/TEX/PDF output, deterministic quality gates, tests, and README updates.
+- Verification: Real CLI smoke compiled a 3-page research-plan PDF and wrote the vault Markdown/JSON/TEX/PDF artifacts under `runs/manual-live/task124-research-plan`; `research-plan-audit` passed on the generated JSON; forbidden contest/project-title terms were absent from generated Markdown/TEX; full `python -m pytest tests\smoke tests\unit -q` passed with 482 passed, 4 skipped, and 1 warning.
+
+### P-20260616-064 - Browser-native inspiration sources need governance before runtime enablement
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-16 13:53:38 +08:00
+- Source: User mentioned PageAgent as an AI-native browser project that could let Horizon-style discovery go beyond API-only web sources.
+- Symptom: Browser-native acquisition can reach useful public pages without APIs, but direct runtime enablement could create brittle scraping, ToS/robots issues, login/session leakage, uncontrolled rate, and unverifiable extraction evidence.
+- Impact: If treated as a default crawler too early, AI-Researcher could ingest unsupported web claims, mutate interactive pages, or create source records that cannot be reproduced or audited.
+- Evidence: Live web review found `alibaba/page-agent` is MIT and designed as an in-page JavaScript GUI agent with text-based DOM manipulation, optional Chrome extension and MCP server, while upstream README states PageAgent is for client-side web enhancement and not server-side automation.
+- Root cause: The current broad-inspiration loop is API-first for reproducibility; adding browser acquisition requires a separate governance layer for permissions, snapshots, action traces, source terms, and rate limits.
+- Workaround: Track PageAgent only as a quarantined source-adapter reference and keep V1.0 broad inspiration API-first.
+- Next action: Design a separate browser-source adapter task only after robots/ToS, rate-limit, isolated-profile, snapshot, action-log, and approval gates exist.
+- Linked tasks: `123.1`
+- Resolution: Added `page_agent_browser_source_adapter` as a quarantined external watchlist candidate, documented PageAgent in README/README.zh-CN and `THIRD_PARTY_NOTICES.md`, and added tests to keep browser acquisition separate from current API-first inspiration refresh.
+- Verification: Live web review checked upstream README/docs, raw `LICENSE`, and package metadata; focused ruff, mypy, focused pytest, a real `airesearcher skill-watchlist` CLI write with 14 candidates, generated-watchlist `rg` evidence checks, and full smoke/unit pytest all passed.
+
 ### P-20260615-063 - oh-my-openagent must remain reference-only until license and installer risks are cleared
 
 - Status: Resolved
@@ -379,10 +1403,10 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Evidence: `runs/manual-live/task106-benchmark-demos/spambase-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.8922675933970461`, `baseline_accuracy=0.8853171155516942`, `accuracy_delta_vs_baseline=0.0069504778453518545`, `accuracy_standard_error=0.009138671763868286`, and `test_rows=1151`.
 - Root cause: The diagonal variance correction only gives a small improvement on this deterministic 75/25 Spambase split.
 - Workaround: Keep the demo as a real benchmark coverage path, but require publication audit, evidence gate, and stability matrix checks before using it in any CCF-B/Q3 claim.
-- Next action: Find a stronger method variant, add repeated deterministic splits, or use another dataset before Spambase can contribute to the release-allowed stability matrix.
-- Linked tasks: `106.1`, `107.1`
-- Resolution: Mitigated by task `107.1`; the publication audit now requires CCF-B/Q3 method-effect deltas to be at least 2.0 standard errors when uncertainty evidence is available.
-- Verification: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task107-spambase-vault --cache runs\manual-live\task107-spambase-cache --output-dir runs\manual-live\task107-spambase-cycle --state runs\manual-live\task107-spambase-state.json --project-id task107_spambase_cycle --demo spambase_variance_calibrated_prototypes --timeout-seconds 60 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85` completed the real loop but wrote `publication_audit=fail`, `evidence_gate=blocked`; `method_effect_evidence` reported `delta=0.006950`, `0.76 standard errors`, and target `>=2.00`.
+- Next action: Find a stronger method variant or add repeated deterministic splits before Spambase can contribute to any release-allowed stability matrix. Until then, use the later Pendigits, Letter Recognition, and Skin Segmentation release cycles for CCF-B/Q3 stability evidence instead of Spambase.
+- Linked tasks: `106.1`, `107.1`, `109.1`, `114.1`, `115.1`, `116.1`, `146.1`
+- Resolution: Mitigated by task `107.1`; the publication audit now requires CCF-B/Q3 method-effect deltas to be at least 2.0 standard errors when uncertainty evidence is available. Task `146.1` rechecked the later release matrices and confirmed Spambase is quarantined from stable release claims: the current passing matrices rely on release-allowed Pendigits, Letter Recognition, and Skin Segmentation cycles instead.
+- Verification: `poetry run airesearcher autopilot --config config.yaml --env-path .env --vault runs\manual-live\task107-spambase-vault --cache runs\manual-live\task107-spambase-cache --output-dir runs\manual-live\task107-spambase-cycle --state runs\manual-live\task107-spambase-state.json --project-id task107_spambase_cycle --demo spambase_variance_calibrated_prototypes --timeout-seconds 60 --cycles 1 --max-queries 4 --max-results-per-source 10 --max-tokens 4096 --min-quality-score 0.85` completed the real loop but wrote `publication_audit=fail`, `evidence_gate=blocked`; `method_effect_evidence` reported `delta=0.006950`, `0.76 standard errors`, and target `>=2.00`. The 2026-06-18 re-audit parsed passing stability reports and confirmed `runs\manual-live\task116-related-work-current-matrix\publication-stability.json` is `stable=true`, `score=1.0`, and uses release-allowed Pen-Based Recognition of Handwritten Digits, Letter Recognition, and Skin Segmentation cycles rather than Spambase.
 
 ### P-20260613-041 - Publication stability gate initially read a stale paper-build path from the cycle summary
 
@@ -514,19 +1538,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-033 - Local shell lacks `gh` for CI polling
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Low
 - Discovered: 2026-06-13 13:56:00 +08:00
 - Source: CI verification after pushing task `97.1` and before task `98.1`.
 - Symptom: `gh run list --limit 5 --json databaseId,headSha,status,conclusion,workflowName,url,createdAt` failed because `gh` was not recognized in the active PowerShell session.
-- Impact: Local verification cannot rely on GitHub CLI for CI status in this shell, but CI can still be checked through the public GitHub Actions REST API.
+- Impact: Resolved for the active local shell. GitHub CLI is now installed, visible on PATH, and can query the repository's GitHub Actions runs directly.
 - Evidence: PowerShell returned `CommandNotFoundException` for `gh`.
 - Root cause: GitHub CLI is not installed or not on PATH in the current environment.
-- Workaround: Use `Invoke-RestMethod https://api.github.com/repos/neutronstar238/ai-researcher/actions/runs?...` to inspect Actions runs.
-- Next action: Install GitHub CLI or keep the REST API fallback in future CI checks.
-- Linked tasks: `97.1`, `98.1`
-- Resolution: Mitigated with the REST API fallback.
-- Verification: `Invoke-RestMethod -Uri "https://api.github.com/repos/neutronstar238/ai-researcher/actions/runs?branch=main&per_page=3" | ConvertTo-Json -Depth 6` returned run `27458374281` for commit `7038f4b7de4b263899d398b729ae0fea6eac57fa`.
+- Workaround: Keep the REST API fallback for machines without GitHub CLI or without `gh` authentication.
+- Next action: Use `gh run list --repo neutronstar238/ai-researcher ...` for local CI polling in this environment; fall back to REST only when `gh` is unavailable.
+- Linked tasks: `97.1`, `98.1`, `138.1`
+- Resolution: Task `138.1` verified GitHub CLI availability and a real Actions run query.
+- Verification: `gh --version` printed `gh version 2.93.0 (2026-05-27)`. `gh run list --repo neutronstar238/ai-researcher --limit 1 --json databaseId,status,conclusion,workflowName,url,createdAt` returned run `27544632808` with `status=completed`, `conclusion=success`, workflow `CI`, and URL `https://github.com/neutronstar238/ai-researcher/actions/runs/27544632808`.
 
 ### P-20260613-032 - Local environment lacks OpenCode CLI for live code-agent execution smoke
 
@@ -562,19 +1586,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-030 - Real publication cycle still lacks enough classified similar-work evidence
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 12:47:00 +08:00
 - Source: Real `.env` autopilot verification for task `95.1`.
 - Symptom: A full real `pendigits_variance_calibrated_prototypes` autopilot cycle completed live literature search, live LLM review, publication audit, paper build, and evidence gate, but publication audit stayed `fail` and evidence gate stayed `blocked`.
-- Impact: The system can run a real end-to-end cycle, but it must not claim CCF-B/Q3-level publishability because external novelty positioning is still too weak.
-- Evidence: Baseline real run `runs/manual-live/autopilot-task95-real-cycle/cycle-20260613T044400Z/cycle-summary.json` produced 36 similarity findings, all `unknown`. After task `95.1`, `runs/manual-live/autopilot-task95-structured-queries/cycle-20260613T044908Z/cycle-summary.json` used structured queries, produced 57 similarity findings, and reduced `similarity_classification_coverage` from fail to pass with 1 non-unknown finding, but `similarity_classified_finding_breadth` still failed with 1/10 classified findings.
-- Root cause: Long paragraph-like research-gap queries produced weak live search matches; task `95.1` mitigated that by prioritizing concise method/baseline/risk benchmark queries. Semantic Scholar also returned HTTP 429/circuit-breaker errors in both literature and similarity phases, keeping source-error risk visible.
-- Workaround: Use the structured query generator from task `95.1`; do not lower the publication audit threshold.
-- Next action: Improve evidence-backed similarity classification and source recovery: add richer metadata/abstract inspection, broaden adjacent-work query templates, and configure Semantic Scholar API key/rate limits before treating publication novelty as sufficient.
-- Linked tasks: `95.1`
-- Resolution: Partial mitigation only. Query prompt quality improved, but publication readiness remains blocked by `similarity_classified_finding_breadth` and Semantic Scholar source errors.
-- Verification: Focused similarity tests, ruff, and mypy passed. Real patched autopilot cycle passed source preflight and LLM review, wrote structured queries in the similarity summary, improved findings from 36 to 57 and classified findings from 0 to 1, but still wrote `publication_audit=fail` and `evidence_gate=blocked`.
+- Impact: Resolved for the current default ArXiv/OpenAlex publication loop. The system now has a real Pendigits variance-calibrated prototype cycle whose external novelty positioning passes the CCF-B target without lowering the similarity breadth threshold. Semantic Scholar remains an optional, separately tracked source-reliability risk under `P-20260613-003`.
+- Evidence: Baseline real run `runs/manual-live/autopilot-task95-real-cycle/cycle-20260613T044400Z/cycle-summary.json` produced 36 similarity findings, all `unknown`. After task `95.1`, `runs/manual-live/autopilot-task95-structured-queries/cycle-20260613T044908Z/cycle-summary.json` used structured queries, produced 57 similarity findings, and reduced `similarity_classification_coverage` from fail to pass with 1 non-unknown finding, but `similarity_classified_finding_breadth` still failed with 1/10 classified findings. Later task `104.1` classified 18/57 findings for the same Pendigits direction. Final task `128.1` live serve cycle `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` records 57 similarity findings, 18 evidence-classified findings against a target of 10, 65 literature documents, 65 verified citations, publication audit `verdict=pass`, `publishable=true`, evidence gate `verdict=pass`, and `release_allowed=true`.
+- Root cause: Long paragraph-like research-gap queries produced weak live search matches; task `95.1` mitigated that by prioritizing concise method/baseline/risk benchmark queries, and tasks `104.1` through `128.1` added bounded method-family classification, source-backed related-work inspection, citation relevance checks, manuscript repair, and final release evidence.
+- Workaround: None needed for the current default required-source pipeline. Continue using structured queries, bounded similarity classification, citation relevance checks, related-work inspection, publication audit, and evidence gate before any publishability claim.
+- Next action: Keep broadening the stability matrix across independent datasets/templates and leave optional Semantic Scholar rate-limit handling tracked under `P-20260613-003`.
+- Linked tasks: `95.1`, `104.1`, `128.1`, `133.1`
+- Resolution: Resolved by later real cycles without lowering the novelty/related-work gate. The current release-allowed Pendigits cycle passes `similarity_classified_finding_breadth` with 18 evidence-classified findings and passes the strict publication and evidence gates.
+- Verification: PowerShell inspection of `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` confirmed publication audit `verdict=pass`, `publishable=True`, `similarity_classified_finding_breadth` message `18; target requires at least 10`, evidence gate `verdict=pass`, and `release_allowed=True`.
 
 ### P-20260613-029 - LLM review repair test initially expected empty findings to pass
 
@@ -786,19 +1810,19 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-016 - Positive method-effect demo is not yet a publishable novelty claim
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 09:50:34 +08:00
 - Source: Real task `78.1` UCI Pendigits variance-calibrated prototype run and autopilot cycle.
 - Symptom: The new method candidate has a positive measured effect over the nearest-centroid baseline, but the full publication audit still fails when literature breadth is smoke-sized and LLM evidence review is skipped.
-- Impact: The system now has a real positive-effect method path, but must not present it as a CCF-B/Q3-ready paper until novelty search, related-work breadth, review, and manuscript gates all pass.
+- Impact: Resolved for the current Pendigits variance-calibrated prototype path. The system now has a real positive-effect method path and a later live serve cycle where novelty search, related-work breadth, review, manuscript, publication audit, evidence gate, and follow-up gates passed.
 - Evidence: `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy=0.823327615780446`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=0.045740423098913685`. The task `78.1` real autopilot cycle reported `method_innovation_evidence.status=pass` and `method_effect_evidence.status=pass`, but overall `verdict=fail` and `publishable=false`. A later review-enabled full-width cycle at `runs/manual-live/autopilot-variance-full-task79/cycle-20260613T020221Z/cycle-summary.json` reported `review.status=passed`, `paper_build.status=compiled`, and `publication_audit.score=0.8361`, but still failed because literature query breadth collapsed to one and Semantic Scholar returned 429. After task `79.1`, `runs/manual-live/autopilot-aligned-task79/cycle-20260613T020855Z/cycle-summary.json` fixed query breadth and demo alignment but still recorded Semantic Scholar 429 source errors and skipped review. Tasks `80.1` and `81.1` improved in-cycle and cross-cycle source politeness. Task `82.1` now stops cycles early when a persisted cooldown is active, but it intentionally does not make the Semantic Scholar source coverage pass.
 - Root cause: Positive method effect is necessary but not sufficient; the method still needs broad cross-literature novelty checks without source failures, plus a passing review-enabled cycle on the aligned candidate. The remaining source failure likely requires an API key or longer cooldown beyond an individual cycle.
-- Workaround: Keep the result as a positive method-candidate evidence note, not as a publication-ready claim.
-- Next action: Provide or configure a Semantic Scholar API key/cooldown that avoids 429, then rerun a review-enabled aligned cycle and compare against adjacent Gaussian/prototype/nearest-centroid calibration literature.
-- Linked tasks: `78.1`, `79.1`, `80.1`, `81.1`, `82.1`
-- Resolution: Not resolved; task `78.1` creates the positive-effect candidate path and leaves publication readiness blocked by the broader gates.
-- Verification: Real `run-demo`, review-enabled `autopilot`, and aligned no-review `autopilot --demo pendigits_variance_calibrated_prototypes --max-queries 4` completed. The aligned cycle reported `literature.query_count=4`, `reproduction_check.status=passed`, `publication_audit.verdict=needs_revision`, and `evidence_gate.verdict=blocked`.
+- Workaround: None needed for the task `128.1` Pendigits serve pass. Future method candidates still need the same strict gates before any publication claim.
+- Next action: Extend the same publishable-cycle checks to additional datasets, templates, and stronger baselines instead of relaxing the gates.
+- Linked tasks: `78.1`, `79.1`, `80.1`, `81.1`, `82.1`, `126.1`, `128.1`, `131.1`
+- Resolution: Tasks `126.1` and `128.1` reran the positive-effect Pendigits path with full-width live literature/similarity retrieval, live review, paper build, publication audit, evidence gate, citation package, reproduction rerun, and follow-up queue checks. Task `128.1` reached a release-allowed live serve pass without weakening the gates.
+- Verification: Real `serve --permission-mode allow-all --once --demo pendigits_variance_calibrated_prototypes` at `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` recorded `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=true`, `followup_tasks=[]`, 65 literature documents, 57 similarity findings, 65 verified citations, a 14-page paper build, and a 3-page research plan.
 
 ### P-20260613-015 - Method innovation artifacts could pass without positive method-effect evidence
 
@@ -818,67 +1842,67 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-014 - First method-candidate demo underperformed the Pendigits baseline
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 09:24:02 +08:00
 - Source: Real `pendigits_prototype_shrinkage` run and task `76.1` autopilot cycle.
 - Symptom: The first non-baseline method-candidate demo produced a valid file-backed innovation artifact, but the measured candidate accuracy was lower than the nearest-centroid baseline.
-- Impact: The system can now prove that a method candidate was actually implemented and evaluated, but it must not claim empirical improvement or paper-level novelty from this candidate. The self-loop should treat this as a real negative result and search for stronger mechanisms or additional datasets.
+- Impact: Resolved as an archived negative result. The system preserved the underperforming method candidate as evidence, and later gates block empirical-gain claims from neutral or negative method effects.
 - Evidence: `runs/manual-live/pendigits-shrinkage-task76/pendigits-prototype-shrinkage/metrics.json` reported `accuracy=0.7764436821040595`, `baseline_accuracy=0.7775871926815323`, and `accuracy_delta_vs_baseline=-0.0011435105774728616`. `artifacts/innovation_evidence.json` recorded the interpretation `The method candidate underperformed the baseline in this run.`
 - Root cause: The implemented shrinkage mechanism is intentionally simple and interpretable; on the official UCI Pendigits split, shrinking class centroids toward the global mean did not improve nearest-centroid classification.
-- Workaround: Keep the artifact as negative evidence. After task `77.1`, `method_effect_evidence` blocks empirical-gain claims when the recorded candidate delta is neutral or negative.
-- Next action: Use broader similarity search and method exploration to identify a stronger, defensible method candidate, then validate it on at least one real public benchmark plus ablations and reruns.
-- Linked tasks: `76.1`
-- Resolution: Not resolved; task `76.1` intentionally preserves the negative result instead of hiding it.
-- Verification: A real `run-demo --demo pendigits_prototype_shrinkage` completed with validation status `passed`. A real `autopilot --demo pendigits_prototype_shrinkage --no-review` cycle wrote `method_innovation_evidence.status=pass`, `reproduction_check.status=passed`, and `evidence_gate.verdict=blocked` because review was skipped and the broader publication audit still failed.
+- Workaround: None needed after task `77.1`; `method_effect_evidence` blocks empirical-gain claims when the recorded candidate delta is neutral or negative.
+- Next action: Keep the negative artifact available for self-loop learning and use stronger candidates, such as the later variance-calibrated prototype path, when publication-readiness gates require positive method effect.
+- Linked tasks: `76.1`, `77.1`, `78.1`, `131.1`
+- Resolution: The negative result was not hidden or reframed as a success. Task `77.1` made neutral/negative method-effect evidence a blocking publication check, and task `78.1` introduced a separate positive-effect candidate rather than claiming improvement from this underperforming method.
+- Verification: `runs/manual-live/pendigits-shrinkage-task76/pendigits-prototype-shrinkage/metrics.json` still records `accuracy_delta_vs_baseline=-0.0011435105774728616`; `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` separately records a positive candidate delta of `0.045740423098913685`.
 
 ### P-20260613-013 - Baseline-only paper-style reports could pass publication audit when other gates passed
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 09:18:00 +08:00
 - Source: Continuation review of publication-audit tests after the user required strict innovation and evidence checks at roughly CCF-B/Q3 quality.
 - Symptom: Before task `75.1`, a real-benchmark baseline fixture could pass `ccf-b` publication audit if literature, similarity, data size, ablation, statistics, review, and manuscript-section checks all passed.
-- Impact: A future cycle could package a baseline benchmark run as a paper-style PDF without file-backed evidence of a proposed mechanism or method contribution.
-- Evidence: `tests/unit/reports/test_publication_audit.py::test_publication_audit_passes_manuscript_gate_for_paper_style_report` expected a baseline-style real benchmark cycle to be publishable after adding paper sections.
+- Impact: Resolved for current CCF-B publication targets. A future baseline-only cycle is blocked unless it carries file-backed method innovation evidence and a positive method-effect check; the final task `128.1` release pass demonstrates the non-baseline path.
+- Evidence: `tests/unit/reports/test_publication_audit.py::test_publication_audit_passes_manuscript_gate_for_paper_style_report` expected a baseline-style real benchmark cycle to be publishable after adding paper sections. Task `75.1` added `method_innovation_evidence`; task `77.1` added `method_effect_evidence`; final task `128.1` live serve cycle records `method_innovation_evidence.status=pass`, `method_effect_evidence.status=pass`, and publication audit `verdict=pass`.
 - Root cause: The audit checked evidence breadth and manuscript structure but did not distinguish baseline reproduction evidence from an actual method innovation artifact.
-- Workaround: None needed after task `75.1`; publication targets now require `method_innovation_evidence` unless the target is `mvp-demo`.
-- Next action: Teach future experiment generators to create honest method-contribution metadata and innovation/mechanism artifacts only when a real method change was implemented and validated.
-- Linked tasks: `75.1`
-- Resolution: Task `75.1` adds `require_novel_contribution` to publication targets, blocks `baseline_only=true` or baseline-named tasks, and requires both proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact.
-- Verification: Focused publication-audit tests passed. A real audit over `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, message `File-backed method innovation evidence is missing or baseline-only.`, and a concrete next action.
+- Workaround: None needed for current CCF-B targets.
+- Next action: Continue requiring honest method-contribution metadata and innovation/mechanism artifacts only when a real method change was implemented and validated.
+- Linked tasks: `75.1`, `77.1`, `128.1`, `134.1`
+- Resolution: Task `75.1` adds `require_novel_contribution` to publication targets, blocks `baseline_only=true` or baseline-named tasks, and requires both proposed mechanism/contribution metadata and an existing innovation/mechanism/contribution artifact. Task `77.1` blocks neutral or negative method effects. Task `128.1` demonstrates the positive non-baseline release path.
+- Verification: Focused publication-audit tests passed. A real audit over `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` wrote `runs/manual-live/publication-audit-task75/publication-audit.json` with `method_innovation_evidence.status=fail`, message `File-backed method innovation evidence is missing or baseline-only.`, and a concrete next action. PowerShell inspection of `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` confirmed `method_innovation_evidence=pass`, `method_effect_evidence=pass`, publication audit `verdict=pass`, and `publishable=True`.
 
 ### P-20260613-012 - Cycle release evidence proved first execution but not a fresh rerun
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 09:24:00 +08:00
 - Source: User emphasized that the system must verify scripts really execute and must not rely on AI self-reporting tests or research runs.
 - Symptom: Before task `74.1`, `autopilot`/`serve` cycle summaries contained the first experiment run record and validation report, but the physical release gate did not require a fresh command-line rerun inside the completed cycle.
-- Impact: A future release claim could prove that one experiment ran once, but not that the chosen experiment can be rerun from the CLI and regenerate validation artifacts.
-- Evidence: Task `73.1` wrote `paper_build` and `evidence_gate` into `cycle-summary.json`, but `run_evidence_gate()` only checked the first `demo.run_record_path` plus validation artifacts.
+- Impact: Resolved for current release gates. A release-allowed cycle now needs a fresh command-line reproduction check with rerun run-record and validation-report artifacts.
+- Evidence: Task `73.1` wrote `paper_build` and `evidence_gate` into `cycle-summary.json`, but `run_evidence_gate()` only checked the first `demo.run_record_path` plus validation artifacts. Task `128.1` final serve cycle records `reproduction_rerun_gate.status=pass`, `exit_code=0`, `run_records=1`, and `validation_reports=1`.
 - Root cause: Reproduction proof existed inside individual run records, but the always-on cycle did not run a second command-line check after the first run and before release gating.
-- Workaround: None needed after task `74.1`; older cycle summaries without `reproduction_check` will now fail the stricter release gate instead of being treated as release-ready.
+- Workaround: None needed after task `74.1`; older cycle summaries without `reproduction_check` fail the stricter release gate instead of being treated as release-ready.
 - Next action: For heavier benchmarks, monitor runtime cost of the automatic rerun and consider an explicit evidence-preserving cache only if it still proves a fresh command invocation and data hash.
-- Linked tasks: `74.1`
+- Linked tasks: `74.1`, `128.1`, `134.1`
 - Resolution: Task `74.1` adds `_run_cycle_reproduction_check()` to rerun the selected demo via `python -m autoresearch.cli.main run-demo`, records command/exit code/stdout/stderr tails plus fresh run-record and validation paths, and makes `reproduction_rerun_gate` a blocking evidence-gate check.
-- Verification: Focused CLI/evidence-gate tests passed. A real `autopilot --no-review` single-cycle run wrote `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` with `reproduction_check.status=passed`, `exit_code=0`, one fresh rerun run record, one fresh rerun validation report, and `reproduction_rerun_gate` passed inside `evidence-gate.json`.
+- Verification: Focused CLI/evidence-gate tests passed. A real `autopilot --no-review` single-cycle run wrote `runs/manual-live/autopilot-reproduction-gate-task74/cycle-20260613T010218Z/cycle-summary.json` with `reproduction_check.status=passed`, `exit_code=0`, one fresh rerun run record, one fresh rerun validation report, and `reproduction_rerun_gate` passed inside `evidence-gate.json`. PowerShell inspection of the task `128.1` cycle confirmed the final release-allowed serve path also passes `reproduction_rerun_gate`.
 
 ### P-20260613-011 - Always-on loop still required manual paper-build and evidence-gate chaining
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 09:02:00 +08:00
 - Source: Continuation review against the user requirement for a one-command 24h system that performs real research, paper-level output, and strict quality gating without manual step-by-step operation.
 - Symptom: Before task `73.1`, `autopilot` and `serve` ran literature refresh, similarity search, experiment execution, optional review, and publication audit, but operators still had to manually run `paper-build` and then `evidence-gate` to produce a PDF-level artifact and physical release verdict.
-- Impact: A long-running deployment could stop at a Markdown report and publication audit, leaving the strict PDF/evidence gate outside the automatic loop.
-- Evidence: `_run_autopilot_cycle()` wrote `publication_audit` into `cycle-summary.json` but did not write `paper_build` or `evidence_gate`.
+- Impact: Resolved for current `autopilot` and `serve` cycles. The automatic loop now writes paper-build and evidence-gate artifacts into `cycle-summary.json`; task `128.1` proves this path can reach release-allowed status through the one-command serve entrypoint.
+- Evidence: `_run_autopilot_cycle()` wrote `publication_audit` into `cycle-summary.json` but did not write `paper_build` or `evidence_gate`. Final task `128.1` live `serve --permission-mode allow-all --once` records paper build `status=compiled`, `paper_quality_gate.status=pass`, publication release gate `status=pass`, evidence gate `verdict=pass`, and `release_allowed=true`.
 - Root cause: Paper-build and evidence-gate started as standalone commands and had not yet been wired back into the always-on cycle.
-- Workaround: Operators could run `airesearcher paper-build` and `airesearcher evidence-gate` manually over a completed cycle.
-- Next action: Continue to improve the quality of the actual research method and external-source stability; automatic gates now expose blockers but do not make baseline experiments publishable.
-- Linked tasks: `73.1`
+- Workaround: None needed for current `autopilot`/`serve` cycle gating.
+- Next action: Continue to improve the quality of actual research methods and external-source stability; automatic gates expose blockers and do not make baseline-only experiments publishable.
+- Linked tasks: `73.1`, `128.1`, `134.1`
 - Resolution: Task `73.1` wires automatic LaTeX paper build and physical evidence gate execution into each `autopilot`/`serve` cycle, records both artifacts in `cycle-summary.json`, and echoes the gate verdict.
-- Verification: Focused autopilot CLI test passed. A real local `autopilot --no-review` single-cycle run wrote `paper_build.status=compiled` and `evidence_gate.verdict=blocked` into `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json`; the compiled PDF and evidence-gate JSON existed, and the gate correctly blocked release because review was skipped and publication audit failed.
+- Verification: Focused autopilot CLI test passed. A real local `autopilot --no-review` single-cycle run wrote `paper_build.status=compiled` and `evidence_gate.verdict=blocked` into `runs/manual-live/autopilot-cycle-gate-task73/cycle-20260613T004916Z/cycle-summary.json`; the compiled PDF and evidence-gate JSON existed, and the gate correctly blocked release because review was skipped and publication audit failed. PowerShell inspection of the task `128.1` real serve cycle confirmed the automatic path now passes `publication_release_gate`, `paper_pdf_gate`, `paper_quality_gate`, and evidence gate `release_allowed=True`.
 
 ### P-20260613-010 - Ruff flagged lock-file cleanup as SIM105
 
@@ -898,67 +1922,67 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-008 - Prompt-only release discipline is insufficient for autonomous research claims
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 03:12:00 +08:00
 - Source: User requested SCALE-style physical gates after warning that AI agents can claim tests passed, overwrite each other, or skip review when governance is only prompt-based.
 - Symptom: Before task `72.1`, AI-Researcher had strong publication-audit and paper-build artifacts, but no single physical release gate that checked required evidence files, review status, publication audit verdict, and compiled PDF together with a release-blocking exit code.
-- Impact: A future operator or agent could treat a non-publishable cycle as releasable by reading only a successful local experiment or compiled PDF while ignoring source errors or audit blockers.
-- Evidence: The latest real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` has a compiled PDF through task `71.1`, but its publication audit remains `needs_revision` because Semantic Scholar source errors still reduce novelty confidence.
+- Impact: Resolved for release claims. A cycle is not releasable unless the physical evidence gate reads the required artifacts, passes publication/review/paper/reproduction/lifecycle checks, and writes `release_allowed=true`. Concurrent editing coordination is tracked separately in `P-20260613-009`.
+- Evidence: The earlier real cycle at `runs/manual-live/serve-paper-structure/cycle-20260612T180330Z/` had a compiled PDF through task `71.1`, but its publication audit remained `needs_revision` because Semantic Scholar source errors still reduced novelty confidence. Task `72.1` added the physical evidence gate, task `89.1` added lifecycle trace gating, and task `128.1` final serve cycle records evidence gate `verdict=pass`, `release_allowed=true`, `failed_check_count=0`, with lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all passing.
 - Root cause: The project relied on separate evidence-producing commands and documentation discipline rather than one release decision command that fails closed.
-- Workaround: Use `airesearcher evidence-gate` before any release or paper-ready claim.
-- Next action: Use `evidence-gate` for release claims and `sessions claim` before concurrent agents edit overlapping file scopes.
-- Linked tasks: `72.1`, `72.2`
-- Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries.
-- Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`.
+- Workaround: None needed for release claims after the evidence gate and lifecycle trace gate.
+- Next action: Keep future worker, daemon, and slash-command launch paths aligned with the automatic runtime session gate resolved in `P-20260613-009`.
+- Linked tasks: `72.1`, `89.1`, `128.1`, `135.1`
+- Resolution: Task `72.1` added `airesearcher evidence-gate`, `/research:evidence-gate`, JSON/Markdown gate reports, Obsidian review/issue writing, README guidance, and SCALE Engine notice boundaries. Task `89.1` added the blocking lifecycle trace gate. Task `128.1` proved the release gate can pass end to end on a real `serve --once` cycle without prompt-only self-attestation.
+- Verification: Focused evidence-gate tests, CLI tests, compliance tests, ruff, mypy, full smoke/unit tests, and a real evidence-gate command over the latest live cycle and paper build were run for task `72.1`. PowerShell inspection of `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`.
 
 ### P-20260613-009 - Concurrent agents can overlap file edits without a local claim gate
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 08:28:00 +08:00
 - Source: User asked to borrow SCALE Engine's multi-agent traffic-control idea while keeping the small-team prototype lightweight.
-- Symptom: Before task `72.2`, AI-Researcher documented commit and evidence discipline, but there was no executable local check that prevented two active agents from claiming the same file or parent/child directory scope. Before task `72.3`, the new JSON state gate also needed a local mutation lock to avoid simultaneous read/write races.
-- Impact: Concurrent coding or research agents could overwrite each other's work, confuse `Agent.md` ownership, or make verification evidence ambiguous.
-- Evidence: A real task `72.2` CLI demo wrote `runs/manual-live/session-gate-task72/agent-sessions.json`; `task72-a` claimed `src/autoresearch/runtime`, `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`, and after `task72-a` was released, `task72-b` was allowed. Task `72.3` added a local `.lock` file around claim/release mutations and a fail-fast locked-state CLI demo.
+- Symptom: Before task `72.2`, AI-Researcher documented commit and evidence discipline, but there was no executable local check that prevented two active agents from claiming the same file or parent/child directory scope. Before task `72.3`, the new JSON state gate also needed a local mutation lock to avoid simultaneous read/write races. Before task `136.1`, the main `autopilot` and `serve` runtime entrypoints still required operators or wrapper scripts to call `sessions claim` manually.
+- Impact: Resolved for the main autonomous runtime entrypoints. `autopilot` and `serve` now claim their vault, cache, output, deliverables, scheduler state, and runtime approval state scopes before queued approval checks, online retrieval, experiment execution, or writes can start, and overlapping active sessions fail closed before the cycle runs. Ad hoc external editors still need to use the `sessions` CLI or an equivalent wrapper when they bypass these entrypoints.
+- Evidence: A real task `72.2` CLI demo wrote `runs/manual-live/session-gate-task72/agent-sessions.json`; `task72-a` claimed `src/autoresearch/runtime`, `task72-b` was blocked when claiming `src/autoresearch/runtime/sessions.py`, and after `task72-a` was released, `task72-b` was allowed. Task `72.3` added a local `.lock` file around claim/release mutations and a fail-fast locked-state CLI demo. Task `136.1` added automatic claim/release around `autopilot` and `serve`; focused CLI tests prove release on normal completion and queued approval exit, and a real `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once ...` smoke with an active overlapping vault claim exited `1` with `[OK] session_claim: blocked` and `[CONFLICT] session_id=task136_active` before any cycle started.
 - Root cause: The repository relied on human/agent prompt discipline for workspace coordination instead of a local state file and mutation lock that active agents can check before editing.
-- Workaround: Agents should run `airesearcher sessions claim --task-id <task> --agent-name <agent> --path <scope>` before editing shared code or docs, then `airesearcher sessions release <session-id>` when finished.
-- Next action: If multiple long-running workers are later spawned, integrate `sessions claim` into worker launch scripts or slash-command wrappers so the locked gate is automatic.
-- Linked tasks: `72.2`, `72.3`
-- Resolution: Task `72.2` added the local session coordinator, CLI commands, slash template, docs, and focused tests. Task `72.3` added local lock-file serialization with configurable CLI timeout.
-- Verification: Focused runtime/CLI tests, a real claim/block/release/claim/list CLI demo, and a real fail-fast locked-state CLI demo were run; broader verification is recorded in `Agent.md`.
+- Workaround: None needed for `autopilot` or `serve`. Agents that edit shared code or docs outside those runtime entrypoints should still run `airesearcher sessions claim --task-id <task> --agent-name <agent> --path <scope>` before editing and `airesearcher sessions release <session-id>` when finished.
+- Next action: Reuse the automatic claim/release wrapper for any future worker, daemon, channel bot, or slash-command entrypoint that can write vault, cache, run, output, scheduler, or approval state.
+- Linked tasks: `72.2`, `72.3`, `136.1`
+- Resolution: Task `72.2` added the local session coordinator, CLI commands, slash template, docs, and focused tests. Task `72.3` added local lock-file serialization with configurable CLI timeout. Task `136.1` integrated the session gate directly into `autopilot` and `serve`, including release on completion, queued approval exit, and cycle failure.
+- Verification: Focused runtime/CLI tests, a real claim/block/release/claim/list CLI demo, a real fail-fast locked-state CLI demo, focused task `136.1` CLI tests, full CLI tests, ruff, mypy, full smoke/unit tests, and a real `bin/airesearcher.mjs` conflict-before-cycle smoke were run; detailed commands and outcomes are recorded in `Agent.md`.
 
 ### P-20260613-007 - cc-switch code-agent integration must not bypass AI-Researcher validation
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 01:53:55 +08:00
 - Source: User asked whether the coding agent could combine cc-switch provider sharing with Claude Code CLI while AI-Researcher keeps code acceptance.
 - Symptom: Directly merging large cc-switch code paths into AI-Researcher would mix a Tauri/Rust/TypeScript desktop provider manager with the Python research runtime, and could blur who owns secrets, provider sync, command approval, validation, merge, and rollback.
-- Impact: A future contributor could accidentally give an external code-writing CLI authority to run dangerous commands, accept its own diffs, or write provider secrets into repository artifacts.
+- Impact: Resolved for the current repository integration boundary. AI-Researcher now treats OpenCode as the preferred direct external code-writing backend and cc-switch/Claude Code as an optional provider-routing bridge only; both manifests and CLI surfaces state that AI-Researcher owns validation, approval, merge, rollback, Obsidian memory, and `Agent.md` logging.
 - Evidence: Reviewed `https://github.com/farion1231/cc-switch`, its top-level MIT license, provider-management documentation for Universal Provider/model fetching, and Claude Code model configuration docs that distinguish endpoint routing from model selection.
 - Root cause: cc-switch is useful provider-routing infrastructure, but it is not the same trust boundary as AI-Researcher's evidence, approval, and publication gates.
-- Workaround: Treat cc-switch and Claude Code as an external code-generation backend only. AI-Researcher must capture generated diffs, run local validation, require runtime approval for dangerous actions, own merge/rollback, and write Obsidian plus `Agent.md` records.
-- Next action: If a future task executes Claude Code directly, run it in an isolated worktree, add command transcript capture, and require explicit approval before full-permission shell or provider-profile writes.
-- Linked tasks: `68.1`
-- Resolution: Added `airesearcher code-agents cc-switch init|list`, a repository manifest contract, README guidance, and third-party notice boundaries that keep AI-Researcher as validator.
-- Verification: Web review confirmed the current cc-switch repository is public, exposes a top-level MIT license, documents provider management/Universal Provider behavior, and Claude Code docs distinguish endpoint routing from model selection. `poetry run pytest tests/unit/integrations/test_cc_switch.py tests/unit/integrations/test_openclaw.py tests/unit/compliance/test_licenses.py -q`, focused CLI tests, `poetry run ruff check src tests`, `poetry run mypy src`, `git diff --check`, `poetry run airesearcher code-agents cc-switch init --output integrations\cc-switch\code-agent.json`, `poetry run airesearcher code-agents cc-switch list`, `rg` text checks, and `poetry run pytest tests/smoke tests/unit -q` passed during task `68.1`.
+- Workaround: None needed for the current repository contracts. Future direct Claude Code or cc-switch execution still needs a dedicated worktree, command transcript capture, dangerous-command approval, and AI-Researcher-owned validation before acceptance.
+- Next action: Keep OpenCode as the preferred direct backend unless a task explicitly requires Claude Code provider routing through cc-switch; never vendor provider-manager source or credentials.
+- Linked tasks: `68.1`, `97.1`, `100.1`, `139.1`
+- Resolution: Task `68.1` added `airesearcher code-agents cc-switch init|list`, a repository manifest contract, README guidance, and third-party notice boundaries that keep AI-Researcher as validator. Task `97.1` added the preferred direct OpenCode backend contract. Task `100.1` verified the installed OpenCode CLI with a bounded disposable live smoke. Task `139.1` rechecked both backend list commands and focused integration tests.
+- Verification: Web review confirmed the current cc-switch repository is public, exposes a top-level MIT license, documents provider management/Universal Provider behavior, and Claude Code docs distinguish endpoint routing from model selection. Task `139.1` real CLI checks printed `validator=AI-Researcher` for both `opencode-direct` and `claude-code-via-cc-switch`; `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q` passed with 9 tests.
 
 ### P-20260613-006 - HKUDS AI-Researcher license text is not explicit enough for code reuse
 
-- Status: Open
+- Status: Mitigated
 - Severity: Medium
 - Discovered: 2026-06-13 00:52:01 +08:00
 - Source: Web review for task `62.1` after the user asked whether HKUDS AI-Researcher is open-source and how it differs from this project.
-- Symptom: The upstream repository is public and its `setup.cfg` package metadata declares `license = MIT`, but the repository file list did not expose a top-level `LICENSE` file during review. GitHub issue #94, opened on 2026-06-02, also asks the maintainers to add explicit license clarification.
+- Symptom: The upstream repository is public and its `setup.cfg` package metadata declares `license = MIT`, but GitHub repository metadata still reports `licenseInfo=null` and the repository file list still does not expose a top-level `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE` file. GitHub issue #94, opened on 2026-06-02, also asks the maintainers to add explicit license clarification and remains open.
 - Impact: A future contributor could mistakenly treat public source visibility as enough permission to copy code, prompts, benchmark data, or generated examples into AI-Researcher.
-- Evidence: Reviewed `https://github.com/HKUDS/AI-Researcher`, raw upstream `README.md`, raw `setup.cfg`, and `https://github.com/HKUDS/AI-Researcher/issues/94`.
+- Evidence: Reviewed `https://github.com/HKUDS/AI-Researcher`, raw upstream `README.md`, raw `setup.cfg`, `https://github.com/HKUDS/AI-Researcher/issues/94`, GitHub license API endpoint `https://api.github.com/repos/HKUDS/AI-Researcher/license`, and the root contents endpoint on 2026-06-17 and 2026-06-18. `setup.cfg` still declares `license = MIT`; GitHub repository metadata reports `licenseInfo=null`; the GitHub license API returned 404; the root contents check found no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`; issue #94 remains open.
 - Root cause: Upstream source and package metadata are not accompanied by an explicit repository license text in the reviewed state.
 - Workaround: Treat HKUDS AI-Researcher as a conceptual/paper reference only. Do not copy or adapt repository code, prompts, benchmark data, generated examples, or assets unless upstream adds explicit license text or written permission is obtained.
 - Next action: Re-check upstream license status before any future incorporation or derivative implementation that uses their repository material.
-- Linked tasks: `62.1`
-- Resolution: Not resolved upstream; `THIRD_PARTY_NOTICES.md` and README now record the conservative boundary.
-- Verification: Updated repository notices and README differentiation notes; focused text search and compliance tests were run for task `62.1`.
+- Linked tasks: `62.1`, `132.1`, `145.1`
+- Resolution: Mitigated for AI-Researcher by refreshing `THIRD_PARTY_NOTICES.md` with the 2026-06-18 API/root-contents evidence and adding a compliance regression test that keeps HKUDS AI-Researcher reference-only until a license file or written permission exists.
+- Verification: GitHub API/root-contents checks confirmed the missing license-text boundary. The 2026-06-18 re-check found `licenseInfo=null`, license API 404, no root `LICENSE`/`LICENCE`/`COPYING`/`NOTICE`, `setup.cfg` license metadata still `MIT`, and issue #94 still `OPEN`; focused compliance tests passed for the updated third-party notice.
 
 ### P-20260613-005 - Live DeepSeek reviewer can truncate JSON at 2400 completion tokens
 
@@ -978,12 +2002,12 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260613-004 - Live full-loop outputs are evidence-backed but not publication-ready
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-06-13 00:34:44 +08:00
 - Source: CCF-B publication audit over real `airesearcher serve` full-loop outputs for task `61.1`.
 - Symptom: The system can run live literature retrieval, similarity checking, local experiment execution, and LLM evidence review, but the produced report does not meet CCF-B/Q3-style publication standards.
-- Impact: The project must not describe current ScientistBench-Lite outputs as publishable papers. The loop is a verified research-automation scaffold, not a finished paper generator.
+- Impact: Resolved for the current real Pendigits variance-calibrated prototype loop. Early ScientistBench-Lite outputs remain non-publishable historical evidence, but the latest live serve cycle now demonstrates a release-allowed paper-level output under the strict gates.
 - Evidence: `runs/manual-live/serve-quality-4096/cycle-20260612T163703Z/publication-audit.md` reports verdict `fail`, score `0.350`, 11 literature documents vs 20 required, only ArXiv successful due Semantic Scholar 429, 4 validated test rows vs 1000 required, synthetic dataset, missing ablation/statistical sanity, and missing paper sections.
 - Additional evidence: Task `63.1` live `pendigits_centroid_baseline` runs moved the data-side checks forward. `runs/manual-live/serve-pendigits/cycle-20260612T165932Z/publication-audit.json` and `runs/manual-live/serve-pendigits-sha/cycle-20260612T170946Z/publication-audit.json` show `script_data_verification`, `data_strength`, `dataset_realism`, `baseline_reproduction`, `ablation_coverage`, `statistical_sanity`, and `llm_evidence_review` all passed. The latest run also recorded UCI train/test source URLs, byte counts, and SHA-256 hashes in `runs/manual-live/serve-pendigits-sha/cycle-20260612T170946Z/demo/pendigits-centroid-baseline/artifacts/dataset_sources.json`. The same audit still failed with score `0.5614` due 10 literature documents vs 20 required, only ArXiv successful because Semantic Scholar returned 429/circuit-breaker errors, similarity query breadth 3 vs 4, and missing manuscript sections.
 - Additional evidence: Task `64.1` added OpenAlex as a default source. Live `literature-refresh` in `runs/manual-live/task64-vault/exploration/topics/literature_refresh_20260612.md` fetched ArXiv and OpenAlex results while Semantic Scholar still returned HTTP 429. Live `similarity-check` in `runs/manual-live/task64-vault/exploration/topics/similarity_check_autopilot_live_pendigits_sha_20260613_20260612170946.md` showed OpenAlex participating in project-start cross-search.
@@ -1000,29 +2024,30 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Additional evidence: Task `76.1` adds the first non-baseline Pendigits method candidate with file-backed `artifacts/innovation_evidence.json`. A real run at `runs/manual-live/pendigits-shrinkage-task76/pendigits-prototype-shrinkage/metrics.json` reported `accuracy_delta_vs_baseline=-0.0011435105774728616`, so the artifact is honest negative evidence rather than a publishable empirical gain. A real autopilot cycle at `runs/manual-live/autopilot-shrinkage-task76/cycle-20260613T012402Z/publication-audit.json` passed `method_innovation_evidence` and `script_data_verification`, but failed publication audit because literature/similarity breadth was intentionally smoke-sized, Semantic Scholar returned 429/circuit errors, and LLM review was skipped.
 - Additional evidence: Task `77.1` adds `method_effect_evidence` to publication audit. A real audit over the task `76.1` cycle wrote `runs/manual-live/publication-audit-task77/publication-audit.json` with `method_innovation_evidence.status=pass` and `method_effect_evidence.status=fail`, explicitly blocking empirical-gain claims from the negative-result candidate.
 - Additional evidence: Task `78.1` adds a positive-effect Pendigits method candidate. A real run at `runs/manual-live/pendigits-variance-task78/pendigits-variance-calibrated-prototypes/metrics.json` reported `accuracy_delta_vs_baseline=0.045740423098913685`; a real autopilot cycle at `runs/manual-live/autopilot-variance-task78/cycle-20260613T015034Z/publication-audit.json` passed `script_data_verification`, `method_innovation_evidence`, and `method_effect_evidence`, but still failed overall because literature/similarity breadth was smoke-sized and review was skipped.
-- Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, task `71.1` added final Markdown-to-LaTeX/PDF artifact building, task `74.1` added a real rerun gate, task `75.1` blocks baseline-only publication claims, task `76.1` adds honest method-candidate evidence, task `77.1` blocks neutral/negative method-effect evidence from passing empirical-gain gates, and task `78.1` adds a real positive-effect method-candidate path. The full system still lacks Semantic Scholar API stability, locally available Springer Nature `sn-jnl` class support, and broad novelty/review evidence for the positive candidate.
-- Workaround: Treat `publication-audit` issue notes as self-loop tasks and keep generated reports labeled as demo evidence until stronger experiments exist.
-- Next action: Stabilize or key Semantic Scholar access, decide how source-error severity should interact with OpenAlex/ArXiv fallback, add/verify Springer Nature `sn-jnl` class support when license terms and local installation are clear, and search for a stronger method candidate whose improvement survives real benchmark reruns and cross-literature novelty checks.
-- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`, `74.1`, `75.1`, `76.1`, `77.1`, `78.1`
-- Resolution: Not resolved; the new publication audit blocks publishable claims and writes Obsidian `review_note`/`issue_note` records for follow-up.
-- Verification: Real `airesearcher publication-audit` and real `airesearcher serve` runs wrote failed or needs-revision publication audits under `runs/manual-live/serve-full/`, `runs/manual-live/serve-quality/`, `runs/manual-live/serve-quality-4096/`, `runs/manual-live/serve-pendigits/`, `runs/manual-live/serve-pendigits-sha/`, `runs/manual-live/serve-query-floor/`, `runs/manual-live/serve-publication-defaults/`, and Obsidian project issue notes under `autoresearch-vault/projects/live_quality_4096_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_20260613/issues/`, `autoresearch-vault/projects/live_pendigits_sha_20260613/issues/`, and `autoresearch-vault/projects/live_publication_defaults_20260613/issues/`.
+- Root cause: The MVP originally used tiny synthetic ScientistBench-Lite fixtures; task `63.1` added a real benchmark path, task `64.1` added OpenAlex source fallback, task `65.1` fixed sparse query breadth, task `67.1` aligned the default runtime with publication-width search, task `69.1` added paper-structured Markdown drafting, task `70.1` added generic LaTeX PDF compatibility smoke, task `70.2` added partial external template compatibility, task `71.1` added final Markdown-to-LaTeX/PDF artifact building, task `74.1` added a real rerun gate, task `75.1` blocks baseline-only publication claims, task `76.1` adds honest method-candidate evidence, task `77.1` blocks neutral/negative method-effect evidence from passing empirical-gain gates, task `78.1` adds a real positive-effect method-candidate path, and tasks `126.1` plus `128.1` finally produced a review-passing, release-allowed live serve output.
+- Workaround: None needed for the task `128.1` release pass. Older failed/needs-revision artifacts should remain as historical self-loop evidence, not current release status.
+- Next action: Expand the release pass across more independent datasets, stronger baselines, and venue templates before claiming a specific submission target is ready.
+- Linked tasks: `61.1`, `63.1`, `64.1`, `65.1`, `67.1`, `69.1`, `70.1`, `70.2`, `71.1`, `72.1`, `73.1`, `74.1`, `75.1`, `76.1`, `77.1`, `78.1`, `126.1`, `128.1`, `131.1`
+- Resolution: Task `128.1` reran the live full loop through research-plan, literature refresh, similarity search, real Pendigits experiment, reproduction rerun, manuscript generation, citation package, LLM review, publication audit, LaTeX paper build, evidence gate, and deliverables export. The final cycle passed without follow-up tasks.
+- Verification: Real `serve --permission-mode allow-all --once --demo pendigits_variance_calibrated_prototypes` at `runs/manual-live/task128-serve-final/runs/cycle-20260617T150322Z/cycle-summary.json` recorded `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=true`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=true`, `followup_tasks=[]`, 65 literature documents, 57 similarity findings, 65 verified citations, `paper_build.paper_quality.page_count=14`, and `research_plan.page_count=3`; `Test-Path` confirmed `runs/manual-live/task128-serve-final/outputs/task128_serve_final/task128_serve_final-cycle-20260617T150322Z.pdf` exists.
 
 ### P-20260613-003 - Live full-loop run hit Semantic Scholar HTTP 429 while ArXiv succeeded
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: Medium
 - Discovered: 2026-06-13 00:15:32 +08:00
 - Source: Real `airesearcher serve --once --permission-mode allow-all --review` full-loop verification for task `60.1`.
 - Symptom: The literature refresh and similarity-check stages both retrieved one ArXiv result, but Semantic Scholar returned `SourceRateLimitError: Semantic Scholar HTTP 429 rate limited; circuit open for 60.0s`.
-- Impact: The full loop still completed with source-backed ArXiv evidence and passed the live LLM evidence review, but cross-source novelty coverage was reduced for this run.
+- Impact: Resolved for default discovery and release behavior. ArXiv and OpenAlex are now the default free/public sources for literature refresh, similarity checks, and `autopilot`; Semantic Scholar is an optional lower-priority enhancement source only when explicitly enabled or keyed. A Semantic Scholar 429 can still reduce optional metadata breadth when the operator enables it, but it no longer acts as a required default-source blocker when ArXiv/OpenAlex breadth passes.
 - Evidence: `runs/manual-live/serve-full/cycle-20260612T161532Z/cycle-summary.json` recorded ArXiv success, Semantic Scholar 429 errors, `review.status = passed`, `review.quality_score = 1.0`, and `review.verdict = pass`.
 - Mitigation evidence: Task `64.1` added OpenAlex as a default fallback. A live OpenAlex query returned a real `openalex` result with DOI `https://doi.org/10.1017/s0140525x12000477`; live `literature-refresh` then fetched ArXiv plus OpenAlex while preserving the Semantic Scholar 429 error; live `similarity-check` also returned OpenAlex evidence for the Pendigits candidate.
+- Resolution evidence: Task `102.1` made Semantic Scholar opt-in by environment variable or API key and updated bilingual README guidance. Task `137.1` rechecked the current implementation and ran a bounded real default `literature-refresh`; the command printed only ArXiv and OpenAlex fetches, returned 2 documents, and wrote an Obsidian evidence note with ArXiv/OpenAlex provenance and no Semantic Scholar fetch.
 - Root cause: The live Semantic Scholar endpoint rate-limited the unauthenticated or current deployment request window.
-- Workaround: The existing Semantic Scholar circuit breaker prevents retry spam and preserves the rate-limit error in the run summary instead of fabricating missing source results. OpenAlex now provides an additional no-key default source when Semantic Scholar is unavailable.
-- Next action: For stronger full-loop novelty checks, configure `SEMANTIC_SCHOLAR_API_KEY`, optionally configure `OPENALEX_API_KEY`/`OPENALEX_MAILTO` for larger deployments, and rerun delayed audits after source circuit reset windows.
-- Linked tasks: `60.1`, `64.1`
-- Resolution: Not fully resolved; mitigated by visible source-level error recording and successful ArXiv-backed loop completion.
-- Verification: Live DeepSeek evidence review passed with quality score `1.0`, all findings cited known local evidence IDs, and no unsupported claims were reported.
+- Workaround: None needed for the default source path. If an operator enables Semantic Scholar, the circuit breaker still prevents retry spam and preserves rate-limit errors in run summaries instead of fabricating missing source results.
+- Next action: For stronger optional metadata coverage, configure `SEMANTIC_SCHOLAR_API_KEY`, optionally configure `OPENALEX_API_KEY`/`OPENALEX_MAILTO` for larger deployments, and rerun delayed optional-source audits after circuit reset windows.
+- Linked tasks: `60.1`, `64.1`, `102.1`, `137.1`
+- Resolution: Resolved for default behavior by making Semantic Scholar opt-in, keeping OpenAlex as the no-key default cross-source partner, and preserving optional-source errors as transparent caveats rather than default blockers.
+- Verification: Live DeepSeek evidence review passed with quality score `1.0` for the original ArXiv-backed run. Later focused tests and a real task `137.1` default `literature-refresh` verified the current default source set as ArXiv plus OpenAlex only.
 
 ### P-20260613-002 - Runtime approval test filename collided with existing approval test module
 
@@ -1459,19 +2484,20 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ### P-20260612-057 - Requests dependency warning appears during verification
 
-- Status: Open
+- Status: Resolved locally
 - Severity: Low
 - Discovered: 2026-06-12 13:30:54 +08:00
 - Source: `poetry run ruff check ...`, `poetry run mypy src`, and `poetry run pytest ...`.
 - Symptom: Python emitted `RequestsDependencyWarning` stating `urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version`.
-- Impact: Task `32.1` verification still passed, but future real-network smoke tests may produce noisy output or dependency-sensitive behavior if this environment mismatch remains.
-- Evidence: The warning appeared after focused ruff, focused mypy, focused pytest, full ruff, and full pytest commands; full pytest still reported `281 passed, 3 skipped`.
-- Root cause: The active test environment has a `requests` dependency combination that `requests` warns is outside its supported range.
-- Workaround: Treat the warning as non-blocking for non-network authorization work; keep real external API tests mandatory for external-source tasks.
-- Next action: Resolve or pin the `requests` transitive dependency set in a dedicated dependency-maintenance task before relying on warning-free live network output.
-- Linked tasks: `32.1`
-- Resolution: Not resolved in task `32.1`; no authorization code path uses `requests`.
-- Verification: `poetry run ruff check src tests` passed; `poetry run pytest tests/unit tests/property tests/smoke tests/integration/agents` passed with `281 passed, 3 skipped` despite the warning.
+- Impact: Resolved for this workstation as of 2026-06-18 03:03:09 +08:00; the project still diagnoses dependency drift explicitly so other machines can detect the same host/global Python issue.
+- Evidence: Earlier verification runs emitted the warning after focused ruff, focused mypy, focused pytest, full ruff, and full pytest commands. Task `130.1` investigation found the Poetry environment reports `requests 2.32.5`, `urllib3 2.7.0`, `charset-normalizer 3.4.7`, and no `chardet`, while the host/global Python 3.13 environment has `requests 2.31.0` plus unsupported `chardet 7.4.3`.
+- Root cause: The project Poetry dependency set is compatible, but the host/global Python environment still has a Requests/chardet combination that can emit `RequestsDependencyWarning`.
+- Workaround: No workaround needed on this workstation after aligning the host/global Python dependency set. On a different machine, run `airesearcher doctor` and `python -m pip check` before assuming the warning is a project failure.
+- Next action: If this warning returns on this workstation or appears on another machine, check for `requests<2.32.5` or `chardet>=6` in the active host Python environment before changing repository code.
+- Linked tasks: `32.1`, `130.1`, `144.1`, `160.1`
+- Resolution: Task `130.1` added a metadata-based Requests dependency diagnostic to `airesearcher doctor` without importing `requests`; unsupported combinations report `[WARN]`, while missing required packages still fail doctor.
+- Resolution: Task `130.1` added a metadata-based Requests dependency diagnostic to `airesearcher doctor` without importing `requests`; unsupported combinations report `[WARN]`, while missing required packages still fail doctor. Task `144.1` re-audited the boundary and confirmed this remains a host/global Python 3.13 warning, not a project dependency failure.
+- Verification: Focused ruff, mypy, dependency tests, and CLI doctor tests passed. `poetry run airesearcher doctor` reported the project Poetry set as `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; full `python -m ruff check src tests`, `python -m mypy src\autoresearch`, and `python -m pytest tests\smoke tests\unit -q` passed. The 2026-06-18 re-audit reproduced the warning after `python -m pytest` and after `poetry run ...` command completion, while `python -m ruff check src tests` and `python -m mypy src\autoresearch` stayed clean. `node .\bin\airesearcher.mjs doctor` diagnosed the host set as `[WARN] requests 2.31.0, urllib3 2.7.0, charset-normalizer 3.4.7, chardet 7.4.3` without emitting a raw `RequestsDependencyWarning`. Task `160.1` then aligned the host Python environment with `python -m pip install "requests==2.32.5" "chardet==5.2.0"`; `python -m pip check` returned `No broken requirements found`, `python -c "import requests; print(requests.__version__)"` printed `2.32.5` without the warning, and full `python -m pytest tests\smoke tests\unit -q` passed with 507 passed, 4 skipped, and only the LangGraph deprecation warning.
 
 ### P-20260612-056 - Dashboard test import order failed ruff
 
@@ -2153,13 +3179,13 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Source: Task `9.3` implementation of restricted network policy placeholder.
 - Symptom: The MVP can preflight and audit network requests routed through `RestrictedNetworkPolicy`, but it does not install OS-level firewall, proxy, or socket interception rules for arbitrary generated code.
 - Impact: Generated experiment code that bypasses the policy helper could still attempt network access until a later sandbox layer enforces network restrictions at the process or OS boundary.
-- Evidence: `network_enforcement_note()` documents that MVP network policy is preflight/audit only; blocked-request tests verify audit logging only for calls routed through the policy.
+- Evidence: `network_enforcement_note()` documents that MVP network policy is preflight/audit only; blocked-request tests verify audit logging only for calls routed through the policy. Task `147.1` adds an executor preflight gate that reuses generated-code review findings and blocks known raw Python network imports before local subprocess launch unless `task.metadata["network_access_approved"]` is explicitly true. Tasks `206.1` through `209.1` further tighten executor/static-review mitigation by failing closed on non-network dangerous findings, dynamic network/command imports, PowerShell web request commands, Windows downloader aliases, BITS, and .NET downloader strings.
 - Root cause: Full network sandboxing requires an OS firewall, proxy, container, or process-level interception layer beyond the current MVP local subprocess executor.
-- Workaround: Run generated code review before execution, route approved network operations through `RestrictedNetworkPolicy.require_allowed()`, and audit blocked requests with `AuditEventType.SANDBOX_DENIAL`.
+- Workaround: Run generated code review before execution, keep local subprocess execution behind the executor network and static-security preflight gates, route approved network operations through `RestrictedNetworkPolicy.require_allowed()`, and audit blocked requests with `AuditEventType.SANDBOX_DENIAL`.
 - Next action: Later sandbox hardening should add OS/container/proxy enforcement and prove that arbitrary network calls to non-allowed domains are blocked.
-- Linked tasks: `9.3`, `16.3`
-- Resolution: Not fully resolved; MVP mitigation is documented and covered by tests.
-- Verification: `poetry run pytest tests/unit/experiments/test_network.py tests/unit/observability/test_audit.py` passed with 18 tests.
+- Linked tasks: `9.3`, `16.3`, `147.1`, `206.1`, `207.1`, `208.1`, `209.1`
+- Resolution: Not fully resolved; MVP mitigation is documented and covered by tests. Task `147.1` strengthened the mitigation by failing closed in `execute_experiment_task()` for `requests`, `httpx`, `aiohttp`, `socket`, or `urllib` imports without explicit task metadata approval. Tasks `206.1` through `209.1` added fail-closed executor/static-review coverage for dangerous commands, path traversal, secret reads, dynamic import bypasses, PowerShell web request commands, Windows downloader aliases, BITS, and .NET downloader snippets. These remain executor/static-review gates and not OS-level enforcement.
+- Verification: `poetry run pytest tests/unit/experiments/test_network.py tests/unit/observability/test_audit.py` passed with 18 tests for the original policy. Task `147.1` verification passed with focused ruff, executor tests, combined executor/review/network tests, and mypy; pytest still emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`. Tasks `206.1` through `209.1` passed their focused executor/review tests plus broad smoke/unit, ruff, mypy, and diff checks; a real post-hardening `serve --once` run on 2026-06-18 passed source preflight, research plan, LLM review, publication audit, evidence gate, and paper build.
 
 ### P-20260611-013 - Mypy rejected Unix-only runtime limit APIs on Windows
 

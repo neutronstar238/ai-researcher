@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T04:04:00Z'
 entry_id: progress_task_91_1_llm_review_repair_gate
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 91.1 LLM review repair gate
-tags:
-  - progress
-  - llm-review
-  - quality-gate
-  - evidence-gate
 keywords:
-  - local evidence review
-  - bounded repair
-  - attempts
-  - allowed evidence refs
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/llm/client.py
-  - runs/manual-live/llm-review-task91-with-run-record.json
-related_task_ids:
-  - "91.1"
-related_run_ids: []
+- local evidence review
+- bounded repair
+- attempts
+- allowed evidence refs
 links: []
-backlinks: []
-created_at: "2026-06-13T04:04:00Z"
-updated_at: "2026-06-13T04:04:00Z"
+project_id: ai_researcher_system
+related_run_ids: []
+related_task_ids:
+- '91.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/llm/client.py
+- runs/manual-live/llm-review-task91-with-run-record.json
+tags:
+- progress
+- llm-review
+- quality-gate
+- evidence-gate
+title: Task 91.1 LLM review repair gate
+updated_at: '2026-06-13T04:04:00Z'
+zone: project
 ---
 
 # Task 91.1 LLM Review Repair Gate

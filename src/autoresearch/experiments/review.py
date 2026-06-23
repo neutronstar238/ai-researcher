@@ -53,7 +53,24 @@ DANGEROUS_CALLS = {
     "subprocess.run",
 }
 DANGEROUS_IMPORT_ROOTS = {"subprocess"}
-DANGEROUS_COMMAND_MARKERS = ("rm -rf", "del /", "remove-item", "curl ", "wget ")
+DANGEROUS_COMMAND_MARKERS = (
+    "rm -rf",
+    "del /",
+    "remove-item",
+    "curl ",
+    "wget ",
+    "invoke-webrequest",
+    "invoke-restmethod",
+)
+DANGEROUS_COMMAND_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"(?<![a-z0-9_-])(iwr|irm|curl\.exe|wget\.exe)(?:\s|\(|$)",
+        r"(?<![a-z0-9_-])start-bitstransfer(?:\s|\(|$)",
+        r"(system\.)?net\.webclient",
+        r"\.(downloadfile|downloadstring)\s*\(",
+    )
+)
 NETWORK_IMPORT_ROOTS = {"aiohttp", "httpx", "requests", "socket", "urllib"}
 SECRET_MARKERS = (".env", "api_key", "id_rsa", "secret", "token")
 PATH_TRAVERSAL_PATTERN = re.compile(r"(^|[\\/])\.\.([\\/]|$)")
@@ -189,6 +206,7 @@ def _review_calls(tree: ast.AST) -> list[CodeReviewFinding]:
                     node,
                 )
             )
+        findings.extend(_review_dynamic_import(node, call_name))
     return findings
 
 
@@ -227,11 +245,17 @@ def _review_string_literals(tree: ast.AST) -> list[CodeReviewFinding]:
             findings.append(
                 _finding("secret_read", f"references secret-like path or key {value!r}", node)
             )
-        if any(marker in normalized for marker in DANGEROUS_COMMAND_MARKERS):
+        if _contains_dangerous_command_marker(normalized):
             findings.append(
                 _finding("dangerous_command", f"contains shell command marker {value!r}", node)
             )
     return findings
+
+
+def _contains_dangerous_command_marker(normalized: str) -> bool:
+    return any(marker in normalized for marker in DANGEROUS_COMMAND_MARKERS) or any(
+        pattern.search(normalized) for pattern in DANGEROUS_COMMAND_PATTERNS
+    )
 
 
 def _review_metric_write(tree: ast.AST) -> list[CodeReviewFinding]:
@@ -267,6 +291,42 @@ def _is_write_call(node: ast.AST) -> bool:
 
 def _is_expanduser_call(node: ast.Call) -> bool:
     return isinstance(node.func, ast.Attribute) and node.func.attr == "expanduser"
+
+
+def _review_dynamic_import(node: ast.Call, call_name: str) -> list[CodeReviewFinding]:
+    if call_name not in {"__import__", "importlib.import_module"}:
+        return []
+    module_name = _first_string_arg(node)
+    if not module_name:
+        return []
+    root = module_name.split(".", maxsplit=1)[0]
+    findings: list[CodeReviewFinding] = []
+    if root in DANGEROUS_IMPORT_ROOTS:
+        findings.append(
+            _finding(
+                "dangerous_command",
+                f"dynamically imports command execution module {module_name}",
+                node,
+            )
+        )
+    if root in NETWORK_IMPORT_ROOTS:
+        findings.append(
+            _finding(
+                "unrestricted_network",
+                f"dynamically imports network module {module_name}",
+                node,
+            )
+        )
+    return findings
+
+
+def _first_string_arg(node: ast.Call) -> str | None:
+    if not node.args:
+        return None
+    first_arg = node.args[0]
+    if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+        return first_arg.value
+    return None
 
 
 def _call_name(node: ast.AST) -> str:

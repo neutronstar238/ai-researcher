@@ -5,6 +5,7 @@ from autoresearch.reports import (
     build_latex_paper_from_markdown,
     compose_publication_manuscript,
 )
+from autoresearch.reports.manuscript import _positioning_family
 
 
 def test_compose_publication_manuscript_writes_evidence_bound_draft(
@@ -31,6 +32,9 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "The next system action should not be to submit the paper" not in manuscript
     assert "Representative retrieved records are retained" in manuscript
     assert "### Evidence and Artifact Availability" in manuscript
+    assert "| Cycle summary | Machine-readable cycle state and stage outputs |" in manuscript
+    assert "| Cycle record |" not in manuscript
+    assert "| Readiness report |" not in manuscript
     assert "### Data Analysis" in manuscript
     assert "![Validated metric comparison](analysis/validated-performance-metrics.pdf)" in manuscript
     assert "| Metric | Value | Evidence source |" in manuscript
@@ -38,11 +42,22 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "[Cycle summary]" not in manuscript
     assert "[Verified literature references]" not in manuscript
     assert "V. Source. Verified Prototype Source. MethodConf. doi:10.1234/verified" in manuscript
+    references_section = manuscript.split("## References", 1)[1]
+    assert "https://example.test/verified" in references_section
+    assert "source URL recorded in artifact" not in references_section
     assert "[generic2026] Generic Visual Recognition Source" not in manuscript
+    assert "[seed2020] Variance function of boolean additive convolution" not in manuscript
+    assert "[domain2026] Handwritten Bangla Alphabet Recognition using MLP Classifier" not in manuscript
     assert "not a submission claim" not in manuscript
     assert "12.0000 input features" in manuscript
     assert "variance_shrinkage parameter of 0.0500" in manuscript
+    assert "fixed recorded configuration, not a tuned hyperparameter result" in manuscript
+    assert "does not include a sensitivity sweep" in manuscript
     assert "bound to the final manuscript" in manuscript
+    assert "Conference-template compatibility is treated as an experimental artifact" not in manuscript
+    assert "compiled under compact ACM or IEEE templates" not in manuscript
+    assert "only certifies the template that was actually selected for this cycle" in manuscript
+    assert "not evidence that ACM, IEEE, Springer" in manuscript
     assert "Current finding classifications are:" not in manuscript
     assert "Retrieved record 1:" not in manuscript
     assert "was classified as" not in manuscript
@@ -51,12 +66,38 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "parsed and classified part of the nearby-work trail" not in manuscript
     assert "records how many findings were classified" not in manuscript
     assert "Representative similarity findings are retained" in manuscript
+    assert "### Adjacent-Work Positioning" in manuscript
+    assert "| Evidence view | Recorded count | Positioning boundary |" in manuscript
+    assert "| prototype and centroid family | adjacent_work=1 |" in manuscript
+    assert "| metric and Mahalanobis family | adjacent_work=0 |" not in manuscript
+    assert "| other adjacent source-backed hit | adjacent_work=0 |" not in manuscript
+    assert "similarity-positioning-summary.json" in manuscript
+    assert "1 adjacent-work findings out of 10 parsed similarity findings" in manuscript
+    assert "Metric Learning for Digits | unknown" not in manuscript
+    assert "narrower and more adversarial" not in manuscript
+    assert "split into direct duplicates, adjacent mechanisms" not in manuscript
+    assert "comparison-status fields recorded in the inspection artifact" in manuscript
     assert "Prototype Calibration for Digits was retrieved" not in manuscript
     assert "pendigits_variance_calibrated_prototypes" not in manuscript
     assert "pendigits variance calibrated prototypes" in manuscript
     assert artifact.analysis_artifact_paths
     assert any(path.endswith("validated-performance-metrics.pdf") for path in artifact.analysis_artifact_paths)
     assert any(path.endswith("data-analysis-summary.md") for path in artifact.analysis_artifact_paths)
+    assert any(
+        path.endswith("similarity-positioning-summary.json")
+        for path in artifact.analysis_artifact_paths
+    )
+    positioning_json = next(
+        path
+        for path in artifact.analysis_artifact_paths
+        if path.endswith("similarity-positioning-summary.json")
+    )
+    positioning_payload = json.loads(Path(positioning_json).read_text(encoding="utf-8"))
+    assert positioning_payload["finding_count"] == 10
+    assert positioning_payload["adjacent_work_count"] == 1
+    assert positioning_payload["adjacent_work_family_counts"] == {
+        "prototype and centroid family": 1
+    }
 
     paper_artifact = build_latex_paper_from_markdown(
         artifact.markdown_path,
@@ -70,12 +111,27 @@ def test_compose_publication_manuscript_writes_evidence_bound_draft(
     assert "table_coverage" not in paper_artifact.quality.failures
     assert "bibliography_depth" not in paper_artifact.quality.failures
     assert "reference_format" not in paper_artifact.quality.failures
+    assert "figure_label_readability" not in paper_artifact.quality.failures
     tex = Path(paper_artifact.tex_path).read_text(encoding="utf-8")
     assert r"\includegraphics" in tex
     assert r"\begin{tabular}" in tex
     assert r"\begin{thebibliography}{99}" in tex
     assert r"\bibitem{source2026}" in tex
+    assert r"\url{https://example.test/verified}" in tex
     assert "[Cycle summary]" not in tex
+
+
+def test_positioning_family_prefers_structured_overlap_family() -> None:
+    finding = {
+        "title": "Clustering and Prototype Based Classification",
+        "basis": (
+            "query family overlap prototype_classification: document terms prototype, "
+            "prototype classifier; source query `mahalanobis distance metric gaussian "
+            "prototype classifiers uci pendigits` (limitation_risk_search)"
+        ),
+    }
+
+    assert _positioning_family(finding) == "prototype and centroid family"
 
 
 def _write_cycle(tmp_path: Path) -> Path:
@@ -109,6 +165,19 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "",
                 "## Findings",
                 "",
+                *[
+                    "\n".join(
+                        [
+                            f"### Distractor {index}",
+                            "",
+                            "- Classification: `unknown`",
+                            "- Confidence: `0.10`",
+                            "- Source database: `arxiv`",
+                            "- Classification basis: pending verification",
+                        ]
+                    )
+                    for index in range(8)
+                ],
                 "### Prototype Calibration for Digits",
                 "",
                 "- Classification: `adjacent_work`",
@@ -142,6 +211,20 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "blocked_document_ids": [],
                 "citations": [
                     {
+                        "document_id": "doc_seed",
+                        "title": "Variance function of boolean additive convolution",
+                        "status": "verified_url",
+                        "bibtex_key": "seed2020",
+                        "doi": None,
+                        "url": "https://example.test/boolean-variance",
+                        "reason": None,
+                        "abstract": "Boolean additive convolution and probability measure variance functions.",
+                        "venue": None,
+                        "source_uri": "https://example.test/boolean-variance",
+                        "authors": ["S. Seed"],
+                        "tags": ["arxiv"],
+                    },
+                    {
                         "document_id": "doc_generic",
                         "title": "Generic Visual Recognition Source",
                         "status": "verified_doi",
@@ -154,6 +237,20 @@ def _write_cycle(tmp_path: Path) -> Path:
                         "source_uri": "https://example.test/generic",
                         "authors": ["G. Generic"],
                         "tags": ["recognition"],
+                    },
+                    {
+                        "document_id": "doc_domain_only",
+                        "title": "Handwritten Bangla Alphabet Recognition using MLP Classifier",
+                        "status": "verified_url",
+                        "bibtex_key": "domain2026",
+                        "doi": None,
+                        "url": "https://example.test/bangla-mlp",
+                        "reason": None,
+                        "abstract": "Domain-specific handwritten character recognition with a multilayer perceptron.",
+                        "venue": "DomainOnlyConf",
+                        "source_uri": "https://example.test/bangla-mlp",
+                        "authors": ["D. Domain"],
+                        "tags": ["handwritten", "recognition", "classifier"],
                     },
                     {
                         "document_id": "doc_verified",
@@ -250,6 +347,7 @@ def _write_cycle(tmp_path: Path) -> Path:
                 "baseline": "nearest centroid classifier",
                 "benchmark": "UCI Pendigits",
                 "limitation": "single benchmark",
+                "seed_document_title": "Variance function of boolean additive convolution",
             },
         },
         "literature": {

@@ -844,6 +844,85 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
             tags=("skill-evolution", "collective-learning"),
         ),
         ExternalSkillCandidate(
+            candidate_id="meta_harness_harness_search_reference",
+            name="Meta-Harness",
+            purpose=(
+                "Harness-search reference for controlled self-evolution: keep "
+                "the base model fixed while searching over retrieval, memory, "
+                "context construction, planning, and tool-use scaffolding."
+            ),
+            source_refs=(
+                "https://github.com/stanford-iris-lab/meta-harness",
+                "https://arxiv.org/abs/2603.28052",
+                "https://raw.githubusercontent.com/stanford-iris-lab/meta-harness/main/ONBOARDING.md",
+            ),
+            license_status="MIT; reviewed 2026-06-19; no upstream code or prompt text adopted",
+            adoption_stage="harness-search-reference",
+            expected_benefit=(
+                "Adds a domain-spec-first candidate harness loop with full "
+                "trace archive evidence, anti-leakage checks, and Pareto-aware "
+                "promotion criteria."
+            ),
+            risk_notes=(
+                "Harness search can overfit when search-set and held-out evidence are mixed.",
+                "Full proposer traces may contain secrets, credentials, or unsafe commands.",
+                "Candidate harness code must stay in shadow evaluation until release gates pass.",
+            ),
+            validation_gates=(
+                "Write a domain_spec-style plan before implementation: fixed base model, allowed harness surface, budget, metrics, and baselines.",
+                "Store candidate source, scores, proposer logs, execution traces, config hashes, and data splits in an auditable trace archive.",
+                "Keep search-set feedback separate from held-out evaluation and block promotion if held-out data leaks into proposer context.",
+                "Promote only through skill-evolve, shadow evaluation, publication audit, evidence gate, and rollback records.",
+            ),
+            tags=("harness-search", "self-evolution", "trace-archive", "anti-leakage"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="lightagent_lightflow_trace_reference",
+            name="LightAgent / LightFlow",
+            purpose=(
+                "Lightweight agent-runtime reference for Skills, deterministic "
+                "DAG-style workflow steps, opt-in trace observability, and "
+                "memory/trace/delegation boundaries."
+            ),
+            source_refs=(
+                "https://github.com/wanxingai/LightAgent",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/LICENSE",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/lightflow.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/tracing.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/memory_trace_swarm_boundaries.md",
+                "https://raw.githubusercontent.com/wanxingai/LightAgent/main/docs/multi_agent_failure_map.md",
+            ),
+            license_status=(
+                "Apache-2.0; reviewed 2026-06-20; no upstream code, docs text, "
+                "examples, traces, or assets adopted"
+            ),
+            adoption_stage="lightweight-agent-runtime-reference",
+            expected_benefit=(
+                "Gives small, auditable patterns for explicit step dependencies, "
+                "step-local retries, trace IDs/events, memory provenance filters, "
+                "and multi-agent failure diagnostics."
+            ),
+            risk_notes=(
+                "Lightweight runtime examples must not bypass AI-Researcher evidence gates.",
+                "Trace events and tool logs can contain secrets or sensitive source data.",
+                "Self-learning memory can pollute Obsidian if user, trace, reflection, and delegation scopes are mixed.",
+            ),
+            validation_gates=(
+                "Do not add LightAgent as a runtime dependency or copy its examples by default.",
+                "If a LightFlow-style idea is adapted, map it onto AI-Researcher's existing lifecycle trace, approval gate, and release gate.",
+                "Separate trace, user/project memory, reflection memory, and delegation state with provenance before Obsidian ingestion.",
+                "Add failure-map checks for role drift, shared-memory pollution, hidden hand-off loops, and unreadable agent logs.",
+                "Scrub secrets from trace events and store only evidence-safe summaries in the vault.",
+            ),
+            tags=(
+                "agent-runtime",
+                "lightflow",
+                "trace-observability",
+                "memory-boundary",
+                "multi-agent-diagnostics",
+            ),
+        ),
+        ExternalSkillCandidate(
             candidate_id="oh_my_openagent_agent_harness",
             name="oh-my-openagent / LazyCodex",
             purpose=(
@@ -880,6 +959,49 @@ def default_external_research_skill_candidates() -> tuple[ExternalSkillCandidate
                 "validation/rollback gates.",
             ),
             tags=("agent-harness", "opencode", "codex", "code-agent"),
+        ),
+        ExternalSkillCandidate(
+            candidate_id="page_agent_browser_source_adapter",
+            name="PageAgent",
+            purpose=(
+                "Browser-source acquisition reference for non-API Horizon-style "
+                "inspiration and search sources, using in-page JavaScript DOM "
+                "actions plus optional extension/MCP control."
+            ),
+            source_refs=(
+                "https://github.com/alibaba/page-agent",
+                "https://raw.githubusercontent.com/alibaba/page-agent/main/LICENSE",
+                "https://alibaba.github.io/page-agent/",
+            ),
+            license_status=(
+                "MIT; upstream README acknowledges browser-use-derived DOM "
+                "processing and prompt components under MIT"
+            ),
+            adoption_stage="browser-source-reference",
+            expected_benefit=(
+                "Extends future broad-inspiration acquisition beyond public APIs "
+                "by capturing interactive web pages with structured DOM snapshots "
+                "and action logs."
+            ),
+            risk_notes=(
+                "Upstream positions PageAgent as client-side web enhancement, not "
+                "server-side automation.",
+                "Interactive pages require robots/ToS, rate-limit, consent, login, "
+                "and reproducible snapshot checks.",
+                "Browser actions must use allowlists, sandboxed profiles, and "
+                "approval for state-changing clicks or forms.",
+            ),
+            validation_gates=(
+                "Do not use PageAgent as the default crawler for V1.0.",
+                "Evaluate only in an isolated browser profile against allowed test "
+                "sites or public pages.",
+                "Persist URL, timestamp, DOM snapshot, screenshot/hash, action "
+                "trace, source terms, and extraction confidence before Obsidian "
+                "ingestion.",
+                "Promotion requires rate-limit, robots/terms review, and evidence "
+                "gate integration.",
+            ),
+            tags=("browser-agent", "source-acquisition", "horizon", "web-retrieval"),
         ),
     )
 

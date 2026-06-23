@@ -20,7 +20,18 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
         entry_type=KnowledgeEntryType.PAPER_NOTE,
         zone=KnowledgeZone.EXPLORATION,
         title="Paper One",
-        keywords=["alignment"],
+        keywords=[
+            "alignment",
+            "are",
+            "adds",
+            "candidate_deepseek_live_similarity",
+            "autopilot_ai_researcher_task118_20260615023141",
+            (
+                "nearest-centroid baselines are reproducible and interpretable, but a publication "
+                "claim requires checking whether variance-calibrated prototype distance has already "
+                "been covered"
+            ),
+        ],
         body="A paper note.",
     )
     skill = KnowledgeEntry(
@@ -28,7 +39,13 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
         entry_type=KnowledgeEntryType.SKILL_CARD,
         zone=KnowledgeZone.EXPLORATION,
         title="Review Skill",
-        keywords=["alignment", "review"],
+        keywords=[
+            "alignment",
+            "review",
+            "similarity_classification_coverage",
+            "source-circuit-breakers.json.lock",
+            "source-preflight",
+        ],
         body="A skill card.",
     )
     experiment = KnowledgeEntry(
@@ -56,5 +73,63 @@ def test_store_maintains_backlinks_and_topic_index(tmp_path) -> None:  # type: i
     assert loaded_skill.backlinks == ["experiment_1"]
     assert {entry.entry_id for entry in alignment_entries} == {"paper_1", "skill_review"}
     assert "## alignment" in topic_index
+    assert "## similarity classification coverage" in topic_index
+    assert "## source-preflight" in topic_index
+    assert "## adds" not in topic_index
+    assert "## are" not in topic_index
+    assert "nearest-centroid baselines are reproducible" not in topic_index
+    assert "autopilot_ai_researcher_task118_20260615023141" not in topic_index
+    assert "candidate_deepseek_live_similarity" not in topic_index
+    assert "source-circuit-breakers.json.lock" not in topic_index
     assert "[[paper_1|Paper One]]" in topic_index
     assert "[[skill_review|Review Skill]]" in topic_index
+
+
+def test_rebuild_indexes_skips_system_templates_and_preserves_unchanged_entries(
+    tmp_path,
+) -> None:  # type: ignore[no-untyped-def]
+    store = MarkdownKnowledgeStore(tmp_path)
+    template_path = tmp_path / "_system" / "templates" / "skill-card.md"
+    template_path.parent.mkdir(parents=True)
+    template_text = """---
+entry_id: template_skill
+entry_type: skill_card
+zone: exploration
+title: "{{skill_name}}"
+keywords:
+  - template-noise
+links: []
+backlinks: []
+created_at: '2026-06-18T00:00:00Z'
+updated_at: '2026-06-18T00:00:00Z'
+---
+
+# {{skill_name}}
+"""
+    template_path.write_text(template_text, encoding="utf-8")
+    entry_path = tmp_path / "papers" / "paper_1.md"
+    entry_path.parent.mkdir(parents=True)
+    entry_text = """---
+entry_id: paper_1
+entry_type: paper_note
+zone: exploration
+title: Paper One
+keywords:
+  - alignment
+links: []
+backlinks: []
+created_at: '2026-06-18T00:00:00Z'
+updated_at: '2026-06-18T00:00:00Z'
+---
+
+Paper body.
+"""
+    entry_path.write_text(entry_text, encoding="utf-8")
+
+    store.rebuild_indexes()
+
+    topic_index = (tmp_path / "exploration" / "index.md").read_text(encoding="utf-8")
+    assert template_path.read_text(encoding="utf-8") == template_text
+    assert entry_path.read_text(encoding="utf-8") == entry_text
+    assert "## alignment" in topic_index
+    assert "template-noise" not in topic_index

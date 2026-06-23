@@ -62,6 +62,1204 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-18 10:21:40 +08:00 - Codex - Task 211.1 Root vault current project defaults
+
+- Request: Continue consistency hardening so the checked-in Obsidian vault routes new operators to the current AI-Researcher project memory area.
+- Files changed:
+  - `autoresearch-vault/Home.md`
+  - `autoresearch-vault/_system/dashboards/research-loop.md`
+  - `autoresearch-vault/_system/templates/daily-cycle.md`
+  - `autoresearch-vault/_system/templates/experiment-record.md`
+  - `autoresearch-vault/_system/templates/issue-note.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated root vault homepage, dashboard, and template defaults from the stale `autoresearch-system` project ID to `ai_researcher_system`.
+  - Added a lightweight project index so the root homepage's current-project link resolves inside the existing `projects/ai_researcher_system` area.
+  - Left historical `projects/autoresearch-system` records untouched.
+  - Added completed task `211.1` and resolved `P-20260618-124`.
+- Verification:
+  - `rg -n "projects/autoresearch-system|project_id: autoresearch-system|--project-id autoresearch-system" autoresearch-vault\Home.md autoresearch-vault\_system`: returned no matches.
+  - `Test-Path autoresearch-vault\projects\ai_researcher_system\index.md`: returned true.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-124`.
+- Follow-up:
+  - Historical old-ID vault records remain available for provenance; new defaults should use `ai_researcher_system`.
+
+### 2026-06-18 10:21:40 +08:00 - Codex - Task 210.1 Network sandbox mitigation trail
+
+- Request: Continue project hardening by keeping the OS-level network sandbox problem entry accurate after tasks `206.1` through `209.1`.
+- Files changed:
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Updated `P-20260611-014` to include executor/static-review mitigations from tasks `206.1`, `207.1`, `208.1`, and `209.1`.
+  - Preserved the status as `Mitigated` because the project still lacks OS/container/proxy-level network interception.
+  - Recorded the real post-hardening `serve --once` run as verification that the normal research loop still passes after static-review hardening.
+  - Added completed task `210.1`.
+- Verification:
+  - `rg -n "206\\.1|207\\.1|208\\.1|209\\.1|Windows downloader aliases|OS-level enforcement|post-hardening" Problem.md .kiro\specs\auto-research-system\tasks.md Agent.md`: confirmed the updated mitigation trail.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260611-014`; no new problem added.
+- Follow-up:
+  - Full OS/container/proxy-level network enforcement remains future sandbox work.
+
+### 2026-06-18 10:13:40 +08:00 - Codex - Task 209.1 Windows downloader alias static review
+
+- Request: Continue generated-code execution hardening by closing common Windows downloader string bypasses.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added bounded dangerous-command regex patterns for PowerShell aliases `iwr` and `irm`, `curl.exe`, `wget.exe`, `Start-BitsTransfer`, and .NET `WebClient` downloader strings.
+  - Kept these findings classified as `dangerous_command` so executor static preflight blocks the generated code before subprocess launch.
+  - Added regression coverage for `iwr`, `curl.exe`, `Start-BitsTransfer`, and `System.Net.WebClient.DownloadFile` generated-code strings.
+  - Added completed task `209.1` and resolved `P-20260618-123`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py -q`: passed, 14 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-123`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened Windows downloader alias review.
+
+### 2026-06-18 10:08:09 +08:00 - Codex - Task 208.1 PowerShell web command markers
+
+- Request: Continue generated-code execution hardening for Windows command paths.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `Invoke-WebRequest` and `Invoke-RestMethod` markers to generated-code dangerous command review.
+  - Kept the classification as `dangerous_command`, matching existing `curl` and `wget` handling.
+  - Added static review regression coverage for a PowerShell web request command string.
+  - Added completed task `208.1` and resolved `P-20260618-122`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py -q`: passed, 10 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 542 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-122`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened Windows command-marker review.
+
+### 2026-06-18 10:02:09 +08:00 - Codex - Task 207.1 Dynamic import static review
+
+- Request: Continue executor hardening against generated-code workarounds.
+- Files changed:
+  - `src/autoresearch/experiments/review.py`
+  - `tests/unit/experiments/test_review.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added static review detection for `__import__()` and `importlib.import_module()` string targets.
+  - Classified dynamic imports of known network modules as `unrestricted_network`.
+  - Classified dynamic imports of command-execution modules as `dangerous_command`.
+  - Added review regressions for dynamic `socket` and `subprocess` imports.
+  - Added executor coverage proving dynamic network imports cannot write `metrics.json` without approval.
+  - Added completed task `207.1` and resolved `P-20260618-121`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py -q`: passed, 18 tests.
+  - `python -m ruff check src\autoresearch\experiments\review.py tests\unit\experiments\test_review.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\review.py src\autoresearch\experiments\executor.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 541 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-121`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened dynamic-import review.
+
+### 2026-06-18 09:56:22 +08:00 - Codex - Task 206.1 Executor static security preflight
+
+- Request: Continue launch-readiness hardening by converting generated-code safety review from workflow discipline into an executor gate.
+- Files changed:
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Reused generated-code static review inside `execute_experiment_task()`.
+  - Added a fail-closed executor preflight for `dangerous_command`, `path_traversal`, and `secret_read` findings before subprocess launch.
+  - Preserved the existing approval-controlled network preflight path for `unrestricted_network` findings.
+  - Recorded structured `static_preflight` metadata on blocked runs.
+  - Added regressions proving dangerous subprocess/curl and secret-read code cannot write `metrics.json`.
+  - Added completed task `206.1` and resolved `P-20260618-120`.
+- Verification:
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q`: passed, 25 tests.
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m mypy src\autoresearch\experiments\executor.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 538 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-120`.
+- Follow-up:
+  - OS/container-level network isolation remains separately tracked by `P-20260611-014`; this task tightened the executor-level static gate.
+
+### 2026-06-18 09:47:56 +08:00 - Codex - Task 205.1 Source docstring naming
+
+- Request: Continue launch-readiness naming cleanup while preserving compatibility names.
+- Files changed:
+  - `src/autoresearch/cli/__init__.py`
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/config/parser.py`
+  - `src/autoresearch/observability/logging.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/schemas/models.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated explanatory source docstrings from `AutoResearch` to `AI-Researcher`.
+  - Preserved the `autoresearch` Python package/module names and logger namespace for compatibility.
+  - Added completed task `205.1` and resolved `P-20260618-119`.
+- Verification:
+  - `rg -n "AutoResearch" src\autoresearch`: returned no matches.
+  - `python -m ruff check src\autoresearch\cli\__init__.py src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\__init__.py src\autoresearch\schemas\models.py`: passed.
+  - `python -m mypy src\autoresearch\config\models.py src\autoresearch\config\parser.py src\autoresearch\observability\logging.py src\autoresearch\schemas\models.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-119`.
+- Follow-up:
+  - None for source docstring naming.
+
+### 2026-06-18 09:42:41 +08:00 - Codex - Task 204.1 Generated vault naming
+
+- Request: Continue launch-readiness work and align first-run Obsidian vault copy with the AI-Researcher project name.
+- Files changed:
+  - `src/autoresearch/knowledge/vault.py`
+  - `tests/unit/knowledge/test_vault.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed the generated exploration and project index copy from stale `AutoResearch` wording to `AI-Researcher`.
+  - Added regression assertions that read the generated index Markdown files and verify the current project-facing name.
+  - Added completed task `204.1` and resolved `P-20260618-118`.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_vault.py -q`: passed, 6 tests.
+  - `python -m ruff check src\autoresearch\knowledge\vault.py tests\unit\knowledge\test_vault.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\vault.py`: passed.
+  - Real CLI probe `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --local-snippet`: failed because the real option is `--write-local-snippet`; this was recorded in `P-20260618-118`.
+  - Corrected real CLI probe `node .\bin\airesearcher.mjs obsidian-setup --vault runs\manual-live\task204-vault-naming\autoresearch-vault --project-id project-001 --write-local-snippet`: passed and generated vault assets.
+  - `Get-Content` on generated `exploration/index.md` and `projects/project-001/index.md`: confirmed both index files say `AI-Researcher`.
+  - `rg -n "knowledge index for AutoResearch" runs\manual-live\task204-vault-naming\autoresearch-vault`: returned no matches.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-118`.
+- Follow-up:
+  - None for generated vault naming.
+
+### 2026-06-18 07:19:54 +08:00 - Codex - Task 187.1 Formal reference locator integrity
+
+- Request:
+  - Continue launch-quality hardening after the compact formal-reference evidence artifact still truncated arXiv manuscript locators.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Fixed `_autopilot_reference_title_and_locator()` so dotted URLs are captured as full non-whitespace locators and only trailing punctuation is stripped.
+  - Added regression coverage where a formal manuscript reference line contains a dotted URL without the legacy `DOI/URL evidence` marker.
+  - Recorded completed task `187.1` and resolved `P-20260618-106`.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task187-formal-locator-integrity\vault --cache runs\manual-live\task187-formal-locator-integrity\cache --output-dir runs\manual-live\task187-formal-locator-integrity\runs --deliverables-dir outputs --state runs\manual-live\task187-formal-locator-integrity\scheduler-state.json --approvals-state runs\manual-live\task187-formal-locator-integrity\approvals.json --sessions-state runs\manual-live\task187-formal-locator-integrity\sessions.json --project-id task187_formal_locator_integrity --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and root PDF output under `outputs/task187_formal_locator_integrity/`.
+  - `Get-Content -Raw runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\formal-reference-evidence.md`: confirmed full `http://arxiv.org/abs/...` manuscript locators and no exact backtick-wrapped `http://arxiv` fragments.
+  - `Get-Content -Raw runs\manual-live\task187-formal-locator-integrity\runs\cycle-20260617T231659Z\paper-build\paper-build.json`: reported `paper_quality.passed=true`, `bibliography_item_count=10`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `pdfinfo outputs\task187_formal_locator_integrity\task187_formal_locator_integrity-cycle-20260617T231659Z.pdf`: reported 15 pages.
+  - `pdftotext outputs\task187_formal_locator_integrity\task187_formal_locator_integrity-cycle-20260617T231659Z.pdf - | Select-String -Pattern 'Bangla|MLP|Handcrafted|Wahid|Basu|Boolean|Catoni|References|http://arxiv.org|https://doi.org|doi:'`: confirmed reference locator text remains present in the PDF and broad excluded references did not reappear.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed with 75 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-106`.
+- Follow-up:
+  - None for locator truncation.
+
+### 2026-06-18 07:12:26 +08:00 - Codex - Task 186.1 Formal bibliography directness
+
+- Request:
+  - Continue running launch-quality hardening so publication-facing PDF references remain method-direct and are not padded with broad domain-only handwritten-recognition papers.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added title/tag-level method-anchor constants for formal bibliography directness.
+  - Removed the broad rule that allowed handwritten/digit/recognition plus classifier/classification wording to enter formal References without a method anchor.
+  - Kept prototype, nearest-centroid, metric-recognition, and K-nearest-neighbor sources eligible for publication references.
+  - Added a regression citation for a verified handwritten Bangla MLP classifier paper and asserted it is excluded from the formal References section.
+  - Added completed task `186.1` and resolved `P-20260618-105`.
+- Verification:
+  - `python -m pytest tests\unit\reports\test_manuscript.py -q`: passed.
+  - `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\reports\manuscript.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task186-formal-reference-directness-v2\vault --cache runs\manual-live\task186-formal-reference-directness-v2\cache --output-dir runs\manual-live\task186-formal-reference-directness-v2\runs --deliverables-dir outputs --state runs\manual-live\task186-formal-reference-directness-v2\scheduler-state.json --approvals-state runs\manual-live\task186-formal-reference-directness-v2\approvals.json --sessions-state runs\manual-live\task186-formal-reference-directness-v2\sessions.json --project-id task186_formal_reference_directness_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and root PDF output under `outputs/task186_formal_reference_directness_v2/`.
+  - `Get-Content -Raw runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\paper-build\paper-build.json`: reported `paper_quality.passed=true`, `bibliography_item_count=10`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `Get-Content -Raw runs\manual-live\task186-formal-reference-directness-v2\runs\cycle-20260617T230902Z\formal-reference-evidence.md`: confirmed the displayed references no longer include `wahid2022` or `basu2012`.
+  - `pdfinfo outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z.pdf`: reported 15 pages.
+  - `pdfinfo outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z-research-plan.pdf`: reported 3 pages.
+  - `pdftotext outputs\task186_formal_reference_directness_v2\task186_formal_reference_directness_v2-cycle-20260617T230902Z.pdf - | Select-String -Pattern 'Bangla|MLP|Handcrafted|Wahid|Basu|Boolean|Catoni|Variance function|References|Prototype|Nearest|K-nearest|Metrics and models'`: confirmed method-direct prototype/nearest/metric/KNN reference text is present and broad Bangla/MLP/domain-only entries are absent from PDF References.
+  - `python -m pytest tests\unit\reports -q`: passed with 90 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check -- src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-105`.
+- Follow-up:
+  - The compact `formal-reference-evidence.md` table still truncates arXiv `Manuscript locator` values to `http://arxiv`; this is a display artifact separate from PDF reference content and can be tightened in a later task.
+
+### 2026-06-18 07:01:17 +08:00 - Codex - Task 185.1 Autopilot seed evidence alignment
+
+- Request:
+  - Continue running launch-quality hardening so online literature evidence does not pollute research plans with unrelated or merely domain-adjacent seed papers.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/research/test_plans.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added method-anchor seed selection for known autopilot demos instead of using the first retrieved document.
+  - Added the explicit fallback marker `literature_refresh:method_aligned_seed_not_found` so missing aligned seeds remain auditable without fabricating a paper citation.
+  - Filtered that fallback marker out of generated research plans when real context evidence summaries are available.
+  - Added regression coverage proving unrelated Boolean variance and domain-only handwritten-digit papers cannot beat a prototype/centroid method paper for the Pendigits demo.
+  - Recorded task `185.1` and resolved `P-20260618-104`.
+- Verification:
+  - Earlier focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_runs_non_review_cycle_with_runtime_session -q`: failed because the second selector was stale.
+  - Earlier corrected focused run exposed the `ResearchCandidate.evidence_refs` min-length schema boundary when no aligned seed existed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_pendigits_demo_uses_method_aligned_search_contract tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\research\test_plans.py::test_generate_research_plan_filters_unmatched_seed_marker_when_context_exists -q`: passed.
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\research\plans.py tests\unit\cli\test_main.py tests\unit\research\test_plans.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\research\plans.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\research\test_plans.py -q`: passed, 82 tests.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task185-aligned-seed-evidence\vault --cache runs\manual-live\task185-aligned-seed-evidence\cache --output-dir runs\manual-live\task185-aligned-seed-evidence\runs --deliverables-dir outputs --state runs\manual-live\task185-aligned-seed-evidence\scheduler-state.json --approvals-state runs\manual-live\task185-aligned-seed-evidence\approvals.json --sessions-state runs\manual-live\task185-aligned-seed-evidence\sessions.json --project-id task185_aligned_seed_evidence --timeout-seconds 120 --no-push-inspiration`: passed all release gates but exposed a domain-only handwritten-digit seed.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task185-aligned-seed-evidence-v2\vault --cache runs\manual-live\task185-aligned-seed-evidence-v2\cache --output-dir runs\manual-live\task185-aligned-seed-evidence-v2\runs --deliverables-dir outputs --state runs\manual-live\task185-aligned-seed-evidence-v2\scheduler-state.json --approvals-state runs\manual-live\task185-aligned-seed-evidence-v2\approvals.json --sessions-state runs\manual-live\task185-aligned-seed-evidence-v2\sessions.json --project-id task185_aligned_seed_evidence_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-ups, and seed title `Prototype Completion for Few-Shot Learning`.
+  - `pdfinfo outputs\task185_aligned_seed_evidence_v2\task185_aligned_seed_evidence_v2-cycle-20260617T225914Z-research-plan.pdf`: 3 pages.
+  - `pdfinfo outputs\task185_aligned_seed_evidence_v2\task185_aligned_seed_evidence_v2-cycle-20260617T225914Z.pdf`: 15 pages.
+  - `pdftotext` on the final research-plan PDF confirmed method-aligned prototype evidence and no `method_aligned_seed_not_found`, Boolean variance seed, or domain-only Bangla seed in the research-plan evidence sources.
+  - Final `paper-build.json` reported `paper_quality.passed=true`, `page_count=15`, `overfull_hbox_count=0`, `figure_count=1`, and `table_count=3`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 525 passed and 4 skipped.
+  - `git diff --check -- src\autoresearch\cli\main.py src\autoresearch\research\plans.py tests\unit\cli\test_main.py tests\unit\research\test_plans.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+- Problems:
+  - Added and resolved `P-20260618-104`.
+- Follow-up:
+  - Formal bibliography selection can be tightened in a later task if broad context-only handwritten-recognition papers are judged too weak for the publication-facing reference list.
+
+### 2026-06-18 01:48:45 +08:00 - Codex - Task 152.1 Operator monitor network approval visibility
+
+- Request:
+  - Continue running the project and make approval-gated execution state visible in the operator CLI UI.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `152.1` for Rich monitor network approval visibility.
+  - Extended the monitor experiment row to summarize `demo.network_approval`.
+  - Showed approval mode, shortened approval ID, approved domain count, preflight pass/blocked state, and finding count when present.
+  - Kept raw preflight finding bodies out of the monitor and in the detailed run record.
+  - Updated the monitor fixture and structured row assertions to prove the approval/preflight state appears in the operator console.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_command_renders_operator_console -q`: failed because the selector used a stale test name and collected no tests.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed with 1 test and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - When WeChat/Feishu adapters start approving runtime requests, add channel identity to the same approval summary if it becomes useful to operators.
+
+### 2026-06-18 01:43:46 +08:00 - Codex - Task 151.1 Cycle-summary network approval audit visibility
+
+- Request:
+  - Continue running the project and make runtime approval evidence visible from cycle-level artifacts.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `151.1` for cycle-summary network approval audit visibility.
+  - Added a cycle helper that reads the demo `run-record.json` and extracts only auditable network approval/preflight summary fields.
+  - Added `demo.network_approval` to cycle summaries only when approval or network preflight metadata exists.
+  - Kept ordinary tabular `airesearcher autopilot` summaries free of a noisy network approval section.
+  - Extended candidate review summaries with network approval fields so reviewers can see the execution permission boundary without raw preflight finding bodies.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_demo_network_summary_promotes_approval_audit_fields -q`: passed with 2 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 500 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Consider surfacing `demo.network_approval` in the Rich monitor once more runtime approval fields are useful to operators.
+
+### 2026-06-18 01:37:46 +08:00 - Codex - Task 150.1 Serve-to-executor network approval propagation
+
+- Request:
+  - Continue running the project and make always-on `serve` approvals flow into actual experiment execution metadata.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `150.1` for serve-to-executor network approval propagation.
+  - Converted allowed `serve` runtime decisions into auditable network metadata before each autonomous cycle.
+  - Passed runtime network metadata through `_run_autopilot_cycle()` into `run_scientistbench_demo()` so generated `ExperimentTask` records and run records retain approval scope, mode, ID, approver, domains, and source URLs.
+  - Kept direct `airesearcher autopilot` and `airesearcher run-demo` local by default; only the runtime-gated `serve` path injects approval context.
+  - Merged runtime approval domains/source URLs with task-scoped UCI public dataset metadata without overwriting narrower benchmark provenance.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py`: initially failed with `F821 Undefined name decision`, then passed after moving the metadata construction into the `serve` loop.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py`: initially failed with `Name "decision" is not defined`, then passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\experiments\test_demos.py::test_merge_task_metadata_preserves_scoped_public_dataset_sources tests\unit\experiments\test_demos.py::test_run_scientistbench_demo_records_runtime_network_metadata -q`: passed with 5 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py -q`: passed with 75 tests and the known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\cli\main.py src\autoresearch\experiments\demo_workflow.py tests\unit\cli\test_main.py tests\unit\experiments\test_demos.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 499 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - Added and resolved `P-20260618-079`.
+- Follow-up:
+  - Wire future WeChat/Feishu approval adapters to the same runtime approval decision path before launching `serve` cycles.
+
+### 2026-06-18 01:25:28 +08:00 - Codex - Task 149.1 Runtime approval bridge for network metadata
+
+- Request:
+  - Continue running the project and bridge the runtime `/approve` permission queue toward executor network approval metadata.
+- Files changed:
+  - `src/autoresearch/runtime/approval.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/runtime/test_runtime_approval.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `149.1` and dependency-graph node `116`.
+  - Added `network_approval_metadata_from_decision()` to convert an allowed runtime approval decision into task metadata keys consumed by the executor network preflight gate.
+  - Made the helper fail closed for pending decisions so unapproved dangerous work cannot produce `network_access_approved=True`.
+  - Preserved approval mode, approval request ID, approving operator, scope, approved domains, and source URLs.
+  - Exported the helper from `autoresearch.runtime` and extended executor metadata passthrough for `network_approval_mode`.
+- Verification:
+  - `python -m ruff check src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m pytest tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py -q`: passed with 10 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m mypy src\autoresearch\runtime\approval.py src\autoresearch\experiments\executor.py`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\runtime\approval.py src\autoresearch\runtime\__init__.py src\autoresearch\experiments\executor.py tests\unit\runtime\test_runtime_approval.py tests\unit\experiments\test_executor.py .kiro\specs\auto-research-system\tasks.md Agent.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 497 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Wire `serve`/autopilot task construction to call the helper when a real approved runtime decision needs to authorize network-bearing experiment tasks.
+
+### 2026-06-18 01:19:20 +08:00 - Codex - Task 148.1 Network approval audit metadata
+
+- Request:
+  - Continue running the project and make the new network approval gate more auditable instead of only recording a boolean approval.
+- Files changed:
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `tests/unit/experiments/test_demos.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added task `148.1` and dependency-graph node `115`.
+  - Copied scoped approval metadata from `ExperimentTask.metadata` into `ExecutionRun.metadata["network_preflight"]` whenever network-import findings are present.
+  - Preserved `network_access_scope`, `approved_network_domains`, `network_source_urls`, `network_approval_id`, and `network_approved_by` in the execution record.
+  - Added executor regression coverage for approved network imports retaining audit fields.
+  - Added UCI demo regression coverage so built-in public benchmark tasks keep cache-first scoped network approval metadata.
+- Verification:
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py`: passed.
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py -q`: passed with 23 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m mypy src\autoresearch\experiments\executor.py`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py .kiro\specs\auto-research-system\tasks.md Agent.md`: passed with line-ending warnings only.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 495 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Wire the runtime approval subsystem so user `/approve` decisions populate `network_approval_id` and `network_approved_by`.
+
+### 2026-06-18 01:09:51 +08:00 - Codex - Task 147.1 Executor network preflight gate
+
+- Request:
+  - Continue running the project and turn the network sandbox boundary from prompt discipline into an executor-level gate where currently feasible.
+- Files changed:
+  - `src/autoresearch/experiments/demos.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `147.1` and dependency-graph node `114`.
+  - Reused generated-code review findings inside `execute_experiment_task()` to block known raw Python network imports before local subprocess launch.
+  - Added explicit approval metadata support through `task.metadata["network_access_approved"]=True` for future `/approve` permission flow integration.
+  - Recorded preflight finding details in `ExecutionRun.metadata["network_preflight"]` and returned `NetworkPreflightDenied` with `network_preflight` limit violations when blocked.
+  - Added scoped approval metadata to trusted built-in UCI public benchmark demo tasks so cached-data tests and live public-data fallback remain explicit instead of silently bypassing the gate.
+  - Kept `P-20260611-014` mitigated rather than resolved because OS/container/proxy-level network interception is still not implemented.
+- Verification:
+  - `python -m ruff check src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py`: passed.
+  - `python -m pytest tests\unit\experiments\test_executor.py -q`: passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+  - `python -m pytest tests\unit\experiments\test_executor.py tests\unit\experiments\test_review.py tests\unit\experiments\test_network.py -q`: passed with 22 tests and the same known host warning.
+  - First `python -m pytest tests\smoke tests\unit -q`: failed with six UCI demo CSV `FileNotFoundError` failures after the new preflight gate blocked trusted built-in scripts that import `urllib.request.urlopen`; recorded as `P-20260618-078`.
+  - `python -m ruff check src\autoresearch\experiments\demos.py src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py tests\unit\experiments\test_demos.py`: passed after adding scoped UCI approval metadata.
+  - `python -m pytest tests\unit\experiments\test_demos.py tests\unit\experiments\test_executor.py -q`: passed with 22 tests and then emitted the known host Python `RequestsDependencyWarning`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `git diff --check -- src\autoresearch\experiments\demos.py src\autoresearch\experiments\executor.py tests\unit\experiments\test_executor.py .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: passed with line-ending warnings only.
+  - Final `python -m pytest tests\smoke tests\unit -q`: passed with 494 passed, 4 skipped, 1 LangGraph warning, and the known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260611-014` updated and kept mitigated.
+  - `P-20260618-078` added and resolved.
+  - `P-20260612-057` remains the known host-warning boundary observed after pytest exits.
+- Follow-up:
+  - Add OS/container/proxy-level enforcement in a later sandbox-hardening task and wire the runtime approval flow so `/approve` sets the same `network_access_approved` key with an audit record.
+
+### 2026-06-18 01:03:00 +08:00 - Codex - Task 146.1 Spambase weak-effect release quarantine audit
+
+- Request:
+  - Continue running the project and make sure weak experimental evidence is not being promoted into CCF-B/Q3-style release claims.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `146.1` and dependency-graph node `113`.
+  - Rechecked `P-20260613-042` against later passing publication-stability matrices.
+  - Confirmed the Spambase demo remains a real benchmark execution path but is quarantined from release claims because its positive delta is below the method-effect standard-error gate.
+  - Updated `P-20260613-042` to point future agents toward stronger variants or repeated splits before using Spambase as release evidence, while noting current stable release matrices rely on Pendigits, Letter Recognition, and Skin Segmentation instead.
+- Verification:
+  - Parsed available `publication-stability.json` files and confirmed multiple later matrices report `stable=true`, `score=1.0`, and `target=ccf-b-matrix`.
+  - Parsed `runs\manual-live\task116-related-work-current-matrix\publication-stability.json`: passed; the release-allowed datasets are Pen-Based Recognition of Handwritten Digits, Letter Recognition, and Skin Segmentation.
+  - Confirmed the current passing matrices do not rely on Spambase as release-allowed evidence.
+  - `git diff --check -- .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: passed.
+- Problems:
+  - `P-20260613-042` updated and kept mitigated.
+- Follow-up:
+  - Spambase should get a stronger method variant or repeated deterministic split evidence before being allowed into a release matrix.
+
+### 2026-06-18 00:58:47 +08:00 - Codex - Task 145.1 HKUDS license boundary freshness
+
+- Request:
+  - Continue running the project and re-check whether HKUDS AI-Researcher has become safe to treat as licensed source code before future agents compare or reuse it.
+- Files changed:
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `145.1` and dependency-graph node `112`.
+  - Rechecked current HKUDS AI-Researcher repository metadata, root contents, license API, `setup.cfg`, and issue #94.
+  - Updated third-party notices from the 2026-06-17 snapshot to a 2026-06-18 snapshot that also records `licenseInfo=null`.
+  - Extended the compliance regression test so the reference-only boundary includes the GitHub metadata signal, not only the 404 license API.
+  - Kept `P-20260613-006` mitigated rather than resolved because the repository is still public/source-available but lacks explicit top-level license text.
+- Verification:
+  - `gh repo view HKUDS/AI-Researcher --json nameWithOwner,licenseInfo,url,defaultBranchRef,updatedAt`: passed; `licenseInfo` was `null` and repository updated at `2026-06-17T14:49:10Z`.
+  - `gh api repos/HKUDS/AI-Researcher/contents --jq '.[].name'`: passed; no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE` appeared in the root file list.
+  - `gh api repos/HKUDS/AI-Researcher/license`: returned 404, as expected for missing recognized repository license text.
+  - `gh api repos/HKUDS/AI-Researcher/contents/setup.cfg ...`: passed and confirmed `license = MIT` remains in package metadata.
+  - `gh issue view 94 --repo HKUDS/AI-Researcher --json ...`: passed; issue #94 is still `OPEN`.
+  - `python -m ruff check tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m pytest tests\unit\compliance\test_licenses.py -q`: passed with 6 tests and then emitted the known host Python `RequestsDependencyWarning` tracked in `P-20260612-057`.
+- Problems:
+  - `P-20260613-006` updated and kept mitigated.
+- Follow-up:
+  - Re-check upstream before any future incorporation; until then HKUDS AI-Researcher stays conceptual/reference-only.
+
+### 2026-06-18 00:52:58 +08:00 - Codex - Task 144.1 host requests warning boundary re-audit
+
+- Request:
+  - Continue running the project and remove or clearly bound remaining local verification noise without pretending a host-environment warning is a project dependency failure.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `144.1` and dependency-graph node `111`.
+  - Re-audited the lingering `RequestsDependencyWarning` with real local commands.
+  - Confirmed the project Poetry environment reports a healthy requests dependency set, while the raw warning comes from the host/global Python 3.13 environment used by Poetry or direct Python commands after process exit.
+  - Confirmed the npm wrapper's doctor command reports the host dependency mismatch as structured `[WARN]` output without importing `requests` or emitting the raw warning.
+  - Kept `P-20260612-057` mitigated rather than resolved because a full fix would require mutating or isolating global Python outside the repository.
+- Verification:
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 492 passed, 4 skipped, 1 LangGraph warning, then reproduced the host Python 3.13 `RequestsDependencyWarning` after command completion.
+  - `python -m ruff check src tests`: passed without the requests warning.
+  - `python -m mypy src\autoresearch`: passed without the requests warning.
+  - `python -W "ignore:urllib3 .*doesn't match a supported version!" -m pytest tests\unit\observability\test_dependencies.py -q`: passed but still reproduced the host warning after command completion, confirming a simple project-level pytest filter would not solve the boundary.
+  - `poetry run pytest tests\unit\observability\test_dependencies.py -q`: passed under Python 3.10 and still reproduced the host Python 3.13 warning after Poetry exited.
+  - `poetry run airesearcher doctor`: passed and reported the project Poetry set as `[OK] requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; Poetry still emitted the host Python 3.13 warning after exit.
+  - `node .\bin\airesearcher.mjs doctor`: passed and reported the host set as `[WARN] requests 2.31.0, urllib3 2.7.0, charset-normalizer 3.4.7, chardet 7.4.3` without emitting `RequestsDependencyWarning`.
+  - `poetry run python -c "import sys; print(sys.version); print(sys.executable)"`: confirmed the Poetry venv is Python 3.10.20, then Poetry still emitted the host Python 3.13 warning after exit.
+- Problems:
+  - `P-20260612-057` updated and kept mitigated.
+- Follow-up:
+  - Cleaning the host/global Python 3.13 package set is intentionally outside repository tasks; do it only as a separate environment-maintenance action.
+
+### 2026-06-18 00:46:36 +08:00 - Codex - Task 143.1 README operator console release-alignment
+
+- Request:
+  - Continue running the project and keep the release-facing README/operator-console presentation aligned with the verified CLI monitor.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `docs/assets/readme/cli-monitor.svg`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `143.1` and dependency-graph node `110`.
+  - Updated the English and Chinese Operator Monitor sections to describe release-critical cycle stages, stage-specific artifact paths, and paper-quality status.
+  - Refreshed the README SVG console preview from stale task `119.1` content to current release-flow examples: source preflight, literature, research plan, citations, paper quality, deliverables, and output previews.
+  - Recorded and resolved the release-page drift as `P-20260618-077`.
+- Verification:
+  - `python -c "import xml.etree.ElementTree as ET; ET.parse('docs/assets/readme/cli-monitor.svg'); print('svg ok')"`: passed.
+  - README/SVG key-term check for `release-critical cycle stages`, `paper-quality status`, `发布关键 cycle 阶段`, `Release Flow`, `references.metadata.json`, and `paper-build.json`: passed.
+  - README asset-link check for `docs/assets/readme/cli-monitor.svg`: passed.
+  - `git diff --check -- README.md README.zh-CN.md docs\assets\readme\cli-monitor.svg`: passed.
+- Problems:
+  - `P-20260618-077` added and resolved.
+- Follow-up:
+  - None.
+
+### 2026-06-18 00:38:01 +08:00 - Codex - Task 142.1 operator console release-flow hardening
+
+- Request:
+  - Continue running the project and improve the CLI operator console so users can see Agent messages, information flow, changes, previews, and release-quality evidence without opening raw JSON.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `142.1` and dependency-graph node `109`.
+  - Reworked the `monitor` information-flow table to read release-cycle fields for source, literature, research plan, novelty, related work, citations, experiment, reproduction, review, publication audit, paper build, evidence gate, follow-ups, and deliverables.
+  - Added concise status summaries for document/source counts, plan compile/audit/page status, related-work inspected/direct counts, citation blocked counts, paper quality/page status, follow-up count, and deliverable count.
+  - Replaced summary-only evidence cells with stage-specific artifact paths and shortened path labels for readable Rich panels.
+  - Changed monitor tables and preview output to fold text and use ASCII `...` shortening so Windows terminal captures do not show Unicode truncation artifacts.
+  - Expanded the monitor unit test fixture to cover release-like cycle fields and assert citation metadata, deliverable manifest/PDF, and paper-quality binding.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed.
+  - Real CLI smoke `node .\bin\airesearcher.mjs monitor --cycle-summary runs\autopilot\cycle-20260617T160833Z\cycle-summary.json --outputs-dir outputs\live_release_candidate_20260617_v2 --no-diff --max-agent-entries 1`: passed and rendered all release-critical stages without Unicode truncation artifacts.
+  - Structured real summary check with `$env:PYTHONPATH='src'; python -c "... _cycle_stage_rows(...)"`: passed and showed `paper | compiled; quality=pass; pages=14`, citation metadata evidence, and deliverable manifest/PDF evidence.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed with 56 tests.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 492 passed, 4 skipped, and 1 known warning.
+- Problems:
+  - `P-20260618-075` added and resolved.
+  - `P-20260618-076` added and resolved.
+- Follow-up:
+  - Future monitor work can add a user-triggered screenshot/export mode for README assets, but this task leaves the current terminal UI verified and release-gate aware.
+
+### 2026-06-18 00:24:00 +08:00 - Codex - Task 141.1 deterministic figure readability release gate
+
+- Request:
+  - Continue running the project and convert the latest PDF visual QA defect into a repeatable release gate.
+- Files changed:
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_paper_build.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `141.1` and its dependency-graph node.
+  - Extended paper-build quality reports with `figure_readability_issue_count` and `figure_readability_issues`.
+  - Added deterministic inspection of adjacent figure metadata sidecars for Markdown image references.
+  - Made `metric_bar` figures fail `paper_quality` with `figure_label_readability` when machine metric names lack readable labels, reuse raw snake-case labels, or use non-horizontal layout for long machine metric names.
+  - Wrote figure readability counts and issue messages into `paper-build.json` and `paper-build.md`.
+  - Added regression tests for an unreadable old-style metric figure metadata file and confirmed the current manuscript path is not blocked.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m pytest tests\unit\reports\test_paper_build.py tests\unit\reports\test_manuscript.py -q`: passed, 8 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 492 tests passed, 4 skipped, 1 LangGraph/LangChain pending deprecation warning.
+  - Real `node .\bin\airesearcher.mjs paper-build runs\autopilot\cycle-20260617T160833Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task141-figure-readability-paper-build --template-id generic-article-one-column --vault runs\manual-live\task141-figure-readability-vault --project-id task141_figure_readability --timeout-seconds 180`: passed and compiled `runs\manual-live\task141-figure-readability-paper-build\main.pdf`.
+  - `rg -n "figure_readability|paper_quality|passed|page_count|overfull|failures" runs\manual-live\task141-figure-readability-paper-build\paper-build.json`: passed; JSON records `figure_readability_issue_count=0`, `paper_quality.passed=true`, `failures=[]`, `overfull_hbox_count=0`, and `page_count=14`.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task141-figure-readability-paper-build\compile.log`: returned no matches, as expected.
+  - `pdfinfo runs\manual-live\task141-figure-readability-paper-build\main.pdf`: passed; 14 pages.
+  - Visual render of page 8 with `pdftoppm`: passed; metric figure labels are readable and page layout does not overlap. `pdftoppm` printed the known non-blocking `No display font for 'ArialUnicode'` warning while producing the PNG.
+- Problems:
+  - `P-20260618-073` added and resolved.
+  - `P-20260618-074` added and resolved.
+- Follow-up:
+  - Consider extending this metadata-driven gate to non-metric figures only after a concrete visual defect appears; do not overfit external figure handling preemptively.
+
+### 2026-06-18 00:12:00 +08:00 - Codex - Task 140.1 publication figure readability hardening
+
+- Request:
+  - Continue running the project, perform final publication-quality QA, and fix concrete output-quality issues instead of only trusting automated gates.
+- Files changed:
+  - `src/autoresearch/reports/figures.py`
+  - `tests/unit/reports/test_figures.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `140.1` and its task-dependency graph node.
+  - Reworked deterministic metric figures from vertical bars with truncated raw metric keys into horizontal source-backed bar charts with readable metric labels.
+  - Preserved raw metric keys, values, source path, and figure paths in metadata while adding human-readable labels and an explicit `horizontal` orientation.
+  - Added figure tests that prove long metric keys are rendered as readable labels in metadata and PDF output.
+  - Ran a real autonomous Pendigits cycle after the fix and confirmed the release PDF uses the improved figure while preserving publication audit and evidence-gate pass status.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\figures.py tests\unit\reports\test_figures.py`: passed.
+  - `python -m pytest tests\unit\reports\test_figures.py -q`: passed, 3 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - Manual figure generation without `PYTHONPATH=src`: failed with `ModuleNotFoundError: No module named 'autoresearch'`; retried with `$env:PYTHONPATH='src'` and passed.
+  - Real `node .\bin\airesearcher.mjs autopilot --project-id live_release_candidate_20260617_v2 --demo pendigits_variance_calibrated_prototypes --timeout-seconds 120 --paper-template-id generic-article-one-column`: passed source preflight, research-plan gate, live LLM review, publication audit, evidence gate, deliverable export, and session release.
+  - `pdfinfo outputs\live_release_candidate_20260617_v2\live_release_candidate_20260617_v2-cycle-20260617T160833Z.pdf`: passed; 14 pages.
+  - Paper-build JSON inspection: passed with `paper_quality.passed=true`, `figure_count=1`, `table_count=2`, `page_count=14`, `word_count=3861`, and `overfull_hbox_count=0`.
+  - Visual rendering of PDF pages 8, 12, and 14: passed; figure labels are readable, references are numeric, and tables do not overflow. `pdftoppm` still prints the known non-blocking `No display font for 'ArialUnicode'` renderer warning while producing PNGs.
+  - `pdftotext` reference scan: passed; no `[Cycle summary]`, `[Validation]`, or `[Literature refresh]` labels appear as formal references.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\autopilot\cycle-20260617T160833Z\paper-build\compile.log runs\autopilot\cycle-20260617T160833Z\live_release_candidate_20260617_v2\research-plan\research-plan.compile.log`: returned no matches.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 491 passed, 4 skipped, 1 warning.
+- Problems:
+  - Added and resolved `P-20260617-072`.
+- Follow-up:
+  - Consider adding a deterministic visual-readability gate for metric figures if future PDFs regress; current task keeps the fix focused on the observed release PDF issue.
+
+### 2026-06-17 23:55:15 +08:00 - Codex - Task 139.1 code-agent trust-boundary reconciliation
+
+- Request:
+  - Continue stale-risk cleanup and resolve the cc-switch/code-agent validation-boundary problem if current contracts prove AI-Researcher keeps acceptance authority.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `139.1` and its task-dependency graph node.
+  - Rechecked the preferred OpenCode direct backend and optional cc-switch bridge backend.
+  - Updated `P-20260613-007` from mitigated to resolved for the current repository integration boundary: external code agents may draft code, but AI-Researcher owns validation, approval, merge, rollback, Obsidian memory, and `Agent.md` logging.
+- Verification:
+  - `node .\bin\airesearcher.mjs code-agents opencode list`: passed; printed backend `opencode-direct` with `validator=AI-Researcher`.
+  - `node .\bin\airesearcher.mjs code-agents cc-switch list`: passed; printed backend `claude-code-via-cc-switch` with `validator=AI-Researcher`.
+  - `python -m pytest tests\unit\integrations\test_opencode.py tests\unit\integrations\test_cc_switch.py -q`: passed, 9 tests.
+- Problems:
+  - `P-20260613-007` resolved for the current code-agent integration boundary.
+- Follow-up:
+  - Future direct Claude Code or cc-switch execution should still use a dedicated worktree, transcript capture, dangerous-command approval, and AI-Researcher-owned validation before acceptance.
+
+### 2026-06-17 23:53:17 +08:00 - Codex - Task 138.1 CI polling environment reconciliation
+
+- Request:
+  - Continue running stale-risk cleanup and resolve local environment blockers when real verification now passes.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `138.1` and its task-dependency graph node.
+  - Rechecked GitHub CLI in the active PowerShell session.
+  - Updated `P-20260613-033` from mitigated to resolved because `gh` is now installed and can query the project repository's GitHub Actions runs.
+- Verification:
+  - `gh --version`: passed; printed `gh version 2.93.0 (2026-05-27)`.
+  - `gh run list --repo neutronstar238/ai-researcher --limit 1 --json databaseId,status,conclusion,workflowName,url,createdAt`: passed; returned CI run `27544632808` with `status=completed` and `conclusion=success`.
+- Problems:
+  - `P-20260613-033` resolved.
+- Follow-up:
+  - Keep the REST API fallback for environments where GitHub CLI is unavailable or unauthenticated.
+
+### 2026-06-17 23:51:12 +08:00 - Codex - Task 137.1 optional Semantic Scholar default-source reconciliation
+
+- Request:
+  - Continue running the project and close stale external-source reliability risks with real evidence where possible.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `137.1` and its task-dependency graph node.
+  - Rechecked current source-selection code and tests: ArXiv/OpenAlex are the default sources, while Semantic Scholar is included only when explicitly enabled or keyed.
+  - Rechecked README guidance that Semantic Scholar is optional and lower priority.
+  - Updated `P-20260613-003` from mitigated to resolved for default discovery and release behavior while preserving Semantic Scholar 429 as an optional-source caveat when operators enable it.
+- Verification:
+  - `rg -n "Semantic Scholar|semantic_scholar|AUTORESEARCH_ENABLE_SEMANTIC|core free" src tests .kiro\specs\auto-research-system\tasks.md README.md README.zh-CN.md`: passed; expected implementation, test, task, and README references found.
+  - Real CLI `node .\bin\airesearcher.mjs literature-refresh --vault runs\manual-live\task137-default-sources\vault --cache runs\manual-live\task137-default-sources\cache --max-queries 1 --max-results-per-source 1`: passed; printed only `[FETCH] source=arxiv` and `[FETCH] source=openalex`, returned 2 documents, and wrote `runs\manual-live\task137-default-sources\vault\exploration\topics\literature_refresh_20260617.md`.
+  - Inspection of the generated evidence note confirmed two source refs, one ArXiv document, one OpenAlex document, and no Semantic Scholar fetch.
+- Problems:
+  - `P-20260613-003` resolved for default source behavior.
+- Follow-up:
+  - Keep Semantic Scholar optional; for deployments that enable it, continue relying on API keys, conservative rate limits, circuit breakers, and transparent optional-source caveats.
+
+### 2026-06-17 23:48:14 +08:00 - Codex - Task 136.1 runtime session gate automation
+
+- Request:
+  - Continue running the project and turn concurrent-agent coordination from manual prompt discipline into an automatic runtime gate for long-running entrypoints.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added automatic session claiming to `autopilot` and `serve` before approval checks, online retrieval, experiment execution, vault writes, or output writes can start.
+  - Claimed vault, cache, run output, deliverables output, scheduler state, and runtime approval state paths for the active project.
+  - Added `--sessions-state`, `--claim-session/--no-claim-session`, and `--agent-name` controls for runtime operators.
+  - Added release-on-exit behavior so normal completion, queued approval exits, and cycle failures do not leave active session claims behind.
+  - Added CLI coverage for automatic claim/release and conflict-before-cycle behavior.
+  - Marked task `136.1` complete and added its task-dependency graph node.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_blocks_overlapping_runtime_session_before_cycle -q`: passed, 4 tests.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 56 tests.
+  - Real CLI smoke `node .\bin\airesearcher.mjs sessions claim --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --session-id task136_active --agent-name "Codex live smoke" --task-id "136.1-live-conflict" --path runs\manual-live\task136-runtime-session-gate\vault`: passed, first claim allowed.
+  - Real CLI smoke `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --sessions-state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --approvals-state runs\manual-live\task136-runtime-session-gate\approvals.json --vault runs\manual-live\task136-runtime-session-gate\vault --cache runs\manual-live\task136-runtime-session-gate\cache --output-dir runs\manual-live\task136-runtime-session-gate\runs --deliverables-dir runs\manual-live\task136-runtime-session-gate\outputs --state runs\manual-live\task136-runtime-session-gate\scheduler-state.json --project-id task136_runtime_session_gate --demo pendigits_variance_calibrated_prototypes --no-review`: exited `1` as expected, printed `[OK] session_claim: blocked` and `[CONFLICT] session_id=task136_active`, and did not start a cycle.
+  - Real CLI cleanup `node .\bin\airesearcher.mjs sessions release task136_active --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json`: passed, status released.
+  - Real CLI state check `node .\bin\airesearcher.mjs sessions list --state runs\manual-live\task136-runtime-session-gate\agent-sessions.json --include-released`: passed, only `status=released` remained.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 490 passed, 4 skipped, 1 known external warning.
+- Problems:
+  - `P-20260613-009` resolved for `autopilot` and `serve` runtime entrypoints; future worker/daemon/channel entrypoints must reuse the same automatic claim/release wrapper.
+- Follow-up:
+  - Continue applying the runtime session wrapper to any new long-running writer entrypoint before it can mutate vault, cache, runs, outputs, scheduler, or approval state.
+
+### 2026-06-17 23:38:42 +08:00 - Codex - Task 135.1 prompt-only release discipline reconciliation
+
+- Request:
+  - Continue running the project and reconcile the stale SCALE-lite release-gate problem using lifecycle trace evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `135.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` evidence gate before changing `P-20260613-008`.
+  - Updated `P-20260613-008` from mitigated to resolved for release claims because `evidence-gate` now acts as a physical gate with lifecycle trace evidence and the final real serve cycle passes it.
+  - Left `P-20260613-009` mitigated because concurrent edit coordination still needs worker-launch integration before it is automatic.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed evidence gate `verdict=pass`, `release_allowed=True`, `failed_check_count=0`, and lifecycle stages `define`, `plan`, `build`, `verify`, `review`, and `ship` all `pass`.
+  - `rg -n "P-20260613-008|P-20260613-009|135\.1|lifecycle trace|release_allowed" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-008` resolved.
+  - `P-20260613-009` intentionally remains mitigated.
+- Follow-up:
+  - Integrate `sessions claim` into future multi-worker launch paths before resolving concurrent-agent overlap risk.
+
+### 2026-06-17 23:36:40 +08:00 - Codex - Task 134.1 release-gate problem reconciliation
+
+- Request:
+  - Continue running the project and reconcile stale release-gate mitigations against the final real serve evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `134.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` real serve cycle before changing `P-20260613-011`, `P-20260613-012`, or `P-20260613-013`.
+  - Updated `P-20260613-011` from mitigated to resolved because the current automatic `serve`/`autopilot` path writes paper-build and evidence-gate artifacts without manual chaining.
+  - Updated `P-20260613-012` from mitigated to resolved because the release gate now records a fresh command-line reproduction rerun with run-record and validation artifacts.
+  - Updated `P-20260613-013` from mitigated to resolved because CCF-B publication targets require method innovation and method-effect evidence, and the latest non-baseline release path passes those checks.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed publication audit `verdict=pass`, `publishable=True`, evidence gate `verdict=pass`, `release_allowed=True`, `method_innovation_evidence=pass`, `method_effect_evidence=pass`, `reproduction_rerun_gate=pass`, `publication_release_gate=pass`, `paper_pdf_gate=pass`, and `paper_quality_gate=pass`.
+  - `rg -n "P-20260613-011|P-20260613-012|P-20260613-013|134\.1|reproduction_rerun_gate|method_effect_evidence|paper_quality_gate" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-011` resolved.
+  - `P-20260613-012` resolved.
+  - `P-20260613-013` resolved.
+- Follow-up:
+  - Continue treating automatic gates as blockers for future cycles; keep external-source reliability and OS-level sandbox hardening tracked separately.
+
+### 2026-06-17 23:33:51 +08:00 - Codex - Task 133.1 similar-work breadth problem reconciliation
+
+- Request:
+  - Continue running the project and reconcile stale similar-work breadth blockers against the latest real release evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `133.1` and its task-dependency graph node.
+  - Re-inspected the task `128.1` real serve cycle before changing `P-20260613-030`.
+  - Updated `P-20260613-030` from mitigated to resolved for the current default ArXiv/OpenAlex publication loop because the latest release-allowed Pendigits cycle passes the classified similar-work breadth target, publication audit, and evidence gate.
+  - Preserved the original task `95.1` failure evidence and kept optional Semantic Scholar source reliability separate under `P-20260613-003`.
+- Verification:
+  - PowerShell inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed publication audit `verdict=pass`, `publishable=True`, `similarity_classified_finding_breadth` status `pass` with message `Evidence-classified similarity findings: 18; target requires at least 10.`, evidence gate `verdict=pass`, and `release_allowed=True`.
+  - `rg -n "P-20260613-030|133\.1|similarity_classified_finding_breadth|P-20260613-003" Problem.md .kiro\specs\auto-research-system\tasks.md`: passed; expected references found.
+- Problems:
+  - `P-20260613-030` resolved for the current default required-source release path.
+  - `P-20260613-003` intentionally left mitigated for optional Semantic Scholar 429/source reliability.
+- Follow-up:
+  - Continue broadening release evidence across additional independent datasets and templates before making venue-specific submission claims.
+
+### 2026-06-17 23:30:49 +08:00 - Codex - Task 132.1 HKUDS AI-Researcher license boundary refresh
+
+- Request:
+  - Continue running the project and refresh the HKUDS AI-Researcher open-source/license boundary before any future reuse.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `tests/unit/compliance/test_licenses.py`
+  - `Agent.md`
+- Summary:
+  - Added task `132.1` and its task-dependency graph node.
+  - Re-checked HKUDS AI-Researcher on 2026-06-17 and kept it as conceptual/reference-only for this repository.
+  - Updated `THIRD_PARTY_NOTICES.md` with the current evidence: upstream `setup.cfg` still declares `license = MIT`, GitHub's license API returned 404, the repository root contents check found no `LICENSE`, `LICENCE`, `COPYING`, or `NOTICE`, and issue #94 remains open.
+  - Added a compliance regression test so the HKUDS AI-Researcher notice must keep the 404/open-issue evidence and the "Do not copy or adapt" boundary.
+  - No HKUDS AI-Researcher code, prompts, assets, benchmark data, generated examples, or figures were copied into this project.
+- Verification:
+  - Live web/API review: confirmed `setup.cfg` license metadata, GitHub license API 404, no top-level license/notice file in root contents, and issue #94 open as of 2026-06-17.
+  - `python -m ruff check tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m pytest tests\unit\compliance\test_licenses.py -q`: passed, 6 tests.
+  - `rg -n 'HKUDS AI-Researcher|GitHub license API returned 404|issue #94 remains open|Do not copy or adapt repository code|132\.1|P-20260613-006' THIRD_PARTY_NOTICES.md Problem.md .kiro\specs\auto-research-system\tasks.md tests\unit\compliance\test_licenses.py`: passed; expected references found.
+- Problems:
+  - `P-20260613-006` updated from open to mitigated for AI-Researcher; upstream license-text ambiguity remains unresolved, so future code reuse still requires a fresh check or written permission.
+- Follow-up:
+  - Re-check upstream before any derivative implementation that uses HKUDS AI-Researcher repository material.
+
+### 2026-06-17 23:25:37 +08:00 - Codex - Task 131.1 publication problem-log reconciliation
+
+- Request:
+  - Continue running the project and keep the self-loop issue substrate aligned with the latest live publication-quality evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added task `131.1` to reconcile stale publication-readiness problem records after the task `128.1` live serve pass.
+  - Marked `P-20260613-016` resolved using the later live Pendigits variance-calibrated prototype cycle where review, publication audit, evidence gate, and follow-up queues passed.
+  - Marked `P-20260613-014` resolved as an archived negative result whose empirical-gain claims are now blocked by `method_effect_evidence`.
+  - Marked `P-20260613-004` resolved for the current real Pendigits loop while preserving future multi-dataset, stronger-baseline, and venue-template work as follow-up.
+- Verification:
+  - PowerShell JSON inspection of `runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\cycle-summary.json`: confirmed `review.verdict=pass`, `publication_audit.verdict=pass`, `publication_audit.publishable=True`, `evidence_gate.verdict=pass`, `evidence_gate.release_allowed=True`, and `followup_tasks.Count=0`.
+  - `rg` on the task `128.1` cycle summary confirmed the demo is `pendigits_variance_calibrated_prototypes`, `literature.query_count=4`, 65 literature documents, 57 similarity findings, 65 verified citations, `paper_build.paper_quality.page_count=14`, and `research_plan.page_count=3`.
+  - `Test-Path runs\manual-live\task128-serve-final\outputs\task128_serve_final\task128_serve_final-cycle-20260617T150322Z.pdf`: returned `True`.
+  - `rg -n 'accuracy|baseline|delta'` on task `76.1` and task `78.1` metrics confirmed the negative shrinkage delta and separate positive variance-calibrated delta remain recorded.
+  - `rg` checks confirmed `P-20260613-004`, `P-20260613-014`, and `P-20260613-016` now show `Status: Resolved`, and task `131.1` is present in `tasks.md`.
+- Problems:
+  - Resolved stale records `P-20260613-004`, `P-20260613-014`, and `P-20260613-016`.
+- Follow-up:
+  - Continue tackling still-current open or mitigated problems such as HKUDS license uncertainty, OS-level network sandboxing, and cross-topic release robustness.
+
+### 2026-06-17 23:20:15 +08:00 - Codex - Task 130.1 Requests dependency diagnostics
+
+- Request:
+  - Continue running the project and close the long-standing `RequestsDependencyWarning` verification noise as far as the repository can own it.
+- Files changed:
+  - `src/autoresearch/observability/dependencies.py`
+  - `src/autoresearch/observability/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/observability/test_dependencies.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a metadata-based Requests dependency diagnostic that checks `requests`, `urllib3`, `charset-normalizer`, and `chardet` without importing `requests`.
+  - Exposed the diagnostic in `airesearcher doctor`, using `[WARN]` for unsupported installed combinations and `[FAIL]` only when required declared packages are missing.
+  - Added focused unit coverage for the locked Poetry set, the observed unsupported global chardet set, and missing Requests.
+  - Updated `P-20260612-057` to `Mitigated`: the project Poetry environment is clean and diagnosable, while the host/global Python 3.13 environment still emits the warning after commands complete.
+- Verification:
+  - `python -m ruff check src\autoresearch\observability\dependencies.py src\autoresearch\observability\__init__.py src\autoresearch\cli\main.py tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\observability\dependencies.py src\autoresearch\cli\main.py`: passed with the existing non-failing unused override note.
+  - `python -m pytest tests\unit\observability\test_dependencies.py tests\unit\cli\test_main.py::test_doctor_command_checks_local_scaffold -q`: passed with 4 tests; the host Python 3.13 warning still appeared after test completion.
+  - `python -m autoresearch.cli.main doctor`: failed with `ModuleNotFoundError` because the package is not installed on bare Python without `PYTHONPATH`; reran the real project entrypoint instead.
+  - `poetry run airesearcher doctor`: passed and reported `[OK] requests dependency set: requests 2.32.5, urllib3 2.7.0, charset-normalizer 3.4.7, chardet not installed`; the host Python 3.13 warning still appeared after command completion.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 488 passed, 4 skipped, and 1 warning; the host Python 3.13 warning still appeared after command completion.
+- Problems:
+  - Updated `P-20260612-057` from `Open` to `Mitigated`.
+- Follow-up:
+  - If warning-free host logs become a release requirement, isolate or clean the global Python 3.13 environment outside the repository rather than changing project code.
+
+### 2026-06-17 23:09:50 +08:00 - Codex - Task 129.1 research-plan PDF layout hardening
+
+- Request:
+  - Continue running the project and fix the research-plan PDF overfull warning discovered during task `128.1` artifact QA.
+- Files changed:
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/research/test_plans.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated research-plan TeX reference rendering so HTTP(S) references and long `Evidence artifact:` locators use breakable `\url{}` text.
+  - Kept short evidence artifact IDs as normal escaped text.
+  - Added unit coverage for long similarity/literature evidence summary locators.
+  - Re-ran a real `research-plan --compile-pdf` smoke using the task `128.1` candidate and long summary paths that previously produced overfull warnings.
+- Verification:
+  - `python -m ruff check src\autoresearch\research\plans.py tests\unit\research\test_plans.py`: passed.
+  - `python -m pytest tests\unit\research\test_plans.py -q`: passed with 4 tests.
+  - Real research-plan compile: `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task128-serve-final\runs\cycle-20260617T150322Z\candidate.json --project-id task129_plan_layout --vault runs\manual-live\task129-plan-layout\vault --output-dir runs\manual-live\task129-plan-layout\outputs --similarity-summary runs\manual-live\task128-serve-final\vault\exploration\topics\similarity_check_autopilot_task128_serve_final_20260617150322.md --literature-summary runs\manual-live\task128-serve-final\vault\exploration\topics\literature_refresh_20260617.md --compile-pdf --timeout-seconds 180`: passed with `compile_status: compiled` and 3 pages.
+  - `rg -n "Overfull|LaTeX Error|Undefined|undefined|Emergency stop|Fatal error" runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.compile.log`: returned no matches.
+  - `pdfinfo runs\manual-live\task129-plan-layout\outputs\task129_plan_layout\research-plan\research-plan.pdf`: confirmed 3 A4 pages.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 485 passed, 4 skipped, and 1 warning.
+- Problems:
+  - Resolved `P-20260617-071`.
+- Follow-up:
+  - Continue toward broader autonomous-loop hardening; keep scanning all generated PDFs and compile logs during live checks.
+
+### 2026-06-17 23:05:31 +08:00 - Codex - Task 128.1 review-driven manuscript repair
+
+- Request:
+  - Continue running the AI-Researcher loop until the live `serve` path addresses the reviewer blocker from task `127.1` without weakening release gates.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Rewrote related-work and similarity prose so the manuscript no longer overstates the retrieval process or invents finer related-work categories beyond recorded comparison-status fields.
+  - Added an explicit manuscript caveat that `variance_shrinkage=0.05` is a fixed recorded configuration, not an optimized hyperparameter or sensitivity-sweep result.
+  - Renamed the paper evidence table artifact from `Cycle record` to `Cycle summary`.
+  - Added `cycle-summary.json` to the LLM review evidence bundle so the reviewer can inspect the actual cycle state file directly.
+  - Added focused tests for the revised manuscript wording and review evidence bundle.
+  - Ran a real live `serve --once` cycle with network literature retrieval, real Pendigits benchmark execution, live model review, PDF output, publication audit, and evidence gate.
+- Verification:
+  - `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\cli\main.py tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed with 2 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real serve cycle: `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task128-serve-final\vault --cache runs\manual-live\task128-serve-final\cache --output-dir runs\manual-live\task128-serve-final\runs --deliverables-dir runs\manual-live\task128-serve-final\outputs --state runs\manual-live\task128-serve-final\scheduler-state.json --approvals-state runs\manual-live\task128-serve-final\approvals.json --project-id task128_serve_final --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` passed with `[OK] review_status: passed`, `[OK] publication_audit: pass`, `[OK] evidence_gate: pass`, and `[OK] followup_tasks: 0`.
+  - `pdfinfo runs\manual-live\task128-serve-final\outputs\task128_serve_final\task128_serve_final-cycle-20260617T150322Z.pdf`: confirmed the exported paper PDF has 14 pages.
+  - `rg` on the live cycle confirmed the manuscript uses `Cycle summary`, the LLM review evidence includes `cycle-summary.json`, and paper-build `compile.log` contains `RERUNS_COMPLETED: 1` and `ATTEMPT 2`.
+- Problems:
+  - Resolved `P-20260616-070`.
+  - Added open `P-20260617-071` for a separate research-plan PDF overfull warning found during final artifact QA.
+- Follow-up:
+  - Fix research-plan LaTeX wrapping/layout so generated planning PDFs have clean compile logs as well as paper PDFs.
+
+### 2026-06-16 18:11:03 +08:00 - Codex - Task 127.1 serve research-plan gate visibility
+
+- Request:
+  - Continue running the project and verify the always-on `serve` path exposes the same research-plan and approval gates as the direct autopilot path.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a shared `_echo_research_plan_status()` helper and called it from both `autopilot` and `serve`.
+  - Added CLI unit coverage proving `serve --permission-mode allow-all --once` prints `[OK] research_plan: passed` when the cycle summary includes a passed plan audit.
+  - Ran a real `serve --once` cycle with live literature retrieval, real public benchmark execution, live model review, PDF output, and release gates.
+  - Verified `approve-dangerous` mode queues a pending approval request and does not create run artifacts before approval.
+  - Recorded the live serve manuscript quality blocker separately because the gate correctly rejected the generated paper as `needs_revision`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 3 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real serve cycle: `node .\bin\airesearcher.mjs serve --permission-mode allow-all --once --vault runs\manual-live\task127-serve-live\vault --cache runs\manual-live\task127-serve-live\cache --output-dir runs\manual-live\task127-serve-live\runs --deliverables-dir runs\manual-live\task127-serve-live\outputs --state runs\manual-live\task127-serve-live\scheduler-state.json --approvals-state runs\manual-live\task127-serve-live\approvals.json --project-id task127_serve_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column` printed `[OK] research_plan: passed`, produced a PDF deliverable, and correctly blocked release because the live LLM review verdict was `needs_revision`.
+  - Approval gate: `node .\bin\airesearcher.mjs serve --permission-mode approve-dangerous --once ...` printed `[WAITING] approval_required`, wrote only `approvals.json`, and a propagated exit-code check confirmed `LASTEXIT=2`.
+- Problems:
+  - Added and resolved `P-20260616-069`.
+  - Added open `P-20260616-070`.
+- Follow-up:
+  - Fix the manuscript/revision loop so the serve path can automatically address reviewer issues about variance-shrinkage sensitivity and related-work positioning before re-running the release gate.
+
+### 2026-06-16 17:59:40 +08:00 - Codex - Task 126.1 publication-grade live acceptance and LaTeX rerun
+
+- Request:
+  - Continue running the system end to end, verify real publication-grade output quality, and fix final PDF/reference/layout issues found during QA.
+- Files changed:
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_paper_build.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Ran a real publication-grade autopilot cycle with default search breadth, live DeepSeek-compatible review, and the real UCI Pendigits benchmark demo.
+  - Confirmed the cycle reached `publication_audit: pass`, `evidence_gate: pass`, `publishable: true`, `release_allowed: true`, and `followup_tasks: 0`.
+  - Updated the paper builder to rerun LaTeX once when a successful first pass reports changed labels, cross-reference rerun requests, or citation rerun requests.
+  - Kept failed compile attempts diagnosable while keeping successful release logs focused on the final stable pass and recording `RERUNS_COMPLETED`.
+  - Added a unit test for second-pass LaTeX behavior without depending on a live LaTeX binary.
+  - Used the `latex:latex-compile` skill guidance for the LaTeX build task.
+- Verification:
+  - Real autopilot: `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task126-pendigits-live\vault --cache runs\manual-live\task126-pendigits-live\cache --output-dir runs\manual-live\task126-pendigits-live\runs --deliverables-dir runs\manual-live\task126-pendigits-live\outputs --state runs\manual-live\task126-pendigits-live\scheduler-state.json --project-id task126_pendigits_live --demo pendigits_variance_calibrated_prototypes --timeout-seconds 180 --paper-template-id generic-article-one-column`: passed with research plan, review, publication audit, and evidence gate all passing.
+  - Summary inspection: review verdict `pass`, review quality `1.0`, publication score `0.985`, publishable `true`, release allowed `true`, 4 literature queries, 65 documents, 57 similarity findings, 65 verified citations, 3-page research plan, and 0 follow-up tasks.
+  - `pdfinfo` confirmed the paper PDF has 14 pages and the research-plan PDF has 3 pages.
+  - `pdftotext` confirmed the PDF reference section renders numeric references `[1]` through `[12]`, not operational pseudo-labels.
+  - `python -m ruff check src\autoresearch\reports\paper_build.py tests\unit\reports\test_paper_build.py`: passed.
+  - `python -m pytest tests\unit\reports\test_paper_build.py -q`: passed with 6 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 484 passed, 4 skipped, and 1 warning.
+  - Real paper rebuild: `node .\bin\airesearcher.mjs paper-build runs\manual-live\task126-pendigits-live\runs\cycle-20260616T094744Z\paper-manuscript\manuscript.md --output-dir runs\manual-live\task126-paper-rerun-final\paper-build --template-id generic-article-one-column --vault runs\manual-live\task126-paper-rerun-final\vault --project-id task126_paper_rerun_final --timeout-seconds 180` passed, produced a 14-page PDF, and final `compile.log` contained `RERUNS_COMPLETED: 1` plus `ATTEMPT 2` with no label/rerun/undefined/overfull/error matches.
+- Problems:
+  - Added and resolved `P-20260616-068`.
+- Follow-up:
+  - The real Pendigits result is gate-passing for the configured CCF-B/Q3 readiness audit, but scientific scope is still one benchmark; future cycles should add more datasets and stronger baselines rather than weakening the gates.
+
+### 2026-06-16 17:46:30 +08:00 - Codex - Task 125.1 autopilot research-plan gate
+
+- Request:
+  - Continue running the implementation plan and make the autonomous loop use the post-direction research-plan stage before code/experiment execution.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inserted research-plan generation into `airesearcher autopilot` after source/literature/candidate/similarity work and before inspiration refresh, demo execution, paper build, and review.
+  - Added fail-closed cycle blocking when the plan audit fails or the plan PDF does not compile, with `blocked_reason=research_plan_gate`.
+  - Added research-plan payloads to successful cycle summaries, CLI status output, review audit context, review evidence paths, and exported deliverables.
+  - Added tests covering the normal autopilot path and the blocked-before-experiment path.
+  - Added task `125.1` and updated the waves index through task `125.1`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 2 tests.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 483 passed, 4 skipped, and 1 warning.
+  - Real autopilot smoke: `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task125-autopilot-plan\vault --cache runs\manual-live\task125-autopilot-plan\cache --output-dir runs\manual-live\task125-autopilot-plan\runs --deliverables-dir runs\manual-live\task125-autopilot-plan\outputs --state runs\manual-live\task125-autopilot-plan\scheduler-state.json --project-id task125_autopilot_plan --max-queries 1 --max-results-per-source 1 --timeout-seconds 60 --paper-template-id generic-article-one-column --no-review` passed, printed `[OK] research_plan: passed`, compiled a 3-page A4 research-plan PDF, ran demo/reproduction only after the plan gate, and exported `research_plan_markdown`, `research_plan_json`, `research_plan_tex`, and `research_plan_pdf` in the deliverables manifest.
+  - `pdfinfo runs\manual-live\task125-autopilot-plan\outputs\task125_autopilot_plan\task125_autopilot_plan-cycle-20260616T093901Z-research-plan.pdf`: confirmed 3 A4 pages.
+  - `rg -n "赛题|参赛|比赛|人工评审|manual review|TODO|TBD" ...research-plan.md ...research-plan.tex`: returned no matches.
+- Problems:
+  - Added and resolved `P-20260616-067`.
+- Follow-up:
+  - Publication/evidence gates still correctly fail when `--no-review` skips the LLM evidence reviewer; run future paper-ready checks without `--no-review` and with model credentials active.
+
+### 2026-06-16 16:59:30 +08:00 - Codex - Task 124.1 post-direction research-plan gate
+
+- Request:
+  - Implement the proposed plan for a research-plan stage after the user confirms a research direction.
+  - Keep the Markdown version in the Obsidian knowledge base and the PDF/TEX/JSON version under `outputs/`.
+  - Make the PDF a normal research plan for a discovered topic, not a contest proposal or the AI-Researcher project itself.
+- Files changed:
+  - `src/autoresearch/schemas/models.py`
+  - `src/autoresearch/schemas/__init__.py`
+  - `src/autoresearch/knowledge/entries.py`
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/schemas/test_schema_models.py`
+  - `tests/unit/schemas/test_roundtrip.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a first-class `ResearchPlan` lifecycle schema and Obsidian `research_plan` entry type.
+  - Added deterministic research-plan generation, Markdown rendering, LaTeX rendering, local PDF compilation, JSON artifact output, and re-audit support.
+  - Added quality gates that block contest wrappers, project-name-as-topic titles, missing evidence refs, missing dataset source/target routes, missing baselines, missing metrics, missing command-oriented code-agent briefs, and unsupported result claims.
+  - Added `airesearcher research-plan`, `airesearcher research-plan-audit`, and `/research:research-plan`.
+  - Updated English and Chinese README workflow, slash command, parameter, and output sections to place the research-plan gate before experiments and paper builds.
+  - Added schema, research, and CLI tests for the new lifecycle surface.
+- Verification:
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\research\test_plans.py tests\unit\cli\test_main.py::test_research_plan_command_writes_vault_markdown_and_outputs tests\unit\cli\test_main.py::test_research_plan_audit_blocks_forbidden_title -q`: passed with 5 tests.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 482 passed, 4 skipped, and 1 warning.
+  - Real CLI/PDF smoke: `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task124-research-plan\candidate.json --project-id task124_research_plan --vault runs\manual-live\task124-research-plan\vault --output-dir runs\manual-live\task124-research-plan\outputs --compile-pdf --timeout-seconds 180` passed, wrote vault Markdown plus JSON/TEX/PDF artifacts, and compiled a 3-page A4 PDF.
+  - `node .\bin\airesearcher.mjs research-plan-audit runs\manual-live\task124-research-plan\outputs\task124_research_plan\research-plan\research-plan.json`: passed.
+  - `pdfinfo` confirmed the generated PDF has 3 A4 pages; `pdftoppm` rendered page 1 for visual inspection and no obvious overflow was observed.
+  - `rg` confirmed generated Markdown/TEX preserves `Claim Evidence Trace Adapter for UCI Pendigits...` and contains no `XH-202619`, `参赛`, `赛事`, `发榜`, `主办`, `评分`, `浙江阿里巴巴`, `AI-Researcher competition proposal`, or `AI-Researcher system`.
+- Problems:
+  - Added and resolved `P-20260616-065`.
+  - Added and resolved `P-20260616-066`.
+- Follow-up:
+  - Wire the always-on autopilot/code-agent path to require a passed research-plan artifact before experiment execution.
+
+### 2026-06-16 13:58:08 +08:00 - Codex - Task 123.1 PageAgent browser-source reference
+
+- Request: Review PageAgent as an AI-native browser project that could let the Horizon-style loop go beyond API-only web sources.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `THIRD_PARTY_NOTICES.md`
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `tests/unit/knowledge/test_skills.py`
+- Summary:
+  - Added `page_agent_browser_source_adapter` to the default external watchlist candidates as a quarantined browser-source acquisition reference.
+  - Documented that V1.0 remains API-first for broad inspiration, while PageAgent-style browser acquisition is a future adapter path for public pages without stable APIs.
+  - Added governance boundaries for any future browser acquisition: robots/ToS, rate limits, isolated browser profiles, source snapshots, action traces, extraction confidence, evidence-gate integration, and approval for state-changing actions.
+  - Updated README, Chinese README, third-party notices, compliance tests, and skill tests so PageAgent is not treated as a bundled crawler or default runtime tool.
+- Verification:
+  - Live web review checked `https://github.com/alibaba/page-agent`, raw `LICENSE`, `package.json`, and official docs/site; upstream README describes in-page JavaScript, text-based DOM manipulation, optional Chrome extension, and MCP server ideas, while also stating PageAgent is client-side web enhancement rather than server-side automation; raw license and package metadata are MIT.
+  - `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - `python -m mypy src\autoresearch`: passed.
+  - `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py::test_project_notice_tracks_third_party_reference_policy -q`: passed, 13 tests.
+  - `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task123-pageagent-watchlist-vault --source-note "2026-06-16 PageAgent browser-source reference smoke"`: passed and wrote 14 quarantined candidates.
+  - `rg -n "PageAgent|page-agent|browser-source-reference|robots|isolated browser|action" runs\manual-live\task123-pageagent-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated watchlist contains the PageAgent browser-source reference and gate wording.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 476 passed, 4 skipped, 1 warning.
+- Problems:
+  - `P-20260616-064` resolved.
+- Follow-up:
+  - Future implementation should be a separate browser-source adapter task, not an extension of current API fetchers, and should add live tests only against allowed public/test pages with persisted DOM/screenshot/action evidence.
+
 ### 2026-06-15 19:55:13 +08:00 - Codex - Task 122.1 oh-my-openagent reference quarantine
 
 - Request: Consider `code-yeongyu/oh-my-openagent` as another useful project while preserving AI-Researcher's license, installer, telemetry, and validation boundaries.
@@ -6321,3 +7519,1558 @@ This file defines the project development standard for coding agents and records
   - `P-20260611-002` added and resolved.
 - Follow-up:
   - Complete Phase 0 implementation tasks before treating `pytest`, `ruff`, `mypy`, or the `autoresearch` CLI as functional project gates.
+### 2026-06-18 01:57:00 +08:00 - Codex - Task 153.1 WeChat QR setup status evidence
+
+- Request: Continue implementation toward guided deployment, especially WeChat setup that starts QR onboarding during setup and exposes scan/login feedback instead of hiding it behind a later manual command.
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_notifications.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `AUTORESEARCH_WECHAT_SETUP_STATUS_PATH` to setup output and the public environment template.
+  - Added a WeChat QR setup status artifact at `.airesearcher/channels/wechat/setup-status.json`.
+  - Made the QR setup runner print an explicit wait message, run the configured command through parsed argv, and write running/completed/failed status with timestamps, command, session path, return code, and errors when present.
+  - Kept non-interactive setup non-blocking unless `--run-wechat-qr-setup` is explicitly supplied.
+  - Updated QR-mode WeChat inspiration push skips to include the setup-status state so operators can see whether setup is missing, running, completed, or unreadable.
+  - Updated English and Chinese README setup notes to point users to the QR setup status artifact.
+  - Marked task `153.1` complete in `tasks.md`.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\test_notifications.py::test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q`: passed, 64 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 501 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - A future real IM adapter test should exercise an actual WeChat QR login session with the operator scanning the upstream adapter QR code, then verify push delivery through that active session.
+
+### 2026-06-18 02:05:39 +08:00 - Codex - Task 154.1 Operator channel self-test command
+
+- Request: Continue implementation toward one-time setup plus unattended operation by adding a direct post-setup WeChat/Feishu channel self-test command.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher channels test` to send a setup-channel probe through the same `send_inspiration_digest()` path used by inspiration pushes.
+  - Added support for repeated `--channel`, `--timeout-seconds`, `--message`, JSON `--output`, and `--require-sent` for deployment scripts that must fail on skipped/failed delivery.
+  - Added a real `InspirationRefreshReport`-shaped self-test payload so rendering and notification behavior stays aligned with runtime push behavior.
+  - Added `/research:channel-test` slash-command template and README guidance in English and Chinese.
+  - Marked task `154.1` complete in `tasks.md`.
+- Verification:
+  - Initial `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: failed on unused fake-sender arguments; fixed under `P-20260618-080`.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed after the fix.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m pytest tests\unit\cli\test_main.py tests\unit\test_notifications.py -q`: passed, 66 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 503 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - `P-20260618-080` added and resolved.
+- Follow-up:
+  - A later live deployment check should run `airesearcher channels test --channel feishu --require-sent` or the WeChat equivalent after real operator credentials/session state are available.
+
+### 2026-06-18 02:10:54 +08:00 - Codex - Task 154.1 CI stderr capture fix
+
+- Request: Continue running after the task `154.1` push and repair the failing GitHub Actions check without expanding scope.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected GitHub Actions run `27709729783` and confirmed the only failure was `test_channels_test_requires_sent_when_requested` on Python 3.10/Linux.
+  - Changed the failure-message assertion from `result.stderr` to `result.output`, which is stable when Click/Typer mixes stderr into the main captured stream.
+  - Recorded the CI-only portability failure in `Problem.md` and updated task `154.1` verification notes.
+- Verification:
+  - `gh run view 27709729783 --log-failed`: confirmed `ValueError: stderr not separately captured` was the only failure.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q`: passed, 1 test; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 503 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `gh run watch 27710036107 --exit-status`: passed; Python 3.10/Linux CI completed ruff, mypy, and smoke/unit tests successfully.
+- Problems:
+  - `P-20260618-081` added and resolved.
+- Follow-up:
+  - None for this CI fix.
+
+### 2026-06-18 02:26:06 +08:00 - Codex - Task 155.1 Deployment readiness preflight
+
+- Request: Continue toward V1.0 readiness by checking whether daily scheduled retrieval and inspiration push are actually ready before 24h operation.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher readiness` to write `.airesearcher/readiness/report.json` with checks for `.env`, provider-agnostic LLM values, setup config, Obsidian vault, writable `outputs/`, planned daily loop command, scheduler state, and WeChat/Feishu channel configuration.
+  - Added `--push-inspiration` and `--require-channel-config` so operators can fail fast when inspiration push delivery is required.
+  - Added `/research:readiness` slash-command template and English/Chinese README guidance.
+  - Added focused CLI tests for ready deployment materials, required-channel failure, and slash template generation.
+  - Ran the new readiness command against the current local checkout; it reported the model/config/vault/output/daily-loop checks ready and warned that no WeChat/Feishu delivery channel is currently configured.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m autoresearch.cli.main readiness --allow-missing-channel`: failed because the package is not installed into the active interpreter outside the Poetry/console entrypoint; recorded under `P-20260618-082`.
+  - `poetry run airesearcher readiness --allow-missing-channel`: passed and wrote `.airesearcher/readiness/report.json`; one warning remains for missing operator channel delivery config.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 505 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `gh run watch 27710878005 --exit-status`: passed; Python 3.10/Linux CI completed ruff, mypy, and smoke/unit tests successfully.
+- Problems:
+  - `P-20260618-082` added and resolved.
+- Follow-up:
+  - Configure and self-test a real WeChat or Feishu channel before using `readiness --require-channel-config` as a hard pass gate for push delivery.
+
+### 2026-06-18 02:38:00 +08:00 - Codex - Task 156.1 Channel delivery evidence readiness gate
+
+- Request: Continue tightening the V1.0 prelaunch checks so readiness verifies actual push/delivery evidence rather than only channel configuration.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Extended `airesearcher readiness` with `--channel-test-result` and `--require-channel-sent`.
+  - Added a separate `channel_delivery_test` readiness check that reads the JSON artifact produced by `airesearcher channels test`.
+  - Made strict readiness fail when `--require-channel-sent` is set and the latest channel-test artifact has no `sent` record.
+  - Updated `/research:readiness` and bilingual README guidance so prelaunch push readiness requires both configured channels and recent sent evidence.
+  - Ran the updated readiness command against the current checkout; it now reports warnings for both missing configured WeChat/Feishu delivery channel and missing latest `channels test` sent evidence.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 4 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel`: passed and wrote `.airesearcher/readiness/report.json` with two operator-channel warnings.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - After a real WeChat or Feishu channel is configured, run `airesearcher channels test --channel <channel> --require-sent`, then `airesearcher readiness --require-channel-config --require-channel-sent`.
+
+### 2026-06-18 02:43:50 +08:00 - Codex - Task 157.1 Setup next-step guidance for push readiness
+
+- Request: Continue V1.0 onboarding hardening so `setup` guides users through channel self-test and strict readiness instead of requiring manual command discovery.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added post-setup `[NEXT]` guidance for channel-enabled deployments, including `airesearcher channels test ... --require-sent` and strict `airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent`.
+  - Added a no-channel setup path that prints `airesearcher readiness --no-push-inspiration`, so deployments that intentionally skip IM setup get a usable next gate.
+  - Covered WeChat+Feishu setup, guided WeChat QR setup, and channel-disabled setup output in CLI tests.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_deploy_setup_writes_provider_config_and_env_without_committing_secret tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Run a real channel self-test after the user completes WeChat QR or Feishu app setup.
+
+### 2026-06-18 02:50:57 +08:00 - Codex - Task 158.1 Readiness next-action remediation
+
+- Request: Continue V1.0 onboarding hardening so readiness reports tell operators exactly what to do next when push readiness is warning or blocked.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added structured `next_actions` to `.airesearcher/readiness/report.json`.
+  - Added `[NEXT] readiness_action.<id>: <command>` CLI output for readiness remediation.
+  - Mapped missing first-deploy config to `airesearcher setup`, missing channel config to guided WeChat QR setup, and missing sent channel evidence to `airesearcher channels test ... --require-sent`.
+  - Prevented `start_daily_loop` from being recommended while any readiness warning remains.
+  - Added tests for clean readiness, missing sent-channel evidence, and missing operator channel configuration.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 3 tests; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `poetry run airesearcher readiness --allow-missing-channel --allow-untested-channel`: passed on the real local checkout, wrote `.airesearcher/readiness/report.json`, and printed only `configure_operator_channel` as the next action while channel warnings remain.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 506 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - After the user completes WeChat QR or Feishu setup, run `airesearcher channels test --channel <channel> --require-sent` and then strict readiness.
+
+### 2026-06-18 02:57:27 +08:00 - Codex - Task 159.1 npm prelaunch onboarding shortcuts
+
+- Request: Continue productizing first deployment so users can run normal npm-style commands for channel self-test and strict prelaunch checks.
+- Files changed:
+  - `package.json`
+  - `tests/unit/test_npm_scripts.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `npm run channel:test`, `npm run readiness`, and `npm run prelaunch`.
+  - Documented npm shortcuts in the English and Chinese README quick-start and CLI reference sections.
+  - Added a package-json unit test guarding the npm deployment script wiring.
+  - Confirmed the Node wrapper can run readiness and channel-test help, and confirmed strict prelaunch blocks this checkout until a real WeChat/Feishu channel and sent self-test evidence exist.
+- Verification:
+  - `python -m pytest tests\unit\test_npm_scripts.py -q`: passed, 1 test; expected coverage no-data warning because this test only inspects `package.json`; known host Python `RequestsDependencyWarning` after pytest exit.
+  - `npm run readiness -- --no-push-inspiration`: passed on the real local checkout and printed a no-push `start_daily_loop` next action.
+  - `npm run channel:test -- --help`: passed and rendered the channel self-test CLI help through the Node wrapper.
+  - `npm run prelaunch`: exited 1 as expected because no WeChat/Feishu channel is configured and no latest sent channel-test artifact exists; printed `configure_operator_channel` as the repair action.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty Markdown files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 507 passed, 4 skipped, 1 LangGraph warning; known host Python `RequestsDependencyWarning` after pytest exit.
+- Problems:
+  - None.
+- Follow-up:
+  - Once the user scans WeChat or provides Feishu credentials, rerun `npm run channel:test -- --channel <channel> --require-sent` and `npm run prelaunch`.
+
+### 2026-06-18 03:03:09 +08:00 - Codex - Task 160.1 Host Python warning cleanup
+
+- Request: Continue final prelaunch cleanup by removing the recurring host `RequestsDependencyWarning` from local verification output where the repository can safely diagnose the cause.
+- Files changed:
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed the warning came from host/global Python dependency drift: `requests 2.31.0` plus `chardet 7.4.3`, while `langchain-community 0.3.31` requires `requests>=2.32.5`.
+  - Updated host Python packages to `requests 2.32.5` and `chardet 5.2.0`, satisfying `pip check` and requests compatibility constraints.
+  - Updated `P-20260612-057` from mitigated to resolved locally, while preserving guidance that other machines should use `airesearcher doctor` and `python -m pip check` to detect recurrence.
+- Verification:
+  - `python -m pip show requests urllib3 chardet charset-normalizer`: confirmed the pre-fix host versions were `requests 2.31.0`, `urllib3 2.7.0`, `chardet 7.4.3`, and `charset-normalizer 3.4.7`.
+  - `python -m pip check`: initially failed because `langchain-community 0.3.31` requires `requests>=2.32.5`.
+  - `python -m pip install "requests==2.32.5" "chardet==5.2.0"`: succeeded.
+  - `python -m pip check`: passed with `No broken requirements found`.
+  - `python -c "import requests; print(requests.__version__)"`: printed `2.32.5` without `RequestsDependencyWarning`.
+  - `python -m pytest tests\unit\test_npm_scripts.py -q`: passed, 1 test, no Requests warning; still showed the expected coverage no-data warning for this package-json-only test.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 507 passed, 4 skipped, 1 LangGraph warning, and no `RequestsDependencyWarning`.
+- Problems:
+  - `P-20260612-057` updated to resolved locally.
+- Follow-up:
+  - If another machine emits the warning, check active host Python packages before changing repository code.
+
+### 2026-06-18 03:14:24 +08:00 - Codex - Task 161.1 Agent import warning hygiene
+
+- Request: Continue final prelaunch cleanup by removing remaining LangGraph warning noise from the smoke/unit gate without hiding true workflow integration behavior.
+- Files changed:
+  - `src/autoresearch/agents/__init__.py`
+  - `tests/unit/agents/test_agent_imports.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Converted package-level LangGraph workflow exports to lazy module attribute loading.
+  - Preserved `from autoresearch.agents import ResearchWorkflow` compatibility while preventing ordinary agent message imports from initializing `autoresearch.agents.workflow`.
+  - Added a regression test that checks message imports do not eagerly load the workflow module.
+  - Removed the earlier ineffective `pyproject.toml` warning-filter attempt and restored that file to a clean state.
+- Verification:
+  - `python -m pytest tests\unit\agents -q`: passed, 6 tests, no warnings.
+  - `python -m pytest tests\integration\agents\test_workflow.py -q`: passed, 1 test, with the third-party LangGraph deprecation warning still scoped to explicit workflow use.
+  - Initial `python -m pytest tests\smoke tests\unit -q`: failed during collection because the new test file reused the `test_imports.py` basename; recorded and resolved as `P-20260618-083`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for unrelated dirty vault files and touched agent files.
+  - Final `python -m pytest tests\smoke tests\unit -q`: passed, 508 passed, 4 skipped, no LangGraph warning, and no Requests warning.
+- Problems:
+  - `P-20260618-083` added and resolved.
+- Follow-up:
+  - The explicit workflow integration test still shows a third-party LangGraph `allowed_objects` deprecation warning; address that only when the installed LangGraph version exposes a stable configuration path or when the workflow implementation is updated.
+
+### 2026-06-18 03:20:46 +08:00 - Codex - Task 162.1 Daily loop startup evidence
+
+- Request: Continue V1.0 prelaunch hardening by making the daily/always-on loop visibly prove its schedule and inspiration-push mode when it starts.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `_echo_loop_plan()` for `autopilot` and `serve` startup.
+  - The loop plan prints command name, loop mode, cycle count, interval seconds, and whether inspiration push is enabled.
+  - Covered the default autopilot single-cycle path and a real `serve --once --push-inspiration` startup path in unit assertions.
+  - Ran a real Node-wrapper `serve --once --push-inspiration` smoke that stopped at the approval gate and wrote approval/session evidence without running a cycle.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state -q`: passed, 2 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 508 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+  - `node .\bin\airesearcher.mjs serve --once --permission-mode approve-dangerous --state runs\manual-live\task162-loop-plan\scheduler-state.json --approvals-state runs\manual-live\task162-loop-plan\approvals.json --sessions-state runs\manual-live\task162-loop-plan\sessions.json --vault runs\manual-live\task162-loop-plan\vault --cache runs\manual-live\task162-loop-plan\cache --output-dir runs\manual-live\task162-loop-plan\runs --deliverables-dir runs\manual-live\task162-loop-plan\outputs --project-id task162_loop_plan --no-review --push-inspiration`: printed `[OK] loop_plan: command=serve, mode=single-cycle, cycles=1, interval_seconds=86400, push_inspiration=true`, stopped at the expected approval gate, wrote the approval request command with `--push-inspiration`, and released the runtime session. The Node wrapper returned nonzero for the approval wait path as expected.
+- Problems:
+  - None.
+- Follow-up:
+  - Once a WeChat or Feishu channel is configured and self-tested, run strict `npm run prelaunch`, then start `npm run serve` or `airesearcher serve --permission-mode approve-dangerous --push-inspiration` for the 24h loop.
+
+### 2026-06-18 03:25:55 +08:00 - Codex - Task 163.1 Runtime approval polling responsiveness
+
+- Request: Continue V1.0 hardening so dangerous-command approval in the always-on service does not wait for the 24h daily cycle interval.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `serve --approval-poll-seconds` with a 30-second default.
+  - Changed the pending-approval wait branch to sleep with `approval_poll_seconds` instead of the daily `interval_seconds`.
+  - Included `approval_poll_seconds` in `serve` loop-plan output.
+  - Documented the new parameter in the English and Chinese README command reference.
+  - Added a watch-mode regression test proving approval polling does not use the 86400-second daily interval.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing note for scoped commands that do not touch the LangChain/LangGraph override.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval -q`: passed, 3 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 509 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-084` added and resolved.
+- Follow-up:
+  - When IM `/approve` wiring is implemented end to end, use this short approval poll path rather than changing the daily cycle interval.
+
+### 2026-06-18 03:34:43 +08:00 - Codex - Task 164.1 Per-cycle approval boundaries
+
+- Request: Continue always-on runtime hardening so `serve --permission-mode approve-dangerous` does not let one approval authorize every future daily cycle.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added per-cycle `serve` approval action IDs in the form `serve:autopilot-cycle:{project_id}:{demo}:cycle-{n}`.
+  - Moved approval ID calculation inside the `serve` loop so the next cycle attempt gets a new approval boundary after the previous cycle completes.
+  - Preserved retry semantics for the current cycle: approving `cycle-1` lets that same queued cycle run.
+  - Added a watch-mode regression test proving the second cycle requests `cycle-2` after `cycle-1` completes.
+  - Documented that `approve-dangerous` is per-cycle and `allow-all` is the intentional unattended mode.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q`: passed, 2 tests.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-085` added and resolved.
+- Follow-up:
+  - When IM approval cards are wired, include the cycle number/action ID in the operator-facing approval message.
+
+### 2026-06-18 03:39:59 +08:00 - Codex - Task 165.1 Approval operator visibility
+
+- Request: Continue V1.0 approval-gate hardening by making per-cycle approval boundaries visible from the immediate `serve` waiting output.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `[WAITING] action_id: ...` to the `serve` approval wait output.
+  - Covered first-cycle approval waits and second-cycle watch-mode approval waits in CLI tests.
+  - Updated the English and Chinese README to state that waiting output and `runtime list` show the per-cycle action ID.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval tests\unit\cli\test_main.py::test_serve_watch_uses_approval_poll_interval_before_cycle tests\unit\cli\test_main.py::test_serve_watch_requires_new_approval_for_next_cycle -q`: passed, 3 tests.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-086` added and resolved.
+- Follow-up:
+  - Reuse the same action ID field in future WeChat/Feishu approval cards.
+
+### 2026-06-18 03:45:28 +08:00 - Codex - Task 166.1 Prelaunch entrypoint alignment
+
+- Request: Continue V1.0 launch-entry verification and make strict prelaunch recommend the approval-gated 24h runtime rather than the lower-level direct loop.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed readiness `planned_daily_command` from `airesearcher autopilot --watch ...` to `airesearcher serve --permission-mode approve-dangerous --watch ...`.
+  - Kept `autopilot` as a direct lower-level loop while aligning strict prelaunch with the preferred approval-gated `serve` runtime.
+  - Updated the readiness CLI unit test to reject the old direct autopilot command.
+  - Documented in both README files that the readiness report plans the approval-gated runtime.
+- Verification:
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q`: passed, 1 test.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file; mypy printed the known non-failing scoped-command note about unused LangChain/LangGraph overrides.
+  - `npm run prelaunch`: exited 1 as expected for the current local deployment because no WeChat/Feishu channel is configured or QR-ready and no sent channel self-test result exists; it now prints `[OK] planned_daily_command: airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 --interval-seconds 86400 --push-inspiration`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-087` added and resolved.
+- Follow-up:
+  - Complete channel setup and a real sent channel self-test before using strict `npm run prelaunch` as the final green launch gate.
+
+### 2026-06-18 03:52:51 +08:00 - Codex - Task 167.1 Live source policy smoke alignment
+
+- Request: Continue live API validation and align opt-in live literature refresh smoke with current ArXiv/OpenAlex default source policy.
+- Files changed:
+  - `tests/smoke/test_literature_refresh_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated the opt-in live daily refresh smoke to require ArXiv and OpenAlex rather than Semantic Scholar.
+  - Kept direct optional Semantic Scholar telemetry in the separate live client and similarity tests.
+  - Recorded the initial real live failure where the default refresh returned ArXiv/OpenAlex and the test still required Semantic Scholar.
+- Verification:
+  - `$env:AUTORESEARCH_LIVE_APIS='1'; python -m pytest tests\smoke\test_literature_live.py tests\smoke\test_literature_refresh_live.py tests\smoke\test_similarity_live.py -q; Remove-Item Env:\AUTORESEARCH_LIVE_APIS`: first run failed before the fix on `assert {'arxiv', 'semantic_scholar'} <= {'arxiv', 'openalex'}`; after the fix passed with 3 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 510 passed, 4 skipped, no Requests warning, and no LangGraph warning.
+- Problems:
+  - `P-20260618-088` added and resolved.
+- Follow-up:
+  - Keep Semantic Scholar failures as optional-source telemetry unless the operator explicitly enables or keys it as a required source.
+
+### 2026-06-18 04:03:43 +08:00 - Codex - Task 168.1 WeChat QR OpenClaw delivery
+
+- Request: Continue V1.0 channel setup hardening so WeChat QR setup can support real delivery self-tests instead of stopping at `.env` status.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_notifications.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added setup-owned WeChat QR/OpenClaw fields for login command, channel id, outbound target, and message-send command.
+  - Let QR-mode notification delivery call `openclaw message send` when QR setup is completed and `AUTORESEARCH_WECHAT_OPENCLAW_TARGET` is configured.
+  - Kept QR-mode delivery fail-closed as `skipped` when QR completion or target binding is missing.
+  - Made readiness require both completed QR setup and an OpenClaw target before counting WeChat QR as push-ready.
+  - Updated English and Chinese README setup guidance and command parameters.
+- Verification:
+  - Web review of upstream OpenClaw WeChat docs and `@tencent-weixin/openclaw-weixin-cli` package metadata confirmed the quick installer can guide QR setup while OpenClaw also exposes explicit `openclaw channels login --channel openclaw-weixin` and `openclaw message send` paths.
+  - `python -m pytest tests\unit\test_notifications.py tests\unit\cli\test_main.py::test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q`: passed, 10 tests.
+  - `python -m ruff check src\autoresearch\notifications.py src\autoresearch\cli\main.py tests\unit\test_notifications.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\notifications.py src\autoresearch\cli\main.py`: passed with no issues in 2 source files.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 512 passed and 4 skipped.
+- Problems:
+  - `P-20260618-089` added and resolved.
+- Follow-up:
+  - A real WeChat delivery self-test still requires the operator to complete pairing and provide the OpenClaw target; without that target, AI-Researcher now reports `skipped` instead of claiming sent delivery.
+
+### 2026-06-18 04:10:31 +08:00 - Codex - Task 169.1 Post-pairing channel target binding
+
+- Request: Continue V1.0 channel setup hardening so users can bind WeChat/Feishu delivery targets through CLI instead of hand-editing `.env`.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher channels bind-target` for post-pairing delivery target updates.
+  - Wrote WeChat QR OpenClaw target/channel/message command fields for `--channel wechat`.
+  - Wrote Feishu/Lark home chat ID for `--channel feishu`.
+  - Rejected empty targets and unsupported channels.
+  - Documented the command in English and Chinese README tables.
+- Verification:
+  - `npm run prelaunch`: still blocked as expected on this machine because no WeChat/Feishu channel is configured and no sent channel self-test result exists; it confirmed the remaining deployment-state gap after task `168.1`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_feishu_home_chat tests\unit\cli\test_main.py::test_channels_bind_target_rejects_unknown_channel tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result -q`: passed, 4 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `node ./bin/airesearcher.mjs channels bind-target --env-path runs\manual-live\task169-bind-target\.env --channel wechat --target peer:wx_user`: passed and printed the channel-test next step.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 515 passed and 4 skipped.
+- Problems:
+  - `P-20260618-090` added and resolved.
+- Follow-up:
+  - Strict prelaunch still needs a real operator channel and sent self-test on this machine; the new command makes the post-pairing target-binding step CLI-owned.
+
+### 2026-06-18 04:18:18 +08:00 - Codex - Task 170.1 Readiness QR target repair action
+
+- Request: Continue V1.0 channel onboarding hardening by making completed WeChat QR setups without a target point to the smaller `channels bind-target` repair flow.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Let `channels bind-target` prompt for a target when `--target` is omitted.
+  - Added readiness detection for completed WeChat QR setup with missing OpenClaw target.
+  - Changed readiness next actions to emit `bind_wechat_target` rather than rerunning full setup for that state.
+  - Updated README parameter tables to document optional prompt behavior.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_channels_bind_target_prompts_for_missing_target tests\unit\cli\test_main.py::test_channels_bind_target_writes_wechat_openclaw_target tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task170-readiness-bind-target\.env --vault runs\manual-live\task170-readiness-bind-target\vault --outputs-dir runs\manual-live\task170-readiness-bind-target\outputs --output runs\manual-live\task170-readiness-bind-target\readiness.json --require-channel-config`: failed because a BOM-bearing temporary `.env` hid `AUTORESEARCH_LLM_BASE_URL`; recorded as `P-20260618-091`.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task170-readiness-bind-target-v2\.env --vault runs\manual-live\task170-readiness-bind-target-v2\vault --outputs-dir runs\manual-live\task170-readiness-bind-target-v2\outputs --output runs\manual-live\task170-readiness-bind-target-v2\readiness.json --require-channel-config`: printed `[NEXT] readiness_action.bind_wechat_target: airesearcher channels bind-target --channel wechat --env-path runs/manual-live/task170-readiness-bind-target-v2/.env` and correctly remained blocked until the operator provides a target.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 516 passed and 4 skipped.
+- Problems:
+  - `P-20260618-091` added and remains open for a follow-up env parser hardening task.
+- Follow-up:
+  - Fix BOM-bearing `.env` parsing so editor-created env files do not hide the first key.
+
+### 2026-06-18 04:23:43 +08:00 - Codex - Task 171.1 BOM-safe env onboarding
+
+- Request: Continue V1.0 deployment hardening by fixing the real BOM-bearing `.env` failure discovered during task `170.1`.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed CLI-managed `.env` reads to use UTF-8 BOM handling.
+  - Added a readiness regression test where the first `.env` key is BOM-prefixed.
+  - Closed `P-20260618-091` after a real Node CLI readiness probe parsed the BOM-bearing base URL.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_env_file tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task171-bom-env\.env --vault runs\manual-live\task171-bom-env\vault --outputs-dir runs\manual-live\task171-bom-env\outputs --output runs\manual-live\task171-bom-env\readiness.json --require-channel-config`: produced expected blocked readiness with `llm_credentials=pass` and `operator_channels=fail`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 517 passed and 4 skipped.
+- Problems:
+  - `P-20260618-091` resolved.
+- Follow-up:
+  - Monitor whether any third-party dotenv consumers need separate BOM hardening; CLI readiness/setup parsing is fixed.
+
+### 2026-06-18 04:30:32 +08:00 - Codex - Task 172.1 BOM-safe QR status readiness
+
+- Request: Continue V1.0 prelaunch hardening by verifying the WeChat QR-ready path proceeds to real channel self-test evidence.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed the shared JSON mapping reader to handle UTF-8 BOMs.
+  - Added a WeChat QR readiness regression test with a BOM-prefixed completed setup status file.
+  - Confirmed readiness now treats completed QR plus target as `operator_channels=pass` and points to `channels test --channel wechat --require-sent` when sent evidence is absent.
+- Verification:
+  - Initial real probe `node ./bin/airesearcher.mjs readiness --config config.yaml --env-path runs\manual-live\task172-wechat-ready-action\.env --vault runs\manual-live\task172-wechat-ready-action\vault --outputs-dir runs\manual-live\task172-wechat-ready-action\outputs --channel-test-result runs\manual-live\task172-wechat-ready-action\missing-channel-test.json --output runs\manual-live\task172-wechat-ready-action\readiness.json --require-channel-config --require-channel-sent`: failed with `wechat_openclaw_target_configured=true` but `wechat_qr_status=null`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_accepts_bom_prefixed_wechat_qr_status_file tests\unit\cli\test_main.py::test_readiness_requires_wechat_qr_openclaw_target_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real Node CLI readiness rerun against the same fixture wrote `readiness-fixed.json`, reported `operator_channels=pass`, `channel_delivery_test=fail`, and emitted `run_channel_self_test` for `--channel wechat`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-092` added and resolved.
+- Follow-up:
+  - Strict prelaunch still requires a real operator to run setup/QR pairing, bind the actual target, and run `channels test --require-sent`.
+
+### 2026-06-18 04:35:21 +08:00 - Codex - Task 173.1 Explicit QR setup prelaunch action
+
+- Request: Continue V1.0 onboarding hardening so the strict prelaunch repair command directly starts WeChat QR setup.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `--run-wechat-qr-setup` to the readiness `configure_operator_channel` next action.
+  - Updated the missing-channel readiness regression test.
+  - Verified strict prelaunch still blocks without real channel evidence but now prints the QR-starting setup command.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - `npm run prelaunch`: still blocked as expected on missing operator channel and missing sent self-test evidence, but printed `airesearcher setup --config config.yaml --env-path .env --wechat --wechat-qr --run-wechat-qr-setup`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-093` added and resolved.
+- Follow-up:
+  - A real prelaunch pass still requires the operator to complete QR pairing and run `channels test --require-sent`.
+
+### 2026-06-18 04:47:00 +08:00 - Codex - Task 174.1 Operator monitor publication gate visibility
+
+- Request: Continue autonomous project iteration and improve launch-quality gate visibility in the CLI operator monitor after a real no-push `serve --once` cycle.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added publication-audit monitor status that summarizes score, target, blocker count, and first failed check.
+  - Added evidence-gate monitor status that summarizes failed-check count, `release_allowed`, and first failed check.
+  - Added gate evidence text that surfaces the first blocker message and next action directly in the monitor stage table.
+  - Fixed follow-up rendering for real serve cycle summaries that write `followups.tasks` instead of the legacy `followup_tasks` key.
+  - Updated the monitor unit fixture so blocked publication/evidence gates and current follow-up task shape are covered.
+- Verification:
+  - Initial focused monitor test failed because a Rich column-width truncation assertion expected the full `literature_query_breadth` ID in terminal stdout; the test was adjusted to assert exact blocker IDs through structured `_cycle_stage_rows()` and compact UI fields through stdout.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed with 1 test.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - Real monitor rerun: `node ./bin/airesearcher.mjs monitor --runtime-state runs\manual-live\task174-serve-no-push\approvals.json --scheduler-state runs\manual-live\task174-serve-no-push\scheduler-state.json --sessions-state runs\manual-live\task174-serve-no-push\sessions.json --outputs-dir runs\manual-live\task174-serve-no-push\outputs --cycle-summary runs\manual-live\task174-serve-no-push\runs\cycle-20260617T203842Z\cycle-summary.json --no-diff --max-agent-entries 2` displayed `publication` with `fail; score=0.327; target=ccf-b; blockers=19; first=literature_query_breadth`, `evidence` with `blocked; failed=2; release_allowed=false; first=review_gate`, and `follow-ups` with `5 open / 5 total`.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion notices for touched files and unrelated dirty vault files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-094` added and resolved.
+- Follow-up:
+  - Continue using real cycle summaries to validate operator monitor changes, especially blocked publication-quality cases rather than only all-pass fixtures.
+
+### 2026-06-18 04:53:48 +08:00 - Codex - Task 174.2 Monitor CI assertion stabilization
+
+- Request: Fix the GitHub Actions failure from the pushed monitor publication-blocker task before continuing further launch work.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed the brittle `result.stdout` assertion that required the full `evidence-gate.md` filename to survive Rich terminal table truncation on Linux CI.
+  - Kept exact path coverage in structured `_cycle_stage_rows()` assertions, where terminal width cannot hide artifact names.
+  - Recorded the CI failure as `P-20260618-095`.
+- Verification:
+  - GitHub Actions run `27718801671` failed only on `tests/unit/cli/test_main.py::test_monitor_renders_agent_flow_changes_and_preview`, where the Linux-rendered monitor stdout truncated `evidence-gate.md`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed locally after the assertion update.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+- Problems:
+  - `P-20260618-095` added and resolved.
+- Follow-up:
+  - Re-run full gates and push; confirm the next GitHub Actions run returns green.
+
+### 2026-06-18 05:01:33 +08:00 - Codex - Task 175.1 Default real benchmark loop
+
+- Request: Continue the launch hardening work so the system actually runs real public data in the autonomous loop rather than relying on local toy smoke fixtures.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"` for long-running CLI loops.
+  - Changed `serve` and `autopilot` defaults to the real UCI Pendigits benchmark while keeping `run-demo` on `tabular_baseline` for explicit quick smoke runs.
+  - Updated CLI tests so approval action IDs, autopilot inspiration queries, reproduction checks, and candidate summaries follow the shared default demo.
+  - Updated English and Chinese README guidance to explain that the always-on loop defaults to UCI Pendigits and that `tabular_baseline` is for tiny local smoke only.
+- Verification:
+  - Initial `python -m pytest tests\smoke tests\unit -q` failed because `test_autopilot_command_runs_one_non_review_cycle` still asserted toy-demo inspiration/reproduction/candidate expectations.
+  - `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed after updating the test to the real default benchmark.
+  - Real approval-blocking smoke: `node ./bin/airesearcher.mjs serve --once --permission-mode approve-dangerous --approvals-state runs\manual-live\task175-default-demo\approvals.json --state runs\manual-live\task175-default-demo\scheduler-state.json --sessions-state runs\manual-live\task175-default-demo\sessions.json --project-id task175_default_demo --no-review` exited 1 as expected and printed `serve:autopilot-cycle:task175_default_demo:pendigits_variance_calibrated_prototypes:cycle-1`.
+  - Real public benchmark: `node ./bin/airesearcher.mjs run-demo --demo pendigits_variance_calibrated_prototypes --output-dir runs\manual-live\task175-pendigits-demo --timeout-seconds 120` passed with 3,498 test rows, 10,992 dataset rows, accuracy 0.823327615780446, baseline accuracy 0.7775871926815323, z-score centroid accuracy 0.7850200114351058, and validation status passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 518 passed and 4 skipped.
+- Problems:
+  - `P-20260618-096` added and resolved.
+- Follow-up:
+  - Re-run a full `serve --once --permission-mode allow-all` cycle on the new default when operator-channel delivery is configured, then inspect publication/evidence gates for remaining publication-readiness blockers.
+
+### 2026-06-18 05:15:16 +08:00 - Codex - Task 176.1 Review verdict and publication warning console honesty
+
+- Request: Continue launch hardening with real full-cycle evidence and strict quality-gate wording.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added review status display text that includes review execution status, reviewer verdict, and quality score.
+  - Marked `serve` and `autopilot` review lines as `[BLOCKED]` when the LLM review ran successfully but returned a non-pass verdict such as `needs_revision`.
+  - Split monitor publication audit non-pass checks into blocking `blockers` and non-blocking `warnings`.
+  - Changed publication warning evidence text from `blocker:` to `issue:` while preserving blocker wording for true evidence-gate blockers.
+- Verification:
+  - Real default cycle before the display fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task176-default-serve\vault --cache runs\manual-live\task176-default-serve\cache --output-dir runs\manual-live\task176-default-serve\runs --deliverables-dir runs\manual-live\task176-default-serve\outputs --state runs\manual-live\task176-default-serve\scheduler-state.json --approvals-state runs\manual-live\task176-default-serve\approvals.json --sessions-state runs\manual-live\task176-default-serve\sessions.json --project-id task176_default_serve --timeout-seconds 120 --no-push-inspiration` completed with `review.status=passed`, `review.verdict=needs_revision`, `evidence_gate=blocked`, and five follow-up tasks.
+  - Real default cycle after the display fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task176-review-status\vault --cache runs\manual-live\task176-review-status\cache --output-dir runs\manual-live\task176-review-status\runs --deliverables-dir runs\manual-live\task176-review-status\outputs --state runs\manual-live\task176-review-status\scheduler-state.json --approvals-state runs\manual-live\task176-review-status\approvals.json --sessions-state runs\manual-live\task176-review-status\sessions.json --project-id task176_review_status --timeout-seconds 120 --no-push-inspiration` completed with `[OK] review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and PDF output under `runs\manual-live\task176-review-status\outputs`.
+  - Real monitor rerun on `cycle-20260617T210941Z` displayed `publication pass; score=0.985; target=ccf-b; warnings=1` and `issue: Similarity check...`, while `evidence` displayed `pass; failed=0; release_allowed=true`.
+  - `python -m pytest tests\unit\cli\test_main.py::test_review_status_display_blocks_needs_revision_verdict tests\unit\cli\test_main.py::test_review_status_display_keeps_skipped_review_compact tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview tests\unit\cli\test_main.py::test_publication_monitor_distinguishes_warnings_from_blockers -q`: passed.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed; Git only reported expected CRLF conversion warnings for touched and unrelated dirty files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 521 passed and 4 skipped.
+- Problems:
+  - `P-20260618-097` added and resolved.
+- Follow-up:
+  - The real pass cycle is release-gate clean, but its publication warning still notes adjacent-work positioning; keep the warning visible in monitor and paper review notes.
+
+### 2026-06-18 05:18:22 +08:00 - Codex - Task 176.2 CI ruff compatibility for review status helper
+
+- Request: Fix the GitHub Actions failure from the pushed review verdict and warning-gate display task.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Replaced tuple-style `isinstance(score, (int, float))` with `isinstance(score, int | float)` to satisfy the CI ruff `UP038` rule.
+  - Recorded the CI failure as `P-20260618-098`.
+- Verification:
+  - GitHub Actions run `27720376566` failed only in `poetry run ruff check src tests` with `UP038` at `src/autoresearch/cli/main.py:6053`.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - `python -m ruff check src tests`: passed.
+- Problems:
+  - `P-20260618-098` added and resolved.
+- Follow-up:
+  - Push and confirm the next GitHub Actions run is green.
+
+### 2026-06-18 05:23:36 +08:00 - Codex - Task 177.1 Root outputs publication path verification
+
+- Request: Continue launch verification and confirm that publication PDFs land under the project-root `outputs/` folder with relative paths.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran a real default-Pendigits `serve --once` cycle with isolated vault/cache/run state while leaving `--deliverables-dir` unset so the CLI used the project-root `outputs/` default.
+  - Confirmed the cycle passed review, publication audit, and evidence gate, produced zero follow-up tasks, and exported the paper PDF to `outputs/task177_root_output/`.
+  - Confirmed the deliverables manifest records project-root-relative paths for the PDF, TeX, manuscript Markdown, paper build, evidence gate, publication audit, related work, and research plan artifacts.
+- Verification:
+  - `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task177-root-output\vault --cache runs\manual-live\task177-root-output\cache --output-dir runs\manual-live\task177-root-output\runs --state runs\manual-live\task177-root-output\scheduler-state.json --approvals-state runs\manual-live\task177-root-output\approvals.json --sessions-state runs\manual-live\task177-root-output\sessions.json --project-id task177_root_output --timeout-seconds 120 --no-push-inspiration`: passed; printed `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task177_root_output/task177_root_output-cycle-20260617T212210Z.pdf`.
+  - Manifest `outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z-manifest.json` includes `path_policy: Paths are written relative to the current project root when possible` and relative `outputs/...` artifact paths.
+  - `pdfinfo outputs\task177_root_output\task177_root_output-cycle-20260617T212210Z.pdf`: reported 14 pages, 105039 bytes, PDF 1.7, unencrypted.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - The next operator-channel verification should use the same default deliverables path once WeChat or Feishu setup is paired by the user.
+
+### 2026-06-18 05:28:57 +08:00 - Codex - Task 178.1 Guided WeChat QR setup terminal clarity
+
+- Request: Continue V1.0 setup hardening so choosing WeChat QR during guided setup visibly starts the scan/login flow rather than looking like a deferred next command.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added an explicit `[RUN] wechat_qr_setup: starting QR adapter setup now` line immediately before `deploy_setup` invokes the QR setup runner.
+  - Extended the guided setup regression test to assert the run-state line while keeping the existing QR runner call assertion.
+  - Recorded task `178.1` as complete in the executable task plan.
+- Verification:
+  - `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_deploy_setup_runs_wechat_qr_setup_with_status_artifact tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push -q`: passed, 3 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - A real QR scan still requires the operator to run setup interactively and scan the upstream Weixin adapter code; after pairing, bind the OpenClaw target and run `channels test --channel wechat --require-sent`.
+
+### 2026-06-18 05:33:30 +08:00 - Codex - Task 179.1 Repository hygiene for launch artifacts
+
+- Request: Continue launch readiness and make sure GitHub only keeps necessary code/project files rather than local screenshots or generated run artifacts.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed generated runtime directories, outputs, caches, and document artifacts are not tracked by Git.
+  - Added `.codex-remote-attachments/` to `.gitignore` so local uploaded images/screenshots cannot be accidentally staged.
+  - Recorded task `179.1` in the executable task plan.
+- Verification:
+  - `git count-objects -v` before cleanup showed `count: 130`; `git gc` completed; `git count-objects -v` after cleanup showed `count: 0`, `garbage: 0`.
+  - `git ls-files outputs runs htmlcov .cache tmp .pytest_cache .mypy_cache .ruff_cache .airesearcher .codex-remote-attachments`: returned no tracked paths.
+  - `git ls-files | rg -n "(^|/)(runs|outputs|htmlcov|\\.cache|\\.pytest_cache|\\.mypy_cache|\\.ruff_cache|\\.airesearcher|tmp|node_modules|__pycache__)(/|$)|\\.(pyc|pyo|pdf|zip|tar|gz)$"`: returned no matches.
+  - `git status --short`: no longer lists `.codex-remote-attachments/` after the ignore update; only pre-existing dirty vault files remain outside this task.
+- Problems:
+  - None added or updated.
+- Follow-up:
+  - Leave the existing local attachment directory alone unless the user explicitly asks for local cleanup.
+
+### 2026-06-18 05:41:36 +08:00 - Codex - Task 180.1 Publication reference locator quality
+
+- Request: Continue publication-quality hardening after PDF inspection showed formal references still used placeholder-like URL text.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a locator-specific cleaning helper for DOI, URL, and source URI fields so formal bibliography references retain real source locators.
+  - Kept generic prose cleanup unchanged so ordinary manuscript text still avoids uncontrolled raw URLs.
+  - Fixed LaTeX URL wrapping to capture dotted domains and strip only trailing sentence punctuation.
+  - Added regression assertions that the Markdown References section contains the real URL, omits `source URL recorded in artifact`, and produces a complete TeX `\url{...}`.
+  - Ran a real default-Pendigits cycle and confirmed the generated PDF references include real arXiv/DOI URLs.
+- Verification:
+  - Initial `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_without_compiling -q`: failed because the selected paper-build test name does not exist; recorded under `P-20260618-099`.
+  - Intermediate focused test run failed because TeX wrapping produced `\url{https://example}.test/verified`; fixed in `paper_build.py`.
+  - `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_and_vault_summary -q`: passed, 2 tests.
+  - `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\paper_build.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\paper_build.py`: passed with no issues in 2 source files.
+  - Real cycle: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task180-reference-urls\vault --cache runs\manual-live\task180-reference-urls\cache --output-dir runs\manual-live\task180-reference-urls\runs --deliverables-dir outputs --state runs\manual-live\task180-reference-urls\scheduler-state.json --approvals-state runs\manual-live\task180-reference-urls\approvals.json --sessions-state runs\manual-live\task180-reference-urls\sessions.json --project-id task180_reference_urls --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and PDF output under `outputs/task180_reference_urls/`.
+  - `pdftotext outputs\task180_reference_urls\task180_reference_urls-cycle-20260617T213912Z.pdf -`: References contained real arXiv/DOI URLs and did not contain the previous placeholder phrase in the reference lines.
+  - `pdfinfo outputs\task180_reference_urls\task180_reference_urls-cycle-20260617T213912Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `python -m pytest tests\unit\reports -q`: passed, 89 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 521 passed and 4 skipped.
+- Problems:
+  - `P-20260618-099` added and resolved.
+- Follow-up:
+  - The References section is now locator-visible; future quality work should focus on stronger related-work relevance ranking, not URL placeholder cleanup.
+
+### 2026-06-18 05:58:19 +08:00 - Codex - Task 181.1 Formal reference relevance and template-readiness honesty
+
+- Request: Continue the launch-quality loop until the system itself can run a full cycle, produce a publication-facing PDF, keep references relevant, and avoid overclaiming untested LaTeX template compatibility.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed `seed_document_title` from the formal-reference relevance context so an unrelated seed/inspiration paper cannot pull weak references into the publication bibliography.
+  - Added task-anchor filtering for direct formal references around prototype/classifier, nearest/centroid, handwritten/digit/recognition, and adjacent metric-classifier evidence.
+  - Added a manuscript regression fixture proving a Boolean-variance seed citation is not rendered in formal References.
+  - Rewrote manuscript template-build prose so a passing generic article build only certifies the actually selected template, and does not imply ACM/IEEE/Springer venue-template compatibility without a separate run.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_paper_build.py::test_build_latex_paper_from_markdown_writes_tex_and_vault_summary -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py`: passed.
+  - Real blocked check before the prose fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task181-reference-relevance-v2\vault --cache runs\manual-live\task181-reference-relevance-v2\cache --output-dir runs\manual-live\task181-reference-relevance-v2\runs --deliverables-dir outputs --state runs\manual-live\task181-reference-relevance-v2\scheduler-state.json --approvals-state runs\manual-live\task181-reference-relevance-v2\approvals.json --sessions-state runs\manual-live\task181-reference-relevance-v2\sessions.json --project-id task181_reference_relevance_v2 --timeout-seconds 120 --no-push-inspiration` returned `review_status: passed; verdict=needs_revision`, `publication_audit: needs_revision`, and `evidence_gate: blocked` because the LLM reviewer required a generic-template caveat.
+  - Real pass cycle after the fix: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task181-reference-relevance-v3\vault --cache runs\manual-live\task181-reference-relevance-v3\cache --output-dir runs\manual-live\task181-reference-relevance-v3\runs --deliverables-dir outputs --state runs\manual-live\task181-reference-relevance-v3\scheduler-state.json --approvals-state runs\manual-live\task181-reference-relevance-v3\approvals.json --sessions-state runs\manual-live\task181-reference-relevance-v3\sessions.json --project-id task181_reference_relevance_v3 --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task181_reference_relevance_v3/task181_reference_relevance_v3-cycle-20260617T215414Z.pdf`.
+  - `pdfinfo outputs\task181_reference_relevance_v3\task181_reference_relevance_v3-cycle-20260617T215414Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `pdftotext` inspection of the same PDF confirmed the formal References section excludes the Boolean variance seed, Catoni variance, Gaussian excursions, latent Gaussian model, and `source URL recorded in artifact` text.
+  - `python -m pytest tests\unit\reports -q`: passed with 89 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed with 521 passed and 4 skipped.
+- Problems:
+  - Added and resolved `P-20260618-100`.
+- Follow-up:
+  - The default generic-template cycle is now release-gate clean; future venue-readiness claims still require a separate external ACM/IEEE/Springer template cycle or a stability-matrix pass.
+
+### 2026-06-18 06:08:06 +08:00 - Codex - Task 182.1 Related-work inspection directness
+
+- Request: Continue launch-quality hardening and make the related-work inspection as conservative as the formal References filtering.
+- Files changed:
+  - `src/autoresearch/reports/related_work.py`
+  - `tests/unit/reports/test_related_work.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Removed candidate prose and demo IDs from dataset-context tokens so method words from titles and task IDs cannot inflate benchmark overlap.
+  - Replaced the loose direct-method rule with title/domain anchored directness: prototype/centroid/nearest/metric/Mahalanobis-style anchors are required before a record is a direct related-work candidate.
+  - Demoted generic variance, calibration, and generic recognition records to contextual statuses when they lack direct method anchors.
+  - Expanded stopwords so overlap fields no longer retain generic tokens such as `and` or `the`.
+  - Added a regression fixture where a Boolean variance paper is inspected and source-backed but does not count as a direct method candidate.
+- Verification:
+  - Initial `python -m pytest tests\unit\reports\test_related_work.py tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_related_work_inspection_breadth -q` failed because the publication-audit selector does not exist.
+  - First real inspection rerun failed with `ModuleNotFoundError: No module named 'autoresearch'` because the one-off Python command lacked `src` on `sys.path`; reran with `sys.path.insert(0, 'src')`.
+  - Intermediate `python -m pytest tests\unit\reports\test_related_work.py -q` failed until the synthetic seed fixture stopped mentioning handwritten digit classification and the directness rule stopped accepting generic recognition anchors.
+  - Final `python -m pytest tests\unit\reports\test_related_work.py -q`: passed.
+  - Final `python -m ruff check src\autoresearch\reports\related_work.py tests\unit\reports\test_related_work.py`: passed.
+  - Final `python -m mypy src\autoresearch\reports\related_work.py`: passed.
+  - Real existing-cycle inspection over `task181_reference_relevance_v3` with the new code reported 9 direct candidates and no longer classified Boolean variance, Catoni variance, or seismic facies classification as direct method candidates.
+  - Real full cycle: `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task182-related-work-directness\vault --cache runs\manual-live\task182-related-work-directness\cache --output-dir runs\manual-live\task182-related-work-directness\runs --deliverables-dir outputs --state runs\manual-live\task182-related-work-directness\scheduler-state.json --approvals-state runs\manual-live\task182-related-work-directness\approvals.json --sessions-state runs\manual-live\task182-related-work-directness\sessions.json --project-id task182_related_work_directness --timeout-seconds 120 --no-push-inspiration`: passed with review, publication audit, evidence gate, zero follow-ups, and PDF output under `outputs/task182_related_work_directness/`.
+  - `pdfinfo outputs\task182_related_work_directness\task182_related_work_directness-cycle-20260617T220623Z.pdf`: reported 14 pages and PDF version 1.7.
+  - `pdftotext` on that PDF confirmed Boolean variance, Catoni variance, seismic facies classification, and `source URL recorded in artifact` were absent from formal References.
+- Problems:
+  - Added and resolved `P-20260618-101`.
+- Follow-up:
+  - The publication audit still keeps a non-blocking adjacent-work warning from similarity classification; a future task can add an explicit manuscript positioning table for adjacent-work findings if the user wants the warning resolved rather than merely visible.
+
+### 2026-06-18 06:30:15 +08:00 - Codex - Task 183.1 Adjacent-work positioning artifact
+
+- Request: Continue launch-quality hardening so adjacent-work novelty positioning is strict, evidence-backed, reviewer-visible, and PDF-safe.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added manuscript analysis artifacts `similarity-positioning-summary.json` and `similarity-positioning-summary.md` from parsed project-start similarity findings.
+  - Changed Related Work generation to pass all similarity findings into adjacent-work positioning, then render a short family/count/boundary table instead of long title rows.
+  - Updated publication audit so adjacent-work risk passes only when the manuscript has an Adjacent-Work Positioning subsection and the generated positioning artifact reports adjacent-work coverage.
+  - Added regression coverage where adjacent-work findings occur after the first eight similarity rows, preventing retrieval-order slicing from hiding adjacent work.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py src\autoresearch\reports\publication_audit.py`: passed.
+  - Real `task183_adjacent_positioning` cycle passed the main loop but showed the new table was missing because only the first eight similarity findings were passed into manuscript rendering.
+  - Real `task183_adjacent_positioning_v2` cycle generated the table but failed reviewer/evidence release readiness with `verdict=needs_revision`, four follow-up tasks, and `paper_quality.failures=['layout_overflow']` because long title rows were not review-visible and caused one overfull hbox.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task183-adjacent-positioning-v3\vault --cache runs\manual-live\task183-adjacent-positioning-v3\cache --output-dir runs\manual-live\task183-adjacent-positioning-v3\runs --deliverables-dir outputs --state runs\manual-live\task183-adjacent-positioning-v3\scheduler-state.json --approvals-state runs\manual-live\task183-adjacent-positioning-v3\approvals.json --sessions-state runs\manual-live\task183-adjacent-positioning-v3\sessions.json --project-id task183_adjacent_positioning_v3 --timeout-seconds 120 --no-push-inspiration`: passed with review verdict `pass`, quality `1.000`, publication audit `pass`, score `1.0`, evidence gate `pass`, and zero follow-up tasks.
+  - Final paper quality from `paper-build.json`: `passed=true`, `page_count=15`, `overfull_hbox_count=0`, `max_overfull_hbox_points=0.0`, failures `[]`.
+  - Final positioning artifact reported `finding_count=57`, `adjacent_work_count=14`, and classification counts `{'adjacent_work': 14, 'supporting_prior_work': 4, 'unknown': 39}`.
+  - `pdfinfo outputs\task183_adjacent_positioning_v3\task183_adjacent_positioning_v3-cycle-20260617T222724Z.pdf`: reported 15 pages.
+  - `pdftotext` confirmed the Adjacent-Work Positioning section is present and old placeholder/weak-reference strings such as `source URL recorded in artifact`, Boolean variance, Catoni variance, and seismic facies classification are absent.
+- Problems:
+  - Added and resolved `P-20260618-102`.
+- Follow-up:
+  - The default publication cycle now has no adjacent-work warning and no paper-layout overflow; broader venue-template and multi-dataset validation remain separate future evidence tasks.
+
+### 2026-06-18 06:45:46 +08:00 - Codex - Task 184.1 Research-plan specificity and artifact evidence honesty
+
+- Request: Continue launch-quality hardening so the post-direction research plan is concrete enough for code-agent execution and every manuscript artifact claim is backed by review-visible evidence.
+- Files changed:
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added deterministic research-plan rejection for placeholder planning terms such as `primary task metric`, `task-specific metric`, `approved public benchmark`, and `approved hold-out split`.
+  - Added concrete metric and validation-route inference for known classification, regression, retrieval, and system-loop candidates when candidate metadata omits those fields.
+  - Included dataset source/target fields in research-plan audit text so vague structured fields cannot bypass the gate.
+  - Tied the default robustness step to the inferred validation route and removed generic benchmark fallback wording from risk text.
+  - Removed the static `Readiness report` row from the manuscript Evidence and Artifact Availability table because it was not provided as LLM review evidence.
+- Verification:
+  - Initial `python -m pytest tests\unit\research\test_plans.py -q` failed after adding placeholder scanning because the default robustness and risk wording still contained generic `approved hold-out split` / `approved public benchmark` text; fixed by tying robustness to the inferred target route and using named benchmark wording.
+  - `python -m pytest tests\unit\research\test_plans.py tests\unit\reports\test_manuscript.py -q`: passed with 7 tests.
+  - `python -m ruff check src\autoresearch\research\plans.py src\autoresearch\reports\manuscript.py tests\unit\research\test_plans.py tests\unit\reports\test_manuscript.py`: passed.
+  - `python -m mypy src\autoresearch\research\plans.py src\autoresearch\reports\manuscript.py`: passed with no issues in 2 source files.
+  - Real `task184_research_plan_specificity` cycle passed the specific research-plan gate but blocked release with LLM reviewer `needs_revision`, publication audit `needs_revision`, evidence gate `blocked`, and three follow-up tasks because `Readiness report` was listed without evidence.
+  - Final real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task184-research-plan-specificity-v2\vault --cache runs\manual-live\task184-research-plan-specificity-v2\cache --output-dir runs\manual-live\task184-research-plan-specificity-v2\runs --deliverables-dir outputs --state runs\manual-live\task184-research-plan-specificity-v2\scheduler-state.json --approvals-state runs\manual-live\task184-research-plan-specificity-v2\approvals.json --sessions-state runs\manual-live\task184-research-plan-specificity-v2\sessions.json --project-id task184_research_plan_specificity_v2 --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, root outputs under `outputs/task184_research_plan_specificity_v2/`, and a 15-page paper PDF.
+  - `pdftotext` confirmed the research-plan PDF uses `classification accuracy and macro_f1` and does not contain `primary task metric` or `approved hold-out`; the paper PDF contains `Adjacent-Work Positioning` and does not contain `Readiness report`.
+  - `pdfinfo` confirmed the research-plan PDF has 3 pages and the paper PDF has 15 pages.
+  - Final paper-build quality recorded `passed=true`, `page_count=15`, `overfull_hbox_count=0`, and no failures.
+- Problems:
+  - Added and resolved `P-20260618-103`.
+- Follow-up:
+  - If a future readiness artifact is included in the LLM evidence bundle, add it dynamically to the artifact table rather than restoring a static row.
+
+### 2026-06-18 07:27:58 +08:00 - Codex - Task 188.1 Formal reference evidence title cleanup
+
+- Request: Continue launch-quality hardening so compact formal-reference evidence is readable, publication-facing, and not cluttered by duplicated locator text.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Updated `_autopilot_reference_title_and_locator()` so DOI and URL locator substrings are removed from the compact display title after the first locator is extracted into the dedicated locator field.
+  - Preserved full dotted DOI/URL manuscript locators in `doi_or_url_evidence` and the generated locator columns.
+  - Added regression coverage proving the displayed reference title is exactly the clean title and no longer contains `https://`.
+  - Recorded task `188.1` and resolved `P-20260618-107`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real `node ./bin/airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task188-formal-title-cleanup\vault --cache runs\manual-live\task188-formal-title-cleanup\cache --output-dir runs\manual-live\task188-formal-title-cleanup\runs --deliverables-dir outputs --state runs\manual-live\task188-formal-title-cleanup\scheduler-state.json --approvals-state runs\manual-live\task188-formal-title-cleanup\approvals.json --sessions-state runs\manual-live\task188-formal-title-cleanup\sessions.json --project-id task188_formal_title_cleanup --timeout-seconds 120 --no-push-inspiration`: passed with research plan `passed`, review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, and PDF output under `outputs/task188_formal_title_cleanup/`.
+  - Real paper quality from `paper-build.json`: `passed=true`, `page_count=15`, `bibliography_item_count=10`, `figure_count=1`, `table_count=3`, `overfull_hbox_count=0`, and no failures.
+  - Real `formal-reference-evidence.md` keeps full locators in `Metadata locator` and `Manuscript locator` columns while the `Title` cells no longer repeat DOI or URL strings.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 75 tests.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `python -m pytest tests\smoke tests\unit -q`: passed, 525 passed and 4 skipped.
+  - `git diff --check -- src\autoresearch\cli\main.py tests\unit\cli\test_main.py .kiro\specs\auto-research-system\tasks.md Problem.md`: passed with CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-107`.
+- Follow-up:
+  - No follow-up for compact title readability; broader multi-venue template validation and multi-dataset evidence remain separate future tasks.
+
+### 2026-06-18 07:33:19 +08:00 - Codex - Task 189.1 Strict prelaunch operator-channel next actions
+
+- Request: Continue launch-readiness hardening and make the setup/prelaunch path guide users through WeChat or Feishu deployment without manual `.env` guessing.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Ran real readiness checks with the local `.env`; local no-push readiness passed, while strict prelaunch correctly blocked on missing operator-channel configuration and missing sent-delivery evidence.
+  - Updated `_readiness_next_actions()` so strict missing-channel prelaunch reports both the WeChat QR setup action and the follow-up `channels test --require-sent` action.
+  - Kept the readiness verdict blocked until a real channel is configured and a real sent-delivery self-test exists.
+  - Added a regression test for strict prelaunch with no configured channel.
+- Verification:
+  - `npm run readiness -- --no-push-inspiration --output runs/manual-live/prelaunch-readiness/local-readiness.json`: passed with env, LLM credentials, config, vault, outputs, daily loop, and scheduler state checks all passing.
+  - Initial `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch.json`: blocked with `operator_channels` and `channel_delivery_test` failures but only one next action; recorded as `P-20260618-108`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues in 1 source file.
+  - Real `npm run prelaunch -- --output runs/manual-live/prelaunch-readiness/strict-prelaunch-task189.json`: still blocked honestly because no WeChat/Feishu channel is configured and no sent-delivery test exists, and now prints both `configure_operator_channel` and `run_channel_self_test` next actions.
+- Problems:
+  - Added and resolved `P-20260618-108`.
+- Follow-up:
+  - Strict prelaunch will remain blocked until the operator completes QR/App setup and runs a real channel delivery self-test; do not mark push-ready without that evidence.
+
+### 2026-06-18 07:39:47 +08:00 - Codex - Task 190.1 Default source configuration alignment
+
+- Request: Continue launch-hardening so default project configuration matches the current ArXiv/OpenAlex-first literature policy and keeps Semantic Scholar optional.
+- Files changed:
+  - `src/autoresearch/config/models.py`
+  - `src/autoresearch/experiments/network.py`
+  - `tests/unit/config/test_models.py`
+  - `tests/unit/experiments/test_network.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - Local ignored file for verification only: `config.yaml`
+- Summary:
+  - Changed `SystemConfig` literature defaults to `["arxiv", "openalex"]`.
+  - Added `export.arxiv.org` and `api.openalex.org` to config-model network defaults, and added `api.openalex.org` to the sandbox default network allowlist.
+  - Repaired the ignored local `config.yaml` used by this workspace so real readiness could validate the same free-source policy without committing local deployment config.
+  - Added config and network tests for OpenAlex defaults.
+- Verification:
+  - Initial focused pytest command failed because `test_literature_clients_default_to_arxiv_openalex` was a stale selector; recorded and resolved as `P-20260618-110`.
+  - `python -m pytest tests\unit\config\test_models.py tests\unit\config\test_parser.py tests\unit\experiments\test_network.py tests\unit\cli\test_main.py::test_autopilot_literature_clients_default_to_core_free_sources tests\unit\literature\test_refresh.py::test_daily_refresh_default_sources_include_openalex_fallback tests\unit\research\test_similarity.py::test_project_similarity_default_sources_include_openalex_fallback -q`: passed, 29 tests.
+  - Focused `python -m ruff check src\autoresearch\config\models.py src\autoresearch\experiments\network.py tests\unit\config\test_models.py tests\unit\experiments\test_network.py`: passed.
+  - Focused `python -m mypy src\autoresearch\config\models.py src\autoresearch\experiments\network.py`: passed with no issues in 2 source files.
+  - Real `npm run readiness -- --no-push-inspiration --output runs/manual-live/task190-config-defaults/readiness.json`: passed and parsed the repaired ignored local `config.yaml` as `SystemConfig`.
+  - Real `node ./bin/airesearcher.mjs literature-refresh --vault runs\manual-live\task190-config-defaults\vault --cache runs\manual-live\task190-config-defaults\cache --max-queries 1 --max-results-per-source 1`: fetched one ArXiv paper and one OpenAlex paper, wrote 2 documents, and did not query Semantic Scholar.
+- Problems:
+  - Added and resolved `P-20260618-109` and `P-20260618-110`.
+- Follow-up:
+  - None for default-source alignment; Semantic Scholar remains available only as an optional enhancement source when enabled by environment.
+
+### 2026-06-18 07:51:12 +08:00 - Codex - Task 191.1 Obsidian topic-index readability guard
+
+- Request: Continue launch-quality hardening and keep the Obsidian vault usable as the self-loop/self-evolution memory substrate.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `tests/unit/knowledge/test_links.py`
+  - `autoresearch-vault/exploration/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added topic-index keyword normalization so underscore-separated human keywords render as readable headings.
+  - Filtered stopword-only keywords, generated `candidate_*`/`autopilot_*`/timestamped run slugs, file-artifact names, and sentence-length reviewer notes from the generated Obsidian topic index.
+  - Preserved raw entry keywords for exact evidence recovery and `find_by_keyword()` lookup.
+  - Rebuilt the real `autoresearch-vault/exploration/index.md` using `MarkdownKnowledgeStore.rebuild_indexes()`.
+  - Added regression coverage that useful topics remain indexed while noisy operational keywords do not.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q`: passed, 17 tests.
+  - `python -m pytest tests\unit\knowledge -q`: passed, 51 tests.
+  - `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\entries.py`: passed.
+  - Initial direct vault rebuild command failed with `ModuleNotFoundError: No module named 'autoresearch'`; reran with `sys.path.insert(0, 'src')`.
+  - Real vault rebuild: `python -c "import sys; from pathlib import Path; sys.path.insert(0, 'src'); from autoresearch.knowledge import MarkdownKnowledgeStore; MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()"`: passed.
+  - `Select-String -Path autoresearch-vault\exploration\index.md -Pattern '^## (adds|are|gives|large|need|second)$|^## candidate_|^## autopilot_|^## .*\.(json|lock|pdf|md)|nearest-centroid baselines are reproducible'`: returned no matches.
+  - `git diff --check -- src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py autoresearch-vault\exploration\index.md .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: no whitespace errors; CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-111`.
+- Follow-up:
+  - Several older tracked vault template/progress notes remain modified from previous system memory writes and should be reviewed or committed as a separate focused memory-maintenance task rather than mixed into this topic-index guard.
+
+### 2026-06-18 07:58:33 +08:00 - Codex - Task 192.1 Vault rebuild template guard
+
+- Request: Continue launch-quality hardening after auditing remaining Obsidian vault diffs.
+- Files changed:
+  - `src/autoresearch/knowledge/entries.py`
+  - `tests/unit/knowledge/test_links.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Changed `MarkdownKnowledgeStore` so `_system` paths are excluded from durable knowledge-entry scanning.
+  - Refactored `rebuild_indexes()` to compute links/backlinks but write entry files only when those fields actually change.
+  - Added regression coverage that `_system/templates/*.md` stays byte-stable and never contributes `template-noise` to the topic index.
+  - Restored the real `_system/templates` frontmatter to placeholder-only shape during verification; no content diff remains for those templates.
+- Verification:
+  - `python -m pytest tests\unit\knowledge\test_links.py tests\unit\knowledge\test_entries.py -q`: passed, 18 tests.
+  - `python -m pytest tests\unit\knowledge -q`: passed, 52 tests.
+  - `python -m ruff check src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py`: passed.
+  - `python -m mypy src\autoresearch\knowledge\entries.py`: passed.
+  - Real vault rebuild with `MarkdownKnowledgeStore(Path('autoresearch-vault')).rebuild_indexes()`: passed.
+  - `rg -n "^entry_id:|^created_at:|^updated_at:|template-noise|entry_87cf|entry_58ebb" autoresearch-vault\_system\templates autoresearch-vault\exploration\index.md`: returned no matches.
+  - `git diff --check -- src\autoresearch\knowledge\entries.py tests\unit\knowledge\test_links.py .kiro\specs\auto-research-system\tasks.md Problem.md Agent.md`: no whitespace errors; CRLF conversion warnings only.
+- Problems:
+  - Added and resolved `P-20260618-112`.
+- Follow-up:
+  - Older project-progress and literature-refresh vault notes are still dirty from previous memory writes; handle them in a separate memory-history commit if keeping them is desired.
+
+### 2026-06-18 08:02:56 +08:00 - Codex - Task 193.1 Persist validated vault memory notes
+
+- Request: Continue by handling the remaining content-bearing Obsidian vault diffs without mixing in line-ending-only noise.
+- Files changed:
+  - `autoresearch-vault/exploration/topics/literature_refresh_20260612.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-82-1-source-preflight-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-83-1-malformed-source-state-fail-closed.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-84-1-atomic-source-state-writes.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-85-1-source-state-mutation-lock.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-86-1-similarity-classification-coverage.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-87-1-similarity-token-overlap-classifier.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-88-1-classified-similarity-breadth.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-89-1-lifecycle-trace-evidence-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-90-1-llm-quality-retry-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-91-1-llm-review-repair-gate.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-92-1-evidence-gate-review-override.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-93-1-publication-audit-review-override.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Preserved the real online literature refresh note with 30 ArXiv/OpenAlex/DOI source refs and Semantic Scholar circuit-breaker evidence.
+  - Preserved project-progress memory notes for tasks `82.1` through `93.1`.
+  - Kept line-ending-only vault files out of this commit and recorded that status separately.
+- Verification:
+  - Parsed all 13 changed vault notes with `KnowledgeEntry.from_markdown()`.
+  - Validation script reported `parsed_entries 13`, `literature_source_refs 30`, and related task IDs `82.1` through `93.1`.
+  - `rg -n "template-noise|\{\{|\}\}|entry_87cf|entry_58ebb|method_aligned_seed_not_found|source URL recorded in artifact" autoresearch-vault\exploration\topics\literature_refresh_20260612.md autoresearch-vault\projects\ai_researcher_system\progress`: returned no matches.
+  - `git diff --check` over the 13 content-bearing vault notes: passed.
+- Problems:
+  - Added open line-ending follow-up `P-20260618-113`.
+- Follow-up:
+  - Decide later whether to add `.gitattributes` and normalize Markdown line endings in a dedicated maintenance commit.
+
+### 2026-06-18 08:07:32 +08:00 - Codex - Task 194.1 Text line-ending policy
+
+- Request: Clear the remaining vault line-ending-only status without mixing it into semantic memory commits.
+- Files changed:
+  - `.gitattributes`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `.gitattributes` to pin Markdown vault files and common source/config text files to LF.
+  - Normalized and staged the remaining line-ending-only vault paths to refresh index state; no semantic vault content was staged.
+  - Resolved `P-20260618-113`.
+- Verification:
+  - `git ls-files --eol` reported the checked vault files as `i/lf w/lf attr/text eol=lf`.
+  - After staging the affected vault paths, `git diff --cached --stat` showed only `.gitattributes`.
+  - `git status --short` showed only `.gitattributes` staged before task/problem/agent log updates.
+- Problems:
+  - Resolved `P-20260618-113`.
+- Follow-up:
+  - None for vault line-ending status.
+
+### 2026-06-18 08:22:14 +08:00 - Codex - Task 195.1 Evidence-bound adjacent-work family counts
+
+- Request: Continue launch-quality hardening until the autonomous loop can pass its own real review, publication-audit, evidence-gate, and paper-output quality gates.
+- Files changed:
+  - `src/autoresearch/reports/manuscript.py`
+  - `tests/unit/reports/test_manuscript.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Investigated the real `task195_full_cycle` block: the cycle ran, but live LLM review returned `needs_revision` because the manuscript rendered adjacent-work family counts that were not present in the generated similarity-positioning evidence artifact.
+  - Added `adjacent_work_family_counts` to `similarity-positioning-summary.json`.
+  - Changed the manuscript Adjacent-Work Positioning table to render only nonzero adjacent-work family rows backed by generated counts, removing unsupported zero-count rows.
+  - Made adjacent-work family classification prefer structured `query family overlap ...` evidence over broad source-query prose.
+  - Added regression tests for zero-count omission and structured overlap-family precedence.
+- Verification:
+  - Real blocked baseline: `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task195-full-cycle\vault --cache runs\manual-live\task195-full-cycle\cache --output-dir runs\manual-live\task195-full-cycle\runs --deliverables-dir outputs --state runs\manual-live\task195-full-cycle\scheduler-state.json --approvals-state runs\manual-live\task195-full-cycle\approvals.json --sessions-state runs\manual-live\task195-full-cycle\sessions.json --project-id task195_full_cycle --timeout-seconds 120 --no-push-inspiration` completed mechanically but produced `review_status: passed; verdict=needs_revision`, `publication_audit: needs_revision`, `evidence_gate: blocked`, and 7 follow-up tasks.
+  - Focused `python -m pytest tests\unit\reports\test_manuscript.py tests\unit\reports\test_publication_audit.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_paper_build.py -q`: passed, 39 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\manuscript.py tests\unit\reports\test_manuscript.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\manuscript.py`: passed with no issues in 1 source file.
+  - Real intermediate `task195_full_cycle_v2` cycle passed review, publication audit, evidence gate, zero follow-ups, and root PDF output.
+  - Final real `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task195-full-cycle-v3\vault --cache runs\manual-live\task195-full-cycle-v3\cache --output-dir runs\manual-live\task195-full-cycle-v3\runs --deliverables-dir outputs --state runs\manual-live\task195-full-cycle-v3\scheduler-state.json --approvals-state runs\manual-live\task195-full-cycle-v3\approvals.json --sessions-state runs\manual-live\task195-full-cycle-v3\sessions.json --project-id task195_full_cycle_v3 --timeout-seconds 120 --no-push-inspiration`: passed with `review_status: passed; verdict=pass; quality=1.000`, `publication_audit: pass`, `evidence_gate: pass`, `followup_tasks: 0`, and `pdf_output: outputs/task195_full_cycle_v3/task195_full_cycle_v3-cycle-20260618T002038Z.pdf`.
+  - Final artifact inspection: publication audit reported `publishable=true`, `score=1.0`, and `verdict=pass`; evidence gate reported `failed_check_count=0`, `release_allowed=true`, and `verdict=pass`; paper build reported 15 pages, 3957 words, 1 figure, 3 tables, 10 bibliography items, and 0 overfull hboxes.
+  - `Select-String` over the final manuscript found no `adjacent_work=0`, old operational reference labels, `source URL recorded in artifact`, or placeholder evidence labels.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 529 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - Added and resolved `P-20260618-114`.
+- Follow-up:
+  - The final real cycle is release-allowed by current gates, but external IM delivery still requires the user to complete a real WeChat/Feishu channel pairing and sent-message self-test in the setup flow before unattended push deployment is considered ready.
+
+### 2026-06-18 08:37:04 +08:00 - Codex - Task 196.1 Setup channel delivery self-test
+
+- Request: Continue launch-readiness work, specifically making setup validate WeChat/Feishu delivery during the guided first-deploy flow instead of only telling users to run a later command.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/notifications.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `--run-channel-test/--skip-channel-test`, `--channel-test-output`, and `--channel-test-timeout-seconds` to `airesearcher setup` and `airesearcher deploy-setup`.
+  - Added a guided setup prompt that asks whether to send a real channel delivery self-test immediately after WeChat or Feishu configuration is written.
+  - Reused the production notification sending path and wrote JSON self-test evidence beside the selected `.env` path by default.
+  - Preserved evidence-first failure behavior: setup and `channels test --require-sent` print per-channel records and write the result artifact before failing closed when a selected channel is not `sent`.
+  - Kept channel self-test `.env` loading local to the send call and fixed `send_inspiration_digest(env={})` so explicit empty environments no longer fall back to process-wide `os.environ`.
+  - Added regression coverage for guided QR setup, setup channel-test success, setup channel-test failure, no-channel setup rejection before writes, and `channels test` success/failure evidence.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_run_channel_test_writes_sent_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_fails_after_writing_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing tests\unit\cli\test_main.py::test_channels_test_command_sends_probe_and_writes_result tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested -q`: passed, 6 tests.
+  - `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real CLI negative setup self-test `node .\bin\airesearcher.mjs setup --config runs\manual-live\task196-setup-channel-test\config.yaml --env-path runs\manual-live\task196-setup-channel-test\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --feishu --feishu-webhook-url http://127.0.0.1:9/webhook --non-interactive --run-channel-test --channel-test-output channel-test.json --channel-test-timeout-seconds 1 --skip-obsidian --skip-integrations --skip-slash`: exited 1 by design after printing the Feishu failure and writing `runs\manual-live\task196-setup-channel-test\channel-test.json`.
+  - Real CLI no-channel setup `node .\bin\airesearcher.mjs setup --config runs\manual-live\task196-setup-channel-test-ok\config.yaml --env-path runs\manual-live\task196-setup-channel-test-ok\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-obsidian --skip-integrations --skip-slash`: exited 0.
+  - Initial GitHub Actions run `27729038684` failed in smoke/unit tests; CI logs identified ANSI-sensitive CLI assertion and process-wide notification environment leakage.
+  - CI-failure regression `python -m pytest tests\unit\cli\test_main.py::test_setup_run_channel_test_requires_enabled_channel_before_writing tests\unit\test_notifications.py::test_send_inspiration_digest_records_missing_webhook_without_network -q`: passed, 2 tests.
+  - Targeted `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\notifications.py tests\unit\cli\test_main.py tests\unit\test_notifications.py`: passed.
+  - Targeted `python -m mypy src\autoresearch\cli\main.py src\autoresearch\notifications.py`: passed.
+  - Full local CI mirror `python -m pytest tests\smoke tests\unit -q`: passed, 532 tests passed and 4 skipped.
+  - Full `python -m ruff check src tests`: passed.
+  - Full `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - Added and resolved `P-20260618-115`.
+- Follow-up:
+  - A real external delivery success still requires the operator to pair WeChat QR or provide real Feishu app/webhook credentials during setup; setup now offers and records that test instead of leaving it as a manual afterthought.
+
+### 2026-06-18 08:51:38 +08:00 - Codex - Task 197.1 README setup self-test guidance
+
+- Request: Continue launch-readiness work by keeping V1.0 user-facing documentation aligned with the setup-time channel self-test behavior.
+- Files changed:
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Updated the English and Chinese V1.0 scope tables so guided setup includes the optional real channel self-test.
+  - Updated the guided setup walkthrough from eight to nine steps, adding the self-test decision after channel configuration.
+  - Clarified that interactive setup asks whether to send the test immediately, scripted setup can use `--run-channel-test` to fail closed, and `--skip-channel-test` defers the check.
+  - Added setup command-reference rows for `--run-channel-test`, `--skip-channel-test`, and `--channel-test-output` in both README files.
+  - Kept deferred `channels test --require-sent` guidance for operators who still need to finish QR pairing or chat binding after setup.
+- Verification:
+  - `git diff --check`: passed.
+  - `rg -n "optional real channel self-test|--run-channel-test|--skip-channel-test|可选真实通道自检|立即发送通道送达自检|发送或延后送达自检" README.md README.zh-CN.md`: found the English and Chinese setup summary, workflow, and command-reference entries.
+- Problems:
+  - None added.
+- Follow-up:
+  - None for README setup self-test wording.
+
+### 2026-06-18 08:59:16 +08:00 - Codex - Task 198.1 Strict readiness setup self-test remediation
+
+- Request: Continue launch-readiness work so strict prelaunch/readiness remediation starts the WeChat QR setup and delivery self-test during `setup`, instead of leaving delivery evidence as a hidden manual step.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed strict readiness next-action generation so `configure_operator_channel` includes `--run-channel-test --channel-test-output <readiness channel-test path>` when the channel delivery check is failing.
+  - Kept ordinary `--require-channel-config` remediation unchanged, so non-strict channel setup still only configures and launches QR pairing.
+  - Preserved the separate `run_channel_self_test` action as an explicit retry path after QR pairing or target binding.
+  - Added regression coverage proving strict and non-strict readiness repair commands differ correctly.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_channel_config_for_push tests\unit\cli\test_main.py::test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test -q`: passed, 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real setup probe `node .\bin\airesearcher.mjs setup --config runs\manual-live\task198-readiness-setup-action\config.yaml --env-path runs\manual-live\task198-readiness-setup-action\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-obsidian --skip-integrations --skip-slash`: exited 0 and wrote config/env files.
+  - Real strict readiness probe `node .\bin\airesearcher.mjs readiness --config runs\manual-live\task198-readiness-setup-action\config.yaml --env-path runs\manual-live\task198-readiness-setup-action\.env --vault runs\manual-live\task198-readiness-setup-action\autoresearch-vault --outputs-dir runs\manual-live\task198-readiness-setup-action\outputs --channel-test-result runs\manual-live\task198-readiness-setup-action\channel-test.json --output runs\manual-live\task198-readiness-setup-action\strict-readiness.json --require-channel-config --require-channel-sent`: exited 1 by design and printed `configure_operator_channel` with `--run-wechat-qr-setup --run-channel-test --channel-test-output runs/manual-live/task198-readiness-setup-action/channel-test.json`.
+  - `python -m pytest tests\unit\cli\test_main.py -q`: passed, 79 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 532 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+- Problems:
+  - None added; the real strict readiness probe was an expected fail-closed negative test for missing channel configuration and missing sent evidence.
+- Follow-up:
+  - A real sent-delivery success still requires an operator to complete QR pairing or Feishu credentials during setup; strict readiness now gives the correct setup-time command to produce that evidence.
+
+### 2026-06-18 09:06:10 +08:00 - Codex - Task 199.1 Guided setup self-test defaults
+
+- Request: Continue launch-readiness work so first-deploy setup behaves like a guided evidence-producing flow, with real channel delivery validation enabled by default after a channel is configured.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed the interactive setup wizard's channel delivery self-test confirmation from default `No` to default `Yes` whenever a WeChat or Feishu channel is enabled.
+  - Kept explicit skip behavior intact through wizard input `n` and `--skip-channel-test`.
+  - Added an interactive regression test proving Feishu webhook setup sends a self-test when the user accepts the default prompt.
+  - Updated English and Chinese README setup guidance and command-reference rows to state that interactive setup defaults to sending the delivery self-test.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_guided_channel_self_test_defaults_to_yes tests\unit\cli\test_main.py::test_setup_guided_wechat_qr_runs_qr_setup tests\unit\cli\test_main.py::test_setup_run_channel_test_writes_sent_artifact tests\unit\cli\test_main.py::test_setup_run_channel_test_fails_after_writing_artifact -q`: passed, 4 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - README keyword check `rg -n "default-on real channel self-test|defaults to sending|interactive setup defaults|默认开启的真实通道自检|默认会|默认选择发送|交互式 setup 默认发送" README.md README.zh-CN.md`: found the updated English and Chinese setup sections and command-reference rows.
+  - Real Node CLI interactive negative setup under `runs\manual-live\task199-setup-default-channel-test`: accepted the default `[Y/n]` self-test prompt, attempted Feishu webhook delivery to `http://127.0.0.1:9/webhook`, wrote `.airesearcher/channels/test-result.json`, and exited 1 by design with a failed send record.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 533 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; the real Node setup probe was an expected fail-closed negative test against an unreachable webhook.
+- Follow-up:
+  - Real successful external delivery still needs the operator to provide a reachable Feishu endpoint or complete WeChat QR target binding during setup.
+
+### 2026-06-18 09:15:12 +08:00 - Codex - Task 200.1 Monitor latest Agent.md entries
+
+- Request: Continue launch-readiness work and keep the operator console honest during long-running operation.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Ran a fresh real `serve --once` cycle after setup/readiness changes; it passed research-plan generation, LLM review, publication audit, evidence gate, and paper build, producing a PDF in `outputs/task200_post_setup_cycle/`.
+  - Found that the `monitor` Agent Messages panel was showing the oldest append-only `Agent.md` entries instead of the newest entries.
+  - Changed `_recent_agent_entries_text()` to render the latest `Agent.md` entries first.
+  - Added regression coverage for append-only Agent.md ordering.
+  - Recorded and resolved `P-20260618-116`.
+- Verification:
+  - Real full cycle `node .\bin\airesearcher.mjs serve --once --permission-mode allow-all --vault runs\manual-live\task200-post-setup-cycle\vault --cache runs\manual-live\task200-post-setup-cycle\cache --output-dir runs\manual-live\task200-post-setup-cycle\runs --deliverables-dir outputs --state runs\manual-live\task200-post-setup-cycle\scheduler-state.json --approvals-state runs\manual-live\task200-post-setup-cycle\approvals.json --sessions-state runs\manual-live\task200-post-setup-cycle\sessions.json --project-id task200_post_setup_cycle --timeout-seconds 180 --no-push-inspiration`: exited 0 with review verdict `pass`, publication audit `pass`, evidence gate `pass`, zero follow-up tasks, and PDF output `outputs/task200_post_setup_cycle/task200_post_setup_cycle-cycle-20260618T011001Z.pdf`.
+  - Paper-build inspection reported `status=compiled`, `paper_quality.passed=true`, 15 pages, 3957 words, 1 figure, 3 tables, 10 bibliography items, and 0 overfull hboxes.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real monitor rerender over `runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json` with `--max-agent-entries 2` showed Task `199.1` and Task `198.1`, not stale Task `187.1` or `186.1`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 534 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-116`.
+- Follow-up:
+  - The real full cycle is release-allowed by current gates; external IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.
+
+### 2026-06-18 09:21:47 +08:00 - Codex - Task 201.1 Monitor agent detail bullets
+
+- Request: Continue launch-readiness work so the operator console shows actionable recent Agent.md detail, not only section headers.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Extended `_recent_agent_entries_text()` so the monitor Agent Messages panel includes the first concrete detail bullet under Summary, Verification, Problems, and Follow-up for each recent Agent.md entry.
+  - Kept newest-first ordering from task `200.1`.
+  - Truncated long detail lines before rendering, preventing command-heavy verification evidence from overflowing the console layout.
+  - Updated the newest-first regression test to assert that detail bullets from recent entries appear while stale entries remain excluded.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_recent_agent_entries_text_shows_latest_entries_first tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real monitor render `node .\bin\airesearcher.mjs monitor --runtime-state runs\manual-live\task200-post-setup-cycle\approvals.json --scheduler-state runs\manual-live\task200-post-setup-cycle\scheduler-state.json --sessions-state runs\manual-live\task200-post-setup-cycle\sessions.json --outputs-dir outputs\task200_post_setup_cycle --cycle-summary runs\manual-live\task200-post-setup-cycle\runs\cycle-20260618T011001Z\cycle-summary.json --no-diff --max-agent-entries 1`: exited 0 and showed the latest Agent entry with Summary, Verification, Problems, and Follow-up detail bullets; long command-heavy lines were truncated.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 534 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; this task hardened the operator UX after the resolved stale-entry defect `P-20260618-116`.
+- Follow-up:
+  - External IM launch readiness remains intentionally blocked until the operator completes a real WeChat/Feishu delivery self-test.
+
+### 2026-06-18 09:29:12 +08:00 - Codex - Task 202.1 Channel self-test bind-target next actions
+
+- Request: Continue launch-readiness work by making setup-time channel self-test failures actionable without requiring manual `.env` editing.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `_echo_channel_test_next_actions()` and wired it into both `airesearcher channels test --require-sent` and setup-time `--run-channel-test` fail-closed paths.
+  - When WeChat QR delivery is blocked by a missing `AUTORESEARCH_WECHAT_OPENCLAW_TARGET`, the CLI now prints `airesearcher channels bind-target --channel wechat --env-path ...`.
+  - When Feishu App delivery is blocked by a missing `AUTORESEARCH_FEISHU_HOME_CHAT_ID`, the CLI now prints `airesearcher channels bind-target --channel feishu --env-path ...`.
+  - Preserved JSON self-test evidence writing and nonzero exit behavior.
+  - Updated English and Chinese README setup guidance to state that missing targets are repaired through CLI rather than manual `.env` edits.
+  - Added regression coverage for WeChat and Feishu missing-target next actions.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_channels_test_requires_sent_when_requested tests\unit\cli\test_main.py::test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real Node setup probe `node .\bin\airesearcher.mjs setup --config runs\manual-live\task202-channel-next-actions\config.yaml --env-path runs\manual-live\task202-channel-next-actions\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --feishu --feishu-app-id cli_a_test --feishu-app-secret secret --non-interactive --run-channel-test --channel-test-output channel-test.json --skip-obsidian --skip-integrations --skip-slash`: exited 1 by design after writing `runs\manual-live\task202-channel-next-actions\channel-test.json` and printing `bind_feishu_target`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 535 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added; the real probe was an expected fail-closed missing-target case.
+- Follow-up:
+  - Real sent-delivery success still requires an operator to bind a WeChat OpenClaw target or Feishu home chat ID after platform pairing.
+
+### 2026-06-18 09:35:06 +08:00 - Codex - Task 203.1 Feishu App readiness target gate
+
+- Request: Continue launch-readiness work by keeping readiness checks aligned with actual Feishu App delivery requirements.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Changed operator-channel readiness so Feishu App ID/App Secret alone are not considered delivery-ready without `AUTORESEARCH_FEISHU_HOME_CHAT_ID`.
+  - Added `feishu_home_chat_configured` evidence to the readiness report.
+  - Added `bind_feishu_target` next-action generation when Feishu App credentials exist but the home chat target is missing.
+  - Preserved webhook-mode Feishu readiness behavior.
+  - Added regression coverage for strict readiness with Feishu App credentials but no home chat.
+  - Added and resolved `P-20260618-117`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_sent_channel_self_test tests\unit\cli\test_main.py::test_readiness_requires_feishu_home_chat_for_app_gateway tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report -q`: passed, 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Real Node readiness probe `node .\bin\airesearcher.mjs readiness --config runs\manual-live\task202-channel-next-actions\config.yaml --env-path runs\manual-live\task202-channel-next-actions\.env --vault runs\manual-live\task203-feishu-readiness\vault --outputs-dir runs\manual-live\task203-feishu-readiness\outputs --channel-test-result runs\manual-live\task203-feishu-readiness\channels\test-result.json --output runs\manual-live\task203-feishu-readiness\readiness.json --require-channel-config --require-channel-sent`: exited 1 by design and produced next actions `bind_feishu_target` then `run_channel_self_test`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 536 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260618-117`.
+- Follow-up:
+  - Real Feishu App delivery still requires the operator to bind a home chat ID after the platform bot conversation exists.
+
+### 2026-06-19 16:23:13 +08:00 - Codex - Task 212.1 Meta-Harness reference quarantine
+
+- Request: Learn from `meta-harness` while keeping AI-Researcher aligned with controlled self-evolution, Obsidian evidence, license boundaries, and release gates.
+- Files changed:
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `THIRD_PARTY_NOTICES.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `CHANGELOG.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Live-reviewed `stanford-iris-lab/meta-harness`, its MIT license, onboarding guidance, README, and arXiv paper before changing project files.
+  - Added `Meta-Harness` as a quarantined external watchlist candidate, focused on domain-spec-first harness search around a fixed base model/tool surface.
+  - Added validation gates for candidate source/scores/traces archives, proposer logs, search/held-out split, anti-leakage review, shadow evaluation, evidence gates, and rollback before promotion.
+  - Updated README, Chinese README, changelog, third-party notices, and compliance tests to keep Meta-Harness reference-only with no vendored code, prompts, reference experiments, assets, benchmark data, proposer wrappers, or generated harnesses.
+  - Added and resolved `P-20260619-001` for the risk of uncontrolled harness search becoming production self-modification without held-out validation.
+- Verification:
+  - Live web review checked `https://github.com/stanford-iris-lab/meta-harness`, raw `LICENSE`, raw `ONBOARDING.md`, raw `README.md`, and arXiv `2603.28052`.
+  - Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q`: passed, 18 tests.
+  - Focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - Focused `python -m mypy src\autoresearch\knowledge\skills.py`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task212-meta-harness-watchlist-vault --source-note "2026-06-19 Meta-Harness reference smoke"`: passed, wrote 15 quarantined candidates.
+  - Real artifact grep `rg -n "Meta-Harness|harness-search-reference|domain_spec-style|trace archive|held-out data leaks|shadow evaluation|https://github.com/stanford-iris-lab/meta-harness" runs\manual-live\task212-meta-harness-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated Obsidian watchlist contains the Meta-Harness source refs and gates.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260619-001`.
+- Follow-up:
+  - Future actual harness-search implementation should create a separate candidate trace archive and domain spec, not promote generated harness code directly into production policy.
+
+### 2026-06-20 12:02:41 +08:00 - Codex - Task 213.1 LightAgent reference quarantine
+
+- Request: Learn from the Light project; interpreted through live search as `wanxingai/LightAgent`, the closest matching lightweight AI-agent project.
+- Files changed:
+  - `src/autoresearch/knowledge/skills.py`
+  - `tests/unit/knowledge/test_skills.py`
+  - `tests/unit/compliance/test_licenses.py`
+  - `THIRD_PARTY_NOTICES.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `CHANGELOG.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Live-reviewed `wanxingai/LightAgent`, raw Apache-2.0 license text, README, LightFlow docs, trace docs, memory/trace/swarm boundary docs, and multi-agent failure map before changing project files.
+  - Added `LightAgent / LightFlow` as a quarantined external watchlist candidate focused on lightweight DAG steps, step-local retries, opt-in trace events, memory provenance filters, and multi-agent failure diagnostics.
+  - Added validation gates requiring no default LightAgent dependency, no copied examples/docs/assets, trace-safe summaries, provenance filters before Obsidian ingestion, and failure-map checks for role drift, shared-memory pollution, hidden hand-off loops, and unreadable logs.
+  - Updated README, Chinese README, changelog, third-party notices, and compliance tests to keep LightAgent reference-only under Apache-2.0 handling rules.
+  - Added and resolved `P-20260620-001` for the risk of self-learning traces and delegated-agent state polluting project memory without scope filters.
+- Verification:
+  - Live web review checked `https://github.com/wanxingai/LightAgent`, raw `LICENSE`, raw `README.md`, raw `docs/lightflow.md`, raw `docs/tracing.md`, raw `docs/memory_trace_swarm_boundaries.md`, and raw `docs/multi_agent_failure_map.md`.
+  - Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q`: passed, 18 tests.
+  - Focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py`: passed.
+  - Focused `python -m mypy src\autoresearch\knowledge\skills.py`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task213-lightagent-watchlist-vault --source-note "2026-06-20 LightAgent reference smoke"`: passed, wrote 16 quarantined candidates.
+  - Real artifact grep `rg -n "LightAgent|LightFlow|lightweight-agent-runtime-reference|trace observability|memory/trace/delegation|shared-memory pollution|evidence-safe summaries|https://github.com/wanxingai/LightAgent" runs\manual-live\task213-lightagent-watchlist-vault\exploration\skills\external-research-skill-watchlist.md`: confirmed the generated Obsidian watchlist contains the LightAgent source refs and gates.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 546 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 104 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260620-001`.
+- Follow-up:
+  - Future LightFlow-style implementation should be a separate AI-Researcher design task that maps step DAGs and trace events onto existing lifecycle traces, approvals, evidence gates, and Obsidian provenance rules.
+
+### 2026-06-23 09:07:46 +08:00 - Codex - GitHub PR #1 conflict resolution
+
+- Request: Use the browser to process GitHub PR #1, resolve merge conflicts, and address review feedback.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `src/autoresearch/integrations/openclaw.py`
+  - `src/autoresearch/reports/latex.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `tests/unit/integrations/test_openclaw.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected PR #1 in the browser and through GitHub CLI; GitHub reported it as `CONFLICTING` and Copilot left two comments about approval guidance missing `--state`.
+  - Merged current `origin/main` into `codex/fix-windows-process-ui-flow` and resolved conflicts by preserving mainline serve loop/session handling, static executor preflight, and LaTeX rerun logic while keeping the PR's Windows no-window subprocess helper.
+  - Updated runtime waiting, setup next steps, OpenClaw approval bridge output, and related tests so `runtime approve latest` guidance includes an explicit `--state` path.
+  - Ran ruff import fixes for merge-introduced ordering issues.
+- Verification:
+  - Browser/GitHub inspection: PR #1 was open, cross-repository, `maintainerCanModify=true`, `mergeable=CONFLICTING`, with Copilot comments `3456337138` and `3456337159`.
+  - `python -m py_compile src\autoresearch\cli\main.py src\autoresearch\experiments\executor.py src\autoresearch\reports\paper_build.py`: passed.
+  - Focused `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_executor.py tests\unit\reports\test_paper_build.py tests\unit\test_process.py tests\unit\integrations\test_openclaw.py -q`: passed, 108 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 549 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 105 source files.
+  - `git diff --check`: passed with a line-ending warning for `src/autoresearch/reports/latex.py` only.
+- Problems:
+  - Added and resolved `P-20260623-001`.
+- Follow-up:
+  - Push the resolved PR branch and re-check GitHub mergeability/check status.

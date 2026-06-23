@@ -43,8 +43,8 @@ def test_live_daily_literature_refresh_returns_real_documents(tmp_path: Path) ->
     sources = {fetch.source for fetch in report.fetches}
     document_sources = {tag for document in report.documents for tag in document.tags}
 
-    assert {"arxiv", "semantic_scholar"} <= sources
+    assert {"arxiv", "openalex"} <= sources
     assert report.documents, {fetch.source: fetch.error for fetch in report.fetches}
-    assert {"arxiv", "semantic_scholar"} & document_sources
+    assert {"arxiv", "openalex"} & document_sources
     assert report.summary_path is not None
     assert "pending verification" in report.summary_path.read_text(encoding="utf-8")

@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 import autoresearch.cli.main as cli_main
@@ -24,7 +25,13 @@ from autoresearch.knowledge import (
     extract_reusable_skill_card,
 )
 from autoresearch.llm import LLMReviewResult, LLMSmokeResult
-from autoresearch.schemas import ResearchCandidate
+from autoresearch.runtime import (
+    RuntimeActionRisk,
+    RuntimeApprovalDecision,
+    RuntimeApprovalRequest,
+    RuntimePermissionMode,
+)
+from autoresearch.schemas import ResearchCandidate, ResearchPlan
 
 
 def test_version_command_prints_package_version() -> None:
@@ -41,6 +48,7 @@ def test_doctor_command_checks_local_scaffold() -> None:
     assert "[OK] python >= 3.10" in result.stdout
     assert "[OK] config parser" in result.stdout
     assert "[OK] knowledge vault" in result.stdout
+    assert "requests dependency set:" in result.stdout
 
 
 def test_init_demo_creates_readme_and_config(tmp_path: Path) -> None:
@@ -316,6 +324,693 @@ def test_inspiration_refresh_command_can_push_digest(tmp_path: Path, monkeypatch
     assert payload["pushes"][0]["status_code"] == 200
 
 
+def test_channels_test_command_sends_probe_and_writes_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "channels" / "test-result.json"
+    calls: list[tuple[tuple[str, ...], float, str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        calls.append((tuple(channels), timeout_seconds, report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu app API accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "test",
+            "--channel",
+            "feishu",
+            "--timeout-seconds",
+            "2",
+            "--message",
+            "probe message",
+            "--output",
+            str(output),
+            "--require-sent",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), 2.0, "probe message")]
+    assert "[PUSH] channel=feishu status=sent detail=feishu app API accepted" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status_code"] == 200
+
+
+def test_channels_test_requires_sent_when_requested(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "channels" / "test-result.json"
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert report.items[0].source == "operator_self_test"
+        assert channels == ("wechat",)
+        assert timeout_seconds == 10.0
+        return (
+            cli_main.NotificationSendRecord(
+                channel="wechat",
+                status="skipped",
+                detail=(
+                    "wechat QR gateway configured but missing "
+                    "AUTORESEARCH_WECHAT_OPENCLAW_TARGET for outbound delivery"
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "test",
+            "--channel",
+            "wechat",
+            "--output",
+            str(output),
+            "--require-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "missing AUTORESEARCH_WECHAT_OPENCLAW_TARGET" in result.output
+    assert (
+        f"[NEXT] bind_wechat_target: airesearcher channels bind-target --channel wechat "
+        f"--env-path {(Path('.env')).as_posix()}"
+    ) in result.output
+    assert f"[OK] channel_test: {output}" in result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["records"][0]["status"] == "skipped"
+
+
+def test_channels_bind_target_writes_wechat_openclaw_target(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("AUTORESEARCH_LLM_API_KEY=sk-test\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "wechat",
+            "--target",
+            "peer:wx_user",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    env_text = env_path.read_text(encoding="utf-8")
+    assert "AUTORESEARCH_LLM_API_KEY=sk-test" in env_text
+    assert "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=openclaw message send" in env_text
+    assert "[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent" in (
+        result.stdout
+    )
+
+
+def test_channels_bind_target_prompts_for_missing_target(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "wechat",
+        ],
+        input="peer:wx_prompted\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_prompted" in env_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_channels_bind_target_writes_feishu_home_chat(tmp_path: Path) -> None:
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(env_path),
+            "--channel",
+            "feishu",
+            "--target",
+            "oc_test_chat",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "AUTORESEARCH_FEISHU_HOME_CHAT_ID=oc_test_chat" in env_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_channels_bind_target_rejects_unknown_channel(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "channels",
+            "bind-target",
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--channel",
+            "discord",
+            "--target",
+            "target",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "unsupported channel for target binding" in result.output
+
+
+def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    outputs_dir = tmp_path / "outputs"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    output = tmp_path / ".airesearcher" / "readiness" / "report.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text(
+        json.dumps({"tasks": [{"task_id": "daily", "status": "open"}]}),
+        encoding="utf-8",
+    )
+    channel_test_result.parent.mkdir(parents=True)
+    channel_test_result.write_text(
+        json.dumps(
+            {
+                "checked_at": "2026-06-18T00:00:00+00:00",
+                "records": [
+                    {
+                        "channel": "feishu",
+                        "status": "sent",
+                        "detail": "feishu app API accepted",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_PROVIDER=openai-compatible",
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=webhook",
+                "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(outputs_dir),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] readiness: ready" in result.stdout
+    assert "[OK] planned_daily_command:" in result.stdout
+    assert "[NEXT] readiness_action.start_daily_loop:" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["status"] == "ready"
+    assert payload["failure_count"] == 0
+    assert payload["planned_daily_command"] == (
+        "airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 "
+        "--interval-seconds 86400 --push-inspiration"
+    )
+    assert "autopilot --watch" not in payload["planned_daily_command"]
+    assert payload["next_actions"] == [
+        {
+            "id": "start_daily_loop",
+            "severity": "next",
+            "command": payload["planned_daily_command"],
+            "reason": "All hard readiness checks passed; start the unattended daily loop when ready.",
+        }
+    ]
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["operator_channels"]["evidence"]["ready_channels"] == ["feishu"]
+    assert checks["channel_delivery_test"]["status"] == "pass"
+    assert checks["channel_delivery_test"]["evidence"]["sent_channels"] == ["feishu"]
+    assert checks["outputs_dir"]["evidence"]["created"] is True
+
+
+def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=webhook",
+                "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(tmp_path / "missing-channel-test.json"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.channel_delivery_test:" in result.output
+    assert "[NEXT] readiness_action.run_channel_self_test:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["channel_delivery_test"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel feishu "
+        f"--output {(tmp_path / 'missing-channel-test.json').as_posix()} --require-sent"
+    )
+
+
+def test_readiness_requires_feishu_home_chat_for_app_gateway(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_FEISHU_CONNECTION_MODE=websocket",
+                "AUTORESEARCH_FEISHU_APP_ID=cli_a_test",
+                "AUTORESEARCH_FEISHU_APP_SECRET=secret",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    assert "[NEXT] readiness_action.bind_feishu_target:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "fail"
+    evidence = checks["operator_channels"]["evidence"]
+    assert evidence["feishu_app_credentials_configured"] is True
+    assert evidence["feishu_home_chat_configured"] is False
+    assert evidence["ready_channels"] == []
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["bind_feishu_target"]["command"] == (
+        f"airesearcher channels bind-target --channel feishu --env-path {env_path.as_posix()}"
+    )
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel feishu "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
+def test_readiness_requires_channel_config_for_push(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    assert "[NEXT] readiness_action.configure_operator_channel:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert payload["status"] == "blocked"
+    assert checks["operator_channels"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["configure_operator_channel"]["command"] == (
+        f"airesearcher setup --config {config_path.as_posix()} "
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup"
+    )
+
+
+def test_strict_readiness_lists_channel_setup_and_self_test_when_unconfigured(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    channel_test_result = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[NEXT] readiness_action.configure_operator_channel:" in result.output
+    assert "[NEXT] readiness_action.run_channel_self_test:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["configure_operator_channel"]["command"] == (
+        f"airesearcher setup --config {config_path.as_posix()} "
+        f"--env-path {env_path.as_posix()} --wechat --wechat-qr --run-wechat-qr-setup "
+        f"--run-channel-test --channel-test-output {channel_test_result.as_posix()}"
+    )
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel wechat "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
+def test_readiness_accepts_bom_prefixed_env_file(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    env_path.write_text(
+        "\n".join(
+            [
+                "\ufeffAUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["llm_credentials"]["status"] == "pass"
+    assert checks["llm_credentials"]["evidence"]["base_url"] == "https://llm.example.test/v1"
+    assert checks["operator_channels"]["status"] == "fail"
+
+
+def test_readiness_requires_wechat_qr_openclaw_target_for_push(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "completed_at": "2026-06-18T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr",
+                f"AUTORESEARCH_WECHAT_SETUP_STATUS_PATH={status_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--output",
+            str(output),
+            "--require-channel-config",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.operator_channels:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "fail"
+    assert checks["operator_channels"]["evidence"]["wechat_qr_status"] == "completed"
+    assert checks["operator_channels"]["evidence"]["wechat_openclaw_target_configured"] is False
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["bind_wechat_target"]["command"] == (
+        f"airesearcher channels bind-target --channel wechat --env-path {env_path.as_posix()}"
+    )
+
+
+def test_readiness_accepts_bom_prefixed_wechat_qr_status_file(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    channel_test_result = tmp_path / "missing-channel-test.json"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(
+        '\ufeff{"status":"completed","completed_at":"2026-06-18T00:00:00+00:00"}',
+        encoding="utf-8",
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr",
+                f"AUTORESEARCH_WECHAT_SETUP_STATUS_PATH={status_path.as_posix()}",
+                "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--channel-test-result",
+            str(channel_test_result),
+            "--output",
+            str(output),
+            "--require-channel-config",
+            "--require-channel-sent",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["operator_channels"]["status"] == "pass"
+    assert checks["operator_channels"]["evidence"]["wechat_qr_status"] == "completed"
+    assert checks["operator_channels"]["evidence"]["ready_channels"] == ["wechat"]
+    assert checks["channel_delivery_test"]["status"] == "fail"
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["run_channel_self_test"]["command"] == (
+        "airesearcher channels test --channel wechat "
+        f"--output {channel_test_result.as_posix()} --require-sent"
+    )
+
+
 def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     tmp_path: Path,
 ) -> None:
@@ -366,6 +1061,14 @@ def test_deploy_setup_writes_provider_config_and_env_without_committing_secret(
     assert "AUTORESEARCH_WECHAT_WEBHOOK_URL=https://wechat.example.test/hook" in env_text
     assert "AUTORESEARCH_FEISHU_WEBHOOK_URL=https://feishu.example.test/hook" in env_text
     assert "env template created" in result.stdout
+    assert (
+        "[NEXT] channel_test: airesearcher channels test --channel wechat "
+        "--channel feishu --require-sent"
+    ) in result.stdout
+    assert (
+        "[NEXT] readiness: airesearcher readiness --push-inspiration "
+        "--require-channel-config --require-channel-sent"
+    ) in result.stdout
     assert "AUTORESEARCH_LLM_API_KEY=" in env_example_text
     assert "SEMANTIC_SCHOLAR_API_KEY=" in env_example_text
     assert "SEMANTIC_SCHOLAR_MIN_INTERVAL_SECONDS=" in env_example_text
@@ -395,6 +1098,8 @@ def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path
             "sk-test",
             "--wechat",
             "--wechat-qr",
+            "--wechat-openclaw-target",
+            "peer:wx_user",
             "--feishu",
             "--feishu-app-id",
             "cli_a_test",
@@ -418,12 +1123,68 @@ def test_deploy_setup_configures_qr_wechat_and_feishu_app_gateway(tmp_path: Path
     env_text = env_path.read_text(encoding="utf-8")
     assert "AUTORESEARCH_WECHAT_CONNECTION_MODE=qr" in env_text
     assert "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=npx -y @tencent-weixin/openclaw-weixin-cli install" in env_text
+    assert "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND=openclaw channels login --channel openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=openclaw-weixin" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_text
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=openclaw message send" in env_text
     assert "AUTORESEARCH_FEISHU_CONNECTION_MODE=websocket" in env_text
     assert "AUTORESEARCH_FEISHU_APP_ID=cli_a_test" in env_text
     assert "AUTORESEARCH_FEISHU_HOME_CHAT_ID=oc_test_chat" in env_text
     assert "[OK] wechat: enabled (qr)" in result.stdout
     assert "[OK] feishu: enabled (websocket)" in result.stdout
     assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+
+
+def test_deploy_setup_runs_wechat_qr_setup_with_status_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    calls: list[tuple[list[str], bool, dict[str, object]]] = []
+
+    def fake_run(args: list[str], *, check: bool, **kwargs: object) -> SimpleNamespace:
+        calls.append((args, check, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "deploy-setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--wechat",
+            "--wechat-qr",
+            "--run-wechat-qr-setup",
+            "--no-feishu",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls[0][0] == ["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"]
+    assert calls[0][1] is False
+    status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
+    status_payload = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_payload["status"] == "completed"
+    assert status_payload["return_code"] == 0
+    assert status_payload["session_path"] == ".airesearcher/channels/wechat/session.json"
+    assert "[WAIT] wechat_qr_setup: waiting for QR display" in result.stdout
+    assert f"[OK] wechat_qr_status: {status_path}" in result.stdout
+    assert "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH=.airesearcher/channels/wechat/setup-status.json" in (
+        env_path.read_text(encoding="utf-8")
+    )
 
 
 def test_deploy_setup_keeps_existing_env_example_template(tmp_path: Path) -> None:
@@ -542,7 +1303,11 @@ def test_setup_guided_wizard_collects_provider_and_api_key(tmp_path: Path) -> No
 
 def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-    monkeypatch.setattr(cli_main, "_run_wechat_qr_setup", lambda: calls.append("qr"))
+    monkeypatch.setattr(
+        cli_main,
+        "_run_wechat_qr_setup",
+        lambda **_kwargs: calls.append("qr"),
+    )
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
 
@@ -564,16 +1329,322 @@ def test_setup_guided_wechat_qr_runs_qr_setup(tmp_path: Path, monkeypatch: pytes
             "--skip-integrations",
             "--skip-slash",
         ],
-        input="\n\nresearch-model\nsk-guided\n2\n1\n",
+        input="\n\nresearch-model\nsk-guided\n2\n1\npeer:wx_user\nn\n",
     )
 
     assert result.exit_code == 0, result.output
     assert calls == ["qr"]
     assert "[OK] wechat: enabled (qr)" in result.stdout
     assert "[NEXT] wechat_qr_setup: npx -y @tencent-weixin/openclaw-weixin-cli install" in result.stdout
+    assert "[RUN] wechat_qr_setup: starting QR adapter setup now" in result.stdout
+    assert (
+        "[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent"
+        in result.stdout
+    )
     config = ConfigParser().parse_file(config_path)
     assert isinstance(config, SystemConfig)
     assert config.deployment.wechat.connection_mode == "qr"
+    assert "AUTORESEARCH_WECHAT_OPENCLAW_TARGET=peer:wx_user" in env_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_setup_guided_channel_self_test_defaults_to_yes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[tuple[str, ...], str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert timeout_seconds == 10.0
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        calls.append((tuple(channels), report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu webhook accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--integrations-dir",
+            str(tmp_path / "integrations"),
+            "--commands-dir",
+            str(tmp_path / "commands"),
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+        input=(
+            "\n"
+            "\n"
+            "research-model\n"
+            "sk-guided\n"
+            "3\n"
+            "2\n"
+            "https://feishu.example.test/webhook\n"
+            "\n"
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), "AI-Researcher setup channel self-test")]
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.stdout
+    assert "[PUSH] channel=feishu status=sent detail=feishu webhook accepted" in result.stdout
+    channel_result_path = tmp_path / ".airesearcher" / "channels" / "test-result.json"
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["records"][0]["status"] == "sent"
+
+
+def test_setup_run_channel_test_writes_sent_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+    calls: list[tuple[tuple[str, ...], float, str]] = []
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        calls.append((tuple(channels), timeout_seconds, report.items[0].title))
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="sent",
+                detail="feishu webhook accepted",
+                status_code=200,
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-webhook-url",
+            "https://feishu.example.test/webhook",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls == [(("feishu",), 10.0, "AI-Researcher setup channel self-test")]
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.stdout
+    assert "[PUSH] channel=feishu status=sent detail=feishu webhook accepted" in result.stdout
+    assert f"[OK] channel_test: {channel_result_path}" in result.stdout
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status"] == "sent"
+
+
+def test_setup_run_channel_test_fails_after_writing_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_WEBHOOK_URL"] == "https://feishu.example.test/webhook"
+        assert tuple(channels) == ("feishu",)
+        assert timeout_seconds == 10.0
+        assert report.items[0].title == "AI-Researcher setup channel self-test"
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="failed",
+                detail="webhook refused connection",
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-webhook-url",
+            "https://feishu.example.test/webhook",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[RUN] channel_test: sending setup delivery self-test now" in result.output
+    assert "[PUSH] channel=feishu status=failed detail=webhook refused connection" in result.output
+    assert f"[OK] channel_test: {channel_result_path}" in result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["require_sent"] is True
+    assert payload["records"][0]["status"] == "failed"
+
+
+def test_setup_channel_test_missing_feishu_home_chat_prints_bind_next_action(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    channel_result_path = tmp_path / "channel-test.json"
+
+    def fake_send_inspiration_digest(report, *, channels, env=None, timeout_seconds):
+        assert env is not None
+        assert env["AUTORESEARCH_FEISHU_APP_ID"] == "cli_a_test"
+        assert tuple(channels) == ("feishu",)
+        assert timeout_seconds == 10.0
+        assert report.items[0].title == "AI-Researcher setup channel self-test"
+        return (
+            cli_main.NotificationSendRecord(
+                channel="feishu",
+                status="skipped",
+                detail=(
+                    "feishu app credentials configured; missing "
+                    "AUTORESEARCH_FEISHU_HOME_CHAT_ID for outbound delivery"
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(cli_main, "send_inspiration_digest", fake_send_inspiration_digest)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--feishu",
+            "--feishu-app-id",
+            "cli_a_test",
+            "--feishu-app-secret",
+            "secret",
+            "--non-interactive",
+            "--run-channel-test",
+            "--channel-test-output",
+            "channel-test.json",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "missing AUTORESEARCH_FEISHU_HOME_CHAT_ID" in result.output
+    assert (
+        f"[NEXT] bind_feishu_target: airesearcher channels bind-target --channel feishu "
+        f"--env-path {env_path.as_posix()}"
+    ) in result.output
+    assert f"[OK] channel_test: {channel_result_path}" in result.output
+    assert "[FAIL] channel_test: at least one channel was not sent" in result.output
+    payload = json.loads(channel_result_path.read_text(encoding="utf-8"))
+    assert payload["channels"] == ["feishu"]
+    assert payload["records"][0]["status"] == "skipped"
+
+
+def test_setup_run_channel_test_requires_enabled_channel_before_writing(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--non-interactive",
+            "--run-channel-test",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "requires at least one enabled channel" in result.output
+    assert not config_path.exists()
+    assert not env_path.exists()
 
 
 def test_deploy_setup_requires_enabled_channel_credentials(tmp_path: Path) -> None:
@@ -650,10 +1721,14 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     scansci_payload = json.loads(scansci_manifest.read_text(encoding="utf-8"))
     assert scansci_payload["default_policy"]["mode"] == "oa_first_legal_only"
     assert (commands / "research" / "autopilot.toml").is_file()
+    assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
     assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
     assert "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous" in result.stdout
-    assert "[NEXT] 3. When approval is requested, run: airesearcher runtime approve latest" in result.stdout
+    assert (
+        "[NEXT] 3. When approval is requested, run: "
+        f"airesearcher runtime approve latest --state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
+    ) in result.stdout
     assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
 
 
@@ -677,6 +1752,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "refresh-literature.toml").is_file()
     assert (commands_dir / "research" / "inspiration-refresh.toml").is_file()
     assert (commands_dir / "research" / "similarity-check.toml").is_file()
+    assert (commands_dir / "research" / "research-plan.toml").is_file()
     assert (commands_dir / "research" / "run-demo.toml").is_file()
     assert (commands_dir / "research" / "autopilot.toml").is_file()
     assert (commands_dir / "research" / "serve.toml").is_file()
@@ -684,6 +1760,8 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "publication-stability.toml").is_file()
     assert (commands_dir / "research" / "approve.toml").is_file()
     assert (commands_dir / "research" / "channel-adapters.toml").is_file()
+    assert (commands_dir / "research" / "channel-test.toml").is_file()
+    assert (commands_dir / "research" / "readiness.toml").is_file()
     assert (commands_dir / "research" / "scansci-pdf.toml").is_file()
     assert (commands_dir / "research" / "code-agent-backends.toml").is_file()
     assert (commands_dir / "research" / "obsidian-setup.toml").is_file()
@@ -702,6 +1780,8 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:publication-stability" in list_result.stdout
     assert "/research:approve" in list_result.stdout
     assert "/research:channel-adapters" in list_result.stdout
+    assert "/research:channel-test" in list_result.stdout
+    assert "/research:readiness" in list_result.stdout
     assert "/research:scansci-pdf" in list_result.stdout
     assert "/research:code-agent-backends" in list_result.stdout
     assert "/research:obsidian-setup" in list_result.stdout
@@ -713,6 +1793,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:session-claim" in list_result.stdout
     assert "/research:refresh-literature" in list_result.stdout
     assert "/research:inspiration-refresh" in list_result.stdout
+    assert "/research:research-plan" in list_result.stdout
     assert "/research:issue-followups" in list_result.stdout
     assert "/research:similarity-check" in list_result.stdout
     assert "airesearcher autopilot" in autopilot_template
@@ -738,6 +1819,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "airesearcher inspiration-refresh" in (
         commands_dir / "research" / "inspiration-refresh.toml"
     ).read_text(encoding="utf-8")
+    assert "airesearcher research-plan" in (
+        commands_dir / "research" / "research-plan.toml"
+    ).read_text(encoding="utf-8")
     assert "airesearcher skill-polish-audit" in (
         commands_dir / "research" / "skill-polish-audit.toml"
     ).read_text(encoding="utf-8")
@@ -746,6 +1830,15 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher channels adapters init" in (
         commands_dir / "research" / "channel-adapters.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher channels test" in (
+        commands_dir / "research" / "channel-test.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher readiness" in (
+        commands_dir / "research" / "readiness.toml"
+    ).read_text(encoding="utf-8")
+    assert "--require-channel-sent" in (
+        commands_dir / "research" / "readiness.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher pdf-sources scansci-pdf init" in (
         commands_dir / "research" / "scansci-pdf.toml"
@@ -1164,6 +2257,84 @@ def test_similarity_check_accepts_windows_utf8_bom_candidate_json(
     assert "[OK] candidate: candidate_cli_bom" in result.stdout
 
 
+def test_research_plan_command_writes_vault_markdown_and_outputs(tmp_path: Path) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_plan",
+        title="AI-Researcher system proposal",
+        description="Plan an evidence traceability experiment.",
+        research_gap="Metric claims are not tied to concrete execution artifacts.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["https://example.org/source-paper"],
+        metadata={
+            "method": "evidence trace adapter",
+            "dataset": "UCI Pendigits",
+            "baseline": "nearest centroid baseline",
+            "metric": "macro_f1",
+        },
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "research-plan",
+            "--candidate-file",
+            str(candidate_path),
+            "--project-id",
+            "project_1",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--output-dir",
+            str(tmp_path / "outputs"),
+            "--no-compile-pdf",
+        ],
+    )
+
+    markdown_path = tmp_path / "vault" / "projects" / "project_1" / "plans" / "research-plan.md"
+    json_path = tmp_path / "outputs" / "project_1" / "research-plan" / "research-plan.json"
+    tex_path = tmp_path / "outputs" / "project_1" / "research-plan" / "research-plan.tex"
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] compile_status: skipped" in result.stdout
+    assert markdown_path.is_file()
+    assert json_path.is_file()
+    assert tex_path.is_file()
+    assert "entry_type: research_plan" in markdown_path.read_text(encoding="utf-8")
+    assert "AI-Researcher system proposal" not in tex_path.read_text(encoding="utf-8")
+
+
+def test_research_plan_audit_blocks_forbidden_title(tmp_path: Path) -> None:
+    plan = ResearchPlan(
+        project_id="project_1",
+        candidate_id="candidate_1",
+        title="AI-Researcher system",
+        problem_statement="A source-backed gap needs a concrete plan.",
+        rationale="XH-202619 参赛方案 should never enter a normal research plan.",
+        technical_details="Use a baseline, macro_f1 metric, and source dataset.",
+        datasets={"source": "UCI Pendigits", "target": "hold-out split"},
+        methods="Compare the method with a baseline using macro_f1 metric.",
+        experiments=["Run baseline.", "Run method.", "Run ablation."],
+        expected_results="Expected, not yet observed: metric changes require real runs.",
+        code_agent_brief="Run python scripts/run_experiment.py and save metrics.json.",
+        risks_and_alternatives=["Baseline may fail.", "Dataset license may block use."],
+        references=["https://example.org/source-paper"],
+        evidence_refs=["https://example.org/source-paper"],
+    )
+    plan_path = tmp_path / "research-plan.json"
+    plan_path.write_text(json.dumps({"plan": plan.model_dump(mode="json")}), encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["research-plan-audit", str(plan_path)])
+
+    assert result.exit_code == 1
+    assert "[OK] research_plan_audit: failed" in result.stdout
+    assert "title must be a discovered research topic" in result.stdout
+    assert "forbidden contest" in result.stdout
+
+
 def test_run_demo_command_creates_end_to_end_outputs(tmp_path: Path) -> None:
     output_dir = tmp_path / "mvp-demo"
 
@@ -1210,13 +2381,28 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert any("Pendigits" in seed for seed in seeds)
     assert any("prototype" in seed for seed in seeds)
 
-    seed_document = SimpleNamespace(
-        id="doc_seed",
-        title="A Source Paper",
-        source_uri="https://example.test/source",
+    unrelated_document = SimpleNamespace(
+        id="doc_unrelated",
+        title="Variance function of boolean additive convolution",
+        source_uri="https://example.test/boolean-variance",
+        abstract="Boolean cumulants and variance functions for probability measures.",
+    )
+    domain_only_document = SimpleNamespace(
+        id="doc_domain_only",
+        title="Classical features for handwritten digit recognition",
+        source_uri="https://example.test/digit-features",
+        abstract="Handcrafted feature extraction techniques for digit recognition.",
+    )
+    relevant_document = SimpleNamespace(
+        id="doc_relevant",
+        title="Nearest centroid prototype classification for handwritten digits",
+        source_uri="https://example.test/pendigits-prototype",
+        abstract="Prototype classifiers for handwritten digit recognition with centroid distances.",
     )
     candidate = cli_main._autopilot_candidate_from_literature(
-        SimpleNamespace(documents=(seed_document,)),
+        SimpleNamespace(
+            documents=(unrelated_document, domain_only_document, relevant_document)
+        ),
         project_id="project_1",
         demo="pendigits_variance_calibrated_prototypes",
         now=datetime(2026, 6, 13, 2, 30, tzinfo=timezone.utc),
@@ -1228,6 +2414,14 @@ def test_autopilot_pendigits_demo_uses_method_aligned_search_contract() -> None:
     assert "variance-calibrated prototypes" in candidate.metadata["method"]
     assert "nearest centroid" in candidate.metadata["baseline"]
     assert "Gaussian" in candidate.metadata["limitation"]
+    assert candidate.evidence_refs == [
+        "doc_relevant",
+        "https://example.test/pendigits-prototype",
+    ]
+    assert candidate.related_document_ids == ["doc_relevant"]
+    assert candidate.metadata["seed_document_title"] == (
+        "Nearest centroid prototype classification for handwritten digits"
+    )
 
 
 def test_autopilot_skin_demo_uses_method_aligned_search_contract() -> None:
@@ -1290,6 +2484,8 @@ def test_autopilot_literature_clients_default_to_core_free_sources(
 
 
 def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch) -> None:
+    default_demo = cli_main.DEFAULT_RESEARCH_DEMO
+    default_demo_slug = default_demo.replace("_", "-")
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
     inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
@@ -1329,6 +2525,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
         assert len(config.seed_queries) == cli_main.PUBLICATION_SEARCH_QUERIES
+        assert any("Pendigits" in query for query in config.seed_queries)
         return SimpleNamespace(
             queries=(SimpleNamespace(text="evidence graph autonomous research"),),
             fetches=(fetch,),
@@ -1350,12 +2547,55 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     def fake_link_similarity_report_to_project(**_kwargs: object) -> Path:
         return project_similarity
 
+    call_order: list[str] = []
+
+    def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        call_order.append("research_plan")
+        assert kwargs["project_id"] == "project_1"
+        assert kwargs["vault_root"] == tmp_path / "vault"
+        assert Path(kwargs["similarity_summary"]) == similarity_summary
+        assert Path(kwargs["literature_summary"]) == literature_summary
+        plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
+        plan_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = plan_dir / "research-plan.md"
+        json_path = plan_dir / "research-plan.json"
+        tex_path = plan_dir / "research-plan.tex"
+        pdf_path = plan_dir / "research-plan.pdf"
+        markdown_path.write_text("# Plan\n", encoding="utf-8")
+        json_path.write_text("{}", encoding="utf-8")
+        tex_path.write_text(
+            "\\documentclass{article}\\begin{document}Plan\\end{document}\n",
+            encoding="utf-8",
+        )
+        pdf_path.write_text("%PDF-1.4\n", encoding="utf-8")
+        payload = {
+            "audit": {
+                "verdict": "passed",
+                "passed": True,
+                "score": 1.0,
+                "issues": [],
+                "warnings": [],
+            },
+            "markdown_path": markdown_path.as_posix(),
+            "json_path": json_path.as_posix(),
+            "tex_path": tex_path.as_posix(),
+            "pdf_path": pdf_path.as_posix(),
+            "compile_status": "compiled",
+            "page_count": 2,
+        }
+        return SimpleNamespace(
+            audit=SimpleNamespace(passed=True),
+            compile_status="compiled",
+            to_dict=lambda: payload,
+        )
+
     def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
+        assert call_order == ["research_plan"]
         config = kwargs["config"]
         queries = tuple(kwargs["queries"])
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
         assert config.max_results_per_source == cli_main.PUBLICATION_RESULTS_PER_SOURCE
-        assert any("Evidence-bound self-evolving research" in query for query in queries)
+        assert any(default_demo in query for query in queries)
         return InspirationRefreshReport(
             queries=queries[:1],
             fetches=(
@@ -1383,8 +2623,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["research_plan"]
+        assert kwargs["demo"] == default_demo
+        assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
-        experiment_dir = output_dir / "tabular-baseline"
+        experiment_dir = output_dir / default_demo_slug
         report_path = experiment_dir / "report" / "report.md"
         validation_path = experiment_dir / "validation" / "validation-report.json"
         evidence_path = experiment_dir / "evidence" / "evidence-map.json"
@@ -1417,7 +2660,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             encoding="utf-8",
         )
         return SimpleNamespace(
-            demo="tabular_baseline",
+            demo=default_demo,
             experiment_dir=experiment_dir,
             report_path=report_path,
             evidence_map_path=evidence_path,
@@ -1464,7 +2707,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
                     "",
                     (
                         "- [researcher2026] Evidence graphs for autonomous research. "
-                        "DOI/URL evidence: 10.1234/example."
+                        "https://example.test/paper.v1."
                     ),
                     (
                         "- [Citation package note] 2 additional verified record(s) remain in "
@@ -1521,13 +2764,13 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_reproduction_check(**kwargs: object) -> dict[str, object]:
-        assert kwargs["demo"] == "tabular_baseline"
+        assert kwargs["demo"] == default_demo
         check_dir = Path(kwargs["cycle_dir"]) / "reproduction-check"
-        run_record_path = check_dir / "rerun" / "tabular-baseline" / "run" / "run-record.json"
+        run_record_path = check_dir / "rerun" / default_demo_slug / "run" / "run-record.json"
         validation_path = (
             check_dir
             / "rerun"
-            / "tabular-baseline"
+            / default_demo_slug
             / "validation"
             / "validation-report.json"
         )
@@ -1564,6 +2807,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         assert Path(kwargs["report_path"]).name == "manuscript.md"
         evidence_names = {Path(path).name for path in kwargs["evidence_paths"]}
         assert {
+            "cycle-summary.json",
             "review-evidence-context.json",
             "formal-reference-evidence.md",
             "report.md",
@@ -1573,6 +2817,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "references.bib",
             "related-work-inspection.json",
             "related-work-inspection.md",
+            "research-plan.json",
+            "research-plan.md",
+            "research-plan.tex",
             "paper-build.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
@@ -1583,6 +2830,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
@@ -1620,14 +2868,39 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
 
     assert result.exit_code == 0, result.output
+    assert (
+        "[OK] loop_plan: command=autopilot, mode=single-cycle, "
+        "cycles=1, interval_seconds=86400, push_inspiration=false"
+    ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
+    assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
     assert "[OK] evidence_gate: blocked" in result.stdout
+    assert "[OK] session_claim: allowed" in result.stdout
+    assert "[OK] session_release:" in result.stdout
+    session_payload = json.loads(
+        (state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert len(session_payload["sessions"]) == 1
+    session = session_payload["sessions"][0]
+    assert session["task_id"] == "autopilot:project_1"
+    assert session["status"] == "released"
+    assert any(path.endswith("/vault") for path in session["claimed_paths"])
+    assert any(path.endswith("/cache") for path in session["claimed_paths"])
+    assert any(path.endswith("/runs/autopilot") for path in session["claimed_paths"])
+    assert any(path.endswith("/outputs") for path in session["claimed_paths"])
+    assert any(
+        path.endswith("/.airesearcher/scheduler-state.json")
+        for path in session["claimed_paths"]
+    )
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
-    assert payload["candidate"]["related_document_ids"] == ["doc_seed"]
+    assert payload["candidate"]["related_document_ids"] == []
+    assert payload["candidate"]["evidence_refs"] == [
+        cli_main.METHOD_ALIGNED_SEED_NOT_FOUND_REF
+    ]
     assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
@@ -1648,28 +2921,41 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "autonomous-research",
     ]
     assert payload["similarity"]["finding_count"] == 1
+    assert payload["research_plan"]["audit"]["passed"] is True
+    assert payload["research_plan"]["compile_status"] == "compiled"
+    assert payload["research_plan"]["page_count"] == 2
     assert payload["inspiration"]["item_count"] == 1
     assert payload["inspiration"]["pushes"] == []
     assert payload["inspiration"]["evidence_policy"] == (
         "dataset/community/news signals only; not scholarly evidence"
     )
     assert payload["demo"]["run_id"] == "run_autopilot_test"
+    assert "network_approval" not in payload["demo"]
     assert Path(payload["review_context_path"]).name == "review-evidence-context.json"
     assert Path(payload["formal_reference_evidence_path"]).name == "formal-reference-evidence.md"
     formal_reference_note = Path(payload["formal_reference_evidence_path"]).read_text(
         encoding="utf-8"
     )
     assert "`researcher2026`" in formal_reference_note
+    assert "`https://example.test/paper.v1`" in formal_reference_note
+    assert "`https://example`" not in formal_reference_note
     assert "all_displayed_keys_present" in formal_reference_note
     review_context = json.loads(
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
+    assert review_context["audit_summary"]["research_plan"]["passed"] is True
+    assert review_context["audit_summary"]["research_plan"]["compile_status"] == "compiled"
     candidate_summary = review_context["audit_summary"]["candidate"]
-    assert candidate_summary["title"].startswith("Evidence-bound self-evolving research loop")
-    assert "durable evidence memory" in candidate_summary["research_gap"]
-    assert candidate_summary["metadata"]["method"] == "evidence-bound autonomous research loop"
+    assert candidate_summary["title"] == "Variance-calibrated prototype classifiers for UCI Pendigits"
+    assert "variance-calibrated prototype distance" in candidate_summary["research_gap"]
+    assert candidate_summary["metadata"]["benchmark"] == "UCI Pendigits"
+    assert candidate_summary["metadata"]["demo"] == default_demo
+    assert (
+        candidate_summary["metadata"]["method"]
+        == "diagonal variance-calibrated prototypes with variance shrinkage"
+    )
     assert candidate_summary["task_metadata"]["proposed_method"] == "evidence graph verifier"
     assert candidate_summary["recorded_metrics"]["feature_count"] == 12.0
     assert candidate_summary["recorded_metrics"]["variance_shrinkage"] == 1.0
@@ -1686,10 +2972,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert formal_references["displayed_references"][0]["citation_metadata_status"] == (
         "verified_doi"
     )
-    assert (
-        "Evidence graphs for autonomous research"
-        in formal_references["displayed_references"][0]["title"]
+    assert formal_references["displayed_references"][0]["doi_or_url_evidence"] == (
+        "https://example.test/paper.v1"
     )
+    displayed_title = formal_references["displayed_references"][0]["title"]
+    assert displayed_title == "Evidence graphs for autonomous research"
+    assert "https://" not in displayed_title
     assert Path(payload["paper_manuscript"]["markdown_path"]).name == "manuscript.md"
     assert payload["publication_audit"]["verdict"] == "needs_revision"
     assert payload["paper_build"]["status"] == "compiled"
@@ -1700,10 +2988,152 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         Path(payload["deliverables"]["manifest_path"]).read_text(encoding="utf-8")
     )
     assert deliverables_manifest["paths"]["paper_pdf"].endswith(".pdf")
+    assert deliverables_manifest["paths"]["research_plan_pdf"].endswith("-research-plan.pdf")
+    assert deliverables_manifest["paths"]["research_plan_json"].endswith("-research-plan.json")
     assert payload["reproduction_check"]["status"] == "passed"
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
     assert len(review_calls) == 1
+
+
+def test_review_status_display_blocks_needs_revision_verdict() -> None:
+    prefix, status = cli_main._review_status_display(
+        {"status": "passed", "verdict": "needs_revision", "quality_score": 1.0}
+    )
+
+    assert prefix == "[BLOCKED]"
+    assert status == "passed; verdict=needs_revision; quality=1.000"
+
+
+def test_review_status_display_keeps_skipped_review_compact() -> None:
+    prefix, status = cli_main._review_status_display({"status": "skipped"})
+
+    assert prefix == "[OK]"
+    assert status == "skipped"
+
+
+def test_autopilot_research_plan_gate_blocks_before_experiment(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
+    similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
+    for path in (literature_summary, similarity_summary, project_similarity):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("summary", encoding="utf-8")
+
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="Evidence Graphs for Autonomous Research",
+        source_uri="https://example.test/paper",
+        authors=["A. Researcher"],
+        abstract="Evidence graphs connect claims to validation artifacts.",
+        publication_date=datetime(2026, 6, 13, tzinfo=timezone.utc),
+        venue="ExampleConf",
+        doi="10.1234/example",
+        tags=["evidence-graph"],
+    )
+    fetch = SimpleNamespace(
+        source="openalex",
+        query="evidence graph autonomous research",
+        paper_count=1,
+        cache_hit=False,
+        error=None,
+    )
+    shared_clients = {"arxiv": object(), "openalex": object()}
+
+    def fake_literature_refresh(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            queries=(SimpleNamespace(text="evidence graph autonomous research"),),
+            fetches=(fetch,),
+            documents=(seed_document,),
+            summary_path=literature_summary,
+        )
+
+    def fake_similarity_check(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(
+            fetches=(fetch,),
+            findings=(SimpleNamespace(source_uri="https://example.test/paper"),),
+            summary_path=similarity_summary,
+        )
+
+    def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
+        plan_dir.mkdir(parents=True, exist_ok=True)
+        markdown_path = plan_dir / "research-plan.md"
+        json_path = plan_dir / "research-plan.json"
+        tex_path = plan_dir / "research-plan.tex"
+        for path in (markdown_path, json_path, tex_path):
+            path.write_text("blocked", encoding="utf-8")
+        payload = {
+            "audit": {
+                "verdict": "failed",
+                "passed": False,
+                "score": 0.4,
+                "issues": ["title must be a discovered research topic"],
+                "warnings": [],
+            },
+            "markdown_path": markdown_path.as_posix(),
+            "json_path": json_path.as_posix(),
+            "tex_path": tex_path.as_posix(),
+            "pdf_path": None,
+            "compile_status": "skipped_quality_gate",
+            "compile_reason": "research-plan audit did not pass",
+            "page_count": None,
+        }
+        return SimpleNamespace(
+            audit=SimpleNamespace(passed=False),
+            compile_status="skipped_quality_gate",
+            to_dict=lambda: payload,
+        )
+
+    def fail_if_called(**_kwargs: object) -> object:
+        raise AssertionError("research-plan-blocked cycle should not run later stages")
+
+    monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fake_literature_refresh)
+    monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
+    monkeypatch.setattr(cli_main, "link_similarity_report_to_project", lambda **_kwargs: project_similarity)
+    monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
+    monkeypatch.setattr(cli_main, "compose_publication_manuscript", fail_if_called)
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--state",
+            str(state),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] research_plan: failed" in result.stdout
+    assert "[OK] review_status: skipped_research_plan_gate" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "research_plan_gate"
+    assert payload["research_plan"]["audit"]["passed"] is False
+    assert payload["research_plan"]["compile_status"] == "skipped_quality_gate"
+    assert payload["review"]["status"] == "skipped_research_plan_gate"
+    assert "inspiration" not in payload
+    assert "demo" not in payload
+    assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 
 
 def test_autopilot_reference_locator_keeps_full_dotted_doi() -> None:
@@ -1974,6 +3404,60 @@ def test_autopilot_command_reports_empty_literature_result(tmp_path: Path, monke
     assert "[FAIL] autopilot_cycle: autopilot requires at least one retrieved literature document" in result.output
 
 
+def test_autopilot_demo_network_summary_promotes_approval_audit_fields(
+    tmp_path: Path,
+) -> None:
+    run_record = tmp_path / "run-record.json"
+    run_record.write_text(
+        json.dumps(
+            {
+                "task_metadata": {
+                    "network_access_approved": True,
+                    "network_access_scope": "serve cycle approval",
+                    "network_approval_mode": "approve-dangerous",
+                    "network_approval_id": "runtime-approval-1",
+                    "network_approved_by": "operator",
+                    "approved_network_domains": ["archive.ics.uci.edu"],
+                    "network_source_urls": ["https://archive.ics.uci.edu/data.csv"],
+                    "unrelated": "ignored",
+                },
+                "run": {
+                    "metadata": {
+                        "network_preflight": {
+                            "approved": True,
+                            "finding_count": 1,
+                            "network_approval_mode": "approve-dangerous",
+                            "network_approval_id": "runtime-approval-1",
+                            "network_approved_by": "operator",
+                            "findings": [{"module": "urllib"}],
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = cli_main._autopilot_demo_network_summary(run_record)
+    review_summary = cli_main._autopilot_candidate_review_summary(
+        {
+            "candidate": {"title": "Network approved candidate"},
+            "demo": {"run_record_path": run_record.as_posix()},
+        }
+    )
+
+    assert summary["network_access_approved"] is True
+    assert summary["network_approval_id"] == "runtime-approval-1"
+    assert summary["approved_network_domains"] == ["archive.ics.uci.edu"]
+    assert summary["preflight"]["approved"] is True
+    assert summary["preflight"]["finding_count"] == 1
+    assert "findings" not in summary["preflight"]
+    assert review_summary["task_metadata"]["network_approval_id"] == "runtime-approval-1"
+    assert review_summary["task_metadata"]["network_source_urls"] == [
+        "https://archive.ics.uci.edu/data.csv"
+    ]
+
+
 def test_serve_queues_dangerous_action_until_runtime_approval(
     tmp_path: Path,
     monkeypatch,
@@ -2003,12 +3487,30 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     assert pending_result.exit_code == 2, pending_result.output
     assert "[WAITING] runtime approval required" in pending_result.stdout
     assert "[WAITING] request_id:" in pending_result.stdout
-    assert "[NEXT] approve latest: airesearcher runtime approve latest" in pending_result.stdout
+    assert (
+        "[WAITING] action_id: "
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
+    ) in pending_result.stdout
+    assert f"[WAITING] state: {approvals_state}" in pending_result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in pending_result.stdout
+    )
+    assert (
+        f"[NEXT] approve exact: airesearcher runtime approve "
+        f"{json.loads(approvals_state.read_text(encoding='utf-8'))['requests'][0]['request_id']} "
+        f"--state {approvals_state}"
+    ) in pending_result.stdout
     assert "[WAITING] run serve again after approval" in pending_result.stdout
+    assert "[OK] session_claim: allowed" in pending_result.stdout
+    assert "[OK] session_release:" in pending_result.stdout
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
     request_id = payload["requests"][0]["request_id"]
     assert payload["requests"][0]["status"] == "pending"
-    assert payload["requests"][0]["action_id"] == "serve:autopilot-cycle:project_1:tabular_baseline"
+    assert (
+        payload["requests"][0]["action_id"]
+        == f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
+    )
 
     approve_result = runner.invoke(
         app,
@@ -2029,6 +3531,14 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     def fake_cycle(**kwargs: object) -> dict[str, object]:
         assert kwargs["project_id"] == "project_1"
         assert kwargs["review"] is False
+        metadata = kwargs["runtime_network_metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["network_access_approved"] is True
+        assert metadata["network_approval_mode"] == "approve-dangerous"
+        assert metadata["network_approval_id"] == request_id
+        assert metadata["network_approved_by"] == "tester"
+        assert "api.openalex.org" in metadata["approved_network_domains"]
+        assert "https://export.arxiv.org/api/query" in metadata["network_source_urls"]
         return {
             "cycle_id": "cycle-test",
             "summary_path": "runs/autopilot/cycle-test/cycle-summary.json",
@@ -2054,6 +3564,18 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
 
     assert allowed_result.exit_code == 0, allowed_result.output
     assert "[OK] serve_cycle: cycle-test" in allowed_result.stdout
+    assert "[OK] session_claim: allowed" in allowed_result.stdout
+    assert "[OK] session_release:" in allowed_result.stdout
+    session_payload = json.loads(
+        (approvals_state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert [session["status"] for session in session_payload["sessions"]] == [
+        "released",
+        "released",
+    ]
+    assert {session["task_id"] for session in session_payload["sessions"]} == {
+        "serve:project_1"
+    }
 
 
 def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch) -> None:
@@ -2063,9 +3585,16 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
         assert kwargs["project_id"] == "project_1"
         assert kwargs["max_queries"] == cli_main.PUBLICATION_SEARCH_QUERIES
         assert kwargs["max_results_per_source"] == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        metadata = kwargs["runtime_network_metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["network_access_approved"] is True
+        assert metadata["network_approval_mode"] == "allow-all"
+        assert "network_approval_id" not in metadata
+        assert "api.openalex.org" in metadata["approved_network_domains"]
         return {
             "cycle_id": "cycle-allow-all",
             "summary_path": "runs/autopilot/cycle-allow-all/cycle-summary.json",
+            "research_plan": {"audit": {"verdict": "passed"}},
             "review": {"status": "skipped"},
             "followups": {"task_count": 0},
         }
@@ -2082,14 +3611,236 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
             str(approvals_state),
             "--project-id",
             "project_1",
+            "--push-inspiration",
             "--no-review",
         ],
     )
 
     assert result.exit_code == 0, result.output
     assert "[OK] runtime_mode: allow-all" in result.stdout
+    assert (
+        "[OK] loop_plan: command=serve, mode=single-cycle, "
+        "cycles=1, interval_seconds=86400, push_inspiration=true, "
+        "approval_poll_seconds=30"
+    ) in result.stdout
     assert "[OK] serve_cycle: cycle-allow-all" in result.stdout
+    assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] session_claim: allowed" in result.stdout
+    assert "[OK] session_release:" in result.stdout
     assert not approvals_state.exists()
+    session_payload = json.loads(
+        (approvals_state.parent / "agent-sessions.json").read_text(encoding="utf-8")
+    )
+    assert len(session_payload["sessions"]) == 1
+    assert session_payload["sessions"][0]["task_id"] == "serve:project_1"
+    assert session_payload["sessions"][0]["status"] == "released"
+
+
+def test_serve_blocks_overlapping_runtime_session_before_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    sessions_state = tmp_path / ".airesearcher" / "agent-sessions.json"
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    vault = tmp_path / "vault"
+    runner = CliRunner()
+
+    active = runner.invoke(
+        app,
+        [
+            "sessions",
+            "claim",
+            "--state",
+            str(sessions_state),
+            "--session-id",
+            "session_a",
+            "--agent-name",
+            "Codex A",
+            "--task-id",
+            "manual-edit",
+            "--path",
+            str(vault),
+        ],
+    )
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should not run after a session conflict")
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    blocked = runner.invoke(
+        app,
+        [
+            "serve",
+            "--once",
+            "--permission-mode",
+            "allow-all",
+            "--sessions-state",
+            str(sessions_state),
+            "--approvals-state",
+            str(approvals_state),
+            "--vault",
+            str(vault),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(tmp_path / "runs"),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+        ],
+    )
+
+    assert active.exit_code == 0, active.output
+    assert "[OK] session_claim: allowed" in active.stdout
+    assert blocked.exit_code == 1, blocked.output
+    assert "[OK] runtime_mode: allow-all" in blocked.stdout
+    assert "[OK] session_claim: blocked" in blocked.stdout
+    assert "[CONFLICT] session_id=session_a" in blocked.stdout
+    assert "[FAIL] runtime session claim overlaps an active agent session" in blocked.output
+    assert "serve_cycle" not in blocked.stdout
+    assert not approvals_state.exists()
+
+
+def test_serve_watch_uses_approval_poll_interval_before_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    sleeps: list[int] = []
+
+    def fail_cycle(**_kwargs: object) -> dict[str, object]:
+        raise AssertionError("serve should wait for approval before running a cycle")
+
+    def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise typer.Exit(3)
+
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fail_cycle)
+    monkeypatch.setattr(cli_main.time, "sleep", fake_sleep)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "serve",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--interval-seconds",
+            "86400",
+            "--approval-poll-seconds",
+            "7",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 3, result.output
+    assert sleeps == [7]
+    assert (
+        "[OK] loop_plan: command=serve, mode=watch-forever, "
+        "cycles=unbounded, interval_seconds=86400, push_inspiration=false, "
+        "approval_poll_seconds=7"
+    ) in result.stdout
+    assert "[WAITING] runtime approval required" in result.stdout
+    assert (
+        "[WAITING] action_id: "
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
+    ) in result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in result.stdout
+    )
+    assert "serve_cycle" not in result.stdout
+
+
+def test_serve_watch_requires_new_approval_for_next_cycle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    approvals_state = tmp_path / ".airesearcher" / "runtime-approvals.json"
+    action_ids: list[str] = []
+    sleeps: list[int] = []
+
+    def fake_approval(**kwargs: object) -> RuntimeApprovalDecision:
+        action_id = str(kwargs["action_id"])
+        action_ids.append(action_id)
+        if len(action_ids) == 1:
+            return RuntimeApprovalDecision(
+                allowed=True,
+                mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+                message="approved first cycle",
+            )
+        return RuntimeApprovalDecision(
+            allowed=False,
+            mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+            request=RuntimeApprovalRequest(
+                action_id=action_id,
+                command=str(kwargs["command"]),
+                risk=RuntimeActionRisk.DANGEROUS,
+                reason=str(kwargs["reason"]),
+            ),
+            message="second cycle approval required",
+        )
+
+    def fake_cycle(**_kwargs: object) -> dict[str, object]:
+        return {
+            "cycle_id": "cycle-one",
+            "summary_path": "runs/autopilot/cycle-one/cycle-summary.json",
+            "review": {"status": "skipped"},
+            "followups": {"task_count": 0},
+        }
+
+    def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        if seconds == 7:
+            raise typer.Exit(3)
+
+    monkeypatch.setattr(cli_main, "ensure_runtime_approval", fake_approval)
+    monkeypatch.setattr(cli_main, "_run_autopilot_cycle", fake_cycle)
+    monkeypatch.setattr(cli_main.time, "sleep", fake_sleep)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "serve",
+            "--permission-mode",
+            "approve-dangerous",
+            "--approvals-state",
+            str(approvals_state),
+            "--project-id",
+            "project_1",
+            "--cycles",
+            "2",
+            "--interval-seconds",
+            "1",
+            "--approval-poll-seconds",
+            "7",
+            "--no-review",
+        ],
+    )
+
+    assert result.exit_code == 3, result.output
+    assert action_ids == [
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1",
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-2",
+    ]
+    assert sleeps == [1, 7]
+    assert "[OK] serve_cycle: cycle-one" in result.stdout
+    assert "[WAITING] runtime approval required" in result.stdout
+    assert (
+        "[WAITING] action_id: "
+        f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-2"
+    ) in result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in result.stdout
+    )
 
 
 def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:
@@ -2316,10 +4067,128 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     summary.write_text(
         json.dumps(
             {
-                "source_preflight": {"status": "pass"},
-                "review": {"status": "passed"},
-                "paper_build": {"status": "compiled"},
-                "evidence_gate": {"verdict": "pass"},
+                "source_preflight": {
+                    "status": "pass",
+                    "markdown_path": "runs/project_1/source-preflight.md",
+                },
+                "literature": {
+                    "document_count": 23,
+                    "fetches": [
+                        {"source": "arxiv", "paper_count": 10},
+                        {"source": "openalex", "paper_count": 13},
+                    ],
+                    "markdown_path": "vault/exploration/topics/literature_refresh.md",
+                },
+                "research_plan": {
+                    "compile_status": "compiled",
+                    "page_count": 4,
+                    "pdf_path": "runs/project_1/research-plan/research-plan.pdf",
+                    "audit": {"verdict": "passed"},
+                },
+                "similarity": {
+                    "finding_count": 2,
+                    "summary_path": "vault/projects/project_1/similarity.md",
+                },
+                "related_work_inspection": {
+                    "inspected_count": 23,
+                    "direct_method_count": 4,
+                    "markdown_path": "runs/project_1/related-work.md",
+                },
+                "citations": {
+                    "blocked_count": 0,
+                    "citations": [{"bibtex_key": "smith2026"}],
+                    "metadata_path": "runs/project_1/citations/references.metadata.json",
+                },
+                "demo": {
+                    "demo": "pendigits_variance_calibrated_prototypes",
+                    "report_path": "runs/project_1/demo/report.md",
+                    "validation_json_path": "runs/project_1/demo/validation.json",
+                    "network_approval": {
+                        "network_access_approved": True,
+                        "network_approval_mode": "approve-dangerous",
+                        "network_approval_id": "runtime-approval-1234567890",
+                        "network_approved_by": "operator",
+                        "approved_network_domains": [
+                            "archive.ics.uci.edu",
+                            "api.openalex.org",
+                        ],
+                        "preflight": {
+                            "approved": True,
+                            "finding_count": 1,
+                        },
+                    },
+                },
+                "reproduction_check": {
+                    "status": "passed",
+                    "markdown_path": "runs/project_1/reproduction-check/reproduction.md",
+                },
+                "review": {
+                    "status": "passed",
+                    "vault_review": "vault/projects/project_1/review/llm-review.md",
+                },
+                "publication_audit": {
+                    "verdict": "fail",
+                    "score": 0.3269,
+                    "target": {"name": "ccf-b"},
+                    "checks": [
+                        {
+                            "check_id": "literature_query_breadth",
+                            "message": "Literature query breadth is 1; target requires at least 4.",
+                            "next_action": "Expand query variants from title, gap, methods, datasets, baselines, negative evidence, and vault context.",
+                            "severity": "blocking",
+                            "status": "fail",
+                        }
+                    ],
+                    "output_path": "runs/project_1/publication-audit.json",
+                },
+                "paper_build": {
+                    "status": "compiled",
+                    "pdf_path": "runs/project_1/paper-build/paper.pdf",
+                    "paper_quality": {
+                        "passed": True,
+                        "page_count": 14,
+                        "figure_readability_issue_count": 0,
+                    },
+                },
+                "evidence_gate": {
+                    "verdict": "blocked",
+                    "failed_check_count": 1,
+                    "release_allowed": False,
+                    "checks": [
+                        {
+                            "check_id": "review_gate",
+                            "message": "Reviewer verdict is `needs_revision`, not ready for release.",
+                            "next_action": "Resolve reviewer revision items before publication audit can pass.",
+                            "severity": "blocking",
+                            "status": "fail",
+                        }
+                    ],
+                    "output_path": "runs/project_1/evidence-gate.json",
+                },
+                "followups": {
+                    "task_count": 2,
+                    "tasks": [
+                        {
+                            "status": "open",
+                            "metadata": {
+                                "issue_path": "projects/project_1/issues/evidence-gate.md",
+                            },
+                        },
+                        {
+                            "status": "completed",
+                            "metadata": {
+                                "issue_path": "projects/project_1/issues/review-fixed.md",
+                            },
+                        },
+                    ],
+                },
+                "deliverables": {
+                    "manifest_path": "outputs/project_1/manifest.json",
+                    "paths": {
+                        "paper_pdf": "outputs/project_1/paper.pdf",
+                        "research_plan_pdf": "outputs/project_1/research-plan.pdf",
+                    },
+                },
             }
         ),
         encoding="utf-8",
@@ -2353,8 +4222,111 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "approval_1" in result.stdout
     assert "task_open" in result.stdout
     assert "Research Loop" in result.stdout
+    assert "literature" in result.stdout
+    assert "plan" in result.stdout
+    assert "related work" in result.stdout
+    assert "citations" in result.stdout
+    assert "reproduction" in result.stdout
+    assert "follow-ups" in result.stdout
+    assert "deliverables" in result.stdout
+    assert "quality=pass" in result.stdout
+    assert "network=approve-dangerous" in result.stdout
+    assert "preflight=pass" in result.stdout
+    assert "score=0.327" in result.stdout
+    assert "target=ccf-b" in result.stdout
+    assert "blockers=1" in result.stdout
+    assert "failed=1" in result.stdout
+    assert "release_allowed=false" in result.stdout
+    assert "1 open / 2 total" in result.stdout
     assert "compiled" in result.stdout
     assert "project_1-cycle.pdf" in result.stdout
+    rows = {
+        stage: (status, evidence)
+        for stage, status, evidence in cli_main._cycle_stage_rows(
+            json.loads(summary.read_text(encoding="utf-8")),
+            summary_path=summary,
+        )
+    }
+    assert "references.metadata.json" in rows["citations"][1]
+    assert "manifest.json" in rows["deliverables"][1]
+    assert "paper.pdf" in rows["deliverables"][1]
+    assert "quality=pass" in rows["paper"][0]
+    assert "network=approve-dangerous" in rows["experiment"][0]
+    assert "domains=2" in rows["experiment"][0]
+    assert "findings=1" in rows["experiment"][0]
+    assert "literature_query_breadth" in rows["publication"][0]
+    assert "Literature query breadth is 1" in rows["publication"][1]
+    assert "review_gate" in rows["evidence"][0]
+    assert "Reviewer verdict is `needs_revision`" in rows["evidence"][1]
+    assert rows["follow-ups"][0] == "1 open / 2 total"
+    assert "evidence-gate.md" in rows["follow-ups"][1]
+
+
+def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) -> None:
+    agent_log = tmp_path / "Agent.md"
+    agent_log.write_text(
+        "\n".join(
+            [
+                "### 2026-06-14 22:30:00 +08:00 - Codex - Task 117.1",
+                "- Request: old setup work",
+                "- Summary:",
+                "- Verification:",
+                "### 2026-06-18 08:59:16 +08:00 - Codex - Task 198.1",
+                "- Request: strict readiness setup self-test",
+                "- Summary:",
+                "  - Attached setup self-test output to readiness remediation.",
+                "- Verification:",
+                "  - Focused readiness tests passed.",
+                "### 2026-06-18 09:06:10 +08:00 - Codex - Task 199.1",
+                "- Request: guided setup self-test defaults",
+                "- Summary:",
+                "  - Defaulted the setup channel self-test prompt to yes.",
+                "- Verification:",
+                "  - Guided setup default test passed.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    text = cli_main._recent_agent_entries_text(agent_log, max_entries=2)
+
+    assert "Task 199.1" in text
+    assert "Task 198.1" in text
+    assert "Task 117.1" not in text
+    assert "Defaulted the setup channel self-test prompt to yes." in text
+    assert "Attached setup self-test output to readiness remediation." in text
+    assert text.index("Task 199.1") < text.index("Task 198.1")
+
+
+def test_publication_monitor_distinguishes_warnings_from_blockers(tmp_path: Path) -> None:
+    summary_path = tmp_path / "cycle-summary.json"
+    payload = {
+        "publication_audit": {
+            "verdict": "pass",
+            "score": 0.985,
+            "target": {"name": "ccf-b"},
+            "checks": [
+                {
+                    "check_id": "similarity_duplicate_risk",
+                    "status": "warning",
+                    "severity": "high",
+                    "message": "Similarity check found adjacent-work findings that need positioning.",
+                    "next_action": "Write a related-work comparison before publication review.",
+                }
+            ],
+            "output_path": "runs/project_1/publication-audit.json",
+        }
+    }
+
+    rows = {
+        stage: (status, evidence)
+        for stage, status, evidence in cli_main._cycle_stage_rows(payload, summary_path=summary_path)
+    }
+
+    assert "warnings=1" in rows["publication"][0]
+    assert "blockers=" not in rows["publication"][0]
+    assert "issue: Similarity check found adjacent-work findings" in rows["publication"][1]
+    assert "blocker:" not in rows["publication"][1]
 
 
 def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: Path) -> None:
@@ -2373,7 +4345,10 @@ def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: P
 
     assert init_result.exit_code == 0, init_result.output
     assert "[OK] openclaw_channels: 11" in init_result.stdout
-    assert "[OK] approval_bridge: airesearcher runtime approve latest" in init_result.stdout
+    assert (
+        f"[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
+    ) in init_result.stdout
     payload = json.loads(output.read_text(encoding="utf-8"))
     channels = {channel["channel_id"]: channel for channel in payload["channels"]}
     assert channels["feishu"]["package_name"] == "@larksuite/openclaw-lark"
@@ -2416,7 +4391,7 @@ def test_ccswitch_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["execution_contract"]["validation_owner"] == "AI-Researcher"
     assert payload["approval_bridge"]["approve_command"].startswith(
-        "airesearcher runtime approve latest"
+        "airesearcher runtime approve latest --state "
     )
     assert payload["backends"][0]["runner_command"] == "claude"
     assert list_result.exit_code == 0, list_result.output
@@ -2456,7 +4431,7 @@ def test_opencode_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
         "opencode run"
     )
     assert payload["approval_bridge"]["approve_command"].startswith(
-        "airesearcher runtime approve latest"
+        "airesearcher runtime approve latest --state "
     )
     assert payload["backends"][0]["runner_command"] == "opencode"
     assert list_result.exit_code == 0, list_result.output

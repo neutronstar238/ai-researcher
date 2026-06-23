@@ -12,6 +12,7 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 .cache/
+.codex-remote-attachments/
 .airesearcher/
 .autoresearch/
 autoresearch-vault/.obsidian/

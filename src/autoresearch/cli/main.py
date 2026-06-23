@@ -3,15 +3,16 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import typer
 from dotenv import load_dotenv
@@ -26,7 +27,12 @@ from autoresearch.config import (
     SystemConfig,
 )
 from autoresearch.experiments import run_scientistbench_demo
-from autoresearch.inspiration import InspirationRefreshConfig, run_inspiration_refresh
+from autoresearch.inspiration import (
+    InspirationItem,
+    InspirationRefreshConfig,
+    InspirationRefreshReport,
+    run_inspiration_refresh,
+)
 from autoresearch.integrations import (
     CCSwitchCodeAgentBackend,
     OpenClawChannelPlugin,
@@ -76,6 +82,7 @@ from autoresearch.llm import (
     write_llm_review_note,
 )
 from autoresearch.notifications import NotificationSendRecord, send_inspiration_digest
+from autoresearch.observability import diagnose_requests_dependency_set
 from autoresearch.process import windows_no_window_kwargs
 from autoresearch.reports import (
     EvidenceGateVerdict,
@@ -91,12 +98,16 @@ from autoresearch.reports import (
 )
 from autoresearch.research import (
     SimilarityCheckConfig,
+    audit_research_plan,
+    generate_research_plan,
     link_similarity_report_to_project,
     run_project_similarity_check,
 )
 from autoresearch.runtime import (
+    AgentSession,
     AgentSessionError,
     RuntimeActionRisk,
+    RuntimeApprovalDecision,
     RuntimeApprovalError,
     RuntimePermissionMode,
     approve_runtime_request,
@@ -104,10 +115,11 @@ from autoresearch.runtime import (
     ensure_runtime_approval,
     list_agent_sessions,
     list_runtime_approval_requests,
+    network_approval_metadata_from_decision,
     release_agent_session,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
-from autoresearch.schemas import CandidateStatus, ResearchCandidate, ValidationStatus
+from autoresearch.schemas import CandidateStatus, ResearchCandidate, ResearchPlan, ValidationStatus
 
 app = typer.Typer(
     help="AI-Researcher command line interface.",
@@ -143,6 +155,22 @@ DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
+DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
+METHOD_ALIGNED_SEED_NOT_FOUND_REF = "literature_refresh:method_aligned_seed_not_found"
+SERVE_NETWORK_APPROVED_DOMAINS = (
+    "api.openalex.org",
+    "api.semanticscholar.org",
+    "archive.ics.uci.edu",
+    "export.arxiv.org",
+    "huggingface.co",
+)
+SERVE_NETWORK_SOURCE_URLS = (
+    "https://export.arxiv.org/api/query",
+    "https://api.openalex.org/works",
+    "https://api.semanticscholar.org/graph/v1/paper/search",
+    "https://huggingface.co/datasets",
+    "https://archive.ics.uci.edu/",
+)
 LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
     {
         "id": "deepseek",
@@ -188,7 +216,11 @@ LLM_PROVIDER_PRESETS: tuple[dict[str, str], ...] = (
     },
 )
 WECHAT_QR_SETUP_COMMAND = "npx -y @tencent-weixin/openclaw-weixin-cli install"
+WECHAT_QR_LOGIN_COMMAND = "openclaw channels login --channel openclaw-weixin"
+WECHAT_OPENCLAW_CHANNEL = "openclaw-weixin"
+OPENCLAW_MESSAGE_SEND_COMMAND = "openclaw message send"
 WECHAT_QR_SESSION_PATH = ".airesearcher/channels/wechat/session.json"
+WECHAT_QR_SETUP_STATUS_PATH = ".airesearcher/channels/wechat/setup-status.json"
 FEISHU_DEFAULT_BASE_URL = "https://open.feishu.cn"
 
 DEFAULT_SLASH_COMMANDS = {
@@ -209,6 +241,13 @@ DEFAULT_SLASH_COMMANDS = {
         "Cross-check a candidate against adjacent online work before project approval.",
         "Run `airesearcher similarity-check --candidate-file <candidate.json>` for {{args}}. "
         "Use source URLs and DOI evidence only; unsupported outcomes must remain pending verification.",
+    ),
+    "research/research-plan.toml": (
+        "Generate the execution-ready research plan after the user confirms a direction.",
+        "Run `airesearcher research-plan --candidate-file <candidate.json> --project-id <project>` "
+        "after similarity checking. The command writes the archival Markdown plan into the "
+        "Obsidian vault and the LaTeX/PDF plan under outputs/<project>/research-plan/. "
+        "Do not start code-agent experiments until this gate passes.",
     ),
     "research/run-demo.toml": (
         "Run a local demo or public benchmark and inspect evidence outputs.",
@@ -260,6 +299,19 @@ DEFAULT_SLASH_COMMANDS = {
         "Telegram, Discord, Slack, WhatsApp, Teams, QQ, Signal, and Zalo channel plugins. "
         "Review upstream licenses, platform permissions, and secrets before installing any "
         "adapter outside AI-Researcher.",
+    ),
+    "research/channel-test.toml": (
+        "Send a setup-channel self-test message through the configured notification path.",
+        "Run `airesearcher channels test --channel {{args}} --require-sent` after setup. "
+        "Use `wechat`, `feishu`, or repeat `--channel` for several channels. A skipped "
+        "or failed result means the channel is not ready for unattended inspiration pushes.",
+    ),
+    "research/readiness.toml": (
+        "Check whether the local deployment is ready for the daily unattended research loop.",
+        "Run `airesearcher readiness --push-inspiration --require-channel-config "
+        "--require-channel-sent` after setup and channel testing. Inspect "
+        "`.airesearcher/readiness/report.json` before leaving the service running "
+        "for 24h operation.",
     ),
     "research/scansci-pdf.toml": (
         "Write the optional ScanSci PDF integration manifest with OA/legal-first defaults.",
@@ -363,7 +415,12 @@ AUTORESEARCH_WECHAT_WEBHOOK_URL=
 AUTORESEARCH_WECHAT_APP_ID=
 AUTORESEARCH_WECHAT_APP_SECRET=
 AUTORESEARCH_WECHAT_QR_SETUP_COMMAND=
+AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND=
 AUTORESEARCH_WECHAT_SESSION_PATH=
+AUTORESEARCH_WECHAT_SETUP_STATUS_PATH=
+AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL=
+AUTORESEARCH_WECHAT_OPENCLAW_TARGET=
+AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND=
 
 # Optional Feishu/Lark channel. The setup wizard defaults to App ID/App Secret.
 AUTORESEARCH_FEISHU_CONNECTION_MODE=
@@ -420,12 +477,18 @@ def doctor() -> None:
             str(config.knowledge_base.vault_path),
         ),
     ]
+    dependency_check = diagnose_requests_dependency_set()
 
     failed = False
     for name, ok, detail in checks:
         label = "OK" if ok else "FAIL"
         typer.echo(f"[{label}] {name}: {detail}")
         failed = failed or not ok
+    typer.echo(
+        f"[{dependency_check.status.value}] "
+        f"{dependency_check.name}: {dependency_check.detail}"
+    )
+    failed = failed or dependency_check.blocks_doctor
 
     if failed:
         raise typer.Exit(code=1)
@@ -729,6 +792,13 @@ def deploy_setup(
             help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
         ),
     ] = False,
+    wechat_openclaw_target: Annotated[
+        str | None,
+        typer.Option(
+            "--wechat-openclaw-target",
+            help="Optional OpenClaw WeChat target for outbound self-tests and digests.",
+        ),
+    ] = None,
     run_wechat_qr_setup: Annotated[
         bool | None,
         typer.Option(
@@ -774,6 +844,24 @@ def deploy_setup(
         bool,
         typer.Option("--non-interactive", help="Fail on missing required inputs instead of prompting."),
     ] = False,
+    run_channel_test: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-channel-test/--skip-channel-test",
+            help="Send a real setup channel self-test after writing channel config.",
+        ),
+    ] = None,
+    channel_test_output: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-output",
+            help="JSON result path for the setup channel self-test.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel_test_timeout_seconds: Annotated[
+        float,
+        typer.Option("--channel-test-timeout-seconds", min=1.0, help="Channel test timeout."),
+    ] = 10.0,
 ) -> None:
     """Run first-deploy setup for model API credentials and chat channels."""
 
@@ -825,6 +913,8 @@ def deploy_setup(
         app_secret=wechat_app_secret or existing_env.get("AUTORESEARCH_WECHAT_APP_SECRET"),
         qr_setup=wechat_qr
         or existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE", "").casefold() == "qr",
+        home_chat_id=wechat_openclaw_target
+        or existing_env.get("AUTORESEARCH_WECHAT_OPENCLAW_TARGET"),
         non_interactive=non_interactive,
     )
     feishu_values = _channel_values(
@@ -843,6 +933,12 @@ def deploy_setup(
         allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
         non_interactive=non_interactive,
     )
+    channels_to_test = _setup_channels_to_test(
+        wechat_enabled=wechat_enabled,
+        feishu_enabled=feishu_enabled,
+    )
+    if run_channel_test and not channels_to_test:
+        raise typer.BadParameter("--run-channel-test requires at least one enabled channel")
 
     config = existing_config
     config = config.model_copy(
@@ -876,6 +972,11 @@ def deploy_setup(
                     session_path_env=(
                         "AUTORESEARCH_WECHAT_SESSION_PATH"
                         if wechat_values["connection_mode"] == "qr"
+                        else None
+                    ),
+                    home_chat_id_env=(
+                        "AUTORESEARCH_WECHAT_OPENCLAW_TARGET"
+                        if wechat_values["home_chat_id"]
                         else None
                     ),
                 ),
@@ -926,7 +1027,20 @@ def deploy_setup(
         "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": WECHAT_QR_SETUP_COMMAND
         if wechat_values["connection_mode"] == "qr"
         else None,
+        "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND": WECHAT_QR_LOGIN_COMMAND
+        if wechat_values["connection_mode"] == "qr"
+        else None,
         "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": WECHAT_QR_SETUP_STATUS_PATH
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL": WECHAT_OPENCLAW_CHANNEL
+        if wechat_values["connection_mode"] == "qr"
+        else None,
+        "AUTORESEARCH_WECHAT_OPENCLAW_TARGET": wechat_values["home_chat_id"],
+        "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND": OPENCLAW_MESSAGE_SEND_COMMAND
         if wechat_values["connection_mode"] == "qr"
         else None,
         "AUTORESEARCH_FEISHU_CONNECTION_MODE": str(feishu_values["connection_mode"])
@@ -955,7 +1069,33 @@ def deploy_setup(
     if wechat_enabled and wechat_values["connection_mode"] == "qr":
         typer.echo(f"[NEXT] wechat_qr_setup: {WECHAT_QR_SETUP_COMMAND}")
         if run_wechat_qr_setup:
-            _run_wechat_qr_setup()
+            typer.echo("[RUN] wechat_qr_setup: starting QR adapter setup now")
+            _run_wechat_qr_setup(status_path=env_path.parent / WECHAT_QR_SETUP_STATUS_PATH)
+    if run_channel_test and channels_to_test:
+        channel_test_path = _setup_relative_path(env_path, channel_test_output)
+        typer.echo("[RUN] channel_test: sending setup delivery self-test now")
+        records = _run_channel_delivery_self_test(
+            env_path=env_path,
+            output=channel_test_path,
+            channels=channels_to_test,
+            timeout_seconds=channel_test_timeout_seconds,
+            message="AI-Researcher setup channel self-test",
+            require_sent=True,
+        )
+        for record in records:
+            typer.echo(
+                f"[PUSH] channel={record.channel} status={record.status} "
+                f"detail={record.detail}"
+            )
+        typer.echo(f"[OK] channel_test: {channel_test_path}")
+        if any(record.status != "sent" for record in records):
+            _echo_channel_test_next_actions(records, env_path=env_path)
+            typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
+            raise typer.Exit(code=1)
+    _echo_post_setup_next_steps(
+        wechat_enabled=wechat_enabled,
+        feishu_enabled=feishu_enabled,
+    )
 
 
 @app.command("setup")
@@ -1011,6 +1151,13 @@ def setup(
             help="Configure WeChat through QR adapter onboarding instead of requiring a webhook.",
         ),
     ] = False,
+    wechat_openclaw_target: Annotated[
+        str | None,
+        typer.Option(
+            "--wechat-openclaw-target",
+            help="Optional OpenClaw WeChat target for outbound self-tests and digests.",
+        ),
+    ] = None,
     run_wechat_qr_setup: Annotated[
         bool | None,
         typer.Option(
@@ -1052,6 +1199,24 @@ def setup(
         str | None,
         typer.Option("--feishu-allowed-users", help="Optional comma-separated Feishu operator IDs."),
     ] = None,
+    run_channel_test: Annotated[
+        bool | None,
+        typer.Option(
+            "--run-channel-test/--skip-channel-test",
+            help="Send a real setup channel self-test after writing channel config.",
+        ),
+    ] = None,
+    channel_test_output: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-output",
+            help="JSON result path for the setup channel self-test.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel_test_timeout_seconds: Annotated[
+        float,
+        typer.Option("--channel-test-timeout-seconds", min=1.0, help="Channel test timeout."),
+    ] = 10.0,
     vault: Annotated[
         Path,
         typer.Option("--vault", help="Obsidian vault root to initialize."),
@@ -1109,6 +1274,7 @@ def setup(
             wechat_app_id=wechat_app_id,
             wechat_app_secret=wechat_app_secret,
             wechat_qr=wechat_qr,
+            wechat_openclaw_target=wechat_openclaw_target,
             run_wechat_qr_setup=run_wechat_qr_setup,
             feishu=feishu,
             feishu_webhook_url=feishu_webhook_url,
@@ -1117,6 +1283,7 @@ def setup(
             feishu_connection_mode=feishu_connection_mode,
             feishu_home_chat_id=feishu_home_chat_id,
             feishu_allowed_users=feishu_allowed_users,
+            run_channel_test=run_channel_test,
         )
         provider = wizard["provider"]
         base_url = wizard["base_url"]
@@ -1127,6 +1294,7 @@ def setup(
         wechat_app_id = wizard["wechat_app_id"]
         wechat_app_secret = wizard["wechat_app_secret"]
         wechat_qr = bool(wizard["wechat_qr"])
+        wechat_openclaw_target = wizard["wechat_openclaw_target"]
         run_wechat_qr_setup = bool(wizard["run_wechat_qr_setup"])
         feishu = wizard["feishu"]
         feishu_webhook_url = wizard["feishu_webhook_url"]
@@ -1135,6 +1303,7 @@ def setup(
         feishu_connection_mode = str(wizard["feishu_connection_mode"] or "")
         feishu_home_chat_id = wizard["feishu_home_chat_id"]
         feishu_allowed_users = wizard["feishu_allowed_users"]
+        run_channel_test = bool(wizard["run_channel_test"])
         non_interactive = True
 
     deploy_setup(
@@ -1149,6 +1318,7 @@ def setup(
         wechat_app_id=wechat_app_id,
         wechat_app_secret=wechat_app_secret,
         wechat_qr=wechat_qr,
+        wechat_openclaw_target=wechat_openclaw_target,
         run_wechat_qr_setup=run_wechat_qr_setup,
         feishu=feishu,
         feishu_webhook_url=feishu_webhook_url,
@@ -1158,6 +1328,9 @@ def setup(
         feishu_home_chat_id=feishu_home_chat_id,
         feishu_allowed_users=feishu_allowed_users,
         non_interactive=non_interactive,
+        run_channel_test=run_channel_test,
+        channel_test_output=channel_test_output,
+        channel_test_timeout_seconds=channel_test_timeout_seconds,
     )
     if init_obsidian:
         create_obsidian_vault_assets(
@@ -1416,6 +1589,817 @@ def inspiration_refresh(
         raise typer.Exit(code=1)
 
 
+@channels_app.command("test")
+def channel_test(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup for channel credentials."),
+    ] = Path(".env"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="JSON self-test result output path."),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    channel: Annotated[
+        list[str] | None,
+        typer.Option("--channel", help="Operator channel to test. Repeat for multiple channels."),
+    ] = None,
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", min=1.0, help="Channel delivery timeout."),
+    ] = 10.0,
+    message: Annotated[
+        str,
+        typer.Option("--message", help="Self-test message body."),
+    ] = "AI-Researcher channel self-test",
+    require_sent: Annotated[
+        bool,
+        typer.Option(
+            "--require-sent/--allow-skipped",
+            help="Exit non-zero unless every selected channel reports sent.",
+        ),
+    ] = False,
+) -> None:
+    """Send a setup-channel self-test through the same notification path used by pushes."""
+
+    selected_channels = tuple(channel or ("wechat", "feishu"))
+    records = _run_channel_delivery_self_test(
+        env_path=env_path,
+        output=output,
+        channels=selected_channels,
+        timeout_seconds=timeout_seconds,
+        message=message,
+        require_sent=require_sent,
+    )
+    for record in records:
+        typer.echo(
+            f"[PUSH] channel={record.channel} status={record.status} "
+            f"detail={record.detail}"
+        )
+    typer.echo(f"[OK] channel_test: {output}")
+    if require_sent and any(record.status != "sent" for record in records):
+        _echo_channel_test_next_actions(records, env_path=env_path)
+        typer.echo("[FAIL] channel_test: at least one channel was not sent", err=True)
+        raise typer.Exit(code=1)
+
+
+@channels_app.command("bind-target")
+def channel_bind_target(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup for channel credentials."),
+    ] = Path(".env"),
+    channel: Annotated[
+        str,
+        typer.Option("--channel", help="Channel to bind: wechat or feishu."),
+    ] = "wechat",
+    target: Annotated[
+        str | None,
+        typer.Option("--target", help="OpenClaw target or Feishu/Lark home chat ID."),
+    ] = None,
+) -> None:
+    """Bind a post-pairing channel target without hand-editing `.env`."""
+
+    normalized = channel.casefold().strip()
+    target_value = (target or typer.prompt("Channel target")).strip()
+    if not target_value:
+        raise typer.BadParameter("--target is required")
+    if normalized in {"wechat", "weixin", "openclaw-weixin"}:
+        _merge_env_file(
+            env_path,
+            {
+                "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
+                "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": WECHAT_QR_SETUP_COMMAND,
+                "AUTORESEARCH_WECHAT_QR_LOGIN_COMMAND": WECHAT_QR_LOGIN_COMMAND,
+                "AUTORESEARCH_WECHAT_SESSION_PATH": WECHAT_QR_SESSION_PATH,
+                "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": WECHAT_QR_SETUP_STATUS_PATH,
+                "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL": WECHAT_OPENCLAW_CHANNEL,
+                "AUTORESEARCH_WECHAT_OPENCLAW_TARGET": target_value,
+                "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND": OPENCLAW_MESSAGE_SEND_COMMAND,
+            },
+        )
+        typer.echo(f"[OK] channel_target: wechat -> {target_value}")
+        typer.echo("[NEXT] channel_test: airesearcher channels test --channel wechat --require-sent")
+        return
+    if normalized in {"feishu", "lark"}:
+        _merge_env_file(env_path, {"AUTORESEARCH_FEISHU_HOME_CHAT_ID": target_value})
+        typer.echo(f"[OK] channel_target: feishu -> {target_value}")
+        typer.echo("[NEXT] channel_test: airesearcher channels test --channel feishu --require-sent")
+        return
+    msg = f"unsupported channel for target binding: {channel}"
+    raise typer.BadParameter(msg)
+
+
+def _channel_test_report(message: str) -> InspirationRefreshReport:
+    timestamp = datetime.now(timezone.utc)
+    return InspirationRefreshReport(
+        queries=("channel self-test",),
+        fetches=(),
+        items=(
+            InspirationItem(
+                source="operator_self_test",
+                source_type="channel_test",
+                title=message,
+                url="",
+                query="channel self-test",
+                summary="Operator channel delivery self-test.",
+                score=1.0,
+                retrieved_at=timestamp,
+            ),
+        ),
+        summary_path=None,
+    )
+
+
+def _run_channel_delivery_self_test(
+    *,
+    env_path: Path,
+    output: Path,
+    channels: tuple[str, ...],
+    timeout_seconds: float,
+    message: str,
+    require_sent: bool,
+) -> tuple[NotificationSendRecord, ...]:
+    environment = _merged_optional_env(env_path)
+    report = _channel_test_report(message)
+    records = send_inspiration_digest(
+        report,
+        channels=channels,
+        env=environment,
+        timeout_seconds=timeout_seconds,
+    )
+    payload = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "channels": channels,
+        "require_sent": require_sent,
+        "records": [record.to_json_dict() for record in records],
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return records
+
+
+def _echo_channel_test_next_actions(
+    records: Iterable[NotificationSendRecord],
+    *,
+    env_path: Path,
+) -> None:
+    emitted: set[str] = set()
+    env_arg = _command_path(env_path)
+    for record in records:
+        channel = record.channel.casefold()
+        detail = record.detail.casefold()
+        if (
+            channel in {"wechat", "weixin", "wecom"}
+            and "autoresearch_wechat_openclaw_target" in detail
+            and "bind_wechat_target" not in emitted
+        ):
+            typer.echo(
+                "[NEXT] bind_wechat_target: "
+                f"airesearcher channels bind-target --channel wechat --env-path {env_arg}"
+            )
+            emitted.add("bind_wechat_target")
+        if (
+            channel in {"feishu", "lark"}
+            and "autoresearch_feishu_home_chat_id" in detail
+            and "bind_feishu_target" not in emitted
+        ):
+            typer.echo(
+                "[NEXT] bind_feishu_target: "
+                f"airesearcher channels bind-target --channel feishu --env-path {env_arg}"
+            )
+            emitted.add("bind_feishu_target")
+
+
+@app.command("readiness")
+def readiness(
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file written by setup."),
+    ] = Path(".env"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", "-c", help="Configuration file written by setup."),
+    ] = Path("config.yaml"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root expected by the daily loop."),
+    ] = Path("autoresearch-vault"),
+    outputs_dir: Annotated[
+        Path,
+        typer.Option("--outputs-dir", help="Directory where publication artifacts are written."),
+    ] = Path("outputs"),
+    scheduler_state: Annotated[
+        Path,
+        typer.Option("--scheduler-state", help="Local scheduler follow-up state file."),
+    ] = DEFAULT_SCHEDULER_STATE_PATH,
+    channel_test_result: Annotated[
+        Path,
+        typer.Option(
+            "--channel-test-result",
+            help="Latest `airesearcher channels test` JSON result file.",
+        ),
+    ] = Path(".airesearcher/channels/test-result.json"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="JSON readiness report path."),
+    ] = Path(".airesearcher/readiness/report.json"),
+    interval_seconds: Annotated[
+        int,
+        typer.Option("--interval-seconds", min=60, help="Planned unattended loop interval."),
+    ] = 86400,
+    push_inspiration: Annotated[
+        bool,
+        typer.Option(
+            "--push-inspiration/--no-push-inspiration",
+            help="Check operator-channel readiness for inspiration pushes.",
+        ),
+    ] = True,
+    require_channel_config: Annotated[
+        bool,
+        typer.Option(
+            "--require-channel-config/--allow-missing-channel",
+            help="Fail readiness when push is enabled but no WeChat/Feishu channel is configured.",
+        ),
+    ] = False,
+    require_channel_sent: Annotated[
+        bool,
+        typer.Option(
+            "--require-channel-sent/--allow-untested-channel",
+            help="Fail readiness unless the latest channel self-test includes a sent record.",
+        ),
+    ] = False,
+) -> None:
+    """Write a preflight report for the 24h unattended research loop."""
+
+    env_values = _read_env_file(env_path)
+    checks: list[dict[str, object]] = []
+
+    _add_readiness_check(
+        checks,
+        check_id="env_file",
+        status="pass" if env_path.exists() else "fail",
+        detail=f"env file found at {env_path}" if env_path.exists() else f"missing env file: {env_path}",
+        evidence={"path": env_path.as_posix()},
+    )
+    _add_readiness_result(checks, "llm_credentials", _llm_readiness(env_values))
+    _add_readiness_result(checks, "config_file", _config_file_readiness(config_path))
+    _add_readiness_check(
+        checks,
+        check_id="vault",
+        status="pass" if vault.is_dir() else "fail",
+        detail=f"vault directory found at {vault}" if vault.is_dir() else f"missing vault directory: {vault}",
+        evidence={"path": vault.as_posix()},
+    )
+    _add_readiness_result(checks, "outputs_dir", _writable_directory_readiness(outputs_dir))
+    _add_readiness_result(
+        checks,
+        "daily_loop",
+        _daily_loop_readiness(
+            interval_seconds=interval_seconds,
+            push_inspiration=push_inspiration,
+        ),
+    )
+    _add_readiness_result(
+        checks,
+        "operator_channels",
+        _operator_channel_readiness(
+            env_values,
+            push_inspiration=push_inspiration,
+            require_channel_config=require_channel_config,
+        ),
+    )
+    _add_readiness_result(
+        checks,
+        "channel_delivery_test",
+        _channel_delivery_test_readiness(
+            channel_test_result,
+            push_inspiration=push_inspiration,
+            require_channel_sent=require_channel_sent,
+        ),
+    )
+    _add_readiness_result(checks, "scheduler_state", _scheduler_state_readiness(scheduler_state))
+
+    failure_count = sum(1 for check in checks if check["status"] == "fail")
+    warning_count = sum(1 for check in checks if check["status"] == "warn")
+    planned_command = _readiness_daily_command(
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
+    next_actions = _readiness_next_actions(
+        checks,
+        planned_command=planned_command,
+        config_path=config_path,
+        env_path=env_path,
+        channel_test_result=channel_test_result,
+    )
+    report = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ready" if failure_count == 0 else "blocked",
+        "failure_count": failure_count,
+        "warning_count": warning_count,
+        "planned_daily_command": planned_command,
+        "next_actions": next_actions,
+        "checks": checks,
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+
+    for check in checks:
+        status = str(check["status"])
+        prefix = {"pass": "[OK]", "warn": "[WARN]", "fail": "[FAIL]"}.get(status, "[INFO]")
+        typer.echo(
+            f"{prefix} readiness.{check['id']}: {check['detail']}",
+            err=status == "fail",
+        )
+    typer.echo(f"[OK] readiness_report: {output}")
+    typer.echo(f"[OK] planned_daily_command: {planned_command}")
+    for action in next_actions:
+        typer.echo(f"[NEXT] readiness_action.{action['id']}: {action['command']}")
+    if failure_count:
+        typer.echo("[FAIL] readiness: blocked", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("[OK] readiness: ready")
+
+
+def _add_readiness_check(
+    checks: list[dict[str, object]],
+    *,
+    check_id: str,
+    status: str,
+    detail: str,
+    evidence: Mapping[str, object] | None = None,
+) -> None:
+    checks.append(
+        {
+            "id": check_id,
+            "status": status,
+            "detail": detail,
+            "evidence": dict(evidence or {}),
+        }
+    )
+
+
+def _add_readiness_result(
+    checks: list[dict[str, object]],
+    check_id: str,
+    result: Mapping[str, object],
+) -> None:
+    evidence = result.get("evidence")
+    _add_readiness_check(
+        checks,
+        check_id=check_id,
+        status=str(result.get("status") or "fail"),
+        detail=str(result.get("detail") or "missing readiness detail"),
+        evidence=evidence if isinstance(evidence, Mapping) else {},
+    )
+
+
+def _llm_readiness(env_values: Mapping[str, str]) -> dict[str, object]:
+    required = {
+        "AUTORESEARCH_LLM_BASE_URL": _env_or_os(env_values, "AUTORESEARCH_LLM_BASE_URL"),
+        "AUTORESEARCH_LLM_MODEL_NAME": _env_or_os(env_values, "AUTORESEARCH_LLM_MODEL_NAME"),
+        "AUTORESEARCH_LLM_API_KEY": _env_or_os(env_values, "AUTORESEARCH_LLM_API_KEY"),
+    }
+    missing = [key for key, value in required.items() if not value]
+    provider = _env_or_os(env_values, "AUTORESEARCH_LLM_PROVIDER") or "openai-compatible"
+    if missing:
+        return {
+            "status": "fail",
+            "detail": "missing model API values: " + ", ".join(missing),
+            "evidence": {"provider": provider, "missing": missing},
+        }
+    return {
+        "status": "pass",
+        "detail": "model API base URL, model name, and API key are configured",
+        "evidence": {
+            "provider": provider,
+            "base_url": required["AUTORESEARCH_LLM_BASE_URL"],
+            "model_name": required["AUTORESEARCH_LLM_MODEL_NAME"],
+            "api_key_present": True,
+        },
+    }
+
+
+def _config_file_readiness(config_path: Path) -> dict[str, object]:
+    if not config_path.exists():
+        return {
+            "status": "fail",
+            "detail": f"missing config file: {config_path}",
+            "evidence": {"path": config_path.as_posix()},
+        }
+    try:
+        ConfigParser().parse_file(config_path, model_type=SystemConfig)
+    except ValueError as exc:
+        return {
+            "status": "fail",
+            "detail": f"config file is not valid: {exc}",
+            "evidence": {"path": config_path.as_posix()},
+        }
+    return {
+        "status": "pass",
+        "detail": f"config file parsed as SystemConfig: {config_path}",
+        "evidence": {"path": config_path.as_posix()},
+    }
+
+
+def _writable_directory_readiness(directory: Path) -> dict[str, object]:
+    try:
+        was_present = directory.exists()
+        if was_present and not directory.is_dir():
+            return {
+                "status": "fail",
+                "detail": f"output path is not a directory: {directory}",
+                "evidence": {"path": directory.as_posix()},
+            }
+        directory.mkdir(parents=True, exist_ok=True)
+        probe = directory / ".airesearcher-readiness.tmp"
+        probe.write_text("ok\n", encoding="utf-8")
+        probe.unlink()
+    except OSError as exc:
+        return {
+            "status": "fail",
+            "detail": f"output directory is not writable: {exc}",
+            "evidence": {"path": directory.as_posix()},
+        }
+    created_suffix = " (created)" if not was_present else ""
+    return {
+        "status": "pass",
+        "detail": f"output directory is writable{created_suffix}: {directory}",
+        "evidence": {"path": directory.as_posix(), "created": not was_present},
+    }
+
+
+def _daily_loop_readiness(*, interval_seconds: int, push_inspiration: bool) -> dict[str, object]:
+    command = _readiness_daily_command(
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
+    if interval_seconds < 3600:
+        return {
+            "status": "warn",
+            "detail": "planned interval is below one hour; unattended daily runs usually use 86400 seconds",
+            "evidence": {"interval_seconds": interval_seconds, "command": command},
+        }
+    return {
+        "status": "pass",
+        "detail": f"planned unattended loop interval is {interval_seconds} seconds",
+        "evidence": {"interval_seconds": interval_seconds, "command": command},
+    }
+
+
+def _operator_channel_readiness(
+    env_values: Mapping[str, str],
+    *,
+    push_inspiration: bool,
+    require_channel_config: bool,
+) -> dict[str, object]:
+    if not push_inspiration:
+        return {
+            "status": "pass",
+            "detail": "inspiration push is disabled for the planned daily command",
+            "evidence": {"push_inspiration": False},
+        }
+
+    wechat_mode = _env_or_os(env_values, "AUTORESEARCH_WECHAT_CONNECTION_MODE").casefold()
+    wechat_webhook = bool(_env_or_os(env_values, "AUTORESEARCH_WECHAT_WEBHOOK_URL"))
+    wechat_app_credentials = bool(
+        _env_or_os(env_values, "AUTORESEARCH_WECHAT_APP_ID")
+        and _env_or_os(env_values, "AUTORESEARCH_WECHAT_APP_SECRET")
+    )
+    wechat_status_path = Path(
+        _env_or_os(env_values, "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH")
+        or WECHAT_QR_SETUP_STATUS_PATH
+    )
+    wechat_openclaw_target = bool(_env_or_os(env_values, "AUTORESEARCH_WECHAT_OPENCLAW_TARGET"))
+    wechat_qr_status = _wechat_qr_setup_status(wechat_status_path) if wechat_mode == "qr" else ""
+    wechat_qr_ready = (
+        wechat_mode == "qr" and wechat_qr_status == "completed" and wechat_openclaw_target
+    )
+
+    feishu_mode = _env_or_os(env_values, "AUTORESEARCH_FEISHU_CONNECTION_MODE").casefold()
+    feishu_webhook = bool(_env_or_os(env_values, "AUTORESEARCH_FEISHU_WEBHOOK_URL"))
+    feishu_app_credentials = bool(
+        _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_ID")
+        and _env_or_os(env_values, "AUTORESEARCH_FEISHU_APP_SECRET")
+    )
+    feishu_home_chat = bool(_env_or_os(env_values, "AUTORESEARCH_FEISHU_HOME_CHAT_ID"))
+
+    ready_channels: list[str] = []
+    if wechat_webhook or wechat_app_credentials or wechat_qr_ready:
+        ready_channels.append("wechat")
+    if feishu_webhook or (feishu_app_credentials and feishu_home_chat):
+        ready_channels.append("feishu")
+
+    evidence = {
+        "push_inspiration": True,
+        "wechat_mode": wechat_mode or None,
+        "wechat_webhook_configured": wechat_webhook,
+        "wechat_app_credentials_configured": wechat_app_credentials,
+        "wechat_qr_status": wechat_qr_status or None,
+        "wechat_openclaw_target_configured": wechat_openclaw_target,
+        "feishu_mode": feishu_mode or None,
+        "feishu_webhook_configured": feishu_webhook,
+        "feishu_app_credentials_configured": feishu_app_credentials,
+        "feishu_home_chat_configured": feishu_home_chat,
+        "ready_channels": ready_channels,
+    }
+    if ready_channels:
+        return {
+            "status": "pass",
+            "detail": "operator channel configured: " + ", ".join(ready_channels),
+            "evidence": evidence,
+        }
+    status = "fail" if require_channel_config else "warn"
+    return {
+        "status": status,
+        "detail": "push is enabled but no WeChat/Feishu channel is configured or QR-ready",
+        "evidence": evidence,
+    }
+
+
+def _scheduler_state_readiness(state_path: Path) -> dict[str, object]:
+    if not state_path.exists():
+        return {
+            "status": "warn",
+            "detail": f"scheduler follow-up state does not exist yet: {state_path}",
+            "evidence": {"path": state_path.as_posix(), "task_count": 0},
+        }
+    payload = _read_json_mapping(state_path)
+    tasks = _mapping_list(payload.get("tasks"))
+    return {
+        "status": "pass",
+        "detail": f"scheduler follow-up state is readable with {len(tasks)} task(s)",
+        "evidence": {"path": state_path.as_posix(), "task_count": len(tasks)},
+    }
+
+
+def _channel_delivery_test_readiness(
+    result_path: Path,
+    *,
+    push_inspiration: bool,
+    require_channel_sent: bool,
+) -> dict[str, object]:
+    if not push_inspiration:
+        return {
+            "status": "pass",
+            "detail": "inspiration push is disabled, so channel delivery self-test is not required",
+            "evidence": {"push_inspiration": False, "path": result_path.as_posix()},
+        }
+    if not result_path.exists():
+        status = "fail" if require_channel_sent else "warn"
+        return {
+            "status": status,
+            "detail": f"no channel self-test result found at {result_path}",
+            "evidence": {
+                "path": result_path.as_posix(),
+                "require_channel_sent": require_channel_sent,
+                "sent_channels": [],
+            },
+        }
+
+    payload = _read_json_mapping(result_path)
+    records = _mapping_list(payload.get("records"))
+    sent_channels = sorted(
+        {
+            str(record.get("channel"))
+            for record in records
+            if record.get("status") == "sent" and record.get("channel")
+        }
+    )
+    evidence = {
+        "path": result_path.as_posix(),
+        "checked_at": payload.get("checked_at"),
+        "record_count": len(records),
+        "sent_channels": sent_channels,
+        "require_channel_sent": require_channel_sent,
+    }
+    if sent_channels:
+        return {
+            "status": "pass",
+            "detail": "latest channel self-test has sent delivery: " + ", ".join(sent_channels),
+            "evidence": evidence,
+        }
+    status = "fail" if require_channel_sent else "warn"
+    return {
+        "status": status,
+        "detail": "latest channel self-test has no sent records",
+        "evidence": evidence,
+    }
+
+
+def _readiness_daily_command(*, interval_seconds: int, push_inspiration: bool) -> str:
+    push_flag = "--push-inspiration" if push_inspiration else "--no-push-inspiration"
+    return (
+        "airesearcher serve --permission-mode approve-dangerous --watch --cycles 0 "
+        f"--interval-seconds {interval_seconds} {push_flag}"
+    )
+
+
+def _readiness_next_actions(
+    checks: list[dict[str, object]],
+    *,
+    planned_command: str,
+    config_path: Path,
+    env_path: Path,
+    channel_test_result: Path,
+) -> list[dict[str, str]]:
+    checks_by_id = {str(check.get("id")): check for check in checks}
+    actions: list[dict[str, str]] = []
+    action_ids: set[str] = set()
+
+    def add(action_id: str, *, severity: str, command: str, reason: str) -> None:
+        if action_id in action_ids:
+            return
+        action_ids.add(action_id)
+        actions.append(
+            {
+                "id": action_id,
+                "severity": severity,
+                "command": command,
+                "reason": reason,
+            }
+        )
+
+    setup_command = (
+        "airesearcher setup "
+        f"--config {_command_path(config_path)} --env-path {_command_path(env_path)}"
+    )
+    channel_setup_command = setup_command + " --wechat --wechat-qr --run-wechat-qr-setup"
+    channel_setup_with_test_command = (
+        channel_setup_command
+        + f" --run-channel-test --channel-test-output {_command_path(channel_test_result)}"
+    )
+    bind_wechat_target_command = (
+        "airesearcher channels bind-target "
+        f"--channel wechat --env-path {_command_path(env_path)}"
+    )
+    bind_feishu_target_command = (
+        "airesearcher channels bind-target "
+        f"--channel feishu --env-path {_command_path(env_path)}"
+    )
+    delivery_check = checks_by_id.get("channel_delivery_test")
+    should_run_setup_channel_test = bool(
+        delivery_check and delivery_check.get("status") == "fail"
+    )
+    channel_setup_repair_command = (
+        channel_setup_with_test_command if should_run_setup_channel_test else channel_setup_command
+    )
+
+    for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
+        check = checks_by_id.get(check_id)
+        if check and check.get("status") == "fail":
+            add(
+                "run_setup",
+                severity="required",
+                command=setup_command,
+                reason="Create or repair first-deploy configuration before starting the loop.",
+            )
+            break
+
+    operator_check = checks_by_id.get("operator_channels")
+    if operator_check and operator_check.get("status") in {"warn", "fail"}:
+        missing_wechat_target = _readiness_missing_wechat_qr_target(operator_check)
+        missing_feishu_target = _readiness_missing_feishu_home_chat(operator_check)
+        if missing_wechat_target:
+            add(
+                "bind_wechat_target",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=bind_wechat_target_command,
+                reason="Bind the OpenClaw WeChat target discovered after QR pairing.",
+            )
+        if missing_feishu_target:
+            add(
+                "bind_feishu_target",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=bind_feishu_target_command,
+                reason="Bind the Feishu/Lark home chat discovered after bot pairing.",
+            )
+        if not (missing_wechat_target or missing_feishu_target):
+            add(
+                "configure_operator_channel",
+                severity="required" if operator_check.get("status") == "fail" else "recommended",
+                command=channel_setup_repair_command,
+                reason="Configure at least one WeChat or Feishu channel before push delivery.",
+            )
+
+    if delivery_check and delivery_check.get("status") in {"warn", "fail"}:
+        ready_channels = _readiness_ready_channels(operator_check)
+        if ready_channels:
+            channel_flags = " ".join(f"--channel {channel}" for channel in ready_channels)
+            add(
+                "run_channel_self_test",
+                severity="required" if delivery_check.get("status") == "fail" else "recommended",
+                command=(
+                    "airesearcher channels test "
+                    f"{channel_flags} --output {_command_path(channel_test_result)} --require-sent"
+                ),
+                reason="Produce real sent-delivery evidence before treating push readiness as proven.",
+            )
+        else:
+            missing_wechat_target = _readiness_missing_wechat_qr_target(operator_check)
+            missing_feishu_target = _readiness_missing_feishu_home_chat(operator_check)
+            if missing_wechat_target:
+                add(
+                    "bind_wechat_target",
+                    severity="required",
+                    command=bind_wechat_target_command,
+                    reason="Bind the OpenClaw WeChat target before running the channel self-test.",
+                )
+            if missing_feishu_target:
+                add(
+                    "bind_feishu_target",
+                    severity="required",
+                    command=bind_feishu_target_command,
+                    reason="Bind the Feishu/Lark home chat before running the channel self-test.",
+                )
+            if not (missing_wechat_target or missing_feishu_target):
+                add(
+                    "configure_operator_channel",
+                    severity="required",
+                    command=channel_setup_repair_command,
+                    reason="Configure a delivery channel before running the channel self-test.",
+                )
+            if delivery_check.get("status") == "fail":
+                post_bind_channels = []
+                if missing_wechat_target:
+                    post_bind_channels.append("wechat")
+                if missing_feishu_target:
+                    post_bind_channels.append("feishu")
+                if not post_bind_channels:
+                    post_bind_channels.append("wechat")
+                channel_flags = " ".join(f"--channel {channel}" for channel in post_bind_channels)
+                add(
+                    "run_channel_self_test",
+                    severity="required",
+                    command=(
+                        "airesearcher channels test "
+                        f"{channel_flags} --output {_command_path(channel_test_result)} "
+                        "--require-sent"
+                    ),
+                    reason=(
+                        "After channel setup and target binding succeed, produce real sent-delivery "
+                        "evidence before treating push readiness as proven."
+                    ),
+                )
+
+    if not any(check.get("status") in {"fail", "warn"} for check in checks):
+        add(
+            "start_daily_loop",
+            severity="next",
+            command=planned_command,
+            reason="All hard readiness checks passed; start the unattended daily loop when ready.",
+        )
+    return actions
+
+
+def _readiness_ready_channels(check: Mapping[str, object] | None) -> list[str]:
+    if not check:
+        return []
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return []
+    return _string_list(evidence.get("ready_channels"))
+
+
+def _readiness_missing_wechat_qr_target(check: Mapping[str, object] | None) -> bool:
+    if not check:
+        return False
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    return (
+        str(evidence.get("wechat_mode") or "").casefold() == "qr"
+        and str(evidence.get("wechat_qr_status") or "").casefold() == "completed"
+        and evidence.get("wechat_openclaw_target_configured") is False
+    )
+
+
+def _readiness_missing_feishu_home_chat(check: Mapping[str, object] | None) -> bool:
+    if not isinstance(check, Mapping):
+        return False
+    evidence = check.get("evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    return (
+        evidence.get("feishu_app_credentials_configured") is True
+        and evidence.get("feishu_home_chat_configured") is False
+        and evidence.get("feishu_webhook_configured") is False
+    )
+
+
+def _command_path(path: Path) -> str:
+    return shlex.quote(path.as_posix())
+
+
+def _env_or_os(env_values: Mapping[str, str], key: str) -> str:
+    return (env_values.get(key) or os.getenv(key) or "").strip()
+
+
+def _wechat_qr_setup_status(status_path: Path) -> str:
+    payload = _read_json_mapping(status_path)
+    return str(payload.get("status") or "").strip().casefold()
+
+
 @app.command("similarity-check")
 def similarity_check(
     candidate_file: Annotated[
@@ -1495,6 +2479,123 @@ def similarity_check(
         typer.echo(f"[OK] summary: {report.summary_path}")
     if project_link is not None:
         typer.echo(f"[OK] project_link: {project_link}")
+
+
+@app.command("research-plan")
+def research_plan(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            "-f",
+            help="JSON file containing a user-confirmed ResearchCandidate payload.",
+        ),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID used for vault and outputs paths."),
+    ],
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to write the Markdown plan."),
+    ] = Path("autoresearch-vault"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Root directory for JSON, TeX, and PDF outputs."),
+    ] = Path("outputs"),
+    similarity_summary: Annotated[
+        Path | None,
+        typer.Option("--similarity-summary", help="Optional local similarity-check summary path."),
+    ] = None,
+    literature_summary: Annotated[
+        Path | None,
+        typer.Option("--literature-summary", help="Optional local literature-refresh summary path."),
+    ] = None,
+    inspiration_summary: Annotated[
+        Path | None,
+        typer.Option("--inspiration-summary", help="Optional local broad-inspiration summary path."),
+    ] = None,
+    compile_pdf: Annotated[
+        bool,
+        typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the LaTeX plan into PDF."),
+    ] = True,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="LaTeX compile timeout."),
+    ] = 120,
+) -> None:
+    """Generate the post-direction research-plan gate and artifacts."""
+
+    try:
+        candidate = _load_candidate(candidate_file)
+        artifact = generate_research_plan(
+            candidate=candidate,
+            project_id=project_id,
+            vault_root=vault,
+            output_dir=output_dir,
+            compile_pdf=compile_pdf,
+            similarity_summary=similarity_summary,
+            literature_summary=literature_summary,
+            inspiration_summary=inspiration_summary,
+            timeout_seconds=timeout_seconds,
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] research plan generation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] research_plan: {artifact.audit.verdict.value}")
+    typer.echo(f"[OK] score: {artifact.audit.score}")
+    typer.echo(f"[OK] markdown: {artifact.markdown_path}")
+    typer.echo(f"[OK] json: {artifact.json_path}")
+    typer.echo(f"[OK] tex: {artifact.tex_path}")
+    typer.echo(f"[OK] compile_status: {artifact.compile_status}")
+    if artifact.pdf_path is not None:
+        typer.echo(f"[OK] pdf: {artifact.pdf_path}")
+    if artifact.page_count is not None:
+        typer.echo(f"[OK] pages: {artifact.page_count}")
+    for issue in artifact.audit.issues:
+        typer.echo(f"[ISSUE] {issue}")
+    for warning in artifact.audit.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not artifact.audit.passed:
+        raise typer.Exit(code=1)
+    if compile_pdf and artifact.compile_status != "compiled":
+        if artifact.compile_reason:
+            typer.echo(f"[FAIL] pdf: {artifact.compile_reason}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("research-plan-audit")
+def research_plan_audit(
+    plan_json: Annotated[
+        Path,
+        typer.Argument(help="research-plan.json or a raw ResearchPlan JSON file."),
+    ],
+) -> None:
+    """Re-run the deterministic research-plan quality gate."""
+
+    try:
+        payload = json.loads(plan_json.read_text(encoding="utf-8-sig"))
+        if isinstance(payload, dict) and isinstance(payload.get("plan"), dict):
+            plan_payload = payload["plan"]
+        else:
+            plan_payload = payload
+        plan = ResearchPlan.model_validate(plan_payload)
+        markdown = _read_optional_artifact_text(payload, "markdown_path", base_dir=plan_json.parent)
+        tex = _read_optional_artifact_text(payload, "tex_path", base_dir=plan_json.parent)
+        audit = audit_research_plan(plan, rendered_markdown=markdown, rendered_tex=tex)
+    except Exception as exc:
+        typer.echo(f"[FAIL] research plan audit failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] research_plan_audit: {audit.verdict.value}")
+    typer.echo(f"[OK] score: {audit.score}")
+    for issue in audit.issues:
+        typer.echo(f"[ISSUE] {issue}")
+    for warning in audit.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not audit.passed:
+        raise typer.Exit(code=1)
 
 
 @app.command("run-demo")
@@ -2080,6 +3181,21 @@ def autopilot(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    sessions_state: Annotated[
+        Path | None,
+        typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
+    ] = None,
+    claim_session: Annotated[
+        bool,
+        typer.Option(
+            "--claim-session/--no-claim-session",
+            help="Automatically claim runtime write paths before starting the loop.",
+        ),
+    ] = True,
+    agent_name: Annotated[
+        str,
+        typer.Option("--agent-name", help="Agent identity recorded in the runtime session claim."),
+    ] = "AI-Researcher Runtime",
     project_id: Annotated[
         str,
         typer.Option("--project-id", help="Project ID for Obsidian review and issue notes."),
@@ -2087,7 +3203,7 @@ def autopilot(
     demo: Annotated[
         str,
         typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
-    ] = "tabular_baseline",
+    ] = DEFAULT_RESEARCH_DEMO,
     max_queries: Annotated[
         int,
         typer.Option(
@@ -2153,58 +3269,84 @@ def autopilot(
     """Run the trusted research loop from one operator command."""
 
     _load_optional_env(env_path)
+    _echo_loop_plan(
+        command_name="autopilot",
+        watch=watch,
+        cycles=cycles,
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+    )
     completed = 0
-    while True:
-        completed += 1
-        try:
-            summary = _run_autopilot_cycle(
-                config_path=config_path,
-                env_path=env_path,
-                vault=vault,
-                cache=cache,
-                output_dir=output_dir,
-                deliverables_dir=deliverables_dir,
-                state=state,
-                project_id=project_id,
-                demo=demo,
-                max_queries=max_queries,
-                max_results_per_source=max_results_per_source,
-                timeout_seconds=timeout_seconds,
-                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
-                min_quality_score=min_quality_score,
-                review=review,
-                paper_template_id=paper_template_id,
-                push_inspiration=push_inspiration,
-            )
-        except RuntimeError as exc:
-            typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
-            raise typer.Exit(1) from exc
-        typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
-        typer.echo(f"[OK] summary: {summary['summary_path']}")
-        if "source_preflight" in summary:
-            preflight = summary["source_preflight"]
-            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
-            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
-        typer.echo(f"[OK] review_status: {summary['review']['status']}")
-        if "publication_audit" in summary:
-            typer.echo(
-                "[OK] publication_audit: "
-                f"{summary['publication_audit']['verdict']}"
-            )
-        if "evidence_gate" in summary:
-            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
-        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
-        if "deliverables" in summary:
-            deliverables = summary["deliverables"]
-            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
-            if deliverables.get("pdf_path"):
-                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
-        _echo_inspiration_pushes(summary)
-        if not watch:
-            break
-        if cycles > 0 and completed >= cycles:
-            break
-        time.sleep(interval_seconds)
+    resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
+    session = _claim_runtime_session(
+        enabled=claim_session,
+        sessions_state=resolved_sessions_state,
+        agent_name=agent_name,
+        task_id=f"autopilot:{project_id}",
+        claimed_paths=_runtime_claimed_paths(
+            vault=vault,
+            cache=cache,
+            output_dir=output_dir,
+            deliverables_dir=deliverables_dir,
+            state=state,
+        ),
+    )
+    try:
+        while True:
+            completed += 1
+            try:
+                summary = _run_autopilot_cycle(
+                    config_path=config_path,
+                    env_path=env_path,
+                    vault=vault,
+                    cache=cache,
+                    output_dir=output_dir,
+                    deliverables_dir=deliverables_dir,
+                    state=state,
+                    project_id=project_id,
+                    demo=demo,
+                    max_queries=max_queries,
+                    max_results_per_source=max_results_per_source,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
+                    min_quality_score=min_quality_score,
+                    review=review,
+                    paper_template_id=paper_template_id,
+                    push_inspiration=push_inspiration,
+                )
+            except RuntimeError as exc:
+                typer.echo(f"[FAIL] autopilot_cycle: {exc}", err=True)
+                raise typer.Exit(1) from exc
+            typer.echo(f"[OK] autopilot_cycle: {summary['cycle_id']}")
+            typer.echo(f"[OK] summary: {summary['summary_path']}")
+            if "source_preflight" in summary:
+                preflight = summary["source_preflight"]
+                prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+                typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_research_plan_status(summary)
+            review_prefix, review_status = _review_status_display(summary.get("review"))
+            typer.echo(f"{review_prefix} review_status: {review_status}")
+            if "publication_audit" in summary:
+                typer.echo(
+                    "[OK] publication_audit: "
+                    f"{summary['publication_audit']['verdict']}"
+                )
+            if "evidence_gate" in summary:
+                typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
+            typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+            if "deliverables" in summary:
+                deliverables = summary["deliverables"]
+                typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+                if deliverables.get("pdf_path"):
+                    typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+            _echo_inspiration_pushes(summary)
+            if not watch:
+                break
+            if cycles > 0 and completed >= cycles:
+                break
+            time.sleep(interval_seconds)
+    finally:
+        _release_runtime_session(resolved_sessions_state, session)
 
 
 @app.command("serve")
@@ -2241,6 +3383,21 @@ def serve(
         Path,
         typer.Option("--approvals-state", help="Local runtime approval queue JSON file."),
     ] = DEFAULT_RUNTIME_APPROVALS_PATH,
+    sessions_state: Annotated[
+        Path | None,
+        typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
+    ] = None,
+    claim_session: Annotated[
+        bool,
+        typer.Option(
+            "--claim-session/--no-claim-session",
+            help="Automatically claim runtime write paths before starting the service.",
+        ),
+    ] = True,
+    agent_name: Annotated[
+        str,
+        typer.Option("--agent-name", help="Agent identity recorded in the runtime session claim."),
+    ] = "AI-Researcher Runtime",
     permission_mode: Annotated[
         RuntimePermissionMode,
         typer.Option("--permission-mode", help="Runtime permission mode."),
@@ -2252,7 +3409,7 @@ def serve(
     demo: Annotated[
         str,
         typer.Option("--demo", help="Demo or public benchmark to execute in each cycle."),
-    ] = "tabular_baseline",
+    ] = DEFAULT_RESEARCH_DEMO,
     max_queries: Annotated[
         int,
         typer.Option(
@@ -2314,12 +3471,19 @@ def serve(
         int,
         typer.Option("--interval-seconds", min=1, help="Delay between runtime checks or cycles."),
     ] = 86400,
+    approval_poll_seconds: Annotated[
+        int,
+        typer.Option(
+            "--approval-poll-seconds",
+            min=1,
+            help="Delay between approval queue checks while waiting for /approve.",
+        ),
+    ] = 30,
 ) -> None:
     """Run AI-Researcher as an always-on local/server operator service."""
 
     _load_optional_env(env_path)
     completed = 0
-    action_id = f"serve:autopilot-cycle:{project_id}:{demo}"
     command_text = _serve_command_text(
         project_id=project_id,
         demo=demo,
@@ -2329,82 +3493,122 @@ def serve(
         push_inspiration=push_inspiration,
     )
     typer.echo(f"[OK] runtime_mode: {permission_mode.value}")
-    while True:
-        decision = ensure_runtime_approval(
-            state_path=approvals_state,
-            mode=permission_mode,
-            action_id=action_id,
-            command=command_text,
-            risk=RuntimeActionRisk.DANGEROUS,
-            reason=(
-                "Runs online literature discovery, source-backed similarity checks, "
-                "local experiment execution, optional live LLM review, and vault/state writes."
-            ),
-        )
-        if not decision.allowed:
-            request = decision.request
-            request_id = request.request_id if request is not None else "unknown"
-            _echo_runtime_approval_waiting(
-                request_id=request_id,
-                state=approvals_state,
-                watch=watch,
-                interval_seconds=interval_seconds,
-            )
-            if not watch:
-                raise typer.Exit(code=2)
-            time.sleep(interval_seconds)
-            continue
-
-        completed += 1
-        try:
-            summary = _run_autopilot_cycle(
-                config_path=config_path,
-                env_path=env_path,
-                vault=vault,
-                cache=cache,
-                output_dir=output_dir,
-                deliverables_dir=deliverables_dir,
-                state=state,
+    _echo_loop_plan(
+        command_name="serve",
+        watch=watch,
+        cycles=cycles,
+        interval_seconds=interval_seconds,
+        push_inspiration=push_inspiration,
+        approval_poll_seconds=approval_poll_seconds,
+    )
+    resolved_sessions_state = _resolve_runtime_sessions_state(
+        sessions_state,
+        state,
+        approvals_state,
+    )
+    session = _claim_runtime_session(
+        enabled=claim_session,
+        sessions_state=resolved_sessions_state,
+        agent_name=agent_name,
+        task_id=f"serve:{project_id}",
+        claimed_paths=_runtime_claimed_paths(
+            vault=vault,
+            cache=cache,
+            output_dir=output_dir,
+            deliverables_dir=deliverables_dir,
+            state=state,
+            extra_paths=(approvals_state,),
+        ),
+    )
+    try:
+        while True:
+            action_id = _serve_cycle_action_id(
                 project_id=project_id,
                 demo=demo,
-                max_queries=max_queries,
-                max_results_per_source=max_results_per_source,
-                timeout_seconds=timeout_seconds,
-                max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
-                min_quality_score=min_quality_score,
-                review=review,
-                paper_template_id=paper_template_id,
-                push_inspiration=push_inspiration,
+                cycle_number=completed + 1,
             )
-        except RuntimeError as exc:
-            typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
-            raise typer.Exit(1) from exc
-        typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
-        typer.echo(f"[OK] summary: {summary['summary_path']}")
-        if "source_preflight" in summary:
-            preflight = summary["source_preflight"]
-            prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
-            typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
-        typer.echo(f"[OK] review_status: {summary['review']['status']}")
-        if "publication_audit" in summary:
-            typer.echo(
-                "[OK] publication_audit: "
-                f"{summary['publication_audit']['verdict']}"
+            decision = ensure_runtime_approval(
+                state_path=approvals_state,
+                mode=permission_mode,
+                action_id=action_id,
+                command=command_text,
+                risk=RuntimeActionRisk.DANGEROUS,
+                reason=(
+                    "Runs online literature discovery, source-backed similarity checks, "
+                    "local experiment execution, optional live LLM review, and vault/state writes."
+                ),
             )
-        if "evidence_gate" in summary:
-            typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
-        typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
-        if "deliverables" in summary:
-            deliverables = summary["deliverables"]
-            typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
-            if deliverables.get("pdf_path"):
-                typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
-        _echo_inspiration_pushes(summary)
-        if not watch:
-            break
-        if cycles > 0 and completed >= cycles:
-            break
-        time.sleep(interval_seconds)
+            if not decision.allowed:
+                request = decision.request
+                request_id = request.request_id if request is not None else "unknown"
+                _echo_runtime_approval_waiting(
+                    request_id=request_id,
+                    state=approvals_state,
+                    watch=watch,
+                    interval_seconds=approval_poll_seconds,
+                    action_id=request.action_id if request is not None else action_id,
+                )
+                if not watch:
+                    raise typer.Exit(code=2)
+                time.sleep(approval_poll_seconds)
+                continue
+
+            completed += 1
+            runtime_network_metadata = _serve_network_approval_metadata(decision)
+            try:
+                summary = _run_autopilot_cycle(
+                    config_path=config_path,
+                    env_path=env_path,
+                    vault=vault,
+                    cache=cache,
+                    output_dir=output_dir,
+                    deliverables_dir=deliverables_dir,
+                    state=state,
+                    project_id=project_id,
+                    demo=demo,
+                    max_queries=max_queries,
+                    max_results_per_source=max_results_per_source,
+                    timeout_seconds=timeout_seconds,
+                    max_tokens=_validate_optional_max_tokens(max_tokens, minimum=256),
+                    min_quality_score=min_quality_score,
+                    review=review,
+                    paper_template_id=paper_template_id,
+                    push_inspiration=push_inspiration,
+                    runtime_network_metadata=runtime_network_metadata,
+                )
+            except RuntimeError as exc:
+                typer.echo(f"[FAIL] serve_cycle: {exc}", err=True)
+                raise typer.Exit(1) from exc
+            typer.echo(f"[OK] serve_cycle: {summary['cycle_id']}")
+            typer.echo(f"[OK] summary: {summary['summary_path']}")
+            if "source_preflight" in summary:
+                preflight = summary["source_preflight"]
+                prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
+                typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_research_plan_status(summary)
+            review_prefix, review_status = _review_status_display(summary.get("review"))
+            typer.echo(f"{review_prefix} review_status: {review_status}")
+            if "publication_audit" in summary:
+                typer.echo(
+                    "[OK] publication_audit: "
+                    f"{summary['publication_audit']['verdict']}"
+                )
+            if "evidence_gate" in summary:
+                typer.echo(f"[OK] evidence_gate: {summary['evidence_gate']['verdict']}")
+            typer.echo(f"[OK] followup_tasks: {summary['followups']['task_count']}")
+            if "deliverables" in summary:
+                deliverables = summary["deliverables"]
+                typer.echo(f"[OK] deliverables: {deliverables.get('manifest_path')}")
+                if deliverables.get("pdf_path"):
+                    typer.echo(f"[OK] pdf_output: {deliverables.get('pdf_path')}")
+            _echo_inspiration_pushes(summary)
+            if not watch:
+                break
+            if cycles > 0 and completed >= cycles:
+                break
+            time.sleep(interval_seconds)
+    finally:
+        _release_runtime_session(resolved_sessions_state, session)
 
 
 @app.command("issue-followups")
@@ -2714,7 +3918,10 @@ def init_channel_adapters(
     channel_count = len(iter_openclaw_channel_plugins())
     typer.echo(f"[OK] channel_adapters: {channel_count}")
     typer.echo(f"[OK] manifest: {manifest_path}")
-    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+    typer.echo(
+        "[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {DEFAULT_RUNTIME_APPROVALS_PATH}"
+    )
 
 
 @channel_adapters_app.command("list")
@@ -2756,7 +3963,10 @@ def init_openclaw_channels(
     channel_count = len(iter_openclaw_channel_plugins())
     typer.echo(f"[OK] openclaw_channels: {channel_count}")
     typer.echo(f"[OK] manifest: {manifest_path}")
-    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+    typer.echo(
+        "[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {DEFAULT_RUNTIME_APPROVALS_PATH}"
+    )
 
 
 @openclaw_channels_app.command("list")
@@ -3005,6 +4215,7 @@ def _run_autopilot_cycle(
     review: bool,
     paper_template_id: str,
     push_inspiration: bool,
+    runtime_network_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
@@ -3085,6 +4296,63 @@ def _run_autopilot_cycle(
             project_id=project_id,
         )
 
+    research_plan_artifact = generate_research_plan(
+        candidate=candidate,
+        project_id=project_id,
+        vault_root=vault,
+        output_dir=cycle_dir,
+        compile_pdf=True,
+        similarity_summary=getattr(similarity_report, "summary_path", None),
+        literature_summary=getattr(literature_report, "summary_path", None),
+        timeout_seconds=max(timeout_seconds, 60),
+    )
+    research_plan_payload = research_plan_artifact.to_dict()
+    if (
+        not research_plan_artifact.audit.passed
+        or research_plan_artifact.compile_status != "compiled"
+    ):
+        followup_records = _issue_followup_records(vault, project_id)
+        _merge_scheduler_state(state, followup_records)
+        blocked_summary = {
+            "cycle_id": cycle_id,
+            "status": "blocked",
+            "blocked_reason": "research_plan_gate",
+            "started_at": now.isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": project_id,
+            "vault": vault.as_posix(),
+            "cache": cache.as_posix(),
+            "source_preflight": source_preflight,
+            "candidate_path": candidate_path.as_posix(),
+            "literature": {
+                "query_count": len(getattr(literature_report, "queries", ())),
+                "fetches": _serialise_fetches(getattr(literature_report, "fetches", ())),
+                "document_count": len(getattr(literature_report, "documents", ())),
+                "summary_path": _path_text(getattr(literature_report, "summary_path", None)),
+            },
+            "candidate": candidate.model_dump(mode="json"),
+            "similarity": {
+                "fetches": _serialise_fetches(getattr(similarity_report, "fetches", ())),
+                "finding_count": len(getattr(similarity_report, "findings", ())),
+                "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
+                "project_path": _path_text(similarity_project_path),
+            },
+            "research_plan": research_plan_payload,
+            "review": {"status": "skipped_research_plan_gate"},
+            "followups": {
+                "state_path": state.as_posix(),
+                "task_count": len(followup_records),
+                "tasks": followup_records,
+            },
+        }
+        summary_path = cycle_dir / "cycle-summary.json"
+        blocked_summary["summary_path"] = summary_path.as_posix()
+        summary_path.write_text(
+            json.dumps(blocked_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        return blocked_summary
+
     inspiration_report = run_inspiration_refresh(
         vault_root=vault,
         queries=_autopilot_inspiration_queries(candidate, demo=demo),
@@ -3101,6 +4369,7 @@ def _run_autopilot_cycle(
         demo=demo,
         output_dir=cycle_dir / "demo",
         timeout_seconds=timeout_seconds,
+        task_metadata=runtime_network_metadata,
     )
     reproduction_check = _run_cycle_reproduction_check(
         cycle_dir=cycle_dir,
@@ -3134,6 +4403,7 @@ def _run_autopilot_cycle(
             "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
             "project_path": _path_text(similarity_project_path),
         },
+        "research_plan": research_plan_payload,
         "inspiration": {
             "query_count": len(getattr(inspiration_report, "queries", ())),
             "fetches": _serialise_inspiration_fetches(
@@ -3162,6 +4432,9 @@ def _run_autopilot_cycle(
             "tasks": [],
         },
     }
+    network_approval = _autopilot_demo_network_summary(demo_result.run_record_path)
+    if network_approval:
+        summary["demo"]["network_approval"] = network_approval
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -3205,6 +4478,7 @@ def _run_autopilot_cycle(
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
+        "research_plan": summary["research_plan"],
         "citations": summary["citations"],
         "related_work_inspection": summary["related_work_inspection"],
         "demo": summary["demo"],
@@ -3224,6 +4498,7 @@ def _run_autopilot_cycle(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_evidence_paths: list[Path | str] = [
+        summary_path,
         review_context_path,
         reference_evidence_path,
         Path(demo_result.report_path),
@@ -3233,6 +4508,9 @@ def _run_autopilot_cycle(
     ]
     for optional_path in (
         getattr(literature_report, "summary_path", None),
+        research_plan_payload.get("markdown_path"),
+        research_plan_payload.get("json_path"),
+        research_plan_payload.get("tex_path"),
         citations.get("metadata_path"),
         citations.get("bib_path"),
         summary["related_work_inspection"].get("json_path"),
@@ -3394,6 +4672,8 @@ def _autopilot_review_audit_summary(
 
     literature = mapping(summary.get("literature"))
     similarity = mapping(summary.get("similarity"))
+    research_plan = mapping(summary.get("research_plan"))
+    research_plan_audit = mapping(research_plan.get("audit"))
     citations = mapping(summary.get("citations"))
     related_work = mapping(summary.get("related_work_inspection"))
     paper_manuscript = mapping(summary.get("paper_manuscript"))
@@ -3413,6 +4693,19 @@ def _autopilot_review_audit_summary(
             "finding_count": similarity.get("finding_count"),
             "summary_path": similarity.get("summary_path"),
             "project_path": similarity.get("project_path"),
+        },
+        "research_plan": {
+            "verdict": research_plan_audit.get("verdict"),
+            "passed": research_plan_audit.get("passed"),
+            "score": research_plan_audit.get("score"),
+            "issues": research_plan_audit.get("issues", []),
+            "warnings": research_plan_audit.get("warnings", []),
+            "compile_status": research_plan.get("compile_status"),
+            "page_count": research_plan.get("page_count"),
+            "markdown_path": research_plan.get("markdown_path"),
+            "json_path": research_plan.get("json_path"),
+            "tex_path": research_plan.get("tex_path"),
+            "pdf_path": research_plan.get("pdf_path"),
         },
         "citations": {
             "additional_verified_record_count": formal_references.get("omitted_verified_count"),
@@ -3495,6 +4788,13 @@ def _autopilot_candidate_review_summary(summary: dict[str, Any]) -> dict[str, An
         "split_policy",
         "feature_count",
         "real_dataset",
+        "network_access_approved",
+        "network_access_scope",
+        "network_approval_mode",
+        "network_approval_id",
+        "network_approved_by",
+        "approved_network_domains",
+        "network_source_urls",
     )
     return {
         "title": candidate.get("title"),
@@ -3505,6 +4805,44 @@ def _autopilot_candidate_review_summary(summary: dict[str, Any]) -> dict[str, An
         "recorded_metrics": _autopilot_selected_mapping(metrics, metric_keys),
         "run_record_path": mapping(summary.get("demo")).get("run_record_path"),
     }
+
+
+def _autopilot_demo_network_summary(run_record_path: Path | str) -> dict[str, Any]:
+    def mapping(value: object) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
+
+    path = Path(run_record_path)
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    task_metadata = mapping(payload.get("task_metadata"))
+    run_metadata = mapping(mapping(payload.get("run")).get("metadata"))
+    network_preflight = mapping(run_metadata.get("network_preflight"))
+    keys = (
+        "network_access_approved",
+        "network_access_scope",
+        "network_approval_mode",
+        "network_approval_id",
+        "network_approved_by",
+        "approved_network_domains",
+        "network_source_urls",
+    )
+    summary = _autopilot_selected_mapping(task_metadata, keys)
+    if network_preflight:
+        summary["preflight"] = _autopilot_selected_mapping(
+            network_preflight,
+            (
+                "approved",
+                "finding_count",
+                "network_access_scope",
+                "network_approval_mode",
+                "network_approval_id",
+                "network_approved_by",
+                "approved_network_domains",
+                "network_source_urls",
+            ),
+        )
+    return summary
 
 
 def _autopilot_selected_mapping(
@@ -3626,13 +4964,15 @@ def _autopilot_reference_title_and_locator(tail: str) -> tuple[str, str]:
         title, locator = tail.split(old_marker, 1)
         return title.strip(), locator.rstrip(".").strip()
     locator = ""
-    locator_match = re.search(
-        r"(doi:\S+|https?://[^\s.]+|source URL recorded in artifact)",
-        tail,
-    )
-    if locator_match is not None:
-        locator = locator_match.group(1).rstrip(".")
-    return tail.rstrip(".").strip(), locator
+    locator_pattern = r"(doi:\S+|https?://\S+|source URL recorded in artifact)"
+    locator_matches = list(re.finditer(locator_pattern, tail))
+    title = tail
+    if locator_matches:
+        locator = locator_matches[0].group(1).rstrip(".,;)")
+        for match in reversed(locator_matches):
+            title = f"{title[:match.start()]}{title[match.end():]}"
+    title = re.sub(r"\s+", " ", title).rstrip(" .").strip()
+    return title, locator
 
 
 def _autopilot_citation_metadata_by_key(path_value: object) -> dict[str, dict[str, Any]]:
@@ -3970,6 +5310,112 @@ def _autopilot_literature_seed_queries(demo: str) -> tuple[str, ...]:
     )
 
 
+def _autopilot_seed_document(documents: list[object], demo: str) -> object | None:
+    weighted_terms = _autopilot_seed_terms(demo)
+    if not weighted_terms:
+        return documents[0]
+    required_terms = _autopilot_required_seed_terms(demo)
+    best_score = -1
+    best_index = len(documents)
+    best_document: object | None = None
+    for index, document in enumerate(documents):
+        text = _autopilot_document_text(document)
+        if required_terms and not any(term in text for term in required_terms):
+            continue
+        score = sum(weight for term, weight in weighted_terms if term in text)
+        if score < 2:
+            continue
+        if best_document is None or score > best_score or (
+            score == best_score and index < best_index
+        ):
+            best_score = score
+            best_index = index
+            best_document = document
+    return best_document
+
+
+def _autopilot_required_seed_terms(demo: str) -> tuple[str, ...]:
+    if demo in {
+        "letter_variance_calibrated_prototypes",
+        "spambase_variance_calibrated_prototypes",
+        "skin_variance_calibrated_prototypes",
+        "pendigits_variance_calibrated_prototypes",
+        "pendigits_prototype_shrinkage",
+        "pendigits_centroid_baseline",
+    }:
+        return (
+            "prototype",
+            "centroid",
+            "nearest class mean",
+            "nearest-class-mean",
+            "mahalanobis",
+            "metric learning",
+        )
+    return ()
+
+
+def _autopilot_seed_terms(demo: str) -> tuple[tuple[str, int], ...]:
+    if demo == "letter_variance_calibrated_prototypes":
+        return (
+            ("letter recognition", 3),
+            ("character recognition", 3),
+            ("letter", 2),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("classifier", 1),
+            ("gaussian", 1),
+            ("mahalanobis", 1),
+        )
+    if demo == "spambase_variance_calibrated_prototypes":
+        return (
+            ("spambase", 3),
+            ("spam", 3),
+            ("email", 2),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("classifier", 1),
+            ("gaussian", 1),
+        )
+    if demo == "skin_variance_calibrated_prototypes":
+        return (
+            ("skin segmentation", 3),
+            ("skin", 3),
+            ("rgb", 2),
+            ("segmentation", 2),
+            ("bayesian", 1),
+            ("gaussian", 1),
+            ("classifier", 1),
+        )
+    if demo in {
+        "pendigits_variance_calibrated_prototypes",
+        "pendigits_prototype_shrinkage",
+        "pendigits_centroid_baseline",
+    }:
+        return (
+            ("pendigits", 3),
+            ("pen-based", 3),
+            ("handwritten digit", 3),
+            ("digit recognition", 3),
+            ("prototype", 1),
+            ("centroid", 1),
+            ("nearest centroid", 2),
+            ("classifier", 1),
+            ("mahalanobis", 1),
+            ("metric learning", 1),
+        )
+    return ()
+
+
+def _autopilot_document_text(document: object) -> str:
+    parts = (
+        getattr(document, "title", ""),
+        getattr(document, "abstract", ""),
+        getattr(document, "venue", ""),
+        getattr(document, "source_uri", ""),
+    )
+    return " ".join(str(part) for part in parts if part).casefold()
+
+
 def _autopilot_candidate_from_literature(
     literature_report: object,
     *,
@@ -3981,10 +5427,14 @@ def _autopilot_candidate_from_literature(
     if not documents:
         msg = "autopilot requires at least one retrieved literature document"
         raise RuntimeError(msg)
-    seed = documents[0]
-    seed_title = str(getattr(seed, "title", "retrieved literature")).strip()
-    seed_uri = str(getattr(seed, "source_uri", seed_title)).strip()
+    seed = _autopilot_seed_document(documents, demo)
+    seed_title = str(getattr(seed, "title", "no method-aligned seed selected")).strip()
+    seed_uri = str(getattr(seed, "source_uri", "")).strip()
     seed_id = str(getattr(seed, "id", seed_uri)).strip()
+    seed_refs = [value for value in (seed_id, seed_uri) if value]
+    related_seed_ids = [seed_id] if seed_id else []
+    if not seed_refs:
+        seed_refs = [METHOD_ALIGNED_SEED_NOT_FOUND_REF]
     candidate_id = f"autopilot_{project_id}_{now.strftime('%Y%m%d%H%M%S')}"
     if demo == "letter_variance_calibrated_prototypes":
         return ResearchCandidate(
@@ -4002,8 +5452,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.45,
             feasibility_score=0.85,
             impact_score=0.55,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4038,8 +5488,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.4,
             feasibility_score=0.85,
             impact_score=0.5,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4076,8 +5526,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.4,
             feasibility_score=0.9,
             impact_score=0.5,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4114,8 +5564,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.45,
             feasibility_score=0.85,
             impact_score=0.55,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4150,8 +5600,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.35,
             feasibility_score=0.85,
             impact_score=0.45,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4182,8 +5632,8 @@ def _autopilot_candidate_from_literature(
             novelty_score=0.2,
             feasibility_score=0.9,
             impact_score=0.35,
-            evidence_refs=[seed_id, seed_uri],
-            related_document_ids=[seed_id],
+            evidence_refs=seed_refs,
+            related_document_ids=related_seed_ids,
             status=CandidateStatus.READY_FOR_REVIEW,
             validation_status=ValidationStatus.PENDING,
             metadata={
@@ -4215,8 +5665,8 @@ def _autopilot_candidate_from_literature(
         novelty_score=0.55,
         feasibility_score=0.75,
         impact_score=0.65,
-        evidence_refs=[seed_id, seed_uri],
-        related_document_ids=[seed_id],
+        evidence_refs=seed_refs,
+        related_document_ids=related_seed_ids,
         status=CandidateStatus.READY_FOR_REVIEW,
         validation_status=ValidationStatus.PENDING,
         metadata={
@@ -4448,6 +5898,81 @@ def _validate_optional_max_tokens(value: int | None, *, minimum: int) -> int | N
     return value
 
 
+def _resolve_runtime_sessions_state(
+    sessions_state: Path | None,
+    *related_paths: Path,
+) -> Path:
+    if sessions_state is not None:
+        return sessions_state
+    for path in related_paths:
+        parent = Path(path).parent
+        if parent != Path(".airesearcher") and parent != Path("."):
+            return parent / "agent-sessions.json"
+    return DEFAULT_AGENT_SESSIONS_PATH
+
+
+def _runtime_claimed_paths(
+    *,
+    vault: Path,
+    cache: Path,
+    output_dir: Path,
+    deliverables_dir: Path,
+    state: Path,
+    extra_paths: tuple[Path, ...] = (),
+) -> tuple[str, ...]:
+    paths = (vault, cache, output_dir, deliverables_dir, state, *extra_paths)
+    return tuple(str(path) for path in paths)
+
+
+def _claim_runtime_session(
+    *,
+    enabled: bool,
+    sessions_state: Path,
+    agent_name: str,
+    task_id: str,
+    claimed_paths: tuple[str, ...],
+) -> AgentSession | None:
+    if not enabled:
+        typer.echo("[OK] session_claim: disabled")
+        return None
+    try:
+        result = claim_agent_session(
+            state_path=sessions_state,
+            agent_name=agent_name,
+            task_id=task_id,
+            claimed_paths=claimed_paths,
+        )
+    except AgentSessionError as exc:
+        typer.echo(f"[FAIL] session claim failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    status = "allowed" if result.allowed else "blocked"
+    typer.echo(f"[OK] session_claim: {status}")
+    typer.echo(f"[OK] sessions_state: {sessions_state}")
+    if result.session is not None:
+        typer.echo(f"[OK] session_id: {result.session.session_id}")
+        typer.echo(f"[OK] claimed_paths: {', '.join(result.session.claimed_paths)}")
+        return result.session
+    for conflict in result.conflicts:
+        typer.echo(
+            f"[CONFLICT] session_id={conflict.session_id} task_id={conflict.task_id} "
+            f"agent={conflict.agent_name} claimed={conflict.claimed_path} "
+            f"existing={conflict.conflicting_path}"
+        )
+    typer.echo("[FAIL] runtime session claim overlaps an active agent session", err=True)
+    raise typer.Exit(code=1)
+
+
+def _release_runtime_session(sessions_state: Path, session: AgentSession | None) -> None:
+    if session is None:
+        return
+    try:
+        released = release_agent_session(sessions_state, session.session_id)
+    except AgentSessionError as exc:
+        typer.echo(f"[WARN] session_release_failed: {exc}", err=True)
+        return
+    typer.echo(f"[OK] session_release: {released.session_id}")
+
+
 def _export_cycle_deliverables(
     *,
     summary: dict[str, Any],
@@ -4472,6 +5997,9 @@ def _export_cycle_deliverables(
     paper_build = summary.get("paper_build")
     if not isinstance(paper_build, dict):
         paper_build = {}
+    research_plan = summary.get("research_plan")
+    if not isinstance(research_plan, dict):
+        research_plan = {}
     paper_manuscript = summary.get("paper_manuscript")
     if not isinstance(paper_manuscript, dict):
         paper_manuscript = {}
@@ -4533,6 +6061,26 @@ def _export_cycle_deliverables(
         "llm_review_json",
         review.get("output_path"),
         f"{project_slug}-{cycle_id}-llm-review.json",
+    )
+    copy_artifact(
+        "research_plan_pdf",
+        research_plan.get("pdf_path"),
+        f"{project_slug}-{cycle_id}-research-plan.pdf",
+    )
+    copy_artifact(
+        "research_plan_tex",
+        research_plan.get("tex_path"),
+        f"{project_slug}-{cycle_id}-research-plan.tex",
+    )
+    copy_artifact(
+        "research_plan_json",
+        research_plan.get("json_path"),
+        f"{project_slug}-{cycle_id}-research-plan.json",
+    )
+    copy_artifact(
+        "research_plan_markdown",
+        research_plan.get("markdown_path"),
+        f"{project_slug}-{cycle_id}-research-plan.md",
     )
     copy_artifact("cycle_summary_json", summary_path, f"{project_slug}-{cycle_id}-summary.json")
 
@@ -4648,18 +6196,21 @@ def _serve_command_text(
         f"{push_flag}"
     )
 
-
 def _echo_setup_next_steps(
     *,
     permission_mode: RuntimePermissionMode,
     deliverables_dir: Path,
+    approvals_state: Path = DEFAULT_RUNTIME_APPROVALS_PATH,
 ) -> None:
     typer.echo("[NEXT] 1. Check install: npm run doctor")
     typer.echo(
         "[NEXT] 2. Start runtime: "
         f"airesearcher serve --permission-mode {permission_mode.value}"
     )
-    typer.echo("[NEXT] 3. When approval is requested, run: airesearcher runtime approve latest")
+    typer.echo(
+        "[NEXT] 3. When approval is requested, run: "
+        f"airesearcher runtime approve latest --state {approvals_state}"
+    )
     typer.echo("[NEXT] Optional dashboard: airesearcher monitor --watch")
     typer.echo(f"[OK] deliverables: {deliverables_dir.as_posix()}/<project-id>/")
 
@@ -4670,16 +6221,40 @@ def _echo_runtime_approval_waiting(
     state: Path,
     watch: bool,
     interval_seconds: int,
+    action_id: str | None = None,
 ) -> None:
     typer.echo("[WAITING] runtime approval required")
     typer.echo(f"[WAITING] request_id: {request_id}")
+    if action_id is not None:
+        typer.echo(f"[WAITING] action_id: {action_id}")
     typer.echo(f"[WAITING] state: {state}")
-    typer.echo("[NEXT] approve latest: airesearcher runtime approve latest")
+    typer.echo(f"[NEXT] approve latest: airesearcher runtime approve latest --state {state}")
     typer.echo(f"[NEXT] approve exact: airesearcher runtime approve {request_id} --state {state}")
     if watch:
         typer.echo(f"[WAITING] will check again in {interval_seconds}s")
     else:
         typer.echo("[WAITING] run serve again after approval")
+
+
+def _serve_cycle_action_id(*, project_id: str, demo: str, cycle_number: int) -> str:
+    """Return the approval action ID for one serve cycle attempt."""
+
+    return f"serve:autopilot-cycle:{project_id}:{demo}:cycle-{cycle_number}"
+
+
+def _serve_network_approval_metadata(
+    decision: RuntimeApprovalDecision,
+) -> dict[str, Any]:
+    return network_approval_metadata_from_decision(
+        decision,
+        scope=(
+            "serve cycle online literature retrieval, source-backed similarity "
+            "checking, inspiration refresh, and approved public benchmark data "
+            "fallback downloads"
+        ),
+        approved_network_domains=SERVE_NETWORK_APPROVED_DOMAINS,
+        network_source_urls=SERVE_NETWORK_SOURCE_URLS,
+    )
 
 
 def _can_import(module_name: str) -> bool:
@@ -4719,6 +6294,30 @@ def _load_candidate(candidate_file: Path) -> ResearchCandidate:
         raise typer.BadParameter(msg) from exc
 
 
+def _read_optional_artifact_text(
+    payload: object,
+    key: str,
+    *,
+    base_dir: Path | None = None,
+) -> str | None:
+    if not isinstance(payload, Mapping):
+        return None
+    value = payload.get(key)
+    if not isinstance(value, str):
+        return None
+    path = Path(value)
+    candidate_paths = [path]
+    if base_dir is not None and not path.is_absolute():
+        candidate_paths.append(base_dir / path)
+    for candidate_path in candidate_paths:
+        if candidate_path.is_file():
+            try:
+                return candidate_path.read_text(encoding="utf-8-sig")
+            except OSError:
+                return None
+    return None
+
+
 def _echo_fetches(fetches: Iterable[object]) -> None:
     for fetch in fetches:
         source = getattr(fetch, "source", "unknown")
@@ -4752,6 +6351,71 @@ def _echo_inspiration_pushes(summary: Mapping[str, object]) -> None:
         )
 
 
+def _echo_loop_plan(
+    *,
+    command_name: str,
+    watch: bool,
+    cycles: int,
+    interval_seconds: int,
+    push_inspiration: bool,
+    approval_poll_seconds: int | None = None,
+) -> None:
+    if not watch:
+        mode = "single-cycle"
+        cycle_detail = "1"
+    elif cycles == 0:
+        mode = "watch-forever"
+        cycle_detail = "unbounded"
+    else:
+        mode = "watch-limited"
+        cycle_detail = str(cycles)
+    approval_text = (
+        f", approval_poll_seconds={approval_poll_seconds}"
+        if approval_poll_seconds is not None
+        else ""
+    )
+    typer.echo(
+        "[OK] loop_plan: "
+        f"command={command_name}, mode={mode}, cycles={cycle_detail}, "
+        f"interval_seconds={interval_seconds}, "
+        f"push_inspiration={str(push_inspiration).lower()}"
+        f"{approval_text}"
+    )
+
+
+def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
+    research_plan = summary.get("research_plan")
+    if not isinstance(research_plan, Mapping):
+        return
+    plan_audit = research_plan.get("audit")
+    verdict = plan_audit.get("verdict") if isinstance(plan_audit, Mapping) else "unknown"
+    prefix = "[OK]" if verdict == "passed" else "[BLOCKED]"
+    typer.echo(f"{prefix} research_plan: {verdict}")
+
+
+def _review_status_display(review: object) -> tuple[str, str]:
+    if not isinstance(review, Mapping):
+        return "[BLOCKED]", "missing"
+
+    status = str(review.get("status", "unknown"))
+    parts = [status]
+    verdict = review.get("verdict")
+    if isinstance(verdict, str) and verdict:
+        parts.append(f"verdict={verdict}")
+    score = review.get("quality_score")
+    if isinstance(score, int | float) and not isinstance(score, bool):
+        parts.append(f"quality={score:.3f}")
+
+    failed_statuses = {"failed", "below_threshold"}
+    pass_verdicts = {"pass", "passed"}
+    review_blocks_release = (
+        status in failed_statuses
+        or (status == "passed" and isinstance(verdict, str) and verdict not in pass_verdicts)
+    )
+    prefix = "[BLOCKED]" if review_blocks_release else "[OK]"
+    return prefix, "; ".join(parts)
+
+
 def _collect_setup_wizard_values(
     *,
     config_path: Path,
@@ -4765,6 +6429,7 @@ def _collect_setup_wizard_values(
     wechat_app_id: str | None,
     wechat_app_secret: str | None,
     wechat_qr: bool,
+    wechat_openclaw_target: str | None,
     run_wechat_qr_setup: bool | None,
     feishu: bool | None,
     feishu_webhook_url: str | None,
@@ -4773,6 +6438,7 @@ def _collect_setup_wizard_values(
     feishu_connection_mode: str | None,
     feishu_home_chat_id: str | None,
     feishu_allowed_users: str | None,
+    run_channel_test: bool | None,
 ) -> dict[str, Any]:
     existing_config = _load_or_default_config(config_path)
     existing_env = _read_env_file(env_path)
@@ -4829,7 +6495,8 @@ def _collect_setup_wizard_values(
             else existing_env.get("AUTORESEARCH_WECHAT_CONNECTION_MODE")
             or existing_config.deployment.wechat.connection_mode
         ),
-        home_chat_id=None,
+        home_chat_id=wechat_openclaw_target
+        or existing_env.get("AUTORESEARCH_WECHAT_OPENCLAW_TARGET"),
         allowed_users=None,
         run_qr_setup=run_wechat_qr_setup,
     )
@@ -4849,6 +6516,11 @@ def _collect_setup_wizard_values(
         allowed_users=feishu_allowed_users or existing_env.get("AUTORESEARCH_FEISHU_ALLOWED_USERS"),
         run_qr_setup=False,
     )
+    channel_test_value = _prompt_setup_channel_test(
+        wechat_enabled=bool(wechat_values["enabled"]),
+        feishu_enabled=bool(feishu_values["enabled"]),
+        run_channel_test=run_channel_test,
+    )
 
     typer.echo("Step 4/4: write local AI-Researcher assets.")
     typer.echo("The wizard will write config.yaml, .env, integration manifests, and slash commands.")
@@ -4862,6 +6534,7 @@ def _collect_setup_wizard_values(
         "wechat_app_id": wechat_values["app_id"],
         "wechat_app_secret": wechat_values["app_secret"],
         "wechat_qr": wechat_values["connection_mode"] == "qr",
+        "wechat_openclaw_target": wechat_values["home_chat_id"],
         "run_wechat_qr_setup": wechat_values["run_qr_setup"],
         "feishu": feishu_values["enabled"],
         "feishu_webhook_url": feishu_values["webhook_url"],
@@ -4870,6 +6543,7 @@ def _collect_setup_wizard_values(
         "feishu_connection_mode": feishu_values["connection_mode"],
         "feishu_home_chat_id": feishu_values["home_chat_id"],
         "feishu_allowed_users": feishu_values["allowed_users"],
+        "run_channel_test": channel_test_value,
     }
 
 
@@ -4981,7 +6655,11 @@ def _prompt_setup_channel_values(
                 "webhook_url": None,
                 "app_id": None,
                 "app_secret": None,
-                "home_chat_id": None,
+                "home_chat_id": typer.prompt(
+                    "WeChat OpenClaw target (optional; can be set after pairing)",
+                    default=home_chat_id or "",
+                ).strip()
+                or None,
                 "allowed_users": None,
                 "run_qr_setup": True if run_qr_setup is None else run_qr_setup,
             }
@@ -5049,6 +6727,22 @@ def _prompt_setup_channel_values(
             "run_qr_setup": False,
         }
     return _empty_channel_values(enabled=False)
+
+
+def _prompt_setup_channel_test(
+    *,
+    wechat_enabled: bool,
+    feishu_enabled: bool,
+    run_channel_test: bool | None,
+) -> bool:
+    if not (wechat_enabled or feishu_enabled):
+        return False
+    if run_channel_test is not None:
+        return run_channel_test
+    return typer.confirm(
+        "Send a real channel delivery self-test now?",
+        default=True,
+    )
 
 
 def _prompt_choice_index(
@@ -5195,12 +6889,17 @@ def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
         return f"No agent log found at {_relative_path_text(agent_log)}."
     entries: list[list[str]] = []
     current: list[str] = []
+    capture_detail = False
+    captured_detail = False
     for line in agent_log.read_text(encoding="utf-8", errors="replace").splitlines():
         if re.match(r"^### \d{4}-\d{2}-\d{2}", line):
             if current:
                 entries.append(current)
             current = [line.removeprefix("### ").strip()]
+            capture_detail = False
+            captured_detail = False
             continue
+        stripped = line.strip()
         if current and (
             line.startswith("- Request:")
             or line.startswith("- Summary:")
@@ -5208,14 +6907,25 @@ def _recent_agent_entries_text(agent_log: Path, *, max_entries: int) -> str:
             or line.startswith("- Problems:")
             or line.startswith("- Follow-up:")
         ):
-            current.append(line.strip())
+            current.append(_truncate_cell(stripped, limit=180))
+            capture_detail = stripped in {
+                "- Summary:",
+                "- Verification:",
+                "- Problems:",
+                "- Follow-up:",
+            }
+            captured_detail = False
+            continue
+        if current and capture_detail and not captured_detail and line.startswith("  - "):
+            current.append(_truncate_cell(stripped, limit=180))
+            captured_detail = True
     if current:
         entries.append(current)
     if not entries:
         return "Agent.md exists, but no change-log entries were found."
     rendered: list[str] = []
-    for entry in entries[:max_entries]:
-        rendered.append("\n".join(entry[:7]))
+    for entry in reversed(entries[-max_entries:]):
+        rendered.append("\n".join(entry[:12]))
     return "\n\n".join(rendered)
 
 
@@ -5230,7 +6940,7 @@ def _state_table(
 
     table = Table(title=title, expand=True, box=box.ASCII)
     for column in columns:
-        table.add_column(column)
+        table.add_column(column, overflow="fold")
     if not rows:
         table.add_row("-", "-", "-", "none")
         return table
@@ -5296,9 +7006,9 @@ def _flow_table(summary_path: Path | None) -> Any:
     from rich.table import Table
 
     table = Table(title="Research Loop", expand=True, box=box.ASCII)
-    table.add_column("stage")
-    table.add_column("status")
-    table.add_column("evidence")
+    table.add_column("stage", no_wrap=True)
+    table.add_column("status", overflow="fold")
+    table.add_column("evidence", overflow="fold")
     if summary_path is None or not summary_path.exists():
         for stage in (
             "source discovery",
@@ -5313,19 +7023,104 @@ def _flow_table(summary_path: Path | None) -> Any:
         return table
 
     payload = _read_json_mapping(summary_path)
-    evidence_name = summary_path.name
-    rows = [
-        ("source discovery", _nested_status(payload, "source_preflight"), evidence_name),
-        ("similarity check", _nested_status(payload, "similarity"), evidence_name),
-        ("experiment", _nested_status(payload, "demo"), evidence_name),
-        ("review", _nested_status(payload, "review"), evidence_name),
-        ("publication audit", _nested_status(payload, "publication_audit"), evidence_name),
-        ("paper build", _nested_status(payload, "paper_build"), evidence_name),
-        ("evidence gate", _nested_status(payload, "evidence_gate"), evidence_name),
-    ]
-    for stage, status, evidence in rows:
+    for stage, status, evidence in _cycle_stage_rows(payload, summary_path=summary_path):
         table.add_row(stage, status, evidence)
     return table
+
+
+def _cycle_stage_rows(
+    payload: Mapping[str, Any],
+    *,
+    summary_path: Path,
+) -> list[tuple[str, str, str]]:
+    return [
+        (
+            "source",
+            _nested_status(payload, "source_preflight"),
+            _cycle_evidence(payload, "source_preflight", ("markdown_path", "output_path"), summary_path),
+        ),
+        (
+            "literature",
+            _literature_status(payload),
+            _cycle_evidence(payload, "literature", ("markdown_path", "summary_path", "output_path"), summary_path),
+        ),
+        (
+            "plan",
+            _research_plan_status(payload),
+            _cycle_evidence(payload, "research_plan", ("pdf_path", "markdown_path", "json_path"), summary_path),
+        ),
+        (
+            "novelty",
+            _nested_status(payload, "similarity"),
+            _cycle_evidence(payload, "similarity", ("markdown_path", "summary_path", "output_path"), summary_path),
+        ),
+        (
+            "related work",
+            _related_work_status(payload),
+            _cycle_evidence(
+                payload,
+                "related_work_inspection",
+                ("markdown_path", "json_path", "citation_metadata_path"),
+                summary_path,
+            ),
+        ),
+        (
+            "citations",
+            _citation_status(payload),
+            _cycle_evidence(payload, "citations", ("bib_path", "metadata_path", "output_path"), summary_path),
+        ),
+        (
+            "experiment",
+            _experiment_status(payload),
+            _cycle_evidence(payload, "demo", ("report_path", "validation_json_path", "run_record_path"), summary_path),
+        ),
+        (
+            "reproduction",
+            _nested_status(payload, "reproduction_check"),
+            _cycle_evidence(payload, "reproduction_check", ("markdown_path", "json_path"), summary_path),
+        ),
+        (
+            "review",
+            _nested_status(payload, "review"),
+            _cycle_evidence(payload, "review", ("vault_review", "output_path"), summary_path),
+        ),
+        (
+            "publication",
+            _publication_audit_status(payload),
+            _gate_evidence(
+                payload,
+                "publication_audit",
+                ("markdown_path", "json_path", "output_path"),
+                summary_path,
+                issue_label="issue",
+            ),
+        ),
+        (
+            "paper",
+            _paper_build_status(payload),
+            _cycle_evidence(
+                payload,
+                "paper_build",
+                ("pdf_path", "output_pdf_path", "markdown_path", "json_path"),
+                summary_path,
+            ),
+        ),
+        (
+            "evidence",
+            _evidence_gate_status(payload),
+            _gate_evidence(payload, "evidence_gate", ("markdown_path", "json_path", "output_path"), summary_path),
+        ),
+        (
+            "follow-ups",
+            _followup_status(payload),
+            _followup_evidence(payload, summary_path),
+        ),
+        (
+            "deliverables",
+            _deliverables_status(payload),
+            _deliverables_evidence(payload, summary_path),
+        ),
+    ]
 
 
 def _nested_status(payload: Mapping[str, Any], key: str) -> str:
@@ -5350,6 +7145,325 @@ def _nested_status(payload: Mapping[str, Any], key: str) -> str:
     return "unknown"
 
 
+def _literature_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("literature")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "literature")
+    document_count = value.get("document_count")
+    fetches = _mapping_list(value.get("fetches"))
+    sources = sorted({str(fetch.get("source")) for fetch in fetches if fetch.get("source")})
+    if document_count is not None and sources:
+        return f"documents={document_count}; sources={len(sources)}"
+    if document_count is not None:
+        return f"documents={document_count}"
+    return _nested_status(payload, "literature")
+
+
+def _research_plan_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("research_plan")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "research_plan")
+    status = str(value.get("compile_status") or _nested_status(payload, "research_plan"))
+    audit = value.get("audit")
+    if isinstance(audit, Mapping) and audit.get("verdict") is not None:
+        status = f"{status}; audit={audit['verdict']}"
+    page_count = value.get("page_count")
+    if page_count is not None:
+        status = f"{status}; pages={page_count}"
+    return status
+
+
+def _related_work_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("related_work_inspection")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "related_work_inspection")
+    inspected = value.get("inspected_count")
+    direct = value.get("direct_method_count")
+    if inspected is not None and direct is not None:
+        return f"inspected={inspected}; direct={direct}"
+    if inspected is not None:
+        return f"inspected={inspected}"
+    return _nested_status(payload, "related_work_inspection")
+
+
+def _citation_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("citations")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "citations")
+    blocked_count = value.get("blocked_count")
+    citations = _mapping_list(value.get("citations"))
+    if blocked_count is not None:
+        return f"verified={len(citations)}; blocked={blocked_count}"
+    if citations:
+        return f"verified={len(citations)}"
+    return _nested_status(payload, "citations")
+
+
+def _experiment_status(payload: Mapping[str, Any]) -> str:
+    status = _nested_status(payload, "demo")
+    value = payload.get("demo")
+    if not isinstance(value, Mapping):
+        return status
+    network = value.get("network_approval")
+    if not isinstance(network, Mapping):
+        return status
+    details: list[str] = []
+    mode = network.get("network_approval_mode")
+    if mode is not None:
+        details.append(f"network={mode}")
+    approval_id = network.get("network_approval_id")
+    if approval_id is not None:
+        details.append(f"approval={_short_file_name(str(approval_id), limit=24)}")
+    domains = network.get("approved_network_domains")
+    if isinstance(domains, list | tuple) and domains:
+        details.append(f"domains={len(domains)}")
+    preflight = network.get("preflight")
+    if isinstance(preflight, Mapping):
+        approved = preflight.get("approved")
+        if approved is not None:
+            details.append(f"preflight={'pass' if approved else 'blocked'}")
+        finding_count = preflight.get("finding_count")
+        if finding_count is not None:
+            details.append(f"findings={finding_count}")
+    if not details:
+        return status
+    return f"{status}; {'; '.join(details)}"
+
+
+def _paper_build_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("paper_build")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "paper_build")
+    status = _nested_status(payload, "paper_build")
+    quality = value.get("paper_quality")
+    if isinstance(quality, Mapping):
+        passed = quality.get("passed")
+        if passed is not None:
+            status = f"{status}; quality={'pass' if passed else 'fail'}"
+        page_count = quality.get("page_count")
+        if page_count is not None:
+            status = f"{status}; pages={page_count}"
+        figure_issues = quality.get("figure_readability_issue_count")
+        if figure_issues is not None:
+            status = f"{status}; fig_issues={figure_issues}"
+    return status
+
+
+def _publication_audit_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("publication_audit")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "publication_audit")
+    status = _nested_status(payload, "publication_audit")
+    score = value.get("score")
+    if isinstance(score, int | float):
+        status = f"{status}; score={score:.3f}"
+    target = value.get("target")
+    if isinstance(target, Mapping) and target.get("name"):
+        status = f"{status}; target={target['name']}"
+    blockers = _blocking_gate_checks(value)
+    if blockers:
+        first_id = str(blockers[0].get("check_id") or "unnamed_check")
+        status = f"{status}; blockers={len(blockers)}; first={_truncate_cell(first_id, limit=32)}"
+        return status
+    warnings = _failed_gate_checks(value)
+    if warnings:
+        first_id = str(warnings[0].get("check_id") or "unnamed_check")
+        status = f"{status}; warnings={len(warnings)}; first={_truncate_cell(first_id, limit=32)}"
+    return status
+
+
+def _evidence_gate_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("evidence_gate")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "evidence_gate")
+    status = _nested_status(payload, "evidence_gate")
+    failed_count = value.get("failed_check_count")
+    blockers = _failed_gate_checks(value)
+    if failed_count is None and blockers:
+        failed_count = len(blockers)
+    if failed_count is not None:
+        status = f"{status}; failed={failed_count}"
+    if value.get("release_allowed") is not None:
+        status = f"{status}; release_allowed={str(value['release_allowed']).lower()}"
+    if blockers:
+        first_id = str(blockers[0].get("check_id") or "unnamed_check")
+        status = f"{status}; first={_truncate_cell(first_id, limit=32)}"
+    return status
+
+
+def _followup_status(payload: Mapping[str, Any]) -> str:
+    tasks = _summary_followup_tasks(payload)
+    if not tasks:
+        return "none"
+    statuses = [str(task.get("status", "open")) for task in tasks]
+    open_count = sum(1 for status in statuses if status not in {"completed", "closed", "done"})
+    return f"{open_count} open / {len(tasks)} total"
+
+
+def _deliverables_status(payload: Mapping[str, Any]) -> str:
+    value = payload.get("deliverables")
+    if not isinstance(value, Mapping):
+        return _nested_status(payload, "deliverables")
+    paths = value.get("paths")
+    if isinstance(paths, Mapping) and paths:
+        return f"exported={len(paths)}"
+    if value.get("manifest_path") or value.get("output_dir"):
+        return "exported"
+    return "unknown"
+
+
+def _cycle_evidence(
+    payload: Mapping[str, Any],
+    key: str,
+    fields: tuple[str, ...],
+    summary_path: Path,
+) -> str:
+    value = payload.get(key)
+    paths: list[str] = []
+    if isinstance(value, Mapping):
+        for field in fields:
+            field_value = value.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+    return _format_evidence_paths(paths, fallback=summary_path.name)
+
+
+def _gate_evidence(
+    payload: Mapping[str, Any],
+    key: str,
+    fields: tuple[str, ...],
+    summary_path: Path,
+    *,
+    issue_label: str = "blocker",
+) -> str:
+    evidence = _cycle_evidence(payload, key, fields, summary_path)
+    value = payload.get(key)
+    if not isinstance(value, Mapping):
+        return evidence
+    blockers = _failed_gate_checks(value)
+    if not blockers:
+        return evidence
+    blocker = blockers[0]
+    parts: list[str] = []
+    message = blocker.get("message")
+    if isinstance(message, str) and message.strip():
+        parts.append(f"{issue_label}: {message.strip()}")
+    next_action = blocker.get("next_action")
+    if isinstance(next_action, str) and next_action.strip():
+        parts.append(f"next: {next_action.strip()}")
+    if not parts:
+        check_id = blocker.get("check_id")
+        if check_id is not None:
+            parts.append(f"{issue_label}: {check_id}")
+    if not parts:
+        return evidence
+    detail = _truncate_cell("; ".join(parts), limit=160)
+    return f"{evidence}; {detail}"
+
+
+def _failed_gate_checks(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    failed: list[Mapping[str, Any]] = []
+    for check in _mapping_list(value.get("checks")):
+        status = str(check.get("status", "")).casefold()
+        if status and status not in {"pass", "passed", "ok", "success"}:
+            failed.append(check)
+    return failed
+
+
+def _blocking_gate_checks(value: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    blocking: list[Mapping[str, Any]] = []
+    for check in _failed_gate_checks(value):
+        status = str(check.get("status") or "").casefold()
+        severity = str(check.get("severity") or "").casefold()
+        if status in {"fail", "failed", "blocked", "error"} or severity == "blocking":
+            blocking.append(check)
+    return blocking
+
+
+def _summary_followup_tasks(payload: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    tasks = _mapping_list(payload.get("followup_tasks"))
+    if tasks:
+        return tasks
+    followups = payload.get("followups")
+    if isinstance(followups, Mapping):
+        return _mapping_list(followups.get("tasks"))
+    return []
+
+
+def _followup_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+    tasks = _summary_followup_tasks(payload)
+    paths: list[str] = []
+    for task in tasks[:3]:
+        for field in ("issue_path", "markdown_path", "path"):
+            field_value = task.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+                break
+        metadata = task.get("metadata")
+        if isinstance(metadata, Mapping):
+            field_value = metadata.get("issue_path")
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+    return _format_evidence_paths(paths, fallback=summary_path.name if tasks else "no queued follow-ups")
+
+
+def _deliverables_evidence(payload: Mapping[str, Any], summary_path: Path) -> str:
+    value = payload.get("deliverables")
+    paths: list[str] = []
+    if isinstance(value, Mapping):
+        for field in ("manifest_path", "markdown_path"):
+            field_value = value.get(field)
+            if isinstance(field_value, str) and field_value.strip():
+                paths.append(field_value)
+        nested_paths = value.get("paths")
+        if isinstance(nested_paths, Mapping):
+            for key in ("paper_pdf", "research_plan_pdf", "manuscript_markdown"):
+                nested_value = nested_paths.get(key)
+                if isinstance(nested_value, str) and nested_value.strip():
+                    paths.append(nested_value)
+    return _format_evidence_paths(paths, fallback=summary_path.name)
+
+
+def _format_evidence_paths(paths: list[str], *, fallback: str) -> str:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        text = _short_evidence_path(path)
+        if text in seen:
+            continue
+        cleaned.append(text)
+        seen.add(text)
+    if not cleaned:
+        return fallback
+    if len(cleaned) > 2:
+        return f"{cleaned[0]}, {cleaned[1]} (+{len(cleaned) - 2} more)"
+    return ", ".join(cleaned)
+
+
+def _short_evidence_path(path: str) -> str:
+    text = _relative_path_text(path).replace("\\", "/")
+    if len(text) <= 48:
+        return text
+    parts = [part for part in text.split("/") if part]
+    if len(parts) >= 2:
+        file_label = _short_file_name(parts[-1], limit=32)
+        tail = f".../{parts[-2]}/{file_label}"
+        if len(tail) <= 48:
+            return tail
+        return f".../{_short_file_name(parts[-1], limit=44)}"
+    if parts:
+        return _short_file_name(parts[-1], limit=48)
+    return text
+
+
+def _short_file_name(name: str, *, limit: int = 48) -> str:
+    if len(name) <= limit:
+        return name
+    suffix = Path(name).suffix
+    head_limit = max(limit - len(suffix) - 3, 8)
+    return f"{name[:head_limit]}...{suffix}"
+
+
 def _git_changes_text(*, max_diff_lines: int) -> str:
     status = _run_git_text(("status", "--short"))
     diff_stat = _run_git_text(("diff", "--stat"))
@@ -5368,15 +7482,18 @@ def _git_changes_text(*, max_diff_lines: int) -> str:
 
 def _run_git_text(args: tuple[str, ...], *, max_lines: int | None = None) -> str:
     try:
-        result = subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5,
-            check=False,
-            **windows_no_window_kwargs(),
+        result = cast(
+            subprocess.CompletedProcess[str],
+            subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5,
+                check=False,
+                **windows_no_window_kwargs(),
+            ),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return f"git {' '.join(args)} failed: {exc}"
@@ -5407,7 +7524,7 @@ def _output_preview_text(outputs_dir: Path, *, summary_path: Path | None) -> str
     for path in files[:10]:
         size = path.stat().st_size
         marker = "PDF" if path.suffix.casefold() == ".pdf" else path.suffix.lstrip(".") or "file"
-        lines.append(f"{path.name} [{marker}]: {_relative_path_text(path)} ({size} bytes)")
+        lines.append(f"{_short_file_name(path.name)} [{marker}]: {_short_evidence_path(str(path))} ({size} bytes)")
     return "\n".join(lines)
 
 
@@ -5426,7 +7543,7 @@ def _read_json_mapping(path: Path) -> Mapping[str, Any]:
     if not path.exists():
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return {}
     if isinstance(data, Mapping):
@@ -5602,20 +7719,98 @@ def _channel_summary(enabled: bool, values: Mapping[str, object]) -> str:
     return f"enabled ({mode})"
 
 
-def _run_wechat_qr_setup() -> None:
+def _run_wechat_qr_setup(
+    *,
+    command: str = WECHAT_QR_SETUP_COMMAND,
+    session_path: str = WECHAT_QR_SESSION_PATH,
+    status_path: Path = Path(WECHAT_QR_SETUP_STATUS_PATH),
+    runner: Callable[..., subprocess.CompletedProcess[bytes]] | None = None,
+) -> None:
+    started_at = datetime.now(timezone.utc).isoformat()
+    args = shlex.split(command)
+    if not args:
+        typer.echo("[FAIL] wechat_qr_setup: empty command", err=True)
+        raise typer.Exit(1)
+    _write_wechat_qr_setup_status(
+        status_path,
+        {
+            "status": "running",
+            "command": command,
+            "session_path": session_path,
+            "started_at": started_at,
+        },
+    )
+    typer.echo("[WAIT] wechat_qr_setup: waiting for QR display and scan confirmation")
+    typer.echo(f"[OK] wechat_qr_status: {status_path}")
+    run = runner or subprocess.run
     try:
-        result = subprocess.run(
-            ["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"],
-            check=False,
-            **windows_no_window_kwargs(),
-        )
+        result = run(args, check=False, **windows_no_window_kwargs())
     except OSError as exc:
+        _write_wechat_qr_setup_status(
+            status_path,
+            {
+                "status": "failed",
+                "command": command,
+                "session_path": session_path,
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "error": str(exc),
+            },
+        )
         typer.echo(f"[FAIL] wechat_qr_setup: {exc}", err=True)
         raise typer.Exit(1) from exc
+    payload = {
+        "status": "completed" if result.returncode == 0 else "failed",
+        "command": command,
+        "session_path": session_path,
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "return_code": result.returncode,
+    }
+    _write_wechat_qr_setup_status(status_path, payload)
     if result.returncode != 0:
         typer.echo(f"[FAIL] wechat_qr_setup exited {result.returncode}", err=True)
+        typer.echo(f"[FAIL] wechat_qr_status: {status_path}", err=True)
         raise typer.Exit(result.returncode)
     typer.echo("[OK] wechat_qr_setup: completed")
+    typer.echo(f"[OK] wechat_qr_status: {status_path}")
+
+
+def _write_wechat_qr_setup_status(status_path: Path, payload: Mapping[str, object]) -> None:
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _echo_post_setup_next_steps(*, wechat_enabled: bool, feishu_enabled: bool) -> None:
+    channels = []
+    if wechat_enabled:
+        channels.append("wechat")
+    if feishu_enabled:
+        channels.append("feishu")
+    if channels:
+        channel_flags = " ".join(f"--channel {channel}" for channel in channels)
+        typer.echo(f"[NEXT] channel_test: airesearcher channels test {channel_flags} --require-sent")
+        typer.echo(
+            "[NEXT] readiness: airesearcher readiness --push-inspiration "
+            "--require-channel-config --require-channel-sent"
+        )
+        return
+    typer.echo("[NEXT] readiness: airesearcher readiness --no-push-inspiration")
+
+
+def _setup_channels_to_test(*, wechat_enabled: bool, feishu_enabled: bool) -> tuple[str, ...]:
+    channels: list[str] = []
+    if wechat_enabled:
+        channels.append("wechat")
+    if feishu_enabled:
+        channels.append("feishu")
+    return tuple(channels)
+
+
+def _setup_relative_path(env_path: Path, path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return env_path.parent / path
 
 
 def _merge_env_file(env_path: Path, values: Mapping[str, object | None]) -> None:
@@ -5643,11 +7838,17 @@ def _load_optional_env(env_path: Path) -> None:
         load_dotenv(env_path, override=True)
 
 
+def _merged_optional_env(env_path: Path) -> dict[str, str]:
+    environment = dict(os.environ)
+    environment.update(_read_env_file(env_path))
+    return environment
+
+
 def _read_env_file(env_path: Path) -> dict[str, str]:
     if not env_path.exists():
         return {}
     values: dict[str, str] = {}
-    for line in env_path.read_text(encoding="utf-8").splitlines():
+    for line in env_path.read_text(encoding="utf-8-sig").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue

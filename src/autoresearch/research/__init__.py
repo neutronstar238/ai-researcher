@@ -13,6 +13,15 @@ from .candidates import (
     transition_candidate_status,
 )
 from .hypotheses import HypothesisGenerationConfig, generate_hypotheses
+from .plans import (
+    ResearchPlanArtifact,
+    ResearchPlanAudit,
+    audit_research_plan,
+    compile_research_plan_pdf,
+    generate_research_plan,
+    render_research_plan_markdown,
+    render_research_plan_tex,
+)
 from .similarity import (
     ProjectSimilarityReport,
     SimilarityCheckConfig,
@@ -35,6 +44,8 @@ __all__ = [
     "HypothesisGenerationConfig",
     "ProjectAgentContext",
     "ProjectSimilarityReport",
+    "ResearchPlanArtifact",
+    "ResearchPlanAudit",
     "SimilarityCheckConfig",
     "SimilarityFetchRecord",
     "SimilarityFinding",
@@ -44,10 +55,15 @@ __all__ = [
     "UnsupportedSimilarityClaimError",
     "analyze_trends_and_gaps",
     "create_project_from_approved_candidate",
+    "audit_research_plan",
+    "compile_research_plan_pdf",
+    "generate_research_plan",
     "generate_similarity_queries",
     "generate_hypotheses",
     "generate_research_candidates",
     "link_similarity_report_to_project",
+    "render_research_plan_markdown",
+    "render_research_plan_tex",
     "run_project_similarity_check",
     "store_candidate_lifecycle_entry",
     "transition_candidate_status",

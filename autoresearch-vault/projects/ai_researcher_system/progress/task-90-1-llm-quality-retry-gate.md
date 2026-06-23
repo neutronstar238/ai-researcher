@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T03:56:00Z'
 entry_id: progress_task_90_1_llm_quality_retry_gate
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 90.1 LLM quality retry gate
-tags:
-  - progress
-  - llm
-  - quality-gate
-  - scale-lite
 keywords:
-  - structured output gate
-  - repair retry
-  - live DeepSeek smoke
-  - evidence not prompt discipline
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/llm/client.py
-  - runs/manual-live/llm-smoke-task90-retry.json
-related_task_ids:
-  - "90.1"
-related_run_ids: []
+- structured output gate
+- repair retry
+- live DeepSeek smoke
+- evidence not prompt discipline
 links: []
-backlinks: []
-created_at: "2026-06-13T03:56:00Z"
-updated_at: "2026-06-13T03:56:00Z"
+project_id: ai_researcher_system
+related_run_ids: []
+related_task_ids:
+- '90.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/llm/client.py
+- runs/manual-live/llm-smoke-task90-retry.json
+tags:
+- progress
+- llm
+- quality-gate
+- scale-lite
+title: Task 90.1 LLM quality retry gate
+updated_at: '2026-06-13T03:56:00Z'
+zone: project
 ---
 
 # Task 90.1 LLM Quality Retry Gate

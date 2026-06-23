@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T04:13:00Z'
 entry_id: progress_task_92_1_evidence_gate_review_override
 entry_type: project_progress
-zone: project
-project_id: ai_researcher_system
-title: Task 92.1 evidence-gate review override
-tags:
-  - progress
-  - evidence-gate
-  - llm-review
-  - release-gate
 keywords:
-  - review-json override
-  - post-hoc review evidence
-  - lifecycle trace
-  - publication gate remains blocking
-source_refs:
-  - .kiro/specs/auto-research-system/tasks.md
-  - src/autoresearch/reports/evidence_gate.py
-  - runs/manual-live/evidence-gate-task92-review-override/evidence-gate.json
-related_task_ids:
-  - "92.1"
-related_run_ids: []
+- review-json override
+- post-hoc review evidence
+- lifecycle trace
+- publication gate remains blocking
 links: []
-backlinks: []
-created_at: "2026-06-13T04:13:00Z"
-updated_at: "2026-06-13T04:13:00Z"
+project_id: ai_researcher_system
+related_run_ids: []
+related_task_ids:
+- '92.1'
+source_refs:
+- .kiro/specs/auto-research-system/tasks.md
+- src/autoresearch/reports/evidence_gate.py
+- runs/manual-live/evidence-gate-task92-review-override/evidence-gate.json
+tags:
+- progress
+- evidence-gate
+- llm-review
+- release-gate
+title: Task 92.1 evidence-gate review override
+updated_at: '2026-06-13T04:13:00Z'
+zone: project
 ---
 
 # Task 92.1 Evidence-Gate Review Override

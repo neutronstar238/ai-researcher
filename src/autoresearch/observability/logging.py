@@ -1,4 +1,4 @@
-"""Structured logging helpers for local AutoResearch runs."""
+"""Structured logging helpers for local AI-Researcher runs."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ LOG_FORMAT = (
 
 
 class ContextLoggerAdapter(logging.LoggerAdapter):
-    """Logger adapter that keeps AutoResearch context on every record."""
+    """Logger adapter that keeps AI-Researcher context on every record."""
 
     def process(
         self,
@@ -43,7 +43,7 @@ def get_logger(
     project_id: str | None = None,
     task_id: str | None = None,
 ) -> ContextLoggerAdapter:
-    """Return a logger adapter with AutoResearch run context."""
+    """Return a logger adapter with AI-Researcher run context."""
 
     logger = logging.getLogger(f"autoresearch.{component}")
     return ContextLoggerAdapter(

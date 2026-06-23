@@ -11,15 +11,33 @@ from pathlib import Path
 from typing import Any
 
 FIGURE_WIDTH = 720
-FIGURE_HEIGHT = 420
-PLOT_LEFT = 70
-PLOT_RIGHT = 40
-PLOT_BOTTOM = 70
+FIGURE_HEIGHT = 460
+PLOT_LEFT = 250
+PLOT_RIGHT = 90
+PLOT_BOTTOM = 54
 PLOT_TOP = 70
 BAR_COLOR = (39, 101, 162)
 AXIS_COLOR = (35, 35, 35)
 GRID_COLOR = (225, 225, 225)
 BACKGROUND_COLOR = (255, 255, 255)
+ROW_LABEL_SIZE = 10
+VALUE_LABEL_SIZE = 9
+KNOWN_METRIC_ORDER = (
+    "accuracy",
+    "baseline_accuracy",
+    "zscore_centroid_accuracy",
+    "macro_f1",
+    "accuracy_delta_vs_baseline",
+    "accuracy_delta_vs_zscore",
+)
+KNOWN_METRIC_LABELS = {
+    "accuracy": "Accuracy",
+    "baseline_accuracy": "Baseline accuracy",
+    "zscore_centroid_accuracy": "Z-score centroid accuracy",
+    "macro_f1": "Macro F1",
+    "accuracy_delta_vs_baseline": "Delta vs baseline",
+    "accuracy_delta_vs_zscore": "Delta vs z-score",
+}
 
 
 class FigureGenerationError(RuntimeError):
@@ -66,7 +84,7 @@ def generate_metric_bar_figure(
     pdf_path = output_path / f"{slug}.pdf"
     png_path = output_path / f"{slug}.png"
     metadata_path = output_path / f"{slug}.metadata.json"
-    ordered_metrics = tuple(sorted(metrics.items()))
+    ordered_metrics = _ordered_metrics(metrics)
 
     _write_metric_pdf(pdf_path, title, ordered_metrics)
     _write_metric_png(png_path, ordered_metrics)
@@ -84,11 +102,12 @@ def generate_metric_bar_figure(
         "figure_type": "metric_bar",
         "source_path": source_path.as_posix(),
         "metrics": [
-            {"name": name, "value": value}
+            {"label": _metric_label(name), "name": name, "value": value}
             for name, value in ordered_metrics
         ],
         "style": {
             "name": "autoresearch-default",
+            "orientation": "horizontal",
             "width": FIGURE_WIDTH,
             "height": FIGURE_HEIGHT,
             "bar_color_rgb": list(BAR_COLOR),
@@ -134,26 +153,33 @@ def _write_metric_pdf(
     content_lines = [
         _pdf_fill_color(BACKGROUND_COLOR),
         f"0 0 {FIGURE_WIDTH} {FIGURE_HEIGHT} re f",
+        _pdf_fill_color(AXIS_COLOR),
         _pdf_text(40, FIGURE_HEIGHT - 36, 16, title),
         _pdf_stroke_color(GRID_COLOR),
         "0.5 w",
     ]
-    for y in _grid_lines():
-        content_lines.append(f"{PLOT_LEFT} {y:.3f} m {_plot_right()} {y:.3f} l S")
-    zero_y = _y_for_value(0.0, metrics)
+    for x in _grid_lines():
+        content_lines.append(f"{x:.3f} {PLOT_BOTTOM} m {x:.3f} {_plot_top()} l S")
+        content_lines.append(_pdf_text(x - 10, 28, 8, f"{_value_for_x(x, metrics):.2g}"))
+    zero_x = _x_for_value(0.0, metrics)
     content_lines.extend(
         [
             _pdf_stroke_color(AXIS_COLOR),
             "1 w",
-            f"{PLOT_LEFT} {PLOT_BOTTOM} m {PLOT_LEFT} {_plot_top()} l S",
-            f"{PLOT_LEFT} {zero_y:.3f} m {_plot_right()} {zero_y:.3f} l S",
-            _pdf_fill_color(BAR_COLOR),
+            f"{PLOT_LEFT} {PLOT_BOTTOM} m {_plot_right()} {PLOT_BOTTOM} l S",
+            f"{zero_x:.3f} {PLOT_BOTTOM} m {zero_x:.3f} {_plot_top()} l S",
         ]
     )
-    for name, value, x, width, bottom, height in _bar_layout(metrics):
-        content_lines.append(f"{x:.3f} {bottom:.3f} {width:.3f} {height:.3f} re f")
-        content_lines.append(_pdf_text(x, 32, 8, _truncate_label(name)))
-        content_lines.append(_pdf_text(x, bottom + height + 8, 8, f"{value:.4g}"))
+    for name, value, x, y, width, height in _bar_layout(metrics):
+        content_lines.append(_pdf_fill_color(BAR_COLOR))
+        content_lines.append(f"{x:.3f} {y:.3f} {width:.3f} {height:.3f} re f")
+        content_lines.append(_pdf_fill_color(AXIS_COLOR))
+        label_y = y + max((height - ROW_LABEL_SIZE) / 2.0, 0.0) + 2
+        content_lines.append(_pdf_text(40, label_y, ROW_LABEL_SIZE, _metric_label(name)))
+        value_x = min(x + width + 6, FIGURE_WIDTH - PLOT_RIGHT + 16)
+        if value < 0:
+            value_x = max(x - 44, PLOT_LEFT - 50)
+        content_lines.append(_pdf_text(value_x, label_y, VALUE_LABEL_SIZE, f"{value:.4g}"))
 
     _write_pdf(path, "\n".join(content_lines))
 
@@ -163,17 +189,17 @@ def _write_metric_png(
     metrics: tuple[tuple[str, float], ...],
 ) -> None:
     pixels = bytearray(BACKGROUND_COLOR * (FIGURE_WIDTH * FIGURE_HEIGHT))
-    for y in _grid_lines():
-        _draw_rect(pixels, PLOT_LEFT, _png_y(y), _plot_width(), 1, GRID_COLOR)
-    zero_y = _png_y(_y_for_value(0.0, metrics))
-    _draw_rect(pixels, PLOT_LEFT, FIGURE_HEIGHT - _plot_top(), 1, _plot_height(), AXIS_COLOR)
-    _draw_rect(pixels, PLOT_LEFT, zero_y, _plot_width(), 2, AXIS_COLOR)
-    for _name, _value, x, _width, bottom, height in _bar_layout(metrics):
+    for x in _grid_lines():
+        _draw_rect(pixels, round(x), FIGURE_HEIGHT - _plot_top(), 1, _plot_height(), GRID_COLOR)
+    zero_x = round(_x_for_value(0.0, metrics))
+    _draw_rect(pixels, PLOT_LEFT, FIGURE_HEIGHT - PLOT_BOTTOM, _plot_width(), 2, AXIS_COLOR)
+    _draw_rect(pixels, zero_x, FIGURE_HEIGHT - _plot_top(), 1, _plot_height(), AXIS_COLOR)
+    for _name, _value, x, y, width, height in _bar_layout(metrics):
         _draw_rect(
             pixels,
             round(x),
-            round(FIGURE_HEIGHT - bottom - height),
-            round(_width),
+            round(FIGURE_HEIGHT - y - height),
+            max(round(width), 1),
             max(round(height), 1),
             BAR_COLOR,
         )
@@ -183,34 +209,43 @@ def _write_metric_png(
 def _bar_layout(
     metrics: tuple[tuple[str, float], ...],
 ) -> list[tuple[str, float, float, float, float, float]]:
-    slot_width = _plot_width() / len(metrics)
-    bar_width = min(slot_width * 0.62, 72.0)
-    zero_y = _y_for_value(0.0, metrics)
+    slot_height = _plot_height() / len(metrics)
+    bar_height = min(slot_height * 0.58, 28.0)
+    zero_x = _x_for_value(0.0, metrics)
     bars: list[tuple[str, float, float, float, float, float]] = []
     for index, (name, value) in enumerate(metrics):
-        center = PLOT_LEFT + slot_width * index + slot_width / 2.0
-        x = center - bar_width / 2.0
-        value_y = _y_for_value(value, metrics)
-        bottom = min(zero_y, value_y)
-        height = abs(value_y - zero_y)
-        bars.append((name, value, x, bar_width, bottom, max(height, 1.0)))
+        center_y = _plot_top() - slot_height * index - slot_height / 2.0
+        y = center_y - bar_height / 2.0
+        value_x = _x_for_value(value, metrics)
+        x = min(zero_x, value_x)
+        width = abs(value_x - zero_x)
+        bars.append((name, value, x, y, max(width, 1.0), bar_height))
     return bars
 
 
-def _y_for_value(value: float, metrics: tuple[tuple[str, float], ...]) -> float:
+def _x_for_value(value: float, metrics: tuple[tuple[str, float], ...]) -> float:
     values = [metric_value for _name, metric_value in metrics]
     minimum = min(min(values), 0.0)
     maximum = max(max(values), 0.0)
     if minimum == maximum:
         maximum = minimum + 1.0
-    return PLOT_BOTTOM + ((value - minimum) / (maximum - minimum)) * _plot_height()
+    return PLOT_LEFT + ((value - minimum) / (maximum - minimum)) * _plot_width()
 
 
 def _grid_lines() -> list[float]:
     return [
-        PLOT_BOTTOM + _plot_height() * fraction
-        for fraction in (0.25, 0.5, 0.75, 1.0)
+        PLOT_LEFT + _plot_width() * fraction
+        for fraction in (0.0, 0.25, 0.5, 0.75, 1.0)
     ]
+
+
+def _value_for_x(x: float, metrics: tuple[tuple[str, float], ...]) -> float:
+    values = [metric_value for _name, metric_value in metrics]
+    minimum = min(min(values), 0.0)
+    maximum = max(max(values), 0.0)
+    if minimum == maximum:
+        maximum = minimum + 1.0
+    return minimum + ((x - PLOT_LEFT) / _plot_width()) * (maximum - minimum)
 
 
 def _plot_width() -> int:
@@ -330,6 +365,18 @@ def _pdf_fill_color(color: tuple[int, int, int]) -> str:
 def _pdf_stroke_color(color: tuple[int, int, int]) -> str:
     red, green, blue = (channel / 255.0 for channel in color)
     return f"{red:.3f} {green:.3f} {blue:.3f} RG"
+
+
+def _ordered_metrics(metrics: dict[str, float]) -> tuple[tuple[str, float], ...]:
+    ordered_names = [name for name in KNOWN_METRIC_ORDER if name in metrics]
+    ordered_names.extend(sorted(name for name in metrics if name not in KNOWN_METRIC_ORDER))
+    return tuple((name, metrics[name]) for name in ordered_names)
+
+
+def _metric_label(name: str) -> str:
+    if name in KNOWN_METRIC_LABELS:
+        return KNOWN_METRIC_LABELS[name]
+    return name.replace("_", " ").strip().capitalize()
 
 
 def _truncate_label(label: str) -> str:

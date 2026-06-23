@@ -15,6 +15,8 @@ RELATED_WORK_STOPWORDS = frozenset(
         "across",
         "algorithm",
         "analysis",
+        "and",
+        "are",
         "approach",
         "based",
         "benchmark",
@@ -32,11 +34,13 @@ RELATED_WORK_STOPWORDS = frozenset(
         "experiments",
         "for",
         "from",
+        "has",
         "method",
         "methods",
         "model",
         "models",
         "paper",
+        "the",
         "research",
         "result",
         "results",
@@ -50,20 +54,28 @@ RELATED_WORK_STOPWORDS = frozenset(
     }
 )
 
-DIRECT_METHOD_TOKENS = frozenset(
+DIRECT_RELATED_WORK_ANCHORS = frozenset(
     {
-        "calibrated",
-        "calibration",
+        "character",
+        "classification",
+        "classifier",
+        "digit",
+        "handwritten",
+        "nearest",
+        "pendigit",
+        "prototype",
+        "recognition",
+    }
+)
+
+DIRECT_RELATED_WORK_STRONG_TOKENS = frozenset(
+    {
         "centroid",
-        "diagonal",
-        "distance",
         "mahalanobi",
         "mahalanobis",
+        "metric",
         "nearest",
         "prototype",
-        "shrinkage",
-        "variance",
-        "zscore",
     }
 )
 
@@ -203,9 +215,12 @@ def _inspect_row(
     method_overlap = tokens & context["method_tokens"]
     dataset_overlap = tokens & context["dataset_tokens"]
     baseline_overlap = tokens & context["baseline_tokens"]
+    title_tokens = set(_semantic_tokens(title))
     comparison_status = _comparison_status(
         source_backed=source_backed,
         abstract_backed=abstract_backed,
+        row_tokens=tokens,
+        title_tokens=title_tokens,
         method_overlap=method_overlap,
         dataset_overlap=dataset_overlap,
         baseline_overlap=baseline_overlap,
@@ -232,6 +247,8 @@ def _comparison_status(
     *,
     source_backed: bool,
     abstract_backed: bool,
+    row_tokens: set[str],
+    title_tokens: set[str],
     method_overlap: set[str],
     dataset_overlap: set[str],
     baseline_overlap: set[str],
@@ -240,16 +257,38 @@ def _comparison_status(
         return "blocked_unverified"
     if not abstract_backed:
         return "metadata_only"
-    direct_overlap = method_overlap & DIRECT_METHOD_TOKENS
-    if len(direct_overlap) >= 2:
-        return "direct_method_candidate"
-    if direct_overlap and (dataset_overlap or baseline_overlap):
+    if _is_direct_related_work(
+        row_tokens=row_tokens,
+        title_tokens=title_tokens,
+        method_overlap=method_overlap,
+        baseline_overlap=baseline_overlap,
+    ):
         return "direct_method_candidate"
     if dataset_overlap or baseline_overlap:
         return "benchmark_or_baseline_context"
     if method_overlap:
         return "method_term_context"
     return "unrelated"
+
+
+def _is_direct_related_work(
+    *,
+    row_tokens: set[str],
+    title_tokens: set[str],
+    method_overlap: set[str],
+    baseline_overlap: set[str],
+) -> bool:
+    title_and_method = title_tokens | method_overlap
+    if {"nearest", "centroid"} <= title_and_method:
+        return True
+    if "prototype" in title_tokens and row_tokens & {"classifier", "classification"}:
+        return True
+    strong_title = title_tokens & DIRECT_RELATED_WORK_STRONG_TOKENS
+    if strong_title and (title_tokens | baseline_overlap) & DIRECT_RELATED_WORK_ANCHORS:
+        return True
+    strong_method = method_overlap & DIRECT_RELATED_WORK_STRONG_TOKENS
+    title_domain = title_tokens & {"character", "digit", "handwritten", "pendigit", "recognition"}
+    return bool(strong_method and title_domain)
 
 
 def _inspection_context(summary: dict[str, Any], base_dir: Path) -> dict[str, set[str]]:
@@ -268,10 +307,8 @@ def _inspection_context(summary: dict[str, Any], base_dir: Path) -> dict[str, se
         *_context_values(demo, ("demo",)),
     )
     dataset_texts = (
-        *_context_values(candidate_metadata, ("dataset", "benchmark", "demo")),
-        *_context_values(task_metadata, ("dataset", "benchmark", "demo")),
-        *_context_values(candidate, ("title", "description", "research_gap")),
-        *_context_values(demo, ("demo",)),
+        *_context_values(candidate_metadata, ("dataset", "benchmark")),
+        *_context_values(task_metadata, ("dataset", "benchmark")),
     )
     baseline_texts = (
         *_context_values(candidate_metadata, ("baseline", "ablation", "limitation")),

@@ -11,6 +11,11 @@ from .dashboard import (
     export_local_dashboard_html,
     export_local_status_report,
 )
+from .dependencies import (
+    DependencyDiagnostic,
+    DependencyStatus,
+    diagnose_requests_dependency_set,
+)
 from .health import (
     QueueLatencySample,
     SchedulerHealthInput,
@@ -32,6 +37,8 @@ __all__ = [
     "AuditEventType",
     "AuditLog",
     "ApprovalQueueSummary",
+    "DependencyDiagnostic",
+    "DependencyStatus",
     "FailureStatusSummary",
     "LocalDashboardHtml",
     "LocalStatusReport",
@@ -51,6 +58,7 @@ __all__ = [
     "compute_system_metrics",
     "configure_logging",
     "default_audit_log_path",
+    "diagnose_requests_dependency_set",
     "export_local_dashboard_html",
     "export_local_status_report",
     "export_service_health_report",

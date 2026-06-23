@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -126,16 +127,85 @@ def test_send_inspiration_digest_reports_feishu_app_missing_home_chat() -> None:
     assert "missing AUTORESEARCH_FEISHU_HOME_CHAT_ID" in records[0].detail
 
 
-def test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook() -> None:
+def test_send_inspiration_digest_reports_wechat_qr_gateway_without_webhook(
+    tmp_path: Path,
+) -> None:
+    status_path = tmp_path / "setup-status.json"
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "command": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+                "session_path": ".airesearcher/channels/wechat/session.json",
+                "completed_at": "2026-06-18T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
     records = send_inspiration_digest(
         _report(),
         channels=("wechat",),
         env={
             "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
             "AUTORESEARCH_WECHAT_QR_SETUP_COMMAND": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+            "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": str(status_path),
         },
     )
 
     assert records[0].status == "skipped"
     assert "wechat QR gateway configured" in records[0].detail
-    assert "@tencent-weixin/openclaw-weixin-cli" in records[0].detail
+    assert "missing AUTORESEARCH_WECHAT_OPENCLAW_TARGET" in records[0].detail
+    assert "setup status completed" in records[0].detail
+    assert "openclaw channels login --channel openclaw-weixin" in records[0].detail
+
+
+def test_send_inspiration_digest_uses_openclaw_wechat_qr_target(
+    tmp_path: Path,
+) -> None:
+    status_path = tmp_path / "setup-status.json"
+    status_path.write_text(
+        json.dumps(
+            {
+                "status": "completed",
+                "command": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+                "session_path": ".airesearcher/channels/wechat/session.json",
+                "completed_at": "2026-06-18T00:00:00+00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    calls: list[tuple[list[str], float]] = []
+
+    def fake_command_runner(args: list[str], timeout_seconds: float) -> int:
+        calls.append((args, timeout_seconds))
+        return 0
+
+    records = send_inspiration_digest(
+        _report(),
+        channels=("wechat",),
+        env={
+            "AUTORESEARCH_WECHAT_CONNECTION_MODE": "qr",
+            "AUTORESEARCH_WECHAT_SETUP_STATUS_PATH": str(status_path),
+            "AUTORESEARCH_WECHAT_OPENCLAW_CHANNEL": "openclaw-weixin",
+            "AUTORESEARCH_WECHAT_OPENCLAW_TARGET": "peer:wx_user",
+            "AUTORESEARCH_WECHAT_OPENCLAW_MESSAGE_COMMAND": "openclaw message send",
+        },
+        command_runner=fake_command_runner,
+        timeout_seconds=5.0,
+    )
+
+    assert records[0].status == "sent"
+    assert records[0].detail == "openclaw message send accepted"
+    assert records[0].status_code == 0
+    assert calls[0][0][:7] == [
+        "openclaw",
+        "message",
+        "send",
+        "--channel",
+        "openclaw-weixin",
+        "--target",
+        "peer:wx_user",
+    ]
+    assert calls[0][0][7] == "--message"
+    assert "Show HN: Research agent" in calls[0][0][8]
+    assert calls[0][1] == 5.0

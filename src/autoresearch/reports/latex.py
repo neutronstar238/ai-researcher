@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from autoresearch.process import windows_no_window_kwargs
 from autoresearch.evidence import EvidenceGraph, EvidenceGraphError
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.schemas import ValidationStatus
 
 SECTION_TITLES = {

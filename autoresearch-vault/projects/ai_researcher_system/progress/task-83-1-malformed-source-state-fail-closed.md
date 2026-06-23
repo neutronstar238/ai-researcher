@@ -1,30 +1,30 @@
 ---
+backlinks: []
+created_at: '2026-06-13T02:47:45Z'
 entry_id: task_83_1_malformed_source_state_fail_closed
 entry_type: project_progress
-zone: project
-title: Task 83.1 malformed source state fail-closed gate
-project_id: ai_researcher_system
-tags:
-  - source-preflight
-  - fail-closed
-  - evidence-gate
-  - completed
 keywords:
-  - malformed state
-  - source preflight
-  - state_error
-  - SCALE-lite
-source_refs:
-  - src/autoresearch/cli/main.py
-  - tests/unit/cli/test_main.py
-related_task_ids:
-  - "83.1"
-related_run_ids:
-  - cycle-20260613T024745Z
-created_at: "2026-06-13T02:47:45Z"
-updated_at: "2026-06-13T02:47:45Z"
+- malformed state
+- source preflight
+- state_error
+- SCALE-lite
 links: []
-backlinks: []
+project_id: ai_researcher_system
+related_run_ids:
+- cycle-20260613T024745Z
+related_task_ids:
+- '83.1'
+source_refs:
+- src/autoresearch/cli/main.py
+- tests/unit/cli/test_main.py
+tags:
+- source-preflight
+- fail-closed
+- evidence-gate
+- completed
+title: Task 83.1 malformed source state fail-closed gate
+updated_at: '2026-06-13T02:47:45Z'
+zone: project
 ---
 
 # Task 83.1 Malformed Source State Fail-Closed Gate

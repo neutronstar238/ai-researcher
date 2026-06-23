@@ -38,7 +38,7 @@ def test_openclaw_manifest_contains_runtime_approval_bridge(tmp_path: Path) -> N
         "airesearcher serve --permission-mode approve-dangerous"
     )
     assert payload["approval_bridge"]["approve_command"].startswith(
-        "airesearcher runtime approve latest"
+        "airesearcher runtime approve latest --state "
     )
     assert "npx -y @tencent-weixin/openclaw-weixin-cli install" in channels[
         "openclaw-weixin"

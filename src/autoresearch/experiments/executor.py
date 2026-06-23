@@ -12,10 +12,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from autoresearch.process import windows_no_window_kwargs
+from autoresearch.experiments.review import CodeReviewFinding, review_generated_code
 from autoresearch.experiments.sandbox import SandboxAccessMode, SandboxPathPolicy
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 from autoresearch.schemas.provenance import file_hash
+
+NETWORK_ACCESS_APPROVAL_KEY = "network_access_approved"
+STATIC_PREFLIGHT_BLOCK_CATEGORIES = frozenset(
+    {"dangerous_command", "path_traversal", "secret_read"}
+)
 
 
 def execute_experiment_task(
@@ -58,6 +64,41 @@ def execute_experiment_task(
             "memory_limit_mb": memory_limit_mb,
         },
     )
+    preflight_findings = _preflight_findings(root, entrypoint_path)
+    static_findings = _static_preflight_findings(preflight_findings)
+    if static_findings:
+        run = _with_static_preflight_metadata(run, findings=static_findings)
+        return _finish_run(
+            run,
+            root,
+            status=ExecutionStatus.FAILED,
+            exit_code=None,
+            stdout="",
+            stderr=_static_preflight_message(static_findings),
+            limit_violations=["static_preflight"],
+            error_type="StaticPreflightDenied",
+        )
+
+    network_findings = _network_preflight_findings(preflight_findings)
+    if network_findings:
+        approved = task.metadata.get(NETWORK_ACCESS_APPROVAL_KEY) is True
+        run = _with_network_preflight_metadata(
+            run,
+            findings=network_findings,
+            approved=approved,
+            task_metadata=task.metadata,
+        )
+        if not approved:
+            return _finish_run(
+                run,
+                root,
+                status=ExecutionStatus.FAILED,
+                exit_code=None,
+                stdout="",
+                stderr=_network_preflight_message(network_findings),
+                limit_violations=["network_preflight"],
+                error_type="NetworkPreflightDenied",
+            )
 
     command = [str(python_executable), str(entrypoint_path)]
     process = subprocess.Popen(
@@ -116,6 +157,101 @@ def execute_experiment_task(
         stderr=stderr,
         limit_violations=limit_violations,
         error_type=error_type,
+    )
+
+
+def _preflight_findings(
+    experiment_dir: Path,
+    entrypoint_path: Path,
+) -> tuple[CodeReviewFinding, ...]:
+    entrypoint = entrypoint_path.relative_to(experiment_dir).as_posix()
+    result = review_generated_code(experiment_dir, entrypoint=entrypoint)
+    return result.findings
+
+
+def _static_preflight_findings(
+    findings: tuple[CodeReviewFinding, ...],
+) -> tuple[CodeReviewFinding, ...]:
+    return tuple(
+        finding
+        for finding in findings
+        if finding.category in STATIC_PREFLIGHT_BLOCK_CATEGORIES
+    )
+
+
+def _network_preflight_findings(
+    findings: tuple[CodeReviewFinding, ...],
+) -> tuple[CodeReviewFinding, ...]:
+    return tuple(finding for finding in findings if finding.category == "unrestricted_network")
+
+
+def _with_static_preflight_metadata(
+    run: ExecutionRun,
+    *,
+    findings: tuple[CodeReviewFinding, ...],
+) -> ExecutionRun:
+    metadata = dict(run.metadata)
+    metadata["static_preflight"] = {
+        "finding_count": len(findings),
+        "findings": [finding.to_dict() for finding in findings],
+    }
+    return run.model_copy(update={"metadata": metadata})
+
+
+def _with_network_preflight_metadata(
+    run: ExecutionRun,
+    *,
+    findings: tuple[CodeReviewFinding, ...],
+    approved: bool,
+    task_metadata: dict[str, Any],
+) -> ExecutionRun:
+    metadata = dict(run.metadata)
+    preflight_metadata: dict[str, Any] = {
+        "approved": approved,
+        "approval_key": NETWORK_ACCESS_APPROVAL_KEY,
+        "finding_count": len(findings),
+        "findings": [finding.to_dict() for finding in findings],
+    }
+    for key in (
+        "network_access_scope",
+        "approved_network_domains",
+        "network_source_urls",
+        "network_approval_mode",
+        "network_approval_id",
+        "network_approved_by",
+    ):
+        if key in task_metadata:
+            preflight_metadata[key] = task_metadata[key]
+    metadata["network_preflight"] = preflight_metadata
+    return run.model_copy(update={"metadata": metadata})
+
+
+def _static_preflight_message(findings: tuple[CodeReviewFinding, ...]) -> str:
+    details = "; ".join(
+        f"line {finding.line}: {finding.category}: {finding.message}"
+        if finding.line is not None
+        else f"{finding.category}: {finding.message}"
+        for finding in findings
+    )
+    return (
+        "Generated experiment code failed static security preflight. "
+        f"Findings: {details}. "
+        "Regenerate or quarantine the experiment before local execution."
+    )
+
+
+def _network_preflight_message(findings: tuple[CodeReviewFinding, ...]) -> str:
+    details = "; ".join(
+        f"line {finding.line}: {finding.message}"
+        if finding.line is not None
+        else finding.message
+        for finding in findings
+    )
+    return (
+        "Generated experiment imports network modules without explicit approval. "
+        f"Findings: {details}. "
+        f"Set task.metadata[{NETWORK_ACCESS_APPROVAL_KEY!r}]=True only after "
+        "human approval or route network operations through RestrictedNetworkPolicy."
     )
 
 

@@ -52,6 +52,43 @@ REFERENCE_SUPPORT_TOKENS = frozenset(
     }
 )
 
+REFERENCE_TASK_ANCHOR_TOKENS = frozenset(
+    {
+        "character",
+        "classifier",
+        "classification",
+        "digit",
+        "handwritten",
+        "nearest",
+        "pendigit",
+        "prototype",
+        "recognition",
+    }
+)
+
+REFERENCE_TITLE_METHOD_ANCHOR_TOKENS = frozenset(
+    {
+        "centroid",
+        "distance",
+        "knn",
+        "mahalanobi",
+        "mahalanobis",
+        "metric",
+        "nearest",
+        "prototype",
+    }
+)
+
+REFERENCE_TITLE_DOMAIN_ANCHOR_TOKENS = frozenset(
+    {
+        "character",
+        "digit",
+        "handwritten",
+        "pendigit",
+        "recognition",
+    }
+)
+
 REFERENCE_GENERIC_TOKENS = frozenset(
     {
         "also",
@@ -194,6 +231,7 @@ class _ManuscriptEvidence:
     evidence_map: dict[str, Any]
     literature_docs: tuple[dict[str, str], ...]
     similarity_findings: tuple[dict[str, str], ...]
+    similarity_summary_path: Path | None
     citations: tuple[dict[str, Any], ...]
     related_work_inspection_path: Path | None
     evidence_refs: tuple[str, ...]
@@ -206,6 +244,8 @@ class _AnalysisArtifacts:
     figure_png_path: Path | None = None
     figure_metadata_path: Path | None = None
     table_markdown_path: Path | None = None
+    similarity_positioning_json_path: Path | None = None
+    similarity_positioning_markdown_path: Path | None = None
 
     def paths(self) -> tuple[Path, ...]:
         return tuple(
@@ -216,6 +256,8 @@ class _AnalysisArtifacts:
                 self.figure_png_path,
                 self.figure_metadata_path,
                 self.table_markdown_path,
+                self.similarity_positioning_json_path,
+                self.similarity_positioning_markdown_path,
             )
             if path is not None and path.exists()
         )
@@ -315,6 +357,7 @@ def _load_manuscript_evidence(summary_path: Path) -> _ManuscriptEvidence:
         evidence_map=_read_json_if_exists(evidence_map_path),
         literature_docs=_parse_literature_docs(literature_path),
         similarity_findings=_parse_similarity_findings(similarity_path),
+        similarity_summary_path=similarity_path,
         citations=_parse_citations(citation_metadata_path, fallback=citations),
         related_work_inspection_path=related_work_json_path,
         evidence_refs=evidence_refs,
@@ -339,7 +382,7 @@ def _render_manuscript(
         "",
         "## Related Work",
         "",
-        *_related_work(evidence),
+        *_related_work(evidence, analysis),
         "",
         "## Method",
         "",
@@ -461,9 +504,15 @@ def _introduction(evidence: _ManuscriptEvidence) -> list[str]:
     ]
 
 
-def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
+def _related_work(
+    evidence: _ManuscriptEvidence,
+    analysis: _AnalysisArtifacts,
+) -> list[str]:
     doc_lines = _literature_doc_lines(evidence.literature_docs[:8])
-    finding_lines = _similarity_finding_lines(evidence.similarity_findings[:8])
+    finding_lines = _similarity_finding_lines(
+        evidence.similarity_findings,
+        positioning_artifact_path=analysis.similarity_positioning_json_path,
+    )
     return [
         (
             "The literature context comes from the live retrieval stage, not from a "
@@ -484,13 +533,14 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
         ),
         *doc_lines,
         (
-            "The similarity search is narrower and more adversarial than the broad "
-            "literature refresh, but this manuscript does not restate what the retriever "
-            "queried. Query strings, source responses, classification counts, cache "
-            "details, and source-specific errors are stored in the similarity note and "
-            "compact review context rather than promoted into this paper prose. The "
-            "retrieved distribution is a warning signal rather than a novelty claim. "
-            "When findings remain unknown, they are not used as evidence for originality."
+            "The project-start similarity search is a targeted adjacent-work retrieval "
+            "stage. This manuscript does not restate what the retriever queried or "
+            "compare it qualitatively with the broader literature refresh. Query strings, "
+            "source responses, classification counts, cache details, and source-specific "
+            "errors are stored in the similarity note and compact review context rather "
+            "than promoted into this paper prose. The retrieved distribution is a warning "
+            "signal rather than a novelty claim. When findings remain unknown, they are "
+            "not used as evidence for originality."
         ),
         _related_work_inspection_sentence(evidence),
         *finding_lines,
@@ -503,13 +553,13 @@ def _related_work(evidence: _ManuscriptEvidence) -> list[str]:
             "permits, and keep validated sources available as formal bibliography records."
         ),
         (
-            "The related-work evidence is split into direct duplicates, adjacent "
-            "mechanisms, benchmark precedents, baseline obligations, and out-of-scope "
-            "noise where the available metadata permits that distinction. That split is "
-            "not merely a writing preference. A direct duplicate blocks novelty claims; "
-            "an adjacent mechanism motivates positioning and often a baseline; a "
-            "benchmark precedent verifies dataset protocol and metrics; and out-of-scope "
-            "noise remains visible to prevent repeated rediscovery of weak search hits."
+            "The related-work evidence uses the comparison-status fields recorded in the "
+            "inspection artifact, such as direct_method_candidate, contextual, "
+            "benchmark_or_baseline_context, metadata_only, or unknown. The manuscript "
+            "does not invent finer categories beyond those stored fields. Direct method "
+            "candidates require novelty positioning; contextual and benchmark or baseline "
+            "records motivate comparison checks; metadata-only and unknown rows remain "
+            "visible but do not support originality claims."
         ),
         (
             "The current manuscript therefore treats source classification as a research "
@@ -573,7 +623,10 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             f"hash, commit identifier, metrics path, artifact directory, and command used "
             f"for reproduction. The recorded metrics expose {_fmt(feature_count)} input "
             f"features and a variance_shrinkage parameter of {_fmt(variance_shrinkage)} "
-            f"for this cycle. These provenance fields are more important than prose "
+            f"for this cycle. That shrinkage value is a fixed recorded configuration, "
+            f"not a tuned hyperparameter result; this run does not include a sensitivity "
+            f"sweep over alternative shrinkage values and therefore cannot claim that "
+            f"0.0500 is optimal. These provenance fields are more important than prose "
             f"style because they let a later validator decide whether the same data and "
             f"code path produced the reported numbers."
         ),
@@ -599,15 +652,15 @@ def _method(evidence: _ManuscriptEvidence) -> list[str]:
             "learning."
         ),
         (
-            "For a conference-style manuscript, the method also needs to state what the "
+            "For a submission-style manuscript, the method also needs to state what the "
             "system is not allowed to vary. The current cycle fixes the data source, "
             "the split policy, the baseline family, the comparison role, and the validator "
             "that reads the produced artifacts. The autonomous loop may choose a topic, "
             "retrieve sources, run the script, and draft the paper, but it may not "
             "silently relabel the benchmark, replace a failed baseline, or convert a "
             "single positive metric into a general theory. That constraint is especially "
-            "important when the same manuscript is compiled under compact ACM or IEEE "
-            "templates, because visual polish can otherwise hide a thin evidence model."
+            "important when a later cycle changes the LaTeX template or target venue, "
+            "because visual polish can otherwise hide a thin evidence model."
         ),
         (
             "Implementation-level constraints are reported only when they are present in "
@@ -728,14 +781,13 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "running."
         ),
         (
-            "Conference-template compatibility is treated as an experimental artifact, "
-            "not a cosmetic export. Compact two-column layouts reveal problems that a "
-            "single-column draft can hide: thin method sections collapse to too few pages, "
-            "machine identifiers can create overfull boxes, and missing technical detail "
-            "becomes visible when the paper is compressed. The paper build check therefore "
-            "checks page count, word count, required sections, technical term coverage, "
-            "and layout overflow after LaTeX compilation. A PDF is not release evidence "
-            "unless those checks pass under the selected template."
+            "Template-build evidence is treated as an experimental artifact, not a "
+            "cosmetic export. The current paper build only certifies the template that "
+            "was actually selected for this cycle; it is not evidence that ACM, IEEE, "
+            "Springer, or any other external venue template will compile without a "
+            "separate run. The paper build check therefore checks page count, word "
+            "count, required sections, technical term coverage, and layout overflow "
+            "after LaTeX compilation under the selected template."
         ),
         (
             "The experiment also records why empirical validity, source retrieval, "
@@ -746,13 +798,13 @@ def _experiments(evidence: _ManuscriptEvidence) -> list[str]:
             "tied to the artifact that supports it."
         ),
         (
-            "For compact conference templates, the paper build is rerun after manuscript "
-            "changes rather than assumed from the Markdown word count. This matters "
-            "because double-column classes can compress a manuscript by several pages "
+            "For external or compact venue templates, the paper build must be rerun "
+            "after manuscript changes rather than inferred from the Markdown word "
+            "count. Double-column classes can compress a manuscript by several pages "
             "and can expose long machine identifiers that never overflow in a generic "
-            "article layout. The experimental evidence for template readiness is the "
-            "compiled template-specific PDF plus the parsed quality report, not the "
-            "existence of a `.tex` file."
+            "article layout. The experimental evidence for a venue template is a "
+            "compiled template-specific PDF plus the parsed quality report for that "
+            "same template, not the existence of a `.tex` file."
         ),
     ]
 
@@ -915,57 +967,153 @@ def _write_analysis_artifacts(
     root: Path,
 ) -> _AnalysisArtifacts:
     metrics = _analysis_metrics(_metrics(evidence))
-    if not metrics:
+    positioning_summary = _similarity_positioning_summary(evidence)
+    if not metrics and not positioning_summary["finding_count"]:
         return _AnalysisArtifacts()
     analysis_dir = root / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
-    metrics_source_path = analysis_dir / "metrics-source.json"
-    metrics_source_path.write_text(
-        json.dumps(
-            {
-                "metrics": metrics,
-                "source_cycle_summary": evidence.cycle_summary_path.as_posix(),
-                "source_run_record": _source_path_for_record(evidence, "run-record.json"),
-            },
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
-    )
+    metrics_source_path: Path | None = None
     figure_pdf_path: Path | None = None
     figure_png_path: Path | None = None
     figure_metadata_path: Path | None = None
-    try:
-        figure = generate_metric_bar_figure(
-            metrics_source_path,
-            analysis_dir,
-            title="Validated Performance Metrics",
-            figure_id="validated-performance-metrics",
+    table_markdown_path: Path | None = None
+    if metrics:
+        metrics_source_path = analysis_dir / "metrics-source.json"
+        metrics_source_path.write_text(
+            json.dumps(
+                {
+                    "metrics": metrics,
+                    "source_cycle_summary": evidence.cycle_summary_path.as_posix(),
+                    "source_run_record": _source_path_for_record(evidence, "run-record.json"),
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
         )
-        figure_pdf_path = Path(figure.pdf_path)
-        figure_png_path = Path(figure.png_path)
-        figure_metadata_path = Path(figure.metadata_path)
-    except FigureGenerationError:
-        figure_pdf_path = None
-        figure_png_path = None
-        figure_metadata_path = None
-    table_markdown_path = analysis_dir / "data-analysis-summary.md"
-    table_markdown_path.write_text(
-        "\n".join(_analysis_table_lines(evidence)),
-        encoding="utf-8",
-    )
+        try:
+            figure = generate_metric_bar_figure(
+                metrics_source_path,
+                analysis_dir,
+                title="Validated Performance Metrics",
+                figure_id="validated-performance-metrics",
+            )
+            figure_pdf_path = Path(figure.pdf_path)
+            figure_png_path = Path(figure.png_path)
+            figure_metadata_path = Path(figure.metadata_path)
+        except FigureGenerationError:
+            figure_pdf_path = None
+            figure_png_path = None
+            figure_metadata_path = None
+        table_markdown_path = analysis_dir / "data-analysis-summary.md"
+        table_markdown_path.write_text(
+            "\n".join(_analysis_table_lines(evidence)),
+            encoding="utf-8",
+        )
+    similarity_positioning_json_path: Path | None = None
+    similarity_positioning_markdown_path: Path | None = None
+    if positioning_summary["finding_count"]:
+        similarity_positioning_json_path = analysis_dir / "similarity-positioning-summary.json"
+        similarity_positioning_json_path.write_text(
+            json.dumps(positioning_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        similarity_positioning_markdown_path = analysis_dir / "similarity-positioning-summary.md"
+        similarity_positioning_markdown_path.write_text(
+            "\n".join(_similarity_positioning_markdown(positioning_summary)),
+            encoding="utf-8",
+        )
     return _AnalysisArtifacts(
         metrics_source_path=metrics_source_path,
         figure_pdf_path=figure_pdf_path,
         figure_png_path=figure_png_path,
         figure_metadata_path=figure_metadata_path,
         table_markdown_path=table_markdown_path,
+        similarity_positioning_json_path=similarity_positioning_json_path,
+        similarity_positioning_markdown_path=similarity_positioning_markdown_path,
     )
+
+
+def _similarity_positioning_summary(evidence: _ManuscriptEvidence) -> dict[str, Any]:
+    counts: dict[str, int] = {}
+    rows: list[dict[str, str]] = []
+    family_counts: dict[str, int] = {}
+    for finding in evidence.similarity_findings:
+        classification = _clean_text(finding.get("classification", "")).casefold() or "unknown"
+        counts[classification] = counts.get(classification, 0) + 1
+        if classification != "adjacent_work":
+            continue
+        family = _positioning_family(finding)
+        family_counts[family] = family_counts.get(family, 0) + 1
+        rows.append(
+            {
+                "title": _clean_text(finding.get("title", "")),
+                "source": _clean_text(finding.get("source", "")),
+                "classification": classification,
+                "family": family,
+                "basis": _clean_text(finding.get("basis", "")),
+                "positioning_decision": _positioning_decision(finding),
+            }
+        )
+    return {
+        "source_cycle_summary": evidence.cycle_summary_path.as_posix(),
+        "source_similarity_summary": (
+            evidence.similarity_summary_path.as_posix()
+            if evidence.similarity_summary_path is not None
+            else None
+        ),
+        "finding_count": len(evidence.similarity_findings),
+        "classification_counts": dict(sorted(counts.items())),
+        "adjacent_work_count": counts.get("adjacent_work", 0),
+        "adjacent_work_family_counts": dict(sorted(family_counts.items())),
+        "positioning_rows": rows,
+    }
+
+
+def _similarity_positioning_markdown(summary: dict[str, Any]) -> list[str]:
+    counts = _dict(summary.get("classification_counts"))
+    rows = _dict_list(summary.get("positioning_rows"))
+    lines = [
+        "# Similarity Positioning Summary",
+        "",
+        f"- Source similarity note: `{_clean_locator_text(_text(summary.get('source_similarity_summary')) or 'unknown')}`",
+        f"- Parsed findings: `{_int(summary.get('finding_count'))}`",
+        f"- Adjacent-work findings: `{_int(summary.get('adjacent_work_count'))}`",
+        "",
+        "## Classification Counts",
+        "",
+    ]
+    for classification, count in sorted(counts.items()):
+        lines.append(f"- `{classification}`: `{_int(count)}`")
+    lines.extend(
+        [
+            "",
+            "## Positioning Rows",
+            "",
+            "| Family | Adjacent-work rows | Boundary |",
+            "| --- | --- | --- |",
+        ]
+    )
+    family_seen: set[str] = set()
+    for row in rows:
+        family = _clean_text(_text(row.get("family"))) or "adjacent source-backed hit"
+        if family in family_seen:
+            continue
+        family_seen.add(family)
+        lines.append(
+            "| "
+            f"{_table_cell(family)} | "
+            f"{_int(_dict(summary.get('adjacent_work_family_counts')).get(family))} | "
+            f"{_table_cell(_text(row.get('positioning_decision')))} |"
+        )
+    if not rows:
+        lines.append("| none | unknown | No adjacent-work rows were parsed. |")
+    return lines
 
 
 def _evidence_artifact_availability(analysis: _AnalysisArtifacts) -> list[str]:
     rows = [
-        ("Cycle record", "Machine-readable cycle state and stage outputs"),
+        ("Cycle summary", "Machine-readable cycle state and stage outputs"),
         ("Run record", "Command, exit code, metrics, artifacts, and logs"),
         ("Validation report", "Metric bounds, issues, and statistical notes"),
         ("Evidence map", "Bindings from claims and metrics to local evidence"),
@@ -974,7 +1122,6 @@ def _evidence_artifact_availability(analysis: _AnalysisArtifacts) -> list[str]:
         ("Related-work inspection", "Source-backed abstract and overlap screening"),
         ("Similarity check", "Project-start adjacent-work retrieval trail"),
         ("Reproduction check", "Command-line rerun records and validation outputs"),
-        ("Readiness report", "Configured artifact-readiness report"),
         ("Paper build", "LaTeX/PDF compile status and layout quality report"),
     ]
     if analysis.paths():
@@ -1167,8 +1314,8 @@ def _formal_reference_line(citation: dict[str, Any]) -> str:
             or citation.get("date")
         )
     )
-    doi = _clean_text(_text(citation.get("doi")))
-    url = _clean_text(_text(citation.get("url") or citation.get("source_uri")))
+    doi = _clean_locator_text(_text(citation.get("doi")))
+    url = _clean_locator_text(_text(citation.get("url") or citation.get("source_uri")))
     parts = [authors, title]
     if venue:
         parts.append(venue)
@@ -1176,7 +1323,7 @@ def _formal_reference_line(citation: dict[str, Any]) -> str:
         parts.append(year)
     if doi:
         parts.append(f"doi:{doi}")
-    if url and url != doi:
+    if url and url not in {doi, f"doi:{doi}"}:
         parts.append(url)
     return f"- [{key}] " + ". ".join(part.rstrip(".") for part in parts if part) + "."
 
@@ -1255,7 +1402,6 @@ def _reference_context(
         "limitation",
         "novel_contribution",
         "contribution",
-        "seed_document_title",
     )
     texts = []
     texts.extend(
@@ -1333,22 +1479,23 @@ def _reference_row_is_direct(
     citation: dict[str, Any],
     context: tuple[set[str], set[str], set[str]],
 ) -> bool:
-    method_tokens, domain_tokens, _all_tokens = context
+    _method_tokens, _domain_tokens, _all_tokens = context
     citation_tokens = set(_semantic_tokens(_citation_reference_text(citation)))
     if not citation_tokens:
         return False
-    strong = citation_tokens & method_tokens & REFERENCE_DIRECT_METHOD_TOKENS
-    domain = citation_tokens & domain_tokens
-    if len(strong) >= 2:
-        return True
-    if strong and domain:
-        return True
     title_tag_tokens = set(_semantic_tokens(_citation_reference_title_tag_text(citation)))
     if {"nearest", "centroid"} <= title_tag_tokens:
         return True
+    if "prototype" in title_tag_tokens and citation_tokens & {"classifier", "classification"}:
+        return True
+    if (
+        title_tag_tokens & REFERENCE_TITLE_DOMAIN_ANCHOR_TOKENS
+        and title_tag_tokens & REFERENCE_TITLE_METHOD_ANCHOR_TOKENS
+    ):
+        return True
     return bool(
-        "prototype" in title_tag_tokens
-        and citation_tokens & {"classifier", "classification"}
+        title_tag_tokens & REFERENCE_TITLE_METHOD_ANCHOR_TOKENS
+        and citation_tokens & REFERENCE_TASK_ANCHOR_TOKENS
     )
 
 
@@ -1471,11 +1618,11 @@ def _parse_citations(
                 "title": _clean_text(_text(row.get("title"))),
                 "status": _clean_text(_text(row.get("status"))),
                 "bibtex_key": _clean_text(_text(row.get("bibtex_key"))),
-                "doi": _clean_text(_text(row.get("doi"))),
-                "url": _clean_text(_text(row.get("url"))),
+                "doi": _clean_locator_text(_text(row.get("doi"))),
+                "url": _clean_locator_text(_text(row.get("url"))),
                 "abstract": _clean_text(_text(row.get("abstract"))),
                 "venue": _clean_text(_text(row.get("venue"))),
-                "source_uri": _clean_text(_text(row.get("source_uri"))),
+                "source_uri": _clean_locator_text(_text(row.get("source_uri"))),
                 "authors": [_clean_text(_text(author)) for author in _list(row.get("authors"))],
                 "tags": [_clean_text(_text(tag)) for tag in _list(row.get("tags"))],
             }
@@ -1501,7 +1648,11 @@ def _literature_doc_lines(docs: tuple[dict[str, str], ...]) -> list[str]:
     ]
 
 
-def _similarity_finding_lines(findings: tuple[dict[str, str], ...]) -> list[str]:
+def _similarity_finding_lines(
+    findings: tuple[dict[str, str], ...],
+    *,
+    positioning_artifact_path: Path | None,
+) -> list[str]:
     if not findings:
         return [
             (
@@ -1509,13 +1660,123 @@ def _similarity_finding_lines(findings: tuple[dict[str, str], ...]) -> list[str]
                 "blocker, because absence of parsed findings is not evidence of absence."
             )
         ]
-    return [
+    summary = _similarity_positioning_counts(findings)
+    adjacent_count = summary.get("adjacent_work", 0)
+    if adjacent_count <= 0:
+        return [
+            (
+                "Representative similarity findings are retained in the runtime similarity "
+                "note. This manuscript summarizes their role without promoting individual "
+                "metadata hits into validated related-work claims."
+            )
+        ]
+    artifact_label = (
+        _relative_markdown_path(positioning_artifact_path)
+        if positioning_artifact_path is not None
+        else "the similarity positioning artifact"
+    )
+    family_counts = _adjacent_work_family_counts(findings)
+    family_boundaries = {
+        "prototype and centroid family": (
+            "Treat as adjacent method family; compare objective and benchmark before novelty claims."
+        ),
+        "metric and Mahalanobis family": (
+            "Treat as adjacent distance-family baseline; keep the empirical claim single-cycle."
+        ),
+        "benchmark-overlap family": (
+            "Treat as shared benchmark context; do not claim task novelty from retrieval alone."
+        ),
+        "other adjacent source-backed hit": (
+            "Keep as retrieval boundaries, not as proof for or against originality."
+        ),
+    }
+    table_rows = [
+        (
+            f"| {_table_cell(family)} | adjacent_work={count} | "
+            f"{_table_cell(family_boundaries.get(family, 'Preserve as an adjacent boundary for later comparison.'))} |"
+        )
+        for family, count in sorted(family_counts.items())
+        if count > 0
+    ]
+    lines = [
         (
             "Representative similarity findings are retained in the runtime similarity "
-            "note. This manuscript summarizes their role without promoting individual "
-            "metadata hits into validated related-work claims."
-        )
+            "note. The adjacent-work positioning below is backed by the generated "
+            f"{artifact_label} summary rather than by model memory. It separates the "
+            "project-start similarity note from the related-work inspection: the former "
+            f"contains {_int(len(findings))} parsed similarity findings, while the latter "
+            "screens citation rows for source-backed method overlap."
+        ),
+        "",
+        "### Adjacent-Work Positioning",
+        "",
+        "| Evidence view | Recorded count | Positioning boundary |",
+        "| --- | ---: | --- |",
+        *table_rows,
     ]
+    return [
+        *lines,
+        (
+            f"The positioning summary records {adjacent_count} adjacent-work findings "
+            f"out of {len(findings)} parsed similarity findings. Unknown rows are not "
+            "used as evidence for originality, and direct duplicate rows, if present, "
+            "remain blockers for the publication audit rather than items to paper over "
+            "in prose."
+        ),
+    ]
+
+
+def _positioning_decision(finding: dict[str, str]) -> str:
+    family = _positioning_family(finding)
+    if family == "prototype and centroid family":
+        return "Compare prototype objective and benchmark before novelty claims."
+    if family == "metric and Mahalanobis family":
+        return "Compare distance metric baselines before widening the claim."
+    if family == "benchmark-overlap family":
+        return "Shared benchmark context; do not claim task novelty from retrieval alone."
+    return "Preserve as an adjacent boundary for later comparison."
+
+
+def _positioning_family(finding: dict[str, str]) -> str:
+    basis = _clean_text(finding.get("basis", "")).casefold()
+    title = _clean_text(finding.get("title", "")).casefold()
+    if "query family overlap mahalanobis_metric" in basis:
+        return "metric and Mahalanobis family"
+    if "query family overlap prototype_classification" in basis:
+        return "prototype and centroid family"
+    if "query family overlap benchmark" in basis:
+        return "benchmark-overlap family"
+    text = f"{title} {basis}"
+    if any(token in text for token in ("mahalanobis", "metric", "distance", "nearest neighbor")):
+        return "metric and Mahalanobis family"
+    if any(token in text for token in ("prototype", "centroid", "nearest centroid")):
+        return "prototype and centroid family"
+    if any(token in text for token in ("pendigits", "handwritten", "digit", "benchmark")):
+        return "benchmark-overlap family"
+    return "other adjacent source-backed hit"
+
+
+def _similarity_positioning_counts(findings: tuple[dict[str, str], ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        classification = _clean_text(finding.get("classification", "")).casefold() or "unknown"
+        counts[classification] = counts.get(classification, 0) + 1
+    return counts
+
+
+def _adjacent_work_family_counts(findings: tuple[dict[str, str], ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        if _clean_text(finding.get("classification", "")).casefold() != "adjacent_work":
+            continue
+        family = _positioning_family(finding)
+        counts[family] = counts.get(family, 0) + 1
+    return counts
+
+
+def _table_cell(value: str | None) -> str:
+    text = _clean_text(_text(value))
+    return text.replace("|", "/") or "unknown"
 
 
 def _validation_note_lines(validation: dict[str, Any]) -> list[str]:
@@ -1731,3 +1992,9 @@ def _clean_text(value: str) -> str:
     ascii_text = re.sub(r"https?://\S+", "source URL recorded in artifact", ascii_text)
     ascii_text = re.sub(r"\s+", " ", ascii_text).strip()
     return ascii_text
+
+
+def _clean_locator_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", ascii_text).strip().rstrip(".,;")

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -156,6 +158,34 @@ def approve_runtime_request(
     request.resolved_by = approved_by
     write_runtime_approval_requests(state_path, approvals)
     return request
+
+
+def network_approval_metadata_from_decision(
+    decision: RuntimeApprovalDecision,
+    *,
+    scope: str,
+    approved_network_domains: Sequence[str] = (),
+    network_source_urls: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Convert an allowed runtime approval decision into task network metadata."""
+
+    if not decision.allowed:
+        msg = "network approval metadata requires an allowed runtime decision"
+        raise RuntimeApprovalError(msg)
+    metadata: dict[str, Any] = {
+        "network_access_approved": True,
+        "network_access_scope": scope,
+        "network_approval_mode": decision.mode.value,
+    }
+    if approved_network_domains:
+        metadata["approved_network_domains"] = list(approved_network_domains)
+    if network_source_urls:
+        metadata["network_source_urls"] = list(network_source_urls)
+    if decision.request is not None:
+        metadata["network_approval_id"] = decision.request.request_id
+        if decision.request.resolved_by:
+            metadata["network_approved_by"] = decision.request.resolved_by
+    return metadata
 
 
 def list_runtime_approval_requests(
