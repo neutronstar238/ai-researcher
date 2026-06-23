@@ -64,6 +64,14 @@ PROFILE_SET_EVIDENCE_POLICY = (
     "tool invocation, or publication readiness without validated literature, experiment, "
     "reproduction, review, and evidence-gate artifacts."
 )
+STAGE_CONTEXT_PACKET_KIND = "agent_stage_context_packet_process_metadata"
+STAGE_CONTEXT_PACKET_EVIDENCE_POLICY = (
+    "Agent stage context packets route bounded skill context and MCP runtime contracts "
+    "to agents assigned to one research-loop stage. They can support responsibility "
+    "routing and runtime prompting only; they cannot prove scientific results, novelty "
+    "claims, benchmark metrics, citation validity, tool invocation, or publication "
+    "readiness without validated research artifacts."
+)
 DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES: tuple[str, ...] = (
     "literature",
     "research_plan",
@@ -822,6 +830,68 @@ def profile_contexts_by_stage(
     return grouped
 
 
+def build_agent_stage_context_packet(
+    profile_contexts: Iterable[Mapping[str, Any]],
+    stage: str,
+    *,
+    project_id: str | None = None,
+    cycle_id: str | None = None,
+) -> dict[str, Any]:
+    """Build a portable context packet for agents assigned to one loop stage."""
+
+    normalized_stage = normalize_profile_stage(stage)
+    stage_contexts = profile_contexts_for_stage(profile_contexts, normalized_stage)
+    readiness_values = [
+        value
+        for value in (context.get("readiness") for context in stage_contexts)
+        if isinstance(value, Mapping)
+    ]
+    failed_checks = sum(
+        int(value.get("failed_check_count", 0) or 0) for value in readiness_values
+    )
+    warning_checks = sum(
+        int(value.get("warning_count", 0) or 0) for value in readiness_values
+    )
+    skill_ids = _ordered_unique(
+        str(skill.get("skill_id", ""))
+        for context in stage_contexts
+        for skill in _mapping_items(context.get("skills"))
+        if str(skill.get("skill_id", "")).strip()
+    )
+    materialized_skill_ids = _ordered_unique(
+        str(skill.get("skill_id", ""))
+        for context in stage_contexts
+        for skill in _mapping_items(context.get("materialized_skills"))
+        if str(skill.get("skill_id", "")).strip()
+    )
+    mcp_server_ids = _ordered_unique(
+        str(server.get("server_id", ""))
+        for context in stage_contexts
+        for server in _mapping_items(context.get("mcp_servers"))
+        if str(server.get("server_id", "")).strip()
+    )
+    agent_ids = tuple(str(context.get("agent_id", "")) for context in stage_contexts)
+    return {
+        "packet_kind": STAGE_CONTEXT_PACKET_KIND,
+        "stage": normalized_stage,
+        "project_id": project_id,
+        "cycle_id": cycle_id,
+        "agent_count": len(stage_contexts),
+        "agent_ids": list(agent_ids),
+        "skill_ids": list(skill_ids),
+        "materialized_skill_ids": list(materialized_skill_ids),
+        "mcp_server_ids": list(mcp_server_ids),
+        "readiness": {
+            "passed": failed_checks == 0,
+            "failed_check_count": failed_checks,
+            "warning_count": warning_checks,
+        },
+        "agents": [dict(context) for context in stage_contexts],
+        "missing_assignment": not stage_contexts,
+        "evidence_policy": STAGE_CONTEXT_PACKET_EVIDENCE_POLICY,
+    }
+
+
 def render_agent_profile_markdown(profile: AgentProfile) -> str:
     """Render an Obsidian-friendly profile note."""
 
@@ -1054,6 +1124,24 @@ def _build_mcp_runtime_contract(server: AgentMcpServerBinding) -> AgentMcpRuntim
         readiness_check_ids=tuple(readiness_check_ids),
         evidence_refs=server.evidence_refs,
     )
+
+
+def _mapping_items(value: Any) -> tuple[Mapping[str, Any], ...]:
+    if not isinstance(value, list | tuple):
+        return ()
+    return tuple(item for item in value if isinstance(item, Mapping))
+
+
+def _ordered_unique(values: Iterable[object]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        ordered.append(text)
+    return tuple(ordered)
 
 
 def _skill_readiness_check(

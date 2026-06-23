@@ -9838,3 +9838,38 @@ This file defines the project development standard for coding agents and records
   - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future worker processes can call the same heartbeat helpers from sub-agent stages when stages become asynchronous; heartbeat evidence must remain runtime-health-only and cannot be used as publication evidence.
+
+### 2026-06-24 01:25:28 +08:00 - Codex - Task 235.1 Stage-scoped Agent context packets
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher outputs while keeping Agent thinking scientific rather than over-engineered, and continue adding the ability to assign custom skills and MCPs to specific Agents.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `build_agent_stage_context_packet()` to export a portable process-metadata packet for one research-loop stage.
+  - Packet contents include assigned agent IDs, skill IDs, materialized skill IDs, MCP server IDs, bounded per-agent runtime contexts, readiness summary, optional project/cycle IDs, and a strict evidence boundary.
+  - Added `airesearcher agents profile export-stage-context <profiles...> --stage <stage> --output <packet.json>`.
+  - The CLI fails by default if no Agent is assigned to the requested stage or if assigned profiles have failing readiness checks; `--allow-empty` and `--allow-not-ready` are available for debugging.
+  - Updated README/README.zh-CN and added task `235.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_stage_context_packet_routes_only_assigned_agents tests\unit\cli\test_main.py::test_agent_profile_export_stage_context_cli_writes_packet -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed after fixing import order in `tests\unit\agents\test_profiles.py`.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI wrote `runs\manual-live\task235-stage-context-v1\profiles\reviewer.json` using `node .\bin\airesearcher.mjs agents profile write --agent-id reviewer --role validator_agent --stage review --skill review-skill=skills/review-skill.md --mcp opencode="opencode run" --mcp-tool opencode:code.review --mcp-approval opencode:read_only ...`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile export-stage-context runs\manual-live\task235-stage-context-v1\profiles\reviewer.json --stage review --base-dir runs\manual-live\task235-stage-context-v1 --project-id task235_stage_context --cycle-id cycle-real --output runs\manual-live\task235-stage-context-v1\packets\review-context.json`: passed with one ready Agent, one skill, and one MCP server.
+  - Artifact inspection confirmed `packet_kind=agent_stage_context_packet_process_metadata`, `agent_ids=["reviewer"]`, `skill_ids=["review-skill"]`, `materialized_skill_ids=["review-skill"]`, `mcp_server_ids=["opencode"]`, loaded skill content, read-only MCP contract, and evidence policy text stating that the packet cannot prove scientific results.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 611 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future asynchronous stage workers can consume these packets directly, but any actual MCP call must still produce MCP invocation evidence and any publication claim must still pass literature, experiment, reproduction, review, publication-audit, and evidence gates.

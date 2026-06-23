@@ -18,6 +18,7 @@ from autoresearch.agents import (
     McpApprovalPolicy,
     SkillImportPolicy,
     build_agent_profile_from_bundle,
+    build_agent_stage_context_packet,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
     load_agent_profile_bundle,
@@ -212,6 +213,59 @@ def test_profile_contexts_group_by_assigned_stage() -> None:
     assert grouped["literature"][0]["context_kind"] == "agent_profile_process_metadata"
     assert grouped["research_plan"][0]["agent_id"] == "literature-agent"
     assert grouped["review"][0]["agent_id"] == "reviewer"
+
+
+def test_agent_stage_context_packet_routes_only_assigned_agents(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "review-skill.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Review Skill\nCheck claims against local evidence.\n", encoding="utf-8")
+    literature_profile = AgentProfile(
+        agent_id="literature-agent",
+        assigned_stages=("literature",),
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source.md"),),
+    )
+    reviewer_profile = AgentProfile(
+        agent_id="reviewer",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review",),
+        skills=(AgentSkillBinding(skill_id="review-skill", source="skills/review-skill.md"),),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="opencode",
+                command=("opencode", "run"),
+                allowed_tools=("code.review",),
+                approval_policy=McpApprovalPolicy.READ_ONLY,
+            ),
+        ),
+    )
+    contexts = (
+        literature_profile.to_runtime_context(base_dir=tmp_path, materialize_skills=True),
+        reviewer_profile.to_runtime_context(base_dir=tmp_path, materialize_skills=True),
+    )
+
+    packet = build_agent_stage_context_packet(
+        contexts,
+        "review",
+        project_id="project_1",
+        cycle_id="cycle_1",
+    )
+
+    assert packet["packet_kind"] == "agent_stage_context_packet_process_metadata"
+    assert packet["stage"] == "review"
+    assert packet["project_id"] == "project_1"
+    assert packet["cycle_id"] == "cycle_1"
+    assert packet["agent_ids"] == ["reviewer"]
+    assert packet["agent_count"] == 1
+    assert packet["skill_ids"] == ["review-skill"]
+    assert packet["materialized_skill_ids"] == ["review-skill"]
+    assert packet["mcp_server_ids"] == ["opencode"]
+    assert packet["readiness"]["passed"] is True
+    assert packet["missing_assignment"] is False
+    assert packet["agents"][0]["materialized_skills"][0]["content"].startswith(
+        "# Review Skill"
+    )
+    assert packet["agents"][0]["mcp_runtime_contracts"][0]["server_id"] == "opencode"
+    assert "cannot prove scientific results" in packet["evidence_policy"]
 
 
 def test_agent_profile_set_validation_requires_stage_coverage_and_scientific_contract() -> None:

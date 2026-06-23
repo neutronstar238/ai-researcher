@@ -2887,6 +2887,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `231.1`, `232.1`, and `233.1`; user request to keep the 24h self-loop genuinely running with evidence gates and observable agent progress._
     - _Verify: focused runtime heartbeat/API/CLI tests, ruff, mypy, real autopilot heartbeat smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 235. Stage-scoped Agent context packets
+  - [x] 235.1 Export bounded custom skill/MCP context for one assigned research stage
+    - Add a portable Agent stage context packet contract that routes only the profiles assigned to a requested research-loop stage.
+    - Include assigned agent IDs, skill IDs, materialized skill IDs, MCP server IDs, per-agent bounded runtime contexts, readiness summary, project ID, cycle ID, and an explicit process-metadata evidence policy.
+    - Keep packet evidence scoped to responsibility routing and runtime prompting only; it must not support scientific results, novelty claims, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Add `airesearcher agents profile export-stage-context <profiles...> --stage <stage> --output <packet.json>`.
+    - Fail by default when no Agent is assigned to the requested stage or when assigned profiles have failing readiness checks; expose explicit escape hatches for debugging.
+    - Update README/README.zh-CN with the stage-context packet command.
+    - _References: user request to assign custom skills and MCPs to specific Agents without over-engineering the scientific reasoning loop; tasks `228.1`, `230.1`, `232.1`, and `234.1`._
+    - _Verify: focused Agent profile/API/CLI tests, ruff, mypy, real CLI stage-context export, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3483,6 +3494,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 137,
       "tasks": ["234.1"]
+    },
+    {
+      "id": 138,
+      "tasks": ["235.1"]
     }
   ]
 }

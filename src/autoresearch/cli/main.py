@@ -26,6 +26,7 @@ from autoresearch.agents import (
     McpInvocationStatus,
     append_mcp_invocation_evidence,
     build_agent_profile_from_bundle,
+    build_agent_stage_context_packet,
     build_mcp_invocation_evidence,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
@@ -1048,6 +1049,90 @@ def validate_agent_profile_set_command(
     for warning in validation.warnings:
         typer.echo(f"[WARN] {warning}")
     if not validation.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("export-stage-context")
+def export_agent_stage_context_command(
+    profile_paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more Agent profile JSON artifacts to route by stage."),
+    ],
+    stage: Annotated[
+        str,
+        typer.Option("--stage", help="Research-loop stage to export context for."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Stage context packet JSON path."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Optional project ID to record in the packet."),
+    ] = None,
+    cycle_id: Annotated[
+        str | None,
+        typer.Option("--cycle-id", help="Optional cycle/run ID to record in the packet."),
+    ] = None,
+    require_agent: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent/--allow-empty",
+            help="Fail when no profile is assigned to the requested stage.",
+        ),
+    ] = True,
+    require_ready: Annotated[
+        bool,
+        typer.Option(
+            "--require-ready/--allow-not-ready",
+            help="Fail when assigned profiles have failing readiness checks.",
+        ),
+    ] = True,
+) -> None:
+    """Export the bounded skill/MCP context packet for one research-loop stage."""
+
+    try:
+        normalized_stage = _validated_agent_profile_stages((stage,))[0]
+        contexts = _load_agent_profile_contexts(
+            profile_paths,
+            env=_merged_optional_env(env_path),
+            base_dir=base_dir,
+        )
+        packet = build_agent_stage_context_packet(
+            contexts,
+            normalized_stage,
+            project_id=project_id,
+            cycle_id=cycle_id,
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_stage_context: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(packet, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    agent_count = int(packet["agent_count"])
+    readiness = packet["readiness"]
+    readiness_passed = bool(readiness["passed"]) if isinstance(readiness, Mapping) else False
+    typer.echo(f"[OK] agent_stage_context: {normalized_stage}")
+    typer.echo(f"[OK] agents: {agent_count}; ready={str(readiness_passed).lower()}")
+    typer.echo(f"[OK] skills: {len(packet['skill_ids'])}; mcp_servers={len(packet['mcp_server_ids'])}")
+    typer.echo(f"[OK] output: {output}")
+    if require_agent and agent_count == 0:
+        typer.echo(f"[FAIL] no agent is assigned to stage {normalized_stage}", err=True)
+        raise typer.Exit(1)
+    if require_ready and not readiness_passed:
+        typer.echo(f"[FAIL] stage context readiness failed for {normalized_stage}", err=True)
         raise typer.Exit(1)
 
 

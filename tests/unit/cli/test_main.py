@@ -185,6 +185,116 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert "scientific results" in materialized_skill["evidence_policy"]
 
 
+def test_agent_profile_export_stage_context_cli_writes_packet(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "review-skill.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Review Skill\nCheck claims against evidence.\n", encoding="utf-8")
+    literature_profile = tmp_path / "profiles" / "literature-agent.json"
+    reviewer_profile = tmp_path / "profiles" / "reviewer.json"
+    packet_path = tmp_path / "packets" / "review-context.json"
+    runner = CliRunner()
+
+    literature_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            "source-tracing=skills/source.md",
+            "--output",
+            str(literature_profile),
+        ],
+    )
+    reviewer_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "reviewer",
+            "--role",
+            "validator_agent",
+            "--stage",
+            "review",
+            "--skill",
+            "review-skill=skills/review-skill.md",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.review",
+            "--mcp-approval",
+            "opencode:read_only",
+            "--output",
+            str(reviewer_profile),
+        ],
+    )
+    export_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "export-stage-context",
+            str(literature_profile),
+            str(reviewer_profile),
+            "--stage",
+            "review",
+            "--base-dir",
+            str(tmp_path),
+            "--project-id",
+            "project_1",
+            "--cycle-id",
+            "cycle_1",
+            "--output",
+            str(packet_path),
+        ],
+    )
+
+    assert literature_result.exit_code == 0, literature_result.output
+    assert reviewer_result.exit_code == 0, reviewer_result.output
+    assert export_result.exit_code == 0, export_result.output
+    assert "[OK] agent_stage_context: review" in export_result.stdout
+    assert "[OK] agents: 1; ready=true" in export_result.stdout
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["stage"] == "review"
+    assert packet["agent_ids"] == ["reviewer"]
+    assert packet["skill_ids"] == ["review-skill"]
+    assert packet["mcp_server_ids"] == ["opencode"]
+    assert packet["agents"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert packet["agents"][0]["materialized_skills"][0]["content"].startswith(
+        "# Review Skill"
+    )
+    assert packet["agents"][0]["mcp_runtime_contracts"][0]["allowed_tools"] == [
+        "code.review"
+    ]
+    assert "cannot prove scientific results" in packet["evidence_policy"]
+
+    missing_stage_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "export-stage-context",
+            str(literature_profile),
+            str(reviewer_profile),
+            "--stage",
+            "experiment",
+            "--base-dir",
+            str(tmp_path),
+            "--output",
+            str(tmp_path / "packets" / "experiment-context.json"),
+        ],
+    )
+
+    assert missing_stage_result.exit_code == 1
+    assert "no agent is assigned to stage experiment" in missing_stage_result.output
+
+
 def test_agent_profile_import_cli_writes_standard_profile(tmp_path: Path) -> None:
     bundle_path = tmp_path / "bundles" / "review-agent.yaml"
     profile_path = tmp_path / "profiles" / "review-agent.json"
