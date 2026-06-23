@@ -246,6 +246,102 @@ def test_agent_profile_write_cli_rejects_invalid_mcp_env_key(tmp_path: Path) -> 
     assert "uppercase environment variable" in result.output
 
 
+def test_agent_profile_validate_cli_writes_readiness_report(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    env_path = tmp_path / ".env"
+    env_path.write_text("PAGE_AGENT_TOKEN=secret-value\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    readiness_path = tmp_path / "profiles" / "literature-agent-readiness.json"
+    runner = CliRunner()
+
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-env-key",
+            "page-agent:PAGE_AGENT_TOKEN",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "validate",
+            str(profile_path),
+            "--env-path",
+            str(env_path),
+            "--output",
+            str(readiness_path),
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "[OK] agent_profile_readiness: passed" in validate_result.stdout
+    payload = json.loads(readiness_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["failed_check_count"] == 0
+    assert "secret-value" not in readiness_path.read_text(encoding="utf-8")
+
+
+def test_agent_profile_validate_cli_fails_on_missing_env_key(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    runner = CliRunner()
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-env-key",
+            "page-agent:PAGE_AGENT_TOKEN",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "validate",
+            str(profile_path),
+            "--env-path",
+            str(tmp_path / ".env"),
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 1
+    assert "[CHECK] mcp_env_keys:page-agent: fail" in validate_result.stdout
+
+
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
 
@@ -3008,6 +3104,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     output_dir = tmp_path / "runs" / "autopilot"
     deliverables_dir = tmp_path / "outputs"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
     profile_path = tmp_path / "profiles" / "literature-agent.json"
     profile_path.parent.mkdir(parents=True)
     profile_path.write_text(
@@ -3024,7 +3123,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
                 "skills": [
                     {
                         "skill_id": "source-tracing",
-                        "source": "skills/source-tracing/SKILL.md",
+                        "source": skill_path.as_posix(),
                         "source_type": "local_path",
                         "allowed_tasks": ["literature_refresh", "citation_validation"],
                         "evidence_refs": ["[[skills/source-tracing]]"],
@@ -3076,7 +3175,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
     assert (
-        "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3"
+        "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3; readiness=pass"
     ) in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
@@ -3122,6 +3221,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "browser.search"
     ]
     assert payload["agent_profiles"]["profiles"][0]["profile_path"] == profile_path.as_posix()
+    assert payload["agent_profiles"]["readiness"]["passed"] is True
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["passed"] is True
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["failed_check_count"] == 0
     assert payload["agent_profiles"]["stage_assignments"]["stages"] == [
         {"stage": "literature", "agent_ids": ["literature-agent"]},
         {"stage": "similarity", "agent_ids": ["literature-agent"]},
@@ -3181,6 +3283,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
     assert review_context["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert review_context["agent_profiles"]["readiness"]["passed"] is True
+    assert review_context["agent_profiles"]["profiles"][0]["readiness"]["check_count"] == 2
     assert review_context["agent_profiles"]["stage_assignments"]["stages"][0] == {
         "stage": "literature",
         "agent_ids": ["literature-agent"],
@@ -4341,6 +4445,11 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                                     "approval_policy": "read_only",
                                 }
                             ],
+                            "readiness": {
+                                "passed": True,
+                                "failed_check_count": 0,
+                                "warning_count": 0,
+                            },
                         }
                     ],
                     "stage_assignments": {
@@ -4547,7 +4656,7 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert cli_main._agent_profile_rows(summary) == [
         (
             "literature-agent",
-            "project_agent; literature,review",
+            "project_agent; literature,review; ready=pass",
             "source-tracing",
             "page-agent:browser.search",
         )

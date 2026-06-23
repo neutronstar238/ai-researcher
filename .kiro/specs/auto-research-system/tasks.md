@@ -2762,6 +2762,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `215.1`, `216.1`, `221.1`; user request to assign custom skills and MCPs to specific Agents while keeping the system scientific and evidence-first._
     - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_dangling_policy_specs tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_invalid_mcp_env_key tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 13 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --mcp-approval page-agent:approve_dangerous --mcp-env-key page-agent:PAGE_AGENT_TOKEN --mcp-env-key page-agent:PAGE_AGENT_WORKSPACE --vault runs\manual-live\task223-profile-policy-v1\vault --project-id task223_profile_policy_v1 --output runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json` passed and wrote profile JSON plus Obsidian note; real `agents profile inspect` confirmed `context_kind=agent_profile_process_metadata`, `import_policy=approved_runtime`, `approval_policy=approve_dangerous`, and env keys `PAGE_AGENT_TOKEN,PAGE_AGENT_WORKSPACE`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 572 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 224. Agent profile readiness preflight
+  - [x] 224.1 Validate skill sources and MCP env-key requirements before runtime use
+    - Add typed readiness checks for per-agent local skill source paths and required MCP environment variable names.
+    - Add `airesearcher agents profile validate <profile.json> --env-path .env --base-dir . --output <json>` so operators can preflight custom Agent profiles before unattended cycles.
+    - Attach readiness reports to loaded profile contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, and CLI status output.
+    - Do not record secret values; readiness is process metadata only and cannot support scientific claims, tool-invocation claims, novelty, citation validity, or publication readiness.
+    - Update README/README.zh-CN with the validate command, readiness artifacts, and command table entry.
+    - _References: tasks `215.1`, `221.1`, `223.1`; Loop Engineering requirement that Agent/tool declarations become checked artifacts rather than prompt-only assumptions._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_agent_profile_validate_cli_fails_on_missing_env_key tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 14 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id readiness-agent --role project_agent --stage literature --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "model-router=npx -y model-router-mcp" --mcp-tool model-router:models.search --mcp-approval model-router:approve_dangerous --mcp-env-key model-router:AUTORESEARCH_LLM_API_KEY --vault runs\manual-live\task224-profile-readiness-v1\vault --project-id task224_profile_readiness_v1 --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json` passed; real `agents profile validate` with `.env` passed with 2 checks, 0 failures, and 0 warnings; readiness JSON contained no `sk-` secret prefix; real narrow `autopilot` with that profile passed the cycle path and wrote `agent_profiles.readiness.passed=True` plus `failed_check_count=0` into `cycle-summary.json`. Broad gates and diff checks are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3310,6 +3320,14 @@ A task can be checked only when all applicable items are true:
     {
       "id": 125,
       "tasks": ["222.1"]
+    },
+    {
+      "id": 126,
+      "tasks": ["223.1"]
+    },
+    {
+      "id": 127,
+      "tasks": ["224.1"]
     }
   ]
 }

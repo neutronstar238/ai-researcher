@@ -210,6 +210,11 @@ airesearcher agents profile write \
   --mcp-env-key page-agent:PAGE_AGENT_TOKEN \
   --output .airesearcher/agents/literature-agent.json
 
+airesearcher agents profile validate \
+  .airesearcher/agents/literature-agent.json \
+  --env-path .env \
+  --output .airesearcher/agents/literature-agent-readiness.json
+
 airesearcher serve \
   --agent-profile .airesearcher/agents/literature-agent.json \
   --agent-profile .airesearcher/agents/reviewer-agent.json
@@ -235,6 +240,11 @@ declare how a bound skill may affect an agent, and use
 `--mcp-env-key <server_id>:ENV_KEY` to declare per-server approval and required environment
 variable names. These flags must reference skills or MCP servers bound in the same command.
 `--mcp-env-key` stores only uppercase environment variable names, never secret values.
+Run `agents profile validate` before unattended runtime use to check local skill source paths and
+required MCP environment variable names. The readiness report is written into runtime profile
+contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, and CLI status. It
+checks profile inputs only; it does not prove that an MCP tool was invoked, that external skill
+content was safe, or that a scientific claim is supported.
 
 Each cycle can run:
 
@@ -382,6 +392,7 @@ Common npm shortcuts:
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
+| `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
 | `agents profile inspect` | profile JSON path | Prints the runtime context that will be attached to that agent. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |

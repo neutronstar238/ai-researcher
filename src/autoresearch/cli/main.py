@@ -21,6 +21,7 @@ from autoresearch import __version__
 from autoresearch.agents import (
     AgentProfile,
     AgentThinkingMode,
+    evaluate_agent_profile_readiness,
     load_agent_profile,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
@@ -821,6 +822,58 @@ def inspect_agent_profile_command(
     typer.echo(json.dumps(profile.to_runtime_context(), indent=2, sort_keys=True))
 
 
+@agent_profiles_app.command("validate")
+def validate_agent_profile_command(
+    profile_path: Annotated[
+        Path,
+        typer.Argument(help="Profile JSON artifact to validate."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional profile readiness JSON path."),
+    ] = None,
+) -> None:
+    """Validate local readiness for one custom skill/MCP profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        report = evaluate_agent_profile_readiness(
+            profile,
+            profile_path=profile_path,
+            base_dir=base_dir,
+            env=_merged_optional_env(env_path),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] readiness_report: {output}")
+    verdict = "passed" if report.passed else "failed"
+    typer.echo(f"[OK] agent_profile_readiness: {verdict}")
+    typer.echo(
+        f"[OK] readiness_checks: {report.check_count}; "
+        f"failed={report.failed_check_count}; warnings={report.warning_count}"
+    )
+    for check in report.checks:
+        typer.echo(f"[CHECK] {check.check_id}: {check.status.value} - {check.message}")
+    if not report.passed:
+        raise typer.Exit(1)
+
+
 def _normalise_agent_profile_stage(stage: str) -> str:
     return stage.strip().lower().replace("-", "_")
 
@@ -841,9 +894,16 @@ def _validated_agent_profile_stages(stages: tuple[str, ...]) -> tuple[str, ...]:
     return normalized
 
 
-def _load_agent_profile_contexts(profile_paths: Iterable[Path]) -> tuple[dict[str, Any], ...]:
+def _load_agent_profile_contexts(
+    profile_paths: Iterable[Path],
+    *,
+    env: Mapping[str, str] | None = None,
+    base_dir: Path | None = None,
+) -> tuple[dict[str, Any], ...]:
     contexts: list[dict[str, Any]] = []
     seen_agent_ids: set[str] = set()
+    readiness_env = env or {}
+    readiness_base_dir = base_dir or Path.cwd()
     for profile_path in profile_paths:
         try:
             profile = load_agent_profile(profile_path)
@@ -861,6 +921,13 @@ def _load_agent_profile_contexts(profile_paths: Iterable[Path]) -> tuple[dict[st
         seen_agent_ids.add(profile.agent_id)
         context = profile.to_runtime_context()
         context["profile_path"] = profile_path.as_posix()
+        readiness = evaluate_agent_profile_readiness(
+            profile,
+            profile_path=profile_path,
+            base_dir=readiness_base_dir,
+            env=readiness_env,
+        )
+        context["readiness"] = readiness.model_dump(mode="json")
         contexts.append(context)
     return tuple(contexts)
 
@@ -878,6 +945,10 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
                 "publication_target": str(context.get("publication_target", "")),
                 "assigned_stages": _string_list(context.get("assigned_stages")),
                 "profile_path": str(context.get("profile_path", "")),
+                "readiness": context.get("readiness") if isinstance(
+                    context.get("readiness"),
+                    Mapping,
+                ) else {},
                 "skill_ids": [str(skill.get("skill_id", "")) for skill in skills],
                 "mcp_servers": [
                     {
@@ -889,10 +960,22 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
                 ],
             }
         )
+    readiness_values = [
+        value
+        for value in (profile.get("readiness") for profile in profiles)
+        if isinstance(value, Mapping)
+    ]
+    failed_checks = sum(int(value.get("failed_check_count", 0) or 0) for value in readiness_values)
+    warning_checks = sum(int(value.get("warning_count", 0) or 0) for value in readiness_values)
     return {
         "count": len(profiles),
         "profiles": profiles,
         "runtime_contexts": list(profile_contexts),
+        "readiness": {
+            "passed": failed_checks == 0,
+            "failed_check_count": failed_checks,
+            "warning_count": warning_checks,
+        },
         "stage_assignments": _agent_profile_stage_assignments(profile_contexts),
         "stage_runtime_contexts": profile_contexts_by_stage(
             profile_contexts,
@@ -4610,7 +4693,11 @@ def _run_autopilot_cycle(
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
     _load_optional_env(env_path)
-    agent_profile_contexts = _load_agent_profile_contexts(agent_profile_paths)
+    agent_profile_contexts = _load_agent_profile_contexts(
+        agent_profile_paths,
+        env=_merged_optional_env(env_path),
+        base_dir=Path.cwd(),
+    )
     agent_profiles = _agent_profiles_summary(agent_profile_contexts)
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
@@ -6862,9 +6949,14 @@ def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
     stage_count = 0
     if isinstance(assignments, Mapping):
         stage_count = len(_mapping_list(assignments.get("stages")))
+    readiness_text = ""
+    readiness = agent_profiles.get("readiness")
+    if isinstance(readiness, Mapping):
+        failed = int(readiness.get("failed_check_count", 0) or 0)
+        readiness_text = "; readiness=pass" if failed == 0 else f"; readiness=fail:{failed}"
     typer.echo(
         f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}; "
-        f"assigned_stages={stage_count}"
+        f"assigned_stages={stage_count}{readiness_text}"
     )
 
 
@@ -7469,6 +7561,14 @@ def _agent_profile_rows(summary_path: Path | None) -> list[tuple[str, str, str, 
             if assigned_stages
             else f"{profile.get('role', 'unknown')}; unassigned"
         )
+        readiness = profile.get("readiness")
+        if isinstance(readiness, Mapping):
+            failed = int(readiness.get("failed_check_count", 0) or 0)
+            warnings = int(readiness.get("warning_count", 0) or 0)
+            readiness_label = "ready=pass" if failed == 0 else f"ready=fail:{failed}"
+            if warnings:
+                readiness_label = f"{readiness_label},warn:{warnings}"
+            role_stages = f"{role_stages}; {readiness_label}"
         mcp_parts: list[str] = []
         for server in _mapping_list(profile.get("mcp_servers")):
             server_id = str(server.get("server_id", "unknown"))

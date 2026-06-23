@@ -14,6 +14,7 @@ from autoresearch.agents import (
     BaseAgent,
     McpApprovalPolicy,
     SkillImportPolicy,
+    evaluate_agent_profile_readiness,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
     parse_mcp_spec,
@@ -168,3 +169,72 @@ def test_parse_profile_policy_specs() -> None:
 def test_parse_profile_policy_specs_reject_invalid_env_key() -> None:
     with pytest.raises(ValueError, match="uppercase environment variable"):
         parse_mcp_env_key_specs(("browser:page_agent_token",))
+
+
+def test_agent_profile_readiness_passes_for_existing_local_skill_and_env(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        skills=(
+            AgentSkillBinding(
+                skill_id="source-tracing",
+                source="skills/source-tracing/SKILL.md",
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search",),
+                env_keys=("PAGE_AGENT_TOKEN",),
+            ),
+        ),
+    )
+
+    report = evaluate_agent_profile_readiness(
+        profile,
+        base_dir=tmp_path,
+        env={"PAGE_AGENT_TOKEN": "set-outside-repo"},
+    )
+
+    assert report.passed is True
+    assert report.failed_check_count == 0
+    assert {check.check_id for check in report.checks} == {
+        "skill_source_exists:source-tracing",
+        "mcp_env_keys:page-agent",
+    }
+
+
+def test_agent_profile_readiness_fails_for_missing_local_skill_and_env(
+    tmp_path: Path,
+) -> None:
+    profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        skills=(
+            AgentSkillBinding(
+                skill_id="source-tracing",
+                source="skills/source-tracing/SKILL.md",
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search",),
+                env_keys=("PAGE_AGENT_TOKEN",),
+            ),
+        ),
+    )
+
+    report = evaluate_agent_profile_readiness(profile, base_dir=tmp_path, env={})
+
+    assert report.passed is False
+    assert report.failed_check_count == 2
+    assert [check.status.value for check in report.checks] == ["fail", "fail"]
+    assert "PAGE_AGENT_TOKEN" in report.checks[1].message

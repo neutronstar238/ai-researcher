@@ -9423,3 +9423,39 @@ This file defines the project development standard for coding agents and records
   - None. No `Problem.md` entry was added because this task had no blocker, failed gate, unresolved risk, or skipped required verification.
 - Follow-up:
   - Future stage workers can use these profile policy fields when they begin executing MCP-backed steps, but must still route dangerous actions through runtime approval and record real tool invocation evidence separately.
+
+### 2026-06-23 14:51:46 +08:00 - Codex - Task 224.1 Agent profile readiness preflight
+
+- Request: Implement the Loop Engineering evolution plan by turning per-agent skill/MCP declarations into checked runtime artifacts before unattended cycles rely on them.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added typed Agent profile readiness reports for local skill source existence and required MCP environment-variable-name presence.
+  - Added `airesearcher agents profile validate` with optional JSON output and nonzero exit on missing required inputs.
+  - Attached readiness reports to loaded profile runtime contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, and `autopilot`/`serve` status output.
+  - Kept readiness as process metadata only: it does not store secret values and cannot support scientific claims, tool-invocation claims, novelty, citation validity, or publication readiness.
+  - Updated README/README.zh-CN command examples and the task dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_agent_profile_validate_cli_fails_on_missing_env_key tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id readiness-agent --role project_agent --stage literature --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "model-router=npx -y model-router-mcp" --mcp-tool model-router:models.search --mcp-approval model-router:approve_dangerous --mcp-env-key model-router:AUTORESEARCH_LLM_API_KEY --vault runs\manual-live\task224-profile-readiness-v1\vault --project-id task224_profile_readiness_v1 --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json --env-path .env --base-dir . --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings; the readiness JSON contained no `sk-` secret prefix and did not record the env key value.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task224-profile-readiness-v1\vault --cache runs\manual-live\task224-profile-readiness-v1\cache --output-dir runs\manual-live\task224-profile-readiness-v1\runs --deliverables-dir runs\manual-live\task224-profile-readiness-v1\outputs --state runs\manual-live\task224-profile-readiness-v1\scheduler.json --sessions-state runs\manual-live\task224-profile-readiness-v1\sessions.json --project-id task224_profile_readiness_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json`: passed, printed `readiness=pass`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `cycle-summary.json` contains `agent_profiles.readiness.passed=True` and profile `failed_check_count=0`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 576 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None. No `Problem.md` entry was added because verification completed, no blocker remained, and no loop failure/evidence gap was introduced.
+- Follow-up:
+  - Future MCP-backed stage workers should treat readiness as preflight only and still record real tool invocation evidence separately.

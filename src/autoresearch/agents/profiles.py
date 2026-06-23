@@ -76,6 +76,44 @@ class McpApprovalPolicy(str, Enum):
     ALLOW_ALL = "allow_all"
 
 
+class AgentProfileReadinessStatus(str, Enum):
+    """Readiness status for a profile preflight check."""
+
+    PASS = "pass"
+    WARN = "warn"
+    FAIL = "fail"
+
+
+class AgentProfileReadinessCheck(BaseModel):
+    """One deterministic readiness check for a bound skill or MCP server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    check_id: str
+    status: AgentProfileReadinessStatus
+    target: str
+    message: str
+    next_action: str | None = None
+
+
+class AgentProfileReadinessReport(BaseModel):
+    """Preflight report for custom skills and MCP bindings assigned to one agent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str
+    profile_path: str | None = None
+    passed: bool
+    check_count: int
+    failed_check_count: int
+    warning_count: int
+    checks: tuple[AgentProfileReadinessCheck, ...]
+    evidence_policy: str = (
+        "Readiness checks verify profile inputs only; they do not prove scientific results, "
+        "tool invocation, novelty, citation validity, or publication readiness."
+    )
+
+
 class AgentSkillBinding(BaseModel):
     """One custom skill assigned to one agent profile."""
 
@@ -376,6 +414,48 @@ def load_agent_profile(path: Path | str) -> AgentProfile:
     return AgentProfile.model_validate(payload)
 
 
+def evaluate_agent_profile_readiness(
+    profile: AgentProfile,
+    *,
+    profile_path: Path | str | None = None,
+    base_dir: Path | str | None = None,
+    env: Mapping[str, str] | None = None,
+) -> AgentProfileReadinessReport:
+    """Check whether a profile's declared skill and MCP inputs are locally ready."""
+
+    environment = env or {}
+    root = Path(base_dir) if base_dir is not None else Path.cwd()
+    checks: list[AgentProfileReadinessCheck] = []
+    for skill in profile.skills:
+        checks.append(_skill_readiness_check(skill, base_dir=root))
+    for server in profile.mcp_servers:
+        checks.append(_mcp_env_readiness_check(server, env=environment))
+        if server.approval_policy == McpApprovalPolicy.ALLOW_ALL:
+            checks.append(
+                AgentProfileReadinessCheck(
+                    check_id=f"mcp_approval_policy:{server.server_id}",
+                    status=AgentProfileReadinessStatus.WARN,
+                    target=server.server_id,
+                    message="MCP server declares allow_all approval policy.",
+                    next_action=(
+                        "Use allow_all only on isolated projects where full tool execution "
+                        "has explicit operator approval."
+                    ),
+                )
+            )
+    failed_count = sum(1 for check in checks if check.status == AgentProfileReadinessStatus.FAIL)
+    warning_count = sum(1 for check in checks if check.status == AgentProfileReadinessStatus.WARN)
+    return AgentProfileReadinessReport(
+        agent_id=profile.agent_id,
+        profile_path=Path(profile_path).as_posix() if profile_path is not None else None,
+        passed=failed_count == 0,
+        check_count=len(checks),
+        failed_check_count=failed_count,
+        warning_count=warning_count,
+        checks=tuple(checks),
+    )
+
+
 def normalize_profile_stage(stage: str) -> str:
     """Normalize a loop stage identifier used by an agent profile."""
 
@@ -488,6 +568,82 @@ def _split_assignment(spec: str, label: str) -> tuple[str, str]:
         raise ValueError(msg)
     name, value = spec.split("=", 1)
     return _validate_identifier(name, f"{label} id"), value.strip()
+
+
+def _skill_readiness_check(
+    skill: AgentSkillBinding,
+    *,
+    base_dir: Path,
+) -> AgentProfileReadinessCheck:
+    target = f"skill:{skill.skill_id}"
+    if skill.source_type == SkillSourceType.LOCAL_PATH:
+        source_path = Path(skill.source)
+        resolved = source_path if source_path.is_absolute() else base_dir / source_path
+        if resolved.exists():
+            return AgentProfileReadinessCheck(
+                check_id=f"skill_source_exists:{skill.skill_id}",
+                status=AgentProfileReadinessStatus.PASS,
+                target=target,
+                message=f"Local skill source exists at {resolved.as_posix()}.",
+            )
+        return AgentProfileReadinessCheck(
+            check_id=f"skill_source_exists:{skill.skill_id}",
+            status=AgentProfileReadinessStatus.FAIL,
+            target=target,
+            message=f"Local skill source is missing at {resolved.as_posix()}.",
+            next_action="Create the skill file or update the profile source before runtime use.",
+        )
+    if skill.source_type == SkillSourceType.OBSIDIAN_NOTE:
+        return AgentProfileReadinessCheck(
+            check_id=f"skill_source_declared:{skill.skill_id}",
+            status=AgentProfileReadinessStatus.WARN,
+            target=target,
+            message="Obsidian note skill source is declared but not resolved by this local check.",
+            next_action="Ensure the referenced note exists in the project vault before runtime use.",
+        )
+    return AgentProfileReadinessCheck(
+        check_id=f"skill_source_declared:{skill.skill_id}",
+        status=AgentProfileReadinessStatus.WARN,
+        target=target,
+        message=f"{skill.source_type.value} skill source is declared but not fetched by readiness.",
+        next_action="Validate external/package skill content before using it in a research stage.",
+    )
+
+
+def _mcp_env_readiness_check(
+    server: AgentMcpServerBinding,
+    *,
+    env: Mapping[str, str],
+) -> AgentProfileReadinessCheck:
+    target = f"mcp:{server.server_id}"
+    if not server.env_keys:
+        return AgentProfileReadinessCheck(
+            check_id=f"mcp_env_keys:{server.server_id}",
+            status=AgentProfileReadinessStatus.PASS,
+            target=target,
+            message="MCP server declares no required environment variable names.",
+        )
+    missing = tuple(key for key in server.env_keys if not env.get(key))
+    if missing:
+        return AgentProfileReadinessCheck(
+            check_id=f"mcp_env_keys:{server.server_id}",
+            status=AgentProfileReadinessStatus.FAIL,
+            target=target,
+            message=(
+                "MCP server is missing required environment variable names: "
+                f"{', '.join(missing)}."
+            ),
+            next_action="Set the missing variables outside the repository before runtime use.",
+        )
+    return AgentProfileReadinessCheck(
+        check_id=f"mcp_env_keys:{server.server_id}",
+        status=AgentProfileReadinessStatus.PASS,
+        target=target,
+        message=(
+            "All required MCP environment variable names are present; values were not "
+            "recorded."
+        ),
+    )
 
 
 def _split_scoped_value(spec: str, label: str) -> tuple[str, str]:
