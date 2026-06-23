@@ -4,9 +4,11 @@ from pathlib import Path
 from autoresearch.experiments import (
     LoopDecisionPolicy,
     LoopFailureCategory,
+    LoopStopReason,
     build_closed_loop_campaign,
     classify_loop_failure,
     create_loop_iteration_from_cycle_summary,
+    evaluate_loop_stop_criteria,
     select_loop_candidate,
     write_loop_report_artifact,
 )
@@ -23,6 +25,12 @@ def test_closed_loop_campaign_builds_doe_candidate_space() -> None:
 
     assert campaign.project_id == "project_1"
     assert campaign.target_metric == "accuracy"
+    assert campaign.data_sources == ["UCI Pendigits"]
+    assert campaign.baselines == ["nearest centroid baseline"]
+    assert campaign.protocol_artifacts == [
+        "runs/cycle/research-plan.json",
+        "vault/plan.md",
+    ]
     assert campaign.candidate_space[0].candidate_id == "arm_baseline_reproduction"
     assert "run record" in campaign.evidence_requirements
     assert campaign.protocol_refs == ["runs/cycle/research-plan.json", "vault/plan.md"]
@@ -80,14 +88,44 @@ def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None
     assert artifact.metrics.evidence_coverage == 1.0
     assert artifact.metrics.reproduction_delta == 0.0
     assert artifact.metrics.enhancement_factor > 1.0
+    assert artifact.stop_decision.reason is LoopStopReason.CONTINUE
     assert artifact.json_path.is_file()
     assert artifact.markdown_path.is_file()
     assert artifact.vault_path is not None
     assert artifact.vault_path.is_file()
     payload = json.loads(artifact.json_path.read_text(encoding="utf-8"))
     assert payload["quality_gate"]["passed"] is True
+    assert payload["stop_decision"]["reason"] == LoopStopReason.CONTINUE.value
     assert payload["iterations"][0]["validation_status"] == ValidationStatus.PASSED.value
-    assert "Loop Engineering Report" in artifact.markdown_path.read_text(encoding="utf-8")
+    markdown = artifact.markdown_path.read_text(encoding="utf-8")
+    assert "Loop Engineering Report" in markdown
+    assert "## Stop Decision" in markdown
+
+
+def test_loop_stop_criteria_blocks_blind_retry_after_repeated_failure(
+    tmp_path: Path,
+) -> None:
+    campaign = build_closed_loop_campaign(
+        candidate=_candidate(),
+        project_id="project_1",
+        cycle_id="cycle_1",
+        research_plan=_research_plan_payload(),
+    )
+    first = select_loop_candidate(campaign)
+    failed = create_loop_iteration_from_cycle_summary(
+        campaign=campaign,
+        decision=first,
+        summary=_cycle_summary(tmp_path, validation_status="failed"),
+        base_dir=tmp_path,
+    ).model_copy(update={"repair_hypothesis": None, "frozen_dimensions": []})
+    second_failure = failed.model_copy(update={"iteration_id": "loop_iter_2"})
+
+    decision = evaluate_loop_stop_criteria(campaign, (failed, second_failure))
+
+    assert decision.should_stop is True
+    assert decision.reason is LoopStopReason.CONSECUTIVE_FAILURES
+    assert decision.frozen_dimensions == ["failed_dimension"]
+    assert "repair hypothesis" in decision.next_action
 
 
 def test_loop_failure_classification_uses_engineering_categories() -> None:
@@ -108,6 +146,7 @@ def _candidate() -> ResearchCandidate:
         evidence_refs=["https://example.test/paper"],
         metadata={
             "method": "variance-calibrated prototype classifier",
+            "dataset": "UCI Pendigits",
             "baseline": "nearest centroid baseline",
             "baseline_metric": 0.75,
         },

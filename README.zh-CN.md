@@ -199,6 +199,8 @@ airesearcher serve \
 15. scheduler follow-up 合并。
 16. 可选微信/飞书灵感摘要推送。
 
+Campaign artifact 会作为 protocol-as-code 处理。`loop-campaign.json` 会记录 data sources、baselines、protocol artifacts、候选 arm、optimizer policy、指标、质量门禁和确定性的 `stop_decision`。失败的 loop 不能无限盲目重试：如果元数据、证据、复现、预算、审批或连续失败检查阻断下一步，loop report 必须写清楚被冻结的维度，以及再次运行候选前需要完成的修复动作。
+
 V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 
 单次灵感抓取并推送：

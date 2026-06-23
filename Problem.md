@@ -30,6 +30,14 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Verification:
 ```
 
+## Loop Failure Logging Rule
+
+Closed-loop campaign failures are first-class audit events. Any loop failure, metadata shortfall,
+evidence gap, reproduction delta breach, blocked publication/strategy gate, repeated-failure stop,
+or human approval point must be written to the cycle artifacts or Obsidian loop report. If the issue
+changes future work, hides uncertainty, or could cause another agent to over-claim results, add or
+update a factual problem entry below.
+
 ## Problems
 
 ### P-20260623-005 - Stage-context helper test needed import-order normalization

@@ -244,6 +244,13 @@ Each cycle can run:
 15. Scheduler follow-up merge.
 16. Optional WeChat/Feishu inspiration digest push.
 
+The campaign artifact is treated as protocol-as-code. `loop-campaign.json` records the data
+sources, baselines, protocol artifacts, candidate arms, selected optimizer policy, metrics, quality
+gate, and a deterministic `stop_decision`. A failed loop is not allowed to retry indefinitely: if
+metadata, evidence, reproduction, budget, approval, or repeated-failure checks block the next step,
+the report records the frozen dimensions and the repair action required before another candidate can
+run.
+
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,
 rate-limit, isolated-browser-profile, snapshot evidence, action-log, and approval gates before

@@ -2741,6 +2741,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `218.1`, `219.1`, and `220.1`; user requirement that custom skills/MCP can be assigned to Agents without weakening research evidence gates._
     - _Verify: focused profile and CLI artifact tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
 
+- [x] 222. Protocol-as-code stop decisions
+  - [x] 222.1 Add explicit campaign protocol fields and stop criteria
+    - Add first-class `data_sources`, `baselines`, and `protocol_artifacts` fields to `ClosedLoopCampaign` so the campaign JSON exposes the protocol-as-code inputs named in the Loop Engineering plan.
+    - Add a deterministic `LoopStopDecision` with stop reasons for budget exhaustion, target reached, metadata gaps, evidence gaps, reproduction regression, consecutive failures, and human approval requirements.
+    - Write `stop_decision` into `loop-campaign.json`, `cycle-summary.json`, and `loop-report.md`.
+    - Block blind retry after repeated same-category failures unless a repair hypothesis or frozen dimension is recorded.
+    - Update README/README.zh-CN, `Agent.md`, and `Problem.md` so loop failures, evidence gaps, metadata gaps, reproduction gaps, and approval points must leave auditable traces.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; attached loop-engineering research report; task `214.1`; Scale-style physical gate idea that prompts are not enough._
+    - _Verify: focused loop tests, ruff, mypy, broad smoke/unit tests, and real isolated `autopilot` smoke passed. Full commands are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3285,6 +3295,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 124,
       "tasks": ["221.1"]
+    },
+    {
+      "id": 125,
+      "tasks": ["222.1"]
     }
   ]
 }

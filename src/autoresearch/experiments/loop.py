@@ -52,6 +52,19 @@ class LoopFailureCategory(str, Enum):
     SAFETY = "safety"
 
 
+class LoopStopReason(str, Enum):
+    """Reasons the closed loop should pause instead of blindly retrying."""
+
+    CONTINUE = "continue"
+    BUDGET_EXHAUSTED = "budget_exhausted"
+    TARGET_REACHED = "target_reached"
+    METADATA_INCOMPLETE = "metadata_incomplete"
+    EVIDENCE_INCOMPLETE = "evidence_incomplete"
+    REPRODUCTION_REGRESSION = "reproduction_regression"
+    CONSECUTIVE_FAILURES = "consecutive_failures"
+    HUMAN_APPROVAL_REQUIRED = "human_approval_required"
+
+
 class LoopCandidateArm(BaseModel):
     """One candidate arm in the campaign search space."""
 
@@ -79,12 +92,15 @@ class ClosedLoopCampaign(BaseModel):
     target_metric: str = Field(min_length=1)
     baseline_metric: float | None = Field(default=None, ge=0.0)
     budget: dict[str, int | float] = Field(default_factory=dict)
+    data_sources: list[str] = Field(default_factory=list)
+    baselines: list[str] = Field(default_factory=list)
     candidate_space: list[LoopCandidateArm] = Field(min_length=1)
     constraints: list[str] = Field(default_factory=list)
     stop_conditions: list[str] = Field(default_factory=list)
     approval_policy: str = Field(min_length=1)
     evidence_requirements: list[str] = Field(min_length=1)
     protocol_refs: list[str] = Field(default_factory=list)
+    protocol_artifacts: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utc_now)
     status: str = "active"
 
@@ -156,6 +172,18 @@ class LoopQualityGate(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class LoopStopDecision(BaseModel):
+    """Deterministic stop/continue decision for the next loop iteration."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    should_stop: bool
+    reason: LoopStopReason
+    issues: list[str] = Field(default_factory=list)
+    frozen_dimensions: list[str] = Field(default_factory=list)
+    next_action: str = Field(min_length=1)
+
+
 @dataclass(frozen=True)
 class LoopReportArtifact:
     """Paths and gate results written for one loop campaign."""
@@ -165,6 +193,7 @@ class LoopReportArtifact:
     vault_path: Path | None
     metrics: LoopMetrics
     quality_gate: LoopQualityGate
+    stop_decision: LoopStopDecision
 
     def to_summary(self) -> dict[str, Any]:
         return {
@@ -173,6 +202,7 @@ class LoopReportArtifact:
             "vault_path": self.vault_path.as_posix() if self.vault_path is not None else None,
             "metrics": self.metrics.model_dump(mode="json"),
             "quality_gate": self.quality_gate.model_dump(mode="json"),
+            "stop_decision": self.stop_decision.model_dump(mode="json"),
         }
 
 
@@ -211,6 +241,8 @@ def build_closed_loop_campaign(
         if ref
     ]
     candidate_space = _candidate_space(candidate, plan_payload, evidence_refs)
+    data_sources = _data_sources(candidate, plan_payload)
+    baselines = [_metadata_value(candidate.metadata, "baseline", "baseline control")]
     return ClosedLoopCampaign(
         project_id=project_id,
         cycle_id=cycle_id,
@@ -222,6 +254,8 @@ def build_closed_loop_campaign(
             "max_failed_retries": 1,
             "manual_baseline_iterations": 6,
         },
+        data_sources=data_sources,
+        baselines=baselines,
         candidate_space=candidate_space,
         constraints=[
             "LLM proposals cannot override evidence, budget, safety, or approval gates.",
@@ -248,6 +282,7 @@ def build_closed_loop_campaign(
             "reproduction report",
         ],
         protocol_refs=protocol_refs,
+        protocol_artifacts=protocol_refs,
     )
 
 
@@ -436,6 +471,119 @@ def compute_loop_metrics(
     )
 
 
+def evaluate_loop_stop_criteria(
+    campaign: ClosedLoopCampaign,
+    iterations: Iterable[LoopIterationRecord],
+    metrics: LoopMetrics | None = None,
+) -> LoopStopDecision:
+    """Decide whether another iteration is allowed under campaign constraints."""
+
+    records = tuple(iterations)
+    if not records:
+        return LoopStopDecision(
+            should_stop=False,
+            reason=LoopStopReason.CONTINUE,
+            next_action="Run the initial DOE baseline arm.",
+        )
+
+    metrics = metrics or compute_loop_metrics(campaign, records)
+    max_iterations = int(campaign.budget.get("max_iterations", 0) or 0)
+    target_value = _float_or_none(campaign.budget.get("target_metric_value"))
+    latest = records[-1]
+    repeated_failures = _consecutive_failures(records)
+    max_failed_retries = int(campaign.budget.get("max_failed_retries", 1) or 1)
+
+    if (
+        target_value is not None
+        and latest.result_metric is not None
+        and latest.result_metric >= target_value
+        and metrics.reproduction_delta <= 0.05
+    ):
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.TARGET_REACHED,
+            next_action="Freeze the campaign and prepare evidence-backed publication review.",
+        )
+
+    if metrics.reproduction_delta > 0.05:
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.REPRODUCTION_REGRESSION,
+            issues=["reproduction_delta above 0.05"],
+            frozen_dimensions=["result_claims"],
+            next_action="Run reproduction repair before using this result in claims or strategy promotion.",
+        )
+
+    if metrics.metadata_completeness < 0.90:
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.METADATA_INCOMPLETE,
+            issues=["metadata_completeness below 0.90"],
+            frozen_dimensions=["strategy_promotion", "publication_claims"],
+            next_action="Complete run IDs, hashes, metrics, validation, evidence, and artifact refs before another optimizer step.",
+        )
+
+    if metrics.evidence_coverage < 0.80:
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.EVIDENCE_INCOMPLETE,
+            issues=["evidence_coverage below 0.80"],
+            frozen_dimensions=["publication_claims"],
+            next_action="Attach missing literature, similarity, run, validation, evidence-map, and reproduction artifacts.",
+        )
+
+    if len(repeated_failures) > max_failed_retries:
+        needs_repair = [
+            record
+            for record in repeated_failures
+            if not record.repair_hypothesis and not record.frozen_dimensions
+        ]
+        if needs_repair:
+            return LoopStopDecision(
+                should_stop=True,
+                reason=LoopStopReason.CONSECUTIVE_FAILURES,
+                issues=[
+                    "consecutive failures require a repair hypothesis or frozen variable before retry"
+                ],
+                frozen_dimensions=["failed_dimension"],
+                next_action="Write a repair hypothesis or freeze the risky variable before selecting the next candidate.",
+            )
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.CONSECUTIVE_FAILURES,
+            issues=["consecutive failures reached retry budget"],
+            frozen_dimensions=sorted(
+                {item for record in repeated_failures for item in record.frozen_dimensions}
+            )
+            or ["failed_dimension"],
+            next_action="Pause the campaign and review the recorded repair attempts before continuing.",
+        )
+
+    if latest.failure_category in {LoopFailureCategory.SAFETY, LoopFailureCategory.COST}:
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.HUMAN_APPROVAL_REQUIRED,
+            issues=[f"{latest.failure_category.value} failure requires human approval"],
+            frozen_dimensions=["execution"],
+            next_action="Request human approval before any further execution.",
+        )
+
+    if max_iterations > 0 and len(records) >= max_iterations:
+        return LoopStopDecision(
+            should_stop=True,
+            reason=LoopStopReason.BUDGET_EXHAUSTED,
+            issues=["max_iterations reached"],
+            frozen_dimensions=["candidate_selection"],
+            next_action="Stop the campaign or obtain an explicit budget extension.",
+        )
+
+    return LoopStopDecision(
+        should_stop=False,
+        reason=LoopStopReason.CONTINUE,
+        next_action="Select the next candidate using the campaign optimizer.",
+    )
+
+
 def evaluate_loop_quality_gate(
     campaign: ClosedLoopCampaign,
     iterations: Iterable[LoopIterationRecord],
@@ -480,6 +628,7 @@ def write_loop_report_artifact(
     records = tuple(iterations)
     metrics = compute_loop_metrics(campaign, records)
     gate = evaluate_loop_quality_gate(campaign, records, metrics)
+    stop_decision = evaluate_loop_stop_criteria(campaign, records, metrics)
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     json_path = root / "loop-campaign.json"
@@ -489,6 +638,7 @@ def write_loop_report_artifact(
         "iterations": [record.model_dump(mode="json") for record in records],
         "metrics": metrics.model_dump(mode="json"),
         "quality_gate": gate.model_dump(mode="json"),
+        "stop_decision": stop_decision.model_dump(mode="json"),
     }
     json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     markdown = render_loop_report_markdown(
@@ -496,6 +646,7 @@ def write_loop_report_artifact(
         iterations=records,
         metrics=metrics,
         gate=gate,
+        stop_decision=stop_decision,
         json_path=json_path,
     )
     markdown_path.write_text(markdown, encoding="utf-8")
@@ -532,6 +683,7 @@ def write_loop_report_artifact(
         vault_path=vault_path,
         metrics=metrics,
         quality_gate=gate,
+        stop_decision=stop_decision,
     )
 
 
@@ -545,6 +697,7 @@ def render_loop_report_markdown(
     iterations: Iterable[LoopIterationRecord],
     metrics: LoopMetrics,
     gate: LoopQualityGate,
+    stop_decision: LoopStopDecision,
     json_path: Path | str,
 ) -> str:
     """Render a compact Obsidian-readable loop report."""
@@ -582,6 +735,20 @@ def render_loop_report_markdown(
         "### Warnings",
         "",
         *(_list_items(gate.warnings)),
+        "",
+        "## Stop Decision",
+        "",
+        f"- Should stop: `{str(stop_decision.should_stop).lower()}`",
+        f"- Reason: `{stop_decision.reason.value}`",
+        f"- Next action: {stop_decision.next_action}",
+        "",
+        "### Stop Issues",
+        "",
+        *(_list_items(stop_decision.issues)),
+        "",
+        "### Frozen Dimensions",
+        "",
+        *(_list_items(stop_decision.frozen_dimensions)),
         "",
         "## Candidate Selection",
         "",
@@ -684,6 +851,16 @@ def _candidate_space(
             rationale="Isolate whether the claimed mechanism explains the metric change.",
         ),
     ]
+
+
+def _data_sources(candidate: ResearchCandidate, plan_payload: Mapping[str, Any]) -> list[str]:
+    datasets = _dict(plan_payload.get("datasets"))
+    candidates = [
+        _metadata_value(candidate.metadata, "dataset", ""),
+        _text(datasets.get("source")),
+        _text(datasets.get("target")),
+    ]
+    return sorted({item for item in candidates if item})
 
 
 def _target_metric(plan_payload: Mapping[str, Any]) -> str:
@@ -905,6 +1082,19 @@ def _failure_recovery_rate(records: tuple[LoopIterationRecord, ...]) -> float:
         if record.repair_hypothesis or record.frozen_dimensions or record.retry_allowed
     ]
     return len(recoverable) / len(failures)
+
+
+def _consecutive_failures(
+    records: tuple[LoopIterationRecord, ...],
+) -> tuple[LoopIterationRecord, ...]:
+    failures: list[LoopIterationRecord] = []
+    for record in reversed(records):
+        if record.failure_category is None:
+            break
+        if failures and record.failure_category is not failures[-1].failure_category:
+            break
+        failures.append(record)
+    return tuple(reversed(failures))
 
 
 def _float_or_none(value: object) -> float | None:

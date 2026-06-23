@@ -33,6 +33,8 @@ This file defines the project development standard for coding agents and records
 
 - Add a `Problem.md` entry for missing modules, failed commands, unclear requirements, skipped verification, security concerns, or any issue likely to affect the next agent.
 - Link problem IDs back to the relevant task where possible.
+- For closed-loop campaigns, every loop failure, stop-decision issue, metadata gap, evidence gap, reproduction gap, blocked quality gate, or human approval point must be recorded in the run artifacts or Obsidian loop report. If it affects future work or could mislead another agent, also add or update `Problem.md`.
+- Do not retry a failed loop blindly. Record a repair hypothesis, frozen dimension, approval requirement, or stop decision before another candidate can run.
 
 ### Git Version Management
 
@@ -9353,3 +9355,37 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Downstream stage workers should read `evidence_policy` from profile runtime context rather than duplicating natural-language policy fragments.
+
+### 2026-06-23 14:28:19 +08:00 - Codex - Task 222.1 Protocol-as-code stop decisions
+
+- Request: Implement the Loop Engineering evolution plan by making closed-loop campaign protocol fields and stop criteria explicit, auditable, and enforced against blind retries.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added first-class `data_sources`, `baselines`, and `protocol_artifacts` to `ClosedLoopCampaign`.
+  - Added `LoopStopReason`, `LoopStopDecision`, and `evaluate_loop_stop_criteria()` for budget, target, metadata, evidence, reproduction, consecutive-failure, and approval stops.
+  - Wrote `stop_decision` into loop campaign JSON summaries and Markdown loop reports.
+  - Added a regression that blocks repeated same-category failures without repair hypotheses or frozen dimensions.
+  - Updated README/README.zh-CN plus Agent/Problem logging rules so loop failures, evidence gaps, metadata gaps, reproduction gaps, and approval points must leave auditable traces.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py -q`: passed with 5 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py`: passed after import-order and nested-if fixes.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py`: passed.
+  - Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 44 tests.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task222-stop-decision-v1\vault --cache runs\manual-live\task222-stop-decision-v1\cache --output-dir runs\manual-live\task222-stop-decision-v1\runs --deliverables-dir runs\manual-live\task222-stop-decision-v1\outputs --state runs\manual-live\task222-stop-decision-v1\scheduler.json --sessions-state runs\manual-live\task222-stop-decision-v1\sessions.json --project-id task222_stop_decision_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed and wrote `cycle-20260623T062651Z`; publication audit and evidence gate correctly blocked release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `loop-campaign.json` contains `data_sources`, `baselines`, `protocol_artifacts`, and `stop_decision.reason=continue`; `cycle-summary.json` carries `loop_campaign.stop_decision`; `loop-report.md` includes a `Stop Decision` section.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 568 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `Problem.md` logging rules; no new numbered problem because verification completed and no blocker remained.
+- Follow-up:
+  - Future optimizer work can replace the current lightweight evidence-gain heuristic with a true BO/active-learning backend, but it must continue to obey `LoopStopDecision` and the existing publication/evidence gates.
