@@ -3,7 +3,7 @@ from textwrap import dedent
 
 import pytest
 
-from autoresearch.experiments import execute_experiment_task
+from autoresearch.experiments import execute_experiment_task, executor
 from autoresearch.schemas import ExecutionStatus, ExperimentTask
 
 
@@ -238,6 +238,16 @@ def test_execute_experiment_task_rejects_entrypoint_outside_sandbox(
 
     with pytest.raises(PermissionError):
         execute_experiment_task(experiment_dir, _task(), entrypoint=outside)
+
+
+def test_windows_process_group_hides_child_console(monkeypatch) -> None:
+    monkeypatch.setattr(executor.os, "name", "nt")
+    monkeypatch.setattr(executor.subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200, raising=False)
+    monkeypatch.setattr(executor.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+
+    kwargs = executor._process_group_kwargs(_task())
+
+    assert kwargs == {"creationflags": 0x08000200}
 
 
 def _write_run_py(root: Path, source: str) -> None:

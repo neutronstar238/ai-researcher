@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-001 - PR 1 merge conflicts and approval shortcut guidance
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-23 09:07:46 +08:00
+- Source: Processing GitHub PR #1 (`codex/fix-windows-process-ui-flow`) against current `origin/main`.
+- Symptom: GitHub reported the PR as `CONFLICTING`; merging `origin/main` into the PR branch produced content conflicts in `src/autoresearch/cli/main.py`, `src/autoresearch/experiments/executor.py`, `src/autoresearch/reports/paper_build.py`, and `tests/unit/cli/test_main.py`. Copilot also noted that approval guidance printed `airesearcher runtime approve latest` without `--state`.
+- Impact: The PR could not be merged from GitHub, and users running `serve --approvals-state <custom-path>` could approve the wrong runtime approvals queue if they followed the old shortcut.
+- Evidence: `git merge origin/main` reported content conflicts in the four files above. `gh api repos/neutronstar238/ai-researcher/pulls/1/comments --paginate` returned Copilot review comments `3456337138` and `3456337159` requesting `--state` in approval guidance and matching tests.
+- Root cause: The PR branch changed Windows subprocess handling and CLI guidance while `origin/main` independently added serve loop/session handling, LaTeX rerun support, static executor preflight, and newer setup/readiness tests.
+- Workaround: None needed after this merge resolution.
+- Next action: Push the resolved PR branch and re-check GitHub mergeability.
+- Linked tasks: GitHub PR #1 handling, no `.kiro` task ID.
+- Resolution: Resolved merge conflicts by preserving both Windows no-window subprocess kwargs and current mainline loop/session/static-preflight/LaTeX-rerun behavior. Updated runtime approval waiting, setup next steps, approval bridge output, OpenClaw guidance, and tests so `approve latest` guidance includes `--state`.
+- Verification: Focused PR tests passed (`108 passed` across CLI, executor, paper build, process helper, and OpenClaw integration tests). Broad `python -m pytest tests\smoke tests\unit -q` passed with `549 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
 ### P-20260620-001 - LightAgent-style self-learning traces can pollute project memory without scope filters
 
 - Status: Resolved

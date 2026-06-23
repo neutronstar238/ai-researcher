@@ -14,6 +14,7 @@ from typing import Any
 
 from autoresearch.experiments.review import CodeReviewFinding, review_generated_code
 from autoresearch.experiments.sandbox import SandboxAccessMode, SandboxPathPolicy
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.schemas import ExecutionRun, ExecutionStatus, ExperimentTask
 from autoresearch.schemas.provenance import file_hash
 
@@ -306,7 +307,7 @@ def _finish_run(
 def _process_group_kwargs(task: ExperimentTask) -> dict[str, Any]:
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        return {"creationflags": creationflags}
+        return windows_no_window_kwargs(creationflags=creationflags)
 
     preexec_fn = _resource_limiter(task)
     return {"start_new_session": True, "preexec_fn": preexec_fn}
@@ -346,6 +347,7 @@ def _terminate_process_tree(process: subprocess.Popen[str]) -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            **windows_no_window_kwargs(),
         )
         return
 

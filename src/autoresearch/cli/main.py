@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import typer
 from dotenv import load_dotenv
@@ -83,6 +83,7 @@ from autoresearch.llm import (
 )
 from autoresearch.notifications import NotificationSendRecord, send_inspiration_digest
 from autoresearch.observability import diagnose_requests_dependency_set
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.reports import (
     EvidenceGateVerdict,
     LatexPaperBuildStatus,
@@ -1356,8 +1357,10 @@ def setup(
         typer.echo(f"[OK] slash commands written: {written}")
         typer.echo(f"[OK] slash commands skipped: {skipped}")
         typer.echo(f"[OK] slash_commands_dir: {commands_dir}")
-    typer.echo("[OK] next: airesearcher serve --permission-mode approve-dangerous")
-    typer.echo("[OK] deliverables: outputs/<project-id>/")
+    _echo_setup_next_steps(
+        permission_mode=RuntimePermissionMode.APPROVE_DANGEROUS,
+        deliverables_dir=Path("outputs"),
+    )
 
 
 @app.command("monitor")
@@ -3538,13 +3541,12 @@ def serve(
             if not decision.allowed:
                 request = decision.request
                 request_id = request.request_id if request is not None else "unknown"
-                visible_action_id = request.action_id if request is not None else action_id
-                typer.echo(f"[WAITING] approval_required: {request_id}")
-                typer.echo(f"[WAITING] action_id: {visible_action_id}")
-                typer.echo(f"[WAITING] state: {approvals_state}")
-                typer.echo(
-                    "[WAITING] approve: "
-                    f"airesearcher runtime approve {request_id} --state {approvals_state}"
+                _echo_runtime_approval_waiting(
+                    request_id=request_id,
+                    state=approvals_state,
+                    watch=watch,
+                    interval_seconds=approval_poll_seconds,
+                    action_id=request.action_id if request is not None else action_id,
                 )
                 if not watch:
                     raise typer.Exit(code=2)
@@ -3916,7 +3918,10 @@ def init_channel_adapters(
     channel_count = len(iter_openclaw_channel_plugins())
     typer.echo(f"[OK] channel_adapters: {channel_count}")
     typer.echo(f"[OK] manifest: {manifest_path}")
-    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+    typer.echo(
+        "[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {DEFAULT_RUNTIME_APPROVALS_PATH}"
+    )
 
 
 @channel_adapters_app.command("list")
@@ -3958,7 +3963,10 @@ def init_openclaw_channels(
     channel_count = len(iter_openclaw_channel_plugins())
     typer.echo(f"[OK] openclaw_channels: {channel_count}")
     typer.echo(f"[OK] manifest: {manifest_path}")
-    typer.echo("[OK] approval_bridge: airesearcher runtime approve latest")
+    typer.echo(
+        "[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {DEFAULT_RUNTIME_APPROVALS_PATH}"
+    )
 
 
 @openclaw_channels_app.command("list")
@@ -5763,6 +5771,7 @@ def _run_cycle_reproduction_check(
             capture_output=True,
             text=True,
             timeout=timeout,
+            **windows_no_window_kwargs(),
         )
         exit_code = completed.returncode
         stdout = completed.stdout
@@ -6186,6 +6195,45 @@ def _serve_command_text(
         f"{review_flag} "
         f"{push_flag}"
     )
+
+def _echo_setup_next_steps(
+    *,
+    permission_mode: RuntimePermissionMode,
+    deliverables_dir: Path,
+    approvals_state: Path = DEFAULT_RUNTIME_APPROVALS_PATH,
+) -> None:
+    typer.echo("[NEXT] 1. Check install: npm run doctor")
+    typer.echo(
+        "[NEXT] 2. Start runtime: "
+        f"airesearcher serve --permission-mode {permission_mode.value}"
+    )
+    typer.echo(
+        "[NEXT] 3. When approval is requested, run: "
+        f"airesearcher runtime approve latest --state {approvals_state}"
+    )
+    typer.echo("[NEXT] Optional dashboard: airesearcher monitor --watch")
+    typer.echo(f"[OK] deliverables: {deliverables_dir.as_posix()}/<project-id>/")
+
+
+def _echo_runtime_approval_waiting(
+    *,
+    request_id: str,
+    state: Path,
+    watch: bool,
+    interval_seconds: int,
+    action_id: str | None = None,
+) -> None:
+    typer.echo("[WAITING] runtime approval required")
+    typer.echo(f"[WAITING] request_id: {request_id}")
+    if action_id is not None:
+        typer.echo(f"[WAITING] action_id: {action_id}")
+    typer.echo(f"[WAITING] state: {state}")
+    typer.echo(f"[NEXT] approve latest: airesearcher runtime approve latest --state {state}")
+    typer.echo(f"[NEXT] approve exact: airesearcher runtime approve {request_id} --state {state}")
+    if watch:
+        typer.echo(f"[WAITING] will check again in {interval_seconds}s")
+    else:
+        typer.echo("[WAITING] run serve again after approval")
 
 
 def _serve_cycle_action_id(*, project_id: str, demo: str, cycle_number: int) -> str:
@@ -7434,14 +7482,18 @@ def _git_changes_text(*, max_diff_lines: int) -> str:
 
 def _run_git_text(args: tuple[str, ...], *, max_lines: int | None = None) -> str:
     try:
-        result = subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5,
-            check=False,
+        result = cast(
+            subprocess.CompletedProcess[str],
+            subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5,
+                check=False,
+                **windows_no_window_kwargs(),
+            ),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return f"git {' '.join(args)} failed: {exc}"
@@ -7692,7 +7744,7 @@ def _run_wechat_qr_setup(
     typer.echo(f"[OK] wechat_qr_status: {status_path}")
     run = runner or subprocess.run
     try:
-        result = run(args, check=False)
+        result = run(args, check=False, **windows_no_window_kwargs())
     except OSError as exc:
         _write_wechat_qr_setup_status(
             status_path,

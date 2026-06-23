@@ -9041,3 +9041,36 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260620-001`.
 - Follow-up:
   - Future LightFlow-style implementation should be a separate AI-Researcher design task that maps step DAGs and trace events onto existing lifecycle traces, approvals, evidence gates, and Obsidian provenance rules.
+
+### 2026-06-23 09:07:46 +08:00 - Codex - GitHub PR #1 conflict resolution
+
+- Request: Use the browser to process GitHub PR #1, resolve merge conflicts, and address review feedback.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/demo_workflow.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `src/autoresearch/integrations/openclaw.py`
+  - `src/autoresearch/reports/latex.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_executor.py`
+  - `tests/unit/integrations/test_openclaw.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected PR #1 in the browser and through GitHub CLI; GitHub reported it as `CONFLICTING` and Copilot left two comments about approval guidance missing `--state`.
+  - Merged current `origin/main` into `codex/fix-windows-process-ui-flow` and resolved conflicts by preserving mainline serve loop/session handling, static executor preflight, and LaTeX rerun logic while keeping the PR's Windows no-window subprocess helper.
+  - Updated runtime waiting, setup next steps, OpenClaw approval bridge output, and related tests so `runtime approve latest` guidance includes an explicit `--state` path.
+  - Ran ruff import fixes for merge-introduced ordering issues.
+- Verification:
+  - Browser/GitHub inspection: PR #1 was open, cross-repository, `maintainerCanModify=true`, `mergeable=CONFLICTING`, with Copilot comments `3456337138` and `3456337159`.
+  - `python -m py_compile src\autoresearch\cli\main.py src\autoresearch\experiments\executor.py src\autoresearch\reports\paper_build.py`: passed.
+  - Focused `python -m pytest tests\unit\cli\test_main.py tests\unit\experiments\test_executor.py tests\unit\reports\test_paper_build.py tests\unit\test_process.py tests\unit\integrations\test_openclaw.py -q`: passed, 108 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 549 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 105 source files.
+  - `git diff --check`: passed with a line-ending warning for `src/autoresearch/reports/latex.py` only.
+- Problems:
+  - Added and resolved `P-20260623-001`.
+- Follow-up:
+  - Push the resolved PR branch and re-check GitHub mergeability/check status.

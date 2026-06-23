@@ -32,6 +32,7 @@ from autoresearch.experiments.evidence import bind_metrics_to_evidence
 from autoresearch.experiments.executor import execute_experiment_task
 from autoresearch.experiments.results import collect_result_bundle
 from autoresearch.experiments.validation import StatisticalCheck, validate_result_bundle
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.reports import (
     ReportContext,
     assert_report_readable,
@@ -613,6 +614,7 @@ def _current_commit_sha() -> str | None:
             capture_output=True,
             text=True,
             timeout=5,
+            **windows_no_window_kwargs(),
         )
     except Exception:
         return None

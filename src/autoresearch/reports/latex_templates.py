@@ -16,6 +16,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from autoresearch.process import windows_no_window_kwargs
+
 
 class LatexTemplateSourceKind(str, Enum):
     """Where a template specification comes from."""
@@ -559,6 +561,7 @@ def _run_template_smoke(
             text=True,
             check=False,
             timeout=timeout_seconds,
+            **windows_no_window_kwargs(),
         )
     except subprocess.TimeoutExpired as exc:
         log_path.write_text(str(exc), encoding="utf-8")
@@ -810,6 +813,7 @@ def _try_texlive_package_install(
             text=True,
             check=False,
             timeout=timeout_seconds,
+            **windows_no_window_kwargs(),
         )
     except subprocess.TimeoutExpired as exc:
         return LatexTemplateDependencyResolution(
@@ -967,6 +971,7 @@ def _template_class_available(template: LatexTemplateSpec) -> bool:
             text=True,
             check=False,
             timeout=10,
+            **windows_no_window_kwargs(),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False

@@ -1140,10 +1140,10 @@ def test_deploy_setup_runs_wechat_qr_setup_with_status_artifact(
 ) -> None:
     config_path = tmp_path / "config.yaml"
     env_path = tmp_path / ".env"
-    calls: list[tuple[list[str], bool]] = []
+    calls: list[tuple[list[str], bool, dict[str, object]]] = []
 
-    def fake_run(args: list[str], *, check: bool) -> SimpleNamespace:
-        calls.append((args, check))
+    def fake_run(args: list[str], *, check: bool, **kwargs: object) -> SimpleNamespace:
+        calls.append((args, check, kwargs))
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(cli_main.subprocess, "run", fake_run)
@@ -1173,9 +1173,8 @@ def test_deploy_setup_runs_wechat_qr_setup_with_status_artifact(
     )
 
     assert result.exit_code == 0, result.output
-    assert calls == [
-        (["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"], False)
-    ]
+    assert calls[0][0] == ["npx", "-y", "@tencent-weixin/openclaw-weixin-cli", "install"]
+    assert calls[0][1] is False
     status_path = tmp_path / ".airesearcher" / "channels" / "wechat" / "setup-status.json"
     status_payload = json.loads(status_path.read_text(encoding="utf-8"))
     assert status_payload["status"] == "completed"
@@ -1724,8 +1723,13 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert (commands / "research" / "autopilot.toml").is_file()
     assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
-    assert "[NEXT] readiness: airesearcher readiness --no-push-inspiration" in result.stdout
-    assert "[OK] next: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
+    assert "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    assert (
+        "[NEXT] 3. When approval is requested, run: "
+        f"airesearcher runtime approve latest --state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
+    ) in result.stdout
+    assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
 
 
 def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
@@ -3481,11 +3485,23 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     )
 
     assert pending_result.exit_code == 2, pending_result.output
-    assert "[WAITING] approval_required:" in pending_result.stdout
+    assert "[WAITING] runtime approval required" in pending_result.stdout
+    assert "[WAITING] request_id:" in pending_result.stdout
     assert (
         "[WAITING] action_id: "
         f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
     ) in pending_result.stdout
+    assert f"[WAITING] state: {approvals_state}" in pending_result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in pending_result.stdout
+    )
+    assert (
+        f"[NEXT] approve exact: airesearcher runtime approve "
+        f"{json.loads(approvals_state.read_text(encoding='utf-8'))['requests'][0]['request_id']} "
+        f"--state {approvals_state}"
+    ) in pending_result.stdout
+    assert "[WAITING] run serve again after approval" in pending_result.stdout
     assert "[OK] session_claim: allowed" in pending_result.stdout
     assert "[OK] session_release:" in pending_result.stdout
     payload = json.loads(approvals_state.read_text(encoding="utf-8"))
@@ -3731,11 +3747,15 @@ def test_serve_watch_uses_approval_poll_interval_before_cycle(
         "cycles=unbounded, interval_seconds=86400, push_inspiration=false, "
         "approval_poll_seconds=7"
     ) in result.stdout
-    assert "[WAITING] approval_required:" in result.stdout
+    assert "[WAITING] runtime approval required" in result.stdout
     assert (
         "[WAITING] action_id: "
         f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-1"
     ) in result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in result.stdout
+    )
     assert "serve_cycle" not in result.stdout
 
 
@@ -3812,11 +3832,15 @@ def test_serve_watch_requires_new_approval_for_next_cycle(
     ]
     assert sleeps == [1, 7]
     assert "[OK] serve_cycle: cycle-one" in result.stdout
-    assert "[WAITING] approval_required:" in result.stdout
+    assert "[WAITING] runtime approval required" in result.stdout
     assert (
         "[WAITING] action_id: "
         f"serve:autopilot-cycle:project_1:{cli_main.DEFAULT_RESEARCH_DEMO}:cycle-2"
     ) in result.stdout
+    assert (
+        f"[NEXT] approve latest: airesearcher runtime approve latest --state {approvals_state}"
+        in result.stdout
+    )
 
 
 def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) -> None:
@@ -4321,7 +4345,10 @@ def test_openclaw_channel_manifest_cli_writes_official_plugin_mounts(tmp_path: P
 
     assert init_result.exit_code == 0, init_result.output
     assert "[OK] openclaw_channels: 11" in init_result.stdout
-    assert "[OK] approval_bridge: airesearcher runtime approve latest" in init_result.stdout
+    assert (
+        f"[OK] approval_bridge: airesearcher runtime approve latest "
+        f"--state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
+    ) in init_result.stdout
     payload = json.loads(output.read_text(encoding="utf-8"))
     channels = {channel["channel_id"]: channel for channel in payload["channels"]}
     assert channels["feishu"]["package_name"] == "@larksuite/openclaw-lark"
@@ -4364,7 +4391,7 @@ def test_ccswitch_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["execution_contract"]["validation_owner"] == "AI-Researcher"
     assert payload["approval_bridge"]["approve_command"].startswith(
-        "airesearcher runtime approve latest"
+        "airesearcher runtime approve latest --state "
     )
     assert payload["backends"][0]["runner_command"] == "claude"
     assert list_result.exit_code == 0, list_result.output
@@ -4404,7 +4431,7 @@ def test_opencode_code_agent_manifest_cli_writes_validation_contract(tmp_path: P
         "opencode run"
     )
     assert payload["approval_bridge"]["approve_command"].startswith(
-        "airesearcher runtime approve latest"
+        "airesearcher runtime approve latest --state "
     )
     assert payload["backends"][0]["runner_command"] == "opencode"
     assert list_result.exit_code == 0, list_result.output

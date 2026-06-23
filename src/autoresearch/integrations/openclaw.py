@@ -54,7 +54,7 @@ OPENCLAW_CHANNEL_PLUGINS: tuple[OpenClawChannelPlugin, ...] = (
         notes=(
             "Current package metadata requires Node.js >=22 and peer OpenClaw >=2026.5.4.",
             "Use the upstream usage guide for app ID, app secret, event subscription, and workspace permissions.",
-            "Map incoming /approve messages to `airesearcher runtime approve latest`.",
+            "Map incoming /approve messages to `airesearcher runtime approve latest --state .airesearcher/runtime-approvals.json`.",
         ),
     ),
     OpenClawChannelPlugin(
