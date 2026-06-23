@@ -3069,6 +3069,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     ]
     stage_contexts = payload["agent_profiles"]["stage_runtime_contexts"]
     assert stage_contexts["literature"][0]["agent_id"] == "literature-agent"
+    assert stage_contexts["literature"][0]["context_kind"] == (
+        "agent_profile_process_metadata"
+    )
+    assert "scientific results" in stage_contexts["literature"][0]["evidence_policy"][
+        "cannot_support"
+    ]
     assert stage_contexts["similarity"][0]["skills"][0]["skill_id"] == "source-tracing"
     assert stage_contexts["review"][0]["mcp_servers"][0]["allowed_tools"] == [
         "browser.search"
@@ -3122,6 +3128,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert review_context["stage_agent_contexts"]["literature"][0]["agent_id"] == (
         "literature-agent"
     )
+    assert review_context["stage_agent_contexts"]["review"][0]["context_kind"] == (
+        "agent_profile_process_metadata"
+    )
+    assert "tool invocation" in review_context["stage_agent_contexts"]["review"][0][
+        "evidence_policy"
+    ]["cannot_support"]
     assert review_context["stage_agent_contexts"]["review"][0]["mcp_servers"][0][
         "server_id"
     ] == "page-agent"

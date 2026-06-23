@@ -60,6 +60,14 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     context = restored.to_runtime_context()
 
     assert context["thinking_mode"] == "scientific"
+    assert context["context_kind"] == "agent_profile_process_metadata"
+    assert context["evidence_policy"]["can_support"] == [
+        "agent responsibility boundaries",
+        "available custom skill context",
+        "available MCP tool context",
+    ]
+    assert "scientific results" in context["evidence_policy"]["cannot_support"]
+    assert "publication readiness" in context["evidence_policy"]["cannot_support"]
     assert context["assigned_stages"] == ["literature", "research_plan"]
     assert context["skills"][0]["skill_id"] == "source-tracing"
     assert context["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
@@ -89,6 +97,7 @@ def test_profile_contexts_group_by_assigned_stage() -> None:
     grouped = profile_contexts_by_stage(contexts, ("literature", "research_plan", "review"))
 
     assert grouped["literature"][0]["skills"][0]["skill_id"] == "source-tracing"
+    assert grouped["literature"][0]["context_kind"] == "agent_profile_process_metadata"
     assert grouped["research_plan"][0]["agent_id"] == "literature-agent"
     assert grouped["review"][0]["agent_id"] == "reviewer"
 

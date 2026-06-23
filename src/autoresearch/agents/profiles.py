@@ -25,6 +25,22 @@ DEFAULT_RESEARCH_THINKING_CONTRACT: tuple[str, ...] = (
     "Treat custom skills as bounded methods/context, not as permission to bypass publication gates.",
     "Treat MCP tools as scoped instruments with explicit allowed tools and approval policy.",
 )
+PROFILE_RUNTIME_CONTEXT_KIND = "agent_profile_process_metadata"
+PROFILE_RUNTIME_EVIDENCE_POLICY: dict[str, tuple[str, ...]] = {
+    "can_support": (
+        "agent responsibility boundaries",
+        "available custom skill context",
+        "available MCP tool context",
+    ),
+    "cannot_support": (
+        "scientific results",
+        "novelty claims",
+        "benchmark metrics",
+        "citation validity",
+        "publication readiness",
+        "tool invocation",
+    ),
+}
 
 
 class AgentThinkingMode(str, Enum):
@@ -209,6 +225,11 @@ class AgentProfile(BaseModel):
 
         return {
             "agent_id": self.agent_id,
+            "context_kind": PROFILE_RUNTIME_CONTEXT_KIND,
+            "evidence_policy": {
+                key: list(values)
+                for key, values in PROFILE_RUNTIME_EVIDENCE_POLICY.items()
+            },
             "role": self.role.value,
             "thinking_mode": self.thinking_mode.value,
             "publication_target": self.publication_target,

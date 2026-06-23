@@ -221,7 +221,9 @@ context assigned to that stage. Profiles still provide method/tool context only;
 require the normal evidence, reproduction, review, paper-build, and release gates. The LLM reviewer
 is instructed to treat profile and stage context as process metadata, not as proof of scientific
 results, tool invocation, novelty, or publication readiness; the local reviewer quality gate also
-blocks findings that try to use profile context for those claims.
+blocks findings that try to use profile context for those claims. Runtime profile contexts carry
+`context_kind=agent_profile_process_metadata` plus a machine-readable evidence policy so later
+stages do not have to infer this boundary from prose.
 
 Each cycle can run:
 

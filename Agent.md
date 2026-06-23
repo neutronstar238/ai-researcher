@@ -9321,3 +9321,35 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - If live reviewer outputs show subtler profile-context misuse, extend the deterministic misuse detector with evidence-backed examples rather than broadening it speculatively.
+
+### 2026-06-23 14:18:16 +08:00 - Codex - Task 221.1 Runtime profile evidence policy tagging
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making profile context boundaries machine-readable in runtime artifacts.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `context_kind=agent_profile_process_metadata` to safe Agent profile runtime contexts.
+  - Added a machine-readable `evidence_policy` listing what profile contexts can support and what they cannot support.
+  - Confirmed stage-scoped contexts in `cycle-summary.json` and `review-evidence-context.json` carry the same policy.
+  - Updated English and Chinese README guidance and added completed task `221.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 6 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 567 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage similarity --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task221-profile-policy-v1\vault --project-id task221_profile_policy_v1 --output runs\manual-live\task221-profile-policy-v1\profiles\literature-agent.json`: passed and wrote the profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task221-profile-policy-v1\vault --cache runs\manual-live\task221-profile-policy-v1\cache --output-dir runs\manual-live\task221-profile-policy-v1\runs --deliverables-dir runs\manual-live\task221-profile-policy-v1\outputs --state runs\manual-live\task221-profile-policy-v1\scheduler.json --sessions-state runs\manual-live\task221-profile-policy-v1\sessions.json --project-id task221_profile_policy_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task221-profile-policy-v1\profiles\literature-agent.json`: passed, wrote `cycle-20260623T061727Z`, passed loop campaign, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `cycle-summary.json` and `review-evidence-context.json` both contain `context_kind=agent_profile_process_metadata` and `cannot_support=scientific results, novelty claims, benchmark metrics, citation validity, publication readiness, tool invocation`.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Downstream stage workers should read `evidence_policy` from profile runtime context rather than duplicating natural-language policy fragments.

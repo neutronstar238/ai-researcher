@@ -2731,6 +2731,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `219.1`; user requirement to rely on evidence gates instead of prompt-only self-discipline._
     - _Verify: focused LLM-review quality tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
 
+- [x] 221. Machine-readable Agent profile evidence policy
+  - [x] 221.1 Tag runtime profile contexts as process metadata
+    - Add `context_kind=agent_profile_process_metadata` to every safe Agent profile runtime context.
+    - Add a machine-readable `evidence_policy` listing what profile context can support and what it cannot support.
+    - Ensure stage-scoped contexts in `cycle-summary.json` and `review-evidence-context.json` carry the same policy.
+    - Keep the policy narrowly focused on evidence boundaries instead of adding a new orchestration abstraction.
+    - Update README/README.zh-CN to document the runtime field for downstream stage workers.
+    - _References: tasks `218.1`, `219.1`, and `220.1`; user requirement that custom skills/MCP can be assigned to Agents without weakening research evidence gates._
+    - _Verify: focused profile and CLI artifact tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3271,6 +3281,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 123,
       "tasks": ["220.1"]
+    },
+    {
+      "id": 124,
+      "tasks": ["221.1"]
     }
   ]
 }
