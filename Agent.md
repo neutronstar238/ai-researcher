@@ -10043,3 +10043,39 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - A future `setup` wizard step can call or recommend `agents profile team-template` so first-time operators get the editable Agent team bundle without memorizing the command.
+
+### 2026-06-24 02:32:30 +08:00 - Codex - Task 241.1 Setup-generated runtime Agent team
+
+- Request: Continue one-step unattended AI-Researcher deployment so first-time setup configures the runtime Agent team without manual command chaining.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `DEFAULT_AGENT_TEAM_BUNDLE_PATH` and refactored `agents profile team-template` through a shared `_write_default_agent_team_template()` helper.
+  - Added setup options `--agent-team-bundle`, `--agent-team-profile-set-id`, `--skip-agent-team`, and `--overwrite-agent-team`.
+  - `airesearcher setup` now writes `.airesearcher/agents/ccfb-team.yaml` plus local source/experiment/review skill files by default, while preserving existing operator-edited bundles unless overwrite is explicit.
+  - Setup now prints the matching `serve --agent-profile-set-bundle ... --require-agent-profile-set` command in its next steps.
+  - Added setup regressions for default bundle generation and `--skip-agent-team`.
+  - Updated README/README.zh-CN and added task `241.1` with the process-metadata/evidence boundary.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands tests\unit\cli\test_main.py::test_setup_can_skip_agent_team_template tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Initial focused `python -m mypy src\autoresearch\cli\main.py` failed because the shared helper returned `dict[str, object]` and command output used `len(template["skill_paths"])` without narrowing; fixed with `cast(tuple[Path, ...], ...)`.
+  - Final focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs setup --config runs\manual-live\task241-setup-agent-team-v1\config.yaml --env-path runs\manual-live\task241-setup-agent-team-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task241-setup-agent-team-v1\vault --integrations-dir runs\manual-live\task241-setup-agent-team-v1\integrations --commands-dir runs\manual-live\task241-setup-agent-team-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and printed the generated Agent team bundle plus `--agent-profile-set-bundle ... --require-agent-profile-set` next step.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents\ccfb-team.yaml --output-dir runs\manual-live\task241-setup-agent-team-v1\profiles --validation-output runs\manual-live\task241-setup-agent-team-v1\profile-set-validation.json --base-dir runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents`: passed with 3 profiles and `stage_coverage: 9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task241-setup-agent-team-v1\vault --cache runs\manual-live\task241-setup-agent-team-v1\cache --output-dir runs\manual-live\task241-setup-agent-team-v1\runs --deliverables-dir runs\manual-live\task241-setup-agent-team-v1\outputs --state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\runtime-heartbeats.json --project-id task241_setup_agent_team --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents\ccfb-team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session`: passed with cycle `cycle-20260623T182644Z`, one bundle, three generated profiles, profile readiness pass, profile-set gate `covered=9/9`, source preflight pass, research-plan pass, loop-campaign pass, review skipped as requested, and the expected toy/no-review publication-audit fail plus evidence-gate block.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 619 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-005` for the setup Agent team helper typing issue caught by focused mypy.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The setup-generated Agent team remains process-routing scaffolding only. It must not be used as evidence for scientific results, novelty, metrics, citation validity, MCP invocation, publication readiness, or paper-build acceptance.

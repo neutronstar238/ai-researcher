@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-005 - Setup Agent team helper returned untyped skill paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:28:00 +08:00
+- Source: Focused mypy verification for task `241.1`.
+- Symptom: The first focused mypy run reported that `len(...)` received `object` instead of a sized value inside the `agents profile team-template` command output.
+- Impact: Product behavior was not released with the issue, but the focused type gate could not pass until the setup/team-template helper result was narrowed.
+- Evidence: `python -m mypy src\autoresearch\cli\main.py` reported `Argument 1 to "len" has incompatible type "object"; expected "Sized" [arg-type]`.
+- Root cause: `_write_default_agent_team_template()` returns a generic `dict[str, object]`, and the command read `template["skill_paths"]` without narrowing it back to the known `tuple[Path, ...]`.
+- Workaround: None needed after the command narrows the value with `cast(tuple[Path, ...], ...)`.
+- Next action: Keep focused mypy around setup/template CLI helpers when adding new structured return dictionaries.
+- Linked tasks: `241.1`
+- Resolution: Cast the `skill_paths` entry before computing its length and iterating for operator output.
+- Verification: Focused mypy passed after the cast, and the real setup/import/runtime smoke exercised the same helper path.
+
 ### P-20260624-004 - Real runtime bundle smoke fixture used unsupported bundle keys
 
 - Status: Resolved

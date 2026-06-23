@@ -14,7 +14,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 
 | 模块 | V1.0 行为 |
 | --- | --- |
-| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest 和 slash 模板。 |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest、slash 模板和默认可编辑 Agent 团队 bundle。 |
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
@@ -72,8 +72,11 @@ airesearcher setup
 7. 初始化 `autoresearch-vault/`。
 8. 写入 `integrations/` 下的集成 runbook。
 9. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
+10. 写入 `.airesearcher/agents/ccfb-team.yaml` 下的默认可编辑 Agent 团队 bundle。
 
 向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
+
+默认情况下，setup 也会打印带有 `--agent-profile-set-bundle .airesearcher/agents/ccfb-team.yaml --require-agent-profile-set` 的启动命令。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议传入 `--skip-agent-team`。
 
 推荐通道配置：
 
@@ -352,6 +355,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
 | `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | 在 setup 阶段发送或延后送达自检；交互式 setup 默认发送，失败会先写 JSON 证据，再非零退出。 |
+| `setup` | `--agent-team-bundle`, `--skip-agent-team`, `--overwrite-agent-team` | 写入、跳过或刷新默认可编辑 Agent 团队 bundle；setup 会把它接入推荐的 `serve` 启动命令。 |
 | `channels bind-target` | `--channel wechat [--target <target>]` | 微信 QR 配对后绑定 OpenClaw target，不需要手动编辑 `.env`；省略 `--target` 会交互询问。 |
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标；省略 `--target` 会交互询问。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |

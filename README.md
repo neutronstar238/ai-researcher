@@ -21,7 +21,7 @@ automatically.
 
 | Area | V1.0 behavior |
 | --- | --- |
-| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, WeChat QR or Feishu App credentials, default-on real channel self-test, vault path, integration manifests, and slash templates. |
+| Guided setup | `airesearcher setup` asks for model provider, base URL, model name, API key, WeChat QR or Feishu App credentials, default-on real channel self-test, vault path, integration manifests, slash templates, and the default editable Agent team bundle. |
 | Always-on loop | `airesearcher serve` and `airesearcher autopilot --watch` run a daily loop with online literature search, inspiration refresh, experiments, review, audit, paper build, and follow-up tasks. |
 | Inspiration push | `--push-inspiration` sends a compact digest through setup-configured WeChat/Feishu channels. Missing delivery state is recorded as `skipped`, not faked. |
 | Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
@@ -79,10 +79,15 @@ The wizard walks through:
 7. Initialize `autoresearch-vault/`.
 8. Write integration runbooks under `integrations/`.
 9. Write local slash command templates under `.airesearcher/commands/`.
+10. Write the editable default Agent team bundle under `.airesearcher/agents/ccfb-team.yaml`.
 
 The wizard writes local secrets and channel state to `.env`; users do not need to hand-edit that
 file. Public examples live in `.env.example`. Never commit real API keys, webhook URLs, app
 secrets, chat IDs, sessions, or tokens.
+
+By default, setup also prints the matching runtime command with
+`--agent-profile-set-bundle .airesearcher/agents/ccfb-team.yaml --require-agent-profile-set`.
+Pass `--skip-agent-team` only when a deployment already has a reviewed custom team bundle.
 
 Recommended channel setup:
 
@@ -469,6 +474,7 @@ Common npm shortcuts:
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | Feishu/Lark App credential setup; `--feishu-home-chat-id` enables direct digest delivery. |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | Fallback incoming-webhook setup for existing deployments. |
 | `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | Send or defer the setup delivery self-test; interactive setup defaults to sending it, and a failed send writes JSON evidence before exiting nonzero. |
+| `setup` | `--agent-team-bundle`, `--skip-agent-team`, `--overwrite-agent-team` | Write, skip, or refresh the default editable Agent team bundle that setup wires into the recommended `serve` command. |
 | `channels bind-target` | `--channel wechat [--target <target>]` | Bind the OpenClaw WeChat target after QR pairing without editing `.env`; prompts when `--target` is omitted. |
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | Bind a Feishu/Lark home chat ID after the bot conversation creates one; prompts when `--target` is omitted. |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | Require approval for dangerous cycles or allow all. |

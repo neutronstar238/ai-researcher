@@ -206,6 +206,7 @@ DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
 DEFAULT_RUNTIME_HEARTBEATS_PATH = Path(".airesearcher/runtime-heartbeats.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
+DEFAULT_AGENT_TEAM_BUNDLE_PATH = Path(".airesearcher/agents/ccfb-team.yaml")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
 DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
@@ -995,7 +996,7 @@ def write_agent_profile_team_template_command(
     output: Annotated[
         Path,
         typer.Option("--output", "-o", help="Profile-set team bundle YAML output path."),
-    ] = Path(".airesearcher/agents/ccfb-team.yaml"),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
     skill_dir: Annotated[
         Path | None,
         typer.Option(
@@ -1017,50 +1018,26 @@ def write_agent_profile_team_template_command(
 ) -> None:
     """Write a default CCF-B/Q2 runtime Agent team bundle template."""
 
-    skill_root = skill_dir or (output.parent / "skills")
-    skill_paths = {
-        "source": skill_root / "source.md",
-        "experiment": skill_root / "experiment.md",
-        "review": skill_root / "review.md",
-    }
-    candidate_paths = (output, *skill_paths.values())
-    existing_paths = [path for path in candidate_paths if path.exists()]
-    if existing_paths and not overwrite:
-        existing = ", ".join(path.as_posix() for path in existing_paths)
-        typer.echo(f"[FAIL] agent_profile_team_template: refusing to overwrite {existing}", err=True)
-        raise typer.Exit(1)
-
     try:
-        _validate_identifier_like(profile_set_id, "profile_set_id")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        skill_root.mkdir(parents=True, exist_ok=True)
-        skill_paths["source"].write_text(_DEFAULT_SOURCE_SKILL_TEXT, encoding="utf-8")
-        skill_paths["experiment"].write_text(_DEFAULT_EXPERIMENT_SKILL_TEXT, encoding="utf-8")
-        skill_paths["review"].write_text(_DEFAULT_REVIEW_SKILL_TEXT, encoding="utf-8")
-        output.write_text(
-            _default_agent_team_bundle_yaml(
-                profile_set_id=profile_set_id,
-                bundle_path=output,
-                source_skill_path=skill_paths["source"],
-                experiment_skill_path=skill_paths["experiment"],
-                review_skill_path=skill_paths["review"],
-            ),
-            encoding="utf-8",
+        template = _write_default_agent_team_template(
+            output=output,
+            skill_dir=skill_dir,
+            profile_set_id=profile_set_id,
+            overwrite=overwrite,
+            allow_existing=False,
         )
-    except OSError as exc:
-        typer.echo(f"[FAIL] agent_profile_team_template: {exc}", err=True)
-        raise typer.Exit(1) from exc
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         typer.echo(f"[FAIL] agent_profile_team_template: {exc}", err=True)
         raise typer.Exit(1) from exc
 
-    typer.echo(f"[OK] agent_profile_team_template: {profile_set_id}")
-    typer.echo(f"[OK] bundle: {output}")
+    typer.echo(f"[OK] agent_profile_team_template: {template['profile_set_id']}")
+    typer.echo(f"[OK] bundle: {template['bundle_path']}")
+    skill_paths = cast(tuple[Path, ...], template["skill_paths"])
     typer.echo(f"[OK] skills: {len(skill_paths)}")
-    for path in skill_paths.values():
+    for path in skill_paths:
         typer.echo(f"[OK] skill: {path}")
-    typer.echo(f"[NEXT] import: airesearcher agents profile import-set {output}")
-    typer.echo(f"[NEXT] runtime: --agent-profile-set-bundle {output}")
+    typer.echo(f"[NEXT] import: airesearcher agents profile import-set {template['bundle_path']}")
+    typer.echo(f"[NEXT] runtime: --agent-profile-set-bundle {template['bundle_path']}")
 
 
 @agent_profiles_app.command("inspect")
@@ -2532,6 +2509,31 @@ def setup(
         Path,
         typer.Option("--commands-dir", help="Directory for slash command templates."),
     ] = Path(".airesearcher/commands"),
+    agent_team_bundle: Annotated[
+        Path,
+        typer.Option(
+            "--agent-team-bundle",
+            help="Default Agent team bundle path created during setup.",
+        ),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
+    agent_team_profile_set_id: Annotated[
+        str,
+        typer.Option("--agent-team-profile-set-id", help="Profile-set ID for the setup team bundle."),
+    ] = "ccfb-runtime-team",
+    init_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--init-agent-team/--skip-agent-team",
+            help="Write a default editable Agent team bundle for runtime cycles.",
+        ),
+    ] = True,
+    overwrite_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite-agent-team/--no-overwrite-agent-team",
+            help="Overwrite an existing setup Agent team bundle and generated skill files.",
+        ),
+    ] = False,
     non_interactive: Annotated[
         bool,
         typer.Option("--non-interactive", help="Fail on missing required inputs instead of prompting."),
@@ -2656,9 +2658,32 @@ def setup(
         typer.echo(f"[OK] slash commands written: {written}")
         typer.echo(f"[OK] slash commands skipped: {skipped}")
         typer.echo(f"[OK] slash_commands_dir: {commands_dir}")
+    if init_agent_team:
+        agent_team_bundle_path = _setup_relative_path(env_path, agent_team_bundle)
+        try:
+            agent_team = _write_default_agent_team_template(
+                output=agent_team_bundle_path,
+                skill_dir=None,
+                profile_set_id=agent_team_profile_set_id,
+                overwrite=overwrite_agent_team,
+                allow_existing=True,
+            )
+        except (OSError, ValueError) as exc:
+            typer.echo(f"[FAIL] agent_team_bundle: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"[OK] agent_team_bundle: {agent_team['bundle_path']}")
+        typer.echo(f"[OK] agent_team_status: {agent_team['status']}")
+        typer.echo(
+            "[NEXT] agent_team_runtime: "
+            f"--agent-profile-set-bundle {agent_team['bundle_path']} "
+            "--require-agent-profile-set"
+        )
     _echo_setup_next_steps(
         permission_mode=RuntimePermissionMode.APPROVE_DANGEROUS,
         deliverables_dir=Path("outputs"),
+        agent_team_bundle=_setup_relative_path(env_path, agent_team_bundle)
+        if init_agent_team
+        else None,
     )
 
 
@@ -8207,6 +8232,58 @@ def _validate_identifier_like(value: str, field_name: str) -> str:
     return cleaned
 
 
+def _write_default_agent_team_template(
+    *,
+    output: Path,
+    skill_dir: Path | None,
+    profile_set_id: str,
+    overwrite: bool,
+    allow_existing: bool,
+) -> dict[str, object]:
+    skill_root = skill_dir or (output.parent / "skills")
+    skill_paths = (
+        skill_root / "source.md",
+        skill_root / "experiment.md",
+        skill_root / "review.md",
+    )
+    candidate_paths = (output, *skill_paths)
+    existing_paths = [path for path in candidate_paths if path.exists()]
+    if existing_paths and not overwrite:
+        if allow_existing and output.exists():
+            return {
+                "profile_set_id": profile_set_id,
+                "bundle_path": output,
+                "skill_paths": skill_paths,
+                "status": "existing",
+            }
+        existing = ", ".join(path.as_posix() for path in existing_paths)
+        msg = f"refusing to overwrite {existing}"
+        raise ValueError(msg)
+
+    _validate_identifier_like(profile_set_id, "profile_set_id")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    skill_root.mkdir(parents=True, exist_ok=True)
+    skill_paths[0].write_text(_DEFAULT_SOURCE_SKILL_TEXT, encoding="utf-8")
+    skill_paths[1].write_text(_DEFAULT_EXPERIMENT_SKILL_TEXT, encoding="utf-8")
+    skill_paths[2].write_text(_DEFAULT_REVIEW_SKILL_TEXT, encoding="utf-8")
+    output.write_text(
+        _default_agent_team_bundle_yaml(
+            profile_set_id=profile_set_id,
+            bundle_path=output,
+            source_skill_path=skill_paths[0],
+            experiment_skill_path=skill_paths[1],
+            review_skill_path=skill_paths[2],
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "profile_set_id": profile_set_id,
+        "bundle_path": output,
+        "skill_paths": skill_paths,
+        "status": "written",
+    }
+
+
 def _default_agent_team_bundle_yaml(
     *,
     profile_set_id: str,
@@ -8360,11 +8437,17 @@ def _echo_setup_next_steps(
     permission_mode: RuntimePermissionMode,
     deliverables_dir: Path,
     approvals_state: Path = DEFAULT_RUNTIME_APPROVALS_PATH,
+    agent_team_bundle: Path | None = None,
 ) -> None:
     typer.echo("[NEXT] 1. Check install: npm run doctor")
+    agent_team_flags = (
+        f" --agent-profile-set-bundle {agent_team_bundle} --require-agent-profile-set"
+        if agent_team_bundle is not None
+        else ""
+    )
     typer.echo(
         "[NEXT] 2. Start runtime: "
-        f"airesearcher serve --permission-mode {permission_mode.value}"
+        f"airesearcher serve --permission-mode {permission_mode.value}{agent_team_flags}"
     )
     typer.echo(
         "[NEXT] 3. When approval is requested, run: "

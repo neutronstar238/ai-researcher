@@ -2955,6 +2955,18 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `238.1` and `239.1`; user request for guided deployment and one-step unattended Agent team loading._
     - _Verify: focused CLI template/import/runtime tests, ruff, mypy, real template generation/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 241. Setup-generated runtime Agent team
+  - [x] 241.1 Generate the default Agent team bundle during `airesearcher setup`
+    - Add setup options for the generated Agent team bundle path, profile-set ID, skip switch, and overwrite switch.
+    - Create `.airesearcher/agents/ccfb-team.yaml` and local skill Markdown files by default during first deployment.
+    - Reuse the same CCF-B/Q2 team-template generator so setup and `agents profile team-template` stay in sync.
+    - Print the recommended `serve --agent-profile-set-bundle ... --require-agent-profile-set` next step after setup.
+    - Allow existing setup-generated bundles without overwriting user edits, unless the operator passes the explicit overwrite flag.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the setup behavior and command parameters.
+    - _References: task `240.1`; user request for one guided deployment that configures the runtime Agent team without manual command chaining._
+    - _Verify: focused setup CLI tests, focused ruff, focused mypy, real setup/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3575,6 +3587,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 143,
       "tasks": ["240.1"]
+    },
+    {
+      "id": 144,
+      "tasks": ["241.1"]
     }
   ]
 }

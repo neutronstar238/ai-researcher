@@ -2614,13 +2614,55 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert (commands / "research" / "autopilot.toml").is_file()
     assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    assert agent_team_bundle.is_file()
+    assert (agent_team_bundle.parent / "skills" / "source.md").is_file()
+    assert "[OK] agent_team_bundle:" in result.stdout
+    assert "[OK] agent_team_status: written" in result.stdout
     assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
-    assert "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    assert (
+        "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous "
+        f"--agent-profile-set-bundle {agent_team_bundle} "
+        "--require-agent-profile-set"
+    ) in result.stdout
     assert (
         "[NEXT] 3. When approval is requested, run: "
         f"airesearcher runtime approve latest --state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
     ) in result.stdout
     assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
+
+
+def test_setup_can_skip_agent_team_template(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(tmp_path / "config.yaml"),
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+            "--skip-agent-team",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not (tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml").exists()
+    assert "[OK] agent_team_bundle:" not in result.stdout
+    assert "--agent-profile-set-bundle" not in result.stdout
 
 
 def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
