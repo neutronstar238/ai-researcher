@@ -9226,3 +9226,41 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Use default search breadth and live review for publication-quality cycles; stage assignments are responsibility context, not publication evidence.
+
+### 2026-06-23 14:01:50 +08:00 - Codex - Task 218.1 Stage-scoped agent context consumption
+
+- Request: Implement the Loop Engineering plan by making per-agent skills and MCP bindings consumable by assigned closed-loop stages, not only visible as display metadata.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added reusable profile helpers to normalize loop stage identifiers and filter safe runtime contexts by assigned stage.
+  - Added `stage_runtime_contexts` to `cycle-summary.json`, keyed by stage, so downstream loop workers can consume only the bounded skill/MCP context assigned to that stage.
+  - Added `stage_agent_contexts` to `review-evidence-context.json` so review/audit stages can inspect stage-scoped contexts without re-deriving them from display rows.
+  - Exported the new helpers through `autoresearch.agents` and added tests for `research-plan` to `research_plan` normalization.
+  - Updated README/README.zh-CN and added completed task `218.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 6 tests.
+  - Initial focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: failed with one fixable import-order `I001`; fixed with `python -m ruff check tests\unit\agents\test_profiles.py --fix`.
+  - Focused rerun `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed, 42 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 564 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage similarity --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task218-stage-context-v1\vault --project-id task218_stage_context_v1 --output runs\manual-live\task218-stage-context-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus Obsidian agent note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task218-stage-context-v1\vault --cache runs\manual-live\task218-stage-context-v1\cache --output-dir runs\manual-live\task218-stage-context-v1\runs --deliverables-dir runs\manual-live\task218-stage-context-v1\outputs --state runs\manual-live\task218-stage-context-v1\scheduler.json --sessions-state runs\manual-live\task218-stage-context-v1\sessions.json --project-id task218_stage_context_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task218-stage-context-v1\profiles\literature-agent.json`: passed, printed `assigned_stages=3`, passed `loop_campaign`, and correctly blocked publication/evidence release for the smoke-width run.
+  - Real artifact checks confirmed `cycle-summary.json` contains `stage_runtime_contexts.literature[0].agent_id=literature-agent` and review MCP tools `browser.search,browser.open`; `review-evidence-context.json` contains `stage_agent_contexts.similarity[0].skills[0].skill_id=source-tracing` and `stage_agent_contexts.review[0].agent_id=literature-agent`.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-005` for ruff import-order normalization in the new profile test.
+- Follow-up:
+  - Stage-scoped profile contexts are now consumable responsibility/tool context; they remain non-evidence and cannot replace review, publication-audit, evidence-gate, or reproduction gates.

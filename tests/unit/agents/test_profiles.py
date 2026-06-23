@@ -15,6 +15,8 @@ from autoresearch.agents import (
     parse_mcp_spec,
     parse_server_tool_specs,
     parse_skill_spec,
+    profile_contexts_by_stage,
+    profile_contexts_for_stage,
     write_agent_profile,
     write_agent_profile_note,
 )
@@ -61,6 +63,34 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     assert context["assigned_stages"] == ["literature", "research_plan"]
     assert context["skills"][0]["skill_id"] == "source-tracing"
     assert context["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+
+
+def test_profile_contexts_group_by_assigned_stage() -> None:
+    literature_profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature", "research-plan"),
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source.md"),),
+    )
+    reviewer_profile = AgentProfile(
+        agent_id="reviewer",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review",),
+        skills=(AgentSkillBinding(skill_id="question-validator", source="[[Question-Validator]]"),),
+    )
+    contexts = (
+        literature_profile.to_runtime_context(),
+        reviewer_profile.to_runtime_context(),
+    )
+
+    assert profile_contexts_for_stage(contexts, "research-plan")[0]["agent_id"] == (
+        "literature-agent"
+    )
+    grouped = profile_contexts_by_stage(contexts, ("literature", "research_plan", "review"))
+
+    assert grouped["literature"][0]["skills"][0]["skill_id"] == "source-tracing"
+    assert grouped["research_plan"][0]["agent_id"] == "literature-agent"
+    assert grouped["review"][0]["agent_id"] == "reviewer"
 
 
 def test_agent_profile_requires_mcp_allowlist() -> None:

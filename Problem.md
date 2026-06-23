@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-005 - Stage-context helper test needed import-order normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 13:59:42 +08:00
+- Source: Focused verification for task `218.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `tests/unit/agents/test_profiles.py`.
+- Impact: Product behavior was not affected, but the task could not pass the lint gate until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` reported one fixable `I001`.
+- Root cause: The new helper imports were inserted manually and not in ruff/isort order.
+- Workaround: None needed after the automatic import-order fix.
+- Next action: Continue using focused ruff checks after editing shared test import blocks.
+- Linked tasks: `218.1`
+- Resolution: Ran `python -m ruff check tests\unit\agents\test_profiles.py --fix`.
+- Verification: The fixer reported `Found 1 error (1 fixed, 0 remaining)`; subsequent focused ruff and broad gates are recorded in `Agent.md`.
+
 ### P-20260623-004 - Agent profile monitor test asserted Rich-wrapped cell text too tightly
 
 - Status: Resolved

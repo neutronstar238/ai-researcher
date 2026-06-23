@@ -214,9 +214,11 @@ airesearcher serve \
 Loaded profiles are written into `cycle-summary.json`, `review-evidence-context.json`, and the
 operator monitor. Optional `--stage` values bind one profile to loop stages such as `literature`,
 `similarity`, `research_plan`, `loop_campaign`, `experiment`, `review`, `publication_audit`, and
-`evidence_gate`, so audit records show which agent carried which scientific responsibility. They
-provide bounded method/tool context only; publication claims still require the normal evidence,
-reproduction, review, paper-build, and release gates.
+`evidence_gate`, so audit records show which agent carried which scientific responsibility.
+`cycle-summary.json` also includes `stage_runtime_contexts`, and `review-evidence-context.json`
+includes `stage_agent_contexts`, so downstream stage workers can consume only the bounded skill/MCP
+context assigned to that stage. Profiles still provide method/tool context only; publication claims
+require the normal evidence, reproduction, review, paper-build, and release gates.
 
 Each cycle can run:
 

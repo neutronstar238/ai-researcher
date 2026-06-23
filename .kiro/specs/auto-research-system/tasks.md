@@ -2701,6 +2701,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `214.1`, `215.1`, and `216.1`; Loop Engineering requirement that closed-loop stages are auditable and cannot be bypassed by prompt-only agent behavior._
     - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 8 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with 563 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed. Real CLI wrote a staged profile with `--stage literature --stage similarity --stage review`, ran `autopilot` once with that profile, confirmed `[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3`, confirmed summary/review context include `stage_assignments`, and `monitor` rendered `project_agent; literature,similarity,review`._
 
+- [x] 218. Stage-scoped agent context consumption
+  - [x] 218.1 Expose bounded runtime contexts per loop stage
+    - Add reusable helpers that normalize loop stage names and filter loaded agent runtime contexts by assigned stage.
+    - Include `stage_runtime_contexts` in `cycle-summary.json`, keyed by loop stage, so downstream stage workers can consume only the skill/MCP context assigned to that stage.
+    - Include `stage_agent_contexts` in `review-evidence-context.json` so review and audit can inspect the stage-scoped context without re-deriving it from display rows.
+    - Keep stage contexts bounded to profile runtime context and do not treat them as publication evidence or approval to bypass gates.
+    - Update README/README.zh-CN with the runtime artifact fields and safety boundary.
+    - _References: tasks `214.1`, `215.1`, `216.1`, and `217.1`; Loop Engineering requirement that LLM and tool use stay inside auditable stage responsibilities._
+    - _Verify: focused profile and CLI tests passed; loop regression, broad smoke/unit, ruff, mypy, real staged-profile autopilot smoke, and `git diff --check` passed. Full commands and real artifact checks are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3229,6 +3239,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 120,
       "tasks": ["217.1"]
+    },
+    {
+      "id": 121,
+      "tasks": ["218.1"]
     }
   ]
 }

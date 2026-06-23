@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
+from collections.abc import Iterable, Mapping
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -303,6 +304,42 @@ def load_agent_profile(path: Path | str) -> AgentProfile:
     return AgentProfile.model_validate(payload)
 
 
+def normalize_profile_stage(stage: str) -> str:
+    """Normalize a loop stage identifier used by an agent profile."""
+
+    return _validate_identifier(stage.replace("-", "_").lower(), "assigned_stage")
+
+
+def profile_contexts_for_stage(
+    profile_contexts: Iterable[Mapping[str, Any]],
+    stage: str,
+) -> tuple[dict[str, Any], ...]:
+    """Return safe runtime contexts assigned to one loop stage."""
+
+    normalized_stage = normalize_profile_stage(stage)
+    return tuple(
+        dict(context)
+        for context in profile_contexts
+        if normalized_stage in _context_assigned_stages(context)
+    )
+
+
+def profile_contexts_by_stage(
+    profile_contexts: Iterable[Mapping[str, Any]],
+    stages: Iterable[str],
+) -> dict[str, list[dict[str, Any]]]:
+    """Group safe runtime contexts by loop stage."""
+
+    contexts = tuple(profile_contexts)
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for stage in stages:
+        normalized_stage = normalize_profile_stage(stage)
+        stage_contexts = profile_contexts_for_stage(contexts, normalized_stage)
+        if stage_contexts:
+            grouped[normalized_stage] = list(stage_contexts)
+    return grouped
+
+
 def render_agent_profile_markdown(profile: AgentProfile) -> str:
     """Render an Obsidian-friendly profile note."""
 
@@ -401,6 +438,28 @@ def _reject_duplicates(values: list[str], field_name: str) -> None:
     if len(values) != len(set(values)):
         msg = f"duplicate {field_name} values are not allowed"
         raise ValueError(msg)
+
+
+def _context_assigned_stages(context: Mapping[str, Any]) -> tuple[str, ...]:
+    raw_stages = context.get("assigned_stages", ())
+    if isinstance(raw_stages, str):
+        stage_values: Iterable[Any] = (raw_stages,)
+    elif isinstance(raw_stages, Iterable) and not isinstance(raw_stages, Mapping):
+        stage_values = raw_stages
+    else:
+        stage_values = ()
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in stage_values:
+        value = str(item).strip()
+        if not value:
+            continue
+        stage = normalize_profile_stage(value)
+        if stage not in seen:
+            normalized.append(stage)
+            seen.add(stage)
+    return tuple(normalized)
 
 
 def _safe_path_part(value: str) -> str:

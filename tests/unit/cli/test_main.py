@@ -3067,6 +3067,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         {"stage": "similarity", "agent_ids": ["literature-agent"]},
         {"stage": "review", "agent_ids": ["literature-agent"]},
     ]
+    stage_contexts = payload["agent_profiles"]["stage_runtime_contexts"]
+    assert stage_contexts["literature"][0]["agent_id"] == "literature-agent"
+    assert stage_contexts["similarity"][0]["skills"][0]["skill_id"] == "source-tracing"
+    assert stage_contexts["review"][0]["mcp_servers"][0]["allowed_tools"] == [
+        "browser.search"
+    ]
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -3113,6 +3119,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "stage": "literature",
         "agent_ids": ["literature-agent"],
     }
+    assert review_context["stage_agent_contexts"]["literature"][0]["agent_id"] == (
+        "literature-agent"
+    )
+    assert review_context["stage_agent_contexts"]["review"][0]["mcp_servers"][0][
+        "server_id"
+    ] == "page-agent"
     assert review_context["audit_summary"]["agent_profiles"]["count"] == 1
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"

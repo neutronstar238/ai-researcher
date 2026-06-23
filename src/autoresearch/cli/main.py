@@ -25,6 +25,7 @@ from autoresearch.agents import (
     parse_mcp_spec,
     parse_server_tool_specs,
     parse_skill_spec,
+    profile_contexts_by_stage,
     write_agent_profile,
     write_agent_profile_note,
 )
@@ -806,6 +807,10 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
         "profiles": profiles,
         "runtime_contexts": list(profile_contexts),
         "stage_assignments": _agent_profile_stage_assignments(profile_contexts),
+        "stage_runtime_contexts": profile_contexts_by_stage(
+            profile_contexts,
+            AGENT_PROFILE_ASSIGNABLE_STAGES,
+        ),
         "evidence_policy": (
             "Agent profiles provide bounded skill/MCP context only; publication claims still "
             "require loop, review, audit, evidence, and reproduction gates."
@@ -4810,6 +4815,7 @@ def _run_autopilot_cycle(
         "cycle_id": cycle_id,
         "project_id": project_id,
         "agent_profiles": summary["agent_profiles"],
+        "stage_agent_contexts": summary["agent_profiles"].get("stage_runtime_contexts", {}),
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
