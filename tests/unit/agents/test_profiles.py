@@ -16,7 +16,9 @@ from autoresearch.agents import (
     BaseAgent,
     McpApprovalPolicy,
     SkillImportPolicy,
+    build_agent_profile_from_bundle,
     evaluate_agent_profile_readiness,
+    load_agent_profile_bundle,
     materialize_agent_skill_contexts,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
@@ -271,6 +273,63 @@ def test_parse_profile_policy_specs() -> None:
 def test_parse_profile_policy_specs_reject_invalid_env_key() -> None:
     with pytest.raises(ValueError, match="uppercase environment variable"):
         parse_mcp_env_key_specs(("browser:page_agent_token",))
+
+
+def test_agent_profile_bundle_import_keeps_scientific_contract(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source tracing\nBind claims to retrieved evidence.\n", encoding="utf-8")
+    bundle_path = tmp_path / "literature-agent.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "agent_id: literature-agent",
+                "role: project_agent",
+                "thinking_mode: scientific",
+                "publication_target: ccf-b-or-sci-q2",
+                "description: Source-backed literature and plan agent.",
+                "assigned_stages:",
+                "  - literature",
+                "  - research-plan",
+                "thinking_contract_additions:",
+                "  - Prefer falsifiable research claims over software architecture metaphors.",
+                "skills:",
+                "  - skill_id: source-tracing",
+                "    source: skills/source-tracing.md",
+                "    import_policy: approved_runtime",
+                "    allowed_tasks:",
+                "      - literature_refresh",
+                "mcp_servers:",
+                "  - server_id: page-agent",
+                "    command: npx -y page-agent",
+                "    allowed_tools:",
+                "      - browser.search",
+                "      - browser.open",
+                "    approval_policy: approve_dangerous",
+                "    env_keys:",
+                "      - PAGE_AGENT_TOKEN",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    profile = build_agent_profile_from_bundle(load_agent_profile_bundle(bundle_path))
+    context = profile.to_runtime_context(
+        base_dir=tmp_path,
+        materialize_skills=True,
+        max_skill_chars=400,
+    )
+
+    assert profile.agent_id == "literature-agent"
+    assert profile.assigned_stages == ("literature", "research_plan")
+    assert profile.skills[0].import_policy == SkillImportPolicy.APPROVED_RUNTIME
+    assert profile.mcp_servers[0].command == ("npx", "-y", "page-agent")
+    assert profile.mcp_servers[0].allowed_tools == ("browser.search", "browser.open")
+    assert "Start from the research question" in profile.thinking_contract[0]
+    assert any("falsifiable research claims" in item for item in profile.thinking_contract)
+    assert context["materialized_skills"][0]["status"] == "loaded"
+    assert context["mcp_runtime_contracts"][0]["tool_invocation_evidence_required"] is True
 
 
 def test_agent_profile_readiness_passes_for_existing_local_skill_and_env(

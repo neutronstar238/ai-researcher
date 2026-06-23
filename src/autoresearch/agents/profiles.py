@@ -11,6 +11,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import toml
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from autoresearch.knowledge import AgentRole
@@ -267,6 +269,57 @@ class AgentMcpServerBinding(BaseModel):
         return _clean_text_tuple(value)
 
 
+class AgentProfileBundleSkill(BaseModel):
+    """Declarative skill entry used by reusable profile bundles."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: str
+    source: str
+    source_type: SkillSourceType | None = None
+    allowed_tasks: tuple[str, ...] = ()
+    evidence_refs: tuple[str, ...] = ()
+    import_policy: SkillImportPolicy = SkillImportPolicy.READ_ONLY_CONTEXT
+    notes: str | None = None
+
+
+class AgentProfileBundleMcpServer(BaseModel):
+    """Declarative MCP entry used by reusable profile bundles."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    server_id: str
+    command: str | tuple[str, ...]
+    allowed_tools: tuple[str, ...]
+    env_keys: tuple[str, ...] = ()
+    approval_policy: McpApprovalPolicy = McpApprovalPolicy.APPROVE_DANGEROUS
+    evidence_refs: tuple[str, ...] = ()
+    notes: str | None = None
+
+
+class AgentProfileBundle(BaseModel):
+    """Reusable Agent profile declaration for JSON/YAML/TOML imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str
+    role: AgentRole = AgentRole.PROJECT_AGENT
+    thinking_mode: AgentThinkingMode = AgentThinkingMode.SCIENTIFIC
+    publication_target: str = "ccf-b-or-sci-q2"
+    description: str | None = None
+    assigned_stages: tuple[str, ...] = ()
+    thinking_contract_additions: tuple[str, ...] = ()
+    skills: tuple[AgentProfileBundleSkill, ...] = ()
+    mcp_servers: tuple[AgentProfileBundleMcpServer, ...] = ()
+
+    @model_validator(mode="after")
+    def _validate_bundle(self) -> AgentProfileBundle:
+        if not self.skills and not self.mcp_servers:
+            msg = "agent profile bundle must declare at least one skill or MCP server"
+            raise ValueError(msg)
+        return self
+
+
 class AgentProfile(BaseModel):
     """Runtime profile that assigns custom skills and MCP tools to one agent."""
 
@@ -500,6 +553,60 @@ def load_agent_profile(path: Path | str) -> AgentProfile:
 
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     return AgentProfile.model_validate(payload)
+
+
+def load_agent_profile_bundle(path: Path | str) -> AgentProfileBundle:
+    """Load a declarative Agent profile bundle from JSON, YAML, or TOML."""
+
+    bundle_path = Path(path)
+    payload = _load_bundle_mapping(bundle_path)
+    try:
+        return AgentProfileBundle.model_validate(payload)
+    except ValueError as exc:
+        raise ValueError(f"Invalid agent profile bundle {bundle_path}: {exc}") from exc
+
+
+def build_agent_profile_from_bundle(bundle: AgentProfileBundle) -> AgentProfile:
+    """Convert a declarative bundle into a runtime Agent profile."""
+
+    skill_bindings = tuple(
+        AgentSkillBinding(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type or infer_skill_source_type(skill.source),
+            allowed_tasks=skill.allowed_tasks,
+            evidence_refs=skill.evidence_refs,
+            import_policy=skill.import_policy,
+            notes=skill.notes,
+        )
+        for skill in bundle.skills
+    )
+    mcp_servers = tuple(
+        AgentMcpServerBinding(
+            server_id=server.server_id,
+            command=_bundle_command_tokens(server.command),
+            allowed_tools=server.allowed_tools,
+            env_keys=server.env_keys,
+            approval_policy=server.approval_policy,
+            evidence_refs=server.evidence_refs,
+            notes=server.notes,
+        )
+        for server in bundle.mcp_servers
+    )
+    thinking_contract = tuple(
+        dict.fromkeys((*DEFAULT_RESEARCH_THINKING_CONTRACT, *bundle.thinking_contract_additions))
+    )
+    return AgentProfile(
+        agent_id=bundle.agent_id,
+        role=bundle.role,
+        thinking_mode=bundle.thinking_mode,
+        publication_target=bundle.publication_target,
+        description=bundle.description,
+        assigned_stages=bundle.assigned_stages,
+        thinking_contract=thinking_contract,
+        skills=skill_bindings,
+        mcp_servers=mcp_servers,
+    )
 
 
 def evaluate_agent_profile_readiness(
@@ -967,6 +1074,49 @@ def _context_assigned_stages(context: Mapping[str, Any]) -> tuple[str, ...]:
             normalized.append(stage)
             seen.add(stage)
     return tuple(normalized)
+
+
+def _load_bundle_mapping(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"Could not read agent profile bundle {path}: {exc}") from exc
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            msg = (
+                "Invalid JSON agent profile bundle at line "
+                f"{exc.lineno}, column {exc.colno}: {exc.msg}"
+            )
+            raise ValueError(msg) from exc
+    elif suffix in {".yaml", ".yml"}:
+        try:
+            data = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Invalid YAML agent profile bundle: {exc}") from exc
+    elif suffix == ".toml":
+        try:
+            data = toml.loads(text)
+        except toml.TomlDecodeError as exc:
+            raise ValueError(f"Invalid TOML agent profile bundle: {exc}") from exc
+    else:
+        raise ValueError(
+            f"Unsupported agent profile bundle extension '{path.suffix}' for {path}. "
+            "Expected .json, .yaml, .yml, or .toml."
+        )
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError("Invalid agent profile bundle: top-level value must be a mapping/object.")
+    return data
+
+
+def _bundle_command_tokens(command: str | tuple[str, ...]) -> tuple[str, ...]:
+    if isinstance(command, str):
+        return tuple(shlex.split(command, posix=False))
+    return command
 
 
 def _safe_path_part(value: str) -> str:

@@ -2828,6 +2828,17 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `222.1`, `227.1`, and `228.1`; requirement that protocol-as-code completeness be a hard gate, not prompt-only self-discipline._
     - _Verify: focused loop/report/evidence/publication tests, ruff, mypy, real narrow autopilot, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 230. Reusable Agent profile bundles
+  - [x] 230.1 Import declarative Agent skill/MCP bundles into standard profiles
+    - Add JSON/YAML/TOML `AgentProfileBundle` loading for reusable per-agent skill and MCP declarations.
+    - Convert bundle skills, MCP servers, stage assignments, publication target, thinking mode, and thinking-contract additions into the existing `AgentProfile` model.
+    - Preserve the default scientific thinking contract and append bundle-specific additions instead of allowing a bundle to replace the research-first contract.
+    - Add `airesearcher agents profile import <bundle> --output <profile.json>` so operators can deploy one Agent's custom skills and MCP instruments without hand-composing long command lines.
+    - Keep imported profiles compatible with existing `validate`, `inspect`, `serve`, `autopilot`, MCP runtime contracts, skill materialization, and MCP evidence ledger flows.
+    - Update README/README.zh-CN with bundle examples and command-table entries.
+    - _References: user request to keep AI thinking scientific rather than over-engineered while continuing to add custom skill/MCP import ability for specific Agents; tasks `215.1`, `223.1`, `224.1`, `225.1`, `226.1`, and `228.1`._
+    - _Verify: focused profile bundle import/API/CLI tests, ruff, mypy, real CLI import/validate/inspect, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3404,6 +3415,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 132,
       "tasks": ["229.1"]
+    },
+    {
+      "id": 133,
+      "tasks": ["230.1"]
     }
   ]
 }

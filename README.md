@@ -29,7 +29,7 @@ automatically.
 | Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
-| Agent profiles | `airesearcher agents profile write` binds custom skills and MCP servers to one named agent; `serve` and `autopilot` can load those profiles with repeatable `--agent-profile <json>` flags and record them in cycle evidence. |
+| Agent profiles | `airesearcher agents profile write` and `agents profile import` bind custom skills and MCP servers to one named agent; `serve` and `autopilot` load those profiles with repeatable `--agent-profile <json>` flags and record them in cycle evidence. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
 | Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
@@ -218,6 +218,33 @@ airesearcher agents profile validate \
 airesearcher serve \
   --agent-profile .airesearcher/agents/literature-agent.json \
   --agent-profile .airesearcher/agents/reviewer-agent.json
+```
+
+For repeatable team deployments, the same profile can be imported from a JSON/YAML/TOML bundle:
+
+```yaml
+agent_id: literature-agent
+role: project_agent
+thinking_mode: scientific
+publication_target: ccf-b-or-sci-q2
+assigned_stages: [literature, similarity, research_plan]
+thinking_contract_additions:
+  - Prefer falsifiable research claims over software architecture metaphors.
+skills:
+  - skill_id: source-tracing
+    source: autoresearch-vault/_system/templates/skill-card.md
+    import_policy: approved_runtime
+mcp_servers:
+  - server_id: page-agent
+    command: npx -y page-agent
+    allowed_tools: [browser.search, browser.open]
+    approval_policy: approve_dangerous
+    env_keys: [PAGE_AGENT_TOKEN]
+```
+
+```bash
+airesearcher agents profile import literature-agent.yaml \
+  --output .airesearcher/agents/literature-agent.json
 ```
 
 Loaded profiles are written into `cycle-summary.json`, `review-evidence-context.json`, and the
@@ -417,6 +444,7 @@ Common npm shortcuts:
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
+| `agents profile import` | bundle `.json/.yaml/.toml`, `--output`, `--vault`, `--project-id` | Converts a reusable declarative Agent bundle into the same profile JSON used by `validate`, `inspect`, `serve`, and `autopilot`. The default scientific thinking contract is preserved and bundle additions are appended. |
 | `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
 | `agents profile inspect` | profile JSON path, `--materialize-skills`, `--base-dir`, `--max-skill-chars` | Prints the runtime context that will be attached to that agent, including MCP runtime contracts; optionally includes bounded local skill content with hashes and truncation metadata. |
 | `agents mcp-evidence add/list/validate` | `--profile`, `--ledger`, `--project-id`, `--cycle-id`, `--server-id`, `--tool-name`, request/response artifact refs | Records and validates hashed MCP tool invocation evidence. This proves a named agent recorded a named tool call, not that scientific claims are true. |

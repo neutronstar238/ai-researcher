@@ -185,6 +185,74 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert "scientific results" in materialized_skill["evidence_policy"]
 
 
+def test_agent_profile_import_cli_writes_standard_profile(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "bundles" / "review-agent.yaml"
+    profile_path = tmp_path / "profiles" / "review-agent.json"
+    vault_root = tmp_path / "vault"
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "agent_id: review-agent",
+                "role: validator_agent",
+                "thinking_mode: reviewer",
+                "publication_target: ccf-b-or-sci-q2",
+                "assigned_stages:",
+                "  - review",
+                "  - publication-audit",
+                "thinking_contract_additions:",
+                "  - Judge novelty and claims against local evidence before prose quality.",
+                "skills:",
+                "  - skill_id: question-validator",
+                "    source: '[[Question-Validator]]'",
+                "    import_policy: read_only_context",
+                "mcp_servers:",
+                "  - server_id: citation-db",
+                "    command:",
+                "      - npx",
+                "      - -y",
+                "      - citation-mcp",
+                "    allowed_tools:",
+                "      - citations.lookup",
+                "    approval_policy: read_only",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import",
+            str(bundle_path),
+            "--output",
+            str(profile_path),
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_import: review-agent" in result.stdout
+    assert "[OK] assigned_stages: review, publication_audit" in result.stdout
+    payload = json.loads(profile_path.read_text(encoding="utf-8"))
+    assert payload["agent_id"] == "review-agent"
+    assert payload["thinking_mode"] == "reviewer"
+    assert payload["assigned_stages"] == ["review", "publication_audit"]
+    assert payload["skills"][0]["source_type"] == "obsidian_note"
+    assert payload["mcp_servers"][0]["approval_policy"] == "read_only"
+    assert "Start from the research question" in payload["thinking_contract"][0]
+    assert any("Judge novelty" in item for item in payload["thinking_contract"])
+    note_path = vault_root / "projects" / "project-a" / "agents" / "review-agent.md"
+    assert note_path.is_file()
+    assert "`citation-db`" in note_path.read_text(encoding="utf-8")
+
+
 def test_agent_mcp_evidence_cli_add_list_and_validate(tmp_path: Path) -> None:
     profile_path = tmp_path / "profiles" / "literature-agent.json"
     ledger_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations.jsonl"

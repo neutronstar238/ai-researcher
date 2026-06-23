@@ -64,6 +64,43 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-23 16:03:12 +08:00 - Codex - Task 230.1 Reusable Agent profile bundles
+
+- Request: Continue adding custom skills and MCP imports for specific Agents while preserving scientific, evidence-first thinking instead of drifting into software-only orchestration.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added JSON/YAML/TOML `AgentProfileBundle` loading so reusable skill and MCP declarations can be imported into standard Agent profiles.
+  - Converted bundle stages, publication targets, thinking mode, skills, MCP servers, and thinking-contract additions into existing `AgentProfile` records.
+  - Preserved the default scientific thinking contract and only appended bundle-specific additions, keeping profile bundles from replacing the research-first contract.
+  - Added `airesearcher agents profile import <bundle> --output <profile.json>` and documented the bundle format in English and Chinese README files.
+  - Kept imported profiles compatible with existing validate, inspect, serve, autopilot, skill materialization, MCP runtime contract, and MCP invocation evidence flows.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_bundle_import_keeps_scientific_contract tests\unit\cli\test_main.py::test_agent_profile_import_cli_writes_standard_profile -q`: passed with 2 tests.
+  - Initial focused ruff reported one import-order issue in `src/autoresearch/cli/main.py`; fixed with `python -m ruff check src\autoresearch\cli\main.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_import_cli_writes_standard_profile tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report -q`: passed with 16 tests.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import runs\manual-live\task230-profile-bundle-v1\bundles\literature-agent.yaml --output runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --vault runs\manual-live\task230-profile-bundle-v1\vault --project-id task230_profile_bundle_v1`: passed and wrote a standard profile plus Obsidian note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --env-path .env --base-dir . --output runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --materialize-skills --base-dir . --max-skill-chars 500`: passed and showed loaded materialized skill context plus MCP runtime contract evidence policy.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 591 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. No `Problem.md` entry was added because verification completed, no blocker remained, and no loop failure/evidence gap was introduced.
+- Follow-up:
+  - Future stage workers can consume imported profiles during real cycles; actual MCP calls still need separate MCP invocation evidence before any tool-use or scientific claim can pass quality gates.
+
 ### 2026-06-23 17:20:00 +08:00 - Codex - Task 229.1 Campaign protocol contract gate
 
 - Request: Implement the Loop Engineering plan by making closed-loop campaign protocol-as-code completeness a hard contract gate before release or publication claims.

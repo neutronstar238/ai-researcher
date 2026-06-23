@@ -24,9 +24,11 @@ from autoresearch.agents import (
     AgentThinkingMode,
     McpInvocationStatus,
     append_mcp_invocation_evidence,
+    build_agent_profile_from_bundle,
     build_mcp_invocation_evidence,
     evaluate_agent_profile_readiness,
     load_agent_profile,
+    load_agent_profile_bundle,
     load_mcp_invocation_evidence,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
@@ -800,6 +802,51 @@ def write_agent_profile_command(
 
     profile_path = write_agent_profile(profile, output)
     typer.echo(f"[OK] agent_profile: {profile.agent_id}")
+    typer.echo(f"[OK] role: {profile.role.value}")
+    typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
+    if profile.assigned_stages:
+        typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages)}")
+    else:
+        typer.echo("[OK] assigned_stages: unassigned")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        note_path = write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+        typer.echo(f"[OK] vault_note: {note_path}")
+
+
+@agent_profiles_app.command("import")
+def import_agent_profile_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile bundle (.json, .yaml, .yml, or .toml)."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile JSON artifact path."),
+    ] = Path(".airesearcher/agents/profile.json"),
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for a profile note."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the optional vault note."),
+    ] = "ai_researcher_system",
+) -> None:
+    """Import a reusable JSON/YAML/TOML Agent profile bundle."""
+
+    try:
+        bundle = load_agent_profile_bundle(bundle_path)
+        profile = build_agent_profile_from_bundle(bundle)
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile_path = write_agent_profile(profile, output)
+    typer.echo(f"[OK] agent_profile_import: {profile.agent_id}")
+    typer.echo(f"[OK] source_bundle: {bundle_path}")
     typer.echo(f"[OK] role: {profile.role.value}")
     typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
     if profile.assigned_stages:
