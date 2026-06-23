@@ -3410,6 +3410,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "research-plan.md",
             "research-plan.tex",
             "paper-build.json",
+            "runtime-heartbeat-report.json",
             "literature-agent.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
@@ -3512,6 +3513,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3; readiness=pass"
     ) in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] runtime_heartbeat: true;" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
     assert "[OK] evidence_gate: blocked" in result.stdout
@@ -3532,9 +3534,29 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         path.endswith("/.airesearcher/scheduler-state.json")
         for path in session["claimed_paths"]
     )
+    assert any(
+        Path(path).name == "runtime-heartbeats.json"
+        and Path(path).parent.name == ".airesearcher"
+        for path in session["claimed_paths"]
+    )
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["runtime_heartbeat"]["passed"] is True
+    assert payload["runtime_heartbeat"]["stale_count"] == 0
+    assert payload["runtime_heartbeat"]["stalled_count"] == 0
+    assert payload["runtime_heartbeat"]["stage_count"] >= 10
+    assert Path(payload["runtime_heartbeat"]["report_path"]).name == (
+        "runtime-heartbeat-report.json"
+    )
+    heartbeat_payload = json.loads(
+        (state.parent / "runtime-heartbeats.json").read_text(encoding="utf-8")
+    )
+    assert any(
+        event["stage"] == "research_plan"
+        and event["run_id"] == payload["cycle_id"]
+        for event in heartbeat_payload["heartbeats"]
+    )
     assert payload["candidate"]["related_document_ids"] == []
     assert payload["candidate"]["evidence_refs"] == [
         cli_main.METHOD_ALIGNED_SEED_NOT_FOUND_REF
@@ -4263,6 +4285,7 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     def fake_cycle(**kwargs: object) -> dict[str, object]:
         assert kwargs["project_id"] == "project_1"
         assert kwargs["review"] is False
+        assert kwargs["heartbeat_state"] == approvals_state.parent / "runtime-heartbeats.json"
         metadata = kwargs["runtime_network_metadata"]
         assert isinstance(metadata, dict)
         assert metadata["network_access_approved"] is True
@@ -4308,6 +4331,14 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     assert {session["task_id"] for session in session_payload["sessions"]} == {
         "serve:project_1"
     }
+    assert all(
+        any(
+            Path(path).name == "runtime-heartbeats.json"
+            and Path(path).parent.name == ".airesearcher"
+            for path in session["claimed_paths"]
+        )
+        for session in session_payload["sessions"]
+    )
 
 
 def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch) -> None:
@@ -4317,6 +4348,7 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
         assert kwargs["project_id"] == "project_1"
         assert kwargs["max_queries"] == cli_main.PUBLICATION_SEARCH_QUERIES
         assert kwargs["max_results_per_source"] == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        assert kwargs["heartbeat_state"] == approvals_state.parent / "runtime-heartbeats.json"
         metadata = kwargs["runtime_network_metadata"]
         assert isinstance(metadata, dict)
         assert metadata["network_access_approved"] is True
@@ -4366,6 +4398,11 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
     assert len(session_payload["sessions"]) == 1
     assert session_payload["sessions"][0]["task_id"] == "serve:project_1"
     assert session_payload["sessions"][0]["status"] == "released"
+    assert any(
+        Path(path).name == "runtime-heartbeats.json"
+        and Path(path).parent.name == ".airesearcher"
+        for path in session_payload["sessions"][0]["claimed_paths"]
+    )
 
 
 def test_serve_blocks_overlapping_runtime_session_before_cycle(
@@ -4631,6 +4668,24 @@ def test_runtime_heartbeat_cli_write_and_check_detects_stall(tmp_path: Path) -> 
     report_path = tmp_path / "reports" / "runtime-heartbeat-report.json"
     runner = CliRunner()
 
+    old_write = runner.invoke(
+        app,
+        [
+            "runtime",
+            "heartbeat",
+            "write",
+            "--state",
+            str(state),
+            "--run-id",
+            "cycle-old",
+            "--stage",
+            "literature",
+            "--progress",
+            "old-query-page",
+        ],
+    )
+    assert old_write.exit_code == 0, old_write.output
+
     for index in range(3):
         write_result = runner.invoke(
             app,
@@ -4663,6 +4718,8 @@ def test_runtime_heartbeat_cli_write_and_check_detects_stall(tmp_path: Path) -> 
             "check",
             "--state",
             str(state),
+            "--run-id",
+            "cycle-1",
             "--stale-after-seconds",
             "999999",
             "--stall-repetition-threshold",
@@ -4680,6 +4737,7 @@ def test_runtime_heartbeat_cli_write_and_check_detects_stall(tmp_path: Path) -> 
         in check_result.stdout
     )
     assert payload["passed"] is False
+    assert payload["event_count"] == 3
     assert payload["stalled_count"] == 1
     assert payload["stages"][0]["status"] == "stalled"
     assert "cannot support scientific results" in payload["evidence_policy"]

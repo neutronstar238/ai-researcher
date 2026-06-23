@@ -144,6 +144,7 @@ from autoresearch.runtime import (
     RuntimeActionRisk,
     RuntimeApprovalDecision,
     RuntimeApprovalError,
+    RuntimeHeartbeatReport,
     RuntimePermissionMode,
     approve_runtime_request,
     claim_agent_session,
@@ -4009,6 +4010,10 @@ def autopilot(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    heartbeat_state: Annotated[
+        Path | None,
+        typer.Option("--heartbeat-state", help="Local runtime heartbeat JSON state file."),
+    ] = None,
     sessions_state: Annotated[
         Path | None,
         typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
@@ -4113,6 +4118,7 @@ def autopilot(
     )
     completed = 0
     resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
+    resolved_heartbeat_state = _resolve_runtime_heartbeat_state(heartbeat_state, state)
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -4124,6 +4130,7 @@ def autopilot(
             output_dir=output_dir,
             deliverables_dir=deliverables_dir,
             state=state,
+            extra_paths=(resolved_heartbeat_state,),
         ),
     )
     try:
@@ -4138,6 +4145,7 @@ def autopilot(
                     output_dir=output_dir,
                     deliverables_dir=deliverables_dir,
                     state=state,
+                    heartbeat_state=resolved_heartbeat_state,
                     project_id=project_id,
                     demo=demo,
                     max_queries=max_queries,
@@ -4162,6 +4170,7 @@ def autopilot(
             _echo_agent_profiles_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
+            _echo_runtime_heartbeat_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -4217,6 +4226,10 @@ def serve(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    heartbeat_state: Annotated[
+        Path | None,
+        typer.Option("--heartbeat-state", help="Local runtime heartbeat JSON state file."),
+    ] = None,
     approvals_state: Annotated[
         Path,
         typer.Option("--approvals-state", help="Local runtime approval queue JSON file."),
@@ -4351,6 +4364,11 @@ def serve(
         state,
         approvals_state,
     )
+    resolved_heartbeat_state = _resolve_runtime_heartbeat_state(
+        heartbeat_state,
+        state,
+        approvals_state,
+    )
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -4362,7 +4380,7 @@ def serve(
             output_dir=output_dir,
             deliverables_dir=deliverables_dir,
             state=state,
-            extra_paths=(approvals_state,),
+            extra_paths=(approvals_state, resolved_heartbeat_state),
         ),
     )
     try:
@@ -4409,6 +4427,7 @@ def serve(
                     output_dir=output_dir,
                     deliverables_dir=deliverables_dir,
                     state=state,
+                    heartbeat_state=resolved_heartbeat_state,
                     project_id=project_id,
                     demo=demo,
                     max_queries=max_queries,
@@ -4434,6 +4453,7 @@ def serve(
             _echo_agent_profiles_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
+            _echo_runtime_heartbeat_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -4679,6 +4699,10 @@ def check_runtime_heartbeats(
         Path,
         typer.Option("--state", help="Local runtime heartbeat JSON state file to inspect."),
     ] = DEFAULT_RUNTIME_HEARTBEATS_PATH,
+    run_id: Annotated[
+        str | None,
+        typer.Option("--run-id", help="Optional run or cycle ID to check in isolation."),
+    ] = None,
     stale_after_seconds: Annotated[
         int,
         typer.Option(
@@ -4702,6 +4726,7 @@ def check_runtime_heartbeats(
 
     report = evaluate_runtime_heartbeats(
         state_path=state,
+        run_id=run_id,
         stale_after_seconds=stale_after_seconds,
         stall_repetition_threshold=stall_repetition_threshold,
     )
@@ -5152,6 +5177,7 @@ def _run_autopilot_cycle(
     output_dir: Path,
     deliverables_dir: Path,
     state: Path,
+    heartbeat_state: Path,
     project_id: str,
     demo: str,
     max_queries: int,
@@ -5169,6 +5195,16 @@ def _run_autopilot_cycle(
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
+    heartbeat_report_path = cycle_dir / "runtime-heartbeat-report.json"
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="cycle-start",
+        progress=f"cycle_dir={cycle_dir.as_posix()}",
+        report_path=heartbeat_report_path,
+        message="Autopilot cycle directory initialized.",
+        artifact_refs=(cycle_dir,),
+    )
     _load_optional_env(env_path)
     agent_profile_contexts = _load_agent_profile_contexts(
         agent_profile_paths,
@@ -5176,6 +5212,18 @@ def _run_autopilot_cycle(
         base_dir=Path.cwd(),
     )
     agent_profiles = _agent_profiles_summary(agent_profile_contexts)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="agent-profiles",
+        progress=f"profile_count={len(agent_profile_contexts)}",
+        report_path=heartbeat_report_path,
+        message="Agent profile context loaded for this cycle.",
+        artifact_refs=(
+            profile.get("profile_path")
+            for profile in _mapping_list(agent_profiles.get("profiles"))
+        ),
+    )
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
         clients=literature_clients,
@@ -5184,9 +5232,40 @@ def _run_autopilot_cycle(
         project_id=project_id,
         cycle_id=cycle_id,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="source-preflight",
+        progress=(
+            f"verdict={source_preflight['verdict']};"
+            f"blocked={len(source_preflight['blocked_sources'])};"
+            f"optional={len(source_preflight['optional_degraded_sources'])}"
+        ),
+        report_path=heartbeat_report_path,
+        message="External literature source preflight completed.",
+        artifact_refs=(
+            source_preflight.get("output_path"),
+            source_preflight.get("markdown_path"),
+            source_preflight.get("issue_path"),
+        ),
+    )
     if bool(source_preflight["blocked"]):
         followup_records = _issue_followup_records(vault, project_id)
         _merge_scheduler_state(state, followup_records)
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="source-preflight-blocked",
+            progress=f"followups={len(followup_records)}",
+            report_path=heartbeat_report_path,
+            message="Cycle blocked before costly work because a required source is unsafe.",
+            artifact_refs=(
+                source_preflight.get("output_path"),
+                source_preflight.get("markdown_path"),
+                source_preflight.get("issue_path"),
+                state,
+            ),
+        )
         blocked_summary: dict[str, Any] = {
             "cycle_id": cycle_id,
             "status": "blocked",
@@ -5197,6 +5276,7 @@ def _run_autopilot_cycle(
             "cache": cache.as_posix(),
             "agent_profiles": agent_profiles,
             "source_preflight": source_preflight,
+            "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_source_preflight"},
             "followups": {
                 "state_path": state.as_posix(),
@@ -5223,6 +5303,19 @@ def _run_autopilot_cycle(
             seed_queries=_autopilot_literature_seed_queries(demo),
         ),
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="literature-refresh",
+        progress=(
+            f"queries={len(getattr(literature_report, 'queries', ()))},"
+            f"documents={len(getattr(literature_report, 'documents', ()))},"
+            f"fetches={len(getattr(literature_report, 'fetches', ()))}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Daily literature refresh completed from configured online sources.",
+        artifact_refs=(getattr(literature_report, "summary_path", None),),
+    )
     candidate = _autopilot_candidate_from_literature(
         literature_report,
         project_id=project_id,
@@ -5231,6 +5324,15 @@ def _run_autopilot_cycle(
     )
     candidate_path = cycle_dir / "candidate.json"
     candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="candidate",
+        progress=f"candidate={candidate.id};status={candidate.status.value}",
+        report_path=heartbeat_report_path,
+        message="Research candidate derived from retrieved literature.",
+        artifact_refs=(candidate_path,),
+    )
 
     similarity_report = run_project_similarity_check(
         candidate=candidate,
@@ -5250,6 +5352,21 @@ def _run_autopilot_cycle(
             vault_root=vault,
             project_id=project_id,
         )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="similarity-check",
+        progress=(
+            f"findings={len(getattr(similarity_report, 'findings', ()))},"
+            f"fetches={len(getattr(similarity_report, 'fetches', ()))}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Adjacent-work similarity check completed.",
+        artifact_refs=(
+            getattr(similarity_report, "summary_path", None),
+            similarity_project_path,
+        ),
+    )
 
     research_plan_artifact = generate_research_plan(
         candidate=candidate,
@@ -5262,12 +5379,44 @@ def _run_autopilot_cycle(
         timeout_seconds=max(timeout_seconds, 60),
     )
     research_plan_payload = research_plan_artifact.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="research-plan",
+        progress=(
+            f"audit_passed={research_plan_artifact.audit.passed};"
+            f"compile_status={research_plan_artifact.compile_status}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Executable research plan generated before experiment execution.",
+        artifact_refs=(
+            research_plan_payload.get("markdown_path"),
+            research_plan_payload.get("json_path"),
+            research_plan_payload.get("tex_path"),
+            research_plan_payload.get("pdf_path"),
+        ),
+    )
     if (
         not research_plan_artifact.audit.passed
         or research_plan_artifact.compile_status != "compiled"
     ):
         followup_records = _issue_followup_records(vault, project_id)
         _merge_scheduler_state(state, followup_records)
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="research-plan-blocked",
+            progress=f"followups={len(followup_records)}",
+            report_path=heartbeat_report_path,
+            message="Cycle blocked because the research plan gate did not pass.",
+            artifact_refs=(
+                research_plan_payload.get("markdown_path"),
+                research_plan_payload.get("json_path"),
+                research_plan_payload.get("tex_path"),
+                research_plan_payload.get("pdf_path"),
+                state,
+            ),
+        )
         blocked_summary = {
             "cycle_id": cycle_id,
             "status": "blocked",
@@ -5294,6 +5443,7 @@ def _run_autopilot_cycle(
                 "project_path": _path_text(similarity_project_path),
             },
             "research_plan": research_plan_payload,
+            "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_research_plan_gate"},
             "followups": {
                 "state_path": state.as_posix(),
@@ -5316,6 +5466,17 @@ def _run_autopilot_cycle(
         research_plan=research_plan_payload,
     )
     loop_selection = select_loop_candidate(loop_campaign)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="loop-campaign",
+        progress=(
+            f"campaign={loop_campaign.campaign_id};"
+            f"selected={loop_selection.selected_candidate_id}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Closed-loop campaign initialized and optimizer selected a candidate.",
+    )
 
     inspiration_report = run_inspiration_refresh(
         vault_root=vault,
@@ -5328,6 +5489,18 @@ def _run_autopilot_cycle(
     inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
     if push_inspiration:
         inspiration_pushes = send_inspiration_digest(inspiration_report)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="inspiration-refresh",
+        progress=(
+            f"items={len(getattr(inspiration_report, 'items', ()))},"
+            f"pushes={len(inspiration_pushes)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Broad inspiration refresh completed; community signals remain non-scholarly evidence.",
+        artifact_refs=(getattr(inspiration_report, "summary_path", None),),
+    )
 
     demo_result = run_scientistbench_demo(
         demo=demo,
@@ -5335,14 +5508,55 @@ def _run_autopilot_cycle(
         timeout_seconds=timeout_seconds,
         task_metadata=runtime_network_metadata,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="experiment",
+        progress=f"demo={demo_result.demo};run_id={demo_result.run_id}",
+        report_path=heartbeat_report_path,
+        message="Controlled benchmark experiment completed.",
+        artifact_refs=(
+            demo_result.report_path,
+            demo_result.run_record_path,
+            demo_result.validation_json_path,
+            demo_result.evidence_map_path,
+        ),
+    )
     reproduction_check = _run_cycle_reproduction_check(
         cycle_dir=cycle_dir,
         demo=demo,
         timeout_seconds=timeout_seconds,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="reproduction-check",
+        progress=f"status={reproduction_check.get('status')};exit={reproduction_check.get('exit_code')}",
+        report_path=heartbeat_report_path,
+        message="Best-result reproduction check completed.",
+        artifact_refs=(
+            reproduction_check.get("json_path"),
+            reproduction_check.get("markdown_path"),
+            *(reproduction_check.get("run_record_paths") or ()),
+            *(reproduction_check.get("validation_json_paths") or ()),
+        ),
+    )
     citations = _generate_cycle_citations(
         literature_report=literature_report,
         cycle_dir=cycle_dir,
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="citation-package",
+        progress=(
+            f"status={citations.get('status')};"
+            f"verified={citations.get('verified_count')};"
+            f"blocked={citations.get('blocked_count')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Citation package generated or explicitly skipped with reason.",
+        artifact_refs=(citations.get("metadata_path"), citations.get("bib_path")),
     )
 
     summary: dict[str, Any] = {
@@ -5425,6 +5639,20 @@ def _run_autopilot_cycle(
         "markdown_path": loop_artifact_summary["markdown_path"],
         "vault_path": loop_artifact_summary["vault_path"],
     }
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="loop-report",
+        progress=f"loop_report={loop_artifact_summary['json_path']}",
+        report_path=heartbeat_report_path,
+        message="Closed-loop report written to artifacts and Obsidian memory.",
+        artifact_refs=(
+            loop_artifact_summary.get("json_path"),
+            loop_artifact_summary.get("markdown_path"),
+            loop_artifact_summary.get("vault_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -5434,6 +5662,19 @@ def _run_autopilot_cycle(
         output_dir=cycle_dir / "related-work",
     )
     summary["related_work_inspection"] = related_work_inspection.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="related-work-inspection",
+        progress=f"status={summary['related_work_inspection'].get('status', 'completed')}",
+        report_path=heartbeat_report_path,
+        message="Related-work overlap inspection completed.",
+        artifact_refs=(
+            summary["related_work_inspection"].get("json_path"),
+            summary["related_work_inspection"].get("markdown_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     paper_manuscript = compose_publication_manuscript(
@@ -5443,6 +5684,19 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["paper_manuscript"] = paper_manuscript.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="paper-manuscript",
+        progress=f"markdown={paper_manuscript.markdown_path}",
+        report_path=heartbeat_report_path,
+        message="Publication manuscript markdown produced.",
+        artifact_refs=(
+            paper_manuscript.markdown_path,
+            *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     paper_build = build_latex_paper_from_markdown(
@@ -5453,6 +5707,21 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["paper_build"] = paper_build.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="paper-build",
+        progress=f"status={summary['paper_build'].get('status')}",
+        report_path=heartbeat_report_path,
+        message="LaTeX paper build completed.",
+        artifact_refs=(
+            summary["paper_build"].get("json_path"),
+            summary["paper_build"].get("markdown_path"),
+            summary["paper_build"].get("tex_path"),
+            summary["paper_build"].get("pdf_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_context_path = cycle_dir / "review-evidence-context.json"
@@ -5488,6 +5757,16 @@ def _run_autopilot_cycle(
         audit_summary=review_audit_summary,
     )
     summary["formal_reference_evidence_path"] = reference_evidence_path.as_posix()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="review-evidence",
+        progress=f"context={review_context_path.as_posix()}",
+        report_path=heartbeat_report_path,
+        message="Review evidence context and formal reference proof written.",
+        artifact_refs=(review_context_path, reference_evidence_path),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_evidence_paths: list[Path | str] = [
@@ -5513,6 +5792,7 @@ def _run_autopilot_cycle(
         reproduction_check.get("json_path"),
         summary["loop_report"].get("json_path"),
         summary["loop_report"].get("markdown_path"),
+        summary["runtime_heartbeat"].get("report_path"),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
         *[
@@ -5537,6 +5817,20 @@ def _run_autopilot_cycle(
         min_quality_score=min_quality_score,
     )
     summary["review"] = review_result
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="review",
+        progress=f"status={review_result.get('status')}",
+        report_path=heartbeat_report_path,
+        message="LLM evidence review completed or was explicitly skipped.",
+        artifact_refs=(
+            review_result.get("output_path"),
+            review_result.get("review_path"),
+            review_result.get("vault_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     publication_audit = audit_publication_quality(
@@ -5547,6 +5841,24 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["publication_audit"] = publication_audit.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="publication-audit",
+        progress=(
+            f"verdict={summary['publication_audit'].get('verdict')};"
+            f"publishable={summary['publication_audit'].get('publishable')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Publication-readiness gate completed.",
+        artifact_refs=(
+            summary["publication_audit"].get("output_path"),
+            summary["publication_audit"].get("markdown_path"),
+            summary["publication_audit"].get("vault_review_path"),
+            summary["publication_audit"].get("vault_issue_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     evidence_gate = run_evidence_gate(
@@ -5556,6 +5868,24 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["evidence_gate"] = evidence_gate.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="evidence-gate",
+        progress=(
+            f"verdict={summary['evidence_gate'].get('verdict')};"
+            f"release_allowed={summary['evidence_gate'].get('release_allowed')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Evidence coverage gate completed.",
+        artifact_refs=(
+            summary["evidence_gate"].get("output_path"),
+            summary["evidence_gate"].get("markdown_path"),
+            summary["evidence_gate"].get("vault_review_path"),
+            summary["evidence_gate"].get("vault_issue_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
 
     followup_records = _issue_followup_records(vault, project_id)
     _merge_scheduler_state(state, followup_records)
@@ -5564,6 +5894,16 @@ def _run_autopilot_cycle(
         "task_count": len(followup_records),
         "tasks": followup_records,
     }
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="followups",
+        progress=f"task_count={len(followup_records)}",
+        report_path=heartbeat_report_path,
+        message="Scheduler follow-up tasks merged.",
+        artifact_refs=(state,),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary["deliverables"] = _export_cycle_deliverables(
         summary=summary,
@@ -5571,6 +5911,20 @@ def _run_autopilot_cycle(
         output_root=deliverables_dir,
         project_id=project_id,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="deliverables",
+        progress=f"status={summary['deliverables'].get('status')}",
+        report_path=heartbeat_report_path,
+        message="Cycle deliverables exported.",
+        artifact_refs=(
+            summary["deliverables"].get("manifest_path"),
+            summary["deliverables"].get("pdf_path"),
+            summary["deliverables"].get("markdown_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
 
@@ -6889,6 +7243,79 @@ def _path_text(path: object) -> str | None:
     return str(path)
 
 
+def _runtime_heartbeat_stage_payload(report: RuntimeHeartbeatReport) -> list[dict[str, object]]:
+    return [
+        {
+            "run_id": stage.run_id,
+            "stage": stage.stage,
+            "status": stage.status.value,
+            "action": stage.action.value,
+            "latest_at": stage.latest_at.isoformat(),
+            "age_seconds": stage.age_seconds,
+            "repeated_progress_count": stage.repeated_progress_count,
+            "latest_progress_sha256": stage.latest_progress_sha256,
+            "latest_message": stage.latest_message,
+            "artifact_refs": list(stage.artifact_refs),
+            "reason": stage.reason,
+        }
+        for stage in report.stages
+    ]
+
+
+def _cycle_runtime_heartbeat_summary(
+    *,
+    heartbeat_state: Path,
+    cycle_id: str,
+    report_path: Path,
+) -> dict[str, object]:
+    report = evaluate_runtime_heartbeats(
+        state_path=heartbeat_state,
+        run_id=cycle_id,
+    )
+    write_runtime_heartbeat_report(report, report_path)
+    return {
+        "state_path": heartbeat_state.as_posix(),
+        "report_path": report_path.as_posix(),
+        "passed": report.passed,
+        "event_count": report.event_count,
+        "stage_count": report.stage_count,
+        "stale_count": report.stale_count,
+        "stalled_count": report.stalled_count,
+        "stages": _runtime_heartbeat_stage_payload(report),
+        "evidence_policy": report.evidence_policy,
+    }
+
+
+def _write_cycle_runtime_heartbeat(
+    *,
+    heartbeat_state: Path,
+    cycle_id: str,
+    stage: str,
+    progress: str,
+    report_path: Path,
+    message: str | None = None,
+    artifact_refs: Iterable[object] = (),
+) -> dict[str, object]:
+    clean_refs = tuple(
+        ref_text
+        for ref in artifact_refs
+        if (ref_text := _path_text(ref)) is not None
+    )
+    write_runtime_heartbeat(
+        state_path=heartbeat_state,
+        run_id=cycle_id,
+        stage=stage,
+        progress=progress,
+        message=message,
+        artifact_refs=clean_refs,
+    )
+    return _cycle_runtime_heartbeat_summary(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        report_path=report_path,
+    )
+
+
 def _validate_optional_max_tokens(value: int | None, *, minimum: int) -> int | None:
     if value is None:
         return None
@@ -6909,6 +7336,19 @@ def _resolve_runtime_sessions_state(
         if parent != Path(".airesearcher") and parent != Path("."):
             return parent / "agent-sessions.json"
     return DEFAULT_AGENT_SESSIONS_PATH
+
+
+def _resolve_runtime_heartbeat_state(
+    heartbeat_state: Path | None,
+    *related_paths: Path,
+) -> Path:
+    if heartbeat_state is not None:
+        return heartbeat_state
+    for path in related_paths:
+        parent = Path(path).parent
+        if parent != Path(".airesearcher") and parent != Path("."):
+            return parent / "runtime-heartbeats.json"
+    return DEFAULT_RUNTIME_HEARTBEATS_PATH
 
 
 def _runtime_claimed_paths(
@@ -7409,6 +7849,20 @@ def _echo_loop_campaign_status(summary: Mapping[str, object]) -> None:
             f"repro_delta={metrics.get('reproduction_delta', 'unknown')}"
         )
     typer.echo(f"{prefix} loop_campaign: {str(passed).lower()}{metric_text}")
+
+
+def _echo_runtime_heartbeat_status(summary: Mapping[str, object]) -> None:
+    heartbeat = summary.get("runtime_heartbeat")
+    if not isinstance(heartbeat, Mapping):
+        return
+    passed = heartbeat.get("passed")
+    prefix = "[OK]" if passed is True else "[BLOCKED]"
+    typer.echo(
+        f"{prefix} runtime_heartbeat: {str(passed).lower()}; "
+        f"stages={heartbeat.get('stage_count', 'unknown')}; "
+        f"stale={heartbeat.get('stale_count', 'unknown')}; "
+        f"stalled={heartbeat.get('stalled_count', 'unknown')}"
+    )
 
 
 def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:

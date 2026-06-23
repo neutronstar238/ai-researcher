@@ -2874,6 +2874,19 @@ A task can be checked only when all applicable items are true:
     - _References: Victor Chen AutoResearch long-horizon protocol concepts; tasks `21.1`, `51.1`, `231.1`, and `232.1`; user request to keep loops genuinely running with quality gates instead of prompt-only self-discipline._
     - _Verify: focused runtime heartbeat and CLI tests, ruff, mypy, real CLI heartbeat report, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 234. Autopilot runtime heartbeat integration
+  - [x] 234.1 Emit watchdog heartbeats from `serve` and `autopilot` cycles automatically
+    - Add `--heartbeat-state` to `serve` and `autopilot` so operators can override the default runtime heartbeat state file.
+    - Resolve the default heartbeat state beside the scheduler or approval state used by the current runtime command.
+    - Emit heartbeat events for cycle start, agent profile load, source preflight, literature refresh, candidate generation, similarity check, research-plan gate, loop campaign selection, inspiration refresh, experiment execution, reproduction, citation package, loop report, related-work inspection, manuscript composition, LaTeX paper build, review evidence, review, publication audit, evidence gate, followups, and deliverables.
+    - Write `runtime-heartbeat-report.json` into each cycle directory and embed the current report summary in `cycle-summary.json`.
+    - Add the heartbeat report to review evidence bundles while preserving the evidence boundary that heartbeat health cannot prove scientific claims.
+    - Print runtime heartbeat status in `serve` and `autopilot` summaries.
+    - Add run-ID isolation to `runtime heartbeat check` so old cycles do not block the active cycle's health check.
+    - Update README/README.zh-CN with automatic heartbeat emission, `--heartbeat-state`, and `--run-id` inspection.
+    - _References: tasks `231.1`, `232.1`, and `233.1`; user request to keep the 24h self-loop genuinely running with evidence gates and observable agent progress._
+    - _Verify: focused runtime heartbeat/API/CLI tests, ruff, mypy, real autopilot heartbeat smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3466,6 +3479,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 136,
       "tasks": ["233.1"]
+    },
+    {
+      "id": 137,
+      "tasks": ["234.1"]
     }
   ]
 }

@@ -9803,3 +9803,38 @@ This file defines the project development standard for coding agents and records
   - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future runtime workers can consume the profile-set validation report as a deployment preflight artifact before starting unattended `serve`/`autopilot`, while still requiring separate literature, experiment, reproduction, review, and evidence-gate artifacts for publication claims.
+
+### 2026-06-23 21:54:11 +08:00 - Codex - Task 234.1 Autopilot runtime heartbeat integration
+
+- Request: Continue the Loop Engineering/self-loop implementation by connecting the runtime heartbeat watchdog to real `serve` and `autopilot` cycles instead of leaving it as a manual CLI-only check.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/runtime/heartbeat.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/runtime/test_heartbeat.py`
+  - `Agent.md`
+- Summary:
+  - Added `--heartbeat-state` to `serve` and `autopilot`, with defaults resolved beside the active scheduler or approval state.
+  - Added automatic cycle heartbeat emission for source preflight, literature refresh, research plan, loop campaign, inspiration, experiment, reproduction, citation package, loop report, related-work inspection, manuscript build, LaTeX build, review evidence, review, publication audit, evidence gate, followups, and deliverables.
+  - Embedded `runtime_heartbeat` in `cycle-summary.json` and wrote `runtime-heartbeat-report.json` into each cycle directory.
+  - Added the heartbeat report to review evidence bundles while preserving the evidence boundary that heartbeat health does not prove scientific claims.
+  - Added `--run-id` isolation to `runtime heartbeat check` so old cycle heartbeats do not block an active cycle.
+  - Updated README/README.zh-CN and added task `234.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval -q`: passed with 7 tests.
+  - Focused `python -m ruff check src\autoresearch\runtime\heartbeat.py src\autoresearch\cli\main.py tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed with no issues in 5 source files.
+  - Real narrow autopilot `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task234-autopilot-heartbeat-v1\vault --cache runs\manual-live\task234-autopilot-heartbeat-v1\cache --output-dir runs\manual-live\task234-autopilot-heartbeat-v1\runs --deliverables-dir runs\manual-live\task234-autopilot-heartbeat-v1\outputs --state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\runtime-heartbeats.json --project-id task234_heartbeat --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review --cycles 1`: passed with cycle `cycle-20260623T135219Z`, `runtime_heartbeat: true`, `stages=22`, `stale=0`, `stalled=0`, and PDF output `runs/manual-live/task234-autopilot-heartbeat-v1/outputs/task234_heartbeat/task234_heartbeat-cycle-20260623T135219Z.pdf`.
+  - Artifact inspection confirmed `cycle-summary.json` contains `runtime_heartbeat.passed=true`, `event_count=22`, `stage_count=22`, and report path `runs/manual-live/task234-autopilot-heartbeat-v1/runs/cycle-20260623T135219Z/runtime-heartbeat-report.json`.
+  - Real CLI `node .\bin\airesearcher.mjs runtime heartbeat check --state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\runtime-heartbeats.json --run-id cycle-20260623T135219Z --stale-after-seconds 999999 --stall-repetition-threshold 3 --output runs\manual-live\task234-autopilot-heartbeat-v1\runs\cycle-20260623T135219Z\runtime-heartbeat-check-cli.json`: passed with 22 events, 22 stages, stale 0, stalled 0.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 609 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future worker processes can call the same heartbeat helpers from sub-agent stages when stages become asynchronous; heartbeat evidence must remain runtime-health-only and cannot be used as publication evidence.

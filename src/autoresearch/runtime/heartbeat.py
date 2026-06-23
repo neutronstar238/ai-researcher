@@ -145,12 +145,16 @@ def evaluate_runtime_heartbeats(
     *,
     state_path: Path | str,
     checked_at: datetime | None = None,
+    run_id: str | None = None,
     stale_after_seconds: int = DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
     stall_repetition_threshold: int = DEFAULT_HEARTBEAT_STALL_REPETITIONS,
 ) -> RuntimeHeartbeatReport:
     """Evaluate stale or repeated progress signals in the heartbeat state file."""
 
     events = load_runtime_heartbeats(state_path)
+    if run_id is not None:
+        selected_run_id = _required_text(run_id, "run_id")
+        events = [event for event in events if event.run_id == selected_run_id]
     now = _normalize_datetime(checked_at)
     stage_reports = tuple(
         _stage_report(

@@ -83,3 +83,42 @@ def test_runtime_heartbeat_history_is_bounded_and_report_is_json(
     assert report.passed is True
     assert payload["passed"] is True
     assert payload["evidence_policy"] == HEARTBEAT_EVIDENCE_POLICY
+
+
+def test_runtime_heartbeat_check_can_filter_one_run_id(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "runtime-heartbeats.json"
+    base = datetime(2026, 6, 23, 0, 0, 0, tzinfo=timezone.utc)
+
+    write_runtime_heartbeat(
+        state_path=state,
+        run_id="cycle-old",
+        stage="literature",
+        progress="old-progress",
+        emitted_at=base,
+    )
+    write_runtime_heartbeat(
+        state_path=state,
+        run_id="cycle-current",
+        stage="literature",
+        progress="fresh-progress",
+        emitted_at=base.replace(minute=9, second=30),
+    )
+
+    all_runs = evaluate_runtime_heartbeats(
+        state_path=state,
+        checked_at=base.replace(minute=10),
+        stale_after_seconds=60,
+    )
+    current_only = evaluate_runtime_heartbeats(
+        state_path=state,
+        run_id="cycle-current",
+        checked_at=base.replace(minute=10),
+        stale_after_seconds=60,
+    )
+
+    assert all_runs.passed is False
+    assert all_runs.stale_count == 1
+    assert current_only.passed is True
+    assert current_only.event_count == 1
+    assert current_only.stage_count == 1
+    assert current_only.stages[0].run_id == "cycle-current"

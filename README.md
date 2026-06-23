@@ -162,11 +162,13 @@ In `approve-dangerous` mode, each cycle attempt gets its own approval request; u
 The waiting output and `runtime list` show the per-cycle `action_id`, so operators can
 see exactly which cycle is being approved.
 
-Long-running loops can also emit stage heartbeats into a local state file. The heartbeat
-watchdog detects stale stages and repeated progress signatures, then recommends inspection
-or repair/pivot before the loop keeps spending budget. Heartbeat reports are runtime health
-evidence only; they do not prove scientific results, citations, tool calls, novelty, or
-publication readiness.
+`serve` and `autopilot` automatically emit stage heartbeats into a local state file and
+embed the watchdog report in each cycle summary and review evidence bundle. Operators can
+inspect one cycle with `airesearcher runtime heartbeat check --run-id <cycle-id>`. The
+heartbeat watchdog detects stale stages and repeated progress signatures, then recommends
+inspection or repair/pivot before the loop keeps spending budget. Heartbeat reports are
+runtime health evidence only; they do not prove scientific results, citations, tool calls,
+novelty, or publication readiness.
 
 The always-on research loop defaults to `pendigits_variance_calibrated_prototypes`, a real
 UCI Pendigits public benchmark path with method-aligned literature queries and at least
@@ -453,6 +455,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
+| `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, and monitor. Repeat for multiple agents. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
@@ -469,7 +472,7 @@ Common npm shortcuts:
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
 | `runtime approve` | `latest` or request id | Approves queued dangerous work. |
 | `runtime heartbeat write` | `--run-id`, `--stage`, `--progress`, `--artifact-ref`, `--state` | Records one stage progress signal for long-running loop watchdogs. |
-| `runtime heartbeat check` | `--state`, `--stale-after-seconds`, `--stall-repetition-threshold`, `--output` | Writes a heartbeat watchdog report and exits nonzero when a loop stage is stale or stalled. |
+| `runtime heartbeat check` | `--state`, `--run-id`, `--stale-after-seconds`, `--stall-repetition-threshold`, `--output` | Writes a heartbeat watchdog report and exits nonzero when a loop stage is stale or stalled. |
 
 ## Outputs And Repository Hygiene
 
