@@ -22,8 +22,12 @@ from autoresearch.agents import (
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
     AgentProfile,
     AgentThinkingMode,
+    McpInvocationStatus,
+    append_mcp_invocation_evidence,
+    build_mcp_invocation_evidence,
     evaluate_agent_profile_readiness,
     load_agent_profile,
+    load_mcp_invocation_evidence,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
     parse_mcp_spec,
@@ -31,8 +35,10 @@ from autoresearch.agents import (
     parse_skill_policy_specs,
     parse_skill_spec,
     profile_contexts_by_stage,
+    validate_mcp_invocation_evidence,
     write_agent_profile,
     write_agent_profile_note,
+    write_mcp_invocation_validation_report,
 )
 from autoresearch.config import (
     ConfigFormat,
@@ -150,6 +156,7 @@ app = typer.Typer(
 )
 agents_app = typer.Typer(help="Manage runtime agent profiles and capabilities.")
 agent_profiles_app = typer.Typer(help="Bind custom skills and MCP servers to one agent.")
+agent_mcp_evidence_app = typer.Typer(help="Record and validate MCP tool invocation evidence.")
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
@@ -176,6 +183,7 @@ code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
 pdf_sources_app.add_typer(scansci_pdf_app, name="scansci-pdf")
 agents_app.add_typer(agent_profiles_app, name="profile")
+agents_app.add_typer(agent_mcp_evidence_app, name="mcp-evidence")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
@@ -901,6 +909,172 @@ def validate_agent_profile_command(
     for check in report.checks:
         typer.echo(f"[CHECK] {check.check_id}: {check.status.value} - {check.message}")
     if not report.passed:
+        raise typer.Exit(1)
+
+
+@agent_mcp_evidence_app.command("add")
+def add_agent_mcp_invocation_evidence_command(
+    profile_path: Annotated[
+        Path,
+        typer.Option("--profile", help="Agent profile JSON that owns this MCP binding."),
+    ],
+    ledger: Annotated[
+        Path,
+        typer.Option("--ledger", help="JSONL ledger path to append invocation evidence."),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the invocation evidence."),
+    ],
+    cycle_id: Annotated[
+        str,
+        typer.Option("--cycle-id", help="Cycle or run ID for the invocation evidence."),
+    ],
+    server_id: Annotated[
+        str,
+        typer.Option("--server-id", help="MCP server ID from the agent profile."),
+    ],
+    tool_name: Annotated[
+        str,
+        typer.Option("--tool-name", help="Allowed MCP tool name that was invoked."),
+    ],
+    request_artifact: Annotated[
+        Path,
+        typer.Option(
+            "--request-artifact",
+            help="File containing the sanitized request envelope to hash.",
+        ),
+    ],
+    response_artifact: Annotated[
+        Path | None,
+        typer.Option(
+            "--response-artifact",
+            help="File containing the sanitized response/result envelope to hash.",
+        ),
+    ] = None,
+    status: Annotated[
+        McpInvocationStatus,
+        typer.Option("--status", help="Invocation status."),
+    ] = McpInvocationStatus.SUCCESS,
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative artifact refs."),
+    ] = Path("."),
+    runtime_approval_request_id: Annotated[
+        str | None,
+        typer.Option("--runtime-approval-request-id", help="Linked runtime approval request ID."),
+    ] = None,
+    approved_by: Annotated[
+        str | None,
+        typer.Option("--approved-by", help="Operator identity for allow_all/approved actions."),
+    ] = None,
+    result_summary: Annotated[
+        str,
+        typer.Option("--result-summary", help="Short non-secret result summary."),
+    ] = "MCP tool invocation recorded.",
+    error_type: Annotated[
+        str | None,
+        typer.Option("--error-type", help="Error type for failed invocations."),
+    ] = None,
+    artifact_ref: Annotated[
+        list[str] | None,
+        typer.Option("--artifact-ref", help="Additional evidence artifact ref. Repeatable."),
+    ] = None,
+) -> None:
+    """Append hashed MCP invocation evidence for one assigned agent."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        evidence = build_mcp_invocation_evidence(
+            profile=profile,
+            project_id=project_id,
+            cycle_id=cycle_id,
+            server_id=server_id,
+            tool_name=tool_name,
+            status=status,
+            request_artifact=request_artifact,
+            response_artifact=response_artifact,
+            base_dir=base_dir,
+            runtime_approval_request_id=runtime_approval_request_id,
+            approved_by=approved_by,
+            result_summary=result_summary,
+            error_type=error_type,
+            artifact_refs=tuple(artifact_ref or ()),
+        )
+        append_mcp_invocation_evidence(ledger, evidence)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_add: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"[OK] mcp_invocation_evidence: {evidence.evidence_id}")
+    typer.echo(f"[OK] agent_id: {evidence.agent_id}")
+    typer.echo(f"[OK] server_tool: {evidence.server_id}:{evidence.tool_name}")
+    typer.echo(f"[OK] ledger: {ledger}")
+    typer.echo(f"[OK] request_sha256: {evidence.request_sha256}")
+    if evidence.response_sha256:
+        typer.echo(f"[OK] response_sha256: {evidence.response_sha256}")
+
+
+@agent_mcp_evidence_app.command("list")
+def list_agent_mcp_invocation_evidence_command(
+    ledger: Annotated[
+        Path,
+        typer.Argument(help="JSONL MCP invocation evidence ledger to inspect."),
+    ],
+) -> None:
+    """List MCP invocation evidence records."""
+
+    try:
+        records = load_mcp_invocation_evidence(ledger)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_list: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"[OK] mcp_invocation_evidence_records: {len(records)}")
+    for record in records:
+        typer.echo(
+            f"[MCP] evidence_id={record.evidence_id} status={record.status.value} "
+            f"agent={record.agent_id} tool={record.server_id}:{record.tool_name}"
+        )
+
+
+@agent_mcp_evidence_app.command("validate")
+def validate_agent_mcp_invocation_evidence_command(
+    profile_path: Annotated[
+        Path,
+        typer.Option("--profile", help="Agent profile JSON that owns these MCP bindings."),
+    ],
+    ledger: Annotated[
+        Path,
+        typer.Argument(help="JSONL MCP invocation evidence ledger to validate."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional validation JSON output path."),
+    ] = None,
+) -> None:
+    """Validate MCP invocation evidence against an agent profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        records = load_mcp_invocation_evidence(ledger)
+        validations = tuple(
+            validate_mcp_invocation_evidence(record, profile) for record in records
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if output is not None:
+        report_path = write_mcp_invocation_validation_report(output, validations)
+        typer.echo(f"[OK] mcp_invocation_evidence_report: {report_path}")
+    passed = all(validation.passed for validation in validations)
+    typer.echo(f"[OK] mcp_invocation_evidence_validation: {'passed' if passed else 'failed'}")
+    typer.echo(f"[OK] records: {len(validations)}")
+    for validation in validations:
+        status_text = "pass" if validation.passed else "fail"
+        typer.echo(
+            f"[CHECK] {validation.evidence_id}: {status_text}; "
+            f"issues={len(validation.issues)}; warnings={len(validation.warnings)}"
+        )
+    if not passed:
         raise typer.Exit(1)
 
 

@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-23 16:45:00 +08:00 - Codex - Task 228.1 MCP invocation evidence ledger
+
+- Request: Implement the Loop Engineering evidence-first plan by turning MCP tool-use claims into hashed, validated runtime artifacts instead of profile-contract self-report.
+- Files changed:
+  - `src/autoresearch/agents/mcp_evidence.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_mcp_evidence.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed MCP invocation evidence records and validation reports.
+  - Added JSONL ledger helpers that store hashed request/response artifact refs, status, approval linkage, result summary, and evidence policy without raw tool payloads.
+  - Validated each evidence record against the owning Agent profile MCP binding and explicit allowed-tool list.
+  - Added `airesearcher agents mcp-evidence add`, `list`, and `validate`.
+  - Documented that MCP invocation evidence is process evidence only and cannot prove scientific claims, citation validity, benchmark metrics, novelty, or publication readiness.
+- Verification:
+  - Initial focused pytest, ruff, and mypy exposed small task-local issues; fixed and recorded as `P-20260623-011`.
+  - Focused `python -m pytest tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py::test_agent_mcp_evidence_cli_add_list_and_validate -q`: passed, 5 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\mcp_evidence.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id mcp-evidence-agent --role project_agent --stage literature --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:approve_dangerous --vault runs\manual-live\task228-mcp-evidence-v1\vault --project-id task228_mcp_evidence_v1 --output runs\manual-live\task228-mcp-evidence-v1\profiles\mcp-evidence-agent.json`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence add ...`: passed and wrote a ledger record with request and response SHA-256 hashes.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence list runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations.jsonl`: passed and listed one `page-agent:browser.search` record.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence validate --profile runs\manual-live\task228-mcp-evidence-v1\profiles\mcp-evidence-agent.json runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations.jsonl --output runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations-validation.json`: passed with `records=1`, `issues=0`, and `warnings=0`.
+  - Serial artifact inspection confirmed the validation JSON exists, reports `passed=true`, and the ledger/validation report do not contain raw payload markers `method-similarity-check` or `result_count`; the earlier parallel probe race is recorded as `P-20260623-012`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 586 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-011`.
+  - Added and resolved `P-20260623-012`.
+- Follow-up:
+  - Future MCP-backed stage workers can now append invocation evidence during real tool calls; publication gates should still require scientific source, experiment, validation, and review evidence before claims are allowed.
+
 ### 2026-06-18 10:21:40 +08:00 - Codex - Task 211.1 Root vault current project defaults
 
 - Request: Continue consistency hardening so the checked-in Obsidian vault routes new operators to the current AI-Researcher project memory area.

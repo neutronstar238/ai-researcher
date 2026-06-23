@@ -2805,6 +2805,18 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; task `214.1`; task `222.1`; requirement that Loop Optimizer, not pure LLM prompting, chooses candidates under budget, risk, evidence, and reproduction gates._
     - _Verify: focused loop/promotion/evidence/publication tests passed; real narrow autopilot and broad gates are recorded in `Agent.md`._
 
+- [x] 228. MCP invocation evidence ledger
+  - [x] 228.1 Record real MCP tool-use evidence separately from profile contracts
+    - Add an `AgentMcpInvocationEvidence` ledger model for real MCP tool invocation attempts by assigned agents.
+    - Store hashed request and response artifact refs, invocation status, approval request ID or operator identity, result summary, error type, and evidence policy.
+    - Validate evidence against the owning `AgentProfile` MCP server binding and explicit tool allowlist.
+    - Keep raw request and response payloads out of the JSONL ledger; the ledger records hashes and artifact refs only.
+    - Add `airesearcher agents mcp-evidence add`, `list`, and `validate` commands for runtime workers and operators.
+    - Keep MCP invocation evidence bounded: it can prove that a named agent recorded a named tool call, but it cannot prove scientific results, citation validity, benchmark metrics, novelty, or publication readiness without validated source, experiment, or review evidence.
+    - Update README/README.zh-CN with the ledger commands and evidence boundary.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `221.1`, `226.1`, and `227.1`; requirement that tool use and loop evidence are auditable artifacts rather than prompt-only self-report._
+    - _Verify: focused MCP evidence model/CLI tests, ruff, mypy, real CLI add/list/validate, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3373,6 +3385,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 130,
       "tasks": ["227.1"]
+    },
+    {
+      "id": 131,
+      "tasks": ["228.1"]
     }
   ]
 }

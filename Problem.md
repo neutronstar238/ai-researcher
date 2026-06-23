@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-012 - MCP evidence artifact probe raced validation report creation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 16:38:00 +08:00
+- Source: Real CLI verification for task `228.1`.
+- Symptom: A parallel `rg` probe attempted to inspect `mcp-invocations-validation.json` before the concurrent `agents mcp-evidence validate` command finished writing it, so the probe reported that the file was missing.
+- Impact: Product behavior was unaffected, but the artifact inspection result was not trustworthy until the probe was rerun after validation completed.
+- Evidence: `agents mcp-evidence validate` exited 0 and printed the report path, while the parallel `rg` reported `os error 2` for the same path.
+- Root cause: The verification probe was run in parallel with the command that creates the validation report.
+- Workaround: Run artifact existence/content probes after writer commands complete when the probe depends on the generated output.
+- Next action: Keep dependent real-CLI artifact inspections serial.
+- Linked tasks: `228.1`
+- Resolution: Re-ran `Test-Path`, `Get-Content`, and `rg` after validation completed.
+- Verification: `Test-Path` returned true; the validation JSON reported `passed=true`, `record_count=1`, `failed_count=0`, and `warning_count=0`; a raw-payload search for `method-similarity-check|result_count` returned no matches in the ledger or validation JSON.
+
+### P-20260623-011 - MCP evidence focused verification exposed assertion, import, and typing fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 16:11:00 +08:00
+- Source: Focused verification for task `228.1`.
+- Symptom: The first MCP evidence focused pytest failed on a case-sensitive evidence-policy assertion, focused ruff reported import ordering and one unused import, and focused mypy reported that `request_artifact_ref` could be inferred as `str | None`.
+- Impact: Product behavior was not released with the defect, but the task could not pass verification until the evidence ledger tests and typing were corrected.
+- Evidence: `python -m pytest tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py::test_agent_mcp_evidence_cli_add_list_and_validate -q` failed once; `python -m ruff check ...` reported `I001` and `F401`; `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` reported one `arg-type` error in `mcp_evidence.py`.
+- Root cause: The new ledger code was inserted manually and the helper returned an optional artifact ref despite the request artifact always being required.
+- Workaround: None needed after the fix.
+- Next action: Keep focused pytest, ruff, and mypy checks around MCP evidence ledger changes.
+- Linked tasks: `228.1`
+- Resolution: Made the test assertion case-insensitive, removed the unused import, normalized imports with ruff, and converted the required request artifact ref into an explicit non-optional value before model construction.
+- Verification: Focused MCP evidence pytest passed with 5 tests; focused ruff passed; focused mypy passed with no issues in 8 source files.
+
 ### P-20260623-010 - README.zh-CN contains legacy mojibake around existing Chinese copy
 
 - Status: Mitigated

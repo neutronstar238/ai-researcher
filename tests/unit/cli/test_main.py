@@ -185,6 +185,111 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert "scientific results" in materialized_skill["evidence_policy"]
 
 
+def test_agent_mcp_evidence_cli_add_list_and_validate(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    ledger_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations.jsonl"
+    report_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations-validation.json"
+    request_path = tmp_path / "runs" / "cycle-1" / "request.json"
+    response_path = tmp_path / "runs" / "cycle-1" / "response.json"
+    request_path.parent.mkdir(parents=True)
+    request_path.write_text(json.dumps({"query": "prototype classifier"}), encoding="utf-8")
+    response_path.write_text(json.dumps({"result_count": 2}), encoding="utf-8")
+
+    profile_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-approval",
+            "page-agent:approve_dangerous",
+            "--output",
+            str(profile_path),
+        ],
+    )
+
+    assert profile_result.exit_code == 0, profile_result.output
+
+    add_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "mcp-evidence",
+            "add",
+            "--profile",
+            str(profile_path),
+            "--ledger",
+            str(ledger_path),
+            "--project-id",
+            "project_1",
+            "--cycle-id",
+            "cycle_1",
+            "--server-id",
+            "page-agent",
+            "--tool-name",
+            "browser.search",
+            "--request-artifact",
+            str(request_path),
+            "--response-artifact",
+            str(response_path),
+            "--runtime-approval-request-id",
+            "approval_1",
+            "--result-summary",
+            "Search returned two source candidates.",
+            "--base-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert add_result.exit_code == 0, add_result.output
+    assert "[OK] mcp_invocation_evidence:" in add_result.stdout
+    assert ledger_path.is_file()
+    ledger_text = ledger_path.read_text(encoding="utf-8")
+    assert "prototype classifier" not in ledger_text
+    payload = json.loads(ledger_text)
+    assert payload["evidence_kind"] == "mcp_tool_invocation_evidence"
+    assert payload["agent_id"] == "literature-agent"
+    assert payload["server_id"] == "page-agent"
+    assert payload["tool_name"] == "browser.search"
+    assert payload["request_sha256"]
+    assert payload["response_sha256"]
+
+    list_result = CliRunner().invoke(app, ["agents", "mcp-evidence", "list", str(ledger_path)])
+
+    assert list_result.exit_code == 0, list_result.output
+    assert "mcp_invocation_evidence_records: 1" in list_result.stdout
+    assert "tool=page-agent:browser.search" in list_result.stdout
+
+    validate_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "mcp-evidence",
+            "validate",
+            "--profile",
+            str(profile_path),
+            str(ledger_path),
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "mcp_invocation_evidence_validation: passed" in validate_result.stdout
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["passed"] is True
+    assert report["record_count"] == 1
+    assert "Scientific claims" in report["evidence_policy"]
+
+
 def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
