@@ -17,6 +17,7 @@ from autoresearch.knowledge import (
     KnowledgeZone,
     MarkdownKnowledgeStore,
 )
+from autoresearch.process import windows_no_window_kwargs
 from autoresearch.schemas import (
     ResearchCandidate,
     ResearchPlan,
@@ -529,6 +530,7 @@ def compile_research_plan_pdf(
             text=True,
             timeout=timeout_seconds,
             check=False,
+            **windows_no_window_kwargs(),
         )
     except subprocess.TimeoutExpired as exc:
         reason = f"LaTeX compilation timed out after {timeout_seconds} seconds"
@@ -833,6 +835,7 @@ def _pdf_page_count(pdf_path: Path) -> int | None:
         capture_output=True,
         text=True,
         check=False,
+        **windows_no_window_kwargs(),
     )
     if result.returncode != 0:
         return None

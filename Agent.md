@@ -9074,3 +9074,27 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-001`.
 - Follow-up:
   - Push the resolved PR branch and re-check GitHub mergeability/check status.
+
+### 2026-06-23 12:54:33 +08:00 - Codex - Windows subprocess bug sweep
+
+- Request: Re-check the project for remaining bugs after the Windows command-window fix and UI-flow PR.
+- Files changed:
+  - `src/autoresearch/notifications.py`
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/test_notifications.py`
+  - `tests/unit/research/test_plans.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Searched remaining `subprocess.run(...)` launch sites after PR #1 landed.
+  - Found missed Windows transient-console paths in OpenClaw notification command execution and research-plan LaTeX/pdfinfo helpers.
+  - Reused `autoresearch.process.windows_no_window_kwargs()` for those launch sites and added regression tests that assert `CREATE_NO_WINDOW` is passed on Windows.
+- Verification:
+  - `py -3 -m pytest tests\unit\test_process.py tests\unit\test_notifications.py tests\unit\research\test_plans.py tests\unit\experiments\test_executor.py tests\smoke\test_cli.py`: passed, 30 tests.
+  - `py -3 -m ruff check src\autoresearch\notifications.py src\autoresearch\research\plans.py tests\unit\test_notifications.py tests\unit\research\test_plans.py`: passed.
+  - `npm run doctor`: passed.
+  - Static `rg -n -C 6 "subprocess\.run\(" src\autoresearch`: reviewed remaining subprocess calls and confirmed they use `windows_no_window_kwargs()`.
+- Problems:
+  - Added and resolved `P-20260623-002`.
+- Follow-up:
+  - Future code that launches external commands should import and use `windows_no_window_kwargs()` immediately, especially for notification, LaTeX, Git, and process-cleanup paths.

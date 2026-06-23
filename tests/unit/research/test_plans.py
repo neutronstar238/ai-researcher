@@ -1,6 +1,9 @@
 import json
+import subprocess
 from pathlib import Path
 
+import autoresearch.process as process
+import autoresearch.research.plans as plans
 from autoresearch.research import (
     audit_research_plan,
     generate_research_plan,
@@ -202,3 +205,52 @@ def test_research_plan_tex_uses_breakable_references_for_long_artifacts() -> Non
         in tex
     )
     assert r"similarity\_summary:runs/manual-live" not in tex
+
+
+def test_compile_research_plan_pdf_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
+    tex_path = tmp_path / "plan.tex"
+    tex_path.write_text(r"\documentclass{article}\begin{document}ok\end{document}", encoding="utf-8")
+    (tmp_path / "plan.pdf").write_bytes(b"%PDF-1.4\n")
+    monkeypatch.setattr(process.os, "name", "nt")
+    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(plans, "_latex_command", lambda path: ["xelatex", path.name])
+    def fake_page_count(_: Path) -> int:
+        return 1
+
+    monkeypatch.setattr(plans, "_pdf_page_count", fake_page_count)
+    calls: list[dict[str, object]] = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append({"args": args, **kwargs})
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(plans.subprocess, "run", fake_run)
+
+    status, pdf_path, reason, page_count = plans.compile_research_plan_pdf(tex_path)
+
+    assert status == "compiled"
+    assert pdf_path == tmp_path / "plan.pdf"
+    assert reason is None
+    assert page_count == 1
+    assert calls[0]["creationflags"] == 0x08000000
+
+
+def test_pdf_page_count_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
+    pdf_path = tmp_path / "plan.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    monkeypatch.setattr(process.os, "name", "nt")
+    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    def fake_which(_: str) -> str:
+        return "pdfinfo"
+
+    monkeypatch.setattr(plans.shutil, "which", fake_which)
+    calls: list[dict[str, object]] = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append({"args": args, **kwargs})
+        return subprocess.CompletedProcess(args, 0, stdout="Pages:          3\n", stderr="")
+
+    monkeypatch.setattr(plans.subprocess, "run", fake_run)
+
+    assert plans._pdf_page_count(pdf_path) == 3
+    assert calls[0]["creationflags"] == 0x08000000

@@ -15,6 +15,8 @@ from typing import Any, Protocol
 
 import certifi
 
+from autoresearch.process import windows_no_window_kwargs
+
 
 class InspirationReportLike(Protocol):
     """Minimal shape needed to render an inspiration digest."""
@@ -306,7 +308,12 @@ def _send_webhook_digest(
 
 
 def _run_command(args: list[str], timeout_seconds: float) -> int:
-    completed = subprocess.run(args, check=False, timeout=timeout_seconds)
+    completed = subprocess.run(
+        args,
+        check=False,
+        timeout=timeout_seconds,
+        **windows_no_window_kwargs(),
+    )
     return completed.returncode
 
 

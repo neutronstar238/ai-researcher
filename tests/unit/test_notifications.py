@@ -1,7 +1,10 @@
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+import autoresearch.notifications as notifications
+import autoresearch.process as process
 from autoresearch.inspiration import InspirationItem, InspirationRefreshReport
 from autoresearch.notifications import render_inspiration_digest, send_inspiration_digest
 
@@ -209,3 +212,25 @@ def test_send_inspiration_digest_uses_openclaw_wechat_qr_target(
     assert calls[0][0][7] == "--message"
     assert "Show HN: Research agent" in calls[0][0][8]
     assert calls[0][1] == 5.0
+
+
+def test_run_command_hides_windows_console(monkeypatch) -> None:
+    monkeypatch.setattr(process.os, "name", "nt")
+    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    calls: list[dict[str, object]] = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append({"args": args, **kwargs})
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(notifications.subprocess, "run", fake_run)
+
+    assert notifications._run_command(["openclaw", "message", "send"], 5.0) == 0
+    assert calls == [
+        {
+            "args": ["openclaw", "message", "send"],
+            "check": False,
+            "timeout": 5.0,
+            "creationflags": 0x08000000,
+        }
+    ]

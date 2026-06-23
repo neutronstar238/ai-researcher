@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-002 - Notification and research-plan commands still opened Windows console windows
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 12:54:33 +08:00
+- Source: Follow-up bug sweep after Windows transient command-window fixes were merged.
+- Symptom: Static search still found raw `subprocess.run(...)` calls in `src/autoresearch/notifications.py` and `src/autoresearch/research/plans.py` that did not pass Windows no-window creation flags.
+- Impact: Users on Windows could still see short-lived command prompt windows when sending OpenClaw notification messages or compiling/counting research-plan PDFs.
+- Evidence: `rg -n "subprocess\.run\(" src\autoresearch` identified uncovered calls in notification command execution, research-plan LaTeX compilation, and research-plan `pdfinfo` page counting.
+- Root cause: The first no-window fix covered CLI, executor, demo workflow, and report builders, but missed notification adapter execution and research-plan-specific PDF helpers.
+- Workaround: None needed after the fix.
+- Next action: Keep future subprocess launch sites using `autoresearch.process.windows_no_window_kwargs()`.
+- Linked tasks: User-requested Windows bug sweep, no `.kiro` task ID.
+- Resolution: Added `windows_no_window_kwargs()` to the missed notification and research-plan subprocess calls and added regression tests for Windows creation flags.
+- Verification: `py -3 -m pytest tests\unit\test_process.py tests\unit\test_notifications.py tests\unit\research\test_plans.py tests\unit\experiments\test_executor.py tests\smoke\test_cli.py` passed with 30 tests; focused `py -3 -m ruff check ...` passed; `npm run doctor` passed.
+
 ### P-20260623-001 - PR 1 merge conflicts and approval shortcut guidance
 
 - Status: Resolved
