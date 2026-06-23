@@ -167,8 +167,12 @@ airesearcher agents profile write \
   --stage literature \
   --stage similarity \
   --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md \
+  --skill-policy source-tracing:approved_runtime \
   --mcp "page-agent=npx -y page-agent" \
   --mcp-tool page-agent:browser.search \
+  --mcp-tool page-agent:browser.open \
+  --mcp-approval page-agent:approve_dangerous \
+  --mcp-env-key page-agent:PAGE_AGENT_TOKEN \
   --output .airesearcher/agents/literature-agent.json
 
 airesearcher serve \
@@ -177,6 +181,8 @@ airesearcher serve \
 ```
 
 这些 profile 会写入 `cycle-summary.json`、`review-evidence-context.json` 和 operator monitor。可选的 `--stage` 会把某个 profile 绑定到 `literature`、`similarity`、`research_plan`、`loop_campaign`、`experiment`、`review`、`publication_audit`、`evidence_gate` 等闭环阶段，使审计记录能看到每个 Agent 的科研责任边界。`cycle-summary.json` 还会写入 `stage_runtime_contexts`，`review-evidence-context.json` 还会写入 `stage_agent_contexts`，下游阶段 worker 只能消费分配给该阶段的受控 skill/MCP 上下文。它们不能绕过证据、复现、评审、论文构建和发布门禁；LLM reviewer 也会把 profile 和 stage context 视为流程元数据，而不是科学结果、工具已调用、创新性或发表就绪的证明，本地 reviewer 质量门禁也会拦截这类误用。运行时 profile context 会带有 `context_kind=agent_profile_process_metadata` 和机器可读 evidence policy，后续阶段不用从散文里推断这条边界。
+
+`--skill-policy <skill_id>:read_only_context|shadow_evaluation|approved_runtime` 用于声明某个已绑定 skill 对 Agent 的影响范围；`--mcp-approval <server_id>:read_only|approve_dangerous|allow_all` 和 `--mcp-env-key <server_id>:ENV_KEY` 用于声明单个 MCP server 的审批策略和所需环境变量名。这些 flag 必须引用同一条命令中已经绑定的 skill 或 MCP server。`--mcp-env-key` 只保存大写环境变量名，不保存密钥值。
 
 `autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
 
@@ -309,7 +315,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
-| `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | 把自定义 skill、MCP server 和可选闭环阶段责任绑定给某个 Agent；MCP tool 必须显式白名单。 |
+| `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | 把自定义 skill、MCP server、可选闭环阶段责任和单 Agent 工具策略绑定给某个 Agent；MCP tool 必须显式白名单，密钥值仍保留在环境变量中。 |
 | `agents profile inspect` | profile JSON 路径 | 输出该 Agent 会收到的运行时上下文。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |

@@ -22,8 +22,11 @@ from autoresearch.agents import (
     AgentProfile,
     AgentThinkingMode,
     load_agent_profile,
+    parse_mcp_approval_policy_specs,
+    parse_mcp_env_key_specs,
     parse_mcp_spec,
     parse_server_tool_specs,
+    parse_skill_policy_specs,
     parse_skill_spec,
     profile_contexts_by_stage,
     write_agent_profile,
@@ -399,9 +402,12 @@ DEFAULT_SLASH_COMMANDS = {
         "Bind custom skills and MCP tools to one named research agent.",
         "Run `airesearcher agents profile write --agent-id <agent> --role project_agent "
         "--skill <skill_id>=<path-or-note> --mcp <server_id>=\"<command>\" "
-        "--mcp-tool <server_id>:<tool> --vault autoresearch-vault --project-id <project>` "
-        "to create a bounded profile. MCP tools must be explicitly allowlisted; the profile "
-        "does not change safety, license, approval, or publication gates.",
+        "--mcp-tool <server_id>:<tool> --skill-policy <skill_id>:read_only_context "
+        "--mcp-approval <server_id>:approve_dangerous --mcp-env-key <server_id>:ENV_KEY "
+        "--vault autoresearch-vault --project-id <project>` to create a bounded profile. "
+        "MCP tools must be explicitly allowlisted; env-key flags store names only, not "
+        "secret values; the profile does not change safety, license, approval, or "
+        "publication gates.",
     ),
     "research/paper-build.toml": (
         "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
@@ -653,6 +659,16 @@ def write_agent_profile_command(
             help="Custom skill binding as skill_id=source. Repeat for multiple skills.",
         ),
     ] = None,
+    skill_policy: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill-policy",
+            help=(
+                "Skill import policy as skill_id:policy. Policies: read_only_context, "
+                "shadow_evaluation, approved_runtime."
+            ),
+        ),
+    ] = None,
     mcp: Annotated[
         list[str] | None,
         typer.Option(
@@ -667,6 +683,26 @@ def write_agent_profile_command(
             help="Allowed MCP tool as server_id:tool_name. Repeat for multiple tools.",
         ),
     ] = None,
+    mcp_approval: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-approval",
+            help=(
+                "MCP approval policy as server_id:policy. Policies: read_only, "
+                "approve_dangerous, allow_all."
+            ),
+        ),
+    ] = None,
+    mcp_env_key: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-env-key",
+            help=(
+                "MCP required environment variable name as server_id:ENV_KEY. "
+                "Repeat for multiple keys; secret values are never stored."
+            ),
+        ),
+    ] = None,
     vault: Annotated[
         Path | None,
         typer.Option("--vault", help="Optional Obsidian vault root for a profile note."),
@@ -679,13 +715,64 @@ def write_agent_profile_command(
     """Write a bounded custom skill/MCP profile for one agent."""
 
     try:
+        skill_bindings = tuple(parse_skill_spec(spec) for spec in (skill or ()))
+        skill_policies = parse_skill_policy_specs(tuple(skill_policy or ()))
+        bound_skill_ids = {binding.skill_id for binding in skill_bindings}
+        unused_skill_policies = sorted(set(skill_policies) - bound_skill_ids)
+        if unused_skill_policies:
+            msg = (
+                "--skill-policy references missing --skill binding(s): "
+                f"{', '.join(unused_skill_policies)}"
+            )
+            raise ValueError(msg)
+        skill_bindings = tuple(
+            binding.model_copy(
+                update={"import_policy": skill_policies.get(binding.skill_id, binding.import_policy)}
+            )
+            for binding in skill_bindings
+        )
         tools_by_server = parse_server_tool_specs(tuple(mcp_tool or ()))
+        mcp_approval_policies = parse_mcp_approval_policy_specs(tuple(mcp_approval or ()))
+        mcp_env_keys_by_server = parse_mcp_env_key_specs(tuple(mcp_env_key or ()))
         mcp_servers = tuple(parse_mcp_spec(spec, tools_by_server=tools_by_server) for spec in (mcp or ()))
         bound_server_ids = {server.server_id for server in mcp_servers}
         unused_tool_servers = sorted(set(tools_by_server) - bound_server_ids)
         if unused_tool_servers:
             msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
             raise ValueError(msg)
+        unused_mcp_policy_servers = sorted(set(mcp_approval_policies) - bound_server_ids)
+        if unused_mcp_policy_servers:
+            msg = (
+                "--mcp-approval references missing --mcp server(s): "
+                f"{', '.join(unused_mcp_policy_servers)}"
+            )
+            raise ValueError(msg)
+        unused_mcp_env_servers = sorted(set(mcp_env_keys_by_server) - bound_server_ids)
+        if unused_mcp_env_servers:
+            msg = (
+                "--mcp-env-key references missing --mcp server(s): "
+                f"{', '.join(unused_mcp_env_servers)}"
+            )
+            raise ValueError(msg)
+        mcp_servers = tuple(
+            server.model_copy(
+                update={
+                    "approval_policy": mcp_approval_policies.get(
+                        server.server_id,
+                        server.approval_policy,
+                    ),
+                    "env_keys": tuple(
+                        dict.fromkeys(
+                            (
+                                *server.env_keys,
+                                *mcp_env_keys_by_server.get(server.server_id, ()),
+                            )
+                        )
+                    ),
+                }
+            )
+            for server in mcp_servers
+        )
         assigned_stages = _validated_agent_profile_stages(tuple(stage or ()))
         profile = AgentProfile(
             agent_id=agent_id,
@@ -694,7 +781,7 @@ def write_agent_profile_command(
             publication_target=publication_target,
             description=description,
             assigned_stages=assigned_stages,
-            skills=tuple(parse_skill_spec(spec) for spec in (skill or ())),
+            skills=skill_bindings,
             mcp_servers=mcp_servers,
         )
     except ValueError as exc:

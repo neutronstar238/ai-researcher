@@ -12,8 +12,13 @@ from autoresearch.agents import (
     AgentSkillBinding,
     AgentTask,
     BaseAgent,
+    McpApprovalPolicy,
+    SkillImportPolicy,
+    parse_mcp_approval_policy_specs,
+    parse_mcp_env_key_specs,
     parse_mcp_spec,
     parse_server_tool_specs,
+    parse_skill_policy_specs,
     parse_skill_spec,
     profile_contexts_by_stage,
     profile_contexts_for_stage,
@@ -145,3 +150,21 @@ def test_parse_specs_and_write_vault_note(tmp_path: Path) -> None:
     assert note.is_file()
     assert "Paper" not in note.read_text(encoding="utf-8")
     assert "paper-skill" in note.read_text(encoding="utf-8")
+
+
+def test_parse_profile_policy_specs() -> None:
+    skill_policies = parse_skill_policy_specs(
+        ("source-tracing:approved_runtime", "reviewer:shadow_evaluation")
+    )
+    mcp_policies = parse_mcp_approval_policy_specs(("browser:approve_dangerous",))
+    env_keys = parse_mcp_env_key_specs(("browser:PAGE_AGENT_TOKEN", "browser:PAGE_AGENT_TOKEN"))
+
+    assert skill_policies["source-tracing"] == SkillImportPolicy.APPROVED_RUNTIME
+    assert skill_policies["reviewer"] == SkillImportPolicy.SHADOW_EVALUATION
+    assert mcp_policies["browser"] == McpApprovalPolicy.APPROVE_DANGEROUS
+    assert env_keys["browser"] == ("PAGE_AGENT_TOKEN",)
+
+
+def test_parse_profile_policy_specs_reject_invalid_env_key() -> None:
+    with pytest.raises(ValueError, match="uppercase environment variable"):
+        parse_mcp_env_key_specs(("browser:page_agent_token",))

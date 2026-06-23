@@ -274,6 +274,24 @@ def parse_skill_spec(spec: str) -> AgentSkillBinding:
     )
 
 
+def parse_skill_policy_specs(specs: Iterable[str]) -> dict[str, SkillImportPolicy]:
+    """Parse repeated `skill_id:policy` values for already-bound skills."""
+
+    policies: dict[str, SkillImportPolicy] = {}
+    for spec in specs:
+        skill_id, policy_text = _split_scoped_value(spec, "skill policy")
+        if skill_id in policies:
+            msg = f"duplicate skill policy for {skill_id}"
+            raise ValueError(msg)
+        try:
+            policies[skill_id] = SkillImportPolicy(policy_text)
+        except ValueError as exc:
+            choices = ", ".join(policy.value for policy in SkillImportPolicy)
+            msg = f"unknown skill import policy for {skill_id}: {policy_text}; expected one of {choices}"
+            raise ValueError(msg) from exc
+    return policies
+
+
 def parse_mcp_spec(
     spec: str,
     *,
@@ -289,6 +307,39 @@ def parse_mcp_spec(
         command=command,
         allowed_tools=allowed_tools,
     )
+
+
+def parse_mcp_approval_policy_specs(specs: Iterable[str]) -> dict[str, McpApprovalPolicy]:
+    """Parse repeated `server_id:policy` values for already-bound MCP servers."""
+
+    policies: dict[str, McpApprovalPolicy] = {}
+    for spec in specs:
+        server_id, policy_text = _split_scoped_value(spec, "MCP approval policy")
+        if server_id in policies:
+            msg = f"duplicate MCP approval policy for {server_id}"
+            raise ValueError(msg)
+        try:
+            policies[server_id] = McpApprovalPolicy(policy_text)
+        except ValueError as exc:
+            choices = ", ".join(policy.value for policy in McpApprovalPolicy)
+            msg = f"unknown MCP approval policy for {server_id}: {policy_text}; expected one of {choices}"
+            raise ValueError(msg) from exc
+    return policies
+
+
+def parse_mcp_env_key_specs(specs: Iterable[str]) -> dict[str, tuple[str, ...]]:
+    """Parse repeated `server_id:ENV_KEY` values for already-bound MCP servers."""
+
+    env_keys: dict[str, list[str]] = {}
+    for spec in specs:
+        server_id, env_key = _split_scoped_value(spec, "MCP env key")
+        if not _ENV_KEY_RE.match(env_key):
+            msg = f"MCP env key must be an uppercase environment variable name: {env_key}"
+            raise ValueError(msg)
+        values = env_keys.setdefault(server_id, [])
+        if env_key not in values:
+            values.append(env_key)
+    return {server_id: tuple(values) for server_id, values in env_keys.items()}
 
 
 def parse_server_tool_specs(specs: tuple[str, ...]) -> dict[str, tuple[str, ...]]:
@@ -437,6 +488,18 @@ def _split_assignment(spec: str, label: str) -> tuple[str, str]:
         raise ValueError(msg)
     name, value = spec.split("=", 1)
     return _validate_identifier(name, f"{label} id"), value.strip()
+
+
+def _split_scoped_value(spec: str, label: str) -> tuple[str, str]:
+    if ":" not in spec:
+        msg = f"{label} spec must use name:value: {spec}"
+        raise ValueError(msg)
+    name, value = spec.split(":", 1)
+    value = value.strip()
+    if not value:
+        msg = f"{label} value must be non-empty: {spec}"
+        raise ValueError(msg)
+    return _validate_identifier(name, f"{label} id"), value
 
 
 def _validate_identifier(value: str, field_name: str) -> str:

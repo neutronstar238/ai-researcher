@@ -109,12 +109,18 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
             "research-plan",
             "--skill",
             "source-tracing=autoresearch-vault/_system/skills/source-tracing.md",
+            "--skill-policy",
+            "source-tracing:approved_runtime",
             "--mcp",
             "obsidian=npx -y obsidian-mcp",
             "--mcp-tool",
             "obsidian:search_notes",
             "--mcp-tool",
             "obsidian:read_note",
+            "--mcp-approval",
+            "obsidian:approve_dangerous",
+            "--mcp-env-key",
+            "obsidian:OBSIDIAN_API_KEY",
             "--vault",
             str(vault_root),
             "--project-id",
@@ -130,7 +136,10 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert profile_path.is_file()
     note_path = vault_root / "projects" / "project-a" / "agents" / "literature-agent.md"
     assert note_path.is_file()
-    assert "`literature`, `research_plan`" in note_path.read_text(encoding="utf-8")
+    note_text = note_path.read_text(encoding="utf-8")
+    assert "`literature`, `research_plan`" in note_text
+    assert "`approved_runtime`" in note_text
+    assert "`OBSIDIAN_API_KEY`" in note_text
 
     inspect_result = CliRunner().invoke(app, ["agents", "profile", "inspect", str(profile_path)])
 
@@ -139,7 +148,10 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert payload["agent_id"] == "literature-agent"
     assert payload["assigned_stages"] == ["literature", "research_plan"]
     assert payload["skills"][0]["skill_id"] == "source-tracing"
+    assert payload["skills"][0]["import_policy"] == "approved_runtime"
     assert payload["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+    assert payload["mcp_servers"][0]["approval_policy"] == "approve_dangerous"
+    assert payload["mcp_servers"][0]["env_keys"] == ["OBSIDIAN_API_KEY"]
 
 
 def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> None:
@@ -184,6 +196,54 @@ def test_agent_profile_write_cli_rejects_unknown_stage(tmp_path: Path) -> None:
 
     assert result.exit_code == 1
     assert "unknown agent profile stage" in result.output
+
+
+def test_agent_profile_write_cli_rejects_dangling_policy_specs(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--skill-policy",
+            "source-tracing:approved_runtime",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--skill-policy references missing --skill binding" in result.output
+
+
+def test_agent_profile_write_cli_rejects_invalid_mcp_env_key(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--mcp",
+            "browser=npx -y browser-mcp",
+            "--mcp-tool",
+            "browser:search",
+            "--mcp-env-key",
+            "browser:browser_token",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "uppercase environment variable" in result.output
 
 
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:

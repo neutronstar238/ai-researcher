@@ -9389,3 +9389,37 @@ This file defines the project development standard for coding agents and records
   - Updated `Problem.md` logging rules; no new numbered problem because verification completed and no blocker remained.
 - Follow-up:
   - Future optimizer work can replace the current lightweight evidence-gain heuristic with a true BO/active-learning backend, but it must continue to obey `LoopStopDecision` and the existing publication/evidence gates.
+
+### 2026-06-23 14:36:59 +08:00 - Codex - Task 223.1 Per-agent profile policy CLI controls
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and custom Agent skill/MCP support by letting operators assign bounded skill import policies, MCP approval policies, and MCP env-key names through the CLI instead of hand-editing profile JSON.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added parser helpers for `skill_id:policy`, `server_id:policy`, and `server_id:ENV_KEY` profile specs.
+  - Added `--skill-policy`, `--mcp-approval`, and `--mcp-env-key` to `airesearcher agents profile write`.
+  - Rejected policy/env-key specs that reference missing skill or MCP bindings in the same profile command.
+  - Kept profile policy declarations as process metadata only; they still do not bypass runtime approval, evidence, publication, safety, license, or release gates.
+  - Updated English/Chinese README and `/research:agent-profile` guidance with the new flags.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_dangling_policy_specs tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_invalid_mcp_env_key tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 13 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --mcp-approval page-agent:approve_dangerous --mcp-env-key page-agent:PAGE_AGENT_TOKEN --mcp-env-key page-agent:PAGE_AGENT_WORKSPACE --vault runs\manual-live\task223-profile-policy-v1\vault --project-id task223_profile_policy_v1 --output runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json`: passed and confirmed `context_kind=agent_profile_process_metadata`, `import_policy=approved_runtime`, `approval_policy=approve_dangerous`, and env keys `PAGE_AGENT_TOKEN,PAGE_AGENT_WORKSPACE`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 572 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None. No `Problem.md` entry was added because this task had no blocker, failed gate, unresolved risk, or skipped required verification.
+- Follow-up:
+  - Future stage workers can use these profile policy fields when they begin executing MCP-backed steps, but must still route dangerous actions through runtime approval and record real tool invocation evidence separately.
