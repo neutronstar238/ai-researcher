@@ -196,14 +196,27 @@ another benchmark or `--demo tabular_baseline` for the fast toy fixture.
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 
 ```bash
+airesearcher agents profile write \
+  --agent-id literature-agent \
+  --role project_agent \
+  --stage literature \
+  --stage similarity \
+  --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md \
+  --mcp "page-agent=npx -y page-agent" \
+  --mcp-tool page-agent:browser.search \
+  --output .airesearcher/agents/literature-agent.json
+
 airesearcher serve \
   --agent-profile .airesearcher/agents/literature-agent.json \
   --agent-profile .airesearcher/agents/reviewer-agent.json
 ```
 
 Loaded profiles are written into `cycle-summary.json`, `review-evidence-context.json`, and the
-operator monitor. They provide bounded method/tool context only; publication claims still require
-the normal evidence, reproduction, review, paper-build, and release gates.
+operator monitor. Optional `--stage` values bind one profile to loop stages such as `literature`,
+`similarity`, `research_plan`, `loop_campaign`, `experiment`, `review`, `publication_audit`, and
+`evidence_gate`, so audit records show which agent carried which scientific responsibility. They
+provide bounded method/tool context only; publication claims still require the normal evidence,
+reproduction, review, paper-build, and release gates.
 
 Each cycle can run:
 
@@ -343,7 +356,7 @@ Common npm shortcuts:
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
-| `agents profile write` | `--agent-id`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | Binds custom skills and MCP servers to one agent. MCP tools must be explicitly allowlisted. |
+| `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | Binds custom skills, MCP servers, and optional loop-stage responsibility to one agent. MCP tools must be explicitly allowlisted. |
 | `agents profile inspect` | profile JSON path | Prints the runtime context that will be attached to that agent. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |

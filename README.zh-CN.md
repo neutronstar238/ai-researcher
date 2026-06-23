@@ -161,12 +161,22 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 可以给常驻运行入口绑定单个或多个 Agent profile：
 
 ```bash
+airesearcher agents profile write \
+  --agent-id literature-agent \
+  --role project_agent \
+  --stage literature \
+  --stage similarity \
+  --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md \
+  --mcp "page-agent=npx -y page-agent" \
+  --mcp-tool page-agent:browser.search \
+  --output .airesearcher/agents/literature-agent.json
+
 airesearcher serve \
   --agent-profile .airesearcher/agents/literature-agent.json \
   --agent-profile .airesearcher/agents/reviewer-agent.json
 ```
 
-这些 profile 会写入 `cycle-summary.json`、`review-evidence-context.json` 和 operator monitor。它们只提供受控 skill/MCP 上下文，不能绕过证据、复现、评审、论文构建和发布门禁。
+这些 profile 会写入 `cycle-summary.json`、`review-evidence-context.json` 和 operator monitor。可选的 `--stage` 会把某个 profile 绑定到 `literature`、`similarity`、`research_plan`、`loop_campaign`、`experiment`、`review`、`publication_audit`、`evidence_gate` 等闭环阶段，使审计记录能看到每个 Agent 的科研责任边界。它们只提供受控 skill/MCP 上下文，不能绕过证据、复现、评审、论文构建和发布门禁。
 
 `autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
 
@@ -297,7 +307,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
-| `agents profile write` | `--agent-id`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | 把自定义 skill 和 MCP server 绑定给某个 Agent；MCP tool 必须显式白名单。 |
+| `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | 把自定义 skill、MCP server 和可选闭环阶段责任绑定给某个 Agent；MCP tool 必须显式白名单。 |
 | `agents profile inspect` | profile JSON 路径 | 输出该 Agent 会收到的运行时上下文。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |

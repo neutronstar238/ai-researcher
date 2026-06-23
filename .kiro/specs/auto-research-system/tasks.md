@@ -2690,6 +2690,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `215.1`; user request that custom skills and MCP imports can be assigned to a specific Agent and remain visible while the system keeps scientific evidence gates._
     - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; broad and live verification recorded in `Agent.md`._
 
+- [x] 217. Loop-stage agent responsibility mapping
+  - [x] 217.1 Bind agent profiles to closed-loop research stages
+    - Add optional `assigned_stages` to `AgentProfile`, normalized to snake_case and serialized into runtime context.
+    - Add repeatable `--stage` to `airesearcher agents profile write`, with a fixed allowlist matching the release-critical loop stages.
+    - Reject unknown or duplicate stage assignments before a profile can be loaded into `serve` or `autopilot`.
+    - Include `stage_assignments` in `cycle-summary.json` and `review-evidence-context.json` so review/audit stages can inspect responsibility boundaries.
+    - Render profile role plus assigned stages in `airesearcher monitor` without treating stage context as publication evidence.
+    - Update README/README.zh-CN usage docs with `--stage` examples and safety language.
+    - _References: tasks `214.1`, `215.1`, and `216.1`; Loop Engineering requirement that closed-loop stages are auditable and cannot be bypassed by prompt-only agent behavior._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 8 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with 563 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed. Real CLI wrote a staged profile with `--stage literature --stage similarity --stage review`, ran `autopilot` once with that profile, confirmed `[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3`, confirmed summary/review context include `stage_assignments`, and `monitor` rendered `project_agent; literature,similarity,review`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3214,6 +3225,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 119,
       "tasks": ["216.1"]
+    },
+    {
+      "id": 120,
+      "tasks": ["217.1"]
     }
   ]
 }

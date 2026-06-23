@@ -35,6 +35,7 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     profile = AgentProfile(
         agent_id="literature-agent",
         role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature", "research-plan"),
         skills=(
             AgentSkillBinding(
                 skill_id="source-tracing",
@@ -57,6 +58,7 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     context = restored.to_runtime_context()
 
     assert context["thinking_mode"] == "scientific"
+    assert context["assigned_stages"] == ["literature", "research_plan"]
     assert context["skills"][0]["skill_id"] == "source-tracing"
     assert context["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
 

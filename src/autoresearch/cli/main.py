@@ -178,6 +178,25 @@ PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
 DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
 METHOD_ALIGNED_SEED_NOT_FOUND_REF = "literature_refresh:method_aligned_seed_not_found"
+AGENT_PROFILE_ASSIGNABLE_STAGES = (
+    "source",
+    "literature",
+    "similarity",
+    "research_plan",
+    "loop_campaign",
+    "inspiration",
+    "experiment",
+    "reproduction",
+    "citations",
+    "related_work",
+    "paper_manuscript",
+    "paper_build",
+    "review",
+    "publication_audit",
+    "evidence_gate",
+    "followups",
+    "deliverables",
+)
 SERVE_NETWORK_APPROVED_DOMAINS = (
     "api.openalex.org",
     "api.semanticscholar.org",
@@ -619,6 +638,13 @@ def write_agent_profile_command(
         str | None,
         typer.Option("--description", help="Optional human-readable profile purpose."),
     ] = None,
+    stage: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--stage",
+            help="Research-loop stage assigned to this agent. Repeat for multiple stages.",
+        ),
+    ] = None,
     skill: Annotated[
         list[str] | None,
         typer.Option(
@@ -659,12 +685,14 @@ def write_agent_profile_command(
         if unused_tool_servers:
             msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
             raise ValueError(msg)
+        assigned_stages = _validated_agent_profile_stages(tuple(stage or ()))
         profile = AgentProfile(
             agent_id=agent_id,
             role=role,
             thinking_mode=thinking_mode,
             publication_target=publication_target,
             description=description,
+            assigned_stages=assigned_stages,
             skills=tuple(parse_skill_spec(spec) for spec in (skill or ())),
             mcp_servers=mcp_servers,
         )
@@ -676,6 +704,10 @@ def write_agent_profile_command(
     typer.echo(f"[OK] agent_profile: {profile.agent_id}")
     typer.echo(f"[OK] role: {profile.role.value}")
     typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
+    if profile.assigned_stages:
+        typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages)}")
+    else:
+        typer.echo("[OK] assigned_stages: unassigned")
     typer.echo(f"[OK] skills: {len(profile.skills)}")
     typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
     typer.echo(f"[OK] profile: {profile_path}")
@@ -701,6 +733,26 @@ def inspect_agent_profile_command(
     typer.echo(json.dumps(profile.to_runtime_context(), indent=2, sort_keys=True))
 
 
+def _normalise_agent_profile_stage(stage: str) -> str:
+    return stage.strip().lower().replace("-", "_")
+
+
+def _validated_agent_profile_stages(stages: tuple[str, ...]) -> tuple[str, ...]:
+    normalized = tuple(_normalise_agent_profile_stage(stage) for stage in stages if stage.strip())
+    if len(normalized) != len(set(normalized)):
+        msg = "duplicate --stage values are not allowed"
+        raise ValueError(msg)
+    allowed = set(AGENT_PROFILE_ASSIGNABLE_STAGES)
+    unknown = sorted(set(normalized) - allowed)
+    if unknown:
+        msg = (
+            f"unknown agent profile stage(s): {', '.join(unknown)}; "
+            f"allowed: {', '.join(AGENT_PROFILE_ASSIGNABLE_STAGES)}"
+        )
+        raise ValueError(msg)
+    return normalized
+
+
 def _load_agent_profile_contexts(profile_paths: Iterable[Path]) -> tuple[dict[str, Any], ...]:
     contexts: list[dict[str, Any]] = []
     seen_agent_ids: set[str] = set()
@@ -713,6 +765,11 @@ def _load_agent_profile_contexts(profile_paths: Iterable[Path]) -> tuple[dict[st
         if profile.agent_id in seen_agent_ids:
             msg = f"duplicate agent profile for agent_id {profile.agent_id}"
             raise RuntimeError(msg)
+        try:
+            _validated_agent_profile_stages(profile.assigned_stages)
+        except ValueError as exc:
+            msg = f"invalid stage assignment in profile {profile_path}: {exc}"
+            raise RuntimeError(msg) from exc
         seen_agent_ids.add(profile.agent_id)
         context = profile.to_runtime_context()
         context["profile_path"] = profile_path.as_posix()
@@ -731,6 +788,7 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
                 "role": str(context.get("role", "")),
                 "thinking_mode": str(context.get("thinking_mode", "")),
                 "publication_target": str(context.get("publication_target", "")),
+                "assigned_stages": _string_list(context.get("assigned_stages")),
                 "profile_path": str(context.get("profile_path", "")),
                 "skill_ids": [str(skill.get("skill_id", "")) for skill in skills],
                 "mcp_servers": [
@@ -747,9 +805,36 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
         "count": len(profiles),
         "profiles": profiles,
         "runtime_contexts": list(profile_contexts),
+        "stage_assignments": _agent_profile_stage_assignments(profile_contexts),
         "evidence_policy": (
             "Agent profiles provide bounded skill/MCP context only; publication claims still "
             "require loop, review, audit, evidence, and reproduction gates."
+        ),
+    }
+
+
+def _agent_profile_stage_assignments(
+    profile_contexts: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    stage_rows: list[dict[str, Any]] = []
+    unassigned_agent_ids: list[str] = []
+    for stage in AGENT_PROFILE_ASSIGNABLE_STAGES:
+        agent_ids = [
+            str(context.get("agent_id", ""))
+            for context in profile_contexts
+            if stage in _string_list(context.get("assigned_stages"))
+        ]
+        if agent_ids:
+            stage_rows.append({"stage": stage, "agent_ids": agent_ids})
+    for context in profile_contexts:
+        if not _string_list(context.get("assigned_stages")):
+            unassigned_agent_ids.append(str(context.get("agent_id", "")))
+    return {
+        "stages": stage_rows,
+        "unassigned_agent_ids": unassigned_agent_ids,
+        "policy": (
+            "Stage assignments define responsibility/context boundaries; they do not grant "
+            "permission to bypass scientific evidence gates."
         ),
     }
 
@@ -6680,7 +6765,14 @@ def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
         str(profile.get("agent_id", "unknown"))
         for profile in _mapping_list(agent_profiles.get("profiles"))
     ]
-    typer.echo(f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}")
+    assignments = agent_profiles.get("stage_assignments")
+    stage_count = 0
+    if isinstance(assignments, Mapping):
+        stage_count = len(_mapping_list(assignments.get("stages")))
+    typer.echo(
+        f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}; "
+        f"assigned_stages={stage_count}"
+    )
 
 
 def _review_status_display(review: object) -> tuple[str, str]:
@@ -7125,7 +7217,7 @@ def _render_operator_monitor(
                     _state_table(
                         title="Agent Profiles",
                         rows=_agent_profile_rows(summary_path),
-                        columns=("agent", "role", "skills", "mcp"),
+                        columns=("agent", "role/stages", "skills", "mcp"),
                     ),
                     title="Agent Profiles",
                     border_style="blue",
@@ -7278,6 +7370,12 @@ def _agent_profile_rows(summary_path: Path | None) -> list[tuple[str, str, str, 
     rows: list[tuple[str, str, str, str]] = []
     for profile in _mapping_list(agent_profiles.get("profiles")):
         skill_ids = _string_list(profile.get("skill_ids"))
+        assigned_stages = _string_list(profile.get("assigned_stages"))
+        role_stages = (
+            f"{profile.get('role', 'unknown')}; {','.join(assigned_stages)}"
+            if assigned_stages
+            else f"{profile.get('role', 'unknown')}; unassigned"
+        )
         mcp_parts: list[str] = []
         for server in _mapping_list(profile.get("mcp_servers")):
             server_id = str(server.get("server_id", "unknown"))
@@ -7286,7 +7384,7 @@ def _agent_profile_rows(summary_path: Path | None) -> list[tuple[str, str, str, 
         rows.append(
             (
                 str(profile.get("agent_id", "unknown")),
-                str(profile.get("role", "unknown")),
+                role_stages,
                 ", ".join(skill_ids) or "none",
                 ", ".join(mcp_parts) or "none",
             )

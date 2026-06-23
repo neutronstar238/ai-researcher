@@ -154,6 +154,7 @@ class AgentProfile(BaseModel):
     thinking_mode: AgentThinkingMode = AgentThinkingMode.SCIENTIFIC
     publication_target: str = "ccf-b-or-sci-q2"
     description: str | None = None
+    assigned_stages: tuple[str, ...] = ()
     thinking_contract: tuple[str, ...] = DEFAULT_RESEARCH_THINKING_CONTRACT
     skills: tuple[AgentSkillBinding, ...] = ()
     mcp_servers: tuple[AgentMcpServerBinding, ...] = ()
@@ -171,6 +172,18 @@ class AgentProfile(BaseModel):
             msg = "publication_target must be non-empty"
             raise ValueError(msg)
         return value
+
+    @field_validator("assigned_stages")
+    @classmethod
+    def _validate_assigned_stages(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(
+            _validate_identifier(item.replace("-", "_").lower(), "assigned_stage")
+            for item in _clean_text_tuple(value)
+        )
+        if len(normalized) != len(set(normalized)):
+            msg = "assigned_stages must be unique after normalization"
+            raise ValueError(msg)
+        return normalized
 
     @field_validator("thinking_contract")
     @classmethod
@@ -198,6 +211,7 @@ class AgentProfile(BaseModel):
             "role": self.role.value,
             "thinking_mode": self.thinking_mode.value,
             "publication_target": self.publication_target,
+            "assigned_stages": list(self.assigned_stages),
             "thinking_contract": list(self.thinking_contract),
             "skills": [skill.model_dump(mode="json") for skill in self.skills],
             "mcp_servers": [
@@ -298,6 +312,8 @@ def render_agent_profile_markdown(profile: AgentProfile) -> str:
         f"- role: `{profile.role.value}`",
         f"- thinking_mode: `{profile.thinking_mode.value}`",
         f"- publication_target: `{profile.publication_target}`",
+        "- assigned_stages: "
+        + (", ".join(f"`{stage}`" for stage in profile.assigned_stages) or "`unassigned`"),
     ]
     if profile.description:
         lines.append(f"- description: {profile.description}")

@@ -103,6 +103,10 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
             "literature-agent",
             "--role",
             "project_agent",
+            "--stage",
+            "literature",
+            "--stage",
+            "research-plan",
             "--skill",
             "source-tracing=autoresearch-vault/_system/skills/source-tracing.md",
             "--mcp",
@@ -122,14 +126,18 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
 
     assert result.exit_code == 0, result.output
     assert "[OK] agent_profile: literature-agent" in result.stdout
+    assert "[OK] assigned_stages: literature, research_plan" in result.stdout
     assert profile_path.is_file()
-    assert (vault_root / "projects" / "project-a" / "agents" / "literature-agent.md").is_file()
+    note_path = vault_root / "projects" / "project-a" / "agents" / "literature-agent.md"
+    assert note_path.is_file()
+    assert "`literature`, `research_plan`" in note_path.read_text(encoding="utf-8")
 
     inspect_result = CliRunner().invoke(app, ["agents", "profile", "inspect", str(profile_path)])
 
     assert inspect_result.exit_code == 0, inspect_result.output
     payload = json.loads(inspect_result.stdout)
     assert payload["agent_id"] == "literature-agent"
+    assert payload["assigned_stages"] == ["literature", "research_plan"]
     assert payload["skills"][0]["skill_id"] == "source-tracing"
     assert payload["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
 
@@ -154,6 +162,28 @@ def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> No
 
     assert result.exit_code == 1
     assert "at least 1 item" in result.output
+
+
+def test_agent_profile_write_cli_rejects_unknown_stage(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--stage",
+            "paper-writing-vibes",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "unknown agent profile stage" in result.output
 
 
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
@@ -2927,6 +2957,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
                 "role": "project_agent",
                 "thinking_mode": "scientific",
                 "publication_target": "ccf-b-or-sci-q2",
+                "assigned_stages": ["literature", "similarity", "review"],
                 "thinking_contract": [
                     "Start from the research question, falsifiable hypothesis, dataset, baseline, and evidence."
                 ],
@@ -2984,7 +3015,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "cycles=1, interval_seconds=86400, push_inspiration=false"
     ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
-    assert "[OK] agent_profiles: 1; agents=literature-agent" in result.stdout
+    assert (
+        "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3"
+    ) in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
@@ -3016,6 +3049,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["source_preflight"]["verdict"] == "pass"
     assert payload["agent_profiles"]["count"] == 1
     assert payload["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert payload["agent_profiles"]["profiles"][0]["assigned_stages"] == [
+        "literature",
+        "similarity",
+        "review",
+    ]
     assert payload["agent_profiles"]["profiles"][0]["skill_ids"] == ["source-tracing"]
     assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["server_id"] == (
         "page-agent"
@@ -3024,6 +3062,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "browser.search"
     ]
     assert payload["agent_profiles"]["profiles"][0]["profile_path"] == profile_path.as_posix()
+    assert payload["agent_profiles"]["stage_assignments"]["stages"] == [
+        {"stage": "literature", "agent_ids": ["literature-agent"]},
+        {"stage": "similarity", "agent_ids": ["literature-agent"]},
+        {"stage": "review", "agent_ids": ["literature-agent"]},
+    ]
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -3066,6 +3109,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
     assert review_context["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert review_context["agent_profiles"]["stage_assignments"]["stages"][0] == {
+        "stage": "literature",
+        "agent_ids": ["literature-agent"],
+    }
     assert review_context["audit_summary"]["agent_profiles"]["count"] == 1
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
@@ -4201,6 +4248,7 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                         {
                             "agent_id": "literature-agent",
                             "role": "project_agent",
+                            "assigned_stages": ["literature", "review"],
                             "skill_ids": ["source-tracing"],
                             "mcp_servers": [
                                 {
@@ -4211,6 +4259,13 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                             ],
                         }
                     ],
+                    "stage_assignments": {
+                        "stages": [
+                            {"stage": "literature", "agent_ids": ["literature-agent"]},
+                            {"stage": "review", "agent_ids": ["literature-agent"]},
+                        ],
+                        "unassigned_agent_ids": [],
+                    },
                 },
                 "literature": {
                     "document_count": 23,
@@ -4408,7 +4463,7 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert cli_main._agent_profile_rows(summary) == [
         (
             "literature-agent",
-            "project_agent",
+            "project_agent; literature,review",
             "source-tracing",
             "page-agent:browser.search",
         )
