@@ -3521,6 +3521,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "research-plan.tex",
             "paper-build.json",
             "runtime-heartbeat-report.json",
+            "agent-profile-set-validation.json",
             "manifest.json",
             "literature.json",
             "similarity.json",
@@ -3626,6 +3627,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert (
         "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3; readiness=pass"
     ) in result.stdout
+    assert "[WARN] agent_profile_set: false;" in result.stdout
+    assert "missing=research_plan,loop_campaign" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] runtime_heartbeat: true;" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
@@ -3716,6 +3719,22 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         {"stage": "similarity", "agent_ids": ["literature-agent"]},
         {"stage": "review", "agent_ids": ["literature-agent"]},
     ]
+    profile_set_validation = payload["agent_profile_set_validation"]
+    assert profile_set_validation["validation_kind"] == (
+        "agent_profile_set_runtime_preflight_process_metadata"
+    )
+    assert profile_set_validation["required_for_cycle"] is False
+    assert profile_set_validation["passed"] is False
+    assert "research_plan" in profile_set_validation["missing_stages"]
+    assert "experiment" in profile_set_validation["missing_stages"]
+    assert Path(profile_set_validation["output_path"]).name == (
+        "agent-profile-set-validation.json"
+    )
+    validation_file = json.loads(
+        Path(profile_set_validation["output_path"]).read_text(encoding="utf-8")
+    )
+    assert validation_file["missing_stages"] == profile_set_validation["missing_stages"]
+    assert "publication readiness" in validation_file["evidence_policy"]
     stage_contexts = payload["agent_profiles"]["stage_runtime_contexts"]
     assert stage_contexts["literature"][0]["agent_id"] == "literature-agent"
     assert stage_contexts["literature"][0]["context_kind"] == (
@@ -3817,6 +3836,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "stage": "literature",
         "agent_ids": ["literature-agent"],
     }
+    assert review_context["agent_profile_set_validation"]["passed"] is False
+    assert review_context["audit_summary"]["agent_profile_set_validation"][
+        "passed"
+    ] is False
     assert review_context["agent_stage_context_packets"]["packet_count"] == 3
     assert review_context["agent_stage_context_packets"]["packets"][0]["path"]
     assert review_context["audit_summary"]["agent_stage_context_packets"][
@@ -3895,6 +3918,80 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["evidence_gate"]["verdict"] == "blocked"
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
     assert len(review_calls) == 1
+
+
+def test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after profile-set block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    skill_path = tmp_path / "skills" / "source-tracing.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\nKeep claims evidence-bound.\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    write_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            f"source-tracing={skill_path}",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    assert write_result.exit_code == 0, write_result.output
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile",
+            str(profile_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    assert "missing=research_plan,loop_campaign" in result.stdout
+    assert "[OK] review_status: skipped_agent_profile_set_gate" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+    assert Path(validation["output_path"]).is_file()
+    assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
 
 
 def test_review_status_display_blocks_needs_revision_verdict() -> None:

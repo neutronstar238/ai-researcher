@@ -2908,6 +2908,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `235.1`; user request for custom skills/MCPs assigned to specific Agents while preserving evidence-first scientific gates._
     - _Verify: focused autopilot CLI regression, ruff, mypy, real autopilot packet artifact smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 237. Runtime Agent profile-set preflight
+  - [x] 237.1 Write and optionally require CCF-B/Q2 Agent stage coverage validation during `serve`/`autopilot`
+    - Write `agent-profile-set/agent-profile-set-validation.json` into every cycle after loading Agent profiles.
+    - Embed the runtime profile-set validation in `cycle-summary.json`, review evidence context, and review evidence bundles.
+    - Add `--require-agent-profile-set` to `serve` and `autopilot` so incomplete Agent stage coverage blocks the cycle before online retrieval and experiment execution.
+    - Default to audit-only mode so existing MVP/demo runs remain usable while still exposing missing Agent responsibilities.
+    - Keep profile-set validation scoped to process metadata only; it must not prove scientific results, novelty, metrics, citations, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the runtime validation artifact and require flag.
+    - _References: tasks `232.1`, `235.1`, and `236.1`; user request to assign custom skills/MCPs to specific Agents while moving toward publishable CCF-B/SCI-Q2 output gates._
+    - _Verify: focused autopilot profile-set tests, ruff, mypy, real require-gate smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3512,6 +3523,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 139,
       "tasks": ["236.1"]
+    },
+    {
+      "id": 140,
+      "tasks": ["237.1"]
     }
   ]
 }

@@ -298,6 +298,10 @@ During `serve` and `autopilot`, AI-Researcher also writes portable packet files 
 `agent-stage-contexts/` directory. Each packet contains only the agents assigned to that stage, the
 bounded skill excerpts, MCP contracts, readiness summary, and an explicit process-metadata evidence
 policy.
+The same cycle also writes `agent-profile-set/agent-profile-set-validation.json` so publication
+reviewers can see whether the loaded Agent team covers the default CCF-B/Q2 research-stage matrix.
+Use `--require-agent-profile-set` to stop a cycle before online retrieval when that matrix is
+incomplete.
 
 MCP bindings also emit `mcp_runtime_contracts`. A contract records the command hash, allowed tools,
 approval policy, required env-key names, and whether runtime approval or isolated operator approval
@@ -460,7 +464,8 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
-| `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, monitor, and per-cycle `agent-stage-contexts/` packet artifacts. Repeat for multiple agents. |
+| `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, monitor, profile-set validation, and per-cycle `agent-stage-contexts/` packet artifacts. Repeat for multiple agents. |
+| `serve` / `autopilot` | `--require-agent-profile-set` | Blocks the cycle before online retrieval unless loaded Agent profiles cover the default CCF-B/Q2 stage matrix. Without this flag, the validation report is still written as audit metadata. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |

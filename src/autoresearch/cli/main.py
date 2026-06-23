@@ -22,6 +22,7 @@ from autoresearch.agents import (
     DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
     AgentProfile,
+    AgentProfileReadinessReport,
     AgentThinkingMode,
     McpInvocationStatus,
     append_mcp_invocation_evidence,
@@ -1511,6 +1512,46 @@ def _write_agent_stage_context_packets(
         manifest["manifest_path"] = manifest_path.as_posix()
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
     return manifest
+
+
+def _write_agent_profile_set_runtime_validation(
+    *,
+    profile_contexts: tuple[dict[str, Any], ...],
+    cycle_dir: Path,
+    require_pass: bool,
+) -> dict[str, Any]:
+    profiles: list[AgentProfile] = []
+    readiness_reports: list[AgentProfileReadinessReport] = []
+    for context in profile_contexts:
+        profile_path = str(context.get("profile_path") or "").strip()
+        if not profile_path:
+            continue
+        profiles.append(load_agent_profile(Path(profile_path)))
+        readiness = context.get("readiness")
+        if isinstance(readiness, Mapping):
+            readiness_reports.append(AgentProfileReadinessReport.model_validate(readiness))
+
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+        readiness_reports=readiness_reports,
+    )
+    output_dir = cycle_dir / "agent-profile-set"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "agent-profile-set-validation.json"
+    payload: dict[str, Any] = {
+        **validation.model_dump(mode="json"),
+        "validation_kind": "agent_profile_set_runtime_preflight_process_metadata",
+        "required_for_cycle": require_pass,
+        "output_path": output_path.as_posix(),
+        "evidence_policy": (
+            "Runtime Agent profile-set validation checks stage responsibility coverage and "
+            "profile readiness only; it cannot prove scientific results, novelty, benchmark "
+            "metrics, citation validity, MCP invocation, or publication readiness."
+        ),
+    }
+    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return payload
 
 
 def _agent_profile_stage_assignments(
@@ -4232,6 +4273,16 @@ def autopilot(
             help="Agent profile JSON to load into this cycle. Repeat for multiple agents.",
         ),
     ] = None,
+    require_agent_profile_set: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-profile-set/--no-require-agent-profile-set",
+            help=(
+                "Block the cycle unless supplied Agent profiles cover the default "
+                "CCF-B/Q2 research-stage matrix."
+            ),
+        ),
+    ] = False,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -4302,6 +4353,7 @@ def autopilot(
                     review=review,
                     paper_template_id=paper_template_id,
                     agent_profile_paths=tuple(agent_profile or ()),
+                    require_agent_profile_set=require_agent_profile_set,
                     push_inspiration=push_inspiration,
                 )
             except RuntimeError as exc:
@@ -4314,6 +4366,7 @@ def autopilot(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_agent_profiles_status(summary)
+            _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
             _echo_runtime_heartbeat_status(summary)
@@ -4456,6 +4509,16 @@ def serve(
             help="Agent profile JSON to load into this runtime. Repeat for multiple agents.",
         ),
     ] = None,
+    require_agent_profile_set: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-profile-set/--no-require-agent-profile-set",
+            help=(
+                "Block the cycle unless supplied Agent profiles cover the default "
+                "CCF-B/Q2 research-stage matrix."
+            ),
+        ),
+    ] = False,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -4584,6 +4647,7 @@ def serve(
                     review=review,
                     paper_template_id=paper_template_id,
                     agent_profile_paths=tuple(agent_profile or ()),
+                    require_agent_profile_set=require_agent_profile_set,
                     push_inspiration=push_inspiration,
                     runtime_network_metadata=runtime_network_metadata,
                 )
@@ -4597,6 +4661,7 @@ def serve(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_agent_profiles_status(summary)
+            _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
             _echo_runtime_heartbeat_status(summary)
@@ -5334,6 +5399,7 @@ def _run_autopilot_cycle(
     review: bool,
     paper_template_id: str,
     agent_profile_paths: tuple[Path, ...],
+    require_agent_profile_set: bool,
     push_inspiration: bool,
     runtime_network_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -5364,7 +5430,13 @@ def _run_autopilot_cycle(
         project_id=project_id,
         cycle_id=cycle_id,
     )
+    agent_profile_set_validation = _write_agent_profile_set_runtime_validation(
+        profile_contexts=agent_profile_contexts,
+        cycle_dir=cycle_dir,
+        require_pass=require_agent_profile_set,
+    )
     agent_profile_artifact_refs = (
+        agent_profile_set_validation.get("output_path"),
         agent_stage_context_packets.get("manifest_path"),
         *_string_list(agent_stage_context_packets.get("packet_paths")),
         *(
@@ -5378,12 +5450,53 @@ def _run_autopilot_cycle(
         stage="agent-profiles",
         progress=(
             f"profile_count={len(agent_profile_contexts)};"
-            f"stage_packets={agent_stage_context_packets['packet_count']}"
+            f"stage_packets={agent_stage_context_packets['packet_count']};"
+            f"profile_set_passed={agent_profile_set_validation['passed']}"
         ),
         report_path=heartbeat_report_path,
         message="Agent profile context loaded for this cycle.",
         artifact_refs=agent_profile_artifact_refs,
     )
+    if require_agent_profile_set and not bool(agent_profile_set_validation.get("passed")):
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="agent-profile-set-blocked",
+            progress=(
+                "missing_stages="
+                + ",".join(_string_list(agent_profile_set_validation.get("missing_stages")))
+            ),
+            report_path=heartbeat_report_path,
+            message="Cycle blocked before online retrieval because Agent stage coverage failed.",
+            artifact_refs=agent_profile_artifact_refs,
+        )
+        agent_profile_blocked_summary: dict[str, Any] = {
+            "cycle_id": cycle_id,
+            "status": "blocked",
+            "blocked_reason": "agent_profile_set_gate",
+            "started_at": now.isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": project_id,
+            "vault": vault.as_posix(),
+            "cache": cache.as_posix(),
+            "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
+            "agent_stage_context_packets": agent_stage_context_packets,
+            "runtime_heartbeat": runtime_heartbeat,
+            "review": {"status": "skipped_agent_profile_set_gate"},
+            "followups": {
+                "state_path": state.as_posix(),
+                "task_count": 0,
+                "tasks": [],
+            },
+        }
+        summary_path = cycle_dir / "cycle-summary.json"
+        agent_profile_blocked_summary["summary_path"] = summary_path.as_posix()
+        summary_path.write_text(
+            json.dumps(agent_profile_blocked_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        return agent_profile_blocked_summary
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
         clients=literature_clients,
@@ -5435,6 +5548,7 @@ def _run_autopilot_cycle(
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
             "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
             "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
             "runtime_heartbeat": runtime_heartbeat,
@@ -5588,6 +5702,7 @@ def _run_autopilot_cycle(
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
             "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
             "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
             "candidate_path": candidate_path.as_posix(),
@@ -5729,6 +5844,7 @@ def _run_autopilot_cycle(
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
         "agent_profiles": agent_profiles,
+        "agent_profile_set_validation": agent_profile_set_validation,
         "agent_stage_context_packets": agent_stage_context_packets,
         "source_preflight": source_preflight,
         "candidate_path": candidate_path.as_posix(),
@@ -5898,6 +6014,7 @@ def _run_autopilot_cycle(
         "cycle_id": cycle_id,
         "project_id": project_id,
         "agent_profiles": summary["agent_profiles"],
+        "agent_profile_set_validation": summary["agent_profile_set_validation"],
         "agent_stage_context_packets": summary["agent_stage_context_packets"],
         "stage_agent_contexts": summary["agent_profiles"].get("stage_runtime_contexts", {}),
         "candidate": summary["candidate"],
@@ -5957,6 +6074,7 @@ def _run_autopilot_cycle(
         summary["loop_report"].get("json_path"),
         summary["loop_report"].get("markdown_path"),
         summary["runtime_heartbeat"].get("report_path"),
+        summary["agent_profile_set_validation"].get("output_path"),
         summary["agent_stage_context_packets"].get("manifest_path"),
         *_string_list(summary["agent_stage_context_packets"].get("packet_paths")),
         paper_build.to_dict().get("json_path"),
@@ -6203,6 +6321,7 @@ def _autopilot_review_audit_summary(
     )
     return {
         "agent_profiles": mapping(summary.get("agent_profiles")),
+        "agent_profile_set_validation": mapping(summary.get("agent_profile_set_validation")),
         "agent_stage_context_packets": mapping(summary.get("agent_stage_context_packets")),
         "candidate": _autopilot_candidate_review_summary(summary),
         "literature": {
@@ -8055,6 +8174,22 @@ def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
     typer.echo(
         f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}; "
         f"assigned_stages={stage_count}{readiness_text}"
+    )
+
+
+def _echo_agent_profile_set_status(summary: Mapping[str, object]) -> None:
+    validation = summary.get("agent_profile_set_validation")
+    if not isinstance(validation, Mapping):
+        return
+    required = bool(validation.get("required_for_cycle", False))
+    passed = validation.get("passed") is True
+    missing = _string_list(validation.get("missing_stages"))
+    prefix = "[OK]" if passed else ("[BLOCKED]" if required else "[WARN]")
+    typer.echo(
+        f"{prefix} agent_profile_set: {str(passed).lower()}; "
+        f"covered={validation.get('covered_stage_count', 'unknown')}/"
+        f"{len(_string_list(validation.get('required_stages')))}; "
+        f"missing={','.join(missing) if missing else '-'}"
     )
 
 

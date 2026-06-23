@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-001 - Runtime profile-set preflight focused checks exposed test and typing fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 01:45:00 +08:00
+- Source: Focused verification for task `237.1`.
+- Symptom: `test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix` failed because the test attempted to create an Agent profile without any skill or MCP binding. Focused mypy also reported `blocked_summary` was redefined inside `_run_autopilot_cycle`.
+- Impact: The new runtime profile-set gate behavior was not fully verified until the test fixture obeyed existing profile constraints and the duplicate local variable was renamed.
+- Evidence: Pytest reported `agent profile must bind at least one custom skill or MCP server`; mypy reported `Name "blocked_summary" already defined`.
+- Root cause: The new test fixture ignored the established AgentProfile invariant, and the new profile-set blocked branch reused the same local variable name as the existing source-preflight blocked branch.
+- Workaround: None needed after adding a local read-only skill to the test profile and renaming the first blocked summary variable.
+- Next action: Keep profile-set gate tests using valid profile artifacts with at least one bounded skill or MCP binding.
+- Linked tasks: `237.1`
+- Resolution: Added a local `source-tracing` skill to the require-gate test profile and renamed the profile-set branch summary variable to `agent_profile_blocked_summary`.
+- Verification: Focused profile-set tests, focused ruff, focused mypy, real require-gate smoke, broad smoke/unit tests, broad ruff, and broad mypy passed after the fix.
+
 ### P-20260623-014 - Heartbeat focused verification needed threshold and import-order fixes
 
 - Status: Resolved

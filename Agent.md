@@ -9904,3 +9904,37 @@ This file defines the project development standard for coding agents and records
   - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future asynchronous stage workers can read these packet artifacts directly, but any actual external tool action still needs MCP invocation evidence and any publication claim still needs literature, experiment, reproduction, review, publication-audit, and evidence-gate support.
+
+### 2026-06-24 01:44:41 +08:00 - Codex - Task 237.1 Runtime Agent profile-set preflight
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added runtime `agent-profile-set/agent-profile-set-validation.json` generation after `serve`/`autopilot` loads Agent profiles.
+  - Embedded the profile-set validation in `cycle-summary.json`, review evidence context, and review evidence bundles.
+  - Added `--require-agent-profile-set` to `serve` and `autopilot`; when enabled, incomplete CCF-B/Q2 stage coverage blocks the cycle before online retrieval or experiment execution.
+  - Kept default behavior audit-only so MVP/demo runs still work while exposing missing Agent responsibilities.
+  - Added task `237.1` and README/README.zh-CN documentation.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix -q` failed because the new test profile lacked any skill or MCP binding; fixed by adding a local read-only skill.
+  - Initial focused `python -m mypy src\autoresearch\cli\main.py` failed because the new blocked branch reused the existing `blocked_summary` local name; fixed by renaming it to `agent_profile_blocked_summary`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix -q`: passed with 2 tests after fixes.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI wrote an incomplete `literature-agent` profile and ran `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task237-profile-set-gate-v1\vault --cache runs\manual-live\task237-profile-set-gate-v1\cache --output-dir runs\manual-live\task237-profile-set-gate-v1\runs --deliverables-dir runs\manual-live\task237-profile-set-gate-v1\outputs --state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\runtime-heartbeats.json --project-id task237_profile_set_gate --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile runs\manual-live\task237-profile-set-gate-v1\profiles\literature-agent.json --require-agent-profile-set --no-review --cycles 1`: passed with blocked cycle `cycle-20260623T174307Z`.
+  - Real artifact inspection confirmed `status=blocked`, `blocked_reason=agent_profile_set_gate`, no `source_preflight`, validation path `agent-profile-set/agent-profile-set-validation.json`, `required_for_cycle=true`, `passed=false`, `covered=1/9`, and missing stages `research_plan,loop_campaign,experiment,reproduction,citations,review,publication_audit,evidence_gate`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 612 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+- Problems:
+  - Added resolved `P-20260624-001` for the focused test fixture and mypy local-name issues found while verifying this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A future full Agent-team bundle can use `--require-agent-profile-set` as a deployment preflight for unattended publication-grade runs; profile-set coverage remains process metadata and still cannot prove scientific claims without downstream evidence gates.
