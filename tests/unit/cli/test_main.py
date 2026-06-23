@@ -511,6 +511,105 @@ def test_agent_profile_team_template_writes_importable_bundle(tmp_path: Path) ->
     assert validation["missing_stages"] == []
 
 
+def test_agent_profile_inspect_set_cli_previews_materialized_team_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    inspection_path = tmp_path / "reports" / "team-inspection.json"
+    runner = CliRunner()
+
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+            "--profile-set-id",
+            "preview-team",
+        ],
+    )
+    inspect_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--materialize-skills",
+            "--output",
+            str(inspection_path),
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert inspect_result.exit_code == 0, inspect_result.output
+    assert "[OK] profile_set_inspection:" in inspect_result.stdout
+    assert "[OK] agent_profile_set_inspection: passed" in inspect_result.stdout
+    assert "[OK] stage_coverage: 9/9; profiles=3" in inspect_result.stdout
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    assert payload["inspection_kind"] == "agent_profile_set_inspection_process_metadata"
+    assert payload["profile_set_id"] == "preview-team"
+    assert payload["profile_count"] == 3
+    assert payload["validation"]["passed"] is True
+    assert payload["validation"]["covered_stage_count"] == 9
+    assert payload["profiles"][0]["context_kind"] == "agent_profile_process_metadata"
+    assert payload["profiles"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert payload["profiles"][0]["materialized_skills"][0]["sha256"]
+    assert payload["profiles"][0]["readiness"]["passed"] is True
+    assert any(profile["mcp_runtime_contracts"] for profile in payload["profiles"])
+    assert "scientific results" in payload["evidence_policy"]
+
+
+def test_agent_profile_inspect_set_cli_requires_complete_stage_matrix(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    bundle_path = tmp_path / "team.yaml"
+    inspection_path = tmp_path / "reports" / "incomplete-inspection.json"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: incomplete-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                f"        source: {skill_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--output",
+            str(inspection_path),
+            "--require-complete",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[OK] agent_profile_set_inspection: failed" in result.stdout
+    assert "[OK] stage_coverage: 1/2; profiles=1" in result.stdout
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    assert payload["validation"]["passed"] is False
+    assert payload["validation"]["missing_stages"] == ["review"]
+
+
 def test_agent_profile_import_set_cli_fails_missing_required_stage(
     tmp_path: Path,
 ) -> None:

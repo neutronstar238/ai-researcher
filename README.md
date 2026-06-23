@@ -29,7 +29,7 @@ automatically.
 | Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
-| Agent profiles | `airesearcher agents profile write`, `agents profile import`, `agents profile import-set`, and `agents profile team-template` bind custom skills and MCP servers to named agents; `serve` and `autopilot` load either per-agent profiles with repeatable `--agent-profile <json>` or a reusable team bundle with `--agent-profile-set-bundle <team.yaml>`, then record the materialized profile evidence in each cycle. |
+| Agent profiles | `airesearcher agents profile write`, `agents profile import`, `agents profile import-set`, `agents profile inspect-set`, and `agents profile team-template` bind custom skills and MCP servers to named agents; `serve` and `autopilot` load either per-agent profiles with repeatable `--agent-profile <json>` or a reusable team bundle with `--agent-profile-set-bundle <team.yaml>`, then record the materialized profile evidence in each cycle. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
 | Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
@@ -301,6 +301,10 @@ To bootstrap a complete editable team file, run
 `agents profile team-template --output .airesearcher/agents/ccfb-team.yaml`. It writes a default
 three-Agent CCF-B/Q2 team plus local skill Markdown files for source tracing, experiment protocol,
 and evidence review.
+Before importing or starting the runtime, run
+`agents profile inspect-set .airesearcher/agents/ccfb-team.yaml --materialize-skills --require-complete`
+to preview every Agent's bounded skill context, MCP runtime contract, readiness result, and stage
+coverage directly from the reusable bundle.
 For unattended runs, `serve` and `autopilot` can also load the same reusable team file directly
 with repeatable `--agent-profile-set-bundle <team.yaml>` flags. Each cycle materializes the bundle
 into `agent-profile-bundles/`, resolves relative local skill paths against the bundle file location,
@@ -497,6 +501,7 @@ Common npm shortcuts:
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
 | `agents profile import` | bundle `.json/.yaml/.toml`, `--output`, `--vault`, `--project-id` | Converts a reusable declarative Agent bundle into the same profile JSON used by `validate`, `inspect`, `serve`, and `autopilot`. The default scientific thinking contract is preserved and bundle additions are appended. |
 | `agents profile import-set` | profile-set bundle `.json/.yaml/.toml`, `--output-dir`, `--validation-output`, `--base-dir`, `--vault`, `--project-id`, `--allow-incomplete` | Converts a reusable multi-Agent bundle into one profile JSON per agent plus a profile-set validation report; exits nonzero by default when required research stages are missing or readiness fails. |
+| `agents profile inspect-set` | profile-set bundle `.json/.yaml/.toml`, `--materialize-skills`, `--base-dir`, `--env-path`, `--output`, `--require-complete` | Previews a reusable multi-Agent team bundle without importing it; reports each Agent runtime context, bounded local skill hashes, MCP contracts, readiness, and stage coverage. |
 | `agents profile team-template` | `--output`, `--skill-dir`, `--profile-set-id`, `--overwrite` | Writes an editable default three-Agent CCF-B/Q2 team bundle and local skill Markdown files that can be loaded directly with `--agent-profile-set-bundle`. |
 | `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
 | `agents profile set-validate` | profile JSON paths, `--required-stage`, `--env-path`, `--base-dir`, `--output` | Validates a multi-Agent skill/MCP profile set as a research-stage coverage matrix before unattended runs; exits nonzero on missing required stages, duplicate agents, readiness failures, or non-research/evidence-first thinking contracts. |

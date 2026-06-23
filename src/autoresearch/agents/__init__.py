@@ -26,6 +26,7 @@ from .messages import AgentMessage, MessageRiskLevel
 from .profiles import (
     DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    PROFILE_SET_EVIDENCE_POLICY,
     AgentMcpRuntimeContract,
     AgentMcpServerBinding,
     AgentProfile,
@@ -124,6 +125,7 @@ __all__ = [
     "DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS",
     "MCP_INVOCATION_EVIDENCE_KIND",
     "MCP_INVOCATION_EVIDENCE_POLICY",
+    "PROFILE_SET_EVIDENCE_POLICY",
     "McpApprovalPolicy",
     "McpInvocationEvidenceValidation",
     "McpInvocationStatus",

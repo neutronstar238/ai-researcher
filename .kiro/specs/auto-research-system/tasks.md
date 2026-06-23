@@ -2989,6 +2989,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `241.1` and `242.1`; user request for deployment once, then a reliable 24h operator startup._
     - _Verify: focused readiness/npm-script tests, focused ruff, focused mypy, real setup plus strict prelaunch smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 244. Agent team bundle inspection preview
+  - [x] 244.1 Preview reusable Agent skill/MCP teams before runtime
+    - Add `airesearcher agents profile inspect-set <team.yaml>` so operators can inspect a reusable multi-Agent bundle without importing profiles or starting a cycle.
+    - Include each Agent runtime context, readiness report, materialized local skill hashes when requested, MCP runtime contracts, stage coverage, and the profile-set evidence policy.
+    - Default to a non-mutating preview that can show incomplete bundles; add `--require-complete` to make missing stage coverage or readiness failures exit nonzero.
+    - Resolve relative local skill paths against the bundle file location unless `--base-dir` is explicitly supplied.
+    - Keep the inspection scoped to process metadata and responsibility routing only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the team preview command and evidence boundary.
+    - _References: tasks `240.1`, `241.1`, `242.1`, and `243.1`; user request to assign custom skills and MCPs to specific Agents while preserving CCF-B/Q2 evidence gates and one-step unattended operation._
+    - _Verify: focused `inspect-set` CLI tests, focused ruff, focused mypy, real CLI team-template plus inspect-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3621,6 +3632,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 146,
       "tasks": ["243.1"]
+    },
+    {
+      "id": 147,
+      "tasks": ["244.1"]
     }
   ]
 }

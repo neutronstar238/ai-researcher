@@ -21,6 +21,7 @@ from autoresearch import __version__
 from autoresearch.agents import (
     DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    PROFILE_SET_EVIDENCE_POLICY,
     AgentProfile,
     AgentProfileReadinessReport,
     AgentThinkingMode,
@@ -1086,6 +1087,91 @@ def inspect_agent_profile_command(
     )
 
 
+@agent_profiles_app.command("inspect-set")
+def inspect_agent_profile_set_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile-set bundle to inspect."),
+    ],
+    materialize_skills: Annotated[
+        bool,
+        typer.Option(
+            "--materialize-skills/--no-materialize-skills",
+            help="Attach bounded local skill content with hashes and truncation metadata.",
+        ),
+    ] = False,
+    base_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--base-dir",
+            help="Base directory for relative local skill sources. Defaults to the bundle directory.",
+        ),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    max_skill_chars: Annotated[
+        int,
+        typer.Option(
+            "--max-skill-chars",
+            min=0,
+            help="Maximum characters to attach per local skill when materializing.",
+        ),
+    ] = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional inspection JSON output path."),
+    ] = None,
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless the bundle covers all required research stages.",
+        ),
+    ] = False,
+) -> None:
+    """Preview a reusable multi-Agent skill/MCP team bundle without importing it."""
+
+    try:
+        inspection = _inspect_agent_profile_set_bundle(
+            bundle_path=bundle_path,
+            base_dir=base_dir,
+            env_path=env_path,
+            materialize_skills=materialize_skills,
+            max_skill_chars=max_skill_chars,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_inspect: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    serialized = json.dumps(inspection, indent=2, sort_keys=True) + "\n"
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(serialized, encoding="utf-8")
+        typer.echo(f"[OK] profile_set_inspection: {output}")
+    else:
+        typer.echo(serialized, nl=False)
+
+    validation = inspection["validation"]
+    if isinstance(validation, Mapping):
+        passed = bool(validation.get("passed"))
+        covered = int(validation.get("covered_stage_count", 0) or 0)
+        required = _string_list(validation.get("required_stages"))
+    else:
+        passed = False
+        covered = 0
+        required = []
+    verdict = "passed" if passed else "failed"
+    typer.echo(f"[OK] agent_profile_set_inspection: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {covered}/{len(required)}; "
+        f"profiles={inspection['profile_count']}"
+    )
+    if require_complete and not passed:
+        raise typer.Exit(1)
+
+
 @agent_profiles_app.command("validate")
 def validate_agent_profile_command(
     profile_path: Annotated[
@@ -1528,6 +1614,55 @@ def _load_agent_profile_contexts(
         context["readiness"] = readiness.model_dump(mode="json")
         contexts.append(context)
     return tuple(contexts)
+
+
+def _inspect_agent_profile_set_bundle(
+    *,
+    bundle_path: Path,
+    base_dir: Path | None,
+    env_path: Path,
+    materialize_skills: bool,
+    max_skill_chars: int,
+) -> dict[str, Any]:
+    bundle = load_agent_profile_set_bundle(bundle_path)
+    profiles = build_agent_profiles_from_set_bundle(bundle)
+    resolved_base_dir = base_dir or bundle_path.parent
+    env = _merged_optional_env(env_path)
+    readiness_reports = tuple(
+        evaluate_agent_profile_readiness(
+            profile,
+            base_dir=resolved_base_dir,
+            env=env,
+        )
+        for profile in profiles
+    )
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=bundle.required_stages,
+        readiness_reports=readiness_reports,
+    )
+    profile_contexts = tuple(
+        profile.to_runtime_context(
+            base_dir=resolved_base_dir,
+            materialize_skills=materialize_skills,
+            max_skill_chars=max_skill_chars,
+        )
+        | {"readiness": readiness.model_dump(mode="json")}
+        for profile, readiness in zip(profiles, readiness_reports, strict=True)
+    )
+    return {
+        "inspection_kind": "agent_profile_set_inspection_process_metadata",
+        "source_bundle_path": bundle_path.as_posix(),
+        "base_dir": resolved_base_dir.as_posix(),
+        "profile_set_id": bundle.profile_set_id,
+        "profile_count": len(profiles),
+        "profiles": profile_contexts,
+        "validation": validation.model_dump(mode="json"),
+        "stage_coverage": [
+            row.model_dump(mode="json") for row in validation.stage_coverage
+        ],
+        "evidence_policy": PROFILE_SET_EVIDENCE_POLICY,
+    }
 
 
 def _materialize_agent_profile_set_bundles(

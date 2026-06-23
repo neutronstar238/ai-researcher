@@ -10147,3 +10147,37 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - The prelaunch Agent team gate validates runtime routing readiness only. It must not be interpreted as evidence for scientific conclusions, novelty, metrics, citations, MCP invocation, publication audit, paper build, or evidence gate acceptance.
+
+### 2026-06-24 02:55:20 +08:00 - Codex - Task 244.1 Agent team bundle inspection preview
+
+- Request: Continue toward setup-once operation while letting operators preview the exact reusable Agent skill/MCP team before importing or starting unattended runtime.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile inspect-set <team.yaml>` to preview a reusable multi-Agent profile-set bundle without importing profiles or starting a cycle.
+  - The inspection JSON includes each Agent runtime context, optional bounded local skill materialization with hashes, MCP runtime contracts, readiness reports, stage coverage, and the profile-set process-metadata evidence policy.
+  - `inspect-set` resolves relative local skill paths against the bundle file location by default and supports `--base-dir`, `--env-path`, `--output`, `--materialize-skills`, `--max-skill-chars`, and `--require-complete`.
+  - Added CLI regressions for a complete setup-style team bundle and for `--require-complete` blocking an incomplete stage matrix.
+  - Updated README/README.zh-CN and added task `244.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_inspect_set_cli_previews_materialized_team_bundle tests\unit\cli\test_main.py::test_agent_profile_inspect_set_cli_requires_complete_stage_matrix -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\agents\__init__.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py src\autoresearch\agents\__init__.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task244-inspect-set-v1\agents\ccfb-team.yaml`: passed and wrote the default three-Agent team bundle plus local skill files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect-set runs\manual-live\task244-inspect-set-v1\agents\ccfb-team.yaml --materialize-skills --output runs\manual-live\task244-inspect-set-v1\inspection.json`: passed with `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`.
+  - Real inspection artifact check confirmed `validation.passed=true`, `covered_stage_count=9`, `profile_count=3`, loaded local skill materialization with SHA-256, and at least one MCP runtime contract.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 625 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Team bundle inspection remains process-routing metadata only. It must not be used as evidence for scientific results, novelty, benchmark metrics, citation validity, MCP invocation, publication readiness, paper-build acceptance, or evidence-gate acceptance.
