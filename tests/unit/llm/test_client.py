@@ -271,6 +271,62 @@ def test_evaluate_llm_review_quality_caps_missing_next_steps() -> None:
     assert result.score <= 0.5
 
 
+def test_evaluate_llm_review_quality_rejects_profile_context_as_scientific_evidence() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report is grounded in local evidence.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "stage_agent_contexts and the source-tracing skill prove "
+                            "the novelty, benchmark accuracy result, and publication "
+                            "readiness of the manuscript."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep evidence attached."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is False
+    assert result.score <= 0.5
+    assert llm_client._has_failed_review_critical_checks(result) is True
+
+
+def test_evaluate_llm_review_quality_allows_profile_context_process_findings() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report includes process context without result claims.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "stage_agent_contexts identify the reviewer responsibility "
+                            "boundaries and available tool context."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep the process context attached to the evidence bundle."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is True
+    assert result.score == 1.0
+
+
 def test_run_llm_review_retries_once_on_critical_quality_failure(
     tmp_path: Path,
     monkeypatch,

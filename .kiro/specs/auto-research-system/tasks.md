@@ -2721,6 +2721,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `216.1`, `217.1`, and `218.1`; Loop Engineering requirement that evidence gates cannot be bypassed by agent/tool declarations._
     - _Verify: focused LLM reviewer prompt tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
 
+- [x] 220. Deterministic reviewer profile-context misuse gate
+  - [x] 220.1 Block reviewer outputs that use profiles as scientific evidence
+    - Add a local LLM-review quality check named `profile_context_not_used_as_scientific_evidence`.
+    - Fail review outputs that combine profile/stage/skill/MCP context with proof language for scientific results, novelty, benchmark metrics, citations, publication readiness, or tool invocation.
+    - Keep legitimate process findings about responsibility boundaries and available tool context passing.
+    - Make the new check critical so bad outputs trigger repair or fail closed.
+    - Update README/README.zh-CN to describe the deterministic gate, not only the prompt instruction.
+    - _References: task `219.1`; user requirement to rely on evidence gates instead of prompt-only self-discipline._
+    - _Verify: focused LLM-review quality tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3257,6 +3267,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 122,
       "tasks": ["219.1"]
+    },
+    {
+      "id": 123,
+      "tasks": ["220.1"]
     }
   ]
 }

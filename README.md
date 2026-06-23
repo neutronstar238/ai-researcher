@@ -220,7 +220,8 @@ includes `stage_agent_contexts`, so downstream stage workers can consume only th
 context assigned to that stage. Profiles still provide method/tool context only; publication claims
 require the normal evidence, reproduction, review, paper-build, and release gates. The LLM reviewer
 is instructed to treat profile and stage context as process metadata, not as proof of scientific
-results, tool invocation, novelty, or publication readiness.
+results, tool invocation, novelty, or publication readiness; the local reviewer quality gate also
+blocks findings that try to use profile context for those claims.
 
 Each cycle can run:
 

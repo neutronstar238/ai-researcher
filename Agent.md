@@ -9293,3 +9293,31 @@ This file defines the project development standard for coding agents and records
   - None.
 - Follow-up:
   - Future reviewer hardening can add deterministic checks for misuse of profile context in reviewer outputs if live reviews show that failure mode.
+
+### 2026-06-23 14:12:48 +08:00 - Codex - Task 220.1 Deterministic reviewer profile-context misuse gate
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and custom Agent skill/MCP support by replacing prompt-only profile-context discipline with a local reviewer quality gate.
+- Files changed:
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `profile_context_not_used_as_scientific_evidence` to LLM review quality checks.
+  - Made the new check critical so reviewer outputs that use Agent profiles, stage contexts, skills, or MCP allowlists as proof of scientific results, novelty, benchmark metrics, citations, publication readiness, or tool invocation trigger repair or fail closed.
+  - Kept process-only findings about responsibility boundaries and available tool context valid.
+  - Updated English and Chinese README guidance and added completed task `220.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\llm\test_client.py -q`: passed, 16 tests.
+  - Focused `python -m ruff check src\autoresearch\llm\client.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\llm`: passed with no issues in 3 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 567 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - If live reviewer outputs show subtler profile-context misuse, extend the deterministic misuse detector with evidence-backed examples rather than broadening it speculatively.

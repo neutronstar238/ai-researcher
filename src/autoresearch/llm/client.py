@@ -18,6 +18,70 @@ from autoresearch.schemas import file_hash
 
 REVIEW_SUBJECT_MAX_CHARS = 36_000
 REVIEW_EVIDENCE_MAX_CHARS = 3_000
+PROFILE_CONTEXT_TERMS = (
+    "agent_profiles",
+    "stage_runtime_contexts",
+    "stage_agent_contexts",
+    "agent profile",
+    "profile context",
+    "skill",
+    "skills",
+    "mcp",
+    "allowlist",
+    "allowlists",
+)
+PROFILE_PROOF_TERMS = (
+    "prove",
+    "proves",
+    "proof",
+    "support",
+    "supports",
+    "supported",
+    "validate",
+    "validates",
+    "validated",
+    "verify",
+    "verifies",
+    "verified",
+    "confirm",
+    "confirms",
+    "confirmed",
+    "demonstrate",
+    "demonstrates",
+    "establish",
+    "establishes",
+    "evidence for",
+)
+PROFILE_SCIENTIFIC_CLAIM_TERMS = (
+    "scientific result",
+    "scientific results",
+    "result",
+    "results",
+    "novelty",
+    "benchmark",
+    "metric",
+    "metrics",
+    "accuracy",
+    "f1",
+    "citation",
+    "citations",
+    "publication readiness",
+    "publishable",
+    "tool invocation",
+    "tool was invoked",
+    "tool use",
+)
+PROFILE_CONTEXT_NEGATION_TERMS = (
+    "not evidence",
+    "not proof",
+    "cannot prove",
+    "does not prove",
+    "doesn't prove",
+    "process metadata",
+    "responsibility boundary",
+    "responsibility boundaries",
+    "available tool context",
+)
 
 
 class LLMClientError(RuntimeError):
@@ -310,6 +374,7 @@ def evaluate_llm_review_quality(
         "finding_refs_known": False,
         "unsupported_claims_present": False,
         "next_steps_present": False,
+        "profile_context_not_used_as_scientific_evidence": False,
         "no_secret_leak": _has_no_secret_leak(response_text, secret_values or []),
         "no_fake_urls": not bool(re.search(r"https?://", response_text, flags=re.IGNORECASE)),
     }
@@ -344,6 +409,9 @@ def evaluate_llm_review_quality(
                 decoded.get("next_steps"),
                 minimum=1,
             )
+            checks["profile_context_not_used_as_scientific_evidence"] = (
+                not _review_misuses_profile_context(findings)
+            )
         else:
             issues.append("Review response JSON top-level value is not an object")
 
@@ -361,6 +429,7 @@ def evaluate_llm_review_quality(
         "finding_refs_known",
         "unsupported_claims_present",
         "next_steps_present",
+        "profile_context_not_used_as_scientific_evidence",
         "no_secret_leak",
         "no_fake_urls",
     )
@@ -393,6 +462,7 @@ def _has_failed_review_critical_checks(quality: LLMReviewQuality) -> bool:
         "finding_refs_known",
         "unsupported_claims_present",
         "next_steps_present",
+        "profile_context_not_used_as_scientific_evidence",
         "no_secret_leak",
         "no_fake_urls",
     )
@@ -700,6 +770,29 @@ def _finding_evidence_refs(findings: Any) -> list[list[str]]:
             continue
         refs_by_finding.append([ref for ref in refs if isinstance(ref, str) and ref.strip()])
     return refs_by_finding
+
+
+def _review_misuses_profile_context(findings: Any) -> bool:
+    if not isinstance(findings, list):
+        return False
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        claim = finding.get("claim")
+        if isinstance(claim, str) and _misuses_profile_context_as_evidence(claim):
+            return True
+    return False
+
+
+def _misuses_profile_context_as_evidence(text: str) -> bool:
+    lower = text.lower()
+    if any(term in lower for term in PROFILE_CONTEXT_NEGATION_TERMS):
+        return False
+    return (
+        any(term in lower for term in PROFILE_CONTEXT_TERMS)
+        and any(term in lower for term in PROFILE_PROOF_TERMS)
+        and any(term in lower for term in PROFILE_SCIENTIFIC_CLAIM_TERMS)
+    )
 
 
 def _chat_completions_endpoint(base_url: str) -> str:
