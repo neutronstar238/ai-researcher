@@ -19,6 +19,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
 | 研究计划门禁 | 用户确认研究方向后，`airesearcher research-plan` 会先把可执行研究计划写入 vault，并在 `outputs/<project-id>/research-plan/` 下生成 LaTeX/PDF，之后才允许代码 Agent 做实验。 |
+| 闭环 campaign | 每个已确认方向会被初始化为 protocol-as-code campaign：明确目标、预算、候选空间、基线、停止条件、DOE/证据增益候选选择、闭环指标和可回滚质量门禁。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
@@ -164,16 +165,18 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 2. ArXiv 和 OpenAlex 文献刷新，Semantic Scholar 作为可选低优先级来源。
 3. 有来源支撑的相似工作和创新性检查。
 4. 用户确认方向后的研究计划生成与门禁。
-5. Hugging Face 和 Hacker News 灵感抓取。
-6. 本地 demo 或真实公开 benchmark 实验。
-7. 命令行复现实验检查。
-8. 可选真实 LLM 证据评审。
-9. publication audit。
-10. LaTeX 论文构建。
-11. physical evidence gate。
-12. Obsidian review、issue、skill、strategy 写入。
-13. scheduler follow-up 合并。
-14. 可选微信/飞书灵感摘要推送。
+5. 闭环 campaign 初始化与 DOE/证据增益候选选择。
+6. Hugging Face 和 Hacker News 灵感抓取。
+7. 本地 demo 或真实公开 benchmark 实验。
+8. 命令行复现实验检查。
+9. 可选真实 LLM 证据评审。
+10. 生成包含 AF、EF、复现误差、元数据完整率、失败恢复率和证据覆盖率的 loop report。
+11. publication audit。
+12. LaTeX 论文构建。
+13. physical evidence gate。
+14. Obsidian review、issue、skill、strategy 写入。
+15. scheduler follow-up 合并。
+16. 可选微信/飞书灵感摘要推送。
 
 V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 
@@ -198,7 +201,7 @@ npm run monitor
 airesearcher monitor
 ```
 
-监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
+监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、闭环 campaign、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
 
 | 参数 | 作用 |
 | --- | --- |
@@ -329,6 +332,8 @@ outputs/<project-id>/
 - `research-plan/research-plan.tex`
 - `research-plan/research-plan.pdf`
 - `research-plan/research-plan.json`
+- `loop-campaign/loop-campaign.json`
+- `loop-campaign/loop-report.md`
 - `<project-id>-<cycle-id>.pdf`
 - 生成的 `.tex`
 - `paper-build.json`
@@ -337,7 +342,7 @@ outputs/<project-id>/
 - `cycle-summary.json`
 - manifest `.json` 和 `.md`
 
-不能因为 PDF 存在就声称论文可发表。发表级声明必须来自同一 cycle 的 publication audit 和 evidence gate 通过结果。
+不能因为 PDF 存在就声称论文可发表。发表级声明必须来自同一 cycle 的闭环 campaign 质量门禁、publication audit 和 evidence gate 通过结果。
 
 ## 外部参考与许可证
 

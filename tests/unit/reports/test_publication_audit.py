@@ -169,6 +169,24 @@ def test_publication_audit_blocks_missing_citation_package_for_ccfb(
     assert report.publishable is False
 
 
+def test_publication_audit_blocks_missing_loop_campaign_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    Path(summary["loop_campaign"]["json_path"]).unlink()
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["loop_campaign_artifacts"].status.value == "fail"
+    assert checks["loop_campaign_quality_gate"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
 def test_publication_audit_blocks_unverifiable_citations_for_ccfb(
     tmp_path: Path,
 ) -> None:
@@ -536,6 +554,49 @@ def test_publication_audit_blocks_weak_positive_method_effect(
     assert report.publishable is False
 
 
+def _write_loop_artifacts(cycle_dir: Path) -> dict[str, dict[str, object]]:
+    loop_dir = cycle_dir / "loop-campaign"
+    loop_dir.mkdir(parents=True, exist_ok=True)
+    loop_campaign = loop_dir / "loop-campaign.json"
+    loop_report = loop_dir / "loop-report.md"
+    loop_report.write_text("# Loop Engineering Report\n", encoding="utf-8")
+    loop_campaign.write_text(
+        json.dumps(
+            {
+                "metrics": {
+                    "acceleration_factor": 2.0,
+                    "enhancement_factor": 1.01,
+                    "experiment_count": 1,
+                    "failure_recovery_rate": 1.0,
+                    "reproduction_delta": 0.0,
+                    "metadata_completeness": 1.0,
+                    "evidence_coverage": 1.0,
+                    "reward": 0.4,
+                },
+                "quality_gate": {"passed": True, "issues": [], "warnings": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "loop_campaign": {
+            "campaign_id": "loop_campaign_1",
+            "json_path": loop_campaign.as_posix(),
+            "markdown_path": loop_report.as_posix(),
+            "metrics": {
+                "metadata_completeness": 1.0,
+                "evidence_coverage": 1.0,
+                "reproduction_delta": 0.0,
+            },
+            "quality_gate": {"passed": True},
+        },
+        "loop_report": {
+            "json_path": loop_campaign.as_posix(),
+            "markdown_path": loop_report.as_posix(),
+        },
+    }
+
+
 def _write_toy_cycle(tmp_path: Path) -> Path:
     cycle_dir = tmp_path / "runs" / "cycle-test"
     experiment_dir = cycle_dir / "demo" / "tabular-baseline"
@@ -637,6 +698,7 @@ def _write_toy_cycle(tmp_path: Path) -> Path:
         "- Source URL/DOI: `https://arxiv.org/abs/0000.00000` / `unknown`\n",
         encoding="utf-8",
     )
+    loop_artifacts = _write_loop_artifacts(cycle_dir)
     cycle_summary = {
         "cycle_id": "cycle-test",
         "project_id": "project_1",
@@ -677,6 +739,7 @@ def _write_toy_cycle(tmp_path: Path) -> Path:
             "quality_score": 1.0,
             "verdict": "pass",
         },
+        **loop_artifacts,
     }
     summary_path = cycle_dir / "cycle-summary.json"
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")
@@ -1045,6 +1108,7 @@ def _write_real_benchmark_cycle(
         relevant=relevant_citations,
         direct=direct_citations,
     )
+    loop_artifacts = _write_loop_artifacts(cycle_dir)
     cycle_summary = {
         "cycle_id": "cycle-real",
         "project_id": "project_1",
@@ -1078,6 +1142,7 @@ def _write_real_benchmark_cycle(
             "quality_score": 1.0,
             "verdict": "pass",
         },
+        **loop_artifacts,
     }
     summary_path = cycle_dir / "cycle-summary.json"
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")

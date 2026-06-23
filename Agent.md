@@ -9074,3 +9074,45 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-001`.
 - Follow-up:
   - Push the resolved PR branch and re-check GitHub mergeability/check status.
+
+### 2026-06-23 13:04:59 +08:00 - Codex - Task 214.1 Loop Engineering closed-loop campaign layer
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan so the self-loop becomes a governed closed-loop research system rather than prompt-only iteration.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/promotion.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/experiments/test_promotion.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a closed-loop campaign model with protocol-as-code fields for goals, metrics, budget, data sources, candidates, baselines, stop criteria, approvals, and evidence requirements.
+  - Added DOE/grid first-round candidate selection, evidence-gain selection for later rounds, and repair/freeze behavior after consecutive failures.
+  - Added loop metrics for AF, EF, metadata completeness, reproduction delta, failure recovery rate, evidence coverage, experiment count, and reward.
+  - Added failure categories for `source`, `protocol`, `execution`, `metric`, `validation`, `review`, `cost`, and `safety`.
+  - Added JSON, Markdown, and Obsidian loop-report artifact writing and wired the artifact into `autopilot`/`serve` after the research-plan gate and before experiment execution.
+  - Hardened evidence gate, publication audit, and strategy promotion so metadata/reproduction/evidence regressions or missing loop artifacts block release/promotion.
+  - Updated English and Chinese README product copy so V1.0 is described as an evidence-first closed-loop research system.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed, 42 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 556 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 106 source files.
+  - Real isolated CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task214-loop\vault --cache runs\manual-live\task214-loop\cache --output-dir runs\manual-live\task214-loop\runs --deliverables-dir runs\manual-live\task214-loop\outputs --state runs\manual-live\task214-loop\scheduler.json --sessions-state runs\manual-live\task214-loop\sessions.json --project-id task214-loop-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration`: passed.
+  - Real cycle `cycle-20260623T050627Z` wrote `loop-campaign/loop-campaign.json`, `loop-campaign/loop-report.md`, a vault progress note, `paper-build/main.pdf`, and copied the output PDF/manifest under `runs\manual-live\task214-loop\outputs\task214-loop-smoke`.
+  - Real cycle gate behavior: `loop_campaign_gate` passed with metadata completeness `0.916667`, evidence coverage `1.0`, and reproduction delta `0.0`; publication audit failed and evidence gate blocked release because the intentionally tiny smoke run had only 1 query, 2 literature records, 4 validation rows, missing ablations/statistical sanity, and a review verdict of `needs_revision`.
+- Problems:
+  - Added and resolved `P-20260623-002` for loop gates passing from summary metrics after the physical loop campaign artifact was removed.
+- Follow-up:
+  - Run the same loop on the default public benchmark with normal search breadth before claiming publication-level output; the smoke run intentionally proved the gate blocks toy-data release.
