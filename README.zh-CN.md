@@ -22,7 +22,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 | 闭环 campaign | 每个已确认方向会被初始化为 protocol-as-code campaign：明确目标、预算、候选空间、基线、停止条件、DOE/证据增益候选选择、闭环指标和可回滚质量门禁。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
-| Agent profile | `airesearcher agents profile write` 可以把自定义 skill 和 MCP server 绑定到某个 Agent，并要求科学思维契约、MCP tool 白名单和 vault 可见记录。 |
+| Agent profile | `airesearcher agents profile write` 可以把自定义 skill 和 MCP server 绑定到某个 Agent；`serve` / `autopilot` 可以通过可重复的 `--agent-profile <json>` 加载这些 profile，并写入 cycle 证据。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
 | 发表门禁 | CCF-B/三区级别声明必须绑定真实来源、实验记录、复现检查、审计、PDF 构建和 evidence gate。 |
 
@@ -158,6 +158,16 @@ airesearcher serve --permission-mode allow-all --push-inspiration
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
+可以给常驻运行入口绑定单个或多个 Agent profile：
+
+```bash
+airesearcher serve \
+  --agent-profile .airesearcher/agents/literature-agent.json \
+  --agent-profile .airesearcher/agents/reviewer-agent.json
+```
+
+这些 profile 会写入 `cycle-summary.json`、`review-evidence-context.json` 和 operator monitor。它们只提供受控 skill/MCP 上下文，不能绕过证据、复现、评审、论文构建和发布门禁。
+
 `autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
 
 每一轮 cycle 可以执行：
@@ -202,7 +212,7 @@ npm run monitor
 airesearcher monitor
 ```
 
-监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、闭环 campaign、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
+监控台会显示最近 Agent 消息、活跃文件声明、已加载 Agent profile、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、闭环 campaign、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
 
 | 参数 | 作用 |
 | --- | --- |
@@ -282,6 +292,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 检索广度。仅 smoke 时降低。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
+| `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence 和 monitor；可重复传入多个。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |

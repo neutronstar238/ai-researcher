@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-004 - Agent profile monitor test asserted Rich-wrapped cell text too tightly
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 14:18:00 +08:00
+- Source: Focused verification for task `216.1`.
+- Symptom: `test_monitor_renders_agent_flow_changes_and_preview` failed while looking for the literal combined string `page-agent:browser.search` and then `browser.search` in `result.stdout`.
+- Impact: Product behavior was not broken, but the focused verification gate could not pass until the test stopped depending on terminal-width wrapping.
+- Evidence: Pytest showed the monitor command exited successfully while Rich output did not contain the exact literal due table wrapping/truncation.
+- Root cause: The test asserted on a rendered Rich table cell instead of the stable row helper output.
+- Workaround: None needed after the assertion fix.
+- Next action: Prefer helper-level exact assertions for Rich table cell content and keep stdout checks to stable panel/title/identifier text.
+- Linked tasks: `216.1`
+- Resolution: Kept stdout assertions for the Agent Profiles panel, agent ID, skill ID, and MCP server ID, and added exact coverage through `_agent_profile_rows(summary)`.
+- Verification: Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests.
+
 ### P-20260623-003 - Agent profile verification had local command hygiene issues
 
 - Status: Resolved

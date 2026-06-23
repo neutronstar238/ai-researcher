@@ -701,6 +701,59 @@ def inspect_agent_profile_command(
     typer.echo(json.dumps(profile.to_runtime_context(), indent=2, sort_keys=True))
 
 
+def _load_agent_profile_contexts(profile_paths: Iterable[Path]) -> tuple[dict[str, Any], ...]:
+    contexts: list[dict[str, Any]] = []
+    seen_agent_ids: set[str] = set()
+    for profile_path in profile_paths:
+        try:
+            profile = load_agent_profile(profile_path)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            msg = f"failed to load agent profile {profile_path}: {exc}"
+            raise RuntimeError(msg) from exc
+        if profile.agent_id in seen_agent_ids:
+            msg = f"duplicate agent profile for agent_id {profile.agent_id}"
+            raise RuntimeError(msg)
+        seen_agent_ids.add(profile.agent_id)
+        context = profile.to_runtime_context()
+        context["profile_path"] = profile_path.as_posix()
+        contexts.append(context)
+    return tuple(contexts)
+
+
+def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dict[str, Any]:
+    profiles: list[dict[str, Any]] = []
+    for context in profile_contexts:
+        skills = _mapping_list(context.get("skills"))
+        mcp_servers = _mapping_list(context.get("mcp_servers"))
+        profiles.append(
+            {
+                "agent_id": str(context.get("agent_id", "")),
+                "role": str(context.get("role", "")),
+                "thinking_mode": str(context.get("thinking_mode", "")),
+                "publication_target": str(context.get("publication_target", "")),
+                "profile_path": str(context.get("profile_path", "")),
+                "skill_ids": [str(skill.get("skill_id", "")) for skill in skills],
+                "mcp_servers": [
+                    {
+                        "server_id": str(server.get("server_id", "")),
+                        "allowed_tools": _string_list(server.get("allowed_tools")),
+                        "approval_policy": str(server.get("approval_policy", "")),
+                    }
+                    for server in mcp_servers
+                ],
+            }
+        )
+    return {
+        "count": len(profiles),
+        "profiles": profiles,
+        "runtime_contexts": list(profile_contexts),
+        "evidence_policy": (
+            "Agent profiles provide bounded skill/MCP context only; publication claims still "
+            "require loop, review, audit, evidence, and reproduction gates."
+        ),
+    }
+
+
 @app.command("skill-evolve")
 def skill_evolve(
     vault: Annotated[
@@ -3383,6 +3436,13 @@ def autopilot(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    agent_profile: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile",
+            help="Agent profile JSON to load into this cycle. Repeat for multiple agents.",
+        ),
+    ] = None,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -3449,6 +3509,7 @@ def autopilot(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
+                    agent_profile_paths=tuple(agent_profile or ()),
                     push_inspiration=push_inspiration,
                 )
             except RuntimeError as exc:
@@ -3460,6 +3521,7 @@ def autopilot(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profiles_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
@@ -3590,6 +3652,13 @@ def serve(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    agent_profile: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile",
+            help="Agent profile JSON to load into this runtime. Repeat for multiple agents.",
+        ),
+    ] = None,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -3711,6 +3780,7 @@ def serve(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
+                    agent_profile_paths=tuple(agent_profile or ()),
                     push_inspiration=push_inspiration,
                     runtime_network_metadata=runtime_network_metadata,
                 )
@@ -3723,6 +3793,7 @@ def serve(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profiles_status(summary)
             _echo_research_plan_status(summary)
             _echo_loop_campaign_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
@@ -4353,6 +4424,7 @@ def _run_autopilot_cycle(
     min_quality_score: float,
     review: bool,
     paper_template_id: str,
+    agent_profile_paths: tuple[Path, ...],
     push_inspiration: bool,
     runtime_network_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -4361,6 +4433,8 @@ def _run_autopilot_cycle(
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
     _load_optional_env(env_path)
+    agent_profile_contexts = _load_agent_profile_contexts(agent_profile_paths)
+    agent_profiles = _agent_profiles_summary(agent_profile_contexts)
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
         clients=literature_clients,
@@ -4380,6 +4454,7 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profiles": agent_profiles,
             "source_preflight": source_preflight,
             "review": {"status": "skipped_source_preflight"},
             "followups": {
@@ -4461,6 +4536,7 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profiles": agent_profiles,
             "source_preflight": source_preflight,
             "candidate_path": candidate_path.as_posix(),
             "literature": {
@@ -4535,6 +4611,7 @@ def _run_autopilot_cycle(
         "project_id": project_id,
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
+        "agent_profiles": agent_profiles,
         "source_preflight": source_preflight,
         "candidate_path": candidate_path.as_posix(),
         "literature": {
@@ -4647,6 +4724,7 @@ def _run_autopilot_cycle(
         "audit_summary": review_audit_summary,
         "cycle_id": cycle_id,
         "project_id": project_id,
+        "agent_profiles": summary["agent_profiles"],
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
@@ -4695,6 +4773,10 @@ def _run_autopilot_cycle(
         summary["loop_report"].get("markdown_path"),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
+        *[
+            profile.get("profile_path")
+            for profile in _mapping_list(summary["agent_profiles"].get("profiles"))
+        ],
         *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
     ):
         if isinstance(optional_path, str | Path):
@@ -4858,6 +4940,7 @@ def _autopilot_review_audit_summary(
         citation_metadata_path=citations.get("metadata_path"),
     )
     return {
+        "agent_profiles": mapping(summary.get("agent_profiles")),
         "candidate": _autopilot_candidate_review_summary(summary),
         "literature": {
             "query_count": literature.get("query_count"),
@@ -6586,6 +6669,20 @@ def _echo_loop_campaign_status(summary: Mapping[str, object]) -> None:
     typer.echo(f"{prefix} loop_campaign: {str(passed).lower()}{metric_text}")
 
 
+def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
+    agent_profiles = summary.get("agent_profiles")
+    if not isinstance(agent_profiles, Mapping):
+        return
+    count = int(agent_profiles.get("count", 0) or 0)
+    if count <= 0:
+        return
+    profile_ids = [
+        str(profile.get("agent_id", "unknown"))
+        for profile in _mapping_list(agent_profiles.get("profiles"))
+    ]
+    typer.echo(f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}")
+
+
 def _review_status_display(review: object) -> tuple[str, str]:
     if not isinstance(review, Mapping):
         return "[BLOCKED]", "missing"
@@ -7024,6 +7121,16 @@ def _render_operator_monitor(
                     border_style="green",
                     box=box.ASCII,
                 ),
+                Panel(
+                    _state_table(
+                        title="Agent Profiles",
+                        rows=_agent_profile_rows(summary_path),
+                        columns=("agent", "role", "skills", "mcp"),
+                    ),
+                    title="Agent Profiles",
+                    border_style="blue",
+                    box=box.ASCII,
+                ),
             ),
             equal=True,
             expand=True,
@@ -7155,6 +7262,33 @@ def _agent_session_rows(sessions_state: Path) -> list[tuple[str, str, str, str]]
                 str(session.get("task_id", "unknown")),
                 status,
                 ", ".join(str(path) for path in _string_list(session.get("claimed_paths"))),
+            )
+        )
+    return rows
+
+
+def _agent_profile_rows(summary_path: Path | None) -> list[tuple[str, str, str, str]]:
+    if summary_path is None:
+        return []
+    summary = _read_json_mapping(summary_path)
+    agent_profiles_value = summary.get("agent_profiles")
+    agent_profiles = (
+        agent_profiles_value if isinstance(agent_profiles_value, Mapping) else {}
+    )
+    rows: list[tuple[str, str, str, str]] = []
+    for profile in _mapping_list(agent_profiles.get("profiles")):
+        skill_ids = _string_list(profile.get("skill_ids"))
+        mcp_parts: list[str] = []
+        for server in _mapping_list(profile.get("mcp_servers")):
+            server_id = str(server.get("server_id", "unknown"))
+            tools = ",".join(_string_list(server.get("allowed_tools"))) or "none"
+            mcp_parts.append(f"{server_id}:{tools}")
+        rows.append(
+            (
+                str(profile.get("agent_id", "unknown")),
+                str(profile.get("role", "unknown")),
+                ", ".join(skill_ids) or "none",
+                ", ".join(mcp_parts) or "none",
             )
         )
     return rows

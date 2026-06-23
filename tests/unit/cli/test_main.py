@@ -2893,6 +2893,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "research-plan.md",
             "research-plan.tex",
             "paper-build.json",
+            "literature-agent.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
             "data-analysis-summary.md",
@@ -2917,6 +2918,42 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     output_dir = tmp_path / "runs" / "autopilot"
     deliverables_dir = tmp_path / "outputs"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text(
+        json.dumps(
+            {
+                "agent_id": "literature-agent",
+                "role": "project_agent",
+                "thinking_mode": "scientific",
+                "publication_target": "ccf-b-or-sci-q2",
+                "thinking_contract": [
+                    "Start from the research question, falsifiable hypothesis, dataset, baseline, and evidence."
+                ],
+                "skills": [
+                    {
+                        "skill_id": "source-tracing",
+                        "source": "skills/source-tracing/SKILL.md",
+                        "source_type": "local_path",
+                        "allowed_tasks": ["literature_refresh", "citation_validation"],
+                        "evidence_refs": ["[[skills/source-tracing]]"],
+                        "import_policy": "read_only_context",
+                    }
+                ],
+                "mcp_servers": [
+                    {
+                        "server_id": "page-agent",
+                        "command": ["npx", "page-agent"],
+                        "allowed_tools": ["browser.search"],
+                        "env_keys": [],
+                        "approval_policy": "read_only",
+                        "evidence_refs": ["[[tools/page-agent]]"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     result = CliRunner().invoke(
         app,
         [
@@ -2935,6 +2972,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "project_1",
             "--paper-template-id",
             "generic-article-two-column",
+            "--agent-profile",
+            str(profile_path),
             "--no-review",
         ],
     )
@@ -2945,6 +2984,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "cycles=1, interval_seconds=86400, push_inspiration=false"
     ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
+    assert "[OK] agent_profiles: 1; agents=literature-agent" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
@@ -2974,6 +3014,16 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         cli_main.METHOD_ALIGNED_SEED_NOT_FOUND_REF
     ]
     assert payload["source_preflight"]["verdict"] == "pass"
+    assert payload["agent_profiles"]["count"] == 1
+    assert payload["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert payload["agent_profiles"]["profiles"][0]["skill_ids"] == ["source-tracing"]
+    assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["server_id"] == (
+        "page-agent"
+    )
+    assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["allowed_tools"] == [
+        "browser.search"
+    ]
+    assert payload["agent_profiles"]["profiles"][0]["profile_path"] == profile_path.as_posix()
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -3015,6 +3065,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     review_context = json.loads(
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
+    assert review_context["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert review_context["audit_summary"]["agent_profiles"]["count"] == 1
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
     assert review_context["audit_summary"]["research_plan"]["passed"] is True
@@ -4143,6 +4195,23 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                     "status": "pass",
                     "markdown_path": "runs/project_1/source-preflight.md",
                 },
+                "agent_profiles": {
+                    "count": 1,
+                    "profiles": [
+                        {
+                            "agent_id": "literature-agent",
+                            "role": "project_agent",
+                            "skill_ids": ["source-tracing"],
+                            "mcp_servers": [
+                                {
+                                    "server_id": "page-agent",
+                                    "allowed_tools": ["browser.search"],
+                                    "approval_policy": "read_only",
+                                }
+                            ],
+                        }
+                    ],
+                },
                 "literature": {
                     "document_count": 23,
                     "fetches": [
@@ -4291,6 +4360,10 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "AI-Researcher Operator Console" in result.stdout
     assert "Agent Messages" in result.stdout
     assert "Codex A" in result.stdout
+    assert "Agent Profiles" in result.stdout
+    assert "literature-agent" in result.stdout
+    assert "source-tracing" in result.stdout
+    assert "page-agent" in result.stdout
     assert "approval_1" in result.stdout
     assert "task_open" in result.stdout
     assert "Research Loop" in result.stdout
@@ -4332,6 +4405,14 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "Reviewer verdict is `needs_revision`" in rows["evidence"][1]
     assert rows["follow-ups"][0] == "1 open / 2 total"
     assert "evidence-gate.md" in rows["follow-ups"][1]
+    assert cli_main._agent_profile_rows(summary) == [
+        (
+            "literature-agent",
+            "project_agent",
+            "source-tracing",
+            "page-agent:browser.search",
+        )
+    ]
 
 
 def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) -> None:

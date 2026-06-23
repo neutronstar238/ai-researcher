@@ -29,7 +29,7 @@ automatically.
 | Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
-| Agent profiles | `airesearcher agents profile write` binds custom skills and MCP servers to one named agent with scientific thinking rules, explicit MCP tool allowlists, and vault-visible profile notes. |
+| Agent profiles | `airesearcher agents profile write` binds custom skills and MCP servers to one named agent; `serve` and `autopilot` can load those profiles with repeatable `--agent-profile <json>` flags and record them in cycle evidence. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
 | Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
@@ -193,6 +193,18 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 `autopilot` uses the same default public benchmark as `serve`; pass `--demo <id>` to choose
 another benchmark or `--demo tabular_baseline` for the fast toy fixture.
 
+Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
+
+```bash
+airesearcher serve \
+  --agent-profile .airesearcher/agents/literature-agent.json \
+  --agent-profile .airesearcher/agents/reviewer-agent.json
+```
+
+Loaded profiles are written into `cycle-summary.json`, `review-evidence-context.json`, and the
+operator monitor. They provide bounded method/tool context only; publication claims still require
+the normal evidence, reproduction, review, paper-build, and release gates.
+
 Each cycle can run:
 
 1. Source preflight and cooldown checks.
@@ -241,8 +253,8 @@ npm run monitor
 airesearcher monitor
 ```
 
-The monitor shows recent agent messages, active file claims, release-critical cycle stages,
-approval queue, open follow-up tasks, git changes, and output previews. Its flow table surfaces
+The monitor shows recent agent messages, active file claims, loaded agent profiles, release-critical
+cycle stages, approval queue, open follow-up tasks, git changes, and output previews. Its flow table surfaces
 source preflight, literature refresh, research plan, closed-loop campaign, novelty/similarity,
 related work, citations, experiment, reproduction, review, publication audit, paper build,
 evidence gate, follow-ups, and deliverables with stage-specific artifact paths and paper-quality
@@ -326,6 +338,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth. Lower only for smoke runs. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
+| `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, and monitor. Repeat for multiple agents. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |

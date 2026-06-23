@@ -2678,6 +2678,18 @@ A task can be checked only when all applicable items are true:
     - _References: user request to add custom skills and MCP import ability for a specific Agent while keeping the system focused on publishable scientific output rather than over-engineered AI behavior._
     - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\agents\test_agent_imports.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 8 tests; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed; focused ruff initially failed on import ordering in `src\autoresearch\cli\main.py`, then `python -m ruff check src\autoresearch\cli\main.py --fix` fixed it. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "obsidian=npx -y obsidian-mcp --vault autoresearch-vault" --mcp-tool obsidian:search_notes --mcp-tool obsidian:read_note --vault runs\manual-live\task215-agent-profile\vault --project-id task215-agent-profile --output runs\manual-live\task215-agent-profile\profiles\literature-agent.json` passed and wrote profile JSON plus vault note; real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task215-agent-profile\profiles\literature-agent.json` returned the scientific thinking contract, skill binding, and MCP allowlist. Broad `python -m pytest tests\smoke tests\unit -q` passed with 562 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
 
+- [x] 216. Runtime agent profile loading
+  - [x] 216.1 Load per-agent skill/MCP profiles into `serve`, `autopilot`, review evidence, and monitor
+    - Add repeatable `--agent-profile <json>` flags to `serve` and `autopilot`.
+    - Validate and deduplicate profile files at cycle start before online retrieval or experiment execution.
+    - Write loaded profile summaries and safe runtime contexts into every `cycle-summary.json`, including blocked preflight and blocked research-plan branches.
+    - Include agent profile context in `review-evidence-context.json` and the review evidence path bundle so reviewer/audit stages can inspect which skill/MCP context was available.
+    - Print loaded agent IDs in CLI status output without implying that profile context is publication evidence.
+    - Render an Agent Profiles panel in `airesearcher monitor` with agent ID, role, skill IDs, and MCP tool allowlists.
+    - Update README/README.zh-CN so operators know how to create and attach profile JSON files to long-running cycles.
+    - _References: task `215.1`; user request that custom skills and MCP imports can be assigned to a specific Agent and remain visible while the system keeps scientific evidence gates._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; broad and live verification recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3198,6 +3210,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 118,
       "tasks": ["215.1"]
+    },
+    {
+      "id": 119,
+      "tasks": ["216.1"]
     }
   ]
 }

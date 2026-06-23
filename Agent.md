@@ -9154,3 +9154,38 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-003` for stale focused pytest names and ruff import-order cleanup during verification.
 - Follow-up:
   - Next step should load these profiles into the active `serve`/`autopilot` cycle and operator monitor so each runtime stage can display the exact profile used by its assigned agent.
+
+### 2026-06-23 13:38:18 +08:00 - Codex - Task 216.1 Runtime agent profile loading
+
+- Request: Continue from per-agent custom skills/MCP support by loading profiles into active `serve`/`autopilot` cycles and making them visible in review evidence and the operator monitor.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added repeatable `--agent-profile <json>` options to `autopilot` and `serve`.
+  - Added runtime profile loading with duplicate `agent_id` rejection before online retrieval or experiment execution.
+  - Wrote profile summaries and safe runtime contexts into `cycle-summary.json`, including blocked source-preflight and research-plan branches.
+  - Added profile context to `review-evidence-context.json` and the review evidence bundle.
+  - Echoed loaded agent IDs in CLI status output and added an Agent Profiles panel to `airesearcher monitor`.
+  - Updated English and Chinese README usage docs and added task `216.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 562 tests passed and 4 skipped.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task216-runtime-profile-v1\vault --project-id task216_runtime_profile_v1 --output runs\manual-live\task216-runtime-profile-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus vault note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task216-runtime-profile-v1\vault --cache runs\manual-live\task216-runtime-profile-v1\cache --output-dir runs\manual-live\task216-runtime-profile-v1\runs --deliverables-dir runs\manual-live\task216-runtime-profile-v1\outputs --state runs\manual-live\task216-runtime-profile-v1\scheduler.json --sessions-state runs\manual-live\task216-runtime-profile-v1\sessions.json --project-id task216_runtime_profile_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task216-runtime-profile-v1\profiles\literature-agent.json`: passed and printed `[OK] agent_profiles: 1; agents=literature-agent`.
+  - Real artifact grep confirmed `cycle-summary.json` and `review-evidence-context.json` contain `agent_profiles`, `literature-agent`, `source-tracing`, `page-agent`, and `browser.search`.
+  - Real monitor `node .\bin\airesearcher.mjs monitor --cycle-summary runs\manual-live\task216-runtime-profile-v1\runs\cycle-20260623T053737Z\cycle-summary.json --outputs-dir runs\manual-live\task216-runtime-profile-v1\outputs --runtime-state runs\manual-live\task216-runtime-profile-v1\approvals.json --scheduler-state runs\manual-live\task216-runtime-profile-v1\scheduler.json --sessions-state runs\manual-live\task216-runtime-profile-v1\sessions.json --agent-log Agent.md --no-diff --max-agent-entries 1`: passed and rendered the Agent Profiles panel with `literature-agent`, `source-tracing`, and `page-agent` tool allowlists.
+- Problems:
+  - Added and resolved `P-20260623-004` for a monitor test assertion that depended on Rich table wrapping.
+- Follow-up:
+  - The real task216 cycle intentionally used `--no-review` and smoke-width retrieval, so publication/evidence gates correctly blocked release; use default search breadth plus live review for publication-quality cycles.
