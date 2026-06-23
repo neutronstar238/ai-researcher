@@ -11,6 +11,7 @@ from autoresearch.experiments import (
     create_loop_iteration_from_cycle_summary,
     evaluate_loop_stop_criteria,
     select_loop_candidate,
+    validate_loop_campaign_contract,
     write_loop_report_artifact,
 )
 from autoresearch.schemas import ResearchCandidate, ValidationStatus
@@ -35,6 +36,34 @@ def test_closed_loop_campaign_builds_doe_candidate_space() -> None:
     assert campaign.candidate_space[0].candidate_id == "arm_baseline_reproduction"
     assert "run record" in campaign.evidence_requirements
     assert campaign.protocol_refs == ["runs/cycle/research-plan.json", "vault/plan.md"]
+
+
+def test_loop_campaign_contract_validation_blocks_incomplete_protocol() -> None:
+    campaign = build_closed_loop_campaign(
+        candidate=_candidate(),
+        project_id="project_1",
+        cycle_id="cycle_1",
+        research_plan=_research_plan_payload(),
+    )
+    valid = validate_loop_campaign_contract(campaign)
+    broken = validate_loop_campaign_contract(
+        campaign.model_copy(
+            update={
+                "data_sources": [],
+                "baselines": [],
+                "protocol_artifacts": [],
+                "evidence_requirements": ["research plan"],
+            }
+        )
+    )
+
+    assert valid.passed is True
+    assert "budget.max_iterations" in valid.checked_fields
+    assert broken.passed is False
+    assert "campaign data_sources must not be empty" in broken.issues
+    assert "campaign baselines must not be empty" in broken.issues
+    assert "campaign protocol_artifacts must reference protocol-as-code outputs" in broken.issues
+    assert any("validation report" in issue for issue in broken.issues)
 
 
 def test_loop_selector_uses_doe_first_then_repair_on_failure(tmp_path: Path) -> None:
@@ -138,12 +167,15 @@ def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None
     assert artifact.vault_path.is_file()
     payload = json.loads(artifact.json_path.read_text(encoding="utf-8"))
     assert payload["quality_gate"]["passed"] is True
+    assert payload["contract_validation"]["passed"] is True
+    assert "target_metric" in payload["contract_validation"]["checked_fields"]
     assert payload["stop_decision"]["reason"] == LoopStopReason.CONTINUE.value
     assert payload["iterations"][0]["validation_status"] == ValidationStatus.PASSED.value
     assert payload["iterations"][0]["selection_score"] is not None
     assert payload["iterations"][0]["optimizer_state"]["llm_override_allowed"] is False
     markdown = artifact.markdown_path.read_text(encoding="utf-8")
     assert "Loop Engineering Report" in markdown
+    assert "## Protocol Contract" in markdown
     assert "## Optimizer State" in markdown
     assert "LLM override allowed" in markdown
     assert "## Stop Decision" in markdown

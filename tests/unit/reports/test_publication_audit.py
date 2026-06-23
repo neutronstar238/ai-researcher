@@ -187,6 +187,32 @@ def test_publication_audit_blocks_missing_loop_campaign_for_ccfb(
     assert report.publishable is False
 
 
+def test_publication_audit_blocks_failed_loop_campaign_contract(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    loop_campaign_path = Path(summary["loop_campaign"]["json_path"])
+    payload = json.loads(loop_campaign_path.read_text(encoding="utf-8"))
+    payload["contract_validation"] = {
+        "passed": False,
+        "issues": ["campaign evidence_requirements missing validation report"],
+        "warnings": [],
+        "checked_fields": ["objective", "target_metric", "evidence_requirements"],
+        "evidence_policy": "campaign contract fixture",
+    }
+    loop_campaign_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["loop_campaign_quality_gate"].status.value == "fail"
+    assert "contract_passed=false" in checks["loop_campaign_quality_gate"].message
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
 def test_publication_audit_blocks_unverifiable_citations_for_ccfb(
     tmp_path: Path,
 ) -> None:
@@ -573,6 +599,13 @@ def _write_loop_artifacts(cycle_dir: Path) -> dict[str, dict[str, object]]:
                     "evidence_coverage": 1.0,
                     "reward": 0.4,
                 },
+                "contract_validation": {
+                    "passed": True,
+                    "issues": [],
+                    "warnings": [],
+                    "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                    "evidence_policy": "campaign contract fixture",
+                },
                 "quality_gate": {"passed": True, "issues": [], "warnings": []},
             }
         ),
@@ -588,6 +621,7 @@ def _write_loop_artifacts(cycle_dir: Path) -> dict[str, dict[str, object]]:
                 "evidence_coverage": 1.0,
                 "reproduction_delta": 0.0,
             },
+            "contract_validation": {"passed": True},
             "quality_gate": {"passed": True},
         },
         "loop_report": {

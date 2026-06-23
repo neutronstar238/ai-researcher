@@ -286,12 +286,16 @@ Each cycle can run:
 
 The campaign artifact is treated as protocol-as-code. `loop-campaign.json` records the data
 sources, baselines, protocol artifacts, candidate arms, selected optimizer policy, optimizer state,
-metrics, quality gate, and a deterministic `stop_decision`. The first iteration is a DOE baseline;
-later iterations write an active-learning/UCB-like score table with exploitation, uncertainty, cost,
-risk, frozen-dimension penalties, and `llm_override_allowed=false`. A failed loop is not allowed to
-retry indefinitely: if metadata, evidence, reproduction, budget, approval, or repeated-failure checks
-block the next step, the report records the frozen dimensions and the repair action required before
-another candidate can run.
+metrics, quality gate, `contract_validation`, and a deterministic `stop_decision`.
+`contract_validation` checks that the campaign declares its objective, metric, budget, data sources,
+baselines, protocol artifacts, candidate space, stop criteria, approval policy, evidence
+requirements, and the rule that LLM proposals cannot bypass or override gates. The first iteration is
+a DOE baseline; later iterations write an active-learning/UCB-like score table with exploitation,
+uncertainty, cost, risk, frozen-dimension penalties, and `llm_override_allowed=false`. A failed loop
+is not allowed to retry indefinitely: if metadata, evidence, reproduction, budget, approval,
+protocol-contract, or repeated-failure checks block the next step, the report records the frozen
+dimensions and the repair action required before another candidate can run. Release and publication
+gates require `contract_validation.passed=true` in addition to loop metrics and evidence coverage.
 
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,

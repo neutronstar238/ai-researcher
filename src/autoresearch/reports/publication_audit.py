@@ -1468,6 +1468,9 @@ def _loop_engineering_checks(
     artifact_readable = bool(payload)
     metrics = _dict(payload.get("metrics") or loop_campaign.get("metrics"))
     quality_gate = _dict(payload.get("quality_gate") or loop_campaign.get("quality_gate"))
+    contract_validation = _dict(
+        payload.get("contract_validation") or loop_campaign.get("contract_validation")
+    )
     artifact_ok = (
         campaign_path is not None
         and campaign_path.exists()
@@ -1475,6 +1478,7 @@ def _loop_engineering_checks(
         and report_path.exists()
     )
     gate_passed = quality_gate.get("passed") is True
+    contract_passed = contract_validation.get("passed") is True
     metadata = _float_or_none(metrics.get("metadata_completeness"))
     evidence = _float_or_none(metrics.get("evidence_coverage"))
     reproduction = _float_or_none(metrics.get("reproduction_delta"))
@@ -1486,7 +1490,7 @@ def _loop_engineering_checks(
         and reproduction is not None
         and reproduction <= 0.05
     )
-    quality_ok = artifact_ok and artifact_readable and gate_passed and metrics_ok
+    quality_ok = artifact_ok and artifact_readable and gate_passed and contract_passed and metrics_ok
     return [
         PublicationAuditCheck(
             "loop_campaign_artifacts",
@@ -1517,6 +1521,7 @@ def _loop_engineering_checks(
                 "Closed-loop campaign gate "
                 f"artifact_readable={str(artifact_readable).lower()}, "
                 f"passed={str(gate_passed).lower()}, "
+                f"contract_passed={str(contract_passed).lower()}, "
                 f"metadata_completeness={metadata if metadata is not None else 'missing'}, "
                 f"evidence_coverage={evidence if evidence is not None else 'missing'}, "
                 f"reproduction_delta={reproduction if reproduction is not None else 'missing'}."
@@ -1530,7 +1535,7 @@ def _loop_engineering_checks(
             if quality_ok
             else (
                 "Publication-level claims require closed-loop metadata completeness, "
-                "evidence coverage, and reproduction metrics to pass."
+                "protocol contract validation, evidence coverage, and reproduction metrics to pass."
             ),
         ),
     ]

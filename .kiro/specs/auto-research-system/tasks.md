@@ -2817,6 +2817,17 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `221.1`, `226.1`, and `227.1`; requirement that tool use and loop evidence are auditable artifacts rather than prompt-only self-report._
     - _Verify: focused MCP evidence model/CLI tests, ruff, mypy, real CLI add/list/validate, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 229. Campaign protocol contract gate
+  - [x] 229.1 Require protocol-as-code contract validation before release or publication
+    - Add a `LoopCampaignContractValidation` model for closed-loop campaign protocol completeness.
+    - Validate objective, target metric, budget, data sources, baselines, protocol artifacts, candidate space, stop criteria, approval policy, evidence requirements, and LLM non-bypass constraints.
+    - Write `contract_validation` into `loop-campaign.json`, loop report summary, and the Obsidian Markdown loop report.
+    - Fold contract failures into the loop campaign quality gate instead of treating metrics alone as enough.
+    - Require `contract_validation.passed=true` in both the evidence gate and publication audit before release or publication-level claims.
+    - Update README/README.zh-CN with the contract-validation gate and its evidence boundary.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `222.1`, `227.1`, and `228.1`; requirement that protocol-as-code completeness be a hard gate, not prompt-only self-discipline._
+    - _Verify: focused loop/report/evidence/publication tests, ruff, mypy, real narrow autopilot, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3389,6 +3400,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 131,
       "tasks": ["228.1"]
+    },
+    {
+      "id": 132,
+      "tasks": ["229.1"]
     }
   ]
 }

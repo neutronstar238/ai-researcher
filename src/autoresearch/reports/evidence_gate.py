@@ -308,7 +308,11 @@ def _loop_campaign_checks(
     artifact_readable = bool(payload)
     metrics = _dict(payload.get("metrics") or loop_campaign.get("metrics"))
     quality_gate = _dict(payload.get("quality_gate") or loop_campaign.get("quality_gate"))
+    contract_validation = _dict(
+        payload.get("contract_validation") or loop_campaign.get("contract_validation")
+    )
     gate_passed = quality_gate.get("passed") is True
+    contract_passed = contract_validation.get("passed") is True
     metadata = _float(metrics.get("metadata_completeness"))
     evidence = _float(metrics.get("evidence_coverage"))
     reproduction = _float(metrics.get("reproduction_delta"))
@@ -320,7 +324,7 @@ def _loop_campaign_checks(
         and reproduction is not None
         and reproduction <= 0.05
     )
-    gate_ok = artifact_readable and gate_passed and metrics_ok
+    gate_ok = artifact_readable and gate_passed and contract_passed and metrics_ok
     checks.append(
         EvidenceGateCheck(
             "loop_campaign_gate",
@@ -330,6 +334,7 @@ def _loop_campaign_checks(
                 "Loop campaign gate "
                 f"artifact_readable={str(artifact_readable).lower()}, "
                 f"passed={str(gate_passed).lower()}, "
+                f"contract_passed={str(contract_passed).lower()}, "
                 f"metadata_completeness={metadata if metadata is not None else 'missing'}, "
                 f"evidence_coverage={evidence if evidence is not None else 'missing'}, "
                 f"reproduction_delta={reproduction if reproduction is not None else 'missing'}."
@@ -339,7 +344,7 @@ def _loop_campaign_checks(
             if gate_ok
             else (
                 "Do not release until the closed-loop campaign records complete metadata, "
-                "evidence coverage, and reproduction evidence."
+                "protocol contract validation, evidence coverage, and reproduction evidence."
             ),
         )
     )

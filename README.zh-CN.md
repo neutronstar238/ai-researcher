@@ -218,7 +218,7 @@ MCP 绑定还会生成 `mcp_runtime_contracts`。contract 会记录命令哈希�
 15. scheduler follow-up 合并。
 16. 可选微信/飞书灵感摘要推送。
 
-Campaign artifact 会作为 protocol-as-code 处理。`loop-campaign.json` 会记录 data sources、baselines、protocol artifacts、候选 arm、optimizer policy、optimizer state、指标、质量门禁和确定性的 `stop_decision`。第一轮必须是 DOE 基线；后续轮次会写入主动学习/UCB-like 分数表，包含 exploitation、uncertainty、cost、risk、冻结维度惩罚和 `llm_override_allowed=false`。失败的 loop 不能无限盲目重试：如果元数据、证据、复现、预算、审批或连续失败检查阻断下一步，loop report 必须写清楚被冻结的维度，以及再次运行候选前需要完成的修复动作。
+Campaign artifact 会作为 protocol-as-code 处理。`loop-campaign.json` 会记录 data sources、baselines、protocol artifacts、候选 arm、optimizer policy、optimizer state、指标、质量门禁、`contract_validation` 和确定性的 `stop_decision`。`contract_validation` 会检查 campaign 是否声明 objective、metric、budget、data sources、baselines、protocol artifacts、candidate space、stop criteria、approval policy、evidence requirements，以及 LLM proposal 不能绕过或覆盖门禁的规则。第一轮必须是 DOE 基线；后续轮次会写入主动学习/UCB-like 分数表，包含 exploitation、uncertainty、cost、risk、冻结维度惩罚和 `llm_override_allowed=false`。失败的 loop 不能无限盲目重试：如果元数据、证据、复现、预算、审批、协议契约或连续失败检查阻断下一步，loop report 必须写清楚被冻结的维度，以及再次运行候选前需要完成的修复动作。release gate 和 publication audit 还会要求 `contract_validation.passed=true`。
 
 V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 

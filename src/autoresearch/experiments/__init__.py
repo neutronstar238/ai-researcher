@@ -69,6 +69,7 @@ from .golden import (
 )
 from .loop import (
     ClosedLoopCampaign,
+    LoopCampaignContractValidation,
     LoopCandidateArm,
     LoopDecisionPolicy,
     LoopFailureCategory,
@@ -89,6 +90,7 @@ from .loop import (
     evaluate_loop_quality_gate,
     evaluate_loop_stop_criteria,
     select_loop_candidate,
+    validate_loop_campaign_contract,
     write_loop_report_artifact,
 )
 from .network import (
@@ -168,6 +170,7 @@ __all__ = [
     "CodeReviewFinding",
     "CodeReviewResult",
     "ClosedLoopCampaign",
+    "LoopCampaignContractValidation",
     "DemoWorkflowResult",
     "EvidenceBindingError",
     "ExperimentPlanningConfig",
@@ -274,6 +277,7 @@ __all__ = [
     "run_scientistbench_demo",
     "run_shadow_evaluation",
     "select_loop_candidate",
+    "validate_loop_campaign_contract",
     "update_recurring_failure_patterns",
     "validate_result_bundle",
     "create_loop_iteration_from_cycle_summary",

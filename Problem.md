@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-013 - Loop contract gate treated override wording as missing non-bypass policy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 17:03:00 +08:00
+- Source: Focused verification for task `229.1`.
+- Symptom: The first focused loop contract tests failed even though the default closed-loop campaign stated that `LLM proposals cannot override evidence, budget, safety, or approval gates`.
+- Impact: A valid default campaign could be blocked before writing a loop report, which would prevent the new protocol contract gate from passing on normal runs.
+- Evidence: `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_passes_when_all_required_artifacts_are_physical tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb -q` failed two loop tests with `campaign constraints must state that LLM proposals cannot bypass gates`.
+- Root cause: `validate_loop_campaign_contract` checked only for the literal word `bypass` and did not accept the existing `override` wording used by the default campaign constraint.
+- Workaround: None needed after the fix.
+- Next action: Keep focused contract validation tests around loop campaign gate changes.
+- Linked tasks: `229.1`
+- Resolution: Updated the constraint check to accept either `bypass` or `override` while still requiring an explicit LLM gate constraint.
+- Verification: Focused loop/report/evidence/publication tests passed with 17 tests; focused ruff passed; focused mypy passed with no issues in 4 source files.
+
 ### P-20260623-012 - MCP evidence artifact probe raced validation report creation
 
 - Status: Resolved

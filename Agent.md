@@ -64,6 +64,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-23 17:20:00 +08:00 - Codex - Task 229.1 Campaign protocol contract gate
+
+- Request: Implement the Loop Engineering plan by making closed-loop campaign protocol-as-code completeness a hard contract gate before release or publication claims.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `LoopCampaignContractValidation` to validate campaign objective, metric, budget, data sources, baselines, candidate space, protocol artifacts, stop criteria, approval policy, evidence requirements, and LLM non-bypass/non-override constraints.
+  - Wrote `contract_validation` into `loop-campaign.json`, loop report summaries, and Obsidian-compatible Markdown loop reports.
+  - Folded contract failures into the loop quality gate, evidence gate, and publication audit so metrics alone cannot release a campaign or support paper-level claims.
+  - Added release/publication negative tests proving `contract_validation.passed=false` blocks the corresponding gates.
+  - Updated English and Chinese README descriptions and added task `229.1` plus dependency graph entry `132`.
+- Verification:
+  - Initial focused loop tests exposed overly literal `bypass` wording; fixed and recorded as `P-20260623-013`.
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_passes_when_all_required_artifacts_are_physical tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_failed_loop_campaign_contract tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_failed_loop_campaign_contract -q`: passed, 17 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py tests\unit\experiments\test_loop.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py`: passed with no issues in 4 source files.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task229-contract-validation-v1\vault --cache runs\manual-live\task229-contract-validation-v1\cache --output-dir runs\manual-live\task229-contract-validation-v1\runs --deliverables-dir runs\manual-live\task229-contract-validation-v1\outputs --state runs\manual-live\task229-contract-validation-v1\scheduler.json --sessions-state runs\manual-live\task229-contract-validation-v1\sessions.json --project-id task229-contract-validation-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed; loop campaign reported `true`, publication audit failed and evidence gate blocked as expected because review was intentionally skipped.
+  - Real artifact inspection confirmed `loop-campaign.json` has `contract_validation.passed=true`, zero issues, zero warnings, checked protocol fields, `quality_gate.passed=true`, `metadata_completeness=0.916667`, `evidence_coverage=1.0`, and `reproduction_delta=0.0`; loop report contains `## Protocol Contract`; evidence gate and publication audit messages include `contract_passed=true`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 589 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-013`.
+- Follow-up:
+  - A future task can add richer semantic contract checks for domain-specific protocol artifacts, but V1.0 now has a hard protocol completeness gate before release and publication claims.
+
 ### 2026-06-23 16:45:00 +08:00 - Codex - Task 228.1 MCP invocation evidence ledger
 
 - Request: Implement the Loop Engineering evidence-first plan by turning MCP tool-use claims into hashed, validated runtime artifacts instead of profile-contract self-report.

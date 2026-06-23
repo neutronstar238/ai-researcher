@@ -211,6 +211,23 @@ class LoopQualityGate(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class LoopCampaignContractValidation(BaseModel):
+    """Deterministic validation of campaign protocol-as-code fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    passed: bool
+    issues: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    checked_fields: list[str] = Field(default_factory=list)
+    evidence_policy: str = (
+        "Campaign contract validation proves only that the closed-loop protocol "
+        "declares required objective, metric, budget, data, baseline, candidate, "
+        "stop, approval, and evidence fields. It does not prove experimental "
+        "results, novelty, citation validity, or publication readiness."
+    )
+
+
 class LoopStopDecision(BaseModel):
     """Deterministic stop/continue decision for the next loop iteration."""
 
@@ -232,6 +249,7 @@ class LoopReportArtifact:
     vault_path: Path | None
     metrics: LoopMetrics
     quality_gate: LoopQualityGate
+    contract_validation: LoopCampaignContractValidation
     stop_decision: LoopStopDecision
 
     def to_summary(self) -> dict[str, Any]:
@@ -241,6 +259,7 @@ class LoopReportArtifact:
             "vault_path": self.vault_path.as_posix() if self.vault_path is not None else None,
             "metrics": self.metrics.model_dump(mode="json"),
             "quality_gate": self.quality_gate.model_dump(mode="json"),
+            "contract_validation": self.contract_validation.model_dump(mode="json"),
             "stop_decision": self.stop_decision.model_dump(mode="json"),
         }
 
@@ -322,6 +341,83 @@ def build_closed_loop_campaign(
         ],
         protocol_refs=protocol_refs,
         protocol_artifacts=protocol_refs,
+    )
+
+
+def validate_loop_campaign_contract(
+    campaign: ClosedLoopCampaign,
+) -> LoopCampaignContractValidation:
+    """Validate the campaign envelope before it can support release decisions."""
+
+    issues: list[str] = []
+    warnings: list[str] = []
+    checked_fields = [
+        "objective",
+        "target_metric",
+        "budget.max_iterations",
+        "budget.max_failed_retries",
+        "data_sources",
+        "baselines",
+        "candidate_space",
+        "protocol_artifacts",
+        "stop_conditions",
+        "approval_policy",
+        "evidence_requirements",
+        "constraints",
+    ]
+    if not campaign.objective.strip():
+        issues.append("campaign objective is required")
+    if not campaign.target_metric.strip():
+        issues.append("campaign target_metric is required")
+    for key in ("max_iterations", "max_failed_retries"):
+        value = _float_or_none(campaign.budget.get(key))
+        if value is None or value < 0:
+            issues.append(f"budget.{key} must be numeric and non-negative")
+    if not campaign.data_sources:
+        issues.append("campaign data_sources must not be empty")
+    if not campaign.baselines:
+        issues.append("campaign baselines must not be empty")
+    if not campaign.protocol_artifacts:
+        issues.append("campaign protocol_artifacts must reference protocol-as-code outputs")
+    if len(campaign.candidate_space) < 2:
+        issues.append("campaign candidate_space must include baseline and at least one variant arm")
+    elif campaign.candidate_space[0].candidate_id != "arm_baseline_reproduction":
+        issues.append("first campaign candidate arm must be the DOE baseline reproduction arm")
+    for arm in campaign.candidate_space:
+        if not arm.rationale.strip():
+            issues.append(f"candidate {arm.candidate_id} is missing rationale")
+        if not arm.evidence_refs:
+            warnings.append(f"candidate {arm.candidate_id} has no evidence_refs")
+    if len(campaign.stop_conditions) < 3:
+        issues.append("campaign stop_conditions must cover budget, evidence, and failure stops")
+    if not campaign.approval_policy.strip():
+        issues.append("campaign approval_policy is required")
+    required_evidence_terms = {
+        "research plan": "research plan",
+        "run record": "run record",
+        "validation report": "validation report",
+        "evidence map": "evidence map",
+        "reproduction report": "reproduction report",
+    }
+    evidence_text = " ".join(campaign.evidence_requirements).casefold()
+    for label, term in required_evidence_terms.items():
+        if term not in evidence_text:
+            issues.append(f"campaign evidence_requirements must include {label}")
+    constraint_text = " ".join(campaign.constraints).casefold()
+    if "llm" not in constraint_text or not any(
+        term in constraint_text for term in ("bypass", "override")
+    ):
+        issues.append("campaign constraints must state that LLM proposals cannot bypass gates")
+    for artifact in campaign.protocol_artifacts:
+        if not artifact.strip():
+            issues.append("campaign protocol_artifacts contains an empty reference")
+        elif not any(artifact.endswith(suffix) for suffix in (".json", ".md", ".tex", ".yaml", ".yml")):
+            warnings.append(f"protocol artifact has an uncommon protocol extension: {artifact}")
+    return LoopCampaignContractValidation(
+        passed=not issues,
+        issues=list(dict.fromkeys(issues)),
+        warnings=list(dict.fromkeys(warnings)),
+        checked_fields=checked_fields,
     )
 
 
@@ -723,8 +819,12 @@ def evaluate_loop_quality_gate(
     """Block campaign use when loop evidence is not publication-safe."""
 
     records = tuple(iterations)
+    contract_validation = validate_loop_campaign_contract(campaign)
     issues: list[str] = []
     warnings: list[str] = []
+    if not contract_validation.passed:
+        issues.extend(f"campaign_contract: {issue}" for issue in contract_validation.issues)
+    warnings.extend(f"campaign_contract: {warning}" for warning in contract_validation.warnings)
     if not records:
         issues.append("campaign has no executed loop iterations")
     if metrics.metadata_completeness < 0.90:
@@ -764,8 +864,10 @@ def write_loop_report_artifact(
     root.mkdir(parents=True, exist_ok=True)
     json_path = root / "loop-campaign.json"
     markdown_path = root / "loop-report.md"
+    contract_validation = validate_loop_campaign_contract(campaign)
     payload = {
         "campaign": campaign.model_dump(mode="json"),
+        "contract_validation": contract_validation.model_dump(mode="json"),
         "iterations": [record.model_dump(mode="json") for record in records],
         "metrics": metrics.model_dump(mode="json"),
         "quality_gate": gate.model_dump(mode="json"),
@@ -777,6 +879,7 @@ def write_loop_report_artifact(
         iterations=records,
         metrics=metrics,
         gate=gate,
+        contract_validation=contract_validation,
         stop_decision=stop_decision,
         json_path=json_path,
     )
@@ -814,6 +917,7 @@ def write_loop_report_artifact(
         vault_path=vault_path,
         metrics=metrics,
         quality_gate=gate,
+        contract_validation=contract_validation,
         stop_decision=stop_decision,
     )
 
@@ -828,6 +932,7 @@ def render_loop_report_markdown(
     iterations: Iterable[LoopIterationRecord],
     metrics: LoopMetrics,
     gate: LoopQualityGate,
+    contract_validation: LoopCampaignContractValidation,
     stop_decision: LoopStopDecision,
     json_path: Path | str,
 ) -> str:
@@ -856,6 +961,20 @@ def render_loop_report_markdown(
         f"| Metadata completeness | {metrics.metadata_completeness:.6f} |",
         f"| Evidence coverage | {metrics.evidence_coverage:.6f} |",
         f"| Reward | {metrics.reward:.6f} |",
+        "",
+        "## Protocol Contract",
+        "",
+        f"- Passed: `{str(contract_validation.passed).lower()}`",
+        f"- Checked fields: {', '.join(contract_validation.checked_fields)}",
+        f"- Evidence policy: {contract_validation.evidence_policy}",
+        "",
+        "### Contract Issues",
+        "",
+        *(_list_items(contract_validation.issues)),
+        "",
+        "### Contract Warnings",
+        "",
+        *(_list_items(contract_validation.warnings)),
         "",
         "## Quality Gate",
         "",

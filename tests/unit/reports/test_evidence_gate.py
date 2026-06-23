@@ -71,6 +71,32 @@ def test_evidence_gate_blocks_missing_loop_campaign_artifact(tmp_path: Path) -> 
     assert checks["loop_campaign_gate"].status.value == "fail"
 
 
+def test_evidence_gate_blocks_failed_loop_campaign_contract(tmp_path: Path) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    loop_campaign_path = Path(summary["loop_campaign"]["json_path"])
+    payload = json.loads(loop_campaign_path.read_text(encoding="utf-8"))
+    payload["contract_validation"] = {
+        "passed": False,
+        "issues": ["campaign evidence_requirements missing validation report"],
+        "warnings": [],
+        "checked_fields": ["objective", "target_metric", "evidence_requirements"],
+        "evidence_policy": "campaign contract fixture",
+    }
+    loop_campaign_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["loop_campaign_gate"].status.value == "fail"
+    assert "contract_passed=false" in checks["loop_campaign_gate"].message
+
+
 def test_evidence_gate_blocks_non_publishable_publication_audit(
     tmp_path: Path,
 ) -> None:
@@ -411,6 +437,13 @@ def _write_gate_cycle(
                     "evidence_coverage": 1.0,
                     "reward": 0.4,
                 },
+                "contract_validation": {
+                    "passed": True,
+                    "issues": [],
+                    "warnings": [],
+                    "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                    "evidence_policy": "campaign contract fixture",
+                },
                 "quality_gate": {"passed": True, "issues": [], "warnings": []},
             }
         ),
@@ -514,6 +547,13 @@ def _write_gate_cycle(
                         "metadata_completeness": 1.0,
                         "evidence_coverage": 1.0,
                         "reproduction_delta": 0.0,
+                    },
+                    "contract_validation": {
+                        "passed": True,
+                        "issues": [],
+                        "warnings": [],
+                        "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                        "evidence_policy": "campaign contract fixture",
                     },
                     "quality_gate": {"passed": True},
                 },
