@@ -88,6 +88,8 @@ secrets, chat IDs, sessions, or tokens.
 After setup, `npm run serve` auto-loads the generated bundle when no explicit Agent profile or
 team bundle is supplied, and it turns on the profile-set coverage gate for that default team. Pass
 `--skip-agent-team` during setup only when a deployment already has a reviewed custom team bundle.
+Run `npm run agent-team:inspect` before the first unattended start to preview the generated
+skills, MCP contracts, readiness, and stage coverage.
 
 Recommended channel setup:
 
@@ -464,6 +466,7 @@ Common npm shortcuts:
 | Script | Meaning |
 | --- | --- |
 | `npm run setup` | Guided first deployment. |
+| `npm run agent-team:inspect` | Preview the setup-generated Agent team bundle before the first unattended run. |
 | `npm run channel:test -- --channel feishu --require-sent` | Real delivery self-test for a configured channel. |
 | `npm run readiness -- --no-push-inspiration` | Local readiness report without requiring operator push. |
 | `npm run prelaunch` | Strict prelaunch gate: model, vault, daily loop, setup Agent team, channel config, and sent evidence. |

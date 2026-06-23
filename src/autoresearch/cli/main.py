@@ -2809,6 +2809,11 @@ def setup(
         typer.echo(f"[OK] agent_team_bundle: {agent_team['bundle_path']}")
         typer.echo(f"[OK] agent_team_status: {agent_team['status']}")
         typer.echo(
+            "[NEXT] agent_team_inspect: "
+            "airesearcher agents profile inspect-set "
+            f"{agent_team['bundle_path']} --materialize-skills --require-complete"
+        )
+        typer.echo(
             "[NEXT] agent_team_runtime: "
             f"--agent-profile-set-bundle {agent_team['bundle_path']} "
             "--require-agent-profile-set"
@@ -8767,17 +8772,25 @@ def _echo_setup_next_steps(
     agent_team_bundle: Path | None = None,
 ) -> None:
     typer.echo("[NEXT] 1. Check install: npm run doctor")
+    if agent_team_bundle is not None:
+        typer.echo(
+            "[NEXT] 2. Inspect Agent team: "
+            "airesearcher agents profile inspect-set "
+            f"{agent_team_bundle} --materialize-skills --require-complete"
+        )
     agent_team_flags = (
         f" --agent-profile-set-bundle {agent_team_bundle} --require-agent-profile-set"
         if agent_team_bundle is not None
         else ""
     )
+    start_step = 3 if agent_team_bundle is not None else 2
+    approval_step = start_step + 1
     typer.echo(
-        "[NEXT] 2. Start runtime: "
+        f"[NEXT] {start_step}. Start runtime: "
         f"airesearcher serve --permission-mode {permission_mode.value}{agent_team_flags}"
     )
     typer.echo(
-        "[NEXT] 3. When approval is requested, run: "
+        f"[NEXT] {approval_step}. When approval is requested, run: "
         f"airesearcher runtime approve latest --state {approvals_state}"
     )
     typer.echo("[NEXT] Optional dashboard: airesearcher monitor --watch")

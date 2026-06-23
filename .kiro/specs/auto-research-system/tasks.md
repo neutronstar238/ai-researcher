@@ -3000,6 +3000,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `240.1`, `241.1`, `242.1`, and `243.1`; user request to assign custom skills and MCPs to specific Agents while preserving CCF-B/Q2 evidence gates and one-step unattended operation._
     - _Verify: focused `inspect-set` CLI tests, focused ruff, focused mypy, real CLI team-template plus inspect-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 245. Guided Agent team inspection entry point
+  - [x] 245.1 Surface Agent team preview in setup and npm scripts
+    - Add `npm run agent-team:inspect` as a normal-user shortcut for previewing `.airesearcher/agents/ccfb-team.yaml` with materialized local skill hashes and `--require-complete`.
+    - Print the `agents profile inspect-set ... --materialize-skills --require-complete` command during setup before the recommended runtime start command.
+    - Keep runtime start guidance after the inspection step so first-time operators can review skill/MCP responsibility routing before unattended execution.
+    - Update README/README.zh-CN with the shortcut and first-run inspection recommendation.
+    - Keep this as deployment guidance and process metadata only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - _References: task `244.1`; user request for setup-once operation with visible Agent skill/MCP assignment and strict quality gates._
+    - _Verify: focused setup/npm-script tests, focused ruff, focused mypy, real setup output smoke, real npm script smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3636,6 +3646,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 147,
       "tasks": ["244.1"]
+    },
+    {
+      "id": 148,
+      "tasks": ["245.1"]
     }
   ]
 }

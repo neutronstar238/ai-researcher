@@ -76,7 +76,7 @@ airesearcher setup
 
 向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
 
-setup 完成后，`npm run serve` 会在没有显式传入 Agent profile 或团队 bundle 时自动加载生成的默认 bundle，并为这支默认团队开启 profile-set 覆盖门禁。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议在 setup 阶段传入 `--skip-agent-team`。
+setup 完成后，`npm run serve` 会在没有显式传入 Agent profile 或团队 bundle 时自动加载生成的默认 bundle，并为这支默认团队开启 profile-set 覆盖门禁。第一次无人值守启动前，运行 `npm run agent-team:inspect` 可以预览生成的 skill、MCP contract、readiness 和阶段覆盖。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议在 setup 阶段传入 `--skip-agent-team`。
 
 推荐通道配置：
 
@@ -341,6 +341,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | Script | 含义 |
 | --- | --- |
 | `npm run setup` | 引导式首次部署。 |
+| `npm run agent-team:inspect` | 第一次无人值守运行前预览 setup 生成的 Agent 团队 bundle。 |
 | `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
 | `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
 | `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、setup 默认 Agent 团队、通道配置和送达证据。 |

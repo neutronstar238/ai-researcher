@@ -10181,3 +10181,37 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Team bundle inspection remains process-routing metadata only. It must not be used as evidence for scientific results, novelty, benchmark metrics, citation validity, MCP invocation, publication readiness, paper-build acceptance, or evidence-gate acceptance.
+
+### 2026-06-24 03:00:25 +08:00 - Codex - Task 245.1 Guided Agent team inspection entry point
+
+- Request: Continue setup-once operation by surfacing the Agent skill/MCP team preview in normal setup and npm workflows before unattended runtime starts.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `package.json`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_npm_scripts.py`
+  - `Agent.md`
+- Summary:
+  - Added `npm run agent-team:inspect`, which runs `agents profile inspect-set .airesearcher/agents/ccfb-team.yaml --materialize-skills --require-complete`.
+  - Updated `airesearcher setup` output so the generated Agent team can be inspected before the recommended runtime start command.
+  - Kept runtime start guidance wired to `--agent-profile-set-bundle ... --require-agent-profile-set` after the inspection step.
+  - Updated README/README.zh-CN and added task `245.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands tests\unit\test_npm_scripts.py::test_npm_scripts_expose_guided_prelaunch_commands -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py tests\unit\test_npm_scripts.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs setup --config runs\manual-live\task245-setup-inspect-v1\config.yaml --env-path runs\manual-live\task245-setup-inspect-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task245-setup-inspect-v1\vault --integrations-dir runs\manual-live\task245-setup-inspect-v1\integrations --commands-dir runs\manual-live\task245-setup-inspect-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and printed both `[NEXT] agent_team_inspect` and `[NEXT] 2. Inspect Agent team`.
+  - Real `npm run agent-team:inspect`: passed after temporarily copying the generated setup team to `.airesearcher/agents`, reported `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`, then cleaned the temporary `.airesearcher/agents` directory.
+  - Cleanup check confirmed `ROOT_AGENTS_DIR_CLEANED`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 625 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The npm/setup inspection shortcut is still process-routing metadata only. It cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence-gate artifacts.

@@ -2848,14 +2848,22 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert (agent_team_bundle.parent / "skills" / "source.md").is_file()
     assert "[OK] agent_team_bundle:" in result.stdout
     assert "[OK] agent_team_status: written" in result.stdout
+    assert (
+        "[NEXT] agent_team_inspect: airesearcher agents profile inspect-set "
+        f"{agent_team_bundle} --materialize-skills --require-complete"
+    ) in result.stdout
     assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
     assert (
-        "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous "
+        "[NEXT] 2. Inspect Agent team: airesearcher agents profile inspect-set "
+        f"{agent_team_bundle} --materialize-skills --require-complete"
+    ) in result.stdout
+    assert (
+        "[NEXT] 3. Start runtime: airesearcher serve --permission-mode approve-dangerous "
         f"--agent-profile-set-bundle {agent_team_bundle} "
         "--require-agent-profile-set"
     ) in result.stdout
     assert (
-        "[NEXT] 3. When approval is requested, run: "
+        "[NEXT] 4. When approval is requested, run: "
         f"airesearcher runtime approve latest --state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
     ) in result.stdout
     assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
