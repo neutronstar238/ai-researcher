@@ -9543,3 +9543,38 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-009` for an artifact probe that used an outdated stage-context JSON path.
 - Follow-up:
   - MCP runtime contracts are still process metadata only. Future MCP-backed workers must record separate real tool invocation evidence and results before claims can pass publication or evidence gates.
+
+### 2026-06-23 15:25:42 +08:00 - Codex - Task 227.1 Active-learning Loop Optimizer state
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan by making the Loop Optimizer, rather than pure LLM preference text, choose candidates under auditable evidence, budget, risk, and reproduction gates.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed `LoopOptimizerCandidateScore` and `LoopOptimizerState` records.
+  - Preserved mandatory first-round DOE baseline selection, then added deterministic active-learning/UCB-like scoring for later candidate choice.
+  - Recorded exploitation score, uncertainty bonus, cost penalty, risk penalty, frozen penalty, observation count, total score, evidence refs, selected candidate, rejected candidates, and optimizer notes.
+  - Made `llm_override_allowed=false`, `budget_gate_enforced=true`, and `evidence_gate_enforced=true` machine-readable in optimizer state.
+  - Attached optimizer state to selection decisions, loop iteration records, `loop-campaign.json`, and the Markdown loop report.
+  - Updated English/Chinese README language and added completed task `227.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb -q`: passed, 13 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py`: passed with no issues in 2 source files.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task227-active-optimizer-v1\vault --cache runs\manual-live\task227-active-optimizer-v1\cache --output-dir runs\manual-live\task227-active-optimizer-v1\runs --deliverables-dir runs\manual-live\task227-active-optimizer-v1\outputs --state runs\manual-live\task227-active-optimizer-v1\scheduler.json --sessions-state runs\manual-live\task227-active-optimizer-v1\sessions.json --project-id task227-active-optimizer-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed, wrote `cycle-20260623T072328Z`, passed source preflight, research plan, and loop campaign, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `loop-campaign.json` iteration optimizer state contains `decision_policy=doe_grid`, `selected_candidate_id=arm_baseline_reproduction`, `llm_override_allowed=false`, `budget_gate_enforced=true`, `evidence_gate_enforced=true`, and 3 candidate scores; loop report Markdown contains `## Optimizer State` and `LLM override allowed`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 581 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `rg` confirmed README/README.zh-CN/tasks/source/tests contain optimizer-state and `llm_override_allowed=false` references.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added `P-20260623-010` for pre-existing README.zh-CN mojibake/line-ending maintenance risk; mitigated for the touched lines.
+- Follow-up:
+  - The optimizer is intentionally lightweight and deterministic. A future Bayesian optimizer backend can replace the UCB-like scorer, but it must continue to write the same optimizer-state contract and obey stop decisions, evidence gates, reproduction gates, and approval gates.

@@ -2794,6 +2794,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `215.1`, `221.1`, `223.1`, `224.1`, and `225.1`; user request that custom MCP imports can be assigned to specific Agents while keeping tool use evidence-backed._
     - _Verify: focused profile, CLI, and LLM reviewer tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
 
+- [x] 227. Active-learning Loop Optimizer state
+  - [x] 227.1 Persist optimizer scoring state for every campaign selection
+    - Add typed optimizer state records for DOE seed selection and active-learning/UCB-like candidate choice.
+    - Record candidate-level exploitation, uncertainty, cost penalty, risk penalty, frozen-dimension penalty, observation count, total score, and evidence refs.
+    - Make `llm_override_allowed=false`, `budget_gate_enforced=true`, and `evidence_gate_enforced=true` machine-readable in optimizer artifacts.
+    - Attach optimizer state to selection decisions, loop iteration records, loop-campaign JSON, and the Markdown loop report.
+    - Keep first-round DOE mandatory and use optimizer state, not LLM preference text, for later candidate selection.
+    - Update README/README.zh-CN with the optimizer-state contract.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; task `214.1`; task `222.1`; requirement that Loop Optimizer, not pure LLM prompting, chooses candidates under budget, risk, evidence, and reproduction gates._
+    - _Verify: focused loop/promotion/evidence/publication tests passed; real narrow autopilot and broad gates are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3358,6 +3369,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 129,
       "tasks": ["226.1"]
+    },
+    {
+      "id": 130,
+      "tasks": ["227.1"]
     }
   ]
 }

@@ -265,7 +265,7 @@ Each cycle can run:
 2. ArXiv and OpenAlex literature refresh. Semantic Scholar is optional and lower priority.
 3. Source-backed similar-work and novelty checks.
 4. Research-plan generation after the user confirms a direction.
-5. Closed-loop campaign initialization and DOE/evidence-gain candidate selection.
+5. Closed-loop campaign initialization and DOE/active-learning candidate selection.
 6. Hugging Face and Hacker News broad inspiration refresh.
 7. Local demo or public benchmark experiment.
 8. Command-line reproduction check.
@@ -279,11 +279,13 @@ Each cycle can run:
 16. Optional WeChat/Feishu inspiration digest push.
 
 The campaign artifact is treated as protocol-as-code. `loop-campaign.json` records the data
-sources, baselines, protocol artifacts, candidate arms, selected optimizer policy, metrics, quality
-gate, and a deterministic `stop_decision`. A failed loop is not allowed to retry indefinitely: if
-metadata, evidence, reproduction, budget, approval, or repeated-failure checks block the next step,
-the report records the frozen dimensions and the repair action required before another candidate can
-run.
+sources, baselines, protocol artifacts, candidate arms, selected optimizer policy, optimizer state,
+metrics, quality gate, and a deterministic `stop_decision`. The first iteration is a DOE baseline;
+later iterations write an active-learning/UCB-like score table with exploitation, uncertainty, cost,
+risk, frozen-dimension penalties, and `llm_override_allowed=false`. A failed loop is not allowed to
+retry indefinitely: if metadata, evidence, reproduction, budget, approval, or repeated-failure checks
+block the next step, the report records the frozen dimensions and the repair action required before
+another candidate can run.
 
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,

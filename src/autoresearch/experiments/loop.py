@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -80,6 +81,41 @@ class LoopCandidateArm(BaseModel):
     rationale: str = Field(min_length=1)
 
 
+class LoopOptimizerCandidateScore(BaseModel):
+    """One candidate score in the closed-loop optimizer state."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str = Field(min_length=1)
+    observation_count: int = Field(ge=0)
+    exploitation_score: float
+    uncertainty_bonus: float = Field(ge=0.0)
+    cost_penalty: float = Field(ge=0.0)
+    risk_penalty: float = Field(ge=0.0)
+    frozen_penalty: float = Field(ge=0.0)
+    total_score: float
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
+class LoopOptimizerState(BaseModel):
+    """Auditable DOE / active-learning optimizer state."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    campaign_id: str = Field(min_length=1)
+    decision_policy: LoopDecisionPolicy
+    selected_candidate_id: str = Field(min_length=1)
+    rejected_candidate_ids: list[str] = Field(default_factory=list)
+    total_observations: int = Field(ge=0)
+    exploration_weight: float = Field(ge=0.0)
+    frozen_dimensions: list[str] = Field(default_factory=list)
+    candidate_scores: list[LoopOptimizerCandidateScore] = Field(default_factory=list)
+    llm_override_allowed: bool = False
+    budget_gate_enforced: bool = True
+    evidence_gate_enforced: bool = True
+    notes: list[str] = Field(default_factory=list)
+
+
 class ClosedLoopCampaign(BaseModel):
     """Protocol-as-code campaign envelope for one autonomous research loop."""
 
@@ -116,6 +152,7 @@ class LoopSelectionDecision(BaseModel):
     score: float
     frozen_dimensions: list[str] = Field(default_factory=list)
     rejected_candidate_ids: list[str] = Field(default_factory=list)
+    optimizer_state: LoopOptimizerState | None = None
 
 
 class LoopIterationRecord(BaseModel):
@@ -143,6 +180,8 @@ class LoopIterationRecord(BaseModel):
     retry_allowed: bool = False
     repair_hypothesis: str | None = Field(default=None, min_length=1)
     frozen_dimensions: list[str] = Field(default_factory=list)
+    selection_score: float | None = None
+    optimizer_state: dict[str, Any] | None = None
     started_at: datetime = Field(default_factory=_utc_now)
     completed_at: datetime | None = None
 
@@ -293,12 +332,13 @@ def select_loop_candidate(
     """Select the next arm with DOE first, then evidence-gain scoring."""
 
     previous = tuple(previous_iterations)
+    optimizer_state = build_loop_optimizer_state(campaign, previous)
     tried = {iteration.selected_candidate_id for iteration in previous}
     remaining = [
         candidate for candidate in campaign.candidate_space if candidate.candidate_id not in tried
     ]
     if not previous:
-        selected = campaign.candidate_space[0]
+        selected = _candidate_by_id(campaign, optimizer_state.selected_candidate_id)
         return LoopSelectionDecision(
             selected_candidate_id=selected.candidate_id,
             decision_policy=LoopDecisionPolicy.DOE_GRID,
@@ -307,16 +347,22 @@ def select_loop_candidate(
                 "or optimizer-ranked variants can be trusted."
             ),
             score=_candidate_score(selected),
-            rejected_candidate_ids=[
-                candidate.candidate_id for candidate in campaign.candidate_space[1:]
-            ],
+            rejected_candidate_ids=optimizer_state.rejected_candidate_ids,
+            optimizer_state=optimizer_state,
         )
 
     failed = [iteration for iteration in previous if iteration.failure_category is not None]
     if failed:
         last_failure = failed[-1]
         failure_category = last_failure.failure_category or LoopFailureCategory.EXECUTION
-        selected = remaining[0] if remaining else _candidate_by_id(campaign, last_failure.selected_candidate_id)
+        optimizer_state = build_loop_optimizer_state(
+            campaign,
+            previous,
+            decision_policy=LoopDecisionPolicy.REPAIR_OR_FREEZE,
+            frozen_dimensions=last_failure.frozen_dimensions or ["failed-dimension"],
+            avoid_candidate_ids=(last_failure.selected_candidate_id,) if remaining else (),
+        )
+        selected = _candidate_by_id(campaign, optimizer_state.selected_candidate_id)
         return LoopSelectionDecision(
             selected_candidate_id=selected.candidate_id,
             decision_policy=LoopDecisionPolicy.REPAIR_OR_FREEZE,
@@ -324,29 +370,110 @@ def select_loop_candidate(
                 f"Previous iteration hit {failure_category.value}; retry only "
                 "after recording a repair hypothesis or freezing the failing dimension."
             ),
-            score=_candidate_score(selected),
+            score=optimizer_state.candidate_scores[0].total_score
+            if optimizer_state.candidate_scores
+            else _candidate_score(selected),
             frozen_dimensions=last_failure.frozen_dimensions or ["failed-dimension"],
-            rejected_candidate_ids=[
-                candidate.candidate_id
-                for candidate in campaign.candidate_space
-                if candidate.candidate_id != selected.candidate_id
-            ],
+            rejected_candidate_ids=optimizer_state.rejected_candidate_ids,
+            optimizer_state=optimizer_state,
         )
 
-    candidates = remaining or list(campaign.candidate_space)
-    selected = max(candidates, key=_candidate_score)
+    optimizer_state = build_loop_optimizer_state(campaign, previous)
+    selected = _candidate_by_id(campaign, optimizer_state.selected_candidate_id)
     return LoopSelectionDecision(
         selected_candidate_id=selected.candidate_id,
         decision_policy=LoopDecisionPolicy.EVIDENCE_GAIN,
         decision_rationale=(
-            "Selected by expected evidence gain after subtracting cost and risk penalties."
+            "Selected by the active-learning optimizer after balancing exploitation, "
+            "uncertainty, cost, and risk."
         ),
-        score=_candidate_score(selected),
-        rejected_candidate_ids=[
-            candidate.candidate_id
+        score=optimizer_state.candidate_scores[0].total_score
+        if optimizer_state.candidate_scores
+        else _candidate_score(selected),
+        rejected_candidate_ids=optimizer_state.rejected_candidate_ids,
+        optimizer_state=optimizer_state,
+    )
+
+
+def build_loop_optimizer_state(
+    campaign: ClosedLoopCampaign,
+    previous_iterations: Iterable[LoopIterationRecord] = (),
+    *,
+    decision_policy: LoopDecisionPolicy | None = None,
+    exploration_weight: float = 0.35,
+    frozen_dimensions: Iterable[str] = (),
+    avoid_candidate_ids: Iterable[str] = (),
+) -> LoopOptimizerState:
+    """Build an auditable DOE / active-learning optimizer state.
+
+    The optimizer is intentionally deterministic and lightweight: the first
+    iteration is a DOE baseline, and later iterations use an upper-confidence
+    style score over observed results. LLMs may propose arms, but this state is
+    what decides whether an arm can run.
+    """
+
+    records = tuple(previous_iterations)
+    policy = decision_policy or (
+        LoopDecisionPolicy.DOE_GRID if not records else LoopDecisionPolicy.EVIDENCE_GAIN
+    )
+    frozen = sorted({item for item in frozen_dimensions if item})
+    avoided = {item for item in avoid_candidate_ids if item}
+    total_observations = len(records)
+    if policy is LoopDecisionPolicy.DOE_GRID:
+        selected_id = campaign.candidate_space[0].candidate_id
+        scores = [
+            LoopOptimizerCandidateScore(
+                candidate_id=candidate.candidate_id,
+                observation_count=0,
+                exploitation_score=round(candidate.expected_gain, 6),
+                uncertainty_bonus=0.0,
+                cost_penalty=round(0.05 * candidate.estimated_cost, 6),
+                risk_penalty=round(candidate.risk_score, 6),
+                frozen_penalty=0.0,
+                total_score=_candidate_score(candidate),
+                evidence_refs=candidate.evidence_refs,
+            )
             for candidate in campaign.candidate_space
-            if candidate.candidate_id != selected.candidate_id
-        ],
+        ]
+        notes = [
+            "DOE baseline is mandatory before optimizer-ranked variants can run.",
+            "LLM candidate drafts cannot bypass campaign budget, risk, evidence, or approval gates.",
+        ]
+    else:
+        scores = sorted(
+            (
+                _optimizer_candidate_score(
+                    candidate,
+                    records,
+                    exploration_weight=exploration_weight,
+                    frozen_penalty=1.0 if candidate.candidate_id in avoided else 0.0,
+                )
+                for candidate in campaign.candidate_space
+            ),
+            key=lambda score: score.total_score,
+            reverse=True,
+        )
+        selected_id = scores[0].candidate_id
+        notes = [
+            "Active-learning score = exploitation + uncertainty - cost penalty - risk penalty - frozen penalty.",
+            "Observed experiment metrics outrank LLM preference text.",
+        ]
+        if frozen:
+            notes.append("Repair/freeze mode keeps risky dimensions out of the next optimizer step.")
+
+    rejected = [
+        score.candidate_id for score in scores if score.candidate_id != selected_id
+    ]
+    return LoopOptimizerState(
+        campaign_id=campaign.campaign_id,
+        decision_policy=policy,
+        selected_candidate_id=selected_id,
+        rejected_candidate_ids=rejected,
+        total_observations=total_observations,
+        exploration_weight=round(exploration_weight, 6),
+        frozen_dimensions=frozen,
+        candidate_scores=scores,
+        notes=notes,
     )
 
 
@@ -418,6 +545,10 @@ def create_loop_iteration_from_cycle_summary(
         retry_allowed=failure_category is not None,
         repair_hypothesis=repair_hypothesis,
         frozen_dimensions=decision.frozen_dimensions,
+        selection_score=decision.score,
+        optimizer_state=decision.optimizer_state.model_dump(mode="json")
+        if decision.optimizer_state is not None
+        else None,
         completed_at=_utc_now(),
     )
 
@@ -736,6 +867,10 @@ def render_loop_report_markdown(
         "",
         *(_list_items(gate.warnings)),
         "",
+        "## Optimizer State",
+        "",
+        *(_optimizer_state_lines(_latest_optimizer_state(records))),
+        "",
         "## Stop Decision",
         "",
         f"- Should stop: `{str(stop_decision.should_stop).lower()}`",
@@ -774,8 +909,8 @@ def render_loop_report_markdown(
             "",
             "## Iterations",
             "",
-            "| Iteration | Policy | Candidate | Result | Baseline | Reproduction delta | Validation | Evidence |",
-            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: |",
+            "| Iteration | Policy | Candidate | Selection score | Result | Baseline | Reproduction delta | Validation | Evidence |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | ---: |",
         ]
     )
     for record in records:
@@ -786,6 +921,7 @@ def render_loop_report_markdown(
                     f"`{record.iteration_id}`",
                     f"`{record.decision_policy.value}`",
                     f"`{record.selected_candidate_id}`",
+                    _number(record.selection_score),
                     _number(record.result_metric),
                     _number(record.baseline_metric),
                     f"{record.reproduction_delta:.6f}",
@@ -809,6 +945,58 @@ def render_loop_report_markdown(
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _latest_optimizer_state(
+    records: tuple[LoopIterationRecord, ...],
+) -> Mapping[str, Any]:
+    for record in reversed(records):
+        if isinstance(record.optimizer_state, Mapping):
+            return record.optimizer_state
+    return {}
+
+
+def _optimizer_state_lines(state: Mapping[str, Any]) -> list[str]:
+    if not state:
+        return ["- None"]
+    scores = [
+        _dict(score)
+        for score in state.get("candidate_scores", [])
+        if isinstance(score, Mapping)
+    ]
+    lines = [
+        f"- Policy: `{_text(state.get('decision_policy'))}`",
+        f"- Selected candidate: `{_text(state.get('selected_candidate_id'))}`",
+        f"- Total observations: `{_text(state.get('total_observations'))}`",
+        f"- Exploration weight: `{_text(state.get('exploration_weight'))}`",
+        f"- LLM override allowed: `{str(bool(state.get('llm_override_allowed'))).lower()}`",
+        f"- Budget gate enforced: `{str(bool(state.get('budget_gate_enforced', True))).lower()}`",
+        f"- Evidence gate enforced: `{str(bool(state.get('evidence_gate_enforced', True))).lower()}`",
+        "",
+        "| Candidate | Score | Exploitation | Uncertainty | Cost | Risk | Frozen | Observations |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for score in scores:
+        lines.append(
+            "| "
+            + " | ".join(
+                (
+                    f"`{_text(score.get('candidate_id'))}`",
+                    _number(_float_or_none(score.get("total_score"))),
+                    _number(_float_or_none(score.get("exploitation_score"))),
+                    _number(_float_or_none(score.get("uncertainty_bonus"))),
+                    _number(_float_or_none(score.get("cost_penalty"))),
+                    _number(_float_or_none(score.get("risk_penalty"))),
+                    _number(_float_or_none(score.get("frozen_penalty"))),
+                    _text(score.get("observation_count")),
+                )
+            )
+            + " |"
+        )
+    notes = _string_list(state.get("notes"))
+    if notes:
+        lines.extend(["", "### Optimizer Notes", "", *[f"- {note}" for note in notes]])
+    return lines
 
 
 def _candidate_space(
@@ -907,6 +1095,65 @@ def _metadata_value(metadata: Mapping[str, Any], key: str, default: str) -> str:
 
 def _candidate_score(candidate: LoopCandidateArm) -> float:
     return round(candidate.expected_gain - 0.05 * candidate.estimated_cost - candidate.risk_score, 6)
+
+
+def _optimizer_candidate_score(
+    candidate: LoopCandidateArm,
+    records: tuple[LoopIterationRecord, ...],
+    *,
+    exploration_weight: float,
+    frozen_penalty: float,
+) -> LoopOptimizerCandidateScore:
+    observations = [
+        record for record in records if record.selected_candidate_id == candidate.candidate_id
+    ]
+    successful = [
+        record
+        for record in observations
+        if record.validation_status is ValidationStatus.PASSED and record.result_metric is not None
+    ]
+    exploitation = (
+        sum(_record_effect_size(record) for record in successful) / len(successful)
+        if successful
+        else candidate.expected_gain
+    )
+    uncertainty = exploration_weight * math.sqrt(
+        math.log(max(len(records), 1) + len(records) + len(candidate.evidence_refs) + 2)
+        / (len(observations) + 1)
+    )
+    cost_penalty = 0.05 * candidate.estimated_cost
+    risk_penalty = candidate.risk_score
+    total_score = exploitation + uncertainty - cost_penalty - risk_penalty - frozen_penalty
+    evidence_refs = sorted(
+        {
+            *candidate.evidence_refs,
+            *(
+                ref
+                for record in observations
+                for ref in (*record.evidence_refs, *record.artifact_refs)
+                if ref
+            ),
+        }
+    )
+    return LoopOptimizerCandidateScore(
+        candidate_id=candidate.candidate_id,
+        observation_count=len(observations),
+        exploitation_score=round(exploitation, 6),
+        uncertainty_bonus=round(uncertainty, 6),
+        cost_penalty=round(cost_penalty, 6),
+        risk_penalty=round(risk_penalty, 6),
+        frozen_penalty=round(frozen_penalty, 6),
+        total_score=round(total_score, 6),
+        evidence_refs=evidence_refs,
+    )
+
+
+def _record_effect_size(record: LoopIterationRecord) -> float:
+    if record.result_metric is None:
+        return 0.0
+    if record.baseline_metric is not None and record.baseline_metric > 0.0:
+        return max(record.result_metric / record.baseline_metric - 1.0, -1.0)
+    return record.result_metric
 
 
 def _candidate_by_id(campaign: ClosedLoopCampaign, candidate_id: str) -> LoopCandidateArm:

@@ -6,6 +6,7 @@ from autoresearch.experiments import (
     LoopFailureCategory,
     LoopStopReason,
     build_closed_loop_campaign,
+    build_loop_optimizer_state,
     classify_loop_failure,
     create_loop_iteration_from_cycle_summary,
     evaluate_loop_stop_criteria,
@@ -54,9 +55,51 @@ def test_loop_selector_uses_doe_first_then_repair_on_failure(tmp_path: Path) -> 
     repair = select_loop_candidate(campaign, previous_iterations=(failed,))
 
     assert first.decision_policy is LoopDecisionPolicy.DOE_GRID
+    assert first.optimizer_state is not None
+    assert first.optimizer_state.llm_override_allowed is False
+    assert first.optimizer_state.budget_gate_enforced is True
     assert failed.failure_category is LoopFailureCategory.VALIDATION
     assert repair.decision_policy is LoopDecisionPolicy.REPAIR_OR_FREEZE
+    assert repair.optimizer_state is not None
+    assert repair.optimizer_state.decision_policy is LoopDecisionPolicy.REPAIR_OR_FREEZE
     assert repair.frozen_dimensions
+
+
+def test_loop_optimizer_state_uses_active_learning_after_baseline(
+    tmp_path: Path,
+) -> None:
+    campaign = build_closed_loop_campaign(
+        candidate=_candidate(),
+        project_id="project_1",
+        cycle_id="cycle_1",
+        research_plan=_research_plan_payload(),
+    )
+    first = select_loop_candidate(campaign)
+    baseline = create_loop_iteration_from_cycle_summary(
+        campaign=campaign,
+        decision=first,
+        summary=_cycle_summary(tmp_path),
+        base_dir=tmp_path,
+    )
+
+    state = build_loop_optimizer_state(campaign, (baseline,))
+    decision = select_loop_candidate(campaign, (baseline,))
+
+    assert state.decision_policy is LoopDecisionPolicy.EVIDENCE_GAIN
+    assert state.total_observations == 1
+    assert state.llm_override_allowed is False
+    assert state.budget_gate_enforced is True
+    assert state.evidence_gate_enforced is True
+    assert len(state.candidate_scores) == 3
+    assert state.candidate_scores == sorted(
+        state.candidate_scores,
+        key=lambda score: score.total_score,
+        reverse=True,
+    )
+    assert decision.optimizer_state is not None
+    assert decision.selected_candidate_id == state.selected_candidate_id
+    assert decision.selected_candidate_id != "arm_baseline_reproduction"
+    assert "Active-learning score" in decision.optimizer_state.notes[0]
 
 
 def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None:
@@ -97,8 +140,12 @@ def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None
     assert payload["quality_gate"]["passed"] is True
     assert payload["stop_decision"]["reason"] == LoopStopReason.CONTINUE.value
     assert payload["iterations"][0]["validation_status"] == ValidationStatus.PASSED.value
+    assert payload["iterations"][0]["selection_score"] is not None
+    assert payload["iterations"][0]["optimizer_state"]["llm_override_allowed"] is False
     markdown = artifact.markdown_path.read_text(encoding="utf-8")
     assert "Loop Engineering Report" in markdown
+    assert "## Optimizer State" in markdown
+    assert "LLM override allowed" in markdown
     assert "## Stop Decision" in markdown
 
 

@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-010 - README.zh-CN contains legacy mojibake around existing Chinese copy
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-06-23 15:32:00 +08:00
+- Source: README.zh-CN update while documenting task `227.1`.
+- Symptom: PowerShell/Python UTF-8 reads showed replacement-character mojibake in existing Chinese paragraphs, and `apply_patch` could not reliably match the affected line.
+- Impact: Product behavior is unaffected, but future documentation edits can accidentally preserve or expand unreadable Chinese copy if the file is edited without checking rendered text.
+- Evidence: Existing lines around the closed-loop cycle list displayed unreadable replacement-character text before this task; the targeted task `227.1` lines were replaced with valid UTF-8 Chinese.
+- Root cause: Historical encoding damage in `README.zh-CN.md` predates this task.
+- Workaround: For targeted Chinese doc edits, inspect the exact rendered lines and replace only the affected lines; avoid broad rewrites unless explicitly requested.
+- Next action: Schedule a separate README.zh-CN cleanup pass if the user wants the full Chinese README restored.
+- Linked tasks: `227.1`
+- Resolution: Replaced only the `227.1`-touched cycle step and campaign artifact paragraph with valid UTF-8 Chinese.
+- Verification: `rg` confirmed the touched README/README.zh-CN lines now document optimizer state and `llm_override_allowed=false`; `git diff --check` exits successfully but still prints the existing README.zh-CN CRLF normalization warning.
+
 ### P-20260623-009 - MCP contract artifact probe used the wrong stage-context path
 
 - Status: Resolved
