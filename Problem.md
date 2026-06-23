@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-007 - Skill materialization import blocks needed ruff normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:31:00 +08:00
+- Source: Focused lint verification for task `225.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/agents/__init__.py` and `src/autoresearch/cli/main.py`.
+- Impact: Product behavior was not affected, but the lint gate could not pass until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` reported two fixable `I001` findings.
+- Root cause: New materialization exports/imports were inserted manually.
+- Workaround: None needed after automated normalization.
+- Next action: Run focused ruff after touching shared import blocks.
+- Linked tasks: `225.1`
+- Resolution: Ran `python -m ruff check src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py --fix`.
+- Verification: Focused pytest passed with 14 tests; focused ruff passed; broad `python -m pytest tests\smoke tests\unit -q` passed with 578 passed and 4 skipped; broad `python -m ruff check src tests` passed.
+
+### P-20260623-006 - Skill materialization tests used noncanonical Windows text and source paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:27:00 +08:00
+- Source: Focused verification for task `225.1`.
+- Symptom: The first focused pytest run failed in two profile-materialization assertions because Windows text writes produced CRLF content, and failed in `test_agent_profile_write_and_inspect_cli` because the test created a local skill file under `_system/templates/` while the profile referenced `_system/skills/`.
+- Impact: Product behavior was not affected, but the materialization verification gate could not pass until tests asserted against actual file bytes and used the declared profile source path.
+- Evidence: `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` reported three failures: CRLF content mismatches and materialized status `missing` instead of `loaded`.
+- Root cause: The tests compared against hard-coded LF strings and wrote the preview file to a path that did not match the profile source.
+- Workaround: None needed after the test repair.
+- Next action: Prefer byte/hash assertions from the actual test file and keep materialization preview fixtures aligned with the profile JSON source path.
+- Linked tasks: `225.1`
+- Resolution: Updated profile tests to read expected content and hashes from the actual files, and changed the CLI preview fixture path to `autoresearch-vault/_system/skills/source-tracing.md`.
+- Verification: Focused pytest passed with 14 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with 578 passed and 4 skipped.
+
 ### P-20260623-005 - Stage-context helper test needed import-order normalization
 
 - Status: Resolved

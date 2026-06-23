@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shlex
@@ -41,6 +42,12 @@ PROFILE_RUNTIME_EVIDENCE_POLICY: dict[str, tuple[str, ...]] = {
         "tool invocation",
     ),
 }
+DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS = 12_000
+SKILL_MATERIALIZATION_EVIDENCE_POLICY = (
+    "Materialized skill context is process metadata for agent behavior only; it cannot "
+    "support scientific results, novelty claims, benchmark metrics, citation validity, "
+    "publication readiness, or proof that any tool was invoked."
+)
 
 
 class AgentThinkingMode(str, Enum):
@@ -84,6 +91,17 @@ class AgentProfileReadinessStatus(str, Enum):
     FAIL = "fail"
 
 
+class AgentSkillMaterializationStatus(str, Enum):
+    """Whether a bound skill source was materialized for runtime context."""
+
+    LOADED = "loaded"
+    TRUNCATED = "truncated"
+    REFERENCED = "referenced"
+    MISSING = "missing"
+    UNSUPPORTED = "unsupported"
+    BLOCKED = "blocked"
+
+
 class AgentProfileReadinessCheck(BaseModel):
     """One deterministic readiness check for a bound skill or MCP server."""
 
@@ -112,6 +130,27 @@ class AgentProfileReadinessReport(BaseModel):
         "Readiness checks verify profile inputs only; they do not prove scientific results, "
         "tool invocation, novelty, citation validity, or publication readiness."
     )
+
+
+class AgentSkillMaterializedContext(BaseModel):
+    """Bounded content and provenance for one local skill source."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skill_id: str
+    source: str
+    source_type: SkillSourceType
+    import_policy: SkillImportPolicy
+    status: AgentSkillMaterializationStatus
+    resolved_path: str | None = None
+    sha256: str | None = None
+    byte_count: int | None = None
+    char_count: int | None = None
+    max_chars: int
+    truncated: bool = False
+    content: str | None = None
+    message: str
+    evidence_policy: str = SKILL_MATERIALIZATION_EVIDENCE_POLICY
 
 
 class AgentSkillBinding(BaseModel):
@@ -258,10 +297,16 @@ class AgentProfile(BaseModel):
         _reject_duplicates([server.server_id for server in self.mcp_servers], "server_id")
         return self
 
-    def to_runtime_context(self) -> dict[str, Any]:
+    def to_runtime_context(
+        self,
+        *,
+        base_dir: Path | str | None = None,
+        materialize_skills: bool = False,
+        max_skill_chars: int = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    ) -> dict[str, Any]:
         """Return a compact runtime context safe to attach to agent messages."""
 
-        return {
+        context = {
             "agent_id": self.agent_id,
             "context_kind": PROFILE_RUNTIME_CONTEXT_KIND,
             "evidence_policy": {
@@ -286,6 +331,16 @@ class AgentProfile(BaseModel):
                 for server in self.mcp_servers
             ],
         }
+        if materialize_skills:
+            context["materialized_skills"] = [
+                skill_context.model_dump(mode="json")
+                for skill_context in materialize_agent_skill_contexts(
+                    self,
+                    base_dir=base_dir,
+                    max_chars=max_skill_chars,
+                )
+            ]
+        return context
 
 
 def infer_skill_source_type(source: str) -> SkillSourceType:
@@ -456,6 +511,22 @@ def evaluate_agent_profile_readiness(
     )
 
 
+def materialize_agent_skill_contexts(
+    profile: AgentProfile,
+    *,
+    base_dir: Path | str | None = None,
+    max_chars: int = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+) -> tuple[AgentSkillMaterializedContext, ...]:
+    """Load bounded local skill content for a profile without treating it as evidence."""
+
+    root = Path(base_dir) if base_dir is not None else Path.cwd()
+    bounded_max_chars = max(0, max_chars)
+    return tuple(
+        _materialize_skill_context(skill, base_dir=root, max_chars=bounded_max_chars)
+        for skill in profile.skills
+    )
+
+
 def normalize_profile_stage(stage: str) -> str:
     """Normalize a loop stage identifier used by an agent profile."""
 
@@ -570,6 +641,135 @@ def _split_assignment(spec: str, label: str) -> tuple[str, str]:
     return _validate_identifier(name, f"{label} id"), value.strip()
 
 
+def _materialize_skill_context(
+    skill: AgentSkillBinding,
+    *,
+    base_dir: Path,
+    max_chars: int,
+) -> AgentSkillMaterializedContext:
+    if skill.source_type != SkillSourceType.LOCAL_PATH:
+        return AgentSkillMaterializedContext(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type,
+            import_policy=skill.import_policy,
+            status=AgentSkillMaterializationStatus.REFERENCED,
+            max_chars=max_chars,
+            message=(
+                f"{skill.source_type.value} skill source is referenced only; this "
+                "local materializer does not fetch external or Obsidian note content."
+            ),
+        )
+
+    resolved = _resolve_local_skill_source(skill.source, base_dir=base_dir)
+    if not resolved.exists():
+        return AgentSkillMaterializedContext(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type,
+            import_policy=skill.import_policy,
+            status=AgentSkillMaterializationStatus.MISSING,
+            resolved_path=resolved.as_posix(),
+            max_chars=max_chars,
+            message=f"Local skill source is missing at {resolved.as_posix()}.",
+        )
+    if resolved.is_dir():
+        skill_md = resolved / "SKILL.md"
+        if skill_md.is_file():
+            resolved = skill_md
+        else:
+            return AgentSkillMaterializedContext(
+                skill_id=skill.skill_id,
+                source=skill.source,
+                source_type=skill.source_type,
+                import_policy=skill.import_policy,
+                status=AgentSkillMaterializationStatus.UNSUPPORTED,
+                resolved_path=resolved.as_posix(),
+                max_chars=max_chars,
+                message=(
+                    "Local skill source is a directory without a SKILL.md file, so no "
+                    "bounded runtime content was materialized."
+                ),
+            )
+    if not resolved.is_file():
+        return AgentSkillMaterializedContext(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type,
+            import_policy=skill.import_policy,
+            status=AgentSkillMaterializationStatus.UNSUPPORTED,
+            resolved_path=resolved.as_posix(),
+            max_chars=max_chars,
+            message="Local skill source is not a regular file.",
+        )
+
+    try:
+        raw_content = resolved.read_bytes()
+        content_text = raw_content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        return AgentSkillMaterializedContext(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type,
+            import_policy=skill.import_policy,
+            status=AgentSkillMaterializationStatus.UNSUPPORTED,
+            resolved_path=resolved.as_posix(),
+            max_chars=max_chars,
+            message=f"Local skill source is not valid UTF-8: {exc}.",
+        )
+    digest = hashlib.sha256(raw_content).hexdigest()
+    if _SECRETISH_RE.search(content_text):
+        return AgentSkillMaterializedContext(
+            skill_id=skill.skill_id,
+            source=skill.source,
+            source_type=skill.source_type,
+            import_policy=skill.import_policy,
+            status=AgentSkillMaterializationStatus.BLOCKED,
+            resolved_path=resolved.as_posix(),
+            sha256=digest,
+            byte_count=len(raw_content),
+            char_count=len(content_text),
+            max_chars=max_chars,
+            message=(
+                "Local skill source contains secret-like text, so content was not "
+                "attached to runtime artifacts."
+            ),
+        )
+
+    truncated = len(content_text) > max_chars
+    content = content_text[:max_chars]
+    return AgentSkillMaterializedContext(
+        skill_id=skill.skill_id,
+        source=skill.source,
+        source_type=skill.source_type,
+        import_policy=skill.import_policy,
+        status=(
+            AgentSkillMaterializationStatus.TRUNCATED
+            if truncated
+            else AgentSkillMaterializationStatus.LOADED
+        ),
+        resolved_path=resolved.as_posix(),
+        sha256=digest,
+        byte_count=len(raw_content),
+        char_count=len(content_text),
+        max_chars=max_chars,
+        truncated=truncated,
+        content=content,
+        message=(
+            "Local skill source was materialized with bounded content."
+            if not truncated
+            else "Local skill source was materialized with truncated bounded content."
+        ),
+    )
+
+
+def _resolve_local_skill_source(source: str, *, base_dir: Path) -> Path:
+    source_path = Path(source)
+    if source_path.is_absolute():
+        return source_path
+    return base_dir / source_path
+
+
 def _skill_readiness_check(
     skill: AgentSkillBinding,
     *,
@@ -577,8 +777,7 @@ def _skill_readiness_check(
 ) -> AgentProfileReadinessCheck:
     target = f"skill:{skill.skill_id}"
     if skill.source_type == SkillSourceType.LOCAL_PATH:
-        source_path = Path(skill.source)
-        resolved = source_path if source_path.is_absolute() else base_dir / source_path
+        resolved = _resolve_local_skill_source(skill.source, base_dir=base_dir)
         if resolved.exists():
             return AgentProfileReadinessCheck(
                 check_id=f"skill_source_exists:{skill.skill_id}",

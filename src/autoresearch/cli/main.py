@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 
 from autoresearch import __version__
 from autoresearch.agents import (
+    DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
     AgentProfile,
     AgentThinkingMode,
     evaluate_agent_profile_readiness,
@@ -811,6 +812,25 @@ def inspect_agent_profile_command(
         Path,
         typer.Argument(help="Profile JSON artifact to inspect."),
     ],
+    materialize_skills: Annotated[
+        bool,
+        typer.Option(
+            "--materialize-skills/--no-materialize-skills",
+            help="Attach bounded local skill content with hashes and truncation metadata.",
+        ),
+    ] = False,
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    max_skill_chars: Annotated[
+        int,
+        typer.Option(
+            "--max-skill-chars",
+            min=0,
+            help="Maximum characters to attach per local skill when materializing.",
+        ),
+    ] = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
 ) -> None:
     """Print the runtime context for a custom skill/MCP agent profile."""
 
@@ -819,7 +839,17 @@ def inspect_agent_profile_command(
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         typer.echo(f"[FAIL] agent_profile_inspect: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(json.dumps(profile.to_runtime_context(), indent=2, sort_keys=True))
+    typer.echo(
+        json.dumps(
+            profile.to_runtime_context(
+                base_dir=base_dir,
+                materialize_skills=materialize_skills,
+                max_skill_chars=max_skill_chars,
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @agent_profiles_app.command("validate")
@@ -919,7 +949,10 @@ def _load_agent_profile_contexts(
             msg = f"invalid stage assignment in profile {profile_path}: {exc}"
             raise RuntimeError(msg) from exc
         seen_agent_ids.add(profile.agent_id)
-        context = profile.to_runtime_context()
+        context = profile.to_runtime_context(
+            base_dir=readiness_base_dir,
+            materialize_skills=True,
+        )
         context["profile_path"] = profile_path.as_posix()
         readiness = evaluate_agent_profile_readiness(
             profile,
@@ -936,6 +969,7 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
     profiles: list[dict[str, Any]] = []
     for context in profile_contexts:
         skills = _mapping_list(context.get("skills"))
+        materialized_skills = _mapping_list(context.get("materialized_skills"))
         mcp_servers = _mapping_list(context.get("mcp_servers"))
         profiles.append(
             {
@@ -950,6 +984,18 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
                     Mapping,
                 ) else {},
                 "skill_ids": [str(skill.get("skill_id", "")) for skill in skills],
+                "materialized_skills": [
+                    {
+                        "skill_id": str(skill.get("skill_id", "")),
+                        "status": str(skill.get("status", "")),
+                        "sha256": skill.get("sha256"),
+                        "byte_count": skill.get("byte_count"),
+                        "char_count": skill.get("char_count"),
+                        "truncated": bool(skill.get("truncated", False)),
+                        "resolved_path": skill.get("resolved_path"),
+                    }
+                    for skill in materialized_skills
+                ],
                 "mcp_servers": [
                     {
                         "server_id": str(server.get("server_id", "")),

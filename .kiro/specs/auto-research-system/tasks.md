@@ -2772,6 +2772,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `215.1`, `221.1`, `223.1`; Loop Engineering requirement that Agent/tool declarations become checked artifacts rather than prompt-only assumptions._
     - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_agent_profile_validate_cli_fails_on_missing_env_key tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 14 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id readiness-agent --role project_agent --stage literature --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "model-router=npx -y model-router-mcp" --mcp-tool model-router:models.search --mcp-approval model-router:approve_dangerous --mcp-env-key model-router:AUTORESEARCH_LLM_API_KEY --vault runs\manual-live\task224-profile-readiness-v1\vault --project-id task224_profile_readiness_v1 --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json` passed; real `agents profile validate` with `.env` passed with 2 checks, 0 failures, and 0 warnings; readiness JSON contained no `sk-` secret prefix; real narrow `autopilot` with that profile passed the cycle path and wrote `agent_profiles.readiness.passed=True` plus `failed_check_count=0` into `cycle-summary.json`. Broad gates and diff checks are recorded in `Agent.md`._
 
+- [x] 225. Agent skill context materialization
+  - [x] 225.1 Attach bounded local skill content to assigned agent stage contexts
+    - Add typed materialized-skill context records for per-agent local skill files and skill directories containing `SKILL.md`.
+    - Include status, resolved path, SHA-256, byte/character counts, `max_chars`, truncation state, and process-metadata evidence policy for every materialized skill.
+    - Keep non-local skill sources as references and block secret-like local skill files without copying content into runtime artifacts.
+    - Load bounded local skill content into `serve`/`autopilot` runtime profile contexts, `stage_runtime_contexts`, and `review-evidence-context.json`, while keeping compact profile summaries content-free.
+    - Add `agents profile inspect --materialize-skills --base-dir . --max-skill-chars <n>` so operators can preview exactly what an assigned Agent receives.
+    - Update README/README.zh-CN with materialization behavior and the evidence boundary.
+    - _References: tasks `215.1`, `218.1`, `221.1`, and `224.1`; user request that custom skills/MCPs can be assigned to specific Agents while the system remains evidence-first and avoids prompt-only assumptions._
+    - _Verify: focused profile, CLI inspect, and autopilot summary/review-context tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3328,6 +3339,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 127,
       "tasks": ["224.1"]
+    },
+    {
+      "id": 128,
+      "tasks": ["225.1"]
     }
   ]
 }

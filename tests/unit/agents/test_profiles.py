@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -10,11 +11,13 @@ from autoresearch.agents import (
     AgentResult,
     AgentResultStatus,
     AgentSkillBinding,
+    AgentSkillMaterializationStatus,
     AgentTask,
     BaseAgent,
     McpApprovalPolicy,
     SkillImportPolicy,
     evaluate_agent_profile_readiness,
+    materialize_agent_skill_contexts,
     parse_mcp_approval_policy_specs,
     parse_mcp_env_key_specs,
     parse_mcp_spec,
@@ -77,6 +80,67 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     assert context["assigned_stages"] == ["literature", "research_plan"]
     assert context["skills"][0]["skill_id"] == "source-tracing"
     assert context["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+
+
+def test_agent_profile_materializes_bounded_local_skill_context(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_text = "# Source Tracing\nAlways bind claims to source records.\n"
+    skill_path.write_text(skill_text, encoding="utf-8")
+    stored_skill_bytes = skill_path.read_bytes()
+    stored_skill_text = stored_skill_bytes.decode("utf-8")
+    profile = AgentProfile(
+        agent_id="literature-agent",
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source-tracing.md"),),
+    )
+
+    contexts = materialize_agent_skill_contexts(profile, base_dir=tmp_path, max_chars=200)
+    runtime_context = profile.to_runtime_context(
+        base_dir=tmp_path,
+        materialize_skills=True,
+        max_skill_chars=200,
+    )
+
+    assert contexts[0].status == AgentSkillMaterializationStatus.LOADED
+    assert contexts[0].content == stored_skill_text
+    assert contexts[0].sha256 == hashlib.sha256(stored_skill_bytes).hexdigest()
+    assert contexts[0].byte_count == len(stored_skill_bytes)
+    assert contexts[0].char_count == len(stored_skill_text)
+    assert contexts[0].truncated is False
+    assert runtime_context["materialized_skills"][0]["status"] == "loaded"
+    assert runtime_context["materialized_skills"][0]["content"] == stored_skill_text
+    assert "scientific results" in runtime_context["materialized_skills"][0]["evidence_policy"]
+
+
+def test_agent_profile_materialization_truncates_and_blocks_secretish_text(
+    tmp_path: Path,
+) -> None:
+    skill_dir = tmp_path / "skills" / "long-skill"
+    skill_dir.mkdir(parents=True)
+    skill_text = "# Long Skill\n" + ("evidence-backed step\n" * 10)
+    (skill_dir / "SKILL.md").write_text(skill_text, encoding="utf-8")
+    stored_skill_text = (skill_dir / "SKILL.md").read_bytes().decode("utf-8")
+    secret_path = tmp_path / "skills" / "secret.md"
+    secret_path.write_text("token=do-not-record\n", encoding="utf-8")
+    stored_secret_bytes = secret_path.read_bytes()
+    profile = AgentProfile(
+        agent_id="review-agent",
+        skills=(
+            AgentSkillBinding(skill_id="long-skill", source="skills/long-skill"),
+            AgentSkillBinding(skill_id="secret-skill", source="skills/secret.md"),
+        ),
+    )
+
+    contexts = materialize_agent_skill_contexts(profile, base_dir=tmp_path, max_chars=24)
+
+    assert contexts[0].status == AgentSkillMaterializationStatus.TRUNCATED
+    assert contexts[0].content == stored_skill_text[:24]
+    assert contexts[0].truncated is True
+    assert contexts[0].resolved_path is not None
+    assert contexts[0].resolved_path.endswith("skills/long-skill/SKILL.md")
+    assert contexts[1].status == AgentSkillMaterializationStatus.BLOCKED
+    assert contexts[1].content is None
+    assert contexts[1].sha256 == hashlib.sha256(stored_secret_bytes).hexdigest()
 
 
 def test_profile_contexts_group_by_assigned_stage() -> None:

@@ -246,6 +246,14 @@ contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, an
 checks profile inputs only; it does not prove that an MCP tool was invoked, that external skill
 content was safe, or that a scientific claim is supported.
 
+When a loaded profile points at a local skill file or a directory containing `SKILL.md`, the runtime
+materializes a bounded skill excerpt into stage contexts with `status`, `sha256`, byte/character
+counts, `max_chars`, and a truncation flag. The compact profile summary records only provenance and
+status, while `stage_runtime_contexts` and `stage_agent_contexts` carry the bounded content for the
+assigned worker. Non-local sources stay as references, and secret-like local files are marked
+`blocked` without copying their content into artifacts. To preview exactly what an agent would
+receive, run `agents profile inspect --materialize-skills --base-dir . <profile.json>`.
+
 Each cycle can run:
 
 1. Source preflight and cooldown checks.
@@ -393,7 +401,7 @@ Common npm shortcuts:
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
 | `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
-| `agents profile inspect` | profile JSON path | Prints the runtime context that will be attached to that agent. |
+| `agents profile inspect` | profile JSON path, `--materialize-skills`, `--base-dir`, `--max-skill-chars` | Prints the runtime context that will be attached to that agent; optionally includes bounded local skill content with hashes and truncation metadata. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |

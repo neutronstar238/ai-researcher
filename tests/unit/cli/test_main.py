@@ -153,6 +153,33 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert payload["mcp_servers"][0]["approval_policy"] == "approve_dangerous"
     assert payload["mcp_servers"][0]["env_keys"] == ["OBSIDIAN_API_KEY"]
 
+    local_skill = tmp_path / "autoresearch-vault" / "_system" / "skills" / "source-tracing.md"
+    local_skill.parent.mkdir(parents=True)
+    local_skill.write_text("# Source Tracing\nBind every claim to evidence.\n", encoding="utf-8")
+    materialized_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect",
+            str(profile_path),
+            "--materialize-skills",
+            "--base-dir",
+            str(tmp_path),
+            "--max-skill-chars",
+            "80",
+        ],
+    )
+
+    assert materialized_result.exit_code == 0, materialized_result.output
+    materialized_payload = json.loads(materialized_result.stdout)
+    materialized_skill = materialized_payload["materialized_skills"][0]
+    assert materialized_skill["skill_id"] == "source-tracing"
+    assert materialized_skill["status"] == "loaded"
+    assert materialized_skill["content"].startswith("# Source Tracing")
+    assert materialized_skill["sha256"]
+    assert "scientific results" in materialized_skill["evidence_policy"]
+
 
 def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> None:
     result = CliRunner().invoke(
@@ -3106,7 +3133,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
     skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
     skill_path.parent.mkdir(parents=True)
-    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    skill_path.write_text(
+        "# Source Tracing\nBind every claim to a source record before review.\n",
+        encoding="utf-8",
+    )
     profile_path = tmp_path / "profiles" / "literature-agent.json"
     profile_path.parent.mkdir(parents=True)
     profile_path.write_text(
@@ -3214,6 +3244,14 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "review",
     ]
     assert payload["agent_profiles"]["profiles"][0]["skill_ids"] == ["source-tracing"]
+    materialized_profile_skill = payload["agent_profiles"]["profiles"][0][
+        "materialized_skills"
+    ][0]
+    assert materialized_profile_skill["skill_id"] == "source-tracing"
+    assert materialized_profile_skill["status"] == "loaded"
+    assert materialized_profile_skill["sha256"]
+    assert materialized_profile_skill["truncated"] is False
+    assert "content" not in materialized_profile_skill
     assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["server_id"] == (
         "page-agent"
     )
@@ -3233,6 +3271,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert stage_contexts["literature"][0]["agent_id"] == "literature-agent"
     assert stage_contexts["literature"][0]["context_kind"] == (
         "agent_profile_process_metadata"
+    )
+    assert stage_contexts["literature"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert stage_contexts["literature"][0]["materialized_skills"][0]["content"].startswith(
+        "# Source Tracing"
     )
     assert "scientific results" in stage_contexts["literature"][0]["evidence_policy"][
         "cannot_support"
@@ -3283,6 +3325,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
     assert review_context["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert review_context["agent_profiles"]["profiles"][0]["materialized_skills"][0][
+        "status"
+    ] == "loaded"
     assert review_context["agent_profiles"]["readiness"]["passed"] is True
     assert review_context["agent_profiles"]["profiles"][0]["readiness"]["check_count"] == 2
     assert review_context["agent_profiles"]["stage_assignments"]["stages"][0] == {
@@ -3298,6 +3343,9 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert "tool invocation" in review_context["stage_agent_contexts"]["review"][0][
         "evidence_policy"
     ]["cannot_support"]
+    assert review_context["stage_agent_contexts"]["review"][0]["materialized_skills"][0][
+        "content"
+    ].startswith("# Source Tracing")
     assert review_context["stage_agent_contexts"]["review"][0]["mcp_servers"][0][
         "server_id"
     ] == "page-agent"

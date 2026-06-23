@@ -9459,3 +9459,45 @@ This file defines the project development standard for coding agents and records
   - None. No `Problem.md` entry was added because verification completed, no blocker remained, and no loop failure/evidence gap was introduced.
 - Follow-up:
   - Future MCP-backed stage workers should treat readiness as preflight only and still record real tool invocation evidence separately.
+
+### 2026-06-23 15:05:39 +08:00 - Codex - Task 225.1 Agent skill context materialization
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making assigned local skills actually available to stage workers as bounded, auditable runtime context rather than prompt-only declarations.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed materialized-skill context records for local skill files and local skill directories containing `SKILL.md`.
+  - Materialized contexts record status, resolved path, SHA-256, byte/character counts, `max_chars`, truncation state, content when allowed, and a process-metadata evidence policy.
+  - Kept non-local skill sources as references and blocked secret-like local skill files without copying their content into runtime artifacts.
+  - Loaded bounded local skill content into runtime profile contexts for `serve`/`autopilot`, including `stage_runtime_contexts` and `review-evidence-context.json`, while compact profile summaries keep content out and retain only provenance/status.
+  - Added `agents profile inspect --materialize-skills --base-dir . --max-skill-chars <n>` so operators can preview exactly what an assigned Agent receives.
+  - Updated English/Chinese README and task graph with the materialization behavior and evidence boundary.
+- Verification:
+  - Initial focused pytest exposed CRLF/path fixture issues; fixed in tests and recorded as `P-20260623-006`.
+  - Initial focused ruff exposed import-order normalization; fixed with ruff and recorded as `P-20260623-007`.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id skill-context-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:read_only --vault runs\manual-live\task225-skill-materialization-v1\vault --project-id task225_skill_materialization_v1 --output runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json --materialize-skills --base-dir . --max-skill-chars 400`: passed and returned `status=loaded`, `sha256=5e909f7afd7f140251662817965b44c7ed1eb4ac66493c8e099b2bc55217f66f`, bounded content, and the process-metadata evidence policy.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json --env-path .env --base-dir . --output runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task225-skill-materialization-v1\vault --cache runs\manual-live\task225-skill-materialization-v1\cache --output-dir runs\manual-live\task225-skill-materialization-v1\runs --deliverables-dir runs\manual-live\task225-skill-materialization-v1\outputs --state runs\manual-live\task225-skill-materialization-v1\scheduler.json --sessions-state runs\manual-live\task225-skill-materialization-v1\sessions.json --project-id task225-skill-materialization-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json`: passed, printed `readiness=pass`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed compact `agent_profiles.profiles[0].materialized_skills[0]` has `status=loaded` and no `content`, while `stage_runtime_contexts.literature[0].materialized_skills[0]` and `review-evidence-context.json` review stage context have `status=loaded`, content present, and the expected SHA-256.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 578 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-006` for Windows newline/path fixture failures in focused materialization tests.
+  - Added and resolved `P-20260623-007` for ruff import-order normalization after adding materialization exports/imports.
+- Follow-up:
+  - Future work can add vetted Obsidian-note or package-source materializers, but non-local skill content should remain reference-only until license, safety, provenance, and evidence-boundary checks exist.
