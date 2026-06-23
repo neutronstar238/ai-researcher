@@ -11,6 +11,22 @@ from .base import (
     BaseAgent,
 )
 from .messages import AgentMessage, MessageRiskLevel
+from .profiles import (
+    AgentMcpServerBinding,
+    AgentProfile,
+    AgentSkillBinding,
+    AgentThinkingMode,
+    McpApprovalPolicy,
+    SkillImportPolicy,
+    SkillSourceType,
+    load_agent_profile,
+    parse_mcp_spec,
+    parse_server_tool_specs,
+    parse_skill_spec,
+    render_agent_profile_markdown,
+    write_agent_profile,
+    write_agent_profile_note,
+)
 from .registry import AgentRegistry, AgentRegistryError
 
 if TYPE_CHECKING:
@@ -40,15 +56,29 @@ __all__ = [
     "AgentCapabilityError",
     "AgentLifecycleState",
     "AgentMessage",
+    "AgentMcpServerBinding",
+    "AgentProfile",
     "AgentRegistry",
     "AgentRegistryError",
     "AgentResult",
     "AgentResultStatus",
+    "AgentSkillBinding",
     "AgentTask",
+    "AgentThinkingMode",
     "BaseAgent",
+    "McpApprovalPolicy",
     "MessageRiskLevel",
     "ResearchWorkflow",
     "ResearchWorkflowStage",
     "ResearchWorkflowState",
+    "SkillImportPolicy",
+    "SkillSourceType",
     "WorkflowCheckpointStore",
+    "load_agent_profile",
+    "parse_mcp_spec",
+    "parse_server_tool_specs",
+    "parse_skill_spec",
+    "render_agent_profile_markdown",
+    "write_agent_profile",
+    "write_agent_profile_note",
 ]

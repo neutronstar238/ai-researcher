@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from autoresearch.agents.profiles import AgentProfile
 from autoresearch.knowledge import AgentRole
 
 
@@ -61,6 +62,7 @@ class BaseAgent(ABC):
     permissions: frozenset[str] = field(default_factory=frozenset)
     state: AgentLifecycleState = AgentLifecycleState.IDLE
     project_id: str | None = None
+    profile: AgentProfile | None = None
 
     def __post_init__(self) -> None:
         if not self.agent_id.strip():
@@ -71,11 +73,36 @@ class BaseAgent(ABC):
             raise ValueError(msg)
         self.capabilities = frozenset(self.capabilities)
         self.permissions = frozenset(self.permissions)
+        if self.profile is not None:
+            self.bind_profile(self.profile)
 
     def has_capability(self, capability: str) -> bool:
         """Return whether this agent can handle a capability."""
 
         return capability in self.capabilities
+
+    def bind_profile(self, profile: AgentProfile) -> None:
+        """Attach a validated custom skill/MCP profile to this agent."""
+
+        if profile.agent_id != self.agent_id:
+            msg = f"profile agent_id {profile.agent_id} does not match {self.agent_id}"
+            raise ValueError(msg)
+        if profile.role is not self.role:
+            msg = f"profile role {profile.role.value} does not match {self.role.value}"
+            raise ValueError(msg)
+        self.profile = profile
+
+    def runtime_context(self) -> dict[str, Any]:
+        """Return the profile context that may be attached to structured messages."""
+
+        if self.profile is None:
+            return {
+                "agent_id": self.agent_id,
+                "role": self.role.value,
+                "skills": [],
+                "mcp_servers": [],
+            }
+        return self.profile.to_runtime_context()
 
     def run_task(self, task: AgentTask) -> AgentResult:
         """Execute a task while enforcing capability and lifecycle state."""

@@ -2666,6 +2666,18 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; Kiro Obsidian-first self-loop direction; project requirement that unsupported conclusions must not enter paper drafts._
     - _Verify: focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py` passed; focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py` passed. Real isolated CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task214-loop\vault --cache runs\manual-live\task214-loop\cache --output-dir runs\manual-live\task214-loop\runs --deliverables-dir runs\manual-live\task214-loop\outputs --state runs\manual-live\task214-loop\scheduler.json --sessions-state runs\manual-live\task214-loop\sessions.json --project-id task214-loop-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration` completed `cycle-20260623T050627Z`, wrote loop campaign/report/vault note/PDF artifacts, passed `loop_campaign_gate`, and correctly blocked release because publication audit and evidence gate found toy-data and literature-breadth gaps. Broad `python -m pytest tests\smoke tests\unit -q` passed with 556 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
 
+- [x] 215. Per-agent custom skill and MCP profiles
+  - [x] 215.1 Bind custom skills and MCP tool allowlists to one named agent
+    - Add an `AgentProfile` model that binds custom skills and MCP servers to one `agent_id` and `AgentRole`.
+    - Preserve research-first behavior with a default scientific thinking contract: questions, hypotheses, data, baselines, falsification, evidence, and publication gates come before engineering abstractions.
+    - Require MCP servers to declare explicit allowed tools and environment variable names instead of storing secret values or implicit full access.
+    - Allow the runtime `BaseAgent` and `AgentRegistry` to attach a validated profile and expose safe runtime context for structured agent messages.
+    - Add `airesearcher agents profile write` and `airesearcher agents profile inspect` plus `/research:agent-profile` slash template support.
+    - Write optional Obsidian profile notes under `autoresearch-vault/projects/<project-id>/agents/` so agent-specific skill/MCP imports remain visible in project memory.
+    - Update README/README.zh-CN with per-agent custom skill/MCP usage and safety boundaries.
+    - _References: user request to add custom skills and MCP import ability for a specific Agent while keeping the system focused on publishable scientific output rather than over-engineered AI behavior._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\agents\test_agent_imports.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 8 tests; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed; focused ruff initially failed on import ordering in `src\autoresearch\cli\main.py`, then `python -m ruff check src\autoresearch\cli\main.py --fix` fixed it. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "obsidian=npx -y obsidian-mcp --vault autoresearch-vault" --mcp-tool obsidian:search_notes --mcp-tool obsidian:read_note --vault runs\manual-live\task215-agent-profile\vault --project-id task215-agent-profile --output runs\manual-live\task215-agent-profile\profiles\literature-agent.json` passed and wrote profile JSON plus vault note; real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task215-agent-profile\profiles\literature-agent.json` returned the scientific thinking contract, skill binding, and MCP allowlist. Broad `python -m pytest tests\smoke tests\unit -q` passed with 562 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3182,6 +3194,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 117,
       "tasks": ["214.1"]
+    },
+    {
+      "id": 118,
+      "tasks": ["215.1"]
     }
   ]
 }

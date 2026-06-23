@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-003 - Agent profile verification had local command hygiene issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 13:41:00 +08:00
+- Source: Verifying task `215.1`.
+- Symptom: A focused pytest command used two stale test names and collected zero tests. The first focused ruff run also failed with `I001` import ordering in `src/autoresearch/cli/main.py`.
+- Impact: No product behavior was affected, but the task could not be marked verified until the correct tests ran and imports were normalized.
+- Evidence: Pytest reported `ERROR: not found` for `test_slash_commands_init_writes_templates` and `test_slash_commands_list_shows_templates`; ruff reported one fixable `I001`.
+- Root cause: The slash-command test had a different current name, and the new CLI imports were added before isort normalization.
+- Workaround: None needed after correction.
+- Next action: Use `rg` to confirm exact test names before running focused node selections in this repository.
+- Linked tasks: `215.1`
+- Resolution: Updated the slash-command test assertions for `/research:agent-profile`, ran `python -m ruff check src\autoresearch\cli\main.py --fix`, and reran the correct focused and broad gates.
+- Verification: Focused profile/slash tests passed with 8 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with `562 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
 ### P-20260623-002 - Loop quality gates could pass from summary metrics after artifact deletion
 
 - Status: Resolved

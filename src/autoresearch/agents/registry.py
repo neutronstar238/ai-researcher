@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TypeAlias
 
 from autoresearch.agents.base import BaseAgent
+from autoresearch.agents.profiles import AgentProfile
 from autoresearch.knowledge import AgentRole
 
 AgentList: TypeAlias = list[BaseAgent]
@@ -39,6 +40,16 @@ class AgentRegistry:
         """Return an agent by ID."""
 
         return self._agents.get(agent_id)
+
+    def assign_profile(self, agent_id: str, profile: AgentProfile) -> BaseAgent:
+        """Attach a custom skill/MCP profile to a registered agent."""
+
+        agent = self.get(agent_id)
+        if agent is None:
+            msg = f"agent is not registered: {agent_id}"
+            raise AgentRegistryError(msg)
+        agent.bind_profile(profile)
+        return agent
 
     def list(self, *, role: AgentRole | None = None) -> AgentList:
         """List agents, optionally filtered by role."""

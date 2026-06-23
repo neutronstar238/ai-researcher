@@ -22,6 +22,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 | 闭环 campaign | 每个已确认方向会被初始化为 protocol-as-code campaign：明确目标、预算、候选空间、基线、停止条件、DOE/证据增益候选选择、闭环指标和可回滚质量门禁。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
+| Agent profile | `airesearcher agents profile write` 可以把自定义 skill 和 MCP server 绑定到某个 Agent，并要求科学思维契约、MCP tool 白名单和 vault 可见记录。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
 | 发表门禁 | CCF-B/三区级别声明必须绑定真实来源、实验记录、复现检查、审计、PDF 构建和 evidence gate。 |
 
@@ -242,6 +243,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:skill-evolve` | skill 证据 | 创建受控 skill 进化候选。 |
 | `/research:skill-polish-audit` | skill id | 在 promotion 前审计 skill card。 |
 | `/research:skill-watchlist` | 无 | 将外部科研 skill 候选写入 Obsidian 隔离观察清单。 |
+| `/research:agent-profile` | agent id + skill/MCP refs | 为指定 Agent 创建受控自定义 skill/MCP profile。 |
 | `/research:channel-adapters` | 无 | 写入可选通信 adapter runbook。 |
 | `/research:channel-test` | `wechat` 或 `feishu` | 发送 setup 通道自检消息。 |
 | `/research:readiness` | 无 | 在 24h 常驻运行前写入部署就绪检查报告。 |
@@ -284,6 +286,8 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
+| `agents profile write` | `--agent-id`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | 把自定义 skill 和 MCP server 绑定给某个 Agent；MCP tool 必须显式白名单。 |
+| `agents profile inspect` | profile JSON 路径 | 输出该 Agent 会收到的运行时上下文。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
@@ -308,6 +312,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 
 - 文献和来源摘要；
 - 非学术来源灵感笔记；
+- 指定给单个 Agent 的自定义 skill 和 MCP profile；
 - 项目进展和实验记录；
 - evidence map 和验证摘要；
 - review findings 和 follow-up issue；

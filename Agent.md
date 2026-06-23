@@ -9116,3 +9116,41 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-002` for loop gates passing from summary metrics after the physical loop campaign artifact was removed.
 - Follow-up:
   - Run the same loop on the default public benchmark with normal search breadth before claiming publication-level output; the smoke run intentionally proved the gate blocks toy-data release.
+
+### 2026-06-23 13:25:41 +08:00 - Codex - Task 215.1 Per-agent custom skill and MCP profiles
+
+- Request: Continue toward CCF-B/Sci Q2 publishable research output, avoid over-engineering the AI reasoning style, and add the ability to assign custom skills and MCP servers to a specific Agent.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/base.py`
+  - `src/autoresearch/agents/registry.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfile`, `AgentSkillBinding`, and `AgentMcpServerBinding` models for per-agent custom skill and MCP assignment.
+  - Added a default scientific thinking contract so custom tools stay grounded in research questions, hypotheses, data, baselines, falsification, evidence, and publication gates rather than engineering-only process language.
+  - Required MCP bindings to use explicit allowed tool lists and environment variable names, with no inline secrets in profile command/source fields.
+  - Added `BaseAgent.bind_profile()`, `BaseAgent.runtime_context()`, and `AgentRegistry.assign_profile()` so a validated profile can be attached to one registered agent.
+  - Added `airesearcher agents profile write` and `airesearcher agents profile inspect` plus `/research:agent-profile` slash template support.
+  - Added optional Obsidian profile notes under `projects/<project-id>/agents/`.
+  - Updated English and Chinese README usage docs.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\agents\test_agent_imports.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 8 tests.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed.
+  - Focused `python -m ruff check src\autoresearch\agents src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed after fixing one import-order issue with `python -m ruff check src\autoresearch\cli\main.py --fix`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "obsidian=npx -y obsidian-mcp --vault autoresearch-vault" --mcp-tool obsidian:search_notes --mcp-tool obsidian:read_note --vault runs\manual-live\task215-agent-profile\vault --project-id task215-agent-profile --output runs\manual-live\task215-agent-profile\profiles\literature-agent.json`: passed and wrote profile JSON plus vault note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task215-agent-profile\profiles\literature-agent.json`: passed and returned scientific thinking contract, custom skill, and MCP tool allowlist.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 562 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+- Problems:
+  - Added and resolved `P-20260623-003` for stale focused pytest names and ruff import-order cleanup during verification.
+- Follow-up:
+  - Next step should load these profiles into the active `serve`/`autopilot` cycle and operator monitor so each runtime stage can display the exact profile used by its assigned agent.

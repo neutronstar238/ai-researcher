@@ -89,6 +89,73 @@ def test_obsidian_setup_creates_vault_assets_and_local_snippet(tmp_path: Path) -
     )
 
 
+def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    vault_root = tmp_path / "vault"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--role",
+            "project_agent",
+            "--skill",
+            "source-tracing=autoresearch-vault/_system/skills/source-tracing.md",
+            "--mcp",
+            "obsidian=npx -y obsidian-mcp",
+            "--mcp-tool",
+            "obsidian:search_notes",
+            "--mcp-tool",
+            "obsidian:read_note",
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+            "--output",
+            str(profile_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile: literature-agent" in result.stdout
+    assert profile_path.is_file()
+    assert (vault_root / "projects" / "project-a" / "agents" / "literature-agent.md").is_file()
+
+    inspect_result = CliRunner().invoke(app, ["agents", "profile", "inspect", str(profile_path)])
+
+    assert inspect_result.exit_code == 0, inspect_result.output
+    payload = json.loads(inspect_result.stdout)
+    assert payload["agent_id"] == "literature-agent"
+    assert payload["skills"][0]["skill_id"] == "source-tracing"
+    assert payload["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+
+
+def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--mcp",
+            "browser=npx -y browser-mcp",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "at least 1 item" in result.output
+
+
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
 
@@ -1768,6 +1835,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "skill-polish-audit.toml").is_file()
     assert (commands_dir / "research" / "skill-watchlist.toml").is_file()
+    assert (commands_dir / "research" / "agent-profile.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "evidence-gate.toml").is_file()
     assert (commands_dir / "research" / "session-claim.toml").is_file()
@@ -1788,6 +1856,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:skill-polish-audit" in list_result.stdout
     assert "/research:skill-watchlist" in list_result.stdout
+    assert "/research:agent-profile" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
     assert "/research:evidence-gate" in list_result.stdout
     assert "/research:session-claim" in list_result.stdout
@@ -1827,6 +1896,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher skill-watchlist" in (
         commands_dir / "research" / "skill-watchlist.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher agents profile write" in (
+        commands_dir / "research" / "agent-profile.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher channels adapters init" in (
         commands_dir / "research" / "channel-adapters.toml"

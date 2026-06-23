@@ -18,6 +18,16 @@ import typer
 from dotenv import load_dotenv
 
 from autoresearch import __version__
+from autoresearch.agents import (
+    AgentProfile,
+    AgentThinkingMode,
+    load_agent_profile,
+    parse_mcp_spec,
+    parse_server_tool_specs,
+    parse_skill_spec,
+    write_agent_profile,
+    write_agent_profile_note,
+)
 from autoresearch.config import (
     ConfigFormat,
     ConfigParser,
@@ -59,6 +69,7 @@ from autoresearch.integrations import (
     write_scansci_pdf_manifest,
 )
 from autoresearch.knowledge import (
+    AgentRole,
     KnowledgeEntry,
     KnowledgeEntryType,
     KnowledgeZone,
@@ -131,6 +142,8 @@ app = typer.Typer(
     help="AI-Researcher command line interface.",
     no_args_is_help=True,
 )
+agents_app = typer.Typer(help="Manage runtime agent profiles and capabilities.")
+agent_profiles_app = typer.Typer(help="Bind custom skills and MCP servers to one agent.")
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
@@ -143,6 +156,7 @@ ccswitch_code_agents_app = typer.Typer(help="Manage cc-switch / Claude Code back
 opencode_code_agents_app = typer.Typer(help="Manage OpenCode direct backend manifests.")
 pdf_sources_app = typer.Typer(help="Manage optional PDF retrieval integration manifests.")
 scansci_pdf_app = typer.Typer(help="Manage ScanSci PDF source metadata.")
+app.add_typer(agents_app, name="agents")
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
 app.add_typer(runtime_app, name="runtime")
@@ -155,6 +169,7 @@ channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
 pdf_sources_app.add_typer(scansci_pdf_app, name="scansci-pdf")
+agents_app.add_typer(agent_profiles_app, name="profile")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
@@ -359,6 +374,14 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher skill-watchlist --vault autoresearch-vault` after external skill "
         "discovery. This records candidate directions, source refs, license status, risks, "
         "and validation gates without installing or copying third-party skill content.",
+    ),
+    "research/agent-profile.toml": (
+        "Bind custom skills and MCP tools to one named research agent.",
+        "Run `airesearcher agents profile write --agent-id <agent> --role project_agent "
+        "--skill <skill_id>=<path-or-note> --mcp <server_id>=\"<command>\" "
+        "--mcp-tool <server_id>:<tool> --vault autoresearch-vault --project-id <project>` "
+        "to create a bounded profile. MCP tools must be explicitly allowlisted; the profile "
+        "does not change safety, license, approval, or publication gates.",
     ),
     "research/paper-build.toml": (
         "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
@@ -568,6 +591,114 @@ def obsidian_setup(
     typer.echo(f"[OK] snippet: {assets.snippet_path}")
     if assets.local_snippet_path is not None:
         typer.echo(f"[OK] local_snippet: {assets.local_snippet_path}")
+
+
+@agent_profiles_app.command("write")
+def write_agent_profile_command(
+    agent_id: Annotated[
+        str,
+        typer.Option("--agent-id", help="Agent ID that will receive this profile."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile JSON artifact path."),
+    ] = Path(".airesearcher/agents/profile.json"),
+    role: Annotated[
+        AgentRole,
+        typer.Option("--role", help="Agent role used by vault permissions."),
+    ] = AgentRole.PROJECT_AGENT,
+    thinking_mode: Annotated[
+        AgentThinkingMode,
+        typer.Option("--thinking-mode", help="Scientific reasoning contract to attach."),
+    ] = AgentThinkingMode.SCIENTIFIC,
+    publication_target: Annotated[
+        str,
+        typer.Option("--publication-target", help="Publication-quality target for this agent."),
+    ] = "ccf-b-or-sci-q2",
+    description: Annotated[
+        str | None,
+        typer.Option("--description", help="Optional human-readable profile purpose."),
+    ] = None,
+    skill: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill",
+            help="Custom skill binding as skill_id=source. Repeat for multiple skills.",
+        ),
+    ] = None,
+    mcp: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp",
+            help="MCP binding as server_id=\"command args\". Repeat for multiple servers.",
+        ),
+    ] = None,
+    mcp_tool: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-tool",
+            help="Allowed MCP tool as server_id:tool_name. Repeat for multiple tools.",
+        ),
+    ] = None,
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for a profile note."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the optional vault note."),
+    ] = "ai_researcher_system",
+) -> None:
+    """Write a bounded custom skill/MCP profile for one agent."""
+
+    try:
+        tools_by_server = parse_server_tool_specs(tuple(mcp_tool or ()))
+        mcp_servers = tuple(parse_mcp_spec(spec, tools_by_server=tools_by_server) for spec in (mcp or ()))
+        bound_server_ids = {server.server_id for server in mcp_servers}
+        unused_tool_servers = sorted(set(tools_by_server) - bound_server_ids)
+        if unused_tool_servers:
+            msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
+            raise ValueError(msg)
+        profile = AgentProfile(
+            agent_id=agent_id,
+            role=role,
+            thinking_mode=thinking_mode,
+            publication_target=publication_target,
+            description=description,
+            skills=tuple(parse_skill_spec(spec) for spec in (skill or ())),
+            mcp_servers=mcp_servers,
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile_path = write_agent_profile(profile, output)
+    typer.echo(f"[OK] agent_profile: {profile.agent_id}")
+    typer.echo(f"[OK] role: {profile.role.value}")
+    typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        note_path = write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+        typer.echo(f"[OK] vault_note: {note_path}")
+
+
+@agent_profiles_app.command("inspect")
+def inspect_agent_profile_command(
+    profile_path: Annotated[
+        Path,
+        typer.Argument(help="Profile JSON artifact to inspect."),
+    ],
+) -> None:
+    """Print the runtime context for a custom skill/MCP agent profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_inspect: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(json.dumps(profile.to_runtime_context(), indent=2, sort_keys=True))
 
 
 @app.command("skill-evolve")

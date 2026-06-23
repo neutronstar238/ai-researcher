@@ -29,6 +29,7 @@ automatically.
 | Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
+| Agent profiles | `airesearcher agents profile write` binds custom skills and MCP servers to one named agent with scientific thinking rules, explicit MCP tool allowlists, and vault-visible profile notes. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
 | Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
@@ -286,6 +287,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:skill-evolve` | skill evidence | Creates bounded skill-evolution candidates. |
 | `/research:skill-polish-audit` | skill id | Audits skill cards before promotion. |
 | `/research:skill-watchlist` | none | Writes external research-skill candidates into the Obsidian quarantine watchlist. |
+| `/research:agent-profile` | agent id + skill/MCP refs | Creates a bounded per-agent profile for custom skills and MCP tools. |
 | `/research:channel-adapters` | none | Writes optional messaging adapter runbooks. |
 | `/research:channel-test` | `wechat` or `feishu` | Sends a setup-channel self-test message. |
 | `/research:readiness` | none | Writes the deployment readiness report before 24h operation. |
@@ -328,6 +330,8 @@ Common npm shortcuts:
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |
 | `channels test` | `--channel`, `--require-sent`, `--output` | Sends a setup-channel self-test and records `sent`, `failed`, or `skipped`. |
 | `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | Writes the preflight report for unattended daily operation. |
+| `agents profile write` | `--agent-id`, `--skill`, `--mcp`, `--mcp-tool`, `--vault`, `--project-id` | Binds custom skills and MCP servers to one agent. MCP tools must be explicitly allowlisted. |
+| `agents profile inspect` | profile JSON path | Prints the runtime context that will be attached to that agent. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
 | `paper-build` | `--template-id` | Selects a registered LaTeX template. |
@@ -354,6 +358,7 @@ local under `outputs/` unless a release process explicitly publishes them elsewh
 
 - literature and source summaries;
 - inspiration notes from non-scholarly sources;
+- per-agent custom skill and MCP profiles;
 - project progress and experiment records;
 - evidence maps and validation summaries;
 - review findings and follow-up issues;
