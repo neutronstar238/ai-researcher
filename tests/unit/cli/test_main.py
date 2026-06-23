@@ -4323,6 +4323,126 @@ def test_autopilot_agent_profile_set_bundle_materializes_before_gate(
     assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
 
 
+def test_autopilot_auto_loads_default_agent_team_bundle_when_present(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after default team block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+    monkeypatch.chdir(tmp_path)
+
+    bundle_path = tmp_path / cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH
+    skill_dir = bundle_path.parent / "skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "source.md").write_text(
+        "# Source\nKeep claims tied to retrieved evidence.\n",
+        encoding="utf-8",
+    )
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: setup-default-team",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert f"[OK] default_agent_team_bundle: {cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH}" in (
+        result.stdout
+    )
+    assert "[OK] agent_profile_bundles: 1; bundles=setup-default-team; generated_profiles=1" in (
+        result.stdout
+    )
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    assert payload["agent_profile_bundles"]["bundles"][0]["source_bundle_path"] == (
+        cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH.as_posix()
+    )
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+
+
+def test_runtime_agent_team_defaults_can_be_disabled_or_overridden(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    bundle_path = tmp_path / cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text("profile_set_id: default\nprofiles: []\n", encoding="utf-8")
+
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=True,
+        agent_profile_paths=(),
+        agent_profile_set_bundle_paths=(),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == (cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH,)
+    assert required is True
+    assert loaded is True
+
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=False,
+        agent_profile_paths=(),
+        agent_profile_set_bundle_paths=(),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == ()
+    assert required is False
+    assert loaded is False
+
+    explicit_bundle = Path("custom-team.yaml")
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=True,
+        agent_profile_paths=(Path("custom-profile.json"),),
+        agent_profile_set_bundle_paths=(explicit_bundle,),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == (explicit_bundle,)
+    assert required is False
+    assert loaded is False
+
+
 def test_review_status_display_blocks_needs_revision_verdict() -> None:
     prefix, status = cli_main._review_status_display(
         {"status": "passed", "verdict": "needs_revision", "quality_score": 1.0}

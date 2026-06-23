@@ -4591,6 +4591,16 @@ def autopilot(
             ),
         ),
     ] = None,
+    default_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--default-agent-team/--no-default-agent-team",
+            help=(
+                "Auto-load the setup-generated default Agent team bundle when no "
+                "explicit Agent profiles or bundles are supplied."
+            ),
+        ),
+    ] = True,
     require_agent_profile_set: Annotated[
         bool,
         typer.Option(
@@ -4634,6 +4644,19 @@ def autopilot(
     completed = 0
     resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
     resolved_heartbeat_state = _resolve_runtime_heartbeat_state(heartbeat_state, state)
+    agent_profile_paths = tuple(agent_profile or ())
+    (
+        agent_profile_set_bundle_paths,
+        resolved_require_agent_profile_set,
+        default_agent_team_loaded,
+    ) = _resolve_runtime_agent_team_defaults(
+        enabled=default_agent_team,
+        agent_profile_paths=agent_profile_paths,
+        agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
+        require_agent_profile_set=require_agent_profile_set,
+    )
+    if default_agent_team_loaded:
+        typer.echo(f"[OK] default_agent_team_bundle: {DEFAULT_AGENT_TEAM_BUNDLE_PATH}")
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -4670,9 +4693,9 @@ def autopilot(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
-                    agent_profile_paths=tuple(agent_profile or ()),
-                    agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
-                    require_agent_profile_set=require_agent_profile_set,
+                    agent_profile_paths=agent_profile_paths,
+                    agent_profile_set_bundle_paths=agent_profile_set_bundle_paths,
+                    require_agent_profile_set=resolved_require_agent_profile_set,
                     push_inspiration=push_inspiration,
                 )
             except RuntimeError as exc:
@@ -4839,6 +4862,16 @@ def serve(
             ),
         ),
     ] = None,
+    default_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--default-agent-team/--no-default-agent-team",
+            help=(
+                "Auto-load the setup-generated default Agent team bundle when no "
+                "explicit Agent profiles or bundles are supplied."
+            ),
+        ),
+    ] = True,
     require_agent_profile_set: Annotated[
         bool,
         typer.Option(
@@ -4908,6 +4941,19 @@ def serve(
         state,
         approvals_state,
     )
+    agent_profile_paths = tuple(agent_profile or ())
+    (
+        agent_profile_set_bundle_paths,
+        resolved_require_agent_profile_set,
+        default_agent_team_loaded,
+    ) = _resolve_runtime_agent_team_defaults(
+        enabled=default_agent_team,
+        agent_profile_paths=agent_profile_paths,
+        agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
+        require_agent_profile_set=require_agent_profile_set,
+    )
+    if default_agent_team_loaded:
+        typer.echo(f"[OK] default_agent_team_bundle: {DEFAULT_AGENT_TEAM_BUNDLE_PATH}")
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -4976,9 +5022,9 @@ def serve(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
-                    agent_profile_paths=tuple(agent_profile or ()),
-                    agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
-                    require_agent_profile_set=require_agent_profile_set,
+                    agent_profile_paths=agent_profile_paths,
+                    agent_profile_set_bundle_paths=agent_profile_set_bundle_paths,
+                    require_agent_profile_set=resolved_require_agent_profile_set,
                     push_inspiration=push_inspiration,
                     runtime_network_metadata=runtime_network_metadata,
                 )
@@ -8282,6 +8328,22 @@ def _write_default_agent_team_template(
         "skill_paths": skill_paths,
         "status": "written",
     }
+
+
+def _resolve_runtime_agent_team_defaults(
+    *,
+    enabled: bool,
+    agent_profile_paths: tuple[Path, ...],
+    agent_profile_set_bundle_paths: tuple[Path, ...],
+    require_agent_profile_set: bool,
+) -> tuple[tuple[Path, ...], bool, bool]:
+    if not enabled:
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    if agent_profile_paths or agent_profile_set_bundle_paths:
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    if not DEFAULT_AGENT_TEAM_BUNDLE_PATH.exists():
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    return (DEFAULT_AGENT_TEAM_BUNDLE_PATH,), True, True
 
 
 def _default_agent_team_bundle_yaml(

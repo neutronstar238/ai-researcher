@@ -85,9 +85,9 @@ The wizard writes local secrets and channel state to `.env`; users do not need t
 file. Public examples live in `.env.example`. Never commit real API keys, webhook URLs, app
 secrets, chat IDs, sessions, or tokens.
 
-By default, setup also prints the matching runtime command with
-`--agent-profile-set-bundle .airesearcher/agents/ccfb-team.yaml --require-agent-profile-set`.
-Pass `--skip-agent-team` only when a deployment already has a reviewed custom team bundle.
+After setup, `npm run serve` auto-loads the generated bundle when no explicit Agent profile or
+team bundle is supplied, and it turns on the profile-set coverage gate for that default team. Pass
+`--skip-agent-team` during setup only when a deployment already has a reviewed custom team bundle.
 
 Recommended channel setup:
 
@@ -463,7 +463,7 @@ Common npm shortcuts:
 | `npm run channel:test -- --channel feishu --require-sent` | Real delivery self-test for a configured channel. |
 | `npm run readiness -- --no-push-inspiration` | Local readiness report without requiring operator push. |
 | `npm run prelaunch` | Strict prelaunch gate: model, vault, daily loop, channel config, and sent evidence. |
-| `npm run serve` | Start the 24h operator with approval gates and inspiration push. |
+| `npm run serve` | Start the 24h operator with approval gates, inspiration push, and auto-loading of the setup-generated Agent team when present. |
 | `npm run monitor` | Show the operator console. |
 
 | Command | Parameter | Meaning |
@@ -488,6 +488,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, monitor, profile-set validation, and per-cycle `agent-stage-contexts/` packet artifacts. Repeat for multiple agents. |
 | `serve` / `autopilot` | `--agent-profile-set-bundle <team.yaml>` | Materialize one reusable multi-Agent team bundle into per-cycle profile JSON artifacts, then load them through the same readiness, profile-set validation, stage-context packet, and review-evidence path. Repeat for multiple bundles. |
+| `serve` / `autopilot` | `--default-agent-team`, `--no-default-agent-team` | Auto-load `.airesearcher/agents/ccfb-team.yaml` when no explicit Agent profiles or bundles are supplied, or disable that setup-generated default. |
 | `serve` / `autopilot` | `--require-agent-profile-set` | Blocks the cycle before online retrieval unless loaded Agent profiles cover the default CCF-B/Q2 stage matrix. Without this flag, the validation report is still written as audit metadata. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |

@@ -76,7 +76,7 @@ airesearcher setup
 
 向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
 
-默认情况下，setup 也会打印带有 `--agent-profile-set-bundle .airesearcher/agents/ccfb-team.yaml --require-agent-profile-set` 的启动命令。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议传入 `--skip-agent-team`。
+setup 完成后，`npm run serve` 会在没有显式传入 Agent profile 或团队 bundle 时自动加载生成的默认 bundle，并为这支默认团队开启 profile-set 覆盖门禁。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议在 setup 阶段传入 `--skip-agent-team`。
 
 推荐通道配置：
 
@@ -344,7 +344,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
 | `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
 | `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、通道配置和送达证据。 |
-| `npm run serve` | 启动带审批门禁和灵感推送的 24h operator。 |
+| `npm run serve` | 启动带审批门禁、灵感推送和 setup 默认 Agent 团队自动加载的 24h operator。 |
 | `npm run monitor` | 打开 operator 监控台。 |
 
 | 命令 | 参数 | 含义 |
@@ -369,6 +369,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |
 | `serve` / `autopilot` | `--agent-profile-set-bundle <team.yaml>` | 把可复用多 Agent 团队 bundle 展开成每轮 profile JSON artifact，再走同一套 readiness、profile-set validation、stage-context packet 和 review-evidence 路径；可重复传入多个。 |
+| `serve` / `autopilot` | `--default-agent-team`, `--no-default-agent-team` | 没有显式传入 Agent profile 或团队 bundle 时自动加载 `.airesearcher/agents/ccfb-team.yaml`，也可以关闭这个 setup 默认团队。 |
 | `serve` / `autopilot` | `--require-agent-profile-set` | 默认只写审计报告；开启后，如果加载的 Agent profile 未覆盖默认 CCF-B/SCI 二区阶段矩阵，则在联网检索前阻断本轮。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |

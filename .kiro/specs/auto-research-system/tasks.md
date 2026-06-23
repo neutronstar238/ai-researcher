@@ -2967,6 +2967,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `240.1`; user request for one guided deployment that configures the runtime Agent team without manual command chaining._
     - _Verify: focused setup CLI tests, focused ruff, focused mypy, real setup/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 242. Setup-default Agent team runtime auto-load
+  - [x] 242.1 Auto-load the setup-generated Agent team for `serve` and `autopilot`
+    - Detect `.airesearcher/agents/ccfb-team.yaml` when no explicit `--agent-profile` or `--agent-profile-set-bundle` arguments are supplied.
+    - Automatically load that default bundle and require the default CCF-B/Q2 profile-set coverage gate before online retrieval.
+    - Add `--default-agent-team/--no-default-agent-team` so operators can disable the setup default without deleting files.
+    - Preserve explicit per-Agent profile and explicit team-bundle behavior; user-supplied runtime routing must take precedence over the setup default.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN so `npm run serve` is documented as the normal post-setup start path.
+    - _References: tasks `240.1` and `241.1`; user request for setup once, then run the 24h operator without copying long command flags._
+    - _Verify: focused runtime default-team tests, focused ruff, focused mypy, real setup plus npm-style runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3591,6 +3602,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 144,
       "tasks": ["241.1"]
+    },
+    {
+      "id": 145,
+      "tasks": ["242.1"]
     }
   ]
 }

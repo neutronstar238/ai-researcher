@@ -10079,3 +10079,36 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - The setup-generated Agent team remains process-routing scaffolding only. It must not be used as evidence for scientific results, novelty, metrics, citation validity, MCP invocation, publication readiness, or paper-build acceptance.
+
+### 2026-06-24 02:39:20 +08:00 - Codex - Task 242.1 Setup-default Agent team runtime auto-load
+
+- Request: Continue toward setup-once operation so `npm run serve`/runtime startup can use the setup-generated Agent team without copying long profile-set flags.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `--default-agent-team/--no-default-agent-team` to `serve` and `autopilot`.
+  - Added `_resolve_runtime_agent_team_defaults()` so runtime commands auto-load `.airesearcher/agents/ccfb-team.yaml` only when it exists and no explicit `--agent-profile` or `--agent-profile-set-bundle` inputs are supplied.
+  - Auto-loaded setup-default teams now force the default profile-set coverage gate before online retrieval.
+  - Explicit Agent profiles or explicit team bundles still take precedence over the setup default.
+  - Updated README/README.zh-CN to document `npm run serve` as the normal post-setup path with default Agent team auto-loading.
+  - Added task `242.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_auto_loads_default_agent_team_bundle_when_present tests\unit\cli\test_main.py::test_runtime_agent_team_defaults_can_be_disabled_or_overridden tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real setup `node .\bin\airesearcher.mjs setup --config runs\manual-live\task242-default-team-v1\config.yaml --env-path runs\manual-live\task242-default-team-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task242-default-team-v1\vault --integrations-dir runs\manual-live\task242-default-team-v1\integrations --commands-dir runs\manual-live\task242-default-team-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and wrote the setup default team bundle.
+  - Real runtime from the generated deployment directory with no explicit Agent bundle flags, `python -m autoresearch.cli.main serve --permission-mode allow-all --once --cycles 1 --project-id task242_default_agent_team --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review --no-push-inspiration --no-claim-session`, passed and printed `[OK] default_agent_team_bundle: .airesearcher\agents\ccfb-team.yaml`, `agent_profile_bundles: 1`, `agent_profiles: 3`, `agent_profile_set: true; covered=9/9`, source preflight pass, research plan pass, loop campaign pass, the expected toy/no-review publication-audit fail and evidence-gate block, plus a PDF under `outputs/task242_default_agent_team/`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 621 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Runtime default-team auto-loading remains process-routing scaffolding. It cannot replace evidence from real retrieval, experiments, reproduction, citations, review, publication audit, paper build, or evidence gate artifacts.
