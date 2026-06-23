@@ -4126,6 +4126,96 @@ def test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix(
     assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
 
 
+def test_autopilot_agent_profile_set_bundle_materializes_before_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after profile-set block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    bundle_dir = tmp_path / "bundles"
+    skill_dir = bundle_dir / "skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "source.md").write_text(
+        "# Source\nKeep claims tied to retrieved evidence.\n",
+        encoding="utf-8",
+    )
+    bundle_path = bundle_dir / "team.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: runtime-team",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile-set-bundle",
+            str(bundle_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_bundles: 1; bundles=runtime-team; generated_profiles=1" in (
+        result.stdout
+    )
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    bundles = payload["agent_profile_bundles"]
+    assert bundles["bundle_count"] == 1
+    assert bundles["profile_count"] == 1
+    assert bundles["bundles"][0]["source_bundle_path"] == bundle_path.as_posix()
+    assert Path(bundles["manifest_path"]).is_file()
+    generated_profile_path = Path(bundles["profile_paths"][0])
+    generated_profile = json.loads(generated_profile_path.read_text(encoding="utf-8"))
+    assert generated_profile["agent_id"] == "literature-agent"
+    assert generated_profile["skills"][0]["source"] == (skill_dir / "source.md").as_posix()
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+    assert payload["agent_profiles"]["profiles"][0]["profile_path"] == (
+        generated_profile_path.as_posix()
+    )
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["passed"] is True
+    assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
+
+
 def test_review_status_display_blocks_needs_revision_verdict() -> None:
     prefix, status = cli_main._review_status_display(
         {"status": "passed", "verdict": "needs_revision", "quality_score": 1.0}

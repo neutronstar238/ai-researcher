@@ -2931,6 +2931,18 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `230.1`, `232.1`, `235.1`, `236.1`, and `237.1`; user request to assign custom skills and MCPs to specific Agents while keeping CCF-B/SCI-Q2 evidence gates strict._
     - _Verify: focused profile-set bundle/API/CLI tests, ruff, mypy, real CLI import-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 239. Runtime Agent profile-set bundle loading
+  - [x] 239.1 Materialize profile-set bundles inside `serve`/`autopilot` cycles
+    - Add repeatable `--agent-profile-set-bundle <team.yaml>` flags to `serve` and `autopilot`.
+    - Materialize each reusable Agent team bundle into per-cycle `agent-profile-bundles/` profile JSON artifacts plus a bundle manifest.
+    - Resolve relative local skill sources against the bundle file location before runtime readiness checks.
+    - Merge generated profile paths with explicit `--agent-profile` paths and reuse existing readiness, profile-set validation, stage-context packet, review-evidence, and `--require-agent-profile-set` behavior.
+    - Include the bundle manifest, source bundle paths, and generated profile paths in cycle summaries and review evidence paths.
+    - Keep runtime bundle materialization scoped to process metadata and responsibility routing; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the runtime bundle flag and evidence boundary.
+    - _References: tasks `216.1`, `236.1`, `237.1`, and `238.1`; user request for one-step unattended Agent team loading while preserving strict publication evidence gates._
+    - _Verify: focused runtime bundle CLI tests, ruff, mypy, real runtime bundle autopilot smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3543,6 +3555,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 141,
       "tasks": ["238.1"]
+    },
+    {
+      "id": 142,
+      "tasks": ["239.1"]
     }
   ]
 }

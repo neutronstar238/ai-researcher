@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-004 - Real runtime bundle smoke fixture used unsupported bundle keys
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:12:00 +08:00
+- Source: Real CLI verification for task `239.1`.
+- Symptom: The first real `autopilot --agent-profile-set-bundle` smoke failed bundle validation because the hand-written fixture used unsupported `policy` and `approval` keys and `role: reviewer`.
+- Impact: Product code was not released with the issue, but the real verification could not exercise runtime materialization until the fixture matched the existing profile-set bundle schema.
+- Evidence: `node .\bin\airesearcher.mjs autopilot ... --agent-profile-set-bundle runs\manual-live\task239-runtime-bundle-v1\team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session` exited 1 with Pydantic errors for extra `policy`, extra `approval`, and invalid role enum `reviewer`.
+- Root cause: The fixture mixed CLI flag terminology with the persisted bundle schema. Persisted bundle skills use `import_policy`, MCP servers use `approval_policy`, and reviewer-like agents use `role: validator_agent` with `thinking_mode: reviewer`.
+- Workaround: None needed after fixing the fixture.
+- Next action: Keep README examples and smoke fixtures aligned with `AgentProfileSetBundle` rather than CLI flag names.
+- Linked tasks: `239.1`
+- Resolution: Updated the real smoke bundle to use `import_policy`, `approval_policy`, `role: validator_agent`, and `thinking_mode: reviewer`.
+- Verification: The corrected real CLI smoke passed, materialized one bundle into three profiles, passed the 9/9 profile-set gate, wrote stage packets, and continued to the expected publication/evidence gates.
+
+### P-20260624-003 - Runtime profile-set bundle materialization kept relative skill paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:10:00 +08:00
+- Source: Focused verification for task `239.1`.
+- Symptom: The first runtime bundle focused test expected a materialized profile skill source to resolve to the bundle's local `skills/source.md`, but the generated runtime profile still contained the relative `skills/source.md` string.
+- Impact: Runtime `serve`/`autopilot` bundle loading could have failed readiness checks or resolved local skills against the wrong working directory, even though the standalone `agents profile import-set` command worked.
+- Evidence: `python -m pytest tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation -q` initially failed the generated skill-source assertion.
+- Root cause: Relative local skill-source resolution was first applied in the manual import-set command path instead of the new runtime materialization helper.
+- Workaround: None needed after moving the resolution into runtime bundle materialization while preserving manual import-set behavior.
+- Next action: Keep a CLI regression that loads a profile-set bundle directly through `autopilot` and asserts generated profile paths, source bundle paths, readiness, and pre-retrieval blocking behavior.
+- Linked tasks: `239.1`
+- Resolution: Added `_resolve_bundle_profile_sources()` to the runtime bundle materialization path and kept `agents profile import-set` unchanged.
+- Verification: The focused runtime bundle CLI tests passed, focused ruff passed, and focused mypy passed.
+
 ### P-20260624-002 - Profile-set import CLI used the wrong safe-path helper name
 
 - Status: Resolved

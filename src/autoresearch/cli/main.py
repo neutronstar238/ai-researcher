@@ -25,6 +25,7 @@ from autoresearch.agents import (
     AgentProfileReadinessReport,
     AgentThinkingMode,
     McpInvocationStatus,
+    SkillSourceType,
     append_mcp_invocation_evidence,
     build_agent_profile_from_bundle,
     build_agent_profiles_from_set_bundle,
@@ -1477,6 +1478,100 @@ def _load_agent_profile_contexts(
         context["readiness"] = readiness.model_dump(mode="json")
         contexts.append(context)
     return tuple(contexts)
+
+
+def _materialize_agent_profile_set_bundles(
+    profile_set_bundle_paths: Iterable[Path],
+    *,
+    cycle_dir: Path,
+) -> dict[str, Any]:
+    """Convert runtime profile-set bundles into ordinary profile JSON artifacts."""
+
+    bundle_rows: list[dict[str, Any]] = []
+    generated_profile_paths: list[str] = []
+    source_bundle_paths: list[str] = []
+    bundle_root = cycle_dir / "agent-profile-bundles"
+    for index, bundle_path in enumerate(profile_set_bundle_paths, start=1):
+        try:
+            bundle = load_agent_profile_set_bundle(bundle_path)
+            profiles = tuple(
+                _resolve_bundle_profile_sources(profile, bundle_path=bundle_path)
+                for profile in build_agent_profiles_from_set_bundle(bundle)
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            msg = f"failed to load agent profile-set bundle {bundle_path}: {exc}"
+            raise RuntimeError(msg) from exc
+
+        source_bundle_paths.append(bundle_path.as_posix())
+        bundle_slug = _safe_path_segment(f"{index:02d}-{bundle.profile_set_id}")
+        output_dir = bundle_root / bundle_slug
+        profile_paths: list[str] = []
+        for profile in profiles:
+            profile_path = write_agent_profile(
+                profile,
+                output_dir / f"{_safe_path_segment(profile.agent_id)}.json",
+            )
+            profile_paths.append(profile_path.as_posix())
+            generated_profile_paths.append(profile_path.as_posix())
+        bundle_rows.append(
+            {
+                "profile_set_id": bundle.profile_set_id,
+                "description": bundle.description,
+                "source_bundle_path": bundle_path.as_posix(),
+                "output_dir": output_dir.as_posix(),
+                "required_stages": list(bundle.required_stages),
+                "agent_ids": [profile.agent_id for profile in profiles],
+                "profile_count": len(profile_paths),
+                "profile_paths": profile_paths,
+            }
+        )
+
+    manifest: dict[str, Any] = {
+        "bundle_set_kind": "agent_profile_set_bundle_runtime_materialization_process_metadata",
+        "bundle_count": len(bundle_rows),
+        "profile_count": len(generated_profile_paths),
+        "bundles": bundle_rows,
+        "source_bundle_paths": source_bundle_paths,
+        "profile_paths": generated_profile_paths,
+        "manifest_path": None,
+        "evidence_policy": (
+            "Runtime Agent profile-set bundle materialization records only how reusable "
+            "team declarations were converted into per-Agent profile JSON artifacts. "
+            "It cannot prove scientific results, novelty, metrics, citation validity, "
+            "MCP invocation, or publication readiness."
+        ),
+    }
+    if bundle_rows:
+        bundle_root.mkdir(parents=True, exist_ok=True)
+        manifest_path = bundle_root / "manifest.json"
+        manifest["manifest_path"] = manifest_path.as_posix()
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    return manifest
+
+
+def _resolve_bundle_profile_sources(profile: AgentProfile, *, bundle_path: Path) -> AgentProfile:
+    """Resolve relative local skill sources against the bundle file location."""
+
+    bundle_dir = bundle_path.parent
+    updated_skills = []
+    changed = False
+    for skill in profile.skills:
+        if skill.source_type != SkillSourceType.LOCAL_PATH:
+            updated_skills.append(skill)
+            continue
+        source_path = Path(skill.source)
+        if source_path.is_absolute():
+            updated_skills.append(skill)
+            continue
+        resolved_source = (bundle_dir / source_path).resolve()
+        updated_skills.append(skill.model_copy(update={"source": resolved_source.as_posix()}))
+        changed = True
+    if not changed:
+        return profile
+    return profile.model_copy(update={"skills": tuple(updated_skills)})
 
 
 def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dict[str, Any]:
@@ -4388,6 +4483,16 @@ def autopilot(
             help="Agent profile JSON to load into this cycle. Repeat for multiple agents.",
         ),
     ] = None,
+    agent_profile_set_bundle: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile-set-bundle",
+            help=(
+                "Agent profile-set bundle (.json/.yaml/.toml) to materialize into "
+                "this cycle. Repeat for multiple bundles."
+            ),
+        ),
+    ] = None,
     require_agent_profile_set: Annotated[
         bool,
         typer.Option(
@@ -4468,6 +4573,7 @@ def autopilot(
                     review=review,
                     paper_template_id=paper_template_id,
                     agent_profile_paths=tuple(agent_profile or ()),
+                    agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
                     require_agent_profile_set=require_agent_profile_set,
                     push_inspiration=push_inspiration,
                 )
@@ -4480,6 +4586,7 @@ def autopilot(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profile_bundles_status(summary)
             _echo_agent_profiles_status(summary)
             _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
@@ -4624,6 +4731,16 @@ def serve(
             help="Agent profile JSON to load into this runtime. Repeat for multiple agents.",
         ),
     ] = None,
+    agent_profile_set_bundle: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile-set-bundle",
+            help=(
+                "Agent profile-set bundle (.json/.yaml/.toml) to materialize into "
+                "each runtime cycle. Repeat for multiple bundles."
+            ),
+        ),
+    ] = None,
     require_agent_profile_set: Annotated[
         bool,
         typer.Option(
@@ -4762,6 +4879,7 @@ def serve(
                     review=review,
                     paper_template_id=paper_template_id,
                     agent_profile_paths=tuple(agent_profile or ()),
+                    agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
                     require_agent_profile_set=require_agent_profile_set,
                     push_inspiration=push_inspiration,
                     runtime_network_metadata=runtime_network_metadata,
@@ -4775,6 +4893,7 @@ def serve(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profile_bundles_status(summary)
             _echo_agent_profiles_status(summary)
             _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
@@ -5514,6 +5633,7 @@ def _run_autopilot_cycle(
     review: bool,
     paper_template_id: str,
     agent_profile_paths: tuple[Path, ...],
+    agent_profile_set_bundle_paths: tuple[Path, ...],
     require_agent_profile_set: bool,
     push_inspiration: bool,
     runtime_network_metadata: Mapping[str, Any] | None = None,
@@ -5533,8 +5653,16 @@ def _run_autopilot_cycle(
         artifact_refs=(cycle_dir,),
     )
     _load_optional_env(env_path)
+    agent_profile_bundles = _materialize_agent_profile_set_bundles(
+        agent_profile_set_bundle_paths,
+        cycle_dir=cycle_dir,
+    )
+    runtime_agent_profile_paths = (
+        *agent_profile_paths,
+        *(Path(path) for path in _string_list(agent_profile_bundles.get("profile_paths"))),
+    )
     agent_profile_contexts = _load_agent_profile_contexts(
-        agent_profile_paths,
+        runtime_agent_profile_paths,
         env=_merged_optional_env(env_path),
         base_dir=Path.cwd(),
     )
@@ -5551,6 +5679,9 @@ def _run_autopilot_cycle(
         require_pass=require_agent_profile_set,
     )
     agent_profile_artifact_refs = (
+        agent_profile_bundles.get("manifest_path"),
+        *_string_list(agent_profile_bundles.get("source_bundle_paths")),
+        *_string_list(agent_profile_bundles.get("profile_paths")),
         agent_profile_set_validation.get("output_path"),
         agent_stage_context_packets.get("manifest_path"),
         *_string_list(agent_stage_context_packets.get("packet_paths")),
@@ -5594,6 +5725,7 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
             "agent_profiles": agent_profiles,
             "agent_profile_set_validation": agent_profile_set_validation,
             "agent_stage_context_packets": agent_stage_context_packets,
@@ -5662,6 +5794,7 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
             "agent_profiles": agent_profiles,
             "agent_profile_set_validation": agent_profile_set_validation,
             "agent_stage_context_packets": agent_stage_context_packets,
@@ -5816,6 +5949,7 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
             "agent_profiles": agent_profiles,
             "agent_profile_set_validation": agent_profile_set_validation,
             "agent_stage_context_packets": agent_stage_context_packets,
@@ -5958,6 +6092,7 @@ def _run_autopilot_cycle(
         "project_id": project_id,
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
+        "agent_profile_bundles": agent_profile_bundles,
         "agent_profiles": agent_profiles,
         "agent_profile_set_validation": agent_profile_set_validation,
         "agent_stage_context_packets": agent_stage_context_packets,
@@ -6128,6 +6263,7 @@ def _run_autopilot_cycle(
         "audit_summary": review_audit_summary,
         "cycle_id": cycle_id,
         "project_id": project_id,
+        "agent_profile_bundles": summary["agent_profile_bundles"],
         "agent_profiles": summary["agent_profiles"],
         "agent_profile_set_validation": summary["agent_profile_set_validation"],
         "agent_stage_context_packets": summary["agent_stage_context_packets"],
@@ -6189,6 +6325,8 @@ def _run_autopilot_cycle(
         summary["loop_report"].get("json_path"),
         summary["loop_report"].get("markdown_path"),
         summary["runtime_heartbeat"].get("report_path"),
+        summary["agent_profile_bundles"].get("manifest_path"),
+        *_string_list(summary["agent_profile_bundles"].get("source_bundle_paths")),
         summary["agent_profile_set_validation"].get("output_path"),
         summary["agent_stage_context_packets"].get("manifest_path"),
         *_string_list(summary["agent_stage_context_packets"].get("packet_paths")),
@@ -6435,6 +6573,7 @@ def _autopilot_review_audit_summary(
         citation_metadata_path=citations.get("metadata_path"),
     )
     return {
+        "agent_profile_bundles": mapping(summary.get("agent_profile_bundles")),
         "agent_profiles": mapping(summary.get("agent_profiles")),
         "agent_profile_set_validation": mapping(summary.get("agent_profile_set_validation")),
         "agent_stage_context_packets": mapping(summary.get("agent_stage_context_packets")),
@@ -8289,6 +8428,24 @@ def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
     typer.echo(
         f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}; "
         f"assigned_stages={stage_count}{readiness_text}"
+    )
+
+
+def _echo_agent_profile_bundles_status(summary: Mapping[str, object]) -> None:
+    bundles = summary.get("agent_profile_bundles")
+    if not isinstance(bundles, Mapping):
+        return
+    bundle_count = int(bundles.get("bundle_count", 0) or 0)
+    if bundle_count <= 0:
+        return
+    bundle_ids = [
+        str(bundle.get("profile_set_id", "unknown"))
+        for bundle in _mapping_list(bundles.get("bundles"))
+    ]
+    typer.echo(
+        "[OK] agent_profile_bundles: "
+        f"{bundle_count}; bundles={', '.join(bundle_ids)}; "
+        f"generated_profiles={int(bundles.get('profile_count', 0) or 0)}"
     )
 
 

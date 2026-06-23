@@ -29,7 +29,7 @@ automatically.
 | Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
-| Agent profiles | `airesearcher agents profile write`, `agents profile import`, and `agents profile import-set` bind custom skills and MCP servers to named agents; `serve` and `autopilot` load those profiles with repeatable `--agent-profile <json>` flags and record them in cycle evidence. |
+| Agent profiles | `airesearcher agents profile write`, `agents profile import`, and `agents profile import-set` bind custom skills and MCP servers to named agents; `serve` and `autopilot` load either per-agent profiles with repeatable `--agent-profile <json>` or a reusable team bundle with `--agent-profile-set-bundle <team.yaml>`, then record the materialized profile evidence in each cycle. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
 | Publication gates | CCF-B/Q3-style claims are blocked unless source evidence, experiment records, reproduction checks, audit, paper build, and evidence gate all pass on real artifacts. |
 
@@ -292,6 +292,12 @@ If a deployment should be shared as one team file, use
 single-Agent import schema under `profiles:`, writes one standard profile JSON per agent, writes
 `profile-set-validation.json`, and exits nonzero by default when the bundle's required stages are
 not fully covered. Use `--allow-incomplete` only for debugging or partial rollout dry runs.
+For unattended runs, `serve` and `autopilot` can also load the same reusable team file directly
+with repeatable `--agent-profile-set-bundle <team.yaml>` flags. Each cycle materializes the bundle
+into `agent-profile-bundles/`, resolves relative local skill paths against the bundle file location,
+then runs the same readiness, stage coverage, context packet, review evidence, and optional
+`--require-agent-profile-set` gates as ordinary `--agent-profile` inputs. This materialization is
+process metadata only; it proves responsibility routing, not scientific validity.
 
 When a loaded profile points at a local skill file or a directory containing `SKILL.md`, the runtime
 materializes a bounded skill excerpt into stage contexts with `status`, `sha256`, byte/character
@@ -471,6 +477,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | Load one validated per-agent skill/MCP profile into the cycle summary, review evidence, monitor, profile-set validation, and per-cycle `agent-stage-contexts/` packet artifacts. Repeat for multiple agents. |
+| `serve` / `autopilot` | `--agent-profile-set-bundle <team.yaml>` | Materialize one reusable multi-Agent team bundle into per-cycle profile JSON artifacts, then load them through the same readiness, profile-set validation, stage-context packet, and review-evidence path. Repeat for multiple bundles. |
 | `serve` / `autopilot` | `--require-agent-profile-set` | Blocks the cycle before online retrieval unless loaded Agent profiles cover the default CCF-B/Q2 stage matrix. Without this flag, the validation report is still written as audit metadata. |
 | `inspiration-refresh` | `--env-path .env` | Loads setup-written channel credentials for one-shot push. |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | One-shot inspiration digest push. |

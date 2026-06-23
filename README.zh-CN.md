@@ -22,7 +22,7 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 | 闭环 campaign | 每个已确认方向会被初始化为 protocol-as-code campaign：明确目标、预算、候选空间、基线、停止条件、DOE/证据增益候选选择、闭环指标和可回滚质量门禁。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
-| Agent profile | `airesearcher agents profile write`、`agents profile import` 和 `agents profile import-set` 可以把自定义 skill 与 MCP server 绑定到一个或多个 Agent；`serve` / `autopilot` 可以通过可重复的 `--agent-profile <json>` 加载这些 profile，并写入 cycle 证据。 |
+| Agent profile | `airesearcher agents profile write`、`agents profile import` 和 `agents profile import-set` 可以把自定义 skill 与 MCP server 绑定到一个或多个 Agent；`serve` / `autopilot` 可以通过可重复的 `--agent-profile <json>` 加载单 Agent profile，也可以通过 `--agent-profile-set-bundle <team.yaml>` 直接加载可复用团队 bundle，并把展开后的 profile 证据写入每轮 cycle。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
 | 发表门禁 | CCF-B/三区级别声明必须绑定真实来源、实验记录、复现检查、审计、PDF 构建和 evidence gate。 |
 
@@ -226,7 +226,7 @@ airesearcher agents profile import literature-agent.yaml \
 
 多 Agent 部署前运行 `agents profile set-validate <profiles...>`。它会生成面向 CCF-B/SCI 二区研究闭环的 stage coverage matrix，检查每个 profile 的 readiness，阻断 literature、research_plan、experiment、reproduction、citations、review 等职责缺口，并提示 `allow_all` MCP 绑定或未分配阶段的 profile。这个检查只证明团队配置和责任边界可运行，不能证明科学结论或发表就绪。
 
-如果需要把一整组 Agent 团队作为单个文件共享，运行 `agents profile import-set <team.yaml> --output-dir .airesearcher/agents`。bundle 在 `profiles:` 下复用单 Agent import schema，命令会为每个 Agent 写出标准 profile JSON，同时生成 `profile-set-validation.json`；默认在必需阶段缺失或 readiness 失败时非零退出，`--allow-incomplete` 仅用于调试或灰度 dry run。
+如果需要把一整组 Agent 团队作为单个文件共享，运行 `agents profile import-set <team.yaml> --output-dir .airesearcher/agents`。bundle 在 `profiles:` 下复用单 Agent import schema，命令会为每个 Agent 写出标准 profile JSON，同时生成 `profile-set-validation.json`；默认在必需阶段缺失或 readiness 失败时非零退出，`--allow-incomplete` 仅用于调试或灰度 dry run。无人值守运行时，`serve` 和 `autopilot` 也可以直接使用可重复的 `--agent-profile-set-bundle <team.yaml>` 加载同一份团队文件；每轮 cycle 会把 bundle 展开到 `agent-profile-bundles/`，把相对本地 skill 路径按 bundle 文件位置解析，然后复用 readiness、profile-set validation、stage-context packet、review evidence 和可选 `--require-agent-profile-set` 门禁。这只证明责任路由和流程元数据，不证明科研结论成立。
 
 当已加载的 profile 指向本地 skill 文件，或指向包含 `SKILL.md` 的目录时，运行时会把有界 skill 摘要写入阶段上下文，并记录 `status`、`sha256`、字节数/字符数、`max_chars` 和截断标记。紧凑 profile summary 只记录来源和状态，`stage_runtime_contexts` 与 `stage_agent_contexts` 才携带分配给 worker 的有界内容。非本地来源只保留引用；本地文件如果包含疑似密钥文本，会标记为 `blocked`，不会把内容写入 artifact。可以运行 `agents profile inspect --materialize-skills --base-dir . <profile.json>` 预览某个 Agent 实际会收到的上下文。`serve` 和 `autopilot` 还会在每轮 cycle 的 `agent-stage-contexts/` 目录下自动写出可移植 packet；每个 packet 只包含该阶段负责的 Agent、有界 skill 摘要、MCP contract、readiness 摘要和流程元数据证据边界。同一轮还会写出 `agent-profile-set/agent-profile-set-validation.json`，用于审计已加载 Agent 团队是否覆盖默认 CCF-B/SCI 二区研究阶段矩阵；使用 `--require-agent-profile-set` 时，矩阵不完整会在联网检索前阻断本轮。
 
@@ -364,6 +364,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |
+| `serve` / `autopilot` | `--agent-profile-set-bundle <team.yaml>` | 把可复用多 Agent 团队 bundle 展开成每轮 profile JSON artifact，再走同一套 readiness、profile-set validation、stage-context packet 和 review-evidence 路径；可重复传入多个。 |
 | `serve` / `autopilot` | `--require-agent-profile-set` | 默认只写审计报告；开启后，如果加载的 Agent profile 未覆盖默认 CCF-B/SCI 二区阶段矩阵，则在联网检索前阻断本轮。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |

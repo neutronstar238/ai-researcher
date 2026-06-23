@@ -9974,3 +9974,38 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future runtime setup can offer profile-set bundle templates during `airesearcher setup`, but the bundle import must remain a process-metadata preflight and cannot replace literature, experiment, reproduction, review, publication-audit, or evidence-gate artifacts.
+
+### 2026-06-24 02:14:00 +08:00 - Codex - Task 239.1 Runtime Agent profile-set bundle loading
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added repeatable `--agent-profile-set-bundle <team.yaml>` flags to `serve` and `autopilot`.
+  - Added runtime bundle materialization into each cycle's `agent-profile-bundles/` directory, including a manifest, generated per-Agent profile JSON files, source bundle paths, and an explicit process-metadata evidence policy.
+  - Resolved relative local skill sources against the bundle file location before runtime readiness and stage-context checks.
+  - Merged generated profile paths with explicit `--agent-profile` paths, then reused existing readiness, profile-set validation, stage-context packet, review-evidence, and `--require-agent-profile-set` gates.
+  - Added cycle-summary/review-evidence references for runtime bundle artifacts and README/README.zh-CN documentation for the new flag and evidence boundary.
+  - Added task `239.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation -q` exposed that runtime-generated skill sources stayed relative; moved relative local skill resolution into the runtime materialization helper and reran successfully with 3 passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - First real CLI smoke `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task239-runtime-bundle-v1\vault --cache runs\manual-live\task239-runtime-bundle-v1\cache --output-dir runs\manual-live\task239-runtime-bundle-v1\runs --deliverables-dir runs\manual-live\task239-runtime-bundle-v1\outputs --state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\runtime-heartbeats.json --project-id task239_runtime_bundle --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task239-runtime-bundle-v1\team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session` failed because the hand-written smoke bundle used unsupported `policy`/`approval` keys and `role: reviewer`; fixed the ignored smoke fixture to use `import_policy`, `approval_policy`, `role: validator_agent`, and `thinking_mode: reviewer`.
+  - Corrected real CLI smoke passed with cycle `cycle-20260623T181146Z`; summary reported one runtime bundle, three generated profiles, profile readiness pass, `agent_profile_set=true`, `covered=9/9`, no missing stages, source preflight pass, research-plan pass, loop-campaign pass, review skipped as requested, publication audit fail and evidence gate blocked as expected for toy/no-review verification.
+  - Real artifact inspection confirmed `agent-profile-bundles/manifest.json` exists, generated profile paths are listed, the first local skill source resolves to `E:/AIResearch/runs/manual-live/task239-runtime-bundle-v1/skills/source.md`, and ten stage-context packets were written for literature, similarity, research_plan, loop_campaign, experiment, reproduction, citations, review, publication_audit, and evidence_gate.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 617 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-003` for the runtime relative local skill-source materialization issue caught by focused CLI tests.
+  - Added resolved `P-20260624-004` for the real smoke fixture schema mismatch.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Setup can later offer a guided team-bundle template, but runtime bundle loading must remain process metadata and cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence gate artifacts.
