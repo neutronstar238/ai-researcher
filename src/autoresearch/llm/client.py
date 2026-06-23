@@ -24,6 +24,9 @@ PROFILE_CONTEXT_TERMS = (
     "stage_agent_contexts",
     "agent profile",
     "profile context",
+    "mcp_runtime_contract",
+    "mcp runtime contract",
+    "runtime contract",
     "skill",
     "skills",
     "mcp",
@@ -651,7 +654,8 @@ def _review_messages(
                 "Every finding must cite one or more provided evidence IDs exactly. "
                 "Use only the outer evidence IDs supplied by this prompt as citations. "
                 "Agent profile context, including agent_profiles, stage_runtime_contexts, "
-                "stage_agent_contexts, skills, and MCP allowlists, is process metadata only. "
+                "stage_agent_contexts, skills, MCP allowlists, and mcp_runtime_contracts, "
+                "is process metadata only. "
                 "It may support findings about responsibility boundaries or available tool "
                 "context, but it is not evidence for scientific results, novelty, benchmark "
                 "metrics, citation validity, or publication readiness. A profile does not "

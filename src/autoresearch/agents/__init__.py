@@ -13,6 +13,7 @@ from .base import (
 from .messages import AgentMessage, MessageRiskLevel
 from .profiles import (
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    AgentMcpRuntimeContract,
     AgentMcpServerBinding,
     AgentProfile,
     AgentProfileReadinessCheck,
@@ -25,6 +26,7 @@ from .profiles import (
     McpApprovalPolicy,
     SkillImportPolicy,
     SkillSourceType,
+    build_agent_mcp_runtime_contracts,
     evaluate_agent_profile_readiness,
     load_agent_profile,
     materialize_agent_skill_contexts,
@@ -71,6 +73,7 @@ __all__ = [
     "AgentLifecycleState",
     "AgentMessage",
     "AgentMcpServerBinding",
+    "AgentMcpRuntimeContract",
     "AgentProfile",
     "AgentProfileReadinessCheck",
     "AgentProfileReadinessReport",
@@ -94,6 +97,7 @@ __all__ = [
     "SkillImportPolicy",
     "SkillSourceType",
     "WorkflowCheckpointStore",
+    "build_agent_mcp_runtime_contracts",
     "evaluate_agent_profile_readiness",
     "load_agent_profile",
     "materialize_agent_skill_contexts",

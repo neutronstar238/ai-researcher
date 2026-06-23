@@ -80,6 +80,44 @@ def test_agent_profile_round_trips_and_renders_runtime_context(tmp_path: Path) -
     assert context["assigned_stages"] == ["literature", "research_plan"]
     assert context["skills"][0]["skill_id"] == "source-tracing"
     assert context["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+    contract = context["mcp_runtime_contracts"][0]
+    assert contract["server_id"] == "obsidian"
+    assert contract["contract_kind"] == "mcp_runtime_contract_process_metadata"
+    assert contract["allowed_tools"] == ["search_notes", "read_note"]
+    assert contract["allowed_tool_count"] == 2
+    assert contract["env_keys"] == ["OBSIDIAN_API_KEY"]
+    assert contract["env_values_recorded"] is False
+    assert contract["runtime_approval_required"] is True
+    assert contract["operator_isolation_required"] is False
+    assert contract["tool_invocation_evidence_required"] is True
+    assert contract["command_sha256"]
+    assert "do not prove a tool was invoked" in contract["evidence_policy"]
+
+
+def test_agent_profile_mcp_runtime_contract_marks_allow_all_isolation() -> None:
+    profile = AgentProfile(
+        agent_id="operator-agent",
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="local-admin",
+                command=("npx", "-y", "local-admin-mcp"),
+                allowed_tools=("run_task",),
+                approval_policy=McpApprovalPolicy.ALLOW_ALL,
+                evidence_refs=("[[tools/local-admin]]",),
+            ),
+        ),
+    )
+
+    contract = profile.to_runtime_context()["mcp_runtime_contracts"][0]
+
+    assert contract["approval_policy"] == "allow_all"
+    assert contract["runtime_approval_required"] is False
+    assert contract["operator_isolation_required"] is True
+    assert contract["readiness_check_ids"] == [
+        "mcp_env_keys:local-admin",
+        "mcp_approval_policy:local-admin",
+    ]
+    assert contract["evidence_refs"] == ["[[tools/local-admin]]"]
 
 
 def test_agent_profile_materializes_bounded_local_skill_context(tmp_path: Path) -> None:

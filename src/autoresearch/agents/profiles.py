@@ -48,6 +48,12 @@ SKILL_MATERIALIZATION_EVIDENCE_POLICY = (
     "support scientific results, novelty claims, benchmark metrics, citation validity, "
     "publication readiness, or proof that any tool was invoked."
 )
+MCP_RUNTIME_CONTRACT_KIND = "mcp_runtime_contract_process_metadata"
+MCP_RUNTIME_CONTRACT_EVIDENCE_POLICY = (
+    "MCP runtime contracts describe allowed tool context and approval requirements only; "
+    "they do not prove a tool was invoked or that any scientific result, citation, novelty "
+    "claim, benchmark metric, or publication-readiness claim is supported."
+)
 
 
 class AgentThinkingMode(str, Enum):
@@ -151,6 +157,29 @@ class AgentSkillMaterializedContext(BaseModel):
     content: str | None = None
     message: str
     evidence_policy: str = SKILL_MATERIALIZATION_EVIDENCE_POLICY
+
+
+class AgentMcpRuntimeContract(BaseModel):
+    """Auditable runtime contract for one MCP server bound to an agent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    server_id: str
+    contract_kind: str = MCP_RUNTIME_CONTRACT_KIND
+    command_sha256: str
+    command_token_count: int
+    allowed_tools: tuple[str, ...]
+    allowed_tool_count: int
+    env_keys: tuple[str, ...] = ()
+    env_key_count: int = 0
+    env_values_recorded: bool = False
+    approval_policy: McpApprovalPolicy
+    runtime_approval_required: bool
+    operator_isolation_required: bool
+    tool_invocation_evidence_required: bool = True
+    readiness_check_ids: tuple[str, ...]
+    evidence_refs: tuple[str, ...] = ()
+    evidence_policy: str = MCP_RUNTIME_CONTRACT_EVIDENCE_POLICY
 
 
 class AgentSkillBinding(BaseModel):
@@ -329,6 +358,10 @@ class AgentProfile(BaseModel):
                     "evidence_refs": list(server.evidence_refs),
                 }
                 for server in self.mcp_servers
+            ],
+            "mcp_runtime_contracts": [
+                contract.model_dump(mode="json")
+                for contract in build_agent_mcp_runtime_contracts(self)
             ],
         }
         if materialize_skills:
@@ -525,6 +558,14 @@ def materialize_agent_skill_contexts(
         _materialize_skill_context(skill, base_dir=root, max_chars=bounded_max_chars)
         for skill in profile.skills
     )
+
+
+def build_agent_mcp_runtime_contracts(
+    profile: AgentProfile,
+) -> tuple[AgentMcpRuntimeContract, ...]:
+    """Return process-metadata contracts for MCP servers assigned to one profile."""
+
+    return tuple(_build_mcp_runtime_contract(server) for server in profile.mcp_servers)
 
 
 def normalize_profile_stage(stage: str) -> str:
@@ -768,6 +809,33 @@ def _resolve_local_skill_source(source: str, *, base_dir: Path) -> Path:
     if source_path.is_absolute():
         return source_path
     return base_dir / source_path
+
+
+def _build_mcp_runtime_contract(server: AgentMcpServerBinding) -> AgentMcpRuntimeContract:
+    command_payload = json.dumps(
+        list(server.command),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    readiness_check_ids = [f"mcp_env_keys:{server.server_id}"]
+    if server.approval_policy == McpApprovalPolicy.ALLOW_ALL:
+        readiness_check_ids.append(f"mcp_approval_policy:{server.server_id}")
+    return AgentMcpRuntimeContract(
+        server_id=server.server_id,
+        command_sha256=hashlib.sha256(command_payload).hexdigest(),
+        command_token_count=len(server.command),
+        allowed_tools=server.allowed_tools,
+        allowed_tool_count=len(server.allowed_tools),
+        env_keys=server.env_keys,
+        env_key_count=len(server.env_keys),
+        approval_policy=server.approval_policy,
+        runtime_approval_required=(
+            server.approval_policy == McpApprovalPolicy.APPROVE_DANGEROUS
+        ),
+        operator_isolation_required=server.approval_policy == McpApprovalPolicy.ALLOW_ALL,
+        readiness_check_ids=tuple(readiness_check_ids),
+        evidence_refs=server.evidence_refs,
+    )
 
 
 def _skill_readiness_check(

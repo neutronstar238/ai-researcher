@@ -971,6 +971,7 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
         skills = _mapping_list(context.get("skills"))
         materialized_skills = _mapping_list(context.get("materialized_skills"))
         mcp_servers = _mapping_list(context.get("mcp_servers"))
+        mcp_runtime_contracts = _mapping_list(context.get("mcp_runtime_contracts"))
         profiles.append(
             {
                 "agent_id": str(context.get("agent_id", "")),
@@ -1003,6 +1004,25 @@ def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dic
                         "approval_policy": str(server.get("approval_policy", "")),
                     }
                     for server in mcp_servers
+                ],
+                "mcp_runtime_contracts": [
+                    {
+                        "server_id": str(contract.get("server_id", "")),
+                        "contract_kind": str(contract.get("contract_kind", "")),
+                        "command_sha256": contract.get("command_sha256"),
+                        "allowed_tools": _string_list(contract.get("allowed_tools")),
+                        "approval_policy": str(contract.get("approval_policy", "")),
+                        "runtime_approval_required": bool(
+                            contract.get("runtime_approval_required", False)
+                        ),
+                        "operator_isolation_required": bool(
+                            contract.get("operator_isolation_required", False)
+                        ),
+                        "tool_invocation_evidence_required": bool(
+                            contract.get("tool_invocation_evidence_required", True)
+                        ),
+                    }
+                    for contract in mcp_runtime_contracts
                 ],
             }
         )

@@ -152,6 +152,10 @@ def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
     assert payload["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
     assert payload["mcp_servers"][0]["approval_policy"] == "approve_dangerous"
     assert payload["mcp_servers"][0]["env_keys"] == ["OBSIDIAN_API_KEY"]
+    assert payload["mcp_runtime_contracts"][0]["server_id"] == "obsidian"
+    assert payload["mcp_runtime_contracts"][0]["runtime_approval_required"] is True
+    assert payload["mcp_runtime_contracts"][0]["env_values_recorded"] is False
+    assert "tool was invoked" in payload["mcp_runtime_contracts"][0]["evidence_policy"]
 
     local_skill = tmp_path / "autoresearch-vault" / "_system" / "skills" / "source-tracing.md"
     local_skill.parent.mkdir(parents=True)
@@ -3258,6 +3262,15 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["allowed_tools"] == [
         "browser.search"
     ]
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "server_id"
+    ] == "page-agent"
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "tool_invocation_evidence_required"
+    ] is True
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "command_sha256"
+    ]
     assert payload["agent_profiles"]["profiles"][0]["profile_path"] == profile_path.as_posix()
     assert payload["agent_profiles"]["readiness"]["passed"] is True
     assert payload["agent_profiles"]["profiles"][0]["readiness"]["passed"] is True
@@ -3283,6 +3296,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert stage_contexts["review"][0]["mcp_servers"][0]["allowed_tools"] == [
         "browser.search"
     ]
+    assert stage_contexts["review"][0]["mcp_runtime_contracts"][0]["contract_kind"] == (
+        "mcp_runtime_contract_process_metadata"
+    )
+    assert stage_contexts["review"][0]["mcp_runtime_contracts"][0][
+        "tool_invocation_evidence_required"
+    ] is True
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -3349,6 +3368,12 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert review_context["stage_agent_contexts"]["review"][0]["mcp_servers"][0][
         "server_id"
     ] == "page-agent"
+    assert review_context["stage_agent_contexts"]["review"][0]["mcp_runtime_contracts"][0][
+        "server_id"
+    ] == "page-agent"
+    assert "tool was invoked" in review_context["stage_agent_contexts"]["review"][0][
+        "mcp_runtime_contracts"
+    ][0]["evidence_policy"]
     assert review_context["audit_summary"]["agent_profiles"]["count"] == 1
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"

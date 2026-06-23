@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260623-009 - MCP contract artifact probe used the wrong stage-context path
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:18:00 +08:00
+- Source: Real artifact inspection while verifying task `226.1`.
+- Symptom: The first PowerShell artifact probe attempted to read top-level `stage_runtime_contexts.literature[0]` and failed with `Cannot index into a null array`; a follow-up probe attempted to call `.GetType()` on the same null field and failed.
+- Impact: Product behavior was not affected, but the real artifact verification could not be trusted until the actual JSON structure was checked.
+- Evidence: `cycle-summary.json` stores stage runtime contexts under `agent_profiles.stage_runtime_contexts`, while `review-evidence-context.json` stores them under `stage_agent_contexts`.
+- Root cause: The verification script used an outdated top-level path instead of the current nested `agent_profiles.stage_runtime_contexts` path.
+- Workaround: Use `rg` and conservative JSON reads before indexing optional artifact fields.
+- Next action: Keep artifact probes aligned with current cycle-summary schema.
+- Linked tasks: `226.1`
+- Resolution: Re-ran artifact inspection using `agent_profiles.stage_runtime_contexts.literature[0].mcp_runtime_contracts[0]` and `stage_agent_contexts.review[0].mcp_runtime_contracts[0]`.
+- Verification: Corrected inspection confirmed `contract_kind=mcp_runtime_contract_process_metadata`, `tool_invocation_evidence_required=true`, `env_values_recorded=false`, `runtime_approval_required=true`, and evidence policy text says the contract does not prove tool invocation.
+
+### P-20260623-008 - MCP runtime contract import block needed ruff normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:08:00 +08:00
+- Source: Focused lint verification for task `226.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/agents/__init__.py`.
+- Impact: Product behavior was not affected, but the lint gate could not pass until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py src\autoresearch\llm\client.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py tests\unit\llm\test_client.py` reported one fixable `I001` finding before normalization.
+- Root cause: New MCP contract exports were inserted manually.
+- Workaround: None needed after automated normalization.
+- Next action: Run focused ruff after touching shared import blocks.
+- Linked tasks: `226.1`
+- Resolution: Ran `python -m ruff check src\autoresearch\agents\__init__.py --fix`.
+- Verification: Focused pytest passed with 19 tests; focused ruff passed; focused mypy passed with no issues in 8 source files.
+
 ### P-20260623-007 - Skill materialization import blocks needed ruff normalization
 
 - Status: Resolved

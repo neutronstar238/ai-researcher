@@ -2783,6 +2783,17 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `215.1`, `218.1`, `221.1`, and `224.1`; user request that custom skills/MCPs can be assigned to specific Agents while the system remains evidence-first and avoids prompt-only assumptions._
     - _Verify: focused profile, CLI inspect, and autopilot summary/review-context tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
 
+- [x] 226. Agent MCP runtime contracts
+  - [x] 226.1 Attach MCP approval and invocation-evidence contracts to Agent profiles
+    - Add typed MCP runtime contract records for every per-agent MCP binding.
+    - Record command SHA-256, command token count, allowed tools, approval policy, required env-key names, and whether runtime approval or isolated operator approval is required.
+    - Never record env values, and explicitly require separate tool-invocation evidence before any reviewer or paper claim can say a tool was used.
+    - Write full contracts into profile runtime context, stage contexts, and review evidence; write compact contract summaries into `agent_profiles.profiles`.
+    - Extend LLM reviewer prompt and deterministic profile-context misuse gate so `mcp_runtime_contracts` are process metadata only.
+    - Update README/README.zh-CN with the contract semantics and inspect behavior.
+    - _References: tasks `215.1`, `221.1`, `223.1`, `224.1`, and `225.1`; user request that custom MCP imports can be assigned to specific Agents while keeping tool use evidence-backed._
+    - _Verify: focused profile, CLI, and LLM reviewer tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3343,6 +3354,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 128,
       "tasks": ["225.1"]
+    },
+    {
+      "id": 129,
+      "tasks": ["226.1"]
     }
   ]
 }

@@ -9501,3 +9501,45 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-007` for ruff import-order normalization after adding materialization exports/imports.
 - Follow-up:
   - Future work can add vetted Obsidian-note or package-source materializers, but non-local skill content should remain reference-only until license, safety, provenance, and evidence-boundary checks exist.
+
+### 2026-06-23 15:16:47 +08:00 - Codex - Task 226.1 Agent MCP runtime contracts
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making MCP approval, command provenance, and invocation-evidence requirements explicit runtime contracts.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed `AgentMcpRuntimeContract` records for every per-agent MCP binding.
+  - Runtime contracts record command SHA-256, command token count, allowed tools, env key names, approval policy, runtime approval requirement, isolation requirement, readiness check IDs, and evidence policy.
+  - Added contract summaries to compact `agent_profiles` artifacts while full stage contexts keep the complete contract.
+  - Updated LLM reviewer prompt and deterministic quality checks so MCP runtime contracts remain process metadata only and cannot prove tool invocation, scientific results, novelty, citation validity, benchmark metrics, or publication readiness.
+  - Updated English/Chinese README guidance and added completed task `226.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_rejects_profile_context_as_scientific_evidence tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_rejects_mcp_contract_as_tool_evidence tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_allows_profile_context_process_findings tests\unit\llm\test_client.py::test_review_prompt_treats_agent_profiles_as_process_metadata_only -q`: passed, 19 tests.
+  - Initial focused ruff reported one fixable import-order `I001` in `src/autoresearch/agents/__init__.py`; fixed with `python -m ruff check src\autoresearch\agents\__init__.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py src\autoresearch\llm\client.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py src\autoresearch\llm\client.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id mcp-contract-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:approve_dangerous --vault runs\manual-live\task226-mcp-contract-v1\vault --project-id task226_mcp_contract_v1 --output runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json`: passed and wrote the profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json --materialize-skills --base-dir . --max-skill-chars 300`: passed and showed `contract_kind=mcp_runtime_contract_process_metadata`, `runtime_approval_required=true`, `tool_invocation_evidence_required=true`, `env_values_recorded=false`, and no env values.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json --env-path .env --base-dir . --output runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task226-mcp-contract-v1\vault --cache runs\manual-live\task226-mcp-contract-v1\cache --output-dir runs\manual-live\task226-mcp-contract-v1\runs --deliverables-dir runs\manual-live\task226-mcp-contract-v1\outputs --state runs\manual-live\task226-mcp-contract-v1\scheduler.json --sessions-state runs\manual-live\task226-mcp-contract-v1\sessions.json --project-id task226-mcp-contract-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json`: passed, printed `agent_profiles: 1`, passed `loop_campaign`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed compact `agent_profiles.profiles[0].mcp_runtime_contracts[0]` contains server `page-agent`, command hash, and runtime approval; `agent_profiles.stage_runtime_contexts.literature[0].mcp_runtime_contracts[0]` contains full contract metadata; `review-evidence-context.json` review stage contract preserves evidence policy text that contracts do not prove tool invocation.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 580 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-008` for ruff import-order normalization.
+  - Added and resolved `P-20260623-009` for an artifact probe that used an outdated stage-context JSON path.
+- Follow-up:
+  - MCP runtime contracts are still process metadata only. Future MCP-backed workers must record separate real tool invocation evidence and results before claims can pass publication or evidence gates.

@@ -300,6 +300,33 @@ def test_evaluate_llm_review_quality_rejects_profile_context_as_scientific_evide
     assert llm_client._has_failed_review_critical_checks(result) is True
 
 
+def test_evaluate_llm_review_quality_rejects_mcp_contract_as_tool_evidence() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report is grounded in local evidence.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "The mcp_runtime_contracts prove tool invocation and "
+                            "support the benchmark metric result."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep evidence attached."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is False
+    assert result.score <= 0.5
+
+
 def test_evaluate_llm_review_quality_allows_profile_context_process_findings() -> None:
     result = evaluate_llm_review_quality(
         json.dumps(
@@ -480,7 +507,9 @@ def test_review_prompt_treats_agent_profiles_as_process_metadata_only() -> None:
                 sha256="abc123",
                 excerpt=(
                     '{"stage_agent_contexts":{"review":[{"agent_id":"reviewer",'
-                    '"skills":[{"skill_id":"source-tracing"}]}]},'
+                    '"skills":[{"skill_id":"source-tracing"}],'
+                    '"mcp_runtime_contracts":[{"server_id":"page-agent",'
+                    '"tool_invocation_evidence_required":true}]}]},'
                     '"stage_runtime_contexts":{"review":[{"agent_id":"reviewer"}]}}'
                 ),
             )
@@ -490,6 +519,7 @@ def test_review_prompt_treats_agent_profiles_as_process_metadata_only() -> None:
     prompt = messages[0]["content"]
     assert "stage_agent_contexts" in prompt
     assert "stage_runtime_contexts" in prompt
+    assert "mcp_runtime_contracts" in prompt
     assert "process metadata only" in prompt
     assert "not evidence for scientific results" in prompt
     assert "publication readiness" in prompt
