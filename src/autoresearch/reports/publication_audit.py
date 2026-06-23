@@ -361,6 +361,7 @@ def audit_publication_quality(
         *_related_work_inspection_checks(summary, summary_path.parent, target_config),
         *_similarity_checks(summary, summary_path.parent, target_config),
         *_script_and_data_checks(summary, summary_path.parent, target_config),
+        *_loop_engineering_checks(summary, summary_path.parent),
         *_review_checks(
             summary,
             summary_path.parent,
@@ -1451,6 +1452,88 @@ def _review_checks(
     if review_path is not None:
         checks.append(_review_artifact_binding_check(summary, base_dir, review, review_source))
     return checks
+
+
+def _loop_engineering_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> list[PublicationAuditCheck]:
+    loop_campaign = _dict(summary.get("loop_campaign"))
+    loop_report = _dict(summary.get("loop_report"))
+    campaign_json = loop_campaign.get("json_path") or loop_report.get("json_path")
+    report_markdown = loop_report.get("markdown_path") or loop_campaign.get("markdown_path")
+    campaign_path = _resolve_path(campaign_json, base_dir)
+    report_path = _resolve_path(report_markdown, base_dir)
+    payload = _read_json_if_exists(campaign_path) if campaign_path is not None else {}
+    artifact_readable = bool(payload)
+    metrics = _dict(payload.get("metrics") or loop_campaign.get("metrics"))
+    quality_gate = _dict(payload.get("quality_gate") or loop_campaign.get("quality_gate"))
+    artifact_ok = (
+        campaign_path is not None
+        and campaign_path.exists()
+        and report_path is not None
+        and report_path.exists()
+    )
+    gate_passed = quality_gate.get("passed") is True
+    metadata = _float_or_none(metrics.get("metadata_completeness"))
+    evidence = _float_or_none(metrics.get("evidence_coverage"))
+    reproduction = _float_or_none(metrics.get("reproduction_delta"))
+    metrics_ok = (
+        metadata is not None
+        and metadata >= 0.90
+        and evidence is not None
+        and evidence >= 0.80
+        and reproduction is not None
+        and reproduction <= 0.05
+    )
+    quality_ok = artifact_ok and artifact_readable and gate_passed and metrics_ok
+    return [
+        PublicationAuditCheck(
+            "loop_campaign_artifacts",
+            PublicationAuditCheckStatus.PASS if artifact_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Closed-loop campaign artifacts "
+                f"json={'present' if campaign_path and campaign_path.exists() else 'missing'}, "
+                f"markdown={'present' if report_path and report_path.exists() else 'missing'}."
+            ),
+            (
+                campaign_path.as_posix()
+                if campaign_path is not None
+                else "cycle_summary.loop_campaign.json_path",
+                report_path.as_posix()
+                if report_path is not None
+                else "cycle_summary.loop_report.markdown_path",
+            ),
+            None
+            if artifact_ok
+            else "Generate loop-campaign.json and loop-report.md before publication audit.",
+        ),
+        PublicationAuditCheck(
+            "loop_campaign_quality_gate",
+            PublicationAuditCheckStatus.PASS if quality_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Closed-loop campaign gate "
+                f"artifact_readable={str(artifact_readable).lower()}, "
+                f"passed={str(gate_passed).lower()}, "
+                f"metadata_completeness={metadata if metadata is not None else 'missing'}, "
+                f"evidence_coverage={evidence if evidence is not None else 'missing'}, "
+                f"reproduction_delta={reproduction if reproduction is not None else 'missing'}."
+            ),
+            (
+                campaign_path.as_posix()
+                if campaign_path is not None
+                else "cycle_summary.loop_campaign",
+            ),
+            None
+            if quality_ok
+            else (
+                "Publication-level claims require closed-loop metadata completeness, "
+                "evidence coverage, and reproduction metrics to pass."
+            ),
+        ),
+    ]
 
 
 def _review_artifact_binding_check(

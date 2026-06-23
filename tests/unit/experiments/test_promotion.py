@@ -63,6 +63,29 @@ def test_strategy_promotion_blocks_safety_or_evidence_regression() -> None:
     assert "evidence coverage must not decrease" in decision.reasons
 
 
+def test_strategy_promotion_blocks_loop_metric_regression() -> None:
+    strategy = _candidate_strategy()
+
+    decision = promote_strategy_to_gray_release(
+        StrategyPromotionInput(
+            strategy=strategy,
+            golden_test_passed=True,
+            baseline_evidence_coverage=0.84,
+            candidate_evidence_coverage=0.86,
+            baseline_metadata_completeness=0.95,
+            candidate_metadata_completeness=0.90,
+            baseline_reproduction_delta=0.01,
+            candidate_reproduction_delta=0.04,
+            approval=_approval(strategy.id),
+            audit_review_ref=_audit_review_ref(),
+        )
+    )
+
+    assert decision.status is StrategyPromotionStatus.BLOCKED
+    assert "metadata completeness must not decrease" in decision.reasons
+    assert "reproduction delta must not increase" in decision.reasons
+
+
 def test_strategy_promotion_starts_small_gray_release_with_audit(
     tmp_path: Path,
 ) -> None:

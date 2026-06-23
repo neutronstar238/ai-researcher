@@ -26,6 +26,7 @@ automatically.
 | Inspiration push | `--push-inspiration` sends a compact digest through setup-configured WeChat/Feishu channels. Missing delivery state is recorded as `skipped`, not faked. |
 | Obsidian memory | `autoresearch-vault/` stores literature notes, inspiration notes, experiment records, evidence, issues, failures, skills, strategy cards, and paper summaries as Markdown. |
 | Research-plan gate | After a user confirms a direction, `airesearcher research-plan` writes an execution-ready Markdown plan into the vault and a LaTeX/PDF plan under `outputs/<project-id>/research-plan/` before code-agent experiments start. |
+| Closed-loop campaign | Each approved direction becomes a protocol-as-code campaign with measurable goals, budget, candidates, baselines, stop criteria, DOE/evidence-gain candidate selection, loop metrics, and rollback-aware quality gates. |
 | Paper artifacts | Markdown experience records stay in the vault; publication bundles and PDFs are copied to `outputs/<project-id>/`. |
 | Code agent backend | OpenCode is supported as an external code-writing backend contract. AI-Researcher keeps validation, approval, commit, and rollback authority. |
 | Communication adapters | OpenClaw-style channel metadata is kept as a runbook only. Third-party channel plugins are not vendored into this repository. |
@@ -197,16 +198,18 @@ Each cycle can run:
 2. ArXiv and OpenAlex literature refresh. Semantic Scholar is optional and lower priority.
 3. Source-backed similar-work and novelty checks.
 4. Research-plan generation after the user confirms a direction.
-5. Hugging Face and Hacker News broad inspiration refresh.
-6. Local demo or public benchmark experiment.
-7. Command-line reproduction check.
-8. Optional live LLM evidence review.
-9. Publication audit.
-10. LaTeX paper build.
-11. Physical evidence gate.
-12. Obsidian review, issue, skill, and strategy updates.
-13. Scheduler follow-up merge.
-14. Optional WeChat/Feishu inspiration digest push.
+5. Closed-loop campaign initialization and DOE/evidence-gain candidate selection.
+6. Hugging Face and Hacker News broad inspiration refresh.
+7. Local demo or public benchmark experiment.
+8. Command-line reproduction check.
+9. Optional live LLM evidence review.
+10. Loop report generation with AF, EF, reproduction delta, metadata completeness, failure recovery, and evidence coverage.
+11. Publication audit.
+12. LaTeX paper build.
+13. Physical evidence gate.
+14. Obsidian review, issue, skill, and strategy updates.
+15. Scheduler follow-up merge.
+16. Optional WeChat/Feishu inspiration digest push.
 
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,
@@ -239,9 +242,10 @@ airesearcher monitor
 
 The monitor shows recent agent messages, active file claims, release-critical cycle stages,
 approval queue, open follow-up tasks, git changes, and output previews. Its flow table surfaces
-source preflight, literature refresh, research plan, novelty/similarity, related work, citations,
-experiment, reproduction, review, publication audit, paper build, evidence gate, follow-ups, and
-deliverables with stage-specific artifact paths and paper-quality status. Useful options:
+source preflight, literature refresh, research plan, closed-loop campaign, novelty/similarity,
+related work, citations, experiment, reproduction, review, publication audit, paper build,
+evidence gate, follow-ups, and deliverables with stage-specific artifact paths and paper-quality
+status. Useful options:
 
 | Option | Purpose |
 | --- | --- |
@@ -376,6 +380,8 @@ A passing cycle can include:
 - `research-plan/research-plan.tex`
 - `research-plan/research-plan.pdf`
 - `research-plan/research-plan.json`
+- `loop-campaign/loop-campaign.json`
+- `loop-campaign/loop-report.md`
 - `<project-id>-<cycle-id>.pdf`
 - generated `.tex`
 - `paper-build.json`
@@ -385,7 +391,8 @@ A passing cycle can include:
 - manifest `.json` and `.md`
 
 Do not claim a paper is publication-ready just because a PDF exists. The release claim requires
-the publication audit and evidence gate to pass on the same cycle artifacts.
+the loop campaign quality gate, publication audit, and evidence gate to pass on the same cycle
+artifacts.
 
 ## External References And Licenses
 

@@ -2653,6 +2653,19 @@ A task can be checked only when all applicable items are true:
     - _References: user request to learn from `Light`; Phase 2 multi-agent workflow; Phase 3 Obsidian memory; Phase 4 controlled evolution; `P-20260620-001`._
     - _Verify: Live web review checked `https://github.com/wanxingai/LightAgent`, raw `LICENSE`, raw `README.md`, raw `docs/lightflow.md`, raw `docs/tracing.md`, raw `docs/memory_trace_swarm_boundaries.md`, and raw `docs/multi_agent_failure_map.md`; upstream is Apache-2.0 and frames LightAgent as a lightweight Skills/MCP/memory/multi-agent framework with LightFlow DAG steps, opt-in trace events, memory/trace/delegation scope guidance, and multi-agent failure diagnostics. Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q` passed with 18 tests; focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py` passed; focused `python -m mypy src\autoresearch\knowledge\skills.py` passed. Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task213-lightagent-watchlist-vault --source-note "2026-06-20 LightAgent reference smoke"` passed and wrote 16 quarantined candidates; `rg` confirmed the generated watchlist contains `LightAgent / LightFlow`, `lightweight-agent-runtime-reference`, trace observability, memory/trace/delegation boundaries, shared-memory pollution checks, and evidence-safe summaries. Broad `python -m pytest tests\smoke tests\unit -q` passed with 546 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 214. Loop Engineering closed-loop campaign layer
+  - [x] 214.1 Add campaign schema, optimizer, metrics, and release gates
+    - Add a `ClosedLoopCampaign` protocol-as-code model covering research objective, measurable metrics, budget, data sources, candidate space, baselines, stop criteria, approval policy, and evidence requirements.
+    - Add first-round DOE/grid selection and later-round evidence-gain/repair selection so LLM output can propose context but cannot bypass budget, failure, evidence, or reproduction gates.
+    - Add loop metrics for acceleration factor, effect improvement factor, metadata completeness, reproduction delta, failure recovery rate, evidence coverage, experiment count, and reward.
+    - Classify closed-loop failures into `source`, `protocol`, `execution`, `metric`, `validation`, `review`, `cost`, and `safety`, and freeze high-risk variables after consecutive failures instead of blind retry.
+    - Write structured `loop-campaign.json`, `loop-report.md`, and an Obsidian project-progress note for each campaign artifact.
+    - Wire the loop layer into `autopilot`/`serve` after the research-plan gate and before experiment execution, then surface loop status in CLI output and review evidence.
+    - Require loop campaign artifacts and passing loop metrics in evidence gate, publication audit, and strategy promotion decisions.
+    - Update README/README.zh-CN so users see AI-Researcher as an evidence-first closed-loop research system rather than an open-world paper-writing chatbot.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; Kiro Obsidian-first self-loop direction; project requirement that unsupported conclusions must not enter paper drafts._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py` passed; focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py` passed. Real isolated CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task214-loop\vault --cache runs\manual-live\task214-loop\cache --output-dir runs\manual-live\task214-loop\runs --deliverables-dir runs\manual-live\task214-loop\outputs --state runs\manual-live\task214-loop\scheduler.json --sessions-state runs\manual-live\task214-loop\sessions.json --project-id task214-loop-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration` completed `cycle-20260623T050627Z`, wrote loop campaign/report/vault note/PDF artifacts, passed `loop_campaign_gate`, and correctly blocked release because publication audit and evidence gate found toy-data and literature-breadth gaps. Broad `python -m pytest tests\smoke tests\unit -q` passed with 556 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3165,6 +3178,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 116,
       "tasks": ["149.1"]
+    },
+    {
+      "id": 117,
+      "tasks": ["214.1"]
     }
   ]
 }

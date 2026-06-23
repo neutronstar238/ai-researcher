@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260623-002 - Loop quality gates could pass from summary metrics after artifact deletion
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-23 18:34:00 +08:00
+- Source: Focused Loop Engineering gate regression tests for task `214.1`.
+- Symptom: `test_evidence_gate_blocks_missing_loop_campaign_artifact` and `test_publication_audit_blocks_missing_loop_campaign_for_ccfb` failed because `loop_campaign_gate` and `loop_campaign_quality_gate` could still pass from `cycle-summary.json` metrics after the physical `loop-campaign.json` artifact was removed.
+- Impact: A release or publication gate could treat cached summary fields as sufficient proof, weakening the "no evidence file, no release" rule for closed-loop campaigns.
+- Evidence: Focused pytest reported two failures where the missing-artifact checks failed but the quality gate checks still returned `pass`.
+- Root cause: The first Loop Engineering implementation used summary metrics as a fallback for the quality gate instead of requiring the campaign JSON to be readable.
+- Workaround: None needed after the gate fix.
+- Next action: Keep loop gates fail-closed: summary fields may help display status, but cannot replace readable campaign and report artifacts.
+- Linked tasks: `214.1`
+- Resolution: Updated evidence gate and publication audit to require a readable physical loop campaign artifact before loop quality gates can pass.
+- Verification: Focused Loop Engineering tests passed with 42 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with `556 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
 ### P-20260623-001 - PR 1 merge conflicts and approval shortcut guidance
 
 - Status: Resolved

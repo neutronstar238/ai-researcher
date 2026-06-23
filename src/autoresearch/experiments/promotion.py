@@ -42,6 +42,10 @@ class StrategyPromotionInput(BaseModel):
     safety_regression: bool = False
     baseline_evidence_coverage: float = Field(ge=0.0, le=1.0)
     candidate_evidence_coverage: float = Field(ge=0.0, le=1.0)
+    baseline_metadata_completeness: float = Field(default=1.0, ge=0.0, le=1.0)
+    candidate_metadata_completeness: float = Field(default=1.0, ge=0.0, le=1.0)
+    baseline_reproduction_delta: float = Field(default=0.0, ge=0.0)
+    candidate_reproduction_delta: float = Field(default=0.0, ge=0.0)
     approval: StrategyPromotionApproval | None = None
     audit_review_ref: str | None = Field(default=None, min_length=1)
     gray_traffic_share: float = Field(default=0.05, gt=0.0, le=0.10)
@@ -118,6 +122,15 @@ def _blocking_reasons(promotion: StrategyPromotionInput) -> list[str]:
     ):
         reasons.append("evidence coverage must not decrease")
 
+    if (
+        promotion.candidate_metadata_completeness
+        < promotion.baseline_metadata_completeness
+    ):
+        reasons.append("metadata completeness must not decrease")
+
+    if promotion.candidate_reproduction_delta > promotion.baseline_reproduction_delta:
+        reasons.append("reproduction delta must not increase")
+
     return reasons
 
 
@@ -144,5 +157,9 @@ def _audit_event(
             "safety_regression": promotion.safety_regression,
             "baseline_evidence_coverage": promotion.baseline_evidence_coverage,
             "candidate_evidence_coverage": promotion.candidate_evidence_coverage,
+            "baseline_metadata_completeness": promotion.baseline_metadata_completeness,
+            "candidate_metadata_completeness": promotion.candidate_metadata_completeness,
+            "baseline_reproduction_delta": promotion.baseline_reproduction_delta,
+            "candidate_reproduction_delta": promotion.candidate_reproduction_delta,
         },
     )

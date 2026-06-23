@@ -26,7 +26,13 @@ from autoresearch.config import (
     ModelProviderConfig,
     SystemConfig,
 )
-from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.experiments import (
+    build_closed_loop_campaign,
+    create_loop_iteration_from_cycle_summary,
+    run_scientistbench_demo,
+    select_loop_candidate,
+    write_loop_report_artifact,
+)
 from autoresearch.inspiration import (
     InspirationItem,
     InspirationRefreshConfig,
@@ -3324,6 +3330,7 @@ def autopilot(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_research_plan_status(summary)
+            _echo_loop_campaign_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -3586,6 +3593,7 @@ def serve(
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
             _echo_research_plan_status(summary)
+            _echo_loop_campaign_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -4353,6 +4361,14 @@ def _run_autopilot_cycle(
         )
         return blocked_summary
 
+    loop_campaign = build_closed_loop_campaign(
+        candidate=candidate,
+        project_id=project_id,
+        cycle_id=cycle_id,
+        research_plan=research_plan_payload,
+    )
+    loop_selection = select_loop_candidate(loop_campaign)
+
     inspiration_report = run_inspiration_refresh(
         vault_root=vault,
         queries=_autopilot_inspiration_queries(candidate, demo=demo),
@@ -4435,6 +4451,31 @@ def _run_autopilot_cycle(
     network_approval = _autopilot_demo_network_summary(demo_result.run_record_path)
     if network_approval:
         summary["demo"]["network_approval"] = network_approval
+    loop_iteration = create_loop_iteration_from_cycle_summary(
+        campaign=loop_campaign,
+        decision=loop_selection,
+        summary=summary,
+        base_dir=cycle_dir,
+    )
+    loop_artifact = write_loop_report_artifact(
+        campaign=loop_campaign,
+        iterations=(loop_iteration,),
+        output_dir=cycle_dir / "loop-campaign",
+        vault_root=vault,
+        project_id=project_id,
+    )
+    loop_artifact_summary = loop_artifact.to_summary()
+    summary["loop_campaign"] = {
+        "campaign_id": loop_campaign.campaign_id,
+        "selected_candidate_id": loop_selection.selected_candidate_id,
+        "decision_policy": loop_selection.decision_policy.value,
+        **loop_artifact_summary,
+    }
+    summary["loop_report"] = {
+        "json_path": loop_artifact_summary["json_path"],
+        "markdown_path": loop_artifact_summary["markdown_path"],
+        "vault_path": loop_artifact_summary["vault_path"],
+    }
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -4479,6 +4520,7 @@ def _run_autopilot_cycle(
         "literature": summary["literature"],
         "similarity": summary["similarity"],
         "research_plan": summary["research_plan"],
+        "loop_campaign": summary["loop_campaign"],
         "citations": summary["citations"],
         "related_work_inspection": summary["related_work_inspection"],
         "demo": summary["demo"],
@@ -4518,6 +4560,8 @@ def _run_autopilot_cycle(
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
         reproduction_check.get("json_path"),
+        summary["loop_report"].get("json_path"),
+        summary["loop_report"].get("markdown_path"),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
         *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
@@ -6391,6 +6435,24 @@ def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
     verdict = plan_audit.get("verdict") if isinstance(plan_audit, Mapping) else "unknown"
     prefix = "[OK]" if verdict == "passed" else "[BLOCKED]"
     typer.echo(f"{prefix} research_plan: {verdict}")
+
+
+def _echo_loop_campaign_status(summary: Mapping[str, object]) -> None:
+    loop_campaign = summary.get("loop_campaign")
+    if not isinstance(loop_campaign, Mapping):
+        return
+    quality_gate = loop_campaign.get("quality_gate")
+    metrics = loop_campaign.get("metrics")
+    passed = quality_gate.get("passed") if isinstance(quality_gate, Mapping) else False
+    prefix = "[OK]" if passed is True else "[BLOCKED]"
+    metric_text = ""
+    if isinstance(metrics, Mapping):
+        metric_text = (
+            f"; metadata={metrics.get('metadata_completeness', 'unknown')}; "
+            f"evidence={metrics.get('evidence_coverage', 'unknown')}; "
+            f"repro_delta={metrics.get('reproduction_delta', 'unknown')}"
+        )
+    typer.echo(f"{prefix} loop_campaign: {str(passed).lower()}{metric_text}")
 
 
 def _review_status_display(review: object) -> tuple[str, str]:
