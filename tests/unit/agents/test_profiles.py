@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from autoresearch.agents import (
     AgentMcpServerBinding,
     AgentProfile,
+    AgentProfileReadinessReport,
     AgentRegistry,
     AgentResult,
     AgentResultStatus,
@@ -18,6 +19,7 @@ from autoresearch.agents import (
     SkillImportPolicy,
     build_agent_profile_from_bundle,
     evaluate_agent_profile_readiness,
+    evaluate_agent_profile_set,
     load_agent_profile_bundle,
     materialize_agent_skill_contexts,
     parse_mcp_approval_policy_specs,
@@ -210,6 +212,86 @@ def test_profile_contexts_group_by_assigned_stage() -> None:
     assert grouped["literature"][0]["context_kind"] == "agent_profile_process_metadata"
     assert grouped["research_plan"][0]["agent_id"] == "literature-agent"
     assert grouped["review"][0]["agent_id"] == "reviewer"
+
+
+def test_agent_profile_set_validation_requires_stage_coverage_and_scientific_contract() -> None:
+    literature_profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature", "research_plan"),
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source.md"),),
+    )
+    experiment_profile = AgentProfile(
+        agent_id="experiment-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("experiment", "reproduction"),
+        skills=(AgentSkillBinding(skill_id="empirical-paper", source="skills/empirical.md"),),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="opencode",
+                command=("opencode", "run"),
+                allowed_tools=("code.write",),
+            ),
+        ),
+    )
+    reviewer_profile = AgentProfile(
+        agent_id="reviewer",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review", "evidence_gate"),
+        skills=(AgentSkillBinding(skill_id="question-validator", source="[[Question-Validator]]"),),
+    )
+
+    validation = evaluate_agent_profile_set(
+        (literature_profile, experiment_profile, reviewer_profile),
+        required_stages=(
+            "literature",
+            "research-plan",
+            "experiment",
+            "reproduction",
+            "review",
+            "evidence-gate",
+        ),
+    )
+
+    assert validation.passed is True
+    assert validation.validation_kind == "agent_profile_set_process_metadata"
+    assert validation.covered_stage_count == 6
+    assert validation.missing_stages == ()
+    assert validation.stage_coverage[0].agent_ids == ("literature-agent",)
+    assert validation.stage_coverage[2].skill_ids == ("empirical-paper",)
+    assert validation.stage_coverage[2].mcp_server_ids == ("opencode",)
+    assert "cannot support scientific results" in validation.evidence_policy
+
+
+def test_agent_profile_set_validation_blocks_missing_readiness_and_bad_contract() -> None:
+    profile = AgentProfile(
+        agent_id="builder",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("experiment",),
+        thinking_contract=("Ship implementation fast.",),
+        skills=(AgentSkillBinding(skill_id="code-skill", source="skills/code.md"),),
+    )
+    readiness = AgentProfileReadinessReport(
+        agent_id="builder",
+        passed=False,
+        check_count=1,
+        failed_check_count=1,
+        warning_count=0,
+        checks=(),
+    )
+
+    validation = evaluate_agent_profile_set(
+        (profile,),
+        required_stages=("literature", "experiment", "review"),
+        readiness_reports=(readiness,),
+    )
+
+    assert validation.passed is False
+    assert validation.missing_stages == ("literature", "review")
+    assert validation.readiness_failed_agent_ids == ("builder",)
+    assert validation.non_scientific_contract_agent_ids == ("builder",)
+    assert any("missing required stage coverage" in failure for failure in validation.failures)
+    assert any("not research/evidence-first" in failure for failure in validation.failures)
 
 
 def test_agent_profile_requires_mcp_allowlist() -> None:

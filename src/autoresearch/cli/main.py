@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 
 from autoresearch import __version__
 from autoresearch.agents import (
+    DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
     DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
     AgentProfile,
     AgentThinkingMode,
@@ -27,6 +28,7 @@ from autoresearch.agents import (
     build_agent_profile_from_bundle,
     build_mcp_invocation_evidence,
     evaluate_agent_profile_readiness,
+    evaluate_agent_profile_set,
     load_agent_profile,
     load_agent_profile_bundle,
     load_mcp_invocation_evidence,
@@ -956,6 +958,87 @@ def validate_agent_profile_command(
     for check in report.checks:
         typer.echo(f"[CHECK] {check.check_id}: {check.status.value} - {check.message}")
     if not report.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("set-validate")
+def validate_agent_profile_set_command(
+    profile_paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more Agent profile JSON artifacts to validate as a set."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    required_stage: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--required-stage",
+            help=(
+                "Research-loop stage that must have at least one assigned Agent. "
+                "Repeat to override the default CCF-B/Q2-oriented stage set."
+            ),
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional profile-set validation JSON path."),
+    ] = None,
+) -> None:
+    """Validate a stage-scoped team of custom skill/MCP Agent profiles."""
+
+    env = _merged_optional_env(env_path)
+    profiles: list[AgentProfile] = []
+    readiness_reports = []
+    try:
+        for profile_path in profile_paths:
+            profile = load_agent_profile(profile_path)
+            profiles.append(profile)
+            readiness_reports.append(
+                evaluate_agent_profile_readiness(
+                    profile,
+                    profile_path=profile_path,
+                    base_dir=base_dir,
+                    env=env,
+                )
+            )
+        validation = evaluate_agent_profile_set(
+            profiles,
+            required_stages=required_stage or DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+            readiness_reports=readiness_reports,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(validation.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] profile_set_report: {output}")
+
+    verdict = "passed" if validation.passed else "failed"
+    typer.echo(f"[OK] agent_profile_set: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {validation.covered_stage_count}/"
+        f"{len(validation.required_stages)}; profiles={validation.profile_count}"
+    )
+    for row in validation.stage_coverage:
+        status = "covered" if row.covered else "missing"
+        agents = ", ".join(row.agent_ids) if row.agent_ids else "-"
+        typer.echo(f"[STAGE] {row.stage}: {status}; agents={agents}")
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not validation.passed:
         raise typer.Exit(1)
 
 

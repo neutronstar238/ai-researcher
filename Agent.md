@@ -9729,3 +9729,39 @@ This file defines the project development standard for coding agents and records
   - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Future work can feed these promotion metrics from historical strategy-evaluation cohorts instead of direct promotion input fields.
+
+### 2026-06-23 16:22:32 +08:00 - Codex - Task 232.1 Agent profile set governance
+
+- Request: Continue toward CCF-B/Q2-ready AI-Researcher outputs while keeping agent reasoning scientific rather than over-engineered, and keep adding the ability to assign custom skills and MCP bindings to specific Agents.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfileSetValidation` and `AgentProfileStageCoverage` contracts for multi-Agent profile teams.
+  - Added default required stages for a CCF-B/Q2-oriented research loop: literature, research plan, campaign, experiment, reproduction, citations, review, publication audit, and evidence gate.
+  - Added profile-set blocking checks for missing required stages, duplicate Agent IDs, failed readiness reports, and non-research/evidence-first thinking contracts.
+  - Added warnings for unassigned profiles and `allow_all` MCP approval policies.
+  - Added `airesearcher agents profile set-validate <profiles...>` with optional JSON output.
+  - Updated README/README.zh-CN and added task `232.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_set_validate_cli_reports_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_set_validate_cli_fails_missing_stage -q`: passed with 17 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 605 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - Real CLI wrote literature, experiment, and reviewer profiles under `runs\manual-live\task232-profile-set-v1\profiles`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile set-validate ... --output runs\manual-live\task232-profile-set-v1\profile-set-validation.json`: passed with 9/9 required stages covered.
+  - Artifact inspection confirmed `passed=true`, `validation_kind=agent_profile_set_process_metadata`, no missing stages, experiment-stage MCP server `opencode`, and an evidence policy that says profile-set validation cannot prove scientific results.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future runtime workers can consume the profile-set validation report as a deployment preflight artifact before starting unattended `serve`/`autopilot`, while still requiring separate literature, experiment, reproduction, review, and evidence-gate artifacts for publication claims.

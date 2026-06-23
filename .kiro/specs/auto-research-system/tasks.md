@@ -2849,6 +2849,18 @@ A task can be checked only when all applicable items are true:
     - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `227.1`, `228.1`, `229.1`, and `230.1`; requirement that self-evolution use measurable loop gates, repair/freeze policy, and auditable research-plan binding instead of prompt-only self-discipline._
     - _Verify: focused loop/failure/promotion tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real narrow autopilot, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 232. Agent profile set governance
+  - [x] 232.1 Validate multi-Agent skill/MCP profile sets before unattended research loops
+    - Add a team-level `AgentProfileSetValidation` contract for multiple per-Agent custom skill/MCP profiles.
+    - Generate a stage coverage matrix with agent IDs, skill IDs, and MCP server IDs for required CCF-B/Q2 research-loop stages.
+    - Block profile sets with missing required literature, research-plan, campaign, experiment, reproduction, citation, review, publication-audit, or evidence-gate coverage.
+    - Block duplicate agent IDs, failed readiness reports, and profiles whose thinking contract is not research/evidence-first.
+    - Warn about unassigned profiles and `allow_all` MCP approval policies that require isolated operator approval.
+    - Add `airesearcher agents profile set-validate <profiles...>` with JSON output for deployment preflight.
+    - Update README/README.zh-CN with the profile-set matrix command and evidence boundary.
+    - _References: user request to keep AI thinking scientific rather than over-engineered while allowing custom skills and MCP to be assigned to specific Agents; tasks `226.1`, `228.1`, `230.1`, and `231.1`._
+    - _Verify: focused Agent profile and CLI tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real CLI set validation, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3433,6 +3445,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 134,
       "tasks": ["231.1"]
+    },
+    {
+      "id": 135,
+      "tasks": ["232.1"]
     }
   ]
 }

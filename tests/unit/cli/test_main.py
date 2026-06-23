@@ -546,6 +546,133 @@ def test_agent_profile_validate_cli_fails_on_missing_env_key(tmp_path: Path) -> 
     assert "[CHECK] mcp_env_keys:page-agent: fail" in validate_result.stdout
 
 
+def test_agent_profile_set_validate_cli_reports_stage_matrix(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "skills"
+    skill_dir.mkdir()
+    (skill_dir / "source.md").write_text("# Source\nBind sources.\n", encoding="utf-8")
+    (skill_dir / "experiment.md").write_text("# Experiment\nRun baselines.\n", encoding="utf-8")
+    literature_profile = tmp_path / "profiles" / "literature.json"
+    experiment_profile = tmp_path / "profiles" / "experiment.json"
+    report_path = tmp_path / "profiles" / "profile-set.json"
+    runner = CliRunner()
+
+    literature_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--stage",
+            "research-plan",
+            "--skill",
+            "source-tracing=skills/source.md",
+            "--output",
+            str(literature_profile),
+        ],
+    )
+    experiment_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "experiment-agent",
+            "--stage",
+            "experiment",
+            "--stage",
+            "review",
+            "--skill",
+            "empirical-paper=skills/experiment.md",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.write",
+            "--output",
+            str(experiment_profile),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "set-validate",
+            str(literature_profile),
+            str(experiment_profile),
+            "--base-dir",
+            str(tmp_path),
+            "--required-stage",
+            "literature",
+            "--required-stage",
+            "research-plan",
+            "--required-stage",
+            "experiment",
+            "--required-stage",
+            "review",
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert literature_result.exit_code == 0, literature_result.output
+    assert experiment_result.exit_code == 0, experiment_result.output
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "[OK] agent_profile_set: passed" in validate_result.stdout
+    assert "[STAGE] research_plan: covered; agents=literature-agent" in validate_result.stdout
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["covered_stage_count"] == 4
+    assert payload["stage_coverage"][2]["mcp_server_ids"] == ["opencode"]
+    assert "scientific results" in payload["evidence_policy"]
+
+
+def test_agent_profile_set_validate_cli_fails_missing_stage(tmp_path: Path) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    profile_path = tmp_path / "profile.json"
+    runner = CliRunner()
+
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "set-validate",
+            str(profile_path),
+            "--required-stage",
+            "literature",
+            "--required-stage",
+            "review",
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 1
+    assert "[STAGE] review: missing; agents=-" in validate_result.stdout
+    assert "[FAIL] missing required stage coverage: review" in validate_result.stdout
+
+
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
 

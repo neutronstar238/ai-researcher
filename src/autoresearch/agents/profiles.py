@@ -56,6 +56,25 @@ MCP_RUNTIME_CONTRACT_EVIDENCE_POLICY = (
     "they do not prove a tool was invoked or that any scientific result, citation, novelty "
     "claim, benchmark metric, or publication-readiness claim is supported."
 )
+PROFILE_SET_VALIDATION_KIND = "agent_profile_set_process_metadata"
+PROFILE_SET_EVIDENCE_POLICY = (
+    "Agent profile set validation proves only that a declared research-agent team has "
+    "stage coverage, readiness, and bounded skill/MCP responsibility metadata. It cannot "
+    "support scientific results, novelty claims, benchmark metrics, citation validity, "
+    "tool invocation, or publication readiness without validated literature, experiment, "
+    "reproduction, review, and evidence-gate artifacts."
+)
+DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES: tuple[str, ...] = (
+    "literature",
+    "research_plan",
+    "loop_campaign",
+    "experiment",
+    "reproduction",
+    "citations",
+    "review",
+    "publication_audit",
+    "evidence_gate",
+)
 
 
 class AgentThinkingMode(str, Enum):
@@ -138,6 +157,39 @@ class AgentProfileReadinessReport(BaseModel):
         "Readiness checks verify profile inputs only; they do not prove scientific results, "
         "tool invocation, novelty, citation validity, or publication readiness."
     )
+
+
+class AgentProfileStageCoverage(BaseModel):
+    """Coverage details for one research-loop stage in an Agent profile set."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    covered: bool
+    agent_ids: tuple[str, ...] = ()
+    skill_ids: tuple[str, ...] = ()
+    mcp_server_ids: tuple[str, ...] = ()
+
+
+class AgentProfileSetValidation(BaseModel):
+    """Team-level validation for a set of Agent profiles assigned to loop stages."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    validation_kind: str = PROFILE_SET_VALIDATION_KIND
+    passed: bool
+    profile_count: int
+    required_stages: tuple[str, ...]
+    covered_stage_count: int
+    missing_stages: tuple[str, ...]
+    duplicate_agent_ids: tuple[str, ...] = ()
+    readiness_failed_agent_ids: tuple[str, ...] = ()
+    allow_all_agent_ids: tuple[str, ...] = ()
+    non_scientific_contract_agent_ids: tuple[str, ...] = ()
+    stage_coverage: tuple[AgentProfileStageCoverage, ...]
+    failures: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    evidence_policy: str = PROFILE_SET_EVIDENCE_POLICY
 
 
 class AgentSkillMaterializedContext(BaseModel):
@@ -675,6 +727,65 @@ def build_agent_mcp_runtime_contracts(
     return tuple(_build_mcp_runtime_contract(server) for server in profile.mcp_servers)
 
 
+def evaluate_agent_profile_set(
+    profiles: Iterable[AgentProfile],
+    *,
+    required_stages: Iterable[str] = DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+    readiness_reports: Iterable[AgentProfileReadinessReport] = (),
+) -> AgentProfileSetValidation:
+    """Validate a stage-scoped Agent team before unattended research-loop use."""
+
+    profile_list = tuple(profiles)
+    normalized_required_stages = _normalize_unique_stages(required_stages)
+    duplicate_agent_ids = _duplicate_values(profile.agent_id for profile in profile_list)
+    readiness_by_agent = {report.agent_id: report for report in readiness_reports}
+    readiness_failed_agent_ids = tuple(
+        profile.agent_id
+        for profile in profile_list
+        if (report := readiness_by_agent.get(profile.agent_id)) is not None and not report.passed
+    )
+    allow_all_agent_ids = tuple(
+        profile.agent_id
+        for profile in profile_list
+        if any(server.approval_policy == McpApprovalPolicy.ALLOW_ALL for server in profile.mcp_servers)
+    )
+    non_scientific_contract_agent_ids = tuple(
+        profile.agent_id
+        for profile in profile_list
+        if not _has_scientific_thinking_contract(profile.thinking_contract)
+    )
+
+    stage_coverage = tuple(
+        _profile_stage_coverage(stage, profile_list) for stage in normalized_required_stages
+    )
+    missing_stages = tuple(row.stage for row in stage_coverage if not row.covered)
+    failures = _profile_set_failures(
+        missing_stages=missing_stages,
+        duplicate_agent_ids=duplicate_agent_ids,
+        readiness_failed_agent_ids=readiness_failed_agent_ids,
+        non_scientific_contract_agent_ids=non_scientific_contract_agent_ids,
+    )
+    warnings = _profile_set_warnings(
+        profiles=profile_list,
+        allow_all_agent_ids=allow_all_agent_ids,
+        readiness_by_agent=readiness_by_agent,
+    )
+    return AgentProfileSetValidation(
+        passed=not failures,
+        profile_count=len(profile_list),
+        required_stages=normalized_required_stages,
+        covered_stage_count=sum(1 for row in stage_coverage if row.covered),
+        missing_stages=missing_stages,
+        duplicate_agent_ids=duplicate_agent_ids,
+        readiness_failed_agent_ids=readiness_failed_agent_ids,
+        allow_all_agent_ids=allow_all_agent_ids,
+        non_scientific_contract_agent_ids=non_scientific_contract_agent_ids,
+        stage_coverage=stage_coverage,
+        failures=failures,
+        warnings=warnings,
+    )
+
+
 def normalize_profile_stage(stage: str) -> str:
     """Normalize a loop stage identifier used by an agent profile."""
 
@@ -1074,6 +1185,116 @@ def _context_assigned_stages(context: Mapping[str, Any]) -> tuple[str, ...]:
             normalized.append(stage)
             seen.add(stage)
     return tuple(normalized)
+
+
+def _normalize_unique_stages(stages: Iterable[str]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for stage in stages:
+        normalized_stage = normalize_profile_stage(stage)
+        if normalized_stage not in seen:
+            normalized.append(normalized_stage)
+            seen.add(normalized_stage)
+    return tuple(normalized)
+
+
+def _duplicate_values(values: Iterable[str]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for value in values:
+        if value in seen and value not in duplicates:
+            duplicates.append(value)
+        seen.add(value)
+    return tuple(duplicates)
+
+
+def _profile_stage_coverage(
+    stage: str,
+    profiles: tuple[AgentProfile, ...],
+) -> AgentProfileStageCoverage:
+    stage_profiles = tuple(profile for profile in profiles if stage in profile.assigned_stages)
+    skill_ids = tuple(
+        dict.fromkeys(
+            skill.skill_id
+            for profile in stage_profiles
+            for skill in profile.skills
+        )
+    )
+    mcp_server_ids = tuple(
+        dict.fromkeys(
+            server.server_id
+            for profile in stage_profiles
+            for server in profile.mcp_servers
+        )
+    )
+    return AgentProfileStageCoverage(
+        stage=stage,
+        covered=bool(stage_profiles),
+        agent_ids=tuple(profile.agent_id for profile in stage_profiles),
+        skill_ids=skill_ids,
+        mcp_server_ids=mcp_server_ids,
+    )
+
+
+def _has_scientific_thinking_contract(thinking_contract: tuple[str, ...]) -> bool:
+    text = " ".join(thinking_contract).casefold()
+    return "evidence" in text and (
+        "research question" in text
+        or "hypothesis" in text
+        or "falsifiable" in text
+    )
+
+
+def _profile_set_failures(
+    *,
+    missing_stages: tuple[str, ...],
+    duplicate_agent_ids: tuple[str, ...],
+    readiness_failed_agent_ids: tuple[str, ...],
+    non_scientific_contract_agent_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    failures: list[str] = []
+    if missing_stages:
+        failures.append(f"missing required stage coverage: {', '.join(missing_stages)}")
+    if duplicate_agent_ids:
+        failures.append(f"duplicate agent profiles: {', '.join(duplicate_agent_ids)}")
+    if readiness_failed_agent_ids:
+        failures.append(
+            "profile readiness failed for: " + ", ".join(readiness_failed_agent_ids)
+        )
+    if non_scientific_contract_agent_ids:
+        failures.append(
+            "profile thinking contract is not research/evidence-first for: "
+            + ", ".join(non_scientific_contract_agent_ids)
+        )
+    return tuple(failures)
+
+
+def _profile_set_warnings(
+    *,
+    profiles: tuple[AgentProfile, ...],
+    allow_all_agent_ids: tuple[str, ...],
+    readiness_by_agent: Mapping[str, AgentProfileReadinessReport],
+) -> tuple[str, ...]:
+    warnings: list[str] = []
+    unassigned = tuple(profile.agent_id for profile in profiles if not profile.assigned_stages)
+    if unassigned:
+        warnings.append(
+            "profile has no assigned stages and will not enter stage contexts: "
+            + ", ".join(unassigned)
+        )
+    if allow_all_agent_ids:
+        warnings.append(
+            "allow_all MCP approval requires isolated operator approval for: "
+            + ", ".join(allow_all_agent_ids)
+        )
+    warning_agents = tuple(
+        report.agent_id
+        for report in readiness_by_agent.values()
+        if report.warning_count > 0 and report.passed
+    )
+    if warning_agents:
+        warnings.append("profile readiness warnings for: " + ", ".join(warning_agents))
+    return tuple(warnings)
 
 
 def _load_bundle_mapping(path: Path) -> dict[str, Any]:

@@ -218,6 +218,8 @@ airesearcher agents profile import literature-agent.yaml \
 
 在无人值守运行前先执行 `agents profile validate`，用于检查本地 skill 源路径和必需的 MCP 环境变量名是否存在。readiness 报告会进入运行时 profile context、`cycle-summary.json`、`review-evidence-context.json`、monitor 行和 CLI 状态输出。它只验证 profile 输入，不证明 MCP 工具已经真实调用、外部 skill 内容已经安全，也不能作为科学 claim 的证据。
 
+多 Agent 部署前运行 `agents profile set-validate <profiles...>`。它会生成面向 CCF-B/SCI 二区研究闭环的 stage coverage matrix，检查每个 profile 的 readiness，阻断 literature、research_plan、experiment、reproduction、citations、review 等职责缺口，并提示 `allow_all` MCP 绑定或未分配阶段的 profile。这个检查只证明团队配置和责任边界可运行，不能证明科学结论或发表就绪。
+
 当已加载的 profile 指向本地 skill 文件，或指向包含 `SKILL.md` 的目录时，运行时会把有界 skill 摘要写入阶段上下文，并记录 `status`、`sha256`、字节数/字符数、`max_chars` 和截断标记。紧凑 profile summary 只记录来源和状态，`stage_runtime_contexts` 与 `stage_agent_contexts` 才携带分配给 worker 的有界内容。非本地来源只保留引用；本地文件如果包含疑似密钥文本，会标记为 `blocked`，不会把内容写入 artifact。可以运行 `agents profile inspect --materialize-skills --base-dir . <profile.json>` 预览某个 Agent 实际会收到的上下文。
 
 MCP 绑定还会生成 `mcp_runtime_contracts`。contract 会记录命令哈希、允许的工具、审批策略、所需 env key 名称，以及是否需要运行时审批或隔离的 operator 授权。它不会记录 env 值，也仍然只是流程元数据：MCP contract 只能证明该 Agent 被允许使用什么工具，不能证明工具已经真实调用，也不能证明科研结果成立。
@@ -360,6 +362,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | 把自定义 skill、MCP server、可选闭环阶段责任和单 Agent 工具策略绑定给某个 Agent；MCP tool 必须显式白名单，密钥值仍保留在环境变量中。 |
 | `agents profile import` | `.json/.yaml/.toml` bundle、`--output`、`--vault`、`--project-id` | 把可复用声明式 Agent bundle 转成 `validate`、`inspect`、`serve` 和 `autopilot` 都能加载的标准 profile JSON；默认科研思维契约会保留，bundle 只追加补充项。 |
 | `agents profile validate` | profile JSON 路径、`--env-path`、`--base-dir`、`--output` | 检查本地 skill 源路径和必需的 MCP 环境变量名；写出 readiness JSON，缺少必需输入时非零退出。 |
+| `agents profile set-validate` | profile JSON 路径、`--required-stage`、`--env-path`、`--base-dir`、`--output` | 将多个 Agent 的 skill/MCP profile 作为研究阶段覆盖矩阵整体校验；必需阶段缺失、重复 Agent、readiness 失败或缺少科研/证据优先思维契约时非零退出。 |
 | `agents profile inspect` | profile JSON 路径、`--materialize-skills`、`--base-dir`、`--max-skill-chars` | 输出该 Agent 会收到的运行时上下文，包括 MCP runtime contracts；可选择附带有界本地 skill 内容、哈希和截断元数据。 |
 | `agents mcp-evidence add/list/validate` | `--profile`、`--ledger`、`--project-id`、`--cycle-id`、`--server-id`、`--tool-name`、请求/响应 artifact | 记录并校验带哈希的 MCP 工具调用证据；只能证明某个 Agent 记录过某次工具调用，不能证明科研结论成立。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |

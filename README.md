@@ -273,6 +273,12 @@ contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, an
 checks profile inputs only; it does not prove that an MCP tool was invoked, that external skill
 content was safe, or that a scientific claim is supported.
 
+For multi-agent deployments, run `agents profile set-validate <profiles...>` before `serve` or
+`autopilot`. It builds a stage coverage matrix for the CCF-B/Q2 research loop, checks each
+profile's readiness report, blocks missing literature/plan/experiment/reproduction/citation/review
+responsibility, and warns about `allow_all` MCP bindings or unassigned profiles. This is a team
+configuration gate only; it still cannot prove scientific claims or publication readiness.
+
 When a loaded profile points at a local skill file or a directory containing `SKILL.md`, the runtime
 materializes a bounded skill excerpt into stage contexts with `status`, `sha256`, byte/character
 counts, `max_chars`, and a truncation flag. The compact profile summary records only provenance and
@@ -449,6 +455,7 @@ Common npm shortcuts:
 | `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | Binds custom skills, MCP servers, optional loop-stage responsibility, and per-agent tool policy to one agent. MCP tools must be explicitly allowlisted and secrets stay in env vars. |
 | `agents profile import` | bundle `.json/.yaml/.toml`, `--output`, `--vault`, `--project-id` | Converts a reusable declarative Agent bundle into the same profile JSON used by `validate`, `inspect`, `serve`, and `autopilot`. The default scientific thinking contract is preserved and bundle additions are appended. |
 | `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
+| `agents profile set-validate` | profile JSON paths, `--required-stage`, `--env-path`, `--base-dir`, `--output` | Validates a multi-Agent skill/MCP profile set as a research-stage coverage matrix before unattended runs; exits nonzero on missing required stages, duplicate agents, readiness failures, or non-research/evidence-first thinking contracts. |
 | `agents profile inspect` | profile JSON path, `--materialize-skills`, `--base-dir`, `--max-skill-chars` | Prints the runtime context that will be attached to that agent, including MCP runtime contracts; optionally includes bounded local skill content with hashes and truncation metadata. |
 | `agents mcp-evidence add/list/validate` | `--profile`, `--ledger`, `--project-id`, `--cycle-id`, `--server-id`, `--tool-name`, request/response artifact refs | Records and validates hashed MCP tool invocation evidence. This proves a named agent recorded a named tool call, not that scientific claims are true. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
