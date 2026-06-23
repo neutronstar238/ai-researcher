@@ -218,7 +218,9 @@ operator monitor. Optional `--stage` values bind one profile to loop stages such
 `cycle-summary.json` also includes `stage_runtime_contexts`, and `review-evidence-context.json`
 includes `stage_agent_contexts`, so downstream stage workers can consume only the bounded skill/MCP
 context assigned to that stage. Profiles still provide method/tool context only; publication claims
-require the normal evidence, reproduction, review, paper-build, and release gates.
+require the normal evidence, reproduction, review, paper-build, and release gates. The LLM reviewer
+is instructed to treat profile and stage context as process metadata, not as proof of scientific
+results, tool invocation, novelty, or publication readiness.
 
 Each cycle can run:
 

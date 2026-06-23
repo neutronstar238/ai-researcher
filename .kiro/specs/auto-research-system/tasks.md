@@ -2711,6 +2711,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `214.1`, `215.1`, `216.1`, and `217.1`; Loop Engineering requirement that LLM and tool use stay inside auditable stage responsibilities._
     - _Verify: focused profile and CLI tests passed; loop regression, broad smoke/unit, ruff, mypy, real staged-profile autopilot smoke, and `git diff --check` passed. Full commands and real artifact checks are recorded in `Agent.md`._
 
+- [x] 219. LLM reviewer profile-context boundary
+  - [x] 219.1 Prevent stage profiles from being treated as scientific evidence
+    - Clarify the evidence-constrained LLM reviewer prompt that `agent_profiles`, `stage_runtime_contexts`, `stage_agent_contexts`, skills, and MCP allowlists are process metadata only.
+    - Allow profile context to support findings about responsibility boundaries or available tool context, but not scientific results, novelty, benchmark metrics, citation validity, publication readiness, or proof that a tool was invoked.
+    - Apply the same boundary to repair prompts so failed-review retries cannot promote profile metadata into scientific evidence.
+    - Add unit coverage that fixes the prompt contract for stage-scoped profile context.
+    - Update README/README.zh-CN so operators know profile context is reviewable process metadata, not a publication claim shortcut.
+    - _References: tasks `216.1`, `217.1`, and `218.1`; Loop Engineering requirement that evidence gates cannot be bypassed by agent/tool declarations._
+    - _Verify: focused LLM reviewer prompt tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3243,6 +3253,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 121,
       "tasks": ["218.1"]
+    },
+    {
+      "id": 122,
+      "tasks": ["219.1"]
     }
   ]
 }

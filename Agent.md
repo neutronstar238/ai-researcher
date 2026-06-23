@@ -9264,3 +9264,32 @@ This file defines the project development standard for coding agents and records
   - Added and resolved `P-20260623-005` for ruff import-order normalization in the new profile test.
 - Follow-up:
   - Stage-scoped profile contexts are now consumable responsibility/tool context; they remain non-evidence and cannot replace review, publication-audit, evidence-gate, or reproduction gates.
+
+### 2026-06-23 14:07:59 +08:00 - Codex - Task 219.1 LLM reviewer profile-context boundary
+
+- Request: Continue implementing the Loop Engineering plan by preventing stage-scoped Agent profile context from being treated as scientific evidence.
+- Files changed:
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Clarified the evidence-constrained LLM reviewer system prompt so `agent_profiles`, `stage_runtime_contexts`, `stage_agent_contexts`, skills, and MCP allowlists are process metadata only.
+  - Explicitly prohibited profile context from supporting scientific results, novelty, benchmark metrics, citation validity, publication readiness, or claims that a tool was invoked.
+  - Applied the same boundary to the reviewer repair prompt so retry outputs cannot promote profile metadata into scientific evidence.
+  - Added unit coverage for the prompt contract and updated English/Chinese README guidance.
+  - Added completed task `219.1` and dependency graph wave `122`.
+- Verification:
+  - Focused `python -m pytest tests\unit\llm\test_client.py -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\llm\client.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\llm`: passed with no issues in 3 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 565 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Future reviewer hardening can add deterministic checks for misuse of profile context in reviewer outputs if live reviews show that failure mode.

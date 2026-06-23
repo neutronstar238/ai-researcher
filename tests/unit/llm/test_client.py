@@ -411,3 +411,30 @@ def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
     assert "outer evidence_refs IDs" in prompt
     assert "Use verdict `pass` when unsupported_claims is empty" in prompt
     assert "evidence_1" in prompt
+
+
+def test_review_prompt_treats_agent_profiles_as_process_metadata_only() -> None:
+    messages = _review_messages(
+        subject_path=Path("paper.md"),
+        subject_text="The profile includes a source-tracing skill.",
+        evidence=[
+            LLMEvidenceArtifact(
+                evidence_id="evidence_1",
+                path="review-evidence-context.json",
+                sha256="abc123",
+                excerpt=(
+                    '{"stage_agent_contexts":{"review":[{"agent_id":"reviewer",'
+                    '"skills":[{"skill_id":"source-tracing"}]}]},'
+                    '"stage_runtime_contexts":{"review":[{"agent_id":"reviewer"}]}}'
+                ),
+            )
+        ],
+    )
+
+    prompt = messages[0]["content"]
+    assert "stage_agent_contexts" in prompt
+    assert "stage_runtime_contexts" in prompt
+    assert "process metadata only" in prompt
+    assert "not evidence for scientific results" in prompt
+    assert "publication readiness" in prompt
+    assert "A profile does not prove a tool was invoked" in prompt
