@@ -170,6 +170,9 @@ def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None
     assert payload["contract_validation"]["passed"] is True
     assert "target_metric" in payload["contract_validation"]["checked_fields"]
     assert payload["stop_decision"]["reason"] == LoopStopReason.CONTINUE.value
+    assert payload["stop_decision"]["repair_required"] is False
+    assert payload["stop_decision"]["approval_required"] is False
+    assert payload["stop_decision"]["retry_blocked_until"] == []
     assert payload["iterations"][0]["validation_status"] == ValidationStatus.PASSED.value
     assert payload["iterations"][0]["selection_score"] is not None
     assert payload["iterations"][0]["optimizer_state"]["llm_override_allowed"] is False
@@ -179,6 +182,9 @@ def test_loop_report_writes_json_markdown_and_vault_note(tmp_path: Path) -> None
     assert "## Optimizer State" in markdown
     assert "LLM override allowed" in markdown
     assert "## Stop Decision" in markdown
+    assert "## Research Plan Binding" in markdown
+    assert "runs/cycle/research-plan.json" in markdown
+    assert "## Failure Policy" in markdown
 
 
 def test_loop_stop_criteria_blocks_blind_retry_after_repeated_failure(
@@ -204,7 +210,41 @@ def test_loop_stop_criteria_blocks_blind_retry_after_repeated_failure(
     assert decision.should_stop is True
     assert decision.reason is LoopStopReason.CONSECUTIVE_FAILURES
     assert decision.frozen_dimensions == ["failed_dimension"]
+    assert decision.repair_required is True
+    assert decision.retry_blocked_until == ["repair_hypothesis", "frozen_dimension"]
     assert "repair hypothesis" in decision.next_action
+
+
+def test_loop_stop_criteria_marks_approval_required_for_safety_failure(
+    tmp_path: Path,
+) -> None:
+    campaign = build_closed_loop_campaign(
+        candidate=_candidate(),
+        project_id="project_1",
+        cycle_id="cycle_1",
+        research_plan=_research_plan_payload(),
+    )
+    first = select_loop_candidate(campaign)
+    safety_failure = create_loop_iteration_from_cycle_summary(
+        campaign=campaign,
+        decision=first,
+        summary=_cycle_summary(tmp_path, validation_status="failed"),
+        base_dir=tmp_path,
+    ).model_copy(
+        update={
+            "failure_category": LoopFailureCategory.SAFETY,
+            "repair_hypothesis": "operator must approve the secret-free rerun path",
+            "frozen_dimensions": ["execution"],
+        }
+    )
+
+    decision = evaluate_loop_stop_criteria(campaign, (safety_failure,))
+
+    assert decision.should_stop is True
+    assert decision.reason is LoopStopReason.HUMAN_APPROVAL_REQUIRED
+    assert decision.approval_required is True
+    assert decision.repair_required is True
+    assert decision.retry_blocked_until == ["human_approval"]
 
 
 def test_loop_failure_classification_uses_engineering_categories() -> None:

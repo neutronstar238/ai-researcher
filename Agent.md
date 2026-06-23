@@ -9693,3 +9693,39 @@ This file defines the project development standard for coding agents and records
   - Added `P-20260623-010` for pre-existing README.zh-CN mojibake/line-ending maintenance risk; mitigated for the touched lines.
 - Follow-up:
   - The optimizer is intentionally lightweight and deterministic. A future Bayesian optimizer backend can replace the UCB-like scorer, but it must continue to write the same optimizer-state contract and obey stop decisions, evidence gates, reproduction gates, and approval gates.
+
+### 2026-06-23 16:12:45 +08:00 - Codex - Task 231.1 Loop Engineering gate hardening
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan by strengthening the closed-loop campaign with repair/approval stop contracts, research-plan binding, failure taxonomy, and loop-metric strategy promotion gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/failures.py`
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/promotion.py`
+  - `tests/unit/experiments/test_failures.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/experiments/test_promotion.py`
+  - `Agent.md`
+- Summary:
+  - Added machine-readable repair, approval, and retry-blocker fields to `LoopStopDecision`.
+  - Rendered research-plan binding and the eight Loop Engineering failure categories in loop reports.
+  - Added a legacy-to-Loop-Engineering failure classifier for Obsidian failure notes.
+  - Added AF, EF, and failure-recovery regressions to strategy promotion blocking reasons and audit metadata.
+  - Added task `231.1` and README notes for the hardened Loop Engineering promotion gate.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_failures.py tests\unit\experiments\test_promotion.py -q`: passed with 34 tests.
+  - Initial focused `python -m ruff check ...` exposed `I001` import ordering in `src/autoresearch/experiments/__init__.py`; fixed with `python -m ruff check src\autoresearch\experiments\__init__.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\failures.py src\autoresearch\experiments\promotion.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_failures.py tests\unit\experiments\test_promotion.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\failures.py src\autoresearch\experiments\promotion.py src\autoresearch\experiments\__init__.py`: passed with no issues in 4 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 601 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - Real narrow autopilot command passed with cycle `cycle-20260623T081008Z`; publication/evidence gates correctly blocked because `--no-review` skipped review.
+  - Artifact inspection confirmed `loop-campaign.json` and `loop-report.md` include repair/approval fields, research-plan protocol refs, failure recovery `1.0`, and the eight failure categories.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future work can feed these promotion metrics from historical strategy-evaluation cohorts instead of direct promotion input fields.

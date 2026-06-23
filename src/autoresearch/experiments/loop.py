@@ -237,6 +237,9 @@ class LoopStopDecision(BaseModel):
     reason: LoopStopReason
     issues: list[str] = Field(default_factory=list)
     frozen_dimensions: list[str] = Field(default_factory=list)
+    repair_required: bool = False
+    approval_required: bool = False
+    retry_blocked_until: list[str] = Field(default_factory=list)
     next_action: str = Field(min_length=1)
 
 
@@ -738,6 +741,8 @@ def evaluate_loop_stop_criteria(
             reason=LoopStopReason.REPRODUCTION_REGRESSION,
             issues=["reproduction_delta above 0.05"],
             frozen_dimensions=["result_claims"],
+            repair_required=True,
+            retry_blocked_until=["reproduction_report"],
             next_action="Run reproduction repair before using this result in claims or strategy promotion.",
         )
 
@@ -747,6 +752,8 @@ def evaluate_loop_stop_criteria(
             reason=LoopStopReason.METADATA_INCOMPLETE,
             issues=["metadata_completeness below 0.90"],
             frozen_dimensions=["strategy_promotion", "publication_claims"],
+            repair_required=True,
+            retry_blocked_until=["run_metadata", "validation_artifacts"],
             next_action="Complete run IDs, hashes, metrics, validation, evidence, and artifact refs before another optimizer step.",
         )
 
@@ -756,6 +763,8 @@ def evaluate_loop_stop_criteria(
             reason=LoopStopReason.EVIDENCE_INCOMPLETE,
             issues=["evidence_coverage below 0.80"],
             frozen_dimensions=["publication_claims"],
+            repair_required=True,
+            retry_blocked_until=["evidence_map", "source_artifacts"],
             next_action="Attach missing literature, similarity, run, validation, evidence-map, and reproduction artifacts.",
         )
 
@@ -773,6 +782,8 @@ def evaluate_loop_stop_criteria(
                     "consecutive failures require a repair hypothesis or frozen variable before retry"
                 ],
                 frozen_dimensions=["failed_dimension"],
+                repair_required=True,
+                retry_blocked_until=["repair_hypothesis", "frozen_dimension"],
                 next_action="Write a repair hypothesis or freeze the risky variable before selecting the next candidate.",
             )
         return LoopStopDecision(
@@ -783,6 +794,8 @@ def evaluate_loop_stop_criteria(
                 {item for record in repeated_failures for item in record.frozen_dimensions}
             )
             or ["failed_dimension"],
+            repair_required=True,
+            retry_blocked_until=["human_review"],
             next_action="Pause the campaign and review the recorded repair attempts before continuing.",
         )
 
@@ -792,6 +805,9 @@ def evaluate_loop_stop_criteria(
             reason=LoopStopReason.HUMAN_APPROVAL_REQUIRED,
             issues=[f"{latest.failure_category.value} failure requires human approval"],
             frozen_dimensions=["execution"],
+            repair_required=True,
+            approval_required=True,
+            retry_blocked_until=["human_approval"],
             next_action="Request human approval before any further execution.",
         )
 
@@ -801,6 +817,8 @@ def evaluate_loop_stop_criteria(
             reason=LoopStopReason.BUDGET_EXHAUSTED,
             issues=["max_iterations reached"],
             frozen_dimensions=["candidate_selection"],
+            approval_required=True,
+            retry_blocked_until=["budget_extension_approval"],
             next_action="Stop the campaign or obtain an explicit budget extension.",
         )
 
@@ -833,6 +851,8 @@ def evaluate_loop_quality_gate(
         issues.append("evidence_coverage below 0.80")
     if metrics.reproduction_delta > 0.05:
         issues.append("reproduction_delta above 0.05")
+    if metrics.failure_recovery_rate < 1.0:
+        issues.append("failure_recovery_rate below 1.0")
     if any(record.validation_status is not ValidationStatus.PASSED for record in records):
         issues.append("one or more loop iterations failed validation")
     if not campaign.protocol_refs:
@@ -994,6 +1014,8 @@ def render_loop_report_markdown(
         "",
         f"- Should stop: `{str(stop_decision.should_stop).lower()}`",
         f"- Reason: `{stop_decision.reason.value}`",
+        f"- Repair required: `{str(stop_decision.repair_required).lower()}`",
+        f"- Approval required: `{str(stop_decision.approval_required).lower()}`",
         f"- Next action: {stop_decision.next_action}",
         "",
         "### Stop Issues",
@@ -1003,6 +1025,20 @@ def render_loop_report_markdown(
         "### Frozen Dimensions",
         "",
         *(_list_items(stop_decision.frozen_dimensions)),
+        "",
+        "### Retry Blocked Until",
+        "",
+        *(_list_items(stop_decision.retry_blocked_until)),
+        "",
+        "## Research Plan Binding",
+        "",
+        *(_research_plan_binding_lines(campaign)),
+        "",
+        "## Failure Policy",
+        "",
+        "Loop failures use the eight Loop Engineering categories below. Consecutive failures cannot be retried unless a repair hypothesis, frozen dimension, or human approval is recorded.",
+        "",
+        *[f"- `{category.value}`" for category in LoopFailureCategory],
         "",
         "## Candidate Selection",
         "",
@@ -1064,6 +1100,23 @@ def render_loop_report_markdown(
         ]
     )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _research_plan_binding_lines(campaign: ClosedLoopCampaign) -> list[str]:
+    refs = [ref for ref in campaign.protocol_refs if "research-plan" in ref.casefold()]
+    artifacts = [
+        artifact
+        for artifact in campaign.protocol_artifacts
+        if "research-plan" in artifact.casefold()
+    ]
+    lines = [
+        "- Research plan must pass before campaign initialization can support experiments.",
+        "- Protocol refs:",
+        *(_list_items(refs)),
+        "- Protocol artifacts:",
+        *(_list_items(artifacts)),
+    ]
+    return lines
 
 
 def _latest_optimizer_state(

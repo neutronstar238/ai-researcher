@@ -49,9 +49,11 @@ from .evidence import (
 )
 from .executor import execute_experiment_task
 from .failures import (
+    LOOP_ENGINEERING_FAILURE_CATEGORIES,
     FailureKnowledgeRecord,
     RecurringFailurePattern,
     classify_failure_category,
+    classify_loop_engineering_failure_category,
     record_failed_run_as_knowledge,
     update_recurring_failure_patterns,
 )
@@ -194,6 +196,7 @@ __all__ = [
     "LoopSelectionDecision",
     "LoopStopDecision",
     "LoopStopReason",
+    "LOOP_ENGINEERING_FAILURE_CATEGORIES",
     "NetworkDecision",
     "PENDIGITS_CENTROID_BASELINE_TASK_ID",
     "PENDIGITS_PROTOTYPE_SHRINKAGE_TASK_ID",
@@ -235,6 +238,7 @@ __all__ = [
     "build_default_golden_suite",
     "calculate_strategy_reward",
     "classify_failure_category",
+    "classify_loop_engineering_failure_category",
     "classify_loop_failure",
     "compute_loop_metrics",
     "collect_result_bundle",

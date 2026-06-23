@@ -2839,6 +2839,16 @@ A task can be checked only when all applicable items are true:
     - _References: user request to keep AI thinking scientific rather than over-engineered while continuing to add custom skill/MCP import ability for specific Agents; tasks `215.1`, `223.1`, `224.1`, `225.1`, `226.1`, and `228.1`._
     - _Verify: focused profile bundle import/API/CLI tests, ruff, mypy, real CLI import/validate/inspect, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 231. Loop Engineering gate hardening
+  - [x] 231.1 Add repair/approval stop contracts and loop-metric strategy promotion gates
+    - Add machine-readable stop-decision fields for repair requirements, approval requirements, and retry-blocking evidence prerequisites.
+    - Render research-plan binding and the eight Loop Engineering failure categories in every loop report.
+    - Expose a bridge from legacy experiment failure notes to the eight Loop Engineering categories: source, protocol, execution, metric, validation, review, cost, and safety.
+    - Require strategy promotion candidates to avoid regressions in AF, EF, metadata completeness, reproduction delta, failure recovery, and evidence coverage before gray release.
+    - Update README/README.zh-CN with the strategy-promotion metric gate.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `227.1`, `228.1`, `229.1`, and `230.1`; requirement that self-evolution use measurable loop gates, repair/freeze policy, and auditable research-plan binding instead of prompt-only self-discipline._
+    - _Verify: focused loop/failure/promotion tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real narrow autopilot, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3419,6 +3429,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 133,
       "tasks": ["230.1"]
+    },
+    {
+      "id": 134,
+      "tasks": ["231.1"]
     }
   ]
 }

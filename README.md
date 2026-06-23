@@ -323,6 +323,9 @@ is not allowed to retry indefinitely: if metadata, evidence, reproduction, budge
 protocol-contract, or repeated-failure checks block the next step, the report records the frozen
 dimensions and the repair action required before another candidate can run. Release and publication
 gates require `contract_validation.passed=true` in addition to loop metrics and evidence coverage.
+Strategy promotion uses the same Loop Engineering metrics: AF, EF, metadata completeness,
+reproduction delta, failure recovery, and evidence coverage must not regress before a shadow
+strategy can enter gray release.
 
 V1.0 keeps broad inspiration API-first for reproducibility. PageAgent-style browser acquisition is
 tracked as a future adapter for public pages without stable APIs, but it must pass robots/ToS,
