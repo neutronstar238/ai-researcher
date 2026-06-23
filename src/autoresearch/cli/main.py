@@ -14,7 +14,9 @@ from importlib import import_module
 from pathlib import Path
 from typing import Annotated, Any, cast
 
+import toml
 import typer
+import yaml
 from dotenv import load_dotenv
 
 from autoresearch import __version__
@@ -24,6 +26,8 @@ from autoresearch.agents import (
     PROFILE_SET_EVIDENCE_POLICY,
     AgentProfile,
     AgentProfileReadinessReport,
+    AgentProfileSetBundle,
+    AgentProfileSetValidation,
     AgentThinkingMode,
     McpInvocationStatus,
     SkillSourceType,
@@ -1041,6 +1045,150 @@ def write_agent_profile_team_template_command(
     typer.echo(f"[NEXT] runtime: --agent-profile-set-bundle {template['bundle_path']}")
 
 
+@agent_profiles_app.command("team-attach")
+def attach_agent_profile_team_binding_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile-set bundle to update."),
+    ],
+    agent_id: Annotated[
+        str,
+        typer.Option("--agent-id", help="Agent ID inside the team bundle to update."),
+    ],
+    skill: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill",
+            help="Custom skill binding as skill_id=source. Repeat for multiple skills.",
+        ),
+    ] = None,
+    skill_policy: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill-policy",
+            help=(
+                "Skill import policy as skill_id:policy. "
+                "Policies: read_only_context, shadow_evaluation, approved_runtime."
+            ),
+        ),
+    ] = None,
+    stage: Annotated[
+        list[str] | None,
+        typer.Option("--stage", help="Research-loop stage to assign to the Agent."),
+    ] = None,
+    mcp: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp",
+            help="MCP server binding as server_id='command ...'. Repeat for multiple servers.",
+        ),
+    ] = None,
+    mcp_tool: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-tool",
+            help="Allowed MCP tool as server_id:tool_name. Repeat for multiple tools.",
+        ),
+    ] = None,
+    mcp_approval: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-approval",
+            help=(
+                "MCP approval policy as server_id:policy. "
+                "Policies: read_only, approve_dangerous, allow_all."
+            ),
+        ),
+    ] = None,
+    mcp_env_key: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-env-key",
+            help=(
+                "MCP required environment variable name as server_id:ENV_KEY. "
+                "Secret values are never stored."
+            ),
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Optional updated bundle path. Defaults to updating the source bundle.",
+        ),
+    ] = None,
+    base_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--base-dir",
+            help="Base directory for readiness checks. Defaults to the updated bundle directory.",
+        ),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    replace_existing: Annotated[
+        bool,
+        typer.Option(
+            "--replace-existing/--no-replace-existing",
+            help="Replace existing skill or MCP bindings with the same ID.",
+        ),
+    ] = False,
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless the updated team covers its required stages.",
+        ),
+    ] = True,
+) -> None:
+    """Attach custom skills, MCP servers, or stages to one Agent in a team bundle."""
+
+    try:
+        updated_bundle, validation, target_path = _attach_agent_profile_team_bindings(
+            bundle_path=bundle_path,
+            agent_id=agent_id,
+            skill_specs=tuple(skill or ()),
+            skill_policy_specs=tuple(skill_policy or ()),
+            stage_specs=tuple(stage or ()),
+            mcp_specs=tuple(mcp or ()),
+            mcp_tool_specs=tuple(mcp_tool or ()),
+            mcp_approval_specs=tuple(mcp_approval or ()),
+            mcp_env_key_specs=tuple(mcp_env_key or ()),
+            output=output,
+            base_dir=base_dir,
+            env_path=env_path,
+            replace_existing=replace_existing,
+        )
+    except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        typer.echo(f"[FAIL] agent_profile_team_attach: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile = next(profile for profile in updated_bundle.profiles if profile.agent_id == agent_id)
+    typer.echo(f"[OK] agent_profile_team_attach: {agent_id}")
+    typer.echo(f"[OK] bundle: {target_path}")
+    typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages) or 'unassigned'}")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(
+        f"[OK] agent_profile_set: {'passed' if validation.passed else 'failed'}; "
+        f"covered={validation.covered_stage_count}/{len(validation.required_stages)}"
+    )
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    typer.echo(
+        "[NEXT] inspect: "
+        f"airesearcher agents profile inspect-set {target_path} "
+        "--materialize-skills --require-complete"
+    )
+    if require_complete and not validation.passed:
+        raise typer.Exit(1)
+
+
 @agent_profiles_app.command("inspect")
 def inspect_agent_profile_command(
     profile_path: Annotated[
@@ -1663,6 +1811,219 @@ def _inspect_agent_profile_set_bundle(
         ],
         "evidence_policy": PROFILE_SET_EVIDENCE_POLICY,
     }
+
+
+def _attach_agent_profile_team_bindings(
+    *,
+    bundle_path: Path,
+    agent_id: str,
+    skill_specs: tuple[str, ...],
+    skill_policy_specs: tuple[str, ...],
+    stage_specs: tuple[str, ...],
+    mcp_specs: tuple[str, ...],
+    mcp_tool_specs: tuple[str, ...],
+    mcp_approval_specs: tuple[str, ...],
+    mcp_env_key_specs: tuple[str, ...],
+    output: Path | None,
+    base_dir: Path | None,
+    env_path: Path,
+    replace_existing: bool,
+) -> tuple[AgentProfileSetBundle, AgentProfileSetValidation, Path]:
+    if not any((skill_specs, stage_specs, mcp_specs)):
+        msg = "provide at least one --skill, --stage, or --mcp binding to attach"
+        raise ValueError(msg)
+
+    bundle = load_agent_profile_set_bundle(bundle_path)
+    payload = bundle.model_dump(mode="json", exclude_none=True)
+    profile_payloads = cast(list[dict[str, Any]], payload["profiles"])
+    target_profile = next(
+        (profile for profile in profile_payloads if profile.get("agent_id") == agent_id),
+        None,
+    )
+    if target_profile is None:
+        known = ", ".join(str(profile.get("agent_id")) for profile in profile_payloads)
+        msg = f"agent_id {agent_id!r} is not present in {bundle_path}; available: {known}"
+        raise ValueError(msg)
+
+    skill_payloads = _parse_bundle_skill_payloads(
+        skill_specs,
+        skill_policy_specs=skill_policy_specs,
+    )
+    mcp_payloads = _parse_bundle_mcp_payloads(
+        mcp_specs,
+        mcp_tool_specs=mcp_tool_specs,
+        mcp_approval_specs=mcp_approval_specs,
+        mcp_env_key_specs=mcp_env_key_specs,
+    )
+    stage_values = _validated_agent_profile_stages(stage_specs)
+    if stage_values:
+        existing_stages = _string_list(target_profile.get("assigned_stages"))
+        target_profile["assigned_stages"] = list(dict.fromkeys((*existing_stages, *stage_values)))
+    if skill_payloads:
+        _attach_named_bundle_entries(
+            target_profile,
+            field="skills",
+            entries=skill_payloads,
+            key="skill_id",
+            replace_existing=replace_existing,
+        )
+    if mcp_payloads:
+        _attach_named_bundle_entries(
+            target_profile,
+            field="mcp_servers",
+            entries=mcp_payloads,
+            key="server_id",
+            replace_existing=replace_existing,
+        )
+
+    updated_bundle = AgentProfileSetBundle.model_validate(payload)
+    target_path = output or bundle_path
+    _write_agent_profile_set_bundle(updated_bundle, target_path)
+    resolved_base_dir = base_dir or target_path.parent
+    profiles = build_agent_profiles_from_set_bundle(updated_bundle)
+    env = _merged_optional_env(env_path)
+    readiness_reports = tuple(
+        evaluate_agent_profile_readiness(
+            profile,
+            base_dir=resolved_base_dir,
+            env=env,
+        )
+        for profile in profiles
+    )
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=updated_bundle.required_stages,
+        readiness_reports=readiness_reports,
+    )
+    return updated_bundle, validation, target_path
+
+
+def _parse_bundle_skill_payloads(
+    skill_specs: tuple[str, ...],
+    *,
+    skill_policy_specs: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    skill_bindings = tuple(parse_skill_spec(spec) for spec in skill_specs)
+    skill_policies = parse_skill_policy_specs(skill_policy_specs)
+    bound_skill_ids = {binding.skill_id for binding in skill_bindings}
+    unused_skill_policies = sorted(set(skill_policies) - bound_skill_ids)
+    if unused_skill_policies:
+        msg = (
+            "--skill-policy references missing --skill binding(s): "
+            f"{', '.join(unused_skill_policies)}"
+        )
+        raise ValueError(msg)
+    return [
+        binding.model_copy(
+            update={"import_policy": skill_policies.get(binding.skill_id, binding.import_policy)}
+        ).model_dump(mode="json", exclude_none=True)
+        for binding in skill_bindings
+    ]
+
+
+def _parse_bundle_mcp_payloads(
+    mcp_specs: tuple[str, ...],
+    *,
+    mcp_tool_specs: tuple[str, ...],
+    mcp_approval_specs: tuple[str, ...],
+    mcp_env_key_specs: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    tools_by_server = parse_server_tool_specs(mcp_tool_specs)
+    mcp_approval_policies = parse_mcp_approval_policy_specs(mcp_approval_specs)
+    mcp_env_keys_by_server = parse_mcp_env_key_specs(mcp_env_key_specs)
+    mcp_servers = tuple(parse_mcp_spec(spec, tools_by_server=tools_by_server) for spec in mcp_specs)
+    bound_server_ids = {server.server_id for server in mcp_servers}
+    unused_tool_servers = sorted(set(tools_by_server) - bound_server_ids)
+    if unused_tool_servers:
+        msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
+        raise ValueError(msg)
+    unused_mcp_policy_servers = sorted(set(mcp_approval_policies) - bound_server_ids)
+    if unused_mcp_policy_servers:
+        msg = (
+            "--mcp-approval references missing --mcp server(s): "
+            f"{', '.join(unused_mcp_policy_servers)}"
+        )
+        raise ValueError(msg)
+    unused_mcp_env_servers = sorted(set(mcp_env_keys_by_server) - bound_server_ids)
+    if unused_mcp_env_servers:
+        msg = (
+            "--mcp-env-key references missing --mcp server(s): "
+            f"{', '.join(unused_mcp_env_servers)}"
+        )
+        raise ValueError(msg)
+    return [
+        server.model_copy(
+            update={
+                "approval_policy": mcp_approval_policies.get(
+                    server.server_id,
+                    server.approval_policy,
+                ),
+                "env_keys": tuple(
+                    dict.fromkeys(
+                        (
+                            *server.env_keys,
+                            *mcp_env_keys_by_server.get(server.server_id, ()),
+                        )
+                    )
+                ),
+            }
+        ).model_dump(mode="json", exclude_none=True)
+        for server in mcp_servers
+    ]
+
+
+def _attach_named_bundle_entries(
+    target_profile: dict[str, Any],
+    *,
+    field: str,
+    entries: list[dict[str, Any]],
+    key: str,
+    replace_existing: bool,
+) -> None:
+    existing = [
+        dict(item)
+        for item in target_profile.get(field, [])
+        if isinstance(item, Mapping)
+    ]
+    entry_ids = [str(entry[key]) for entry in entries]
+    duplicate_new = sorted(
+        value for value in set(entry_ids) if entry_ids.count(value) > 1
+    )
+    if duplicate_new:
+        msg = f"duplicate {field} in attach request: {', '.join(duplicate_new)}"
+        raise ValueError(msg)
+    existing_ids = {str(entry.get(key)) for entry in existing}
+    collisions = sorted(existing_ids & set(entry_ids))
+    if collisions and not replace_existing:
+        msg = (
+            f"{field} already present on agent; use --replace-existing to update: "
+            f"{', '.join(collisions)}"
+        )
+        raise ValueError(msg)
+    if replace_existing and collisions:
+        existing = [entry for entry in existing if str(entry.get(key)) not in collisions]
+    target_profile[field] = [*existing, *entries]
+
+
+def _write_agent_profile_set_bundle(bundle: AgentProfileSetBundle, path: Path) -> Path:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = bundle.model_dump(mode="json", exclude_none=True)
+    suffix = target.suffix.lower()
+    if suffix == ".json":
+        text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    elif suffix in {".yaml", ".yml"}:
+        text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+    elif suffix == ".toml":
+        text = toml.dumps(payload)
+    else:
+        msg = (
+            f"Unsupported agent profile-set bundle extension '{target.suffix}' for {target}. "
+            "Expected .json, .yaml, .yml, or .toml."
+        )
+        raise ValueError(msg)
+    target.write_text(text, encoding="utf-8")
+    return target
 
 
 def _materialize_agent_profile_set_bundles(

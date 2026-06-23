@@ -562,6 +562,126 @@ def test_agent_profile_inspect_set_cli_previews_materialized_team_bundle(
     assert "scientific results" in payload["evidence_policy"]
 
 
+def test_agent_profile_team_attach_cli_updates_named_agent_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    inspection_path = tmp_path / "reports" / "team-inspection.json"
+    runner = CliRunner()
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+    custom_skill = bundle_path.parent / "skills" / "research-architect.md"
+    custom_skill.write_text(
+        "# Research Architect\nPlan executable ablations before coding.\n",
+        encoding="utf-8",
+    )
+
+    attach_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-attach",
+            str(bundle_path),
+            "--agent-id",
+            "experiment-agent",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--skill-policy",
+            "research-architect:approved_runtime",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.write",
+            "--stage",
+            "evidence-gate",
+        ],
+    )
+    inspect_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--materialize-skills",
+            "--output",
+            str(inspection_path),
+            "--require-complete",
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert attach_result.exit_code == 0, attach_result.output
+    assert "[OK] agent_profile_team_attach: experiment-agent" in attach_result.stdout
+    assert "[OK] agent_profile_set: passed; covered=9/9" in attach_result.stdout
+    assert "agents profile inspect-set" in attach_result.stdout
+    updated_bundle = cli_main.load_agent_profile_set_bundle(bundle_path)
+    experiment_profile = next(
+        profile for profile in updated_bundle.profiles if profile.agent_id == "experiment-agent"
+    )
+    assert "evidence_gate" in experiment_profile.assigned_stages
+    assert {skill.skill_id for skill in experiment_profile.skills} == {
+        "experiment-protocol",
+        "research-architect",
+    }
+    assert experiment_profile.skills[-1].import_policy.value == "approved_runtime"
+    assert experiment_profile.mcp_servers[0].server_id == "opencode"
+    assert experiment_profile.mcp_servers[0].allowed_tools == ("code.write",)
+    assert inspect_result.exit_code == 0, inspect_result.output
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    experiment_context = next(
+        profile for profile in payload["profiles"] if profile["agent_id"] == "experiment-agent"
+    )
+    assert experiment_context["readiness"]["passed"] is True
+    assert experiment_context["materialized_skills"][-1]["skill_id"] == "research-architect"
+    assert experiment_context["materialized_skills"][-1]["status"] == "loaded"
+    assert experiment_context["mcp_runtime_contracts"][0]["server_id"] == "opencode"
+
+
+def test_agent_profile_team_attach_cli_rejects_duplicate_without_replace(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    runner = CliRunner()
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    attach_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-attach",
+            str(bundle_path),
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            "source-tracing=skills/source.md",
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert attach_result.exit_code == 1
+    assert "skills already present on agent" in attach_result.output
+
+
 def test_agent_profile_inspect_set_cli_requires_complete_stage_matrix(
     tmp_path: Path,
 ) -> None:

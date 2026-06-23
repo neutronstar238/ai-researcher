@@ -3010,6 +3010,18 @@ A task can be checked only when all applicable items are true:
     - _References: task `244.1`; user request for setup-once operation with visible Agent skill/MCP assignment and strict quality gates._
     - _Verify: focused setup/npm-script tests, focused ruff, focused mypy, real setup output smoke, real npm script smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 246. Targeted Agent team binding edits
+  - [x] 246.1 Attach custom skills, MCPs, and stages to one named Agent in a team bundle
+    - Add `airesearcher agents profile team-attach <team.yaml> --agent-id <id>` for editing the setup/default or reusable profile-set bundle without hand-editing YAML.
+    - Reuse the single-Agent profile grammar for `--skill`, `--skill-policy`, `--stage`, `--mcp`, `--mcp-tool`, `--mcp-approval`, and `--mcp-env-key`.
+    - Reject duplicate skill or MCP IDs by default; expose `--replace-existing` for intentional updates.
+    - Write the updated bundle back to YAML/JSON/TOML and immediately validate readiness plus profile-set stage coverage.
+    - Print the next `inspect-set --materialize-skills --require-complete` command so operators can review the exact per-Agent context before runtime.
+    - Keep team edits scoped to process metadata and responsibility routing only; they must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with targeted team binding examples and command parameters.
+    - _References: tasks `238.1`, `240.1`, `244.1`, and `245.1`; user request to assign custom skills and MCPs to specific Agents while preserving scientific, not over-engineered, thinking._
+    - _Verify: focused `team-attach` CLI tests, focused ruff, focused mypy, real CLI team-template/team-attach/inspect smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3650,6 +3662,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 148,
       "tasks": ["245.1"]
+    },
+    {
+      "id": 149,
+      "tasks": ["246.1"]
     }
   ]
 }

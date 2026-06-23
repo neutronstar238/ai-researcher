@@ -10215,3 +10215,38 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - The npm/setup inspection shortcut is still process-routing metadata only. It cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence-gate artifacts.
+
+### 2026-06-24 03:09:26 +08:00 - Codex - Task 246.1 Targeted Agent team binding edits
+
+- Request: Continue toward configurable Agent teams by allowing one named Agent in a reusable team bundle to receive additional custom skills, MCP runtime contracts, and stage assignments without hand-editing YAML.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile team-attach <team.yaml>` for targeted bundle edits by `--agent-id`.
+  - The command reuses the single-Agent skill/MCP grammar, supports `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, and `--stage`, and writes JSON/YAML/TOML according to the output extension.
+  - Duplicate skill or MCP identifiers are rejected by default and can be intentionally replaced with `--replace-existing`.
+  - The command immediately validates the updated Agent profile-set readiness and stage coverage, prints the next `inspect-set --materialize-skills --require-complete` command, and only records process metadata rather than scientific evidence.
+  - Added CLI regressions for a successful named-Agent attachment and for duplicate rejection.
+  - Updated README/README.zh-CN and added task `246.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_attach_cli_updates_named_agent_bundle tests\unit\cli\test_main.py::test_agent_profile_team_attach_cli_rejects_duplicate_without_replace -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml`: passed and wrote the default team bundle.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-attach runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml --agent-id experiment-agent --skill research-architect=skills/research-architect.md --skill-policy research-architect:approved_runtime --mcp "opencode=opencode run" --mcp-tool opencode:code.write --stage evidence-gate`: passed and reported `agent_profile_set: passed; covered=9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect-set runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml --materialize-skills --output runs\manual-live\task246-team-attach-v1\inspection.json --require-complete`: passed with `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`.
+  - Real inspection artifact check confirmed `validation.passed=true`, `covered_stage_count=9`, `research-architect` was materialized with a SHA-256 hash, and the `opencode` MCP runtime contract was present.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 627 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - `team-attach` is a bundle-routing tool. It must not be treated as evidence that a skill was scientifically effective, that an MCP command was invoked, or that literature, experiment, reproduction, publication-audit, paper-build, or evidence-gate checks passed.
