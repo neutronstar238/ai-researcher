@@ -98,3 +98,66 @@ def test_inspiration_brainstorm_records_prompts_raw_ideas_and_selected_summary(
     assert "Brainstorm Miniagent Prompt Set" in report.prompt_set_path.read_text(
         encoding="utf-8"
     )
+
+
+def test_inspiration_brainstorm_records_selection_and_deferred_rationales(
+    tmp_path: Path,
+) -> None:
+    def fake_completion(_prompt, _messages, _temperature):
+        return {
+            "ideas": [
+                {
+                    "title": "Feasible creative reranker",
+                    "hypothesis": "Source-backed inspiration improves first-pass experiment design.",
+                    "rationale": "The idea is creative but still testable with one benchmark.",
+                    "novelty_angle": "Uses broad signals only to propose falsifiable candidates.",
+                    "experiment_sketch": (
+                        "Compare nearest centroid on UCI Pendigits with an evidence-aware "
+                        "reranker using macro_f1; falsify if no improvement appears."
+                    ),
+                    "inspiration_refs": ["inspiration_item_1"],
+                    "risks": ["The signal may be too generic."],
+                    "creativity_score": 0.92,
+                    "feasibility_score": 0.81,
+                },
+                {
+                    "title": "Unbound speculative leap",
+                    "hypothesis": "A vague community trend may imply a new method.",
+                    "rationale": "It sounds interesting but lacks a concrete first test.",
+                    "novelty_angle": "Speculative transfer.",
+                    "experiment_sketch": "Try a new model later.",
+                    "inspiration_refs": [],
+                    "risks": ["No evidence binding."],
+                    "creativity_score": 0.45,
+                    "feasibility_score": 0.32,
+                },
+            ]
+        }
+
+    report = run_inspiration_brainstorm(
+        candidate=_candidate(),
+        inspiration_report=_inspiration_report(),
+        vault_root=tmp_path / "vault",
+        output_dir=tmp_path / "brainstorm",
+        config=BrainstormConfig(
+            max_miniagents=1,
+            ideas_per_agent=2,
+            temperature=1.4,
+            min_selected_ideas=1,
+        ),
+        completion_runner=fake_completion,
+    )
+
+    assert len(report.selected_ideas) == 1
+    assert report.selected_ideas[0].selection_reason.startswith("Selected")
+    deferred = [idea for idea in report.ideas if not idea.selected]
+    assert deferred
+    assert deferred[0].selection_reason.startswith("Deferred")
+    assert report.artifact_path is not None
+    payload = json.loads(report.artifact_path.read_text(encoding="utf-8"))
+    assert payload["ideas"][0]["selection_reason"].startswith("Selected")
+    assert payload["ideas"][1]["selection_reason"].startswith("Deferred")
+    assert report.summary_path is not None
+    summary = report.summary_path.read_text(encoding="utf-8")
+    assert "## Selection Argument" in summary
+    assert "## Deferred Ideas" in summary

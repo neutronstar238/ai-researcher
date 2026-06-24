@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-006 - Brainstorm rationale focused test used stale fake-runner parameter names
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:31:28 +08:00
+- Source: Focused verification for task `251.1`.
+- Symptom: The first focused ruff/test pass after adding brainstorm selection rationales failed because one test fake renamed parameters to `_prompt`, `_messages`, and `_temperature` while still referencing the old names, and another fake still had unused argument names.
+- Impact: Product code was not released with the issue, but the focused verification could not pass until the test fixtures matched their usage.
+- Evidence: `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py` reported `F821` undefined names and `ARG001` unused arguments; the paired focused pytest failed with `NameError: name 'temperature' is not defined`.
+- Root cause: A manual test cleanup changed the wrong fake-completion function signature.
+- Workaround: None needed after restoring the first fake's used argument names and changing only the second fake to underscore-prefixed unused arguments.
+- Next action: Keep focused brainstorm tests around future selection-rationale changes.
+- Linked tasks: `251.1`
+- Resolution: Corrected both test fake-completion signatures.
+- Verification: Focused brainstorm/plan/autopilot tests, focused ruff, focused mypy, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` passed after the fix.
+
 ### P-20260624-005 - Setup Agent team helper returned untyped skill paths
 
 - Status: Resolved

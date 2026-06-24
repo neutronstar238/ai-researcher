@@ -94,6 +94,7 @@ class BrainstormIdea:
     evidence_binding_score: float
     selection_score: float
     selected: bool = False
+    selection_reason: str = "Pending deterministic screening."
 
     def to_json_dict(self) -> dict[str, object]:
         return {
@@ -111,6 +112,7 @@ class BrainstormIdea:
             "evidence_binding_score": self.evidence_binding_score,
             "selection_score": self.selection_score,
             "selected": self.selected,
+            "selection_reason": self.selection_reason,
         }
 
 
@@ -412,6 +414,7 @@ def _ideas_from_payload(
                 feasibility_score=feasibility,
                 evidence_binding_score=evidence_score,
                 selection_score=selection_score,
+                selection_reason="Pending deterministic screening.",
             )
         )
     return ideas
@@ -451,6 +454,11 @@ def _select_ideas(
             evidence_binding_score=idea.evidence_binding_score,
             selection_score=idea.selection_score,
             selected=idea.idea_id in selected_ids,
+            selection_reason=_screening_reason(
+                idea,
+                selected=idea.idea_id in selected_ids,
+                selection_count=selection_count,
+            ),
         )
         for idea in ideas
     ]
@@ -469,7 +477,8 @@ def _synthesize_brainstorm(
     return (
         f"Recorded {len(ideas)} temporary-miniagent ideas and selected {len(selected)} "
         f"for research-plan consideration: {selected_titles}. Selection favors high "
-        "creativity, feasible first experiments, and explicit inspiration refs. These ideas "
+        "creativity, feasible first experiments, explicit inspiration refs, and a documented "
+        "selection argument. These ideas "
         "remain hypotheses until literature, similarity, experiment, and reproduction evidence support them."
     )
 
@@ -626,6 +635,17 @@ def _brainstorm_summary_body(
         lines.extend(_idea_lines(idea))
     if not report.selected_ideas:
         lines.append("- No idea passed the deterministic feasibility/creativity selection.")
+    lines.extend(["", "## Selection Argument", ""])
+    for idea in report.selected_ideas:
+        lines.append(f"- `{idea.idea_id}`: {idea.selection_reason}")
+    if not report.selected_ideas:
+        lines.append("- No selected idea has a screening argument.")
+    deferred = [idea for idea in report.ideas if not idea.selected]
+    lines.extend(["", "## Deferred Ideas", ""])
+    for idea in deferred:
+        lines.append(f"- `{idea.idea_id}`: {idea.selection_reason}")
+    if not deferred:
+        lines.append("- No deferred idea in this run.")
     lines.extend(["", "## All Recorded Ideas", ""])
     for idea in report.ideas:
         lines.extend(_idea_lines(idea))
@@ -642,6 +662,7 @@ def _idea_lines(idea: BrainstormIdea) -> list[str]:
         f"- Scores: creativity `{idea.creativity_score:.2f}`, feasibility `{idea.feasibility_score:.2f}`, "
         f"evidence binding `{idea.evidence_binding_score:.2f}`, selection `{idea.selection_score:.3f}`",
         f"- Inspiration refs: {refs}",
+        f"- Screening: {idea.selection_reason}",
         f"- Hypothesis: {idea.hypothesis}",
         f"- Novelty angle: {idea.novelty_angle}",
         f"- Experiment sketch: {idea.experiment_sketch}",
@@ -661,6 +682,43 @@ def _evidence_binding_score(refs: tuple[str, ...], known_refs: set[str]) -> floa
         return 0.0
     known_count = sum(1 for ref in refs if ref in known_refs)
     return round(known_count / len(refs), 3)
+
+
+def _screening_reason(
+    idea: BrainstormIdea,
+    *,
+    selected: bool,
+    selection_count: int,
+) -> str:
+    strengths: list[str] = []
+    caveats: list[str] = []
+    if idea.creativity_score >= 0.75:
+        strengths.append("high creative divergence")
+    elif idea.creativity_score < 0.45:
+        caveats.append("weak creative divergence")
+    if idea.feasibility_score >= 0.70:
+        strengths.append("feasible first experiment")
+    elif idea.feasibility_score < 0.50:
+        caveats.append("feasibility needs repair")
+    if idea.evidence_binding_score >= 0.75:
+        strengths.append("explicit inspiration binding")
+    elif idea.evidence_binding_score < 0.50:
+        caveats.append("weak or missing inspiration refs")
+    action = "Selected" if selected else "Deferred"
+    basis = ", ".join(strengths) if strengths else "balanced but not dominant scores"
+    risk_text = "; ".join(idea.risks[:2]) if idea.risks else "risk analysis pending"
+    if selected:
+        return (
+            f"{action} within top {selection_count} by score {idea.selection_score:.3f}: "
+            f"{basis}. First falsification path: {idea.experiment_sketch[:220]}. "
+            f"Risks to check: {risk_text}."
+        )
+    caveat_text = ", ".join(caveats) if caveats else "ranked below selected ideas"
+    return (
+        f"{action} for now with score {idea.selection_score:.3f}: {caveat_text}. "
+        f"Keep as future inspiration if new evidence or a cheaper dataset path appears. "
+        f"Risks to check: {risk_text}."
+    )
 
 
 def _number_score(value: object, *, default: float) -> float:

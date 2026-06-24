@@ -3063,6 +3063,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `235.1`, `236.1`, `247.1`; user request to keep AI reasoning scientific rather than over-engineered while continuing to assign custom skills and MCPs to specific Agents._
     - _Verify: focused Agent profile/API and CLI tests, focused ruff, focused mypy, real CLI stage-context export smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 251. Auditable brainstorm selection rationale
+  - [x] 251.1 Record why creative miniagent ideas are selected or deferred
+    - Add deterministic selection reasons to every brainstorm idea after scoring creativity, feasibility, and evidence binding.
+    - Write selected-idea arguments and deferred-idea reasons into the Obsidian brainstorm note so later cycles can reuse or revisit unselected ideas.
+    - Preserve the raw high-temperature miniagent outputs and provider-agnostic LLM behavior; this task only strengthens the synthesis/filtering layer.
+    - Keep selection reasons as research-planning process metadata, not proof of novelty, benchmark metrics, publication readiness, or experimental truth.
+    - Update README/README.zh-CN to describe selected and deferred rationales in brainstorm artifacts.
+    - _References: task `249.1`; user request that inspiration data should drive multiple high-creativity temporary miniagents, then record, integrate, justify, and filter feasible creative ideas._
+    - _Verify: focused brainstorm/plan/autopilot tests, focused ruff, focused mypy, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3723,6 +3733,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 153,
       "tasks": ["250.1"]
+    },
+    {
+      "id": 154,
+      "tasks": ["251.1"]
     }
   ]
 }

@@ -10397,3 +10397,34 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Wire real stage executors to consume `runtime_prompt` as their prompt/context input, while keeping result claims dependent on literature, experiment, reproduction, review, publication-audit, and evidence-gate artifacts.
+
+### 2026-06-24 10:31:28 +08:00 - Codex - Task 251.1 Auditable brainstorm selection rationale
+
+- Request: Strengthen the inspiration-driven temporary miniagent brainstorm so high-temperature ideas are first recorded, then integrated, justified, and filtered for feasible creative hypotheses.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `Agent.md`
+- Summary:
+  - Added `selection_reason` to every brainstorm idea and serialized it into `brainstorm-ideas.json`.
+  - Added deterministic screening reasons for selected and deferred ideas based on creativity, feasibility, evidence binding, first falsification path, and risks to check.
+  - Expanded Obsidian brainstorm notes with `Selection Argument` and `Deferred Ideas` sections so later cycles can reuse not-yet-selected ideas without confusing them for evidence.
+  - Updated README/README.zh-CN and added task `251.1` plus dependency wave `154` to the Kiro task plan.
+- Verification:
+  - Initial focused ruff/pytest exposed stale fake-runner argument names in the new test; fixed and recorded as `P-20260624-006`.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 12 tests.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 634 passed and 4 skipped.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260624-006`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A later task can add an evidence-bound reviewer pass that down-ranks brainstorm ideas against live scholarly/source evidence, but the creative high-temperature pass should remain separated from evidence validation.

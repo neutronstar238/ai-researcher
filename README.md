@@ -506,9 +506,9 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth for literature, similarity, and novelty-breadth artifacts. Lower only for smoke runs. |
 | `serve` / `autopilot` | automatic novelty-breadth stage | Runs broad inspiration refresh before research planning, then records query/source/finding breadth in `cycle-summary.json` and the cycle artifact directory. |
-| `serve` / `autopilot` | automatic brainstorm stage | Runs temporary creative miniagents after inspiration refresh and before research planning; raw ideas, selected ideas, and the prompt set are written as artifacts and Obsidian notes. |
+| `serve` / `autopilot` | automatic brainstorm stage | Runs temporary creative miniagents after inspiration refresh and before research planning; raw ideas, selected ideas, deferred-idea rationales, and the prompt set are written as artifacts and Obsidian notes. |
 | `similarity-check` | `--max-queries`, `--max-results-per-source` | Controls project-start novelty search breadth; outputs Obsidian Markdown plus `*_novelty_breadth.json`. |
-| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature` | Uses the configured provider-agnostic LLM endpoint to generate high-divergence hypotheses. `--max-tokens` is intentionally not set by default. |
+| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature` | Uses the configured provider-agnostic LLM endpoint to generate high-divergence hypotheses, then records selection and deferred rationales. `--max-tokens` is intentionally not set by default. |
 | `research-plan` | `--brainstorm-summary` | Adds the brainstorm synthesis note to the evidence context for the execution-ready plan. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
