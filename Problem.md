@@ -32,6 +32,22 @@ Use this file to record blockers, defects, risks, failed commands, and important
 
 ## Problems
 
+### P-20260624-012 - PR #2 Windows console regression tests polluted Linux CI path state
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 12:34:00 +08:00
+- Source: GitHub Actions run `28003284458` for PR #2 (`codex/fix-remaining-windows-subprocesses`).
+- Symptom: The Python 3.10 CI job failed during `tests/unit/research/test_plans.py::test_compile_research_plan_pdf_hides_windows_console` with `NotImplementedError: cannot instantiate 'WindowsPath' on your system`.
+- Impact: The Windows no-window regression tests were valid in intent, but they broke Linux CI by changing global process state used by pytest and coverage.
+- Evidence: `gh run view 28003284458 --repo neutronstar238/ai-researcher --job 82879898630 --log` showed pytest/coverage trying to instantiate `WindowsPath` after the test monkeypatched `os.name` to `nt`.
+- Root cause: The tests monkeypatched `process.os.name`, but `process.os` is the shared Python `os` module. While the monkeypatch was active, `pathlib.Path.cwd()` inside pytest and pytest-cov selected `WindowsPath` on a Linux runner.
+- Workaround: None needed after the fix.
+- Next action: Do not monkeypatch global `os.name` in tests. Use explicit helper injection or patch the local subprocess kwargs function at the call site instead.
+- Linked tasks: GitHub PR #2 CI fix, no `.kiro` task ID.
+- Resolution: Added test-only injection parameters to `windows_no_window_kwargs()` and updated process, notification, and research-plan regression tests so they no longer mutate global `os.name`.
+- Verification: Focused no-window regression tests passed; broad `python -m pytest tests\smoke tests\unit -q` passed with `552 passed, 4 skipped`; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed.
+
 ### P-20260623-002 - Notification and research-plan commands still opened Windows console windows
 
 - Status: Resolved

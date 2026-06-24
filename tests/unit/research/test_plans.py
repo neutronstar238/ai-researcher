@@ -2,7 +2,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import autoresearch.process as process
 import autoresearch.research.plans as plans
 from autoresearch.research import (
     audit_research_plan,
@@ -211,9 +210,13 @@ def test_compile_research_plan_pdf_hides_windows_console(monkeypatch, tmp_path: 
     tex_path = tmp_path / "plan.tex"
     tex_path.write_text(r"\documentclass{article}\begin{document}ok\end{document}", encoding="utf-8")
     (tmp_path / "plan.pdf").write_bytes(b"%PDF-1.4\n")
-    monkeypatch.setattr(process.os, "name", "nt")
-    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(
+        plans,
+        "windows_no_window_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
     monkeypatch.setattr(plans, "_latex_command", lambda path: ["xelatex", path.name])
+
     def fake_page_count(_: Path) -> int:
         return 1
 
@@ -238,8 +241,12 @@ def test_compile_research_plan_pdf_hides_windows_console(monkeypatch, tmp_path: 
 def test_pdf_page_count_hides_windows_console(monkeypatch, tmp_path: Path) -> None:
     pdf_path = tmp_path / "plan.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n")
-    monkeypatch.setattr(process.os, "name", "nt")
-    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(
+        plans,
+        "windows_no_window_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+
     def fake_which(_: str) -> str:
         return "pdfinfo"
 

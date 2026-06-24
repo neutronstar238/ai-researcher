@@ -62,6 +62,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-06-24 12:40:00 +08:00 - Codex - PR #2 CI fix for Windows no-window regression tests
+
+- Request: Fix the failing GitHub Actions CI check on PR #2 (`codex/fix-remaining-windows-subprocesses`).
+- Files changed:
+  - `src/autoresearch/process.py`
+  - `tests/unit/test_process.py`
+  - `tests/unit/test_notifications.py`
+  - `tests/unit/research/test_plans.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected open PR checks and found PR #2 was failing while current `main` was already green.
+  - Identified the CI root cause as Windows regression tests monkeypatching the shared `os.name` module value to `nt`, which made pytest/coverage instantiate `WindowsPath` on the Linux runner.
+  - Added test injection parameters to `windows_no_window_kwargs()` so tests can exercise Windows creation flags without changing global process state.
+  - Updated the process helper tests to use the injected OS/subprocess context and updated notification/research-plan call-site tests to patch only the local kwargs helper.
+  - Preserved product behavior: production calls still use the real `os.name` and `subprocess.CREATE_NO_WINDOW`.
+- Verification:
+  - `gh auth status`: authenticated as `neutronstar238` with repo/workflow scopes.
+  - `gh pr list --repo neutronstar238/ai-researcher --state open --json ...`: PR #2 had failing Python 3.10 CI while `main` commit `000e48f` was green.
+  - `gh run view 28003284458 --repo neutronstar238/ai-researcher --job 82879898630 --log`: confirmed `NotImplementedError: cannot instantiate 'WindowsPath' on your system`.
+  - Focused `python -m pytest tests\unit\test_process.py tests\unit\test_notifications.py::test_run_command_hides_windows_console tests\unit\research\test_plans.py::test_compile_research_plan_pdf_hides_windows_console tests\unit\research\test_plans.py::test_pdf_page_count_hides_windows_console -q`: passed with 5 tests.
+  - Focused `python -m ruff check src\autoresearch\process.py tests\unit\test_process.py tests\unit\test_notifications.py tests\unit\research\test_plans.py`: passed.
+  - Focused `python -m mypy src\autoresearch\process.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 552 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 105 source files.
+- Problems:
+  - Added and resolved `P-20260624-012`.
+- Follow-up:
+  - Push this PR branch and confirm GitHub Actions reruns green for PR #2.
+
 ### 2026-06-18 10:21:40 +08:00 - Codex - Task 211.1 Root vault current project defaults
 
 - Request: Continue consistency hardening so the checked-in Obsidian vault routes new operators to the current AI-Researcher project memory area.

@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import autoresearch.notifications as notifications
-import autoresearch.process as process
 from autoresearch.inspiration import InspirationItem, InspirationRefreshReport
 from autoresearch.notifications import render_inspiration_digest, send_inspiration_digest
 
@@ -215,8 +214,11 @@ def test_send_inspiration_digest_uses_openclaw_wechat_qr_target(
 
 
 def test_run_command_hides_windows_console(monkeypatch) -> None:
-    monkeypatch.setattr(process.os, "name", "nt")
-    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(
+        notifications,
+        "windows_no_window_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
     calls: list[dict[str, object]] = []
 
     def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
