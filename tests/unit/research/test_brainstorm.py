@@ -354,5 +354,6 @@ def test_brainstorm_live_reviewer_treats_missing_close_match_as_novelty_not_bloc
     assert reviews[0].duplicate_risk == "low"
     assert reviews[0].doability == "strong"
     assert reviews[0].verifiability == "strong"
-    assert reviews[0].decision == "revise"
+    assert reviews[0].decision == "promote"
+    assert "Can-do judgment comes from the idea's own executable plan" in reviews[0].reason
     assert "novelty potential" in reviews[0].reason

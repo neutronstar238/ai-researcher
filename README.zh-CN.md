@@ -374,7 +374,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | 自动创新检索广度阶段 | 在研究计划前先运行广谱灵感刷新，再把 query/source/finding 广度写入 `cycle-summary.json` 和本轮 artifact 目录。 |
 | `serve` / `autopilot` | 自动头脑风暴阶段 | 在灵感刷新后、研究计划前运行临时创意 miniagent；原始想法会完整保留，然后由实时 reviewer 用文献相似度筛重复风险，并主要根据想法自身的数据集、baseline、metric、falsification 结构判断可做性。 |
 | `similarity-check` | `--max-queries`, `--max-results-per-source` | 控制项目启动阶段的创新检索广度；输出 Obsidian Markdown 和 `*_novelty_breadth.json`。 |
-| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | 使用配置好的供应商无关 LLM 端点生成高发散假设，再用 ArXiv/OpenAlex 与 GitHub/Hugging Face/Hacker News 信号做实时审稿筛选；没有找到高相似前作会被视为潜在创新，不会被当成不可做。默认不设置 `--max-tokens`。 |
+| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | 使用配置好的供应商无关 LLM 端点生成高发散假设，再用 ArXiv/OpenAlex 与 GitHub/Hugging Face/Hacker News 信号做实时审稿筛选；可做性先看想法自身的数据/来源、baseline、metric、可证伪检查和执行路径，来源匹配主要用于直接重复风险和可借鉴上下文。没有找到高相似前作会被视为潜在创新，不会被当成不可做。默认不设置 `--max-tokens`。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |

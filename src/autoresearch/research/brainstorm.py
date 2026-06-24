@@ -261,9 +261,11 @@ class BrainstormReport:
             "summary_path": self.summary_path.as_posix() if self.summary_path else None,
             "evidence_policy": (
                 "Brainstorm ideas are hypotheses only. Inspiration refs are context signals, "
-                "not proof of results, novelty, or publishability. Evidence reviews record "
-                "retrieval metadata for screening duplicate, unverifiable, or hard-to-execute ideas; "
-                "they are not benchmark outcomes."
+            "not proof of results, novelty, or publishability. Evidence reviews record "
+            "retrieval metadata for screening duplicate, unverifiable, or hard-to-execute ideas; "
+            "doability is judged first from the idea's own data, baseline, metric, and "
+            "falsification plan, while matching is used mainly for duplicate-risk screening. "
+            "They are not benchmark outcomes."
             ),
         }
 
@@ -1074,6 +1076,8 @@ def _review_decision(
     if duplicate_risk == "medium" or verifiability == "weak":
         return "revise"
     if total_signal_count < config.min_total_evidence:
+        if duplicate_risk == "low" and doability == "strong" and verifiability == "strong":
+            return "promote"
         return "revise"
     if config.require_dataset_or_code_for_promote and not (dataset_count or code_count):
         return "revise"
@@ -1114,7 +1118,9 @@ def _review_reason(
         f"{duplicate_score:.3f}; doability is {doability} from self-contained plan checks "
         f"({capability_text}); verifiability is {verifiability}. Retrieved {total_signal_count} "
         f"screening signals from {fetch_count} source fetches, including {dataset_count} "
-        f"dataset and {code_count} code signals. "
+        f"dataset and {code_count} code signals. Can-do judgment comes from the idea's "
+        "own executable plan; retrieval matching is duplicate-risk evidence and borrowable "
+        "context, not the primary feasibility decision. "
         "Absence of a close prior-work match is treated as novelty potential, not a feasibility failure."
     )
 
@@ -1137,7 +1143,7 @@ def _synthesize_brainstorm(
     return (
         f"Recorded {len(ideas)} temporary-miniagent ideas and selected {len(selected)} "
         f"for research-plan consideration: {selected_titles}. Selection favors high "
-        "creativity, feasible first experiments, explicit inspiration refs, and a documented "
+        "creativity, self-contained first experiments, explicit inspiration refs, and a documented "
         f"selection argument.{review_text} These ideas "
         "remain hypotheses until literature, similarity, experiment, and reproduction evidence support them."
     )

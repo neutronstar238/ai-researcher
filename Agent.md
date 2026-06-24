@@ -10531,3 +10531,33 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Implement the next novelty/doability refinement so brainstorm and research-plan selection judge whether an idea is worth doing from its own data, baseline, metric, falsification, and execution path, while similarity matching is used mainly to detect direct duplicate risk and adjacent work to cite or borrow from.
+
+### 2026-06-24 11:40:15 +08:00 - Codex - Task 255.1 Novelty doability self-judgment for brainstorm screening
+
+- Request: Adjust innovation screening so the system judges whether a direction is worth doing from the idea's own executable research structure, while source matching is mainly used to detect direct duplicate risk and borrowable adjacent context.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `Agent.md`
+- Summary:
+  - Updated brainstorm evidence-review policy text to state that doability is judged first from data/source, baseline, metric, and falsification plan, while matching is mainly duplicate-risk screening.
+  - Changed `_review_decision` so a low-duplicate-risk idea with strong doability and verifiability can be promoted to research-plan consideration even when no close same-direction prior work is retrieved.
+  - Expanded reviewer reasons and synthesis wording so Obsidian notes explain that can-do judgment comes from the idea's own executable plan, while retrieval matching supplies duplicate-risk evidence and borrowable context.
+  - Updated the live reviewer unit test so missing close prior work with a complete experiment skeleton is promoted, not treated as a feasibility blocker.
+  - Updated README/README.zh-CN and added task `255.1` plus dependency wave `158` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py::test_brainstorm_live_reviewer_treats_missing_close_match_as_novelty_not_blocker tests\unit\research\test_brainstorm.py::test_brainstorm_evidence_review_downranks_duplicate_without_penalizing_novel_gap -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py`: passed with no issues in 1 source file.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 640 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Apply the same self-judgment distinction to research-plan and publication-audit wording where useful: broad source/search coverage should remain required, direct duplicates should block, and sparse same-direction matches should become novelty potential plus related-work positioning work rather than an automatic feasibility failure.

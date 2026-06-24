@@ -3104,6 +3104,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `253.1`; user request to assign custom skills and MCPs to specific Agents and preserve research-first stage responsibility._
     - _Verify: focused Agent profile/CLI tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 255. Novelty doability self-judgment for brainstorm screening
+  - [x] 255.1 Promote executable novel ideas when no close prior-work match exists
+    - Treat "worth doing next" as a self-contained research-plan judgment based on the idea's declared data/source, baseline, metric, falsification check, and execution path.
+    - Use live source matching mainly to estimate direct duplicate risk, adjacent borrowable context, and related-work positioning needs.
+    - Allow a low-duplicate-risk idea with strong doability and verifiability to be promoted to research-plan consideration even when no close same-direction prior work is retrieved.
+    - Preserve the evidence boundary: promotion means "candidate for planning and experiments," not proof of novelty, benchmark results, or publication readiness.
+    - Update README/README.zh-CN so users and future agents do not interpret sparse same-direction matches as a feasibility failure.
+    - _References: tasks `251.1`, `252.1`; user clarification that innovative directions should not require high-similarity prior work, and matching should primarily detect duplicate risk._
+    - _Verify: focused brainstorm reviewer test, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3780,6 +3790,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 157,
       "tasks": ["254.1"]
+    },
+    {
+      "id": 158,
+      "tasks": ["255.1"]
     }
   ]
 }
