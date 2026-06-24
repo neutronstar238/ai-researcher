@@ -4359,6 +4359,26 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     )
     assert packet_manifest["packet_count"] == 3
     assert Path(packet_manifest["manifest_path"]).name == "manifest.json"
+    assert Path(packet_manifest["assignment_manifest_path"]).name == (
+        "assignment-manifest.json"
+    )
+    assignment_manifest = packet_manifest["assignment_manifest"]
+    assert assignment_manifest["manifest_kind"] == (
+        "agent_stage_assignment_manifest_process_metadata"
+    )
+    assert assignment_manifest["cycle_id"] == payload["cycle_id"]
+    assignment_rows = {row["stage"]: row for row in assignment_manifest["stages"]}
+    assert assignment_rows["review"]["agent_ids"] == ["literature-agent"]
+    assert assignment_rows["review"]["skill_ids"] == ["source-tracing"]
+    assert assignment_rows["review"]["materialized_skills"][0]["sha256"]
+    assert "content" not in assignment_rows["review"]["materialized_skills"][0]
+    assert assignment_rows["review"]["mcp_runtime_contracts"][0]["server_id"] == (
+        "page-agent"
+    )
+    assignment_file = json.loads(
+        Path(packet_manifest["assignment_manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert assignment_file["stages"] == assignment_manifest["stages"]
     packet_rows = {row["stage"]: row for row in packet_manifest["packets"]}
     assert sorted(packet_rows) == ["literature", "review", "similarity"]
     assert packet_rows["review"]["agent_ids"] == ["literature-agent"]
@@ -4441,6 +4461,10 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert review_context["audit_summary"]["agent_stage_context_packets"][
         "packet_count"
     ] == 3
+    assert review_context["agent_stage_assignments"]["manifest_kind"] == (
+        "agent_stage_assignment_manifest_process_metadata"
+    )
+    assert review_context["audit_summary"]["agent_stage_assignments"]["stage_count"] == 3
     assert review_context["stage_agent_contexts"]["literature"][0]["agent_id"] == (
         "literature-agent"
     )

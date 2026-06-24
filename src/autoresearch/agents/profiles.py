@@ -72,6 +72,14 @@ STAGE_CONTEXT_PACKET_EVIDENCE_POLICY = (
     "claims, benchmark metrics, citation validity, tool invocation, or publication "
     "readiness without validated research artifacts."
 )
+STAGE_ASSIGNMENT_MANIFEST_KIND = "agent_stage_assignment_manifest_process_metadata"
+STAGE_ASSIGNMENT_MANIFEST_EVIDENCE_POLICY = (
+    "Agent stage assignment manifests summarize which Agents, custom skills, and MCP "
+    "runtime contracts are routed to each research-loop stage. They can support "
+    "auditability and responsibility routing only; they cannot prove scientific "
+    "results, novelty claims, benchmark metrics, citation validity, tool invocation, "
+    "or publication readiness."
+)
 DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES: tuple[str, ...] = (
     "literature",
     "research_plan",
@@ -943,6 +951,43 @@ def build_agent_stage_context_packet(
     }
 
 
+def build_agent_stage_assignment_manifest(
+    profile_contexts: Iterable[Mapping[str, Any]],
+    stages: Iterable[str],
+    *,
+    project_id: str | None = None,
+    cycle_id: str | None = None,
+) -> dict[str, Any]:
+    """Summarize Agent skill/MCP routing across research-loop stages."""
+
+    contexts = tuple(dict(context) for context in profile_contexts)
+    normalized_stages = _normalize_unique_stages(stages)
+    stage_rows: list[dict[str, Any]] = []
+    for stage in normalized_stages:
+        stage_contexts = profile_contexts_for_stage(contexts, stage)
+        if not stage_contexts:
+            continue
+        stage_rows.append(_agent_stage_assignment_row(stage, stage_contexts))
+
+    agent_rows = [_agent_assignment_row(context) for context in contexts]
+    return {
+        "manifest_kind": STAGE_ASSIGNMENT_MANIFEST_KIND,
+        "project_id": project_id,
+        "cycle_id": cycle_id,
+        "stage_count": len(stage_rows),
+        "agent_count": len(contexts),
+        "stages": stage_rows,
+        "agent_assignments": agent_rows,
+        "unassigned_agent_ids": [
+            row["agent_id"]
+            for row in agent_rows
+            if not row["assigned_stages"]
+        ],
+        "manifest_path": None,
+        "evidence_policy": STAGE_ASSIGNMENT_MANIFEST_EVIDENCE_POLICY,
+    }
+
+
 def render_agent_profile_markdown(profile: AgentProfile) -> str:
     """Render an Obsidian-friendly profile note."""
 
@@ -1193,6 +1238,120 @@ def _ordered_unique(values: Iterable[object]) -> tuple[str, ...]:
         seen.add(text)
         ordered.append(text)
     return tuple(ordered)
+
+
+def _agent_stage_assignment_row(
+    stage: str,
+    stage_contexts: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    readiness_values = [
+        value
+        for value in (context.get("readiness") for context in stage_contexts)
+        if isinstance(value, Mapping)
+    ]
+    failed_checks = sum(
+        int(value.get("failed_check_count", 0) or 0) for value in readiness_values
+    )
+    warning_checks = sum(
+        int(value.get("warning_count", 0) or 0) for value in readiness_values
+    )
+    return {
+        "stage": normalize_profile_stage(stage),
+        "agent_count": len(stage_contexts),
+        "agent_ids": [
+            str(context.get("agent_id", ""))
+            for context in stage_contexts
+            if str(context.get("agent_id", "")).strip()
+        ],
+        "profile_paths": list(_ordered_unique(
+            context.get("profile_path", "") for context in stage_contexts
+        )),
+        "skill_ids": list(_ordered_unique(
+            skill.get("skill_id", "")
+            for context in stage_contexts
+            for skill in _mapping_items(context.get("skills"))
+        )),
+        "materialized_skills": [
+            _compact_materialized_skill(skill)
+            for context in stage_contexts
+            for skill in _mapping_items(context.get("materialized_skills"))
+            if str(skill.get("skill_id", "")).strip()
+        ],
+        "mcp_server_ids": list(_ordered_unique(
+            server.get("server_id", "")
+            for context in stage_contexts
+            for server in _mapping_items(context.get("mcp_servers"))
+        )),
+        "mcp_runtime_contracts": [
+            _compact_mcp_runtime_contract(contract)
+            for context in stage_contexts
+            for contract in _mapping_items(context.get("mcp_runtime_contracts"))
+            if str(contract.get("server_id", "")).strip()
+        ],
+        "readiness": {
+            "passed": failed_checks == 0,
+            "failed_check_count": failed_checks,
+            "warning_count": warning_checks,
+        },
+    }
+
+
+def _agent_assignment_row(context: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "agent_id": str(context.get("agent_id", "")),
+        "role": str(context.get("role", "")),
+        "thinking_mode": str(context.get("thinking_mode", "")),
+        "assigned_stages": list(_context_assigned_stages(context)),
+        "profile_path": str(context.get("profile_path", "")),
+        "skill_ids": list(_ordered_unique(
+            skill.get("skill_id", "") for skill in _mapping_items(context.get("skills"))
+        )),
+        "materialized_skill_ids": list(_ordered_unique(
+            skill.get("skill_id", "")
+            for skill in _mapping_items(context.get("materialized_skills"))
+        )),
+        "mcp_server_ids": list(_ordered_unique(
+            server.get("server_id", "")
+            for server in _mapping_items(context.get("mcp_servers"))
+        )),
+        "readiness": (
+            dict(context["readiness"])
+            if isinstance(context.get("readiness"), Mapping)
+            else {}
+        ),
+    }
+
+
+def _compact_materialized_skill(skill: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "skill_id": str(skill.get("skill_id", "")),
+        "status": str(skill.get("status", "")),
+        "sha256": skill.get("sha256"),
+        "byte_count": skill.get("byte_count"),
+        "char_count": skill.get("char_count"),
+        "max_chars": skill.get("max_chars"),
+        "truncated": bool(skill.get("truncated", False)),
+        "resolved_path": skill.get("resolved_path"),
+    }
+
+
+def _compact_mcp_runtime_contract(contract: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "server_id": str(contract.get("server_id", "")),
+        "contract_kind": str(contract.get("contract_kind", "")),
+        "command_sha256": contract.get("command_sha256"),
+        "allowed_tools": list(_ordered_unique(contract.get("allowed_tools", ()))),
+        "approval_policy": str(contract.get("approval_policy", "")),
+        "runtime_approval_required": bool(
+            contract.get("runtime_approval_required", False)
+        ),
+        "operator_isolation_required": bool(
+            contract.get("operator_isolation_required", False)
+        ),
+        "tool_invocation_evidence_required": bool(
+            contract.get("tool_invocation_evidence_required", True)
+        ),
+    }
 
 
 def _skill_readiness_check(

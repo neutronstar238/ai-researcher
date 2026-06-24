@@ -10250,3 +10250,37 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - `team-attach` is a bundle-routing tool. It must not be treated as evidence that a skill was scientifically effective, that an MCP command was invoked, or that literature, experiment, reproduction, publication-audit, paper-build, or evidence-gate checks passed.
+
+### 2026-06-24 09:16:23 +08:00 - Codex - Task 247.1 Runtime Agent stage assignment manifest
+
+- Request: Continue toward custom skills/MCPs assignable to specific Agents while making the runtime audit trail strong enough for CCF-B/SCI-Q2 style review gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `build_agent_stage_assignment_manifest`, a compact process-metadata manifest for stage-to-Agent routing, skill IDs, materialized skill hashes, MCP server IDs, MCP runtime contract hashes, readiness, per-Agent assignments, and explicit evidence boundaries.
+  - `serve`/`autopilot` now write `agent-stage-contexts/assignment-manifest.json` beside per-stage packets and include it in `cycle-summary.json`, `review-evidence-context.json`, review audit summaries, heartbeat artifact refs, and review evidence path lists.
+  - The manifest intentionally omits skill content and MCP env values; it records what context was available to an assigned Agent, not whether a tool was invoked or whether a scientific claim is true.
+  - Updated README/README.zh-CN and added task `247.1` plus dependency wave `150` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --stage literature --stage review --skill source-tracing=runs\manual-live\task247-assignment-manifest-v1\skills\source.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:read_only --output runs\manual-live\task247-assignment-manifest-v1\literature-agent.json`: passed and wrote the profile.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task247-assignment-manifest-v1\vault --cache runs\manual-live\task247-assignment-manifest-v1\cache --output-dir runs\manual-live\task247-assignment-manifest-v1\runs --deliverables-dir runs\manual-live\task247-assignment-manifest-v1\outputs --state runs\manual-live\task247-assignment-manifest-v1\.airesearcher\scheduler-state.json --heartbeat-state runs\manual-live\task247-assignment-manifest-v1\.airesearcher\runtime-heartbeats.json --project-id project_1 --agent-profile runs\manual-live\task247-assignment-manifest-v1\literature-agent.json --require-agent-profile-set --no-review --no-claim-session`: passed, wrote `cycle-summary.json`, and was intentionally blocked before online retrieval by the profile-set stage coverage gate.
+  - Real manifest check confirmed `agent-stage-contexts/assignment-manifest.json` existed, `manifest_kind=agent_stage_assignment_manifest_process_metadata`, `stage_count=2`, review stage skill `source-tracing` had a SHA-256 hash, and the `page-agent` MCP runtime contract required tool-invocation evidence.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 628 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Assignment manifests are audit metadata only. They should feed reviewer/publication gates, but they still cannot replace MCP invocation ledgers, real literature retrieval, experiments, reproduction, citation validation, publication audit, paper build, or evidence-gate artifacts.

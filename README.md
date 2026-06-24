@@ -330,6 +330,11 @@ During `serve` and `autopilot`, AI-Researcher also writes portable packet files 
 `agent-stage-contexts/` directory. Each packet contains only the agents assigned to that stage, the
 bounded skill excerpts, MCP contracts, readiness summary, and an explicit process-metadata evidence
 policy.
+The same directory now includes `assignment-manifest.json`, a compact cross-stage manifest that
+lists each stage's assigned Agent IDs, skill IDs, materialized skill hashes, MCP server IDs, and MCP
+contract hashes without copying skill content. It is designed for review and publication gates to
+audit responsibility routing; it still cannot prove that a tool was invoked or that a scientific
+claim is true.
 The same cycle also writes `agent-profile-set/agent-profile-set-validation.json` so publication
 reviewers can see whether the loaded Agent team covers the default CCF-B/Q2 research-stage matrix.
 Use `--require-agent-profile-set` to stop a cycle before online retrieval when that matrix is

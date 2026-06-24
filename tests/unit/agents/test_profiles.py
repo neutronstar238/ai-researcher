@@ -19,6 +19,7 @@ from autoresearch.agents import (
     SkillImportPolicy,
     build_agent_profile_from_bundle,
     build_agent_profiles_from_set_bundle,
+    build_agent_stage_assignment_manifest,
     build_agent_stage_context_packet,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
@@ -268,6 +269,74 @@ def test_agent_stage_context_packet_routes_only_assigned_agents(tmp_path: Path) 
     )
     assert packet["agents"][0]["mcp_runtime_contracts"][0]["server_id"] == "opencode"
     assert "cannot prove scientific results" in packet["evidence_policy"]
+
+
+def test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "skills" / "experiment.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Experiment\nRun ablations with evidence.\n", encoding="utf-8")
+    experiment_profile = AgentProfile(
+        agent_id="experiment-agent",
+        assigned_stages=("experiment", "reproduction"),
+        skills=(
+            AgentSkillBinding(
+                skill_id="empirical-paper",
+                source="skills/experiment.md",
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="opencode",
+                command=("opencode", "run"),
+                allowed_tools=("code.write",),
+                approval_policy=McpApprovalPolicy.APPROVE_DANGEROUS,
+            ),
+        ),
+    )
+    review_profile = AgentProfile(
+        agent_id="reviewer",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review",),
+        skills=(AgentSkillBinding(skill_id="question-validator", source="[[Question]]"),),
+    )
+    contexts = (
+        experiment_profile.to_runtime_context(
+            base_dir=tmp_path,
+            materialize_skills=True,
+        ),
+        review_profile.to_runtime_context(),
+    )
+
+    manifest = build_agent_stage_assignment_manifest(
+        contexts,
+        ("experiment", "reproduction", "review"),
+        project_id="project_1",
+        cycle_id="cycle_1",
+    )
+
+    assert manifest["manifest_kind"] == "agent_stage_assignment_manifest_process_metadata"
+    assert manifest["project_id"] == "project_1"
+    assert manifest["cycle_id"] == "cycle_1"
+    assert manifest["stage_count"] == 3
+    rows = {row["stage"]: row for row in manifest["stages"]}
+    assert rows["experiment"]["agent_ids"] == ["experiment-agent"]
+    assert rows["experiment"]["skill_ids"] == ["empirical-paper"]
+    assert rows["experiment"]["materialized_skills"][0]["skill_id"] == "empirical-paper"
+    assert rows["experiment"]["materialized_skills"][0]["sha256"]
+    assert "content" not in rows["experiment"]["materialized_skills"][0]
+    assert rows["experiment"]["mcp_server_ids"] == ["opencode"]
+    assert rows["experiment"]["mcp_runtime_contracts"][0]["server_id"] == "opencode"
+    assert rows["experiment"]["mcp_runtime_contracts"][0][
+        "tool_invocation_evidence_required"
+    ] is True
+    assert manifest["agent_assignments"][0]["assigned_stages"] == [
+        "experiment",
+        "reproduction",
+    ]
+    assert manifest["unassigned_agent_ids"] == []
+    assert "cannot prove scientific results" in manifest["evidence_policy"]
 
 
 def test_agent_profile_set_validation_requires_stage_coverage_and_scientific_contract() -> None:

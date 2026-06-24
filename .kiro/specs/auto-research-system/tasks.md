@@ -3022,6 +3022,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `238.1`, `240.1`, `244.1`, and `245.1`; user request to assign custom skills and MCPs to specific Agents while preserving scientific, not over-engineered, thinking._
     - _Verify: focused `team-attach` CLI tests, focused ruff, focused mypy, real CLI team-template/team-attach/inspect smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 247. Runtime Agent stage assignment manifest
+  - [x] 247.1 Write cross-stage custom skill/MCP assignment evidence for each cycle
+    - Add a compact `agent_stage_assignment_manifest_process_metadata` contract that summarizes stage-to-Agent routing, skill IDs, materialized skill hashes, MCP server IDs, MCP runtime contract hashes, readiness, and per-Agent assignments.
+    - Write `agent-stage-contexts/assignment-manifest.json` during each `serve`/`autopilot` cycle beside the per-stage packet files.
+    - Embed the assignment manifest in `cycle-summary.json`, `review-evidence-context.json`, and review audit summaries so publication gates can audit which custom skills/MCP contracts were available to each stage.
+    - Keep the manifest content-free for skill bodies and secret-free for MCP env values; it must not prove scientific results, novelty, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN with the assignment manifest location and evidence boundary.
+    - _References: tasks `235.1`, `236.1`, `237.1`, and `246.1`; user request to assign custom skills and MCPs to specific Agents while keeping AI reasoning scientific and evidence-first._
+    - _Verify: focused Agent profile/API and autopilot artifact tests, focused ruff, focused mypy, real CLI autopilot assignment-manifest smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3666,6 +3676,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 149,
       "tasks": ["246.1"]
+    },
+    {
+      "id": 150,
+      "tasks": ["247.1"]
     }
   ]
 }
