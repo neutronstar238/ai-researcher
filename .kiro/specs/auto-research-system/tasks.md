@@ -3053,6 +3053,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `248.1`, `247.1`, `222.1`; user request to turn inspiration data into a high-creativity multi-miniagent brainstorm and then integrate, justify, and filter feasible creative ideas._
     - _Verify: focused brainstorm/plan/LLM/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke over a stored inspiration report, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 250. Injectable stage runtime context for custom Agent skills and MCPs
+  - [x] 250.1 Render research-first runtime prompts from assigned Agent stage packets
+    - Add a `scientific_focus` field for each research-loop stage so custom skill/MCP imports are framed by the scientific task rather than by generic engineering orchestration.
+    - Add `runtime_prompt` to every `agent-stage-contexts/<stage>.json` packet and to `agents profile export-stage-context`, including the assigned Agent thinking contract, bounded skill excerpts, MCP allowed tools, approval requirements, and explicit evidence boundary.
+    - Keep MCP commands and secret values out of the prompt; expose allowed tools, approval policy, and tool-invocation evidence requirements instead.
+    - Keep the prompt scoped to process context: it can guide the assigned Agent but cannot prove scientific results, novelty, metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN so operators know stage packets are not only audit metadata; they are also the bounded runtime context that downstream stage workers can inject.
+    - _References: tasks `235.1`, `236.1`, `247.1`; user request to keep AI reasoning scientific rather than over-engineered while continuing to assign custom skills and MCPs to specific Agents._
+    - _Verify: focused Agent profile/API and CLI tests, focused ruff, focused mypy, real CLI stage-context export smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3709,6 +3719,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 152,
       "tasks": ["249.1"]
+    },
+    {
+      "id": 153,
+      "tasks": ["250.1"]
     }
   ]
 }

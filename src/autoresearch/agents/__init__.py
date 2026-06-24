@@ -67,6 +67,7 @@ from .profiles import (
     profile_contexts_by_stage,
     profile_contexts_for_stage,
     render_agent_profile_markdown,
+    render_agent_stage_runtime_prompt,
     write_agent_profile,
     write_agent_profile_note,
 )
@@ -161,6 +162,7 @@ __all__ = [
     "profile_contexts_by_stage",
     "profile_contexts_for_stage",
     "render_agent_profile_markdown",
+    "render_agent_stage_runtime_prompt",
     "validate_mcp_invocation_evidence",
     "write_agent_profile",
     "write_agent_profile_note",

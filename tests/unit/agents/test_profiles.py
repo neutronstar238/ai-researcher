@@ -34,6 +34,7 @@ from autoresearch.agents import (
     parse_skill_spec,
     profile_contexts_by_stage,
     profile_contexts_for_stage,
+    render_agent_stage_runtime_prompt,
     write_agent_profile,
     write_agent_profile_note,
 )
@@ -262,6 +263,7 @@ def test_agent_stage_context_packet_routes_only_assigned_agents(tmp_path: Path) 
     assert packet["skill_ids"] == ["review-skill"]
     assert packet["materialized_skill_ids"] == ["review-skill"]
     assert packet["mcp_server_ids"] == ["opencode"]
+    assert packet["scientific_focus"].startswith("Review as a skeptical scientific referee")
     assert packet["readiness"]["passed"] is True
     assert packet["missing_assignment"] is False
     assert packet["agents"][0]["materialized_skills"][0]["content"].startswith(
@@ -269,6 +271,14 @@ def test_agent_stage_context_packet_routes_only_assigned_agents(tmp_path: Path) 
     )
     assert packet["agents"][0]["mcp_runtime_contracts"][0]["server_id"] == "opencode"
     assert "cannot prove scientific results" in packet["evidence_policy"]
+    assert packet["runtime_prompt"] == render_agent_stage_runtime_prompt(packet)
+    assert "Agent Runtime Context: review" in packet["runtime_prompt"]
+    assert "Keep the scientific question" in packet["runtime_prompt"]
+    assert "Agent: reviewer" in packet["runtime_prompt"]
+    assert "# Review Skill" in packet["runtime_prompt"]
+    assert "`code.review`" in packet["runtime_prompt"]
+    assert "tool evidence required: `true`" in packet["runtime_prompt"]
+    assert "cannot prove scientific results" in packet["runtime_prompt"]
 
 
 def test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing(

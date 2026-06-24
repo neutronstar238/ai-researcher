@@ -272,6 +272,10 @@ def test_agent_profile_export_stage_context_cli_writes_packet(tmp_path: Path) ->
     assert packet["agents"][0]["mcp_runtime_contracts"][0]["allowed_tools"] == [
         "code.review"
     ]
+    assert "Agent Runtime Context: review" in packet["runtime_prompt"]
+    assert "Agent: reviewer" in packet["runtime_prompt"]
+    assert "# Review Skill" in packet["runtime_prompt"]
+    assert "`code.review`" in packet["runtime_prompt"]
     assert "cannot prove scientific results" in packet["evidence_policy"]
 
     missing_stage_result = runner.invoke(

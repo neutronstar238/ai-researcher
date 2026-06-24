@@ -91,6 +91,50 @@ DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES: tuple[str, ...] = (
     "publication_audit",
     "evidence_gate",
 )
+DEFAULT_STAGE_SCIENTIFIC_FOCUS = (
+    "Keep scientific reasoning first: state the research question, falsifiable "
+    "hypothesis, dataset, baseline, metric, and evidence gap before implementation "
+    "details."
+)
+STAGE_SCIENTIFIC_FOCUS: dict[str, str] = {
+    "literature": (
+        "Retrieve and compare source-backed work; distinguish verified metadata, "
+        "source claims, interpretations, and unknowns."
+    ),
+    "research_plan": (
+        "Turn the confirmed direction into a testable plan with problem statement, "
+        "rationale, datasets, methods, baselines, metrics, risks, ablations, and "
+        "reproduction steps."
+    ),
+    "loop_campaign": (
+        "Translate the plan into a closed-loop campaign with measurable objectives, "
+        "candidate space, budget, protocol, evidence requirements, and stop criteria."
+    ),
+    "experiment": (
+        "Execute the scientific protocol and record commands, data, metrics, failures, "
+        "and artifacts before drawing conclusions."
+    ),
+    "reproduction": (
+        "Rerun or independently check the best result and report reproduction delta "
+        "before treating it as a paper claim."
+    ),
+    "citations": (
+        "Bind claims to verified DOI/URL/source metadata and leave unsupported claims "
+        "as unknown or pending."
+    ),
+    "review": (
+        "Review as a skeptical scientific referee: check novelty, evidence coverage, "
+        "baselines, ablations, statistics, limitations, and overclaiming."
+    ),
+    "publication_audit": (
+        "Judge paper readiness against evidence, reproducibility, citation, figure, "
+        "table, license, and venue-fit gates."
+    ),
+    "evidence_gate": (
+        "Allow only conclusions that have traceable data, literature, experiment, "
+        "reproduction, or validation artifacts."
+    ),
+}
 
 
 class AgentThinkingMode(str, Enum):
@@ -930,9 +974,13 @@ def build_agent_stage_context_packet(
         if str(server.get("server_id", "")).strip()
     )
     agent_ids = tuple(str(context.get("agent_id", "")) for context in stage_contexts)
-    return {
+    packet = {
         "packet_kind": STAGE_CONTEXT_PACKET_KIND,
         "stage": normalized_stage,
+        "scientific_focus": STAGE_SCIENTIFIC_FOCUS.get(
+            normalized_stage,
+            DEFAULT_STAGE_SCIENTIFIC_FOCUS,
+        ),
         "project_id": project_id,
         "cycle_id": cycle_id,
         "agent_count": len(stage_contexts),
@@ -949,6 +997,56 @@ def build_agent_stage_context_packet(
         "missing_assignment": not stage_contexts,
         "evidence_policy": STAGE_CONTEXT_PACKET_EVIDENCE_POLICY,
     }
+    packet["runtime_prompt"] = render_agent_stage_runtime_prompt(packet)
+    return packet
+
+
+def render_agent_stage_runtime_prompt(packet: Mapping[str, Any]) -> str:
+    """Render a stage packet as bounded text that can be injected into an agent."""
+
+    stage = str(packet.get("stage", "unknown")).strip() or "unknown"
+    scientific_focus = str(
+        packet.get("scientific_focus") or DEFAULT_STAGE_SCIENTIFIC_FOCUS
+    ).strip()
+    agents = _mapping_items(packet.get("agents"))
+    lines = [
+        f"# Agent Runtime Context: {stage}",
+        "",
+        "Use this as process context for the assigned research stage.",
+        scientific_focus,
+        "",
+        "## Research Posture",
+        "",
+        "- Keep the scientific question, hypothesis, baseline, dataset, metric, and evidence in view before tool or code details.",
+        "- Use engineering only to make the protocol reproducible, inspectable, and rerunnable.",
+        "- Do not convert missing evidence into architecture, confidence, novelty, or publication claims.",
+        "- Custom skills are bounded method/context imports; MCP bindings are scoped instruments.",
+        "",
+    ]
+    if not agents:
+        lines.extend(
+            [
+                "## Assigned Agents",
+                "",
+                "- No agent is assigned to this stage.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(["## Assigned Agents", ""])
+        for context in agents:
+            lines.extend(_render_agent_context_prompt_lines(context))
+    lines.extend(
+        [
+            "## Evidence Boundary",
+            "",
+            "- This prompt can support responsibility routing and runtime prompting only.",
+            "- It cannot prove scientific results, novelty, benchmark metrics, citation validity, tool invocation, or publication readiness.",
+            "- Any result claim still needs validated literature, experiment, reproduction, review, and evidence-gate artifacts.",
+            "",
+        ]
+    )
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def build_agent_stage_assignment_manifest(
@@ -1056,6 +1154,84 @@ def write_agent_profile_note(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(render_agent_profile_markdown(profile), encoding="utf-8")
     return target
+
+
+def _render_agent_context_prompt_lines(context: Mapping[str, Any]) -> list[str]:
+    agent_id = str(context.get("agent_id", "")).strip() or "unknown-agent"
+    lines = [
+        f"### Agent: {agent_id}",
+        "",
+        f"- role: `{context.get('role', '')}`",
+        f"- thinking_mode: `{context.get('thinking_mode', '')}`",
+        f"- publication_target: `{context.get('publication_target', '')}`",
+    ]
+    assigned_stages = _ordered_unique(context.get("assigned_stages", ()))
+    lines.append(
+        "- assigned_stages: "
+        + (", ".join(f"`{stage}`" for stage in assigned_stages) or "`unassigned`")
+    )
+    lines.extend(["", "Thinking contract:"])
+    thinking_contract = _ordered_unique(context.get("thinking_contract", ()))
+    if thinking_contract:
+        lines.extend(f"- {item}" for item in thinking_contract)
+    else:
+        lines.append("- Follow the project research thinking contract.")
+
+    skills = _mapping_items(context.get("skills"))
+    materialized_by_id = {
+        str(skill.get("skill_id", "")): skill
+        for skill in _mapping_items(context.get("materialized_skills"))
+        if str(skill.get("skill_id", "")).strip()
+    }
+    lines.extend(["", "Custom skills:"])
+    if not skills:
+        lines.append("- None.")
+    for skill in skills:
+        skill_id = str(skill.get("skill_id", "")).strip() or "unknown-skill"
+        source = str(skill.get("source", "")).strip()
+        import_policy = str(skill.get("import_policy", "")).strip()
+        source_type = str(skill.get("source_type", "")).strip()
+        lines.append(
+            f"- `{skill_id}` from `{source}` ({source_type}, policy `{import_policy}`)."
+        )
+        materialized = materialized_by_id.get(skill_id)
+        if materialized is not None:
+            status = str(materialized.get("status", "")).strip()
+            sha = str(materialized.get("sha256", "") or "").strip()
+            truncated = bool(materialized.get("truncated", False))
+            lines.append(
+                f"  - materialized: `{status}`; sha256: `{sha or 'none'}`; "
+                f"truncated: `{str(truncated).lower()}`."
+            )
+            content = str(materialized.get("content", "") or "").strip()
+            if content:
+                lines.extend(["  - bounded content:", ""])
+                lines.extend(
+                    f"    {line}" if line else ""
+                    for line in content.splitlines()
+                )
+
+    contracts = _mapping_items(context.get("mcp_runtime_contracts"))
+    lines.extend(["", "MCP runtime contracts:"])
+    if not contracts:
+        lines.append("- None.")
+    for contract in contracts:
+        server_id = str(contract.get("server_id", "")).strip() or "unknown-server"
+        approval = str(contract.get("approval_policy", "")).strip()
+        tools = ", ".join(
+            f"`{tool}`" for tool in _ordered_unique(contract.get("allowed_tools", ()))
+        )
+        runtime_approval = bool(contract.get("runtime_approval_required", False))
+        evidence_required = bool(
+            contract.get("tool_invocation_evidence_required", True)
+        )
+        lines.append(
+            f"- `{server_id}` tools: {tools or '`none`'}; approval: `{approval}`; "
+            f"runtime approval required: `{str(runtime_approval).lower()}`; "
+            f"tool evidence required: `{str(evidence_required).lower()}`."
+        )
+    lines.append("")
+    return lines
 
 
 def _split_assignment(spec: str, label: str) -> tuple[str, str]:

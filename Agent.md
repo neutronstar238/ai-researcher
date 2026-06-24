@@ -10361,3 +10361,39 @@ This file defines the project development standard for coding agents and records
 - Follow-up:
   - Add more brainstorm perspectives only when they correspond to concrete source classes or evaluation roles; avoid turning this into permanent agent-team bloat.
   - Add an optional second-stage reviewer that can down-rank ideas against live scholarly/source evidence, but keep that reviewer evidence-bound and separate from the creative generation pass.
+
+### 2026-06-24 10:22:36 +08:00 - Codex - Task 250.1 Injectable stage runtime context for custom Agent skills and MCPs
+
+- Request: Continue toward assigning custom skills and MCPs to specific Agents while keeping AI reasoning scientific rather than over-engineered and moving toward CCF-B/SCI-Q2 publication quality.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added stage-specific `scientific_focus` text to Agent stage context packets so stage workers start from the scientific task instead of generic engineering orchestration.
+  - Added `render_agent_stage_runtime_prompt` and embedded `runtime_prompt` in every `agent-stage-contexts/<stage>.json` packet and `agents profile export-stage-context` output.
+  - The prompt includes assigned Agent identity, thinking contract, bounded materialized skill excerpts, MCP allowed tools, approval requirements, and the evidence boundary.
+  - The prompt intentionally omits MCP commands and secret values; MCP command hashes remain in runtime contracts and tool-call proof remains in the separate MCP invocation ledger.
+  - Updated README/README.zh-CN and added task `250.1` plus dependency wave `153` to the Kiro task plan.
+- Verification:
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_export_stage_context_cli_writes_packet -q`: passed with 20 tests.
+  - A first focused pytest selector used a stale CLI test name and returned no matching test; the corrected selector above passed.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id review-agent --stage review --skill source-tracing=runs\manual-live\task247-assignment-manifest-v1\skills\source.md --mcp "opencode=opencode run" --mcp-tool opencode:code.review --mcp-approval opencode:read_only --output runs\manual-live\task250-runtime-prompt\profiles\review-agent.json`: passed and wrote a review-stage profile.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile export-stage-context runs\manual-live\task250-runtime-prompt\profiles\review-agent.json --stage review --base-dir . --project-id task250-runtime-prompt --cycle-id cycle_live --output runs\manual-live\task250-runtime-prompt\packets\review.json`: passed.
+  - Real packet inspection confirmed `stage=review`, `agentCount=1`, `skillIds=source-tracing`, `mcpIds=opencode`, and the `runtime_prompt` contains the assigned Agent, materialized skill text, `code.review`, and the evidence-boundary statement.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 633 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire real stage executors to consume `runtime_prompt` as their prompt/context input, while keeping result claims dependent on literature, experiment, reproduction, review, publication-audit, and evidence-gate artifacts.

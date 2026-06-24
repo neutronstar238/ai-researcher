@@ -330,6 +330,9 @@ During `serve` and `autopilot`, AI-Researcher also writes portable packet files 
 `agent-stage-contexts/` directory. Each packet contains only the agents assigned to that stage, the
 bounded skill excerpts, MCP contracts, readiness summary, and an explicit process-metadata evidence
 policy.
+It also carries a `scientific_focus` and `runtime_prompt` that can be injected into that stage's
+Agent so the custom skills and MCP instruments arrive as research-first guidance rather than loose
+engineering metadata.
 The same directory now includes `assignment-manifest.json`, a compact cross-stage manifest that
 lists each stage's assigned Agent IDs, skill IDs, materialized skill hashes, MCP server IDs, and MCP
 contract hashes without copying skill content. It is designed for review and publication gates to
@@ -526,7 +529,7 @@ Common npm shortcuts:
 | `agents profile validate` | profile JSON path, `--env-path`, `--base-dir`, `--output` | Checks local skill source paths and required MCP environment variable names; writes readiness JSON and exits nonzero on missing required inputs. |
 | `agents profile set-validate` | profile JSON paths, `--required-stage`, `--env-path`, `--base-dir`, `--output` | Validates a multi-Agent skill/MCP profile set as a research-stage coverage matrix before unattended runs; exits nonzero on missing required stages, duplicate agents, readiness failures, or non-research/evidence-first thinking contracts. |
 | `agents profile inspect` | profile JSON path, `--materialize-skills`, `--base-dir`, `--max-skill-chars` | Prints the runtime context that will be attached to that agent, including MCP runtime contracts; optionally includes bounded local skill content with hashes and truncation metadata. |
-| `agents profile export-stage-context` | profile JSON paths, `--stage`, `--base-dir`, `--output`, `--project-id`, `--cycle-id` | Exports the bounded skills/MCP context packet for agents assigned to one loop stage; defaults to failing when no agent is assigned or readiness fails. |
+| `agents profile export-stage-context` | profile JSON paths, `--stage`, `--base-dir`, `--output`, `--project-id`, `--cycle-id` | Exports the bounded skills/MCP context packet and injectable `runtime_prompt` for agents assigned to one loop stage; defaults to failing when no agent is assigned or readiness fails. |
 | `agents mcp-evidence add/list/validate` | `--profile`, `--ledger`, `--project-id`, `--cycle-id`, `--server-id`, `--tool-name`, request/response artifact refs | Records and validates hashed MCP tool invocation evidence. This proves a named agent recorded a named tool call, not that scientific claims are true. |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | Generates the Markdown/TEX/PDF research plan after direction approval. |
 | `research-plan` | `--no-compile-pdf` | CI-friendly structural check; normal operator runs should compile the PDF. |
