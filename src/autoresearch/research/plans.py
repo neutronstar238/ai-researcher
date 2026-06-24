@@ -611,7 +611,10 @@ def _build_plan(
             f"The selected direction has candidate scores novelty={candidate.novelty_score:.2f}, "
             f"feasibility={candidate.feasibility_score:.2f}, impact={candidate.impact_score:.2f}. "
             f"Its main rationale is: {candidate.description} The current limitation to address is: "
-            f"{limitation}."
+            f"{limitation}. The decision to proceed is based on the executable experiment skeleton "
+            "below: source data, baseline, metric, falsification check, and reproducible command path. "
+            "Similarity matching is used to detect direct duplicate risk and borrowable adjacent context, "
+            "not as the primary feasibility judge."
         ),
         technical_details=(
             f"Core method: {method}. Baseline/control: {baseline}. Dataset route: {dataset}. "

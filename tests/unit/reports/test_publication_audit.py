@@ -119,7 +119,7 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
 
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
@@ -327,7 +327,7 @@ def test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings(
     ]
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
 
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
@@ -346,10 +346,10 @@ def test_publication_audit_accepts_standalone_review_json(
     summary["review"] = {"status": "skipped", "quality_score": 0.0, "verdict": "missing"}
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
     manuscript_path = tmp_path / "paper-manuscript" / "manuscript.md"
     manuscript_path.parent.mkdir(parents=True)
-    manuscript_path.write_text(_paper_style_report(), encoding="utf-8")
+    manuscript_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
     summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
@@ -494,7 +494,7 @@ def test_publication_audit_blocks_ccfb_when_reviewer_needs_revision(
     assert report.publishable is False
 
 
-def test_publication_audit_blocks_unknown_only_similarity_classifications(
+def test_publication_audit_requires_revision_for_unknown_only_similarity_classifications(
     tmp_path: Path,
 ) -> None:
     summary_path = _write_real_benchmark_cycle(
@@ -509,14 +509,15 @@ def test_publication_audit_blocks_unknown_only_similarity_classifications(
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
     checks = {check.check_id: check for check in report.checks}
-    assert checks["similarity_classification_coverage"].status.value == "fail"
-    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
+    assert checks["similarity_classification_coverage"].status.value == "warning"
+    assert checks["similarity_classified_finding_breadth"].status.value == "warning"
+    assert checks["similarity_duplicate_risk"].status.value == "warning"
     assert "unknown" in checks["similarity_classification_coverage"].message
-    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
     assert report.publishable is False
 
 
-def test_publication_audit_blocks_sparse_classified_similarity_findings(
+def test_publication_audit_requires_revision_for_sparse_classified_similarity_findings(
     tmp_path: Path,
 ) -> None:
     summary_path = _write_real_benchmark_cycle(
@@ -531,8 +532,33 @@ def test_publication_audit_blocks_sparse_classified_similarity_findings(
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
     checks = {check.check_id: check for check in report.checks}
-    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
+    assert checks["similarity_classified_finding_breadth"].status.value == "warning"
     assert checks["similarity_classification_coverage"].status.value == "pass"
+    assert "not proof that the direction is infeasible" in checks[
+        "similarity_classified_finding_breadth"
+    ].next_action
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
+
+
+def test_publication_audit_still_blocks_direct_duplicate_similarity_findings(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        similarity_classifications=("direct_duplicate", *("adjacent_work" for _ in range(9))),
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["similarity_duplicate_risk"].status.value == "fail"
+    assert checks["similarity_duplicate_risk"].severity == "blocking"
+    assert "direct duplicate" in checks["similarity_duplicate_risk"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 

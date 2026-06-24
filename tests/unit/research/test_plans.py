@@ -77,6 +77,8 @@ def test_generate_research_plan_writes_vault_markdown_and_outputs(tmp_path: Path
     assert "# Evidence Trace Adapter for UCI Pendigits with Evidence-Calibrated Evaluation" in markdown
     assert "## Code Agent Brief" in markdown
     assert "python scripts/run_experiment.py" in markdown
+    assert "executable experiment skeleton" in markdown
+    assert "Similarity matching is used to detect direct duplicate risk" in markdown
     assert "XH-202619" not in markdown
     assert "参赛" not in markdown
     assert "AI-Researcher system proposal" not in markdown

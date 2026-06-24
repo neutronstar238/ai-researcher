@@ -10561,3 +10561,37 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Apply the same self-judgment distinction to research-plan and publication-audit wording where useful: broad source/search coverage should remain required, direct duplicates should block, and sparse same-direction matches should become novelty potential plus related-work positioning work rather than an automatic feasibility failure.
+
+### 2026-06-24 11:52:34 +08:00 - Codex - Task 256.1 Novelty search publication-audit semantics
+
+- Request: Continue the novelty/doability correction so research-plan and publication-audit layers judge "worth doing" from the idea's executable structure, while similarity search is used mainly for duplicate-risk and adjacent-work positioning.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/research/test_plans.py`
+  - `Agent.md`
+- Summary:
+  - Updated research-plan rationale text so a direction's can-do judgment comes from an executable experiment skeleton: data source, baseline, metric, falsification path, and reproducible command path.
+  - Changed publication-audit similarity checks so broad query/source coverage and source errors remain strict, direct duplicates still block publication, and sparse or unclassified same-direction matches produce revision warnings instead of automatic feasibility failures.
+  - Added strict-target verdict logic so unresolved high-severity similarity warnings return `needs_revision`; the system can proceed with a novel direction, but it cannot call a paper publishable until duplicate-risk and positioning gaps are resolved.
+  - Expanded publication-audit tests for unknown-only matches, sparse classified matches, and direct duplicate blockers.
+  - Updated README/README.zh-CN and added task `256.1` plus dependency wave `159` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_unknown_only_similarity_classifications tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_sparse_classified_similarity_findings tests\unit\reports\test_publication_audit.py::test_publication_audit_still_blocks_direct_duplicate_similarity_findings tests\unit\research\test_plans.py::test_generate_research_plan_writes_vault_markdown_and_outputs -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\publication_audit.py src\autoresearch\research\plans.py tests\unit\reports\test_publication_audit.py tests\unit\research\test_plans.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\publication_audit.py src\autoresearch\research\plans.py`: passed with no issues in 2 source files.
+  - First broad `python -m pytest tests\smoke tests\unit -q`: failed 3 older publication-audit happy-path tests because they lacked adjacent-work positioning under the stricter publication readiness semantics; updated their fixtures to include adjacent positioning evidence.
+  - Recheck `python -m pytest tests\unit\reports\test_publication_audit.py::test_publication_audit_passes_when_method_innovation_has_file_evidence tests\unit\reports\test_publication_audit.py::test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings tests\unit\reports\test_publication_audit.py::test_publication_audit_accepts_standalone_review_json tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_unknown_only_similarity_classifications tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_sparse_classified_similarity_findings tests\unit\reports\test_publication_audit.py::test_publication_audit_still_blocks_direct_duplicate_similarity_findings -q`: passed with 6 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 641 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed before this log entry; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Use this policy in the next real loop run: let brainstorm/research-plan promote high-quality novel gaps, then require publication audit to prove no direct duplicate and to cite adjacent work before PDF-ready claims.

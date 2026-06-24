@@ -321,7 +321,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索，并写出创新检索广度矩阵。 |
 | `/research:research-plan` | candidate JSON + project id | 把确认方向后的研究计划写入 Obsidian 和 `outputs/`。 |
 | `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
-| `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
+| `/research:publication-audit` | cycle summary 路径 | 审计发表准备度；检索 query/source 广度和 direct duplicate 仍严格，少量同方向匹配会变成潜在创新的 revision warning，而不是可做性失败。 |
 | `/research:publication-stability` | 多个 cycle summary | 检查跨 cycle、模板和数据集的稳定性。 |
 | `/research:paper-build` | 报告路径或模板 id | 构建 LaTeX/PDF 论文产物。 |
 | `/research:evidence-gate` | cycle summary 路径 | 运行物理证据门禁。 |
@@ -375,6 +375,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | 自动头脑风暴阶段 | 在灵感刷新后、研究计划前运行临时创意 miniagent；原始想法会完整保留，然后由实时 reviewer 用文献相似度筛重复风险，并主要根据想法自身的数据集、baseline、metric、falsification 结构判断可做性。 |
 | `similarity-check` | `--max-queries`, `--max-results-per-source` | 控制项目启动阶段的创新检索广度；输出 Obsidian Markdown 和 `*_novelty_breadth.json`。 |
 | `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | 使用配置好的供应商无关 LLM 端点生成高发散假设，再用 ArXiv/OpenAlex 与 GitHub/Hugging Face/Hacker News 信号做实时审稿筛选；可做性先看想法自身的数据/来源、baseline、metric、可证伪检查和执行路径，来源匹配主要用于直接重复风险和可借鉴上下文。没有找到高相似前作会被视为潜在创新，不会被当成不可做。默认不设置 `--max-tokens`。 |
+| `publication-audit` | similarity checks | 发表级创新声明仍要求足够的检索 query 和成功来源。确认的 direct duplicate 会继续让审计失败；少量或未分类匹配会要求修订/定位相关工作，而不是否定研究方向本身。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |

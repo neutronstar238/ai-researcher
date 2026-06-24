@@ -3114,6 +3114,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `251.1`, `252.1`; user clarification that innovative directions should not require high-similarity prior work, and matching should primarily detect duplicate risk._
     - _Verify: focused brainstorm reviewer test, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 256. Novelty search publication-audit semantics
+  - [x] 256.1 Treat sparse similar-work matches as revision evidence, not feasibility failure
+    - Keep similarity query breadth, successful source breadth, and source-error handling strict before publication-level novelty claims.
+    - Keep confirmed direct duplicates as blocking failures that reject or reposition the candidate before further publication review.
+    - Convert sparse same-direction findings, sparse classified findings, and unknown-only classifications into high-priority revision warnings for novelty positioning rather than blocking failures.
+    - Make strict publication targets return `needs_revision` when high-severity similarity warnings remain, so the system does not call the paper publishable while duplicate-risk evidence is unresolved.
+    - Update research plans so the rationale explicitly states that can-do judgment comes from the executable experiment skeleton, while source matching handles direct duplicate risk and adjacent context.
+    - _References: task `255.1`; user clarification that innovative research directions should not require high-similarity prior work, and duplicate-risk matching should be separate from deciding whether the work is worth doing._
+    - _Verify: focused publication-audit/research-plan tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3794,6 +3804,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 158,
       "tasks": ["255.1"]
+    },
+    {
+      "id": 159,
+      "tasks": ["256.1"]
     }
   ]
 }

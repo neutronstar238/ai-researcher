@@ -470,7 +470,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:similarity-check` | candidate context | Cross-checks a candidate against adjacent online work and writes the novelty breadth matrix. |
 | `/research:research-plan` | candidate JSON + project id | Writes the post-direction research plan to Obsidian and `outputs/`. |
 | `/research:run-demo` | demo id | Runs a local demo or public benchmark. |
-| `/research:publication-audit` | cycle summary path | Audits publication readiness. |
+| `/research:publication-audit` | cycle summary path | Audits publication readiness; broad query/source coverage and direct-duplicate checks stay strict, while sparse same-direction matches become novelty-potential revision warnings rather than feasibility failures. |
 | `/research:publication-stability` | multiple cycle summaries | Checks stability across cycles/templates/datasets. |
 | `/research:paper-build` | report path or template id | Builds LaTeX/PDF artifacts. |
 | `/research:evidence-gate` | cycle summary path | Runs the physical release gate. |
@@ -524,6 +524,7 @@ Common npm shortcuts:
 | `serve` / `autopilot` | automatic brainstorm stage | Runs temporary creative miniagents after inspiration refresh and before research planning; raw ideas are preserved, then a live reviewer screens duplicate risk against literature while judging doability from the idea's own dataset/baseline/metric/falsification plan. |
 | `similarity-check` | `--max-queries`, `--max-results-per-source` | Controls project-start novelty search breadth; outputs Obsidian Markdown plus `*_novelty_breadth.json`. |
 | `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | Uses the configured provider-agnostic LLM endpoint to generate high-divergence hypotheses, then reviews them with live ArXiv/OpenAlex plus GitHub/Hugging Face/Hacker News signals. Doability is judged first from the idea's own data/source, baseline, metric, falsification, and execution path; source matching is mainly for direct-duplicate risk and borrowable context. Missing close prior work is treated as novelty potential, not a feasibility failure. `--max-tokens` is intentionally not set by default. |
+| `publication-audit` | similarity checks | Requires broad search queries and successful sources before publication-level novelty claims. Confirmed direct duplicates still fail the audit; sparse or unclassified matches request revision/positioning instead of rejecting the research direction. |
 | `research-plan` | `--brainstorm-summary` | Adds the brainstorm synthesis note to the evidence context for the execution-ready plan. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
