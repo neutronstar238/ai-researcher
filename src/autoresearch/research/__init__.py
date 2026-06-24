@@ -3,10 +3,15 @@
 from .approval import ApprovalRecord, ProjectAgentContext, create_project_from_approved_candidate
 from .brainstorm import (
     BrainstormConfig,
+    BrainstormEvidenceFetch,
+    BrainstormEvidenceReviewConfig,
+    BrainstormEvidenceSignal,
     BrainstormIdea,
+    BrainstormIdeaEvidenceReview,
     BrainstormMiniAgentPrompt,
     BrainstormMiniAgentRun,
     BrainstormReport,
+    run_brainstorm_evidence_review,
     run_inspiration_brainstorm,
 )
 from .candidates import (
@@ -51,7 +56,11 @@ from .similarity import (
 __all__ = [
     "ApprovalRecord",
     "BrainstormConfig",
+    "BrainstormEvidenceFetch",
+    "BrainstormEvidenceReviewConfig",
+    "BrainstormEvidenceSignal",
     "BrainstormIdea",
+    "BrainstormIdeaEvidenceReview",
     "BrainstormMiniAgentPrompt",
     "BrainstormMiniAgentRun",
     "BrainstormReport",
@@ -84,6 +93,7 @@ __all__ = [
     "link_similarity_report_to_project",
     "render_research_plan_markdown",
     "render_research_plan_tex",
+    "run_brainstorm_evidence_review",
     "run_inspiration_brainstorm",
     "run_project_similarity_check",
     "store_candidate_lifecycle_entry",

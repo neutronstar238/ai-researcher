@@ -143,6 +143,7 @@ from autoresearch.reports import (
 )
 from autoresearch.research import (
     BrainstormConfig,
+    BrainstormEvidenceReviewConfig,
     SimilarityCheckConfig,
     audit_research_plan,
     evaluate_novelty_search_breadth,
@@ -322,11 +323,14 @@ DEFAULT_SLASH_COMMANDS = {
         "Use `--push-channel feishu` or `--push-channel wechat` to target a setup-configured channel.",
     ),
     "research/brainstorm.toml": (
-        "Run temporary high-temperature miniagents over inspiration data, then select feasible creative ideas.",
+        "Run temporary high-temperature miniagents, then screen ideas with live evidence review.",
         "Run `airesearcher brainstorm --candidate-file <candidate.json> "
         "--inspiration-report runs/inspiration/latest.json --vault autoresearch-vault "
         "--output-dir runs/brainstorm/latest --temperature 1.2`. Record raw ideas first; "
-        "selected ideas are hypotheses only until literature, experiment, and reproduction evidence exist.",
+        "the reviewer checks duplicate risk against literature and feasibility from the proposed "
+        "dataset/baseline/metric/falsification plan, with GitHub/Hugging Face/Hacker News used only "
+        "as code, data, or community signals. Selected ideas remain hypotheses until experiment "
+        "and reproduction evidence exist.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
@@ -3497,6 +3501,28 @@ def brainstorm(
         int | None,
         typer.Option("--timeout-seconds", min=1, help="LLM request timeout override."),
     ] = None,
+    evidence_review: Annotated[
+        bool,
+        typer.Option(
+            "--evidence-review/--no-evidence-review",
+            help=(
+                "Run the second-stage live reviewer over literature, data, code, and "
+                "community signals after raw brainstorm ideas are recorded."
+            ),
+        ),
+    ] = True,
+    evidence_cache: Annotated[
+        Path | None,
+        typer.Option("--evidence-cache", help="Cache directory for brainstorm reviewer retrieval."),
+    ] = None,
+    review_queries_per_idea: Annotated[
+        int,
+        typer.Option("--review-queries-per-idea", min=1, max=4, help="Live reviewer queries per idea."),
+    ] = 2,
+    review_results_per_source: Annotated[
+        int,
+        typer.Option("--review-results-per-source", min=1, max=5, help="Live reviewer results per source."),
+    ] = 2,
 ) -> None:
     """Run temporary high-temperature brainstorm miniagents over inspiration data."""
 
@@ -3521,6 +3547,13 @@ def brainstorm(
                 ideas_per_agent=ideas_per_agent,
                 temperature=temperature,
             ),
+            evidence_review_config=BrainstormEvidenceReviewConfig(
+                max_reviewed_ideas=miniagents * ideas_per_agent,
+                max_queries_per_idea=review_queries_per_idea,
+                max_results_per_source=review_results_per_source,
+            ),
+            enable_evidence_review=evidence_review,
+            evidence_cache_root=evidence_cache or output_dir / "evidence-cache",
         )
     except Exception as exc:
         typer.echo(f"[FAIL] brainstorm failed: {exc}", err=True)
@@ -3530,6 +3563,7 @@ def brainstorm(
     typer.echo(f"[OK] miniagents: {len(report.prompts)}")
     typer.echo(f"[OK] ideas: {len(report.ideas)}")
     typer.echo(f"[OK] selected_ideas: {len(report.selected_ideas)}")
+    typer.echo(f"[OK] evidence_reviews: {len(getattr(report, 'evidence_reviews', ()))}")
     if report.artifact_path is not None:
         typer.echo(f"[OK] artifact: {report.artifact_path}")
     if report.summary_path is not None:
@@ -6875,6 +6909,13 @@ def _run_autopilot_cycle(
             ideas_per_agent=2,
             temperature=1.2,
         ),
+        evidence_review_config=BrainstormEvidenceReviewConfig(
+            max_reviewed_ideas=min(5, max_queries) * 2,
+            max_queries_per_idea=2,
+            max_results_per_source=2,
+        ),
+        enable_evidence_review=True,
+        evidence_cache_root=cycle_dir / "brainstorm-evidence-cache",
     )
     runtime_heartbeat = _write_cycle_runtime_heartbeat(
         heartbeat_state=heartbeat_state,
@@ -6883,10 +6924,14 @@ def _run_autopilot_cycle(
         progress=(
             f"status={brainstorm_report.status};"
             f"ideas={len(brainstorm_report.ideas)};"
-            f"selected={len(brainstorm_report.selected_ideas)}"
+            f"selected={len(brainstorm_report.selected_ideas)};"
+            f"reviews={len(getattr(brainstorm_report, 'evidence_reviews', ()))}"
         ),
         report_path=heartbeat_report_path,
-        message="Temporary high-temperature miniagents brainstormed hypotheses before research planning.",
+        message=(
+            "Temporary high-temperature miniagents brainstormed hypotheses and the "
+            "second-stage live reviewer screened duplicate, verifiability, and doability risks."
+        ),
         artifact_refs=(
             getattr(brainstorm_report, "artifact_path", None),
             getattr(brainstorm_report, "summary_path", None),

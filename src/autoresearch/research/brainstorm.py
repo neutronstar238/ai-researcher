@@ -4,17 +4,32 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from pathlib import Path
 
-from autoresearch.inspiration import InspirationItem, InspirationRefreshReport
+from autoresearch.inspiration import (
+    GitHubRepositorySearchClient,
+    HackerNewsSearchClient,
+    HuggingFaceDatasetClient,
+    InspirationItem,
+    InspirationRefreshConfig,
+    InspirationRefreshReport,
+    run_inspiration_refresh,
+)
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
     KnowledgeZone,
     MarkdownKnowledgeStore,
+)
+from autoresearch.literature import (
+    AcademicPaper,
+    LiteratureRefreshConfig,
+    LiteratureRefreshReport,
+    run_daily_literature_refresh,
 )
 from autoresearch.llm import LLMClientError, run_llm_json_completion
 from autoresearch.schemas import ResearchCandidate
@@ -28,6 +43,105 @@ class BrainstormConfig:
     ideas_per_agent: int = 2
     temperature: float = 1.2
     min_selected_ideas: int = 2
+
+
+@dataclass(frozen=True)
+class BrainstormEvidenceReviewConfig:
+    """Configuration for the evidence-backed second-stage brainstorm reviewer."""
+
+    max_reviewed_ideas: int = 10
+    max_queries_per_idea: int = 2
+    max_results_per_source: int = 2
+    min_total_evidence: int = 1
+    require_dataset_or_code_for_promote: bool = False
+    medium_duplicate_overlap: float = 0.50
+    high_duplicate_overlap: float = 0.68
+
+
+@dataclass(frozen=True)
+class BrainstormEvidenceSignal:
+    """One source-backed signal used by the second-stage brainstorm reviewer."""
+
+    source: str
+    source_type: str
+    title: str
+    url: str
+    query: str
+    summary: str
+    relevance_score: float
+
+    def to_json_dict(self) -> dict[str, object]:
+        return {
+            "source": self.source,
+            "source_type": self.source_type,
+            "title": self.title,
+            "url": self.url,
+            "query": self.query,
+            "summary": self.summary,
+            "relevance_score": self.relevance_score,
+        }
+
+
+@dataclass(frozen=True)
+class BrainstormEvidenceFetch:
+    """One source fetch attempted by the second-stage brainstorm reviewer."""
+
+    source: str
+    source_type: str
+    query: str
+    result_count: int
+    rate_limit_seconds: float
+    cache_hit: bool | None = None
+    error: str | None = None
+
+    def to_json_dict(self) -> dict[str, object]:
+        return {
+            "source": self.source,
+            "source_type": self.source_type,
+            "query": self.query,
+            "result_count": self.result_count,
+            "rate_limit_seconds": self.rate_limit_seconds,
+            "cache_hit": self.cache_hit,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True)
+class BrainstormIdeaEvidenceReview:
+    """Deterministic reviewer verdict for one brainstorm idea."""
+
+    idea_id: str
+    queries: tuple[str, ...]
+    signals: tuple[BrainstormEvidenceSignal, ...]
+    literature_count: int
+    dataset_count: int
+    code_count: int
+    forum_count: int
+    duplicate_risk: str
+    verifiability: str
+    doability: str
+    decision: str
+    score_adjustment: float
+    reason: str
+    fetches: tuple[BrainstormEvidenceFetch, ...] = ()
+
+    def to_json_dict(self) -> dict[str, object]:
+        return {
+            "idea_id": self.idea_id,
+            "queries": list(self.queries),
+            "signals": [signal.to_json_dict() for signal in self.signals],
+            "literature_count": self.literature_count,
+            "dataset_count": self.dataset_count,
+            "code_count": self.code_count,
+            "forum_count": self.forum_count,
+            "duplicate_risk": self.duplicate_risk,
+            "verifiability": self.verifiability,
+            "doability": self.doability,
+            "decision": self.decision,
+            "score_adjustment": self.score_adjustment,
+            "reason": self.reason,
+            "fetches": [fetch.to_json_dict() for fetch in self.fetches],
+        }
 
 
 @dataclass(frozen=True)
@@ -127,6 +241,7 @@ class BrainstormReport:
     ideas: tuple[BrainstormIdea, ...]
     selected_ideas: tuple[BrainstormIdea, ...]
     synthesis: str
+    evidence_reviews: tuple[BrainstormIdeaEvidenceReview, ...] = ()
     artifact_path: Path | None = None
     prompt_set_path: Path | None = None
     summary_path: Path | None = None
@@ -139,13 +254,16 @@ class BrainstormReport:
             "runs": [run.to_json_dict() for run in self.runs],
             "ideas": [idea.to_json_dict() for idea in self.ideas],
             "selected_ideas": [idea.to_json_dict() for idea in self.selected_ideas],
+            "evidence_reviews": [review.to_json_dict() for review in self.evidence_reviews],
             "synthesis": self.synthesis,
             "artifact_path": self.artifact_path.as_posix() if self.artifact_path else None,
             "prompt_set_path": self.prompt_set_path.as_posix() if self.prompt_set_path else None,
             "summary_path": self.summary_path.as_posix() if self.summary_path else None,
             "evidence_policy": (
                 "Brainstorm ideas are hypotheses only. Inspiration refs are context signals, "
-                "not proof of results, novelty, or publishability."
+                "not proof of results, novelty, or publishability. Evidence reviews record "
+                "retrieval metadata for screening duplicate, unverifiable, or hard-to-execute ideas; "
+                "they are not benchmark outcomes."
             ),
         }
 
@@ -153,6 +271,16 @@ class BrainstormReport:
 BrainstormCompletionRunner = Callable[
     [BrainstormMiniAgentPrompt, list[dict[str, str]], float],
     Mapping[str, object],
+]
+BrainstormEvidenceReviewRunner = Callable[
+    [
+        ResearchCandidate,
+        tuple[BrainstormIdea, ...],
+        Path,
+        Path,
+        BrainstormEvidenceReviewConfig,
+    ],
+    tuple[BrainstormIdeaEvidenceReview, ...],
 ]
 
 
@@ -221,7 +349,11 @@ def run_inspiration_brainstorm(
     timeout_seconds: int | None = None,
     max_tokens: int | None = None,
     config: BrainstormConfig = BrainstormConfig(),
+    evidence_review_config: BrainstormEvidenceReviewConfig = BrainstormEvidenceReviewConfig(),
     completion_runner: BrainstormCompletionRunner | None = None,
+    evidence_review_runner: BrainstormEvidenceReviewRunner | None = None,
+    enable_evidence_review: bool = False,
+    evidence_cache_root: Path | str | None = None,
     write_summary: bool = True,
 ) -> BrainstormReport:
     """Run high-temperature temporary miniagents and synthesize feasible creative ideas."""
@@ -293,8 +425,33 @@ def run_inspiration_brainstorm(
                     error=f"{type(exc).__name__}: {exc}",
                 )
             )
-    selected = _select_ideas(ideas, min_selected=config.min_selected_ideas)
-    synthesis = _synthesize_brainstorm(ideas=tuple(ideas), selected=selected)
+    evidence_reviews: tuple[BrainstormIdeaEvidenceReview, ...] = ()
+    if ideas and evidence_review_runner is not None:
+        evidence_reviews = evidence_review_runner(
+            candidate,
+            tuple(ideas),
+            Path(vault_root),
+            Path(evidence_cache_root or Path(output_dir) / "evidence-cache"),
+            evidence_review_config,
+        )
+    elif ideas and enable_evidence_review:
+        evidence_reviews = run_brainstorm_evidence_review(
+            candidate=candidate,
+            ideas=tuple(ideas),
+            vault_root=Path(vault_root),
+            cache_root=Path(evidence_cache_root or Path(output_dir) / "evidence-cache"),
+            config=evidence_review_config,
+        )
+    selected = _select_ideas(
+        ideas,
+        min_selected=config.min_selected_ideas,
+        evidence_reviews=evidence_reviews,
+    )
+    synthesis = _synthesize_brainstorm(
+        ideas=tuple(ideas),
+        selected=selected,
+        evidence_reviews=evidence_reviews,
+    )
     status = "selected" if selected else ("ideas_recorded" if ideas else "failed")
     report = BrainstormReport(
         candidate_id=candidate.id,
@@ -304,6 +461,7 @@ def run_inspiration_brainstorm(
         ideas=tuple(ideas),
         selected_ideas=selected,
         synthesis=synthesis,
+        evidence_reviews=evidence_reviews,
     )
     return _write_brainstorm_report(
         report=report,
@@ -424,11 +582,20 @@ def _select_ideas(
     ideas: list[BrainstormIdea],
     *,
     min_selected: int,
+    evidence_reviews: tuple[BrainstormIdeaEvidenceReview, ...] = (),
 ) -> tuple[BrainstormIdea, ...]:
     if not ideas:
         return ()
+    reviews_by_id = {review.idea_id: review for review in evidence_reviews}
+    adjusted_ideas = [
+        replace(
+            idea,
+            selection_score=_review_adjusted_selection_score(idea, reviews_by_id.get(idea.idea_id)),
+        )
+        for idea in ideas
+    ]
     sorted_ideas = sorted(
-        ideas,
+        adjusted_ideas,
         key=lambda idea: (
             -idea.selection_score,
             -idea.creativity_score,
@@ -436,49 +603,542 @@ def _select_ideas(
             idea.idea_id,
         ),
     )
-    selection_count = min(max(min_selected, 1), len(sorted_ideas))
-    selected_ids = {idea.idea_id for idea in sorted_ideas[:selection_count]}
+    if reviews_by_id:
+        eligible_ideas = [
+            idea
+            for idea in sorted_ideas
+            if reviews_by_id.get(idea.idea_id) is None
+            or reviews_by_id[idea.idea_id].decision != "defer"
+        ]
+    else:
+        eligible_ideas = sorted_ideas
+    selection_count = min(max(min_selected, 1), len(eligible_ideas)) if eligible_ideas else 0
+    selected_ids = {idea.idea_id for idea in eligible_ideas[:selection_count]}
     calibrated = [
-        BrainstormIdea(
-            idea_id=idea.idea_id,
-            agent_id=idea.agent_id,
-            title=idea.title,
-            hypothesis=idea.hypothesis,
-            rationale=idea.rationale,
-            novelty_angle=idea.novelty_angle,
-            experiment_sketch=idea.experiment_sketch,
-            inspiration_refs=idea.inspiration_refs,
-            risks=idea.risks,
-            creativity_score=idea.creativity_score,
-            feasibility_score=idea.feasibility_score,
-            evidence_binding_score=idea.evidence_binding_score,
-            selection_score=idea.selection_score,
+        replace(
+            idea,
             selected=idea.idea_id in selected_ids,
             selection_reason=_screening_reason(
                 idea,
                 selected=idea.idea_id in selected_ids,
                 selection_count=selection_count,
+                review=reviews_by_id.get(idea.idea_id),
             ),
         )
-        for idea in ideas
+        for idea in adjusted_ideas
     ]
     ideas[:] = calibrated
     return tuple(idea for idea in calibrated if idea.selected)
+
+
+def run_brainstorm_evidence_review(
+    *,
+    candidate: ResearchCandidate,
+    ideas: tuple[BrainstormIdea, ...],
+    vault_root: Path | str,
+    cache_root: Path | str,
+    config: BrainstormEvidenceReviewConfig = BrainstormEvidenceReviewConfig(),
+) -> tuple[BrainstormIdeaEvidenceReview, ...]:
+    """Screen brainstorm ideas against live source signals without requiring prior clones."""
+
+    if config.max_reviewed_ideas < 1:
+        msg = "max_reviewed_ideas must be at least 1"
+        raise ValueError(msg)
+    if config.max_queries_per_idea < 1:
+        msg = "max_queries_per_idea must be at least 1"
+        raise ValueError(msg)
+    if config.max_results_per_source < 1:
+        msg = "max_results_per_source must be at least 1"
+        raise ValueError(msg)
+    reviewed_ideas = ideas[: config.max_reviewed_ideas]
+    if not reviewed_ideas:
+        return ()
+
+    queries_by_idea = {
+        idea.idea_id: _review_queries(candidate, idea, limit=config.max_queries_per_idea)
+        for idea in reviewed_ideas
+    }
+    all_queries = _ordered_unique(
+        query for queries in queries_by_idea.values() for query in queries
+    )
+    literature_report = _review_literature_sources(
+        vault_root=Path(vault_root),
+        cache_root=Path(cache_root) / "literature",
+        queries=all_queries,
+        config=config,
+    )
+    ecosystem_report = _review_ecosystem_sources(
+        vault_root=Path(vault_root),
+        queries=all_queries,
+        config=config,
+    )
+    return tuple(
+        _review_one_idea(
+            candidate=candidate,
+            idea=idea,
+            queries=queries_by_idea[idea.idea_id],
+            literature_report=literature_report,
+            ecosystem_report=ecosystem_report,
+            config=config,
+        )
+        for idea in reviewed_ideas
+    )
+
+
+def _review_literature_sources(
+    *,
+    vault_root: Path,
+    cache_root: Path,
+    queries: tuple[str, ...],
+    config: BrainstormEvidenceReviewConfig,
+) -> LiteratureRefreshReport:
+    return run_daily_literature_refresh(
+        vault_root=vault_root,
+        cache_root=cache_root,
+        config=LiteratureRefreshConfig(
+            max_queries=max(1, len(queries)),
+            min_query_floor=0,
+            max_results_per_source=config.max_results_per_source,
+            seed_queries=queries,
+        ),
+        write_summary=False,
+    )
+
+
+def _review_ecosystem_sources(
+    *,
+    vault_root: Path,
+    queries: tuple[str, ...],
+    config: BrainstormEvidenceReviewConfig,
+) -> InspirationRefreshReport:
+    return run_inspiration_refresh(
+        vault_root=vault_root,
+        queries=queries,
+        clients={
+            "huggingface_datasets": HuggingFaceDatasetClient(),
+            "github_repositories": GitHubRepositorySearchClient(),
+            "hacker_news": HackerNewsSearchClient(),
+        },
+        config=InspirationRefreshConfig(
+            max_queries=max(1, len(queries)),
+            max_results_per_source=config.max_results_per_source,
+        ),
+        write_summary=False,
+    )
+
+
+def _review_one_idea(
+    *,
+    candidate: ResearchCandidate,
+    idea: BrainstormIdea,
+    queries: tuple[str, ...],
+    literature_report: LiteratureRefreshReport,
+    ecosystem_report: InspirationRefreshReport,
+    config: BrainstormEvidenceReviewConfig,
+) -> BrainstormIdeaEvidenceReview:
+    literature_signals = _literature_signals_for_idea(
+        idea=idea,
+        queries=queries,
+        papers=literature_report.papers,
+        limit=config.max_results_per_source * 2,
+    )
+    ecosystem_signals = _ecosystem_signals_for_idea(
+        idea=idea,
+        queries=queries,
+        items=ecosystem_report.items,
+        limit=config.max_results_per_source * 3,
+    )
+    signals = tuple(
+        sorted(
+            [*literature_signals, *ecosystem_signals],
+            key=lambda signal: (-signal.relevance_score, signal.source_type, signal.title.casefold()),
+        )
+    )
+    fetches = _fetches_for_idea(
+        queries=queries,
+        literature_report=literature_report,
+        ecosystem_report=ecosystem_report,
+    )
+    literature_count = sum(1 for signal in signals if signal.source_type == "literature")
+    dataset_count = sum(1 for signal in signals if signal.source_type == "dataset_signal")
+    code_count = sum(1 for signal in signals if signal.source_type == "code_signal")
+    forum_count = sum(1 for signal in signals if signal.source_type == "forum_signal")
+    duplicate_score = _duplicate_score(idea=idea, papers=literature_report.papers)
+    duplicate_risk = _duplicate_risk(score=duplicate_score, config=config)
+    capability = _idea_capability_profile(candidate=candidate, idea=idea)
+    doability = _doability_from_capability(
+        capability=capability,
+        dataset_count=dataset_count,
+        code_count=code_count,
+    )
+    verifiability = _verifiability_from_capability(
+        capability=capability,
+        total_signal_count=len(signals),
+    )
+    decision = _review_decision(
+        duplicate_risk=duplicate_risk,
+        doability=doability,
+        verifiability=verifiability,
+        total_signal_count=len(signals),
+        dataset_count=dataset_count,
+        code_count=code_count,
+        config=config,
+    )
+    score_adjustment = _review_score_adjustment(
+        duplicate_risk=duplicate_risk,
+        doability=doability,
+        verifiability=verifiability,
+        total_signal_count=len(signals),
+        dataset_count=dataset_count,
+        code_count=code_count,
+    )
+    return BrainstormIdeaEvidenceReview(
+        idea_id=idea.idea_id,
+        queries=queries,
+        signals=signals,
+        literature_count=literature_count,
+        dataset_count=dataset_count,
+        code_count=code_count,
+        forum_count=forum_count,
+        duplicate_risk=duplicate_risk,
+        verifiability=verifiability,
+        doability=doability,
+        decision=decision,
+        score_adjustment=score_adjustment,
+        reason=_review_reason(
+            duplicate_score=duplicate_score,
+            duplicate_risk=duplicate_risk,
+            doability=doability,
+            verifiability=verifiability,
+            capability=capability,
+            total_signal_count=len(signals),
+            dataset_count=dataset_count,
+            code_count=code_count,
+            fetch_count=len(fetches),
+        ),
+        fetches=fetches,
+    )
+
+
+def _fetches_for_idea(
+    *,
+    queries: tuple[str, ...],
+    literature_report: LiteratureRefreshReport,
+    ecosystem_report: InspirationRefreshReport,
+) -> tuple[BrainstormEvidenceFetch, ...]:
+    query_keys = {query.casefold() for query in queries}
+    fetches: list[BrainstormEvidenceFetch] = []
+    for literature_fetch in literature_report.fetches:
+        if literature_fetch.query.casefold() not in query_keys:
+            continue
+        fetches.append(
+            BrainstormEvidenceFetch(
+                source=literature_fetch.source,
+                source_type="literature",
+                query=literature_fetch.query,
+                result_count=literature_fetch.paper_count,
+                rate_limit_seconds=literature_fetch.rate_limit_seconds,
+                cache_hit=literature_fetch.cache_hit,
+                error=literature_fetch.error,
+            )
+        )
+    for inspiration_fetch in ecosystem_report.fetches:
+        if inspiration_fetch.query.casefold() not in query_keys:
+            continue
+        fetches.append(
+            BrainstormEvidenceFetch(
+                source=inspiration_fetch.source,
+                source_type=inspiration_fetch.source_type,
+                query=inspiration_fetch.query,
+                result_count=inspiration_fetch.result_count,
+                rate_limit_seconds=inspiration_fetch.rate_limit_seconds,
+                error=inspiration_fetch.error,
+            )
+        )
+    return tuple(fetches)
+
+
+def _review_queries(
+    candidate: ResearchCandidate,
+    idea: BrainstormIdea,
+    *,
+    limit: int,
+) -> tuple[str, ...]:
+    metadata_terms = " ".join(str(value) for value in candidate.metadata.values())
+    core = _compact_query(
+        " ".join(
+            [
+                idea.title,
+                idea.hypothesis,
+                idea.novelty_angle,
+                candidate.title,
+                metadata_terms,
+            ]
+        )
+    )
+    queries = [
+        _compact_query(idea.title),
+        core,
+        _compact_query(f"{core} dataset benchmark"),
+        _compact_query(f"{core} code implementation"),
+    ]
+    return _ordered_unique(query for query in queries if len(_text_tokens(query)) >= 2)[:limit]
+
+
+def _literature_signals_for_idea(
+    *,
+    idea: BrainstormIdea,
+    queries: tuple[str, ...],
+    papers: tuple[AcademicPaper, ...],
+    limit: int,
+) -> tuple[BrainstormEvidenceSignal, ...]:
+    signals: list[BrainstormEvidenceSignal] = []
+    for paper in papers:
+        text = " ".join(filter(None, [paper.title, paper.abstract or "", paper.venue or ""]))
+        relevance = _relevance_score(_idea_review_text(idea), text)
+        if relevance < 0.08:
+            continue
+        signals.append(
+            BrainstormEvidenceSignal(
+                source=paper.source,
+                source_type="literature",
+                title=paper.title,
+                url=paper.url or (f"https://doi.org/{paper.doi}" if paper.doi else ""),
+                query=_best_query_for_text(queries, paper.title),
+                summary=_short_text(paper.abstract)
+                or "Literature metadata signal; inspect the paper before citing claims.",
+                relevance_score=relevance,
+            )
+        )
+    return tuple(
+        sorted(signals, key=lambda signal: (-signal.relevance_score, signal.title.casefold()))[:limit]
+    )
+
+
+def _ecosystem_signals_for_idea(
+    *,
+    idea: BrainstormIdea,
+    queries: tuple[str, ...],
+    items: tuple[InspirationItem, ...],
+    limit: int,
+) -> tuple[BrainstormEvidenceSignal, ...]:
+    query_keys = {query.casefold() for query in queries}
+    signals: list[BrainstormEvidenceSignal] = []
+    for item in items:
+        direct_query_match = item.query.casefold() in query_keys
+        relevance = _relevance_score(_idea_review_text(idea), f"{item.title} {item.summary}")
+        if not direct_query_match and relevance < 0.06:
+            continue
+        signals.append(
+            BrainstormEvidenceSignal(
+                source=item.source,
+                source_type=item.source_type,
+                title=item.title,
+                url=item.url,
+                query=item.query,
+                summary=item.summary,
+                relevance_score=max(relevance, 0.05 if direct_query_match else 0.0),
+            )
+        )
+    return tuple(
+        sorted(signals, key=lambda signal: (-signal.relevance_score, signal.source, signal.title))[
+            :limit
+        ]
+    )
+
+
+def _review_adjusted_selection_score(
+    idea: BrainstormIdea,
+    review: BrainstormIdeaEvidenceReview | None,
+) -> float:
+    if review is None:
+        return idea.selection_score
+    return round(_clamp(idea.selection_score + review.score_adjustment, 0.0, 1.0), 3)
+
+
+def _duplicate_score(*, idea: BrainstormIdea, papers: tuple[AcademicPaper, ...]) -> float:
+    if not papers:
+        return 0.0
+    idea_text = _idea_review_text(idea)
+    scores = []
+    for paper in papers:
+        title_similarity = _sequence_similarity(idea.title, paper.title)
+        title_overlap = _token_overlap(idea.title, paper.title)
+        abstract_overlap = _token_overlap(idea_text, paper.abstract or "")
+        scores.append(max(title_similarity, 0.75 * title_overlap + 0.25 * abstract_overlap))
+    return round(max(scores), 3)
+
+
+def _duplicate_risk(*, score: float, config: BrainstormEvidenceReviewConfig) -> str:
+    if score >= config.high_duplicate_overlap:
+        return "high"
+    if score >= config.medium_duplicate_overlap:
+        return "medium"
+    return "low"
+
+
+def _idea_capability_profile(
+    *,
+    candidate: ResearchCandidate,
+    idea: BrainstormIdea,
+) -> dict[str, bool]:
+    text = _idea_review_text(idea, candidate=candidate)
+    metadata_text = " ".join(str(value) for value in candidate.metadata.values()).casefold()
+    combined = f"{text} {metadata_text}"
+    return {
+        "data": _contains_any(
+            combined,
+            (
+                "data",
+                "dataset",
+                "benchmark",
+                "corpus",
+                "uci",
+                "huggingface",
+                "source",
+                "logs",
+                "records",
+            ),
+        ),
+        "baseline": _contains_any(
+            combined,
+            ("baseline", "control", "compare", "comparison", "ablation", "rerun"),
+        ),
+        "metric": _contains_any(
+            combined,
+            (
+                "metric",
+                "accuracy",
+                "f1",
+                "auc",
+                "precision",
+                "recall",
+                "latency",
+                "cost",
+                "score",
+                "delta",
+                "error",
+            ),
+        ),
+        "falsification": _contains_any(
+            combined,
+            ("falsify", "falsification", "fail if", "if no", "does not", "negative", "reject"),
+        ),
+    }
+
+
+def _doability_from_capability(
+    *,
+    capability: Mapping[str, bool],
+    dataset_count: int,
+    code_count: int,
+) -> str:
+    required_hits = sum(1 for key in ("data", "baseline", "metric", "falsification") if capability[key])
+    if all(capability[key] for key in ("data", "baseline", "metric", "falsification")):
+        return "strong"
+    if required_hits >= 3 and (dataset_count or code_count):
+        return "strong"
+    if required_hits >= 3:
+        return "moderate"
+    if required_hits >= 2 and capability["metric"]:
+        return "moderate"
+    return "blocked"
+
+
+def _verifiability_from_capability(
+    *,
+    capability: Mapping[str, bool],
+    total_signal_count: int,
+) -> str:
+    if capability["data"] and capability["metric"] and capability["falsification"]:
+        return "strong"
+    if capability["baseline"] and capability["metric"]:
+        return "moderate"
+    if total_signal_count > 0 and capability["metric"]:
+        return "moderate"
+    return "weak"
+
+
+def _review_decision(
+    *,
+    duplicate_risk: str,
+    doability: str,
+    verifiability: str,
+    total_signal_count: int,
+    dataset_count: int,
+    code_count: int,
+    config: BrainstormEvidenceReviewConfig,
+) -> str:
+    if duplicate_risk == "high" or doability == "blocked":
+        return "defer"
+    if duplicate_risk == "medium" or verifiability == "weak":
+        return "revise"
+    if total_signal_count < config.min_total_evidence:
+        return "revise"
+    if config.require_dataset_or_code_for_promote and not (dataset_count or code_count):
+        return "revise"
+    return "promote"
+
+
+def _review_score_adjustment(
+    *,
+    duplicate_risk: str,
+    doability: str,
+    verifiability: str,
+    total_signal_count: int,
+    dataset_count: int,
+    code_count: int,
+) -> float:
+    duplicate_delta = {"low": 0.06, "medium": -0.16, "high": -0.48}[duplicate_risk]
+    doability_delta = {"strong": 0.14, "moderate": 0.04, "blocked": -0.34}[doability]
+    verifiability_delta = {"strong": 0.10, "moderate": 0.03, "weak": -0.12}[verifiability]
+    source_delta = min(total_signal_count, 4) * 0.015 + min(dataset_count + code_count, 2) * 0.025
+    return round(duplicate_delta + doability_delta + verifiability_delta + source_delta, 3)
+
+
+def _review_reason(
+    *,
+    duplicate_score: float,
+    duplicate_risk: str,
+    doability: str,
+    verifiability: str,
+    capability: Mapping[str, bool],
+    total_signal_count: int,
+    dataset_count: int,
+    code_count: int,
+    fetch_count: int,
+) -> str:
+    capability_text = ", ".join(key for key, value in capability.items() if value) or "none"
+    return (
+        f"Duplicate risk is {duplicate_risk} from literature similarity score "
+        f"{duplicate_score:.3f}; doability is {doability} from self-contained plan checks "
+        f"({capability_text}); verifiability is {verifiability}. Retrieved {total_signal_count} "
+        f"screening signals from {fetch_count} source fetches, including {dataset_count} "
+        f"dataset and {code_count} code signals. "
+        "Absence of a close prior-work match is treated as novelty potential, not a feasibility failure."
+    )
 
 
 def _synthesize_brainstorm(
     *,
     ideas: tuple[BrainstormIdea, ...],
     selected: tuple[BrainstormIdea, ...],
+    evidence_reviews: tuple[BrainstormIdeaEvidenceReview, ...] = (),
 ) -> str:
     if not ideas:
         return "No brainstorm ideas were parsed; keep the inspiration search result as input only."
     selected_titles = "; ".join(idea.title for idea in selected) or "none selected"
+    review_text = (
+        f" The evidence reviewer screened {len(evidence_reviews)} ideas against live "
+        "literature, dataset, code, and community signals."
+        if evidence_reviews
+        else ""
+    )
     return (
         f"Recorded {len(ideas)} temporary-miniagent ideas and selected {len(selected)} "
         f"for research-plan consideration: {selected_titles}. Selection favors high "
         "creativity, feasible first experiments, explicit inspiration refs, and a documented "
-        "selection argument. These ideas "
+        f"selection argument.{review_text} These ideas "
         "remain hypotheses until literature, similarity, experiment, and reproduction evidence support them."
     )
 
@@ -504,6 +1164,7 @@ def _write_brainstorm_report(
         ideas=report.ideas,
         selected_ideas=report.selected_ideas,
         synthesis=report.synthesis,
+        evidence_reviews=report.evidence_reviews,
         artifact_path=artifact_path,
         prompt_set_path=prompt_set_path,
         summary_path=None,
@@ -527,6 +1188,7 @@ def _write_brainstorm_report(
         ideas=updated.ideas,
         selected_ideas=updated.selected_ideas,
         synthesis=updated.synthesis,
+        evidence_reviews=updated.evidence_reviews,
         artifact_path=artifact_path,
         prompt_set_path=prompt_set_path,
         summary_path=summary_path,
@@ -589,9 +1251,12 @@ def _write_brainstorm_summary(
         entry_type=KnowledgeEntryType.EVIDENCE_NOTE,
         zone=KnowledgeZone.EXPLORATION,
         title=f"Brainstorm ideas for {candidate.title}",
-        tags=["brainstorm", "temporary-miniagent", "inspiration", "research-ideas"],
+        tags=["brainstorm", "temporary-miniagent", "inspiration", "research-ideas", "evidence-review"],
         keywords=[candidate.title, *inspiration_report.queries],
-        source_refs=[item.url for item in inspiration_report.items],
+        source_refs=[
+            *[item.url for item in inspiration_report.items],
+            *[signal.url for review in report.evidence_reviews for signal in review.signals],
+        ],
         body=_brainstorm_summary_body(
             candidate=candidate,
             inspiration_report=inspiration_report,
@@ -630,6 +1295,35 @@ def _brainstorm_summary_body(
         lines.append(f"- [{item.title}]({item.url}) - `{item.source_type}` `{item.source}`")
     if not inspiration_report.items:
         lines.append("- No inspiration items were available; ideas must be treated as weakly grounded.")
+    lines.extend(["", "## Evidence Reviewer", ""])
+    if report.evidence_reviews:
+        lines.append(
+            "Second-stage reviewer results use live retrieval metadata to down-rank duplicate, "
+            "unverifiable, or hard-to-execute ideas. These records are screening evidence, not results."
+        )
+        lines.append("")
+        for review in report.evidence_reviews:
+            lines.append(
+                f"- `{review.idea_id}` decision `{review.decision}`; duplicate risk "
+                f"`{review.duplicate_risk}`; verifiability `{review.verifiability}`; "
+                f"doability `{review.doability}`; score adjustment `{review.score_adjustment:+.3f}`."
+            )
+            lines.append(f"  - Reason: {review.reason}")
+            for fetch in review.fetches:
+                error = f", error `{fetch.error}`" if fetch.error else ""
+                cache = "" if fetch.cache_hit is None else f", cache_hit `{fetch.cache_hit}`"
+                lines.append(
+                    f"  - Fetch `{fetch.source}` `{fetch.source_type}` query `{fetch.query}` -> "
+                    f"`{fetch.result_count}` results{cache}{error}."
+                )
+            for signal in review.signals[:5]:
+                lines.append(
+                    f"  - [{signal.title}]({signal.url}) - `{signal.source_type}` "
+                    f"`{signal.source}`, relevance `{signal.relevance_score:.3f}`, "
+                    f"query `{signal.query}`."
+                )
+    else:
+        lines.append("- Evidence reviewer was not enabled for this brainstorm run.")
     lines.extend(["", "## Selected Ideas", ""])
     for idea in report.selected_ideas:
         lines.extend(_idea_lines(idea))
@@ -689,6 +1383,7 @@ def _screening_reason(
     *,
     selected: bool,
     selection_count: int,
+    review: BrainstormIdeaEvidenceReview | None = None,
 ) -> str:
     strengths: list[str] = []
     caveats: list[str] = []
@@ -704,21 +1399,128 @@ def _screening_reason(
         strengths.append("explicit inspiration binding")
     elif idea.evidence_binding_score < 0.50:
         caveats.append("weak or missing inspiration refs")
+    if review is not None:
+        if review.decision == "promote":
+            strengths.append("evidence reviewer promoted")
+        elif review.decision == "revise":
+            caveats.append("evidence reviewer requested revision")
+        else:
+            caveats.append("evidence reviewer deferred")
     action = "Selected" if selected else "Deferred"
     basis = ", ".join(strengths) if strengths else "balanced but not dominant scores"
     risk_text = "; ".join(idea.risks[:2]) if idea.risks else "risk analysis pending"
+    review_text = ""
+    if review is not None:
+        review_text = (
+            f" Evidence review: decision `{review.decision}`, duplicate risk "
+            f"`{review.duplicate_risk}`, doability `{review.doability}`, "
+            f"verifiability `{review.verifiability}`; {review.reason}"
+        )
     if selected:
         return (
             f"{action} within top {selection_count} by score {idea.selection_score:.3f}: "
             f"{basis}. First falsification path: {idea.experiment_sketch[:220]}. "
-            f"Risks to check: {risk_text}."
+            f"Risks to check: {risk_text}.{review_text}"
         )
     caveat_text = ", ".join(caveats) if caveats else "ranked below selected ideas"
     return (
         f"{action} for now with score {idea.selection_score:.3f}: {caveat_text}. "
         f"Keep as future inspiration if new evidence or a cheaper dataset path appears. "
-        f"Risks to check: {risk_text}."
+        f"Risks to check: {risk_text}.{review_text}"
     )
+
+
+def _idea_review_text(idea: BrainstormIdea, *, candidate: ResearchCandidate | None = None) -> str:
+    parts = [
+        idea.title,
+        idea.hypothesis,
+        idea.rationale,
+        idea.novelty_angle,
+        idea.experiment_sketch,
+        " ".join(idea.risks),
+    ]
+    if candidate is not None:
+        parts.extend(
+            [
+                candidate.title,
+                candidate.description,
+                candidate.research_gap,
+                " ".join(str(value) for value in candidate.metadata.values()),
+            ]
+        )
+    return " ".join(part for part in parts if part)
+
+
+def _compact_query(value: str, *, max_terms: int = 9) -> str:
+    tokens = _text_tokens(value)
+    return " ".join(tokens[:max_terms])
+
+
+def _text_tokens(value: str) -> list[str]:
+    normalized = re.sub(r"[^a-zA-Z0-9]+", " ", value.casefold())
+    stopwords = {
+        "and",
+        "are",
+        "can",
+        "for",
+        "from",
+        "into",
+        "the",
+        "this",
+        "that",
+        "with",
+        "using",
+    }
+    return [
+        token
+        for token in normalized.split()
+        if len(token) > 2 and token not in stopwords
+    ]
+
+
+def _ordered_unique(values: Iterable[str]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        cleaned = " ".join(str(value).split()).strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            result.append(cleaned)
+    return tuple(result)
+
+
+def _best_query_for_text(queries: tuple[str, ...], text: str) -> str:
+    if not queries:
+        return ""
+    return max(queries, key=lambda query: _token_overlap(query, text))
+
+
+def _relevance_score(left: str, right: str) -> float:
+    token_score = _token_overlap(left, right)
+    sequence_score = _sequence_similarity(left[:280], right[:280])
+    return round(max(token_score, sequence_score * 0.35), 3)
+
+
+def _token_overlap(left: str, right: str) -> float:
+    left_tokens = set(_text_tokens(left))
+    right_tokens = set(_text_tokens(right))
+    if not left_tokens or not right_tokens:
+        return 0.0
+    denominator = min(len(left_tokens), len(right_tokens))
+    return round(len(left_tokens & right_tokens) / denominator, 3)
+
+
+def _sequence_similarity(left: str, right: str) -> float:
+    left_clean = " ".join(_text_tokens(left))
+    right_clean = " ".join(_text_tokens(right))
+    if not left_clean or not right_clean:
+        return 0.0
+    return round(SequenceMatcher(None, left_clean, right_clean).ratio(), 3)
+
+
+def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in terms)
 
 
 def _number_score(value: object, *, default: float) -> float:

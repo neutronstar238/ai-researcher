@@ -40,6 +40,54 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-009 - PowerShell staging command used unsupported `&&` separator
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:58:00 +08:00
+- Source: Git staging step for task `252.1`.
+- Symptom: A combined staging/status command failed in PowerShell because `&&` is not accepted as a statement separator in this shell version.
+- Impact: No files were staged by the failed command; the task was not committed until staging was rerun with separate commands.
+- Evidence: `git add ... && git status --short` failed with `The token '&&' is not a valid statement separator in this version.`
+- Root cause: Used a shell separator that is valid in newer shells but not in this PowerShell environment.
+- Workaround: Run `git add` and `git status --short` as separate commands.
+- Next action: Keep git staging/status commands separate in this repository's PowerShell sessions.
+- Linked tasks: `252.1`
+- Resolution: Reran `git add` separately and verified staged status with a separate `git status --short`.
+- Verification: `git status --short` showed all 11 task files staged.
+
+### P-20260624-008 - Task 252 verification exposed test and typing compatibility issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:55:00 +08:00
+- Source: Focused and broad verification for task `252.1`.
+- Symptom: The first focused ruff pass reported unsorted imports in `tests/unit/research/test_brainstorm.py`; a focused mypy pass later reported incompatible reuse of a `fetch` loop variable in `src/autoresearch/research/brainstorm.py`; the first broad smoke/unit pytest run failed two CLI autopilot tests because their fake brainstorm reports did not expose the new `evidence_reviews` attribute.
+- Impact: Product code was not released with the issues, but task verification could not pass until the test/typing/compatibility gaps were fixed.
+- Evidence: `python -m ruff check ...` reported `I001`; `python -m mypy ...` reported incompatible assignment and missing `source_type`/`result_count` attributes; `python -m pytest tests\smoke tests\unit -q` first reported two `AttributeError("'types.SimpleNamespace' object has no attribute 'evidence_reviews'")` failures.
+- Root cause: New reviewer fields changed report shape, and one helper reused a loop variable name across different fetch record types.
+- Workaround: None needed after import ordering, distinct `literature_fetch`/`inspiration_fetch` variables, and `getattr(..., 'evidence_reviews', ())` compatibility in CLI heartbeat output.
+- Next action: Keep broad CLI tests when extending report dataclasses because older fake reports intentionally exercise compatibility paths.
+- Linked tasks: `252.1`
+- Resolution: Fixed import order, typed fetch variable names, and compatibility reads for legacy fake reports.
+- Verification: Focused ruff/mypy/pytest passed after fixes; broad `python -m pytest tests\smoke tests\unit -q` passed with 637 passed and 4 skipped.
+
+### P-20260624-007 - Brainstorm live reviewer hit ArXiv 429 during real source fetch
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-06-24 10:49:00 +08:00
+- Source: Real provider-backed `brainstorm --evidence-review` smoke for task `252.1`.
+- Symptom: The live brainstorm reviewer completed successfully, but both ArXiv fetch attempts in the idea-level evidence review returned `HTTPError: HTTP Error 429: Unknown Error`.
+- Impact: The reviewer still wrote source fetch evidence and continued through OpenAlex, Hugging Face, GitHub, and Hacker News. The affected run should not be interpreted as exhaustive ArXiv coverage.
+- Evidence: `runs/manual-live/task252-brainstorm-reviewer-live2/brainstorm/brainstorm-ideas.json` records ArXiv fetch errors for queries `variance calibrated prototypes deduplicated handwritten digit data` and `variance calibrated prototypes deduplicated handwritten digit data removing near`, while OpenAlex and ecosystem sources returned normally.
+- Root cause: External ArXiv rate limiting during a real live smoke; the current reviewer records the error but does not yet apply a dedicated ArXiv circuit breaker.
+- Workaround: Reviewer fetch records are persisted per idea so later stages can see the partial source coverage. OpenAlex remains the primary free literature source when ArXiv is rate-limited.
+- Next action: Add source-specific backoff/circuit-breaker behavior for brainstorm reviewer literature fetches if ArXiv 429s recur across cycles.
+- Linked tasks: `252.1`
+- Resolution: Not resolved; evidence recording mitigates over-claiming.
+- Verification: The live smoke exited 0 and wrote one `evidence_reviews` entry with 10 source fetch records, including the ArXiv 429 errors.
+
 ### P-20260624-006 - Brainstorm rationale focused test used stale fake-runner parameter names
 
 - Status: Resolved

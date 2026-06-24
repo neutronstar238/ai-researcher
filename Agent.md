@@ -10428,3 +10428,42 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - A later task can add an evidence-bound reviewer pass that down-ranks brainstorm ideas against live scholarly/source evidence, but the creative high-temperature pass should remain separated from evidence validation.
+
+### 2026-06-24 10:55:53 +08:00 - Codex - Task 252.1 Evidence-backed second-stage brainstorm reviewer
+
+- Request: Connect the second-stage brainstorm reviewer to real literature/code/dataset evidence so high-temperature ideas are not only divergent, but also screened for duplicate, unverifiable, or infeasible proposals. User clarified that doability should primarily be judged from the idea itself, while matching is mainly for duplicate-risk checks.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/inspiration.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `tests/unit/test_inspiration.py`
+- Summary:
+  - Added `GitHubRepositorySearchClient` as a `code_signal` source for public repository feasibility/ecosystem checks.
+  - Added brainstorm evidence-review models for source signals, source fetch attempts, per-idea duplicate risk, doability, verifiability, decisions, score adjustments, and reasons.
+  - Added `run_brainstorm_evidence_review`, which queries live ArXiv/OpenAlex plus Hugging Face/GitHub/Hacker News, records fetches even when results are empty or rate-limited, and adjusts brainstorm selection after raw high-temperature ideas are preserved.
+  - Kept duplicate-risk matching separate from doability: high same-direction literature similarity defers an idea, while missing close prior work is treated as novelty potential rather than a feasibility failure.
+  - Made CLI and autopilot run the live evidence reviewer by default, with `--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source`, and `--evidence-cache` controls.
+  - Expanded Obsidian brainstorm notes and JSON artifacts with an Evidence Reviewer section, source fetches, signals, decisions, and selected/deferred reasons.
+  - Updated README/README.zh-CN and task docs to describe the second-stage reviewer and its evidence boundary.
+- Verification performed:
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\test_inspiration.py tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts -q`: passed with 10 tests.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py src\autoresearch\inspiration.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py tests\unit\research\test_brainstorm.py tests\unit\test_inspiration.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py src\autoresearch\inspiration.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py`: passed.
+  - Real provider-backed live smoke `node .\bin\airesearcher.mjs brainstorm --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --inspiration-report runs\manual-live\task248-novelty-breadth-live\inspiration-broad.json --vault runs\manual-live\task252-brainstorm-reviewer-live2\vault --output-dir runs\manual-live\task252-brainstorm-reviewer-live2\brainstorm --env-path .env --miniagents 1 --ideas-per-agent 1 --temperature 1.35 --timeout-seconds 180 --evidence-review --review-results-per-source 1`: passed, selected 1 idea, wrote 1 evidence review, and recorded 10 source fetches. ArXiv returned 429 for both reviewer queries; OpenAlex/Hugging Face/GitHub/Hacker News fetches completed and returned 0 results.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 637 passed and 4 skipped.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems added or updated:
+  - Added `P-20260624-007` for ArXiv 429 during the real brainstorm reviewer smoke; status `Mitigated`.
+  - Added `P-20260624-008` for resolved task-252 verification issues: import ordering, mypy fetch variable reuse, and legacy fake-report compatibility.
+  - Added `P-20260624-009` for the resolved PowerShell `&&` staging command issue.
+- Follow-up work:
+  - Add a source-specific ArXiv backoff/circuit breaker in brainstorm reviewer literature fetches if 429s recur across cycles.
+  - Consider reviewer query diversification for dataset/code discovery so creative ideas with adjacent-source inspiration can find implementation/data support without requiring same-direction prior work.

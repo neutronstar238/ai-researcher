@@ -3073,6 +3073,17 @@ A task can be checked only when all applicable items are true:
     - _References: task `249.1`; user request that inspiration data should drive multiple high-creativity temporary miniagents, then record, integrate, justify, and filter feasible creative ideas._
     - _Verify: focused brainstorm/plan/autopilot tests, focused ruff, focused mypy, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 252. Evidence-backed second-stage brainstorm reviewer
+  - [x] 252.1 Connect brainstorm selection to live literature, code, dataset, and community signals
+    - Preserve high-temperature miniagent output as the creative first stage; do not suppress raw ideas before they are recorded.
+    - Add a second-stage reviewer that queries live scholarly and ecosystem sources, writes per-idea screening evidence, and adjusts selection scores before research-plan handoff.
+    - Treat duplicate risk as a same-direction similarity problem against retrieved literature; high-similarity matches defer an idea, while missing close matches are recorded as novelty potential rather than feasibility failure.
+    - Judge doability primarily from the idea's own executable plan structure: named data/source, baseline, metric, and falsification check. Dataset and code search signals may support feasibility but are not required proof that the idea can work.
+    - Persist reviewer decisions, signals, queries, duplicate risk, doability, verifiability, and score adjustments in `brainstorm-ideas.json` and the Obsidian brainstorm note.
+    - Keep reviewer evidence as screening metadata only: it cannot prove benchmark results, novelty, publication readiness, or citation validity.
+    - _References: tasks `248.1`, `249.1`, `251.1`; user request to connect brainstorm review to real literature/code/dataset evidence while preserving creative novelty and using similarity matching only for duplicate-risk checks._
+    - _Verify: focused brainstorm/inspiration/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke with live evidence review, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline

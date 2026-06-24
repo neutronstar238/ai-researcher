@@ -451,7 +451,7 @@ The text after a slash command is passed into that template as `{{args}}`.
 | `/research:autopilot` | optional notes | Starts the daily autonomous loop with evidence gates. |
 | `/research:refresh-literature` | optional topic | Runs real ArXiv/OpenAlex literature refresh. |
 | `/research:inspiration-refresh` | query text | Searches broad inspiration sources and can push a digest. |
-| `/research:brainstorm` | candidate + inspiration report | Runs temporary high-temperature miniagents, records raw ideas, then selects feasible creative hypotheses. |
+| `/research:brainstorm` | candidate + inspiration report | Runs temporary high-temperature miniagents, records raw ideas, then applies a live evidence reviewer for duplicate risk, doability, and verifiability. |
 | `/research:similarity-check` | candidate context | Cross-checks a candidate against adjacent online work and writes the novelty breadth matrix. |
 | `/research:research-plan` | candidate JSON + project id | Writes the post-direction research plan to Obsidian and `outputs/`. |
 | `/research:run-demo` | demo id | Runs a local demo or public benchmark. |
@@ -506,9 +506,9 @@ Common npm shortcuts:
 | `serve` / `autopilot` | `--push-inspiration` | Send the broad-inspiration digest to setup-configured operator channels. |
 | `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | Search breadth for literature, similarity, and novelty-breadth artifacts. Lower only for smoke runs. |
 | `serve` / `autopilot` | automatic novelty-breadth stage | Runs broad inspiration refresh before research planning, then records query/source/finding breadth in `cycle-summary.json` and the cycle artifact directory. |
-| `serve` / `autopilot` | automatic brainstorm stage | Runs temporary creative miniagents after inspiration refresh and before research planning; raw ideas, selected ideas, deferred-idea rationales, and the prompt set are written as artifacts and Obsidian notes. |
+| `serve` / `autopilot` | automatic brainstorm stage | Runs temporary creative miniagents after inspiration refresh and before research planning; raw ideas are preserved, then a live reviewer screens duplicate risk against literature while judging doability from the idea's own dataset/baseline/metric/falsification plan. |
 | `similarity-check` | `--max-queries`, `--max-results-per-source` | Controls project-start novelty search breadth; outputs Obsidian Markdown plus `*_novelty_breadth.json`. |
-| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature` | Uses the configured provider-agnostic LLM endpoint to generate high-divergence hypotheses, then records selection and deferred rationales. `--max-tokens` is intentionally not set by default. |
+| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | Uses the configured provider-agnostic LLM endpoint to generate high-divergence hypotheses, then reviews them with live ArXiv/OpenAlex plus GitHub/Hugging Face/Hacker News signals. Missing close prior work is treated as novelty potential, not a feasibility failure. `--max-tokens` is intentionally not set by default. |
 | `research-plan` | `--brainstorm-summary` | Adds the brainstorm synthesis note to the evidence context for the execution-ready plan. |
 | `serve` / `autopilot` | `--max-tokens` | Optional LLM reviewer cap. Omitted by default for long-context models. |
 | `serve` / `autopilot` | `--heartbeat-state` | Override the automatically written runtime heartbeat state path. |
