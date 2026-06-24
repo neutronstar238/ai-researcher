@@ -3845,11 +3845,13 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     call_order: list[str] = []
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["inspiration"]
         call_order.append("research_plan")
         assert kwargs["project_id"] == "project_1"
         assert kwargs["vault_root"] == tmp_path / "vault"
         assert Path(kwargs["similarity_summary"]) == similarity_summary
         assert Path(kwargs["literature_summary"]) == literature_summary
+        assert Path(kwargs["inspiration_summary"]) == inspiration_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -3885,7 +3887,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
-        assert call_order == ["research_plan"]
+        assert call_order == []
+        call_order.append("inspiration")
         config = kwargs["config"]
         queries = tuple(kwargs["queries"])
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
@@ -3918,7 +3921,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_demo(**kwargs: object) -> SimpleNamespace:
-        assert call_order == ["research_plan"]
+        assert call_order == ["inspiration", "research_plan"]
         assert kwargs["demo"] == default_demo
         assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
@@ -4846,8 +4849,9 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
 ) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, project_similarity):
+    for path in (literature_summary, similarity_summary, inspiration_summary, project_similarity):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -4887,6 +4891,7 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
         )
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        assert Path(kwargs["inspiration_summary"]) == inspiration_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -4916,6 +4921,34 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
             to_dict=lambda: payload,
         )
 
+    def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
+        queries = tuple(kwargs["queries"])
+        return InspirationRefreshReport(
+            queries=queries[:1],
+            fetches=(
+                InspirationFetchRecord(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    query=queries[0] if queries else "research",
+                    result_count=1,
+                    rate_limit_seconds=1.0,
+                ),
+            ),
+            items=(
+                InspirationItem(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    title="Research workflow discussion",
+                    url="https://news.ycombinator.com/item?id=123",
+                    query=queries[0] if queries else "research",
+                    summary="Community signal only.",
+                    score=1.0,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+            ),
+            summary_path=inspiration_summary,
+        )
+
     def fail_if_called(**_kwargs: object) -> object:
         raise AssertionError("research-plan-blocked cycle should not run later stages")
 
@@ -4924,7 +4957,7 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", lambda **_kwargs: project_similarity)
     monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
-    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
     monkeypatch.setattr(cli_main, "compose_publication_manuscript", fail_if_called)
 
@@ -4958,8 +4991,9 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     assert payload["blocked_reason"] == "research_plan_gate"
     assert payload["research_plan"]["audit"]["passed"] is False
     assert payload["research_plan"]["compile_status"] == "skipped_quality_gate"
+    assert payload["inspiration"]["item_count"] == 1
+    assert payload["novelty_breadth"]["status"] in {"thin", "expanding", "broad_enough"}
     assert payload["review"]["status"] == "skipped_research_plan_gate"
-    assert "inspiration" not in payload
     assert "demo" not in payload
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 

@@ -3032,6 +3032,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `235.1`, `236.1`, `237.1`, and `246.1`; user request to assign custom skills and MCPs to specific Agents while keeping AI reasoning scientific and evidence-first._
     - _Verify: focused Agent profile/API and autopilot artifact tests, focused ruff, focused mypy, real CLI autopilot assignment-manifest smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 248. Innovation search breadth
+  - [x] 248.1 Record source/query/finding breadth before research planning
+    - Add a `novelty_breadth` matrix to project-start `similarity-check` outputs so every candidate records query families, source-type coverage, classified adjacent-work coverage, ecosystem-signal coverage, and duplicate-scan coverage before a research plan is written.
+    - Keep broad-source signals separate from scholarly novelty evidence: ArXiv/OpenAlex/Semantic Scholar-style sources count as scholarly evidence, while Hacker News, Hugging Face, GitHub, news, and forum signals are inspiration/context until later verified.
+    - Move `inspiration-refresh` before `research-plan` in the autonomous loop and pass its source-backed summary into plan generation, so research plans see both scholarly adjacent work and broader ecosystem signals.
+    - Persist machine-readable novelty breadth JSON beside the Obsidian similarity note and in per-cycle artifacts, and include the breadth status/score in CLI output and `cycle-summary.json`.
+    - Treat the breadth result as a trajectory signal for expanding search, not as standalone proof of novelty, publishability, code availability, or experimental truth.
+    - _References: Execution Plan section 6.5; tasks `21.3`, `64.1`, `79.1`, `95.1`, `104.1`; user request that innovation search breadth is the core priority._
+    - _Verify: focused similarity and autopilot tests, focused ruff, focused mypy, real `similarity-check` over ArXiv/OpenAlex with ArXiv 429/timeout recorded and OpenAlex findings returned, and real `inspiration-refresh` showing narrow zero-result evidence plus a broader Hacker News inspiration result._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3680,6 +3690,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 150,
       "tasks": ["247.1"]
+    },
+    {
+      "id": 151,
+      "tasks": ["248.1"]
     }
   ]
 }

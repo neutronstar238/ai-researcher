@@ -313,7 +313,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:autopilot` | 可选说明 | 启动带证据门禁的每日自循环。 |
 | `/research:refresh-literature` | 可选主题 | 联网刷新 ArXiv/OpenAlex 文献。 |
 | `/research:inspiration-refresh` | 查询文本 | 抓取非学术灵感来源并可推送摘要。 |
-| `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索。 |
+| `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索，并写出创新检索广度矩阵。 |
 | `/research:research-plan` | candidate JSON + project id | 把确认方向后的研究计划写入 Obsidian 和 `outputs/`。 |
 | `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
 | `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
@@ -365,7 +365,9 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |
-| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 检索广度。仅 smoke 时降低。 |
+| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 文献、相似工作和创新检索广度 artifact 的检索广度。仅 smoke 时降低。 |
+| `serve` / `autopilot` | 自动创新检索广度阶段 | 在研究计划前先运行广谱灵感刷新，再把 query/source/finding 广度写入 `cycle-summary.json` 和本轮 artifact 目录。 |
+| `similarity-check` | `--max-queries`, `--max-results-per-source` | 控制项目启动阶段的创新检索广度；输出 Obsidian Markdown 和 `*_novelty_breadth.json`。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
 | `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
 | `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |

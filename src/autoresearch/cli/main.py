@@ -143,9 +143,11 @@ from autoresearch.reports import (
 from autoresearch.research import (
     SimilarityCheckConfig,
     audit_research_plan,
+    evaluate_novelty_search_breadth,
     generate_research_plan,
     link_similarity_report_to_project,
     run_project_similarity_check,
+    write_novelty_search_breadth_artifact,
 )
 from autoresearch.runtime import (
     DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
@@ -4455,6 +4457,14 @@ def similarity_check(
     typer.echo(f"[OK] candidate: {candidate.id}")
     typer.echo(f"[OK] queries: {len(report.queries)}")
     typer.echo(f"[OK] findings: {len(report.findings)}")
+    novelty_breadth = getattr(report, "novelty_breadth", None)
+    if novelty_breadth is not None:
+        typer.echo(
+            "[OK] novelty_breadth: "
+            f"{novelty_breadth.status}; score={novelty_breadth.score:.3f}"
+        )
+        if getattr(novelty_breadth, "artifact_path", None):
+            typer.echo(f"[OK] novelty_breadth_json: {novelty_breadth.artifact_path}")
     if report.summary_path is not None:
         typer.echo(f"[OK] summary: {report.summary_path}")
     if project_link is not None:
@@ -6692,6 +6702,56 @@ def _run_autopilot_cycle(
         ),
     )
 
+    inspiration_report = run_inspiration_refresh(
+        vault_root=vault,
+        queries=_autopilot_inspiration_queries(candidate, demo=demo),
+        config=InspirationRefreshConfig(
+            max_queries=max_queries,
+            max_results_per_source=max_results_per_source,
+        ),
+    )
+    inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
+    if push_inspiration:
+        inspiration_pushes = send_inspiration_digest(inspiration_report)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="inspiration-refresh",
+        progress=(
+            f"items={len(getattr(inspiration_report, 'items', ()))},"
+            f"pushes={len(inspiration_pushes)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Broad inspiration refresh completed before planning; community signals remain non-scholarly evidence.",
+        artifact_refs=(getattr(inspiration_report, "summary_path", None),),
+    )
+    novelty_breadth = evaluate_novelty_search_breadth(
+        candidate=candidate,
+        similarity_report=similarity_report,
+        inspiration_report=inspiration_report,
+    )
+    novelty_breadth = write_novelty_search_breadth_artifact(
+        breadth=novelty_breadth,
+        output_dir=cycle_dir / "novelty-breadth",
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="novelty-breadth",
+        progress=(
+            f"status={novelty_breadth.status};"
+            f"score={novelty_breadth.score:.3f};"
+            f"sources={len(novelty_breadth.successful_sources)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Innovation-search breadth matrix completed before research planning.",
+        artifact_refs=(
+            getattr(similarity_report, "summary_path", None),
+            getattr(inspiration_report, "summary_path", None),
+            getattr(novelty_breadth, "artifact_path", None),
+        ),
+    )
+
     research_plan_artifact = generate_research_plan(
         candidate=candidate,
         project_id=project_id,
@@ -6700,6 +6760,7 @@ def _run_autopilot_cycle(
         compile_pdf=True,
         similarity_summary=getattr(similarity_report, "summary_path", None),
         literature_summary=getattr(literature_report, "summary_path", None),
+        inspiration_summary=getattr(inspiration_report, "summary_path", None),
         timeout_seconds=max(timeout_seconds, 60),
     )
     research_plan_payload = research_plan_artifact.to_dict()
@@ -6768,7 +6829,19 @@ def _run_autopilot_cycle(
                 "finding_count": len(getattr(similarity_report, "findings", ())),
                 "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
                 "project_path": _path_text(similarity_project_path),
+                "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
             },
+            "inspiration": {
+                "query_count": len(getattr(inspiration_report, "queries", ())),
+                "fetches": _serialise_inspiration_fetches(
+                    getattr(inspiration_report, "fetches", ())
+                ),
+                "item_count": len(getattr(inspiration_report, "items", ())),
+                "summary_path": _path_text(getattr(inspiration_report, "summary_path", None)),
+                "evidence_policy": "dataset/community/news signals only; not scholarly evidence",
+                "pushes": [record.to_json_dict() for record in inspiration_pushes],
+            },
+            "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
             "research_plan": research_plan_payload,
             "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_research_plan_gate"},
@@ -6803,30 +6876,6 @@ def _run_autopilot_cycle(
         ),
         report_path=heartbeat_report_path,
         message="Closed-loop campaign initialized and optimizer selected a candidate.",
-    )
-
-    inspiration_report = run_inspiration_refresh(
-        vault_root=vault,
-        queries=_autopilot_inspiration_queries(candidate, demo=demo),
-        config=InspirationRefreshConfig(
-            max_queries=max_queries,
-            max_results_per_source=max_results_per_source,
-        ),
-    )
-    inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
-    if push_inspiration:
-        inspiration_pushes = send_inspiration_digest(inspiration_report)
-    runtime_heartbeat = _write_cycle_runtime_heartbeat(
-        heartbeat_state=heartbeat_state,
-        cycle_id=cycle_id,
-        stage="inspiration-refresh",
-        progress=(
-            f"items={len(getattr(inspiration_report, 'items', ()))},"
-            f"pushes={len(inspiration_pushes)}"
-        ),
-        report_path=heartbeat_report_path,
-        message="Broad inspiration refresh completed; community signals remain non-scholarly evidence.",
-        artifact_refs=(getattr(inspiration_report, "summary_path", None),),
     )
 
     demo_result = run_scientistbench_demo(
@@ -6911,7 +6960,9 @@ def _run_autopilot_cycle(
             "finding_count": len(getattr(similarity_report, "findings", ())),
             "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
             "project_path": _path_text(similarity_project_path),
+            "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
         },
+        "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
         "research_plan": research_plan_payload,
         "inspiration": {
             "query_count": len(getattr(inspiration_report, "queries", ())),
@@ -8580,6 +8631,22 @@ def _serialise_inspiration_fetches(fetches: Iterable[object]) -> list[dict[str, 
         }
         for fetch in fetches
     ]
+
+
+def _serialise_novelty_breadth(breadth: object | None) -> dict[str, object] | None:
+    if breadth is None:
+        return None
+    to_json = getattr(breadth, "to_json_dict", None)
+    if callable(to_json):
+        payload = to_json()
+        if isinstance(payload, dict):
+            return payload
+    return {
+        "status": getattr(breadth, "status", "not_evaluated"),
+        "score": getattr(breadth, "score", 0.0),
+        "broad_enough": getattr(breadth, "broad_enough", False),
+        "artifact_path": _path_text(getattr(breadth, "artifact_path", None)),
+    }
 
 
 def _path_text(path: object) -> str | None:

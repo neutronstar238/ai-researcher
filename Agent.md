@@ -10284,3 +10284,39 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Assignment manifests are audit metadata only. They should feed reviewer/publication gates, but they still cannot replace MCP invocation ledgers, real literature retrieval, experiments, reproduction, citation validation, publication audit, paper build, or evidence-gate artifacts.
+
+### 2026-06-24 09:38:01 +08:00 - Codex - Task 248.1 Innovation search breadth
+
+- Request: Prioritize innovation-search breadth as the core issue, so the system expands beyond local Obsidian memory and records enough online search breadth before research planning.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/research/test_similarity.py`
+  - `Agent.md`
+- Summary:
+  - Added a `novelty_breadth` report and matrix for project-start similarity checks, covering query families, source-type coverage, classified adjacent-work coverage, ecosystem signal coverage, vault context coverage, and duplicate-scan coverage.
+  - `similarity-check` now prints the novelty breadth status and writes a machine-readable `*_novelty_breadth.json` artifact beside the Obsidian Markdown similarity note.
+  - Moved autonomous `inspiration-refresh` before `research-plan`, passes its summary into research plan generation, and records the novelty breadth report in `cycle-summary.json`.
+  - Kept source classes explicit: scholarly sources can support novelty search evidence, while Hacker News/Hugging Face/GitHub-style sources are broad inspiration or ecosystem signals until later verified.
+  - Updated README/README.zh-CN and added task `248.1` plus dependency wave `151` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\research\test_similarity.py tests\unit\cli\test_main.py::test_similarity_check_command_loads_candidate_and_links_project tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 17 tests.
+  - Focused `python -m ruff check src\autoresearch\research\similarity.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py tests\unit\research\test_similarity.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\similarity.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Real `node .\bin\airesearcher.mjs similarity-check --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --vault runs\manual-live\task248-novelty-breadth-live\vault --cache runs\manual-live\task248-novelty-breadth-live\cache --max-queries 4 --max-results-per-source 3 --env-path .env`: completed against live sources; ArXiv 429/timeout errors were recorded, OpenAlex returned findings, 12 findings were written, and novelty breadth reported `broad_enough` with score `0.900`.
+  - Real narrow `inspiration-refresh` for `UCI Pendigits prototype classifier dataset`: exited nonzero with no items after recording zero Hugging Face/Hacker News results.
+  - Real broader `inspiration-refresh` for `machine learning benchmark dataset`: passed, recorded zero Hugging Face results and one deduplicated Hacker News inspiration item, `Show HN: SemHash - Fast Semantic Text Deduplication for Cleaner Datasets`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 630 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Add more opt-in broad sources such as GitHub code search, Papers with Code, curated news/RSS, and dataset registries, but keep each source's evidence class separate so ecosystem inspiration cannot masquerade as scholarly novelty proof.

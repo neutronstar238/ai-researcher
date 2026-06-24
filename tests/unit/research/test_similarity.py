@@ -1,9 +1,15 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 import autoresearch.research.similarity as similarity_module
+from autoresearch.inspiration import (
+    InspirationFetchRecord,
+    InspirationItem,
+    InspirationRefreshReport,
+)
 from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
@@ -15,6 +21,7 @@ from autoresearch.research import (
     SimilarityCheckConfig,
     SimilarityFinding,
     UnsupportedSimilarityClaimError,
+    evaluate_novelty_search_breadth,
     generate_similarity_queries,
     run_project_similarity_check,
     validate_similarity_findings,
@@ -430,6 +437,125 @@ def test_project_similarity_classifies_query_backed_method_family_overlap(
         for finding in report.findings
     )
     assert len([finding for finding in report.findings if finding.classification != "unknown"]) == 3
+
+
+def test_project_similarity_writes_novelty_breadth_matrix(tmp_path: Path) -> None:
+    candidate = _pendigits_candidate()
+    prototype_paper = AcademicPaper(
+        title="Learning Prototype Classifiers for Long-Tailed Recognition",
+        abstract="Prototype classifiers compare class prototypes for recognition.",
+        url="https://example.com/prototype",
+        source="openalex",
+    )
+    centroid_paper = AcademicPaper(
+        title="Visual Recognition with Deep Nearest Centroids",
+        abstract="Nearest centroid classifiers are benchmarked for visual recognition.",
+        url="https://example.com/centroids",
+        source="openalex",
+    )
+    mahalanobis_paper = AcademicPaper(
+        title="Large Margin Nearest Neighbor Classification using Mahalanobis Distances",
+        abstract="Mahalanobis distance metric learning for nearest-neighbor classification.",
+        url="https://example.com/mahalanobis",
+        source="openalex",
+    )
+
+    report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={
+            "openalex": _QueryAwareFakeClient(
+                {
+                    "diagonal variance-calibrated prototypes": [prototype_paper],
+                    "nearest centroid": [centroid_paper],
+                    "mahalanobis": [mahalanobis_paper],
+                },
+                1.0,
+            )
+        },
+        config=SimilarityCheckConfig(max_queries=4, max_results_per_source=3),
+    )
+
+    assert report.novelty_breadth is not None
+    assert report.novelty_breadth.status == "broad_enough"
+    assert report.novelty_breadth.score >= 0.8
+    assert report.novelty_breadth.artifact_path is not None
+    payload = json.loads(report.novelty_breadth.artifact_path.read_text(encoding="utf-8"))
+    assert payload["status"] == "broad_enough"
+    assert "method_dataset_search" in payload["query_origins"]
+    assert any(
+        criterion["criterion_id"] == "baseline_query"
+        and criterion["status"] == "covered"
+        for criterion in payload["criteria"]
+    )
+    assert report.summary_path is not None
+    summary = report.summary_path.read_text(encoding="utf-8")
+    assert "## Novelty Search Breadth" in summary
+    assert "`baseline_query`" in summary
+
+
+def test_novelty_breadth_includes_inspiration_source_types(tmp_path: Path) -> None:
+    candidate = _pendigits_candidate()
+    paper = AcademicPaper(
+        title="Variance calibrated prototypes distances for Pendigits recognition",
+        abstract="Prototype classification on the Pendigits benchmark.",
+        url="https://example.com/variance",
+        source="openalex",
+    )
+    similarity_report = run_project_similarity_check(
+        candidate=candidate,
+        vault_root=tmp_path,
+        cache_root=tmp_path / ".cache" / "similarity",
+        clients={"openalex": _FakeClient([paper], 1.0)},
+        config=SimilarityCheckConfig(max_queries=4, max_results_per_source=1),
+        write_summary=False,
+    )
+    inspiration_report = InspirationRefreshReport(
+        queries=("pendigits prototype benchmark data",),
+        fetches=(
+            InspirationFetchRecord(
+                source="huggingface_datasets",
+                source_type="dataset_signal",
+                query="pendigits prototype benchmark data",
+                result_count=1,
+                rate_limit_seconds=1.0,
+            ),
+            InspirationFetchRecord(
+                source="hacker_news",
+                source_type="forum_signal",
+                query="pendigits prototype benchmark data",
+                result_count=1,
+                rate_limit_seconds=1.0,
+            ),
+        ),
+        items=(
+            InspirationItem(
+                source="huggingface_datasets",
+                source_type="dataset_signal",
+                title="example/pendigits",
+                url="https://huggingface.co/datasets/example/pendigits",
+                query="pendigits prototype benchmark data",
+                summary="Dataset signal only.",
+                score=1.0,
+                retrieved_at=datetime.now(timezone.utc),
+            ),
+        ),
+        summary_path=tmp_path / "inspiration.md",
+    )
+
+    breadth = evaluate_novelty_search_breadth(
+        candidate=candidate,
+        similarity_report=similarity_report,
+        inspiration_report=inspiration_report,
+    )
+
+    assert "dataset_signal" in breadth.successful_source_types
+    assert "forum_signal" in breadth.successful_source_types
+    ecosystem = {
+        criterion.criterion_id: criterion for criterion in breadth.criteria
+    }["ecosystem_signal_breadth"]
+    assert ecosystem.status == "covered"
 
 
 def test_project_similarity_classifies_skin_color_family_without_broad_skin_color_overlap(

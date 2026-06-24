@@ -23,17 +23,21 @@ from .plans import (
     render_research_plan_tex,
 )
 from .similarity import (
+    NoveltyBreadthCriterion,
+    NoveltySearchBreadthReport,
     ProjectSimilarityReport,
     SimilarityCheckConfig,
     SimilarityFetchRecord,
     SimilarityFinding,
     SimilarityQuery,
     UnsupportedSimilarityClaimError,
+    evaluate_novelty_search_breadth,
     generate_similarity_queries,
     link_similarity_report_to_project,
     run_project_similarity_check,
     validate_similarity_findings,
     validate_similarity_report_for_candidate,
+    write_novelty_search_breadth_artifact,
 )
 
 __all__ = [
@@ -42,6 +46,8 @@ __all__ = [
     "CandidateLifecycleError",
     "CandidateVaultLinks",
     "HypothesisGenerationConfig",
+    "NoveltyBreadthCriterion",
+    "NoveltySearchBreadthReport",
     "ProjectAgentContext",
     "ProjectSimilarityReport",
     "ResearchPlanArtifact",
@@ -57,6 +63,7 @@ __all__ = [
     "create_project_from_approved_candidate",
     "audit_research_plan",
     "compile_research_plan_pdf",
+    "evaluate_novelty_search_breadth",
     "generate_research_plan",
     "generate_similarity_queries",
     "generate_hypotheses",
@@ -69,4 +76,5 @@ __all__ = [
     "transition_candidate_status",
     "validate_similarity_findings",
     "validate_similarity_report_for_candidate",
+    "write_novelty_search_breadth_artifact",
 ]
