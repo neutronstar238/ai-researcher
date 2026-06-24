@@ -3084,6 +3084,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `248.1`, `249.1`, `251.1`; user request to connect brainstorm review to real literature/code/dataset evidence while preserving creative novelty and using similarity matching only for duplicate-risk checks._
     - _Verify: focused brainstorm/inspiration/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke with live evidence review, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 253. Runtime routing for per-Agent custom skill/MCP imports
+  - [x] 253.1 Add skill/MCP routing queries to the Agent runtime and registry
+    - Expose bound skill IDs, MCP server IDs, and scoped MCP tool refs from each runtime Agent profile.
+    - Add registry queries that can find the exact Agent assigned to a custom skill, MCP server, or MCP tool.
+    - Keep custom skill `allowed_tasks` as routing metadata only; it must not bypass `BaseAgent.run_task` capability checks.
+    - Write runtime capability metadata into Agent runtime context with an explicit process-metadata evidence boundary.
+    - Keep this layer focused on scientific responsibility routing for stage schedulers, not on claiming scientific results, novelty, metrics, citation validity, tool invocation, or publication readiness.
+    - _References: tasks `230.1`, `238.1`, `239.1`, `250.1`; user request to specify custom skills and MCP imports for a particular Agent while keeping the system research-first._
+    - _Verify: focused Agent profile tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3748,6 +3758,14 @@ A task can be checked only when all applicable items are true:
     {
       "id": 154,
       "tasks": ["251.1"]
+    },
+    {
+      "id": 155,
+      "tasks": ["252.1"]
+    },
+    {
+      "id": 156,
+      "tasks": ["253.1"]
     }
   ]
 }

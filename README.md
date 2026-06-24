@@ -288,6 +288,13 @@ contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, an
 checks profile inputs only; it does not prove that an MCP tool was invoked, that external skill
 content was safe, or that a scientific claim is supported.
 
+Inside the Python runtime, an Agent with a bound profile also exposes
+`profile_runtime_capabilities`: skill IDs, MCP server IDs, and scoped MCP tool refs. The
+`AgentRegistry` can route by `find_by_skill`, `find_by_mcp_server`, or `find_by_mcp_tool`, which
+lets stage schedulers find the exact Agent that imported a custom research skill or MCP tool. This
+does not expand the Agent's executable task capabilities; `run_task` still enforces the original
+capability gate.
+
 For multi-agent deployments, run `agents profile set-validate <profiles...>` before `serve` or
 `autopilot`. It builds a stage coverage matrix for the CCF-B/Q2 research loop, checks each
 profile's readiness report, blocks missing literature/plan/experiment/reproduction/citation/review

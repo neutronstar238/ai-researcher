@@ -68,6 +68,50 @@ class AgentRegistry:
             if agent.has_capability(capability)
         ]
 
+    def find_by_skill(
+        self,
+        skill_id: str,
+        *,
+        task_type: str | None = None,
+        role: AgentRole | None = None,
+    ) -> AgentList:
+        """Return agents whose profile binds a custom skill."""
+
+        return [
+            agent
+            for agent in self.list(role=role)
+            if agent.supports_skill(skill_id, task_type=task_type)
+        ]
+
+    def find_by_mcp_server(
+        self,
+        server_id: str,
+        *,
+        role: AgentRole | None = None,
+    ) -> AgentList:
+        """Return agents whose profile binds an MCP server."""
+
+        return [
+            agent
+            for agent in self.list(role=role)
+            if server_id in agent.bound_mcp_server_ids()
+        ]
+
+    def find_by_mcp_tool(
+        self,
+        tool_name: str,
+        *,
+        server_id: str | None = None,
+        role: AgentRole | None = None,
+    ) -> AgentList:
+        """Return agents whose profile allowlists an MCP tool."""
+
+        return [
+            agent
+            for agent in self.list(role=role)
+            if agent.supports_mcp_tool(tool_name, server_id=server_id)
+        ]
+
     def query(
         self,
         *,

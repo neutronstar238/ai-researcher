@@ -10467,3 +10467,35 @@ This file defines the project development standard for coding agents and records
 - Follow-up work:
   - Add a source-specific ArXiv backoff/circuit breaker in brainstorm reviewer literature fetches if 429s recur across cycles.
   - Consider reviewer query diversification for dataset/code discovery so creative ideas with adjacent-source inspiration can find implementation/data support without requiring same-direction prior work.
+
+### 2026-06-24 11:05:03 +08:00 - Codex - Task 253.1 Runtime routing for per-Agent custom skill/MCP imports
+
+- Request: Continue toward CCF-B/SCI-Q2-ready research automation by making custom skills and MCP imports assignable to specific Agents in a runtime-usable way, while keeping AI reasoning research-first rather than over-engineered.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/base.py`
+  - `src/autoresearch/agents/registry.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `Agent.md`
+- Summary:
+  - Added runtime Agent helpers that expose bound skill IDs, MCP server IDs, and scoped MCP tool refs from the loaded Agent profile.
+  - Added `supports_skill()` and `supports_mcp_tool()` checks so stage schedulers can identify which specific Agent imported a custom research skill or MCP tool.
+  - Added `AgentRegistry.find_by_skill()`, `find_by_mcp_server()`, and `find_by_mcp_tool()` for precise Agent routing.
+  - Added `profile_runtime_capabilities` to Agent runtime context with an explicit process-metadata evidence boundary.
+  - Preserved the task execution safety boundary: custom skill `allowed_tasks` can guide routing, but `BaseAgent.run_task()` still requires the Agent's original executable capability.
+  - Updated English and Chinese README docs and added task `253.1` to the executable task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability tests\unit\agents\test_profiles.py::test_registry_assigns_profile_to_matching_agent -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\base.py src\autoresearch\agents\registry.py tests\unit\agents\test_profiles.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\base.py src\autoresearch\agents\registry.py`: passed with no issues in 2 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 638 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire future stage schedulers to use these registry queries when assigning literature, experiment, review, and evidence-gate workers from loaded Agent teams.

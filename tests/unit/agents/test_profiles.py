@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from autoresearch.agents import (
+    AgentCapabilityError,
     AgentMcpServerBinding,
     AgentProfile,
     AgentProfileReadinessReport,
@@ -453,6 +454,65 @@ def test_registry_assigns_profile_to_matching_agent() -> None:
 
     assert result.output["skills"][0]["skill_id"] == "question-validator"
     assert result.output["role"] == "validator_agent"
+
+
+def test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability() -> None:
+    profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        skills=(
+            AgentSkillBinding(
+                skill_id="source-tracing",
+                source="skills/source.md",
+                allowed_tasks=("literature_refresh",),
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search", "browser.open"),
+            ),
+        ),
+    )
+    agent = DummyAgent(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        capabilities=frozenset({"review"}),
+    )
+    registry = AgentRegistry()
+    registry.add(agent)
+    registry.assign_profile("literature-agent", profile)
+
+    assert agent.bound_skill_ids() == frozenset({"source-tracing"})
+    assert agent.bound_mcp_server_ids() == frozenset({"page-agent"})
+    assert agent.bound_mcp_tool_refs() == frozenset(
+        {"page-agent:browser.search", "page-agent:browser.open"}
+    )
+    assert agent.supports_skill("source-tracing", task_type="literature_refresh") is True
+    assert agent.supports_skill("source-tracing", task_type="experiment") is False
+    assert agent.supports_mcp_tool("browser.search", server_id="page-agent") is True
+    assert agent.supports_mcp_tool("page-agent:browser.open") is True
+
+    assert registry.find_by_skill("source-tracing", task_type="literature_refresh") == [
+        agent
+    ]
+    assert registry.find_by_skill("source-tracing", task_type="experiment") == []
+    assert registry.find_by_mcp_server("page-agent") == [agent]
+    assert registry.find_by_mcp_tool("browser.search", server_id="page-agent") == [agent]
+
+    with pytest.raises(AgentCapabilityError, match="lacks capability literature_refresh"):
+        agent.run_task(AgentTask(task_id="t1", task_type="literature_refresh"))
+
+    result = agent.run_task(AgentTask(task_id="t2", task_type="review"))
+    runtime_capabilities = result.output["profile_runtime_capabilities"]
+    assert runtime_capabilities["skill_ids"] == ["source-tracing"]
+    assert runtime_capabilities["mcp_server_ids"] == ["page-agent"]
+    assert runtime_capabilities["mcp_tool_refs"] == [
+        "page-agent:browser.open",
+        "page-agent:browser.search",
+    ]
+    assert "routing metadata only" in runtime_capabilities["evidence_policy"]
 
 
 def test_parse_specs_and_write_vault_note(tmp_path: Path) -> None:

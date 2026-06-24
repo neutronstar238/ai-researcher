@@ -81,6 +81,78 @@ class BaseAgent(ABC):
 
         return capability in self.capabilities
 
+    def bound_skill_ids(self) -> frozenset[str]:
+        """Return custom skill IDs attached through this agent's runtime profile."""
+
+        if self.profile is None:
+            return frozenset()
+        return frozenset(skill.skill_id for skill in self.profile.skills)
+
+    def bound_mcp_server_ids(self) -> frozenset[str]:
+        """Return MCP server IDs attached through this agent's runtime profile."""
+
+        if self.profile is None:
+            return frozenset()
+        return frozenset(server.server_id for server in self.profile.mcp_servers)
+
+    def bound_mcp_tool_refs(self) -> frozenset[str]:
+        """Return scoped MCP tool refs as ``server_id:tool_name`` strings."""
+
+        if self.profile is None:
+            return frozenset()
+        return frozenset(
+            f"{server.server_id}:{tool_name}"
+            for server in self.profile.mcp_servers
+            for tool_name in server.allowed_tools
+        )
+
+    def supports_skill(self, skill_id: str, *, task_type: str | None = None) -> bool:
+        """Return whether the profile routes a skill to this agent for a task."""
+
+        if self.profile is None:
+            return False
+        for skill in self.profile.skills:
+            if skill.skill_id != skill_id:
+                continue
+            return task_type is None or not skill.allowed_tasks or task_type in skill.allowed_tasks
+        return False
+
+    def supports_mcp_tool(
+        self,
+        tool_name: str,
+        *,
+        server_id: str | None = None,
+    ) -> bool:
+        """Return whether the profile allowlists an MCP tool for this agent."""
+
+        if self.profile is None:
+            return False
+        scoped_server_id = server_id
+        scoped_tool_name = tool_name
+        if scoped_server_id is None and ":" in tool_name:
+            scoped_server_id, scoped_tool_name = tool_name.split(":", 1)
+        for server in self.profile.mcp_servers:
+            if scoped_server_id is not None and server.server_id != scoped_server_id:
+                continue
+            if scoped_tool_name in server.allowed_tools:
+                return True
+        return False
+
+    def profile_runtime_capabilities(self) -> dict[str, object]:
+        """Return skill/MCP routing metadata without changing task capabilities."""
+
+        return {
+            "skill_ids": sorted(self.bound_skill_ids()),
+            "mcp_server_ids": sorted(self.bound_mcp_server_ids()),
+            "mcp_tool_refs": sorted(self.bound_mcp_tool_refs()),
+            "evidence_policy": (
+                "Profile runtime capabilities are routing metadata only; they do not "
+                "prove scientific results, tool invocation, novelty, citation validity, "
+                "publication readiness, or permission to bypass the agent task "
+                "capability gate."
+            ),
+        }
+
     def bind_profile(self, profile: AgentProfile) -> None:
         """Attach a validated custom skill/MCP profile to this agent."""
 
@@ -101,8 +173,11 @@ class BaseAgent(ABC):
                 "role": self.role.value,
                 "skills": [],
                 "mcp_servers": [],
+                "profile_runtime_capabilities": self.profile_runtime_capabilities(),
             }
-        return self.profile.to_runtime_context()
+        context = self.profile.to_runtime_context()
+        context["profile_runtime_capabilities"] = self.profile_runtime_capabilities()
+        return context
 
     def run_task(self, task: AgentTask) -> AgentResult:
         """Execute a task while enforcing capability and lifecycle state."""
