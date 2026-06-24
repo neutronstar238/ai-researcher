@@ -80,6 +80,14 @@ STAGE_ASSIGNMENT_MANIFEST_EVIDENCE_POLICY = (
     "results, novelty claims, benchmark metrics, citation validity, tool invocation, "
     "or publication readiness."
 )
+STAGE_ROUTE_DIAGNOSTICS_KIND = "agent_stage_route_diagnostics_process_metadata"
+STAGE_ROUTE_DIAGNOSTICS_EVIDENCE_POLICY = (
+    "Agent stage route diagnostics compare stage import requirements with the "
+    "loaded Agent runtime contexts. They can support scheduler responsibility "
+    "routing, missing-import debugging, and readiness triage only; they cannot "
+    "prove scientific results, novelty claims, benchmark metrics, citation "
+    "validity, MCP/tool invocation, or publication readiness."
+)
 DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES: tuple[str, ...] = (
     "literature",
     "research_plan",
@@ -1169,6 +1177,7 @@ def build_agent_stage_assignment_manifest(
     *,
     project_id: str | None = None,
     cycle_id: str | None = None,
+    stage_import_requirements: Iterable[AgentStageImportRequirement] = (),
 ) -> dict[str, Any]:
     """Summarize Agent skill/MCP routing across research-loop stages."""
 
@@ -1182,6 +1191,12 @@ def build_agent_stage_assignment_manifest(
         stage_rows.append(_agent_stage_assignment_row(stage, stage_contexts))
 
     agent_rows = [_agent_assignment_row(context) for context in contexts]
+    route_diagnostics = build_agent_stage_route_diagnostics(
+        contexts,
+        stage_import_requirements,
+        project_id=project_id,
+        cycle_id=cycle_id,
+    )
     return {
         "manifest_kind": STAGE_ASSIGNMENT_MANIFEST_KIND,
         "project_id": project_id,
@@ -1195,8 +1210,46 @@ def build_agent_stage_assignment_manifest(
             for row in agent_rows
             if not row["assigned_stages"]
         ],
+        "stage_route_diagnostics": route_diagnostics,
         "manifest_path": None,
         "evidence_policy": STAGE_ASSIGNMENT_MANIFEST_EVIDENCE_POLICY,
+    }
+
+
+def build_agent_stage_route_diagnostics(
+    profile_contexts: Iterable[Mapping[str, Any]],
+    stage_import_requirements: Iterable[AgentStageImportRequirement],
+    *,
+    project_id: str | None = None,
+    cycle_id: str | None = None,
+) -> dict[str, Any]:
+    """Compare required stage imports with loaded Agent runtime contexts."""
+
+    contexts = tuple(dict(context) for context in profile_contexts)
+    requirements = tuple(stage_import_requirements)
+    stage_rows = [
+        _stage_route_diagnostic_row(contexts, requirement)
+        for requirement in requirements
+    ]
+    failed_rows = [
+        row
+        for row in stage_rows
+        if not bool(row.get("passed", False))
+    ]
+    eligible_rows = [
+        row
+        for row in stage_rows
+        if bool(row.get("passed", False))
+    ]
+    return {
+        "diagnostic_kind": STAGE_ROUTE_DIAGNOSTICS_KIND,
+        "project_id": project_id,
+        "cycle_id": cycle_id,
+        "stage_count": len(stage_rows),
+        "eligible_stage_count": len(eligible_rows),
+        "failed_stage_count": len(failed_rows),
+        "stages": stage_rows,
+        "evidence_policy": STAGE_ROUTE_DIAGNOSTICS_EVIDENCE_POLICY,
     }
 
 
@@ -1584,6 +1637,170 @@ def _agent_stage_assignment_row(
             "warning_count": warning_checks,
         },
     }
+
+
+def _stage_route_diagnostic_row(
+    contexts: tuple[dict[str, Any], ...],
+    requirement: AgentStageImportRequirement,
+) -> dict[str, Any]:
+    stage_contexts = profile_contexts_for_stage(contexts, requirement.stage)
+    routes = [
+        _agent_stage_route_diagnostic(requirement, context)
+        for context in stage_contexts
+    ]
+    eligible_agent_ids = [
+        str(route.get("agent_id", ""))
+        for route in routes
+        if bool(route.get("eligible", False))
+    ]
+    required_skill_ids = list(requirement.required_skill_ids)
+    required_mcp_server_ids = list(requirement.required_mcp_server_ids)
+    required_mcp_tool_refs = list(requirement.required_mcp_tool_refs)
+    present_skill_ids = list(_ordered_unique(
+        skill_id
+        for route in routes
+        for skill_id in _string_values(route.get("matched_skill_ids"))
+    ))
+    present_mcp_server_ids = list(_ordered_unique(
+        server_id
+        for route in routes
+        for server_id in _string_values(route.get("matched_mcp_server_ids"))
+    ))
+    present_mcp_tool_refs = list(_ordered_unique(
+        tool_ref
+        for route in routes
+        for tool_ref in _string_values(route.get("matched_mcp_tool_refs"))
+    ))
+    missing_skill_ids = [
+        skill_id
+        for skill_id in required_skill_ids
+        if skill_id not in present_skill_ids
+    ]
+    missing_mcp_server_ids = [
+        server_id
+        for server_id in required_mcp_server_ids
+        if server_id not in present_mcp_server_ids
+    ]
+    missing_mcp_tool_refs = [
+        tool_ref
+        for tool_ref in required_mcp_tool_refs
+        if tool_ref not in present_mcp_tool_refs
+    ]
+    return {
+        "stage": requirement.stage,
+        "passed": bool(eligible_agent_ids) and not (
+            missing_skill_ids
+            or missing_mcp_server_ids
+            or missing_mcp_tool_refs
+        ),
+        "agent_count": len(stage_contexts),
+        "eligible_agent_ids": eligible_agent_ids,
+        "required_skill_ids": required_skill_ids,
+        "present_skill_ids": present_skill_ids,
+        "missing_skill_ids": missing_skill_ids,
+        "required_mcp_server_ids": required_mcp_server_ids,
+        "present_mcp_server_ids": present_mcp_server_ids,
+        "missing_mcp_server_ids": missing_mcp_server_ids,
+        "required_mcp_tool_refs": required_mcp_tool_refs,
+        "present_mcp_tool_refs": present_mcp_tool_refs,
+        "missing_mcp_tool_refs": missing_mcp_tool_refs,
+        "routes": routes,
+    }
+
+
+def _agent_stage_route_diagnostic(
+    requirement: AgentStageImportRequirement,
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    readiness = context.get("readiness")
+    readiness_passed = (
+        bool(readiness.get("passed", False))
+        if isinstance(readiness, Mapping)
+        else True
+    )
+    skill_ids = _context_skill_ids(context)
+    mcp_server_ids = _context_mcp_server_ids(context)
+    mcp_tool_refs = _context_mcp_tool_refs(context)
+    matched_skill_ids = tuple(
+        skill_id
+        for skill_id in requirement.required_skill_ids
+        if skill_id in skill_ids
+    )
+    missing_skill_ids = tuple(
+        skill_id
+        for skill_id in requirement.required_skill_ids
+        if skill_id not in skill_ids
+    )
+    matched_mcp_server_ids = tuple(
+        server_id
+        for server_id in requirement.required_mcp_server_ids
+        if server_id in mcp_server_ids
+    )
+    missing_mcp_server_ids = tuple(
+        server_id
+        for server_id in requirement.required_mcp_server_ids
+        if server_id not in mcp_server_ids
+    )
+    matched_mcp_tool_refs = tuple(
+        tool_ref
+        for tool_ref in requirement.required_mcp_tool_refs
+        if tool_ref in mcp_tool_refs
+    )
+    missing_mcp_tool_refs = tuple(
+        tool_ref
+        for tool_ref in requirement.required_mcp_tool_refs
+        if tool_ref not in mcp_tool_refs
+    )
+    imports_matched = not (
+        missing_skill_ids
+        or missing_mcp_server_ids
+        or missing_mcp_tool_refs
+    )
+    return {
+        "stage": requirement.stage,
+        "agent_id": str(context.get("agent_id", "")),
+        "role": str(context.get("role", "")),
+        "profile_path": str(context.get("profile_path", "")),
+        "eligible": readiness_passed and imports_matched,
+        "readiness_passed": readiness_passed,
+        "matched_skill_ids": list(matched_skill_ids),
+        "missing_skill_ids": list(missing_skill_ids),
+        "matched_mcp_server_ids": list(matched_mcp_server_ids),
+        "missing_mcp_server_ids": list(missing_mcp_server_ids),
+        "matched_mcp_tool_refs": list(matched_mcp_tool_refs),
+        "missing_mcp_tool_refs": list(missing_mcp_tool_refs),
+    }
+
+
+def _context_skill_ids(context: Mapping[str, Any]) -> tuple[str, ...]:
+    return _ordered_unique(
+        skill.get("skill_id", "")
+        for skill in _mapping_items(context.get("skills"))
+    )
+
+
+def _context_mcp_server_ids(context: Mapping[str, Any]) -> tuple[str, ...]:
+    return _ordered_unique(
+        server.get("server_id", "")
+        for server in _mapping_items(context.get("mcp_servers"))
+    )
+
+
+def _context_mcp_tool_refs(context: Mapping[str, Any]) -> tuple[str, ...]:
+    return _ordered_unique(
+        f"{server.get('server_id', '')}:{tool_name}"
+        for server in _mapping_items(context.get("mcp_servers"))
+        for tool_name in _string_values(server.get("allowed_tools"))
+        if str(server.get("server_id", "")).strip()
+    )
+
+
+def _string_values(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,) if value.strip() else ()
+    if isinstance(value, Iterable) and not isinstance(value, Mapping):
+        return tuple(str(item) for item in value if str(item).strip())
+    return ()
 
 
 def _agent_assignment_row(context: Mapping[str, Any]) -> dict[str, Any]:

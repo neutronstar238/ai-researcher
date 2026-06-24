@@ -313,6 +313,12 @@ instrument is missing. This proves only that the intended Agent received the int
 context; scientific conclusions still depend on source retrieval, experiments, reproduction,
 review, and evidence gates.
 
+Each runtime cycle also writes `agent-stage-contexts/assignment-manifest.json` with
+`stage_route_diagnostics`. The diagnostics show, for every stage import requirement, which loaded
+Agent was eligible, which imports matched, and which skill/MCP refs were missing. This gives the
+scheduler and review context an auditable route explanation without treating process routing as
+proof of tool invocation, novelty, metrics, citations, or publication readiness.
+
 If a deployment should be shared as one team file, use
 `agents profile import-set <team.yaml> --output-dir .airesearcher/agents`. The bundle reuses the
 single-Agent import schema under `profiles:`, writes one standard profile JSON per agent, writes

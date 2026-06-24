@@ -10659,3 +10659,41 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Wire future stage schedulers to consume `select_for_stage(...)` when launching literature, experiment, reproduction, review, publication-audit, and evidence-gate workers from loaded Agent teams.
+
+### 2026-06-24 12:41:44 +08:00 - Codex - Task 258.1 Runtime stage route diagnostics artifact
+
+- Request: Continue custom skill/MCP assignment for specific Agents and fix the newly reported CI concern.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added a runtime `stage_route_diagnostics` artifact inside each `agent-stage-contexts/assignment-manifest.json`.
+  - The diagnostics record eligible Agents per stage, matched skill IDs, matched MCP server/tool refs, and missing imports without claiming scientific evidence or real tool invocation.
+  - Passed stage import requirements from the autopilot cycle into assignment-manifest materialization so blocked cycles still leave actionable routing diagnostics.
+  - Extended unit tests for the pure Agent profile helper and the CLI autopilot blocked-cycle path.
+  - Updated README/README.zh-CN and added task `258.1` plus dependency wave `161` to the Kiro task plan.
+  - Rechecked the reported CI failure: run `28073612560` failed on an older SHA with the already-fixed Click/Typer stderr portability issue; later main CI runs had succeeded, and the current worktree did not reproduce it.
+- Verification:
+  - CI inspection `gh run list --limit 10 --json databaseId,displayTitle,status,conclusion,headSha,headBranch,url,workflowName,createdAt`: latest main CI runs after failed run `28073612560` were successful.
+  - CI inspection `gh run view 28073612560 --json name,workflowName,conclusion,status,url,event,headBranch,headSha,jobs`: failure was only the Python 3.10 smoke/unit test step on old SHA `eeaa576a169e76964e4ec151789765393eaf3aee`.
+  - CI inspection `gh run view 28073612560 --log-failed`: failing test was `tests/unit/cli/test_main.py::test_agent_profile_team_template_writes_importable_bundle` with `ValueError: stderr not separately captured`, matching the previously resolved CI fix.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing tests\unit\agents\test_profiles.py::test_agent_stage_route_diagnostics_reports_eligible_and_missing_imports tests\unit\cli\test_main.py::test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py`: passed with no issues in 3 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 644 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None added for this task.
+  - Existing CI stderr-capture issue remains resolved as `P-20260624-010`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Let scheduler workers consume `stage_route_diagnostics` alongside `AgentRegistry.select_for_stage(...)` so future real cycle traces show why each worker was selected or skipped.

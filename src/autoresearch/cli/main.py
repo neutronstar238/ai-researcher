@@ -2255,6 +2255,7 @@ def _write_agent_stage_context_packets(
     cycle_dir: Path,
     project_id: str,
     cycle_id: str,
+    stage_import_requirements: tuple[AgentStageImportRequirement, ...] = (),
 ) -> dict[str, Any]:
     packet_dir = cycle_dir / "agent-stage-contexts"
     packet_rows: list[dict[str, Any]] = []
@@ -2263,6 +2264,7 @@ def _write_agent_stage_context_packets(
         AGENT_PROFILE_ASSIGNABLE_STAGES,
         project_id=project_id,
         cycle_id=cycle_id,
+        stage_import_requirements=stage_import_requirements,
     )
     for stage in AGENT_PROFILE_ASSIGNABLE_STAGES:
         packet = build_agent_stage_context_packet(
@@ -6651,6 +6653,7 @@ def _run_autopilot_cycle(
         cycle_dir=cycle_dir,
         project_id=project_id,
         cycle_id=cycle_id,
+        stage_import_requirements=agent_stage_import_requirements,
     )
     agent_profile_set_validation = _write_agent_profile_set_runtime_validation(
         profile_contexts=agent_profile_contexts,

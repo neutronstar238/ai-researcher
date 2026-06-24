@@ -4940,6 +4940,32 @@ def test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement(
         "question-validator"
     ]
     assert "stage review missing required custom imports" in validation["failures"][0]
+    packet_manifest = payload["agent_stage_context_packets"]
+    assignment_manifest = packet_manifest["assignment_manifest"]
+    route_diagnostics = assignment_manifest["stage_route_diagnostics"]
+    assert route_diagnostics["diagnostic_kind"] == (
+        "agent_stage_route_diagnostics_process_metadata"
+    )
+    assert route_diagnostics["stage_count"] == 2
+    assert route_diagnostics["eligible_stage_count"] == 1
+    assert route_diagnostics["failed_stage_count"] == 1
+    route_rows = {row["stage"]: row for row in route_diagnostics["stages"]}
+    assert route_rows["literature"]["passed"] is True
+    assert route_rows["literature"]["eligible_agent_ids"] == ["literature-agent"]
+    assert route_rows["literature"]["routes"][0]["matched_skill_ids"] == [
+        "source-tracing"
+    ]
+    assert route_rows["review"]["passed"] is False
+    assert route_rows["review"]["missing_skill_ids"] == ["question-validator"]
+    assert route_rows["review"]["routes"][0]["agent_id"] == "review-agent"
+    assert route_rows["review"]["routes"][0]["eligible"] is False
+    assert route_rows["review"]["routes"][0]["missing_skill_ids"] == [
+        "question-validator"
+    ]
+    assignment_file = json.loads(
+        Path(packet_manifest["assignment_manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert assignment_file["stage_route_diagnostics"] == route_diagnostics
     assert "source_preflight" not in payload
 
 

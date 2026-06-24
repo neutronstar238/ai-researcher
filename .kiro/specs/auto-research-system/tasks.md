@@ -3134,6 +3134,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `253.1` and `254.1`; user request to assign custom skills and MCPs to specific Agents while keeping runtime behavior research-first and not over-engineered._
     - _Verify: focused Agent registry tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 258. Runtime stage route diagnostics artifact
+  - [x] 258.1 Persist custom skill/MCP route diagnostics in cycle assignment manifests
+    - Add a `stage_route_diagnostics` section to `agent-stage-contexts/assignment-manifest.json` so every stage import requirement records eligible agents, matched custom imports, and missing skill/MCP refs.
+    - Feed reusable team bundle `stage_import_requirements` into runtime `serve`/`autopilot` stage-context packet materialization.
+    - Keep the diagnostics secret-free and content-free: do not copy skill bodies, MCP commands beyond existing hashes, environment values, or tool payloads.
+    - Include the diagnostics in `cycle-summary.json` and `review-evidence-context.json` through the existing assignment manifest path so reviewers can audit responsibility routing.
+    - Preserve the process-evidence boundary: route diagnostics can explain stage responsibility and missing imports, but cannot prove tool invocation, scientific results, novelty, citations, metrics, or publication readiness.
+    - _References: tasks `254.1`, `257.1`; user request to keep adding per-Agent custom skills/MCP ability while making runtime behavior auditable and research-first._
+    - _Verify: focused Agent profile/CLI tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3822,6 +3832,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 160,
       "tasks": ["257.1"]
+    },
+    {
+      "id": 161,
+      "tasks": ["258.1"]
     }
   ]
 }

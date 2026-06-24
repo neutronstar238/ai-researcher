@@ -23,6 +23,7 @@ from autoresearch.agents import (
     build_agent_profiles_from_set_bundle,
     build_agent_stage_assignment_manifest,
     build_agent_stage_context_packet,
+    build_agent_stage_route_diagnostics,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
     evaluate_agent_stage_import_requirements,
@@ -350,6 +351,88 @@ def test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing(
     ]
     assert manifest["unassigned_agent_ids"] == []
     assert "cannot prove scientific results" in manifest["evidence_policy"]
+
+
+def test_agent_stage_route_diagnostics_reports_eligible_and_missing_imports(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "skills" / "source.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source\nTrace sources.\n", encoding="utf-8")
+    literature_profile = AgentProfile(
+        agent_id="literature-agent",
+        assigned_stages=("literature",),
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source.md"),),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search",),
+                approval_policy=McpApprovalPolicy.READ_ONLY,
+            ),
+        ),
+    )
+    review_profile = AgentProfile(
+        agent_id="review-agent",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review",),
+        skills=(AgentSkillBinding(skill_id="evidence-review", source="[[Review]]"),),
+    )
+    contexts = (
+        literature_profile.to_runtime_context(
+            base_dir=tmp_path,
+            materialize_skills=True,
+        )
+        | {"profile_path": "profiles/literature-agent.json"},
+        review_profile.to_runtime_context() | {"profile_path": "profiles/review.json"},
+    )
+    requirements = (
+        AgentStageImportRequirement(
+            stage="literature",
+            required_skill_ids=("source-tracing",),
+            required_mcp_tool_refs=("page-agent:browser.search",),
+        ),
+        AgentStageImportRequirement(
+            stage="review",
+            required_skill_ids=("question-validator",),
+        ),
+    )
+
+    diagnostics = build_agent_stage_route_diagnostics(
+        contexts,
+        requirements,
+        project_id="project_1",
+        cycle_id="cycle_1",
+    )
+    manifest = build_agent_stage_assignment_manifest(
+        contexts,
+        ("literature", "review"),
+        project_id="project_1",
+        cycle_id="cycle_1",
+        stage_import_requirements=requirements,
+    )
+
+    assert diagnostics["diagnostic_kind"] == (
+        "agent_stage_route_diagnostics_process_metadata"
+    )
+    assert diagnostics["stage_count"] == 2
+    assert diagnostics["eligible_stage_count"] == 1
+    assert diagnostics["failed_stage_count"] == 1
+    stages = {row["stage"]: row for row in diagnostics["stages"]}
+    assert stages["literature"]["passed"] is True
+    assert stages["literature"]["eligible_agent_ids"] == ["literature-agent"]
+    assert stages["literature"]["routes"][0]["matched_skill_ids"] == ["source-tracing"]
+    assert stages["literature"]["routes"][0]["matched_mcp_tool_refs"] == [
+        "page-agent:browser.search"
+    ]
+    assert stages["review"]["passed"] is False
+    assert stages["review"]["missing_skill_ids"] == ["question-validator"]
+    assert stages["review"]["routes"][0]["eligible"] is False
+    assert stages["review"]["routes"][0]["missing_skill_ids"] == [
+        "question-validator"
+    ]
+    assert "publication readiness" in diagnostics["evidence_policy"]
+    assert manifest["stage_route_diagnostics"] == diagnostics
 
 
 def test_agent_profile_set_validation_requires_stage_coverage_and_scientific_contract() -> None:
