@@ -4849,6 +4849,100 @@ def test_autopilot_agent_profile_set_bundle_materializes_before_gate(
     assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
 
 
+def test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after import block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    bundle_dir = tmp_path / "bundles"
+    skill_dir = bundle_dir / "skills"
+    skill_dir.mkdir(parents=True)
+    for name in ("source.md", "experiment.md", "review.md"):
+        (skill_dir / name).write_text(
+            f"# {name}\nKeep research claims evidence-bound.\n",
+            encoding="utf-8",
+        )
+    bundle_path = bundle_dir / "team.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: runtime-import-gate-team",
+                "stage_import_requirements:",
+                "  - stage: literature",
+                "    required_skill_ids: [source-tracing]",
+                "  - stage: review",
+                "    required_skill_ids: [question-validator]",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages: [literature, research-plan]",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+                "  - agent_id: experiment-agent",
+                "    assigned_stages: [loop-campaign, experiment, reproduction, citations]",
+                "    skills:",
+                "      - skill_id: experiment-protocol",
+                "        source: skills/experiment.md",
+                "  - agent_id: review-agent",
+                "    role: validator_agent",
+                "    thinking_mode: reviewer",
+                "    assigned_stages: [review, publication-audit, evidence-gate]",
+                "    thinking_contract_additions:",
+                "      - Reject prose that outruns experiment evidence.",
+                "    skills:",
+                "      - skill_id: evidence-review",
+                "        source: skills/review.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile-set-bundle",
+            str(bundle_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    payload = json.loads(next(output_dir.glob("cycle-*/cycle-summary.json")).read_text(
+        encoding="utf-8"
+    ))
+    validation = payload["agent_profile_set_validation"]
+    assert validation["passed"] is False
+    assert validation["missing_stages"] == []
+    assert validation["stage_import_requirement_failed_stages"] == ["review"]
+    assert validation["stage_import_requirements"][1]["missing_skill_ids"] == [
+        "question-validator"
+    ]
+    assert "stage review missing required custom imports" in validation["failures"][0]
+    assert "source_preflight" not in payload
+
+
 def test_autopilot_auto_loads_default_agent_team_bundle_when_present(
     tmp_path: Path,
     monkeypatch,

@@ -14,6 +14,7 @@ from autoresearch.agents import (
     AgentResultStatus,
     AgentSkillBinding,
     AgentSkillMaterializationStatus,
+    AgentStageImportRequirement,
     AgentTask,
     BaseAgent,
     McpApprovalPolicy,
@@ -24,6 +25,7 @@ from autoresearch.agents import (
     build_agent_stage_context_packet,
     evaluate_agent_profile_readiness,
     evaluate_agent_profile_set,
+    evaluate_agent_stage_import_requirements,
     load_agent_profile_bundle,
     load_agent_profile_set_bundle,
     materialize_agent_skill_contexts,
@@ -430,6 +432,61 @@ def test_agent_profile_set_validation_blocks_missing_readiness_and_bad_contract(
     assert any("not research/evidence-first" in failure for failure in validation.failures)
 
 
+def test_agent_profile_set_validation_checks_stage_import_requirements() -> None:
+    literature_profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature",),
+        skills=(AgentSkillBinding(skill_id="source-tracing", source="skills/source.md"),),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search",),
+                approval_policy=McpApprovalPolicy.READ_ONLY,
+            ),
+        ),
+    )
+    review_profile = AgentProfile(
+        agent_id="review-agent",
+        role=AgentRole.VALIDATOR_AGENT,
+        assigned_stages=("review",),
+        skills=(AgentSkillBinding(skill_id="evidence-review", source="skills/review.md"),),
+    )
+    requirements = (
+        AgentStageImportRequirement(
+            stage="literature",
+            required_skill_ids=("source-tracing",),
+            required_mcp_tool_refs=("page-agent:browser.search",),
+        ),
+        AgentStageImportRequirement(
+            stage="review",
+            required_skill_ids=("question-validator",),
+        ),
+    )
+
+    results = evaluate_agent_stage_import_requirements(
+        (literature_profile, review_profile),
+        requirements,
+    )
+    validation = evaluate_agent_profile_set(
+        (literature_profile, review_profile),
+        required_stages=("literature", "review"),
+        stage_import_requirements=requirements,
+    )
+
+    assert results[0].passed is True
+    assert results[0].agent_ids == ("literature-agent",)
+    assert results[0].present_mcp_tool_refs == ("page-agent:browser.search",)
+    assert results[1].passed is False
+    assert results[1].missing_skill_ids == ("question-validator",)
+    assert validation.passed is False
+    assert validation.stage_import_requirement_failed_stages == ("review",)
+    assert validation.stage_import_requirements[0].passed is True
+    assert any("stage review missing required custom imports" in item for item in validation.failures)
+    assert "cannot prove scientific results" in results[0].evidence_policy
+
+
 def test_agent_profile_requires_mcp_allowlist() -> None:
     with pytest.raises(ValidationError):
         AgentMcpServerBinding(server_id="browser", command=("npx", "browser-mcp"), allowed_tools=())
@@ -623,6 +680,13 @@ def test_agent_profile_set_bundle_builds_multiple_profiles(tmp_path: Path) -> No
                 "required_stages:",
                 "  - literature",
                 "  - review",
+                "stage_import_requirements:",
+                "  - stage: literature",
+                "    required_skill_ids:",
+                "      - source-tracing",
+                "  - stage: review",
+                "    required_skill_ids:",
+                "      - review-skill",
                 "profiles:",
                 "  - agent_id: literature-agent",
                 "    assigned_stages:",
@@ -653,6 +717,8 @@ def test_agent_profile_set_bundle_builds_multiple_profiles(tmp_path: Path) -> No
 
     assert bundle.profile_set_id == "ccfb-team"
     assert bundle.required_stages == ("literature", "review")
+    assert bundle.stage_import_requirements[0].stage == "literature"
+    assert bundle.stage_import_requirements[0].required_skill_ids == ("source-tracing",)
     assert [profile.agent_id for profile in profiles] == [
         "literature-agent",
         "review-agent",

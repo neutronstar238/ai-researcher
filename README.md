@@ -301,6 +301,14 @@ profile's readiness report, blocks missing literature/plan/experiment/reproducti
 responsibility, and warns about `allow_all` MCP bindings or unassigned profiles. This is a team
 configuration gate only; it still cannot prove scientific claims or publication readiness.
 
+Reusable team bundles can also declare `stage_import_requirements` for the custom skills, MCP
+servers, or scoped MCP tool refs that a stage must receive. `agents profile import-set`,
+`agents profile inspect-set`, and runtime `serve`/`autopilot` profile-set validation report these
+requirements and can block unattended runs before online retrieval when a required research
+instrument is missing. This proves only that the intended Agent received the intended process
+context; scientific conclusions still depend on source retrieval, experiments, reproduction,
+review, and evidence gates.
+
 If a deployment should be shared as one team file, use
 `agents profile import-set <team.yaml> --output-dir .airesearcher/agents`. The bundle reuses the
 single-Agent import schema under `profiles:`, writes one standard profile JSON per agent, writes

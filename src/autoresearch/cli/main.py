@@ -28,6 +28,7 @@ from autoresearch.agents import (
     AgentProfileReadinessReport,
     AgentProfileSetBundle,
     AgentProfileSetValidation,
+    AgentStageImportRequirement,
     AgentThinkingMode,
     McpInvocationStatus,
     SkillSourceType,
@@ -975,6 +976,7 @@ def import_agent_profile_set_command(
             profiles,
             required_stages=bundle.required_stages,
             readiness_reports=readiness_reports,
+            stage_import_requirements=bundle.stage_import_requirements,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         typer.echo(f"[FAIL] agent_profile_set_import: {exc}", err=True)
@@ -1805,6 +1807,7 @@ def _inspect_agent_profile_set_bundle(
         profiles,
         required_stages=bundle.required_stages,
         readiness_reports=readiness_reports,
+        stage_import_requirements=bundle.stage_import_requirements,
     )
     profile_contexts = tuple(
         profile.to_runtime_context(
@@ -1911,6 +1914,7 @@ def _attach_agent_profile_team_bindings(
         profiles,
         required_stages=updated_bundle.required_stages,
         readiness_reports=readiness_reports,
+        stage_import_requirements=updated_bundle.stage_import_requirements,
     )
     return updated_bundle, validation, target_path
 
@@ -2083,6 +2087,10 @@ def _materialize_agent_profile_set_bundles(
                 "source_bundle_path": bundle_path.as_posix(),
                 "output_dir": output_dir.as_posix(),
                 "required_stages": list(bundle.required_stages),
+                "stage_import_requirements": [
+                    requirement.model_dump(mode="json")
+                    for requirement in bundle.stage_import_requirements
+                ],
                 "agent_ids": [profile.agent_id for profile in profiles],
                 "profile_count": len(profile_paths),
                 "profile_paths": profile_paths,
@@ -2113,6 +2121,16 @@ def _materialize_agent_profile_set_bundles(
             encoding="utf-8",
         )
     return manifest
+
+
+def _agent_stage_import_requirements_from_bundle_manifest(
+    manifest: Mapping[str, Any],
+) -> tuple[AgentStageImportRequirement, ...]:
+    requirements: list[AgentStageImportRequirement] = []
+    for bundle in _mapping_list(manifest.get("bundles")):
+        for item in _mapping_list(bundle.get("stage_import_requirements")):
+            requirements.append(AgentStageImportRequirement.model_validate(item))
+    return tuple(requirements)
 
 
 def _resolve_bundle_profile_sources(profile: AgentProfile, *, bundle_path: Path) -> AgentProfile:
@@ -2314,6 +2332,7 @@ def _write_agent_stage_context_packets(
 def _write_agent_profile_set_runtime_validation(
     *,
     profile_contexts: tuple[dict[str, Any], ...],
+    stage_import_requirements: tuple[AgentStageImportRequirement, ...] = (),
     cycle_dir: Path,
     require_pass: bool,
 ) -> dict[str, Any]:
@@ -2332,6 +2351,7 @@ def _write_agent_profile_set_runtime_validation(
         profiles,
         required_stages=DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
         readiness_reports=readiness_reports,
+        stage_import_requirements=stage_import_requirements,
     )
     output_dir = cycle_dir / "agent-profile-set"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2343,8 +2363,9 @@ def _write_agent_profile_set_runtime_validation(
         "output_path": output_path.as_posix(),
         "evidence_policy": (
             "Runtime Agent profile-set validation checks stage responsibility coverage and "
-            "profile readiness only; it cannot prove scientific results, novelty, benchmark "
-            "metrics, citation validity, MCP invocation, or publication readiness."
+            "profile readiness plus optional stage custom-import requirements only; it cannot "
+            "prove scientific results, novelty, benchmark metrics, citation validity, MCP "
+            "invocation, or publication readiness."
         ),
     }
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
@@ -6612,6 +6633,9 @@ def _run_autopilot_cycle(
         agent_profile_set_bundle_paths,
         cycle_dir=cycle_dir,
     )
+    agent_stage_import_requirements = _agent_stage_import_requirements_from_bundle_manifest(
+        agent_profile_bundles
+    )
     runtime_agent_profile_paths = (
         *agent_profile_paths,
         *(Path(path) for path in _string_list(agent_profile_bundles.get("profile_paths"))),
@@ -6630,6 +6654,7 @@ def _run_autopilot_cycle(
     )
     agent_profile_set_validation = _write_agent_profile_set_runtime_validation(
         profile_contexts=agent_profile_contexts,
+        stage_import_requirements=agent_stage_import_requirements,
         cycle_dir=cycle_dir,
         require_pass=require_agent_profile_set,
     )
@@ -9308,6 +9333,26 @@ def _default_agent_team_bundle_yaml(
     return (
         f"profile_set_id: {_yaml_single_quote(profile_set_id)}\n"
         "description: Default CCF-B/Q2 runtime Agent team for evidence-first research cycles.\n"
+        "stage_import_requirements:\n"
+        "  - stage: literature\n"
+        "    required_skill_ids: [source-tracing]\n"
+        "    required_mcp_tool_refs: [page-agent:browser.search]\n"
+        "  - stage: research-plan\n"
+        "    required_skill_ids: [source-tracing]\n"
+        "  - stage: loop-campaign\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: experiment\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: reproduction\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: citations\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: review\n"
+        "    required_skill_ids: [evidence-review]\n"
+        "  - stage: publication-audit\n"
+        "    required_skill_ids: [evidence-review]\n"
+        "  - stage: evidence-gate\n"
+        "    required_skill_ids: [evidence-review]\n"
         "profiles:\n"
         "  - agent_id: literature-agent\n"
         "    role: project_agent\n"

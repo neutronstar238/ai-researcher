@@ -3094,6 +3094,16 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `230.1`, `238.1`, `239.1`, `250.1`; user request to specify custom skills and MCP imports for a particular Agent while keeping the system research-first._
     - _Verify: focused Agent profile tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 254. Stage import requirement gate for Agent profile teams
+  - [x] 254.1 Validate required custom skills/MCP imports per research stage
+    - Add a `stage_import_requirements` section to reusable Agent profile-set bundles so a stage can require named custom skill IDs, MCP server IDs, or scoped `server_id:tool_name` refs.
+    - Include stage import requirement results in profile-set validation, with missing skills/MCPs surfaced as failures and failed stages listed for runtime gates.
+    - Make `agents profile import-set`, `agents profile inspect-set`, `agents profile team-attach`, and runtime `serve`/`autopilot` bundle materialization preserve and validate these requirements.
+    - Update the generated default CCF-B/SCI-Q2 team template so literature, plan, experiment, reproduction, citation, review, publication-audit, and evidence-gate stages declare their minimum custom research instruments.
+    - Keep the gate as process metadata only: it proves that the intended Agent profile carries the intended skill/MCP routing context, not that a tool was invoked or that scientific claims, novelty, citations, metrics, or publication readiness are true.
+    - _References: task `253.1`; user request to assign custom skills and MCPs to specific Agents and preserve research-first stage responsibility._
+    - _Verify: focused Agent profile/CLI tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3766,6 +3776,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 156,
       "tasks": ["253.1"]
+    },
+    {
+      "id": 157,
+      "tasks": ["254.1"]
     }
   ]
 }

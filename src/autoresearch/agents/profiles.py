@@ -231,6 +231,79 @@ class AgentProfileStageCoverage(BaseModel):
     mcp_server_ids: tuple[str, ...] = ()
 
 
+class AgentStageImportRequirement(BaseModel):
+    """Required custom skill or MCP imports for one research-loop stage."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    required_skill_ids: tuple[str, ...] = ()
+    required_mcp_server_ids: tuple[str, ...] = ()
+    required_mcp_tool_refs: tuple[str, ...] = ()
+
+    @field_validator("stage")
+    @classmethod
+    def _validate_stage(cls, value: str) -> str:
+        return normalize_profile_stage(value)
+
+    @field_validator("required_skill_ids", "required_mcp_server_ids")
+    @classmethod
+    def _validate_required_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(_validate_identifier(item, "required_import_id") for item in _clean_text_tuple(value))
+
+    @field_validator("required_mcp_tool_refs")
+    @classmethod
+    def _validate_required_mcp_tool_refs(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        cleaned = _clean_text_tuple(value)
+        for item in cleaned:
+            if ":" not in item:
+                msg = (
+                    "required_mcp_tool_refs must use scoped server_id:tool_name "
+                    f"references: {item}"
+                )
+                raise ValueError(msg)
+            server_id, tool_name = item.split(":", 1)
+            _validate_identifier(server_id, "required_mcp_tool_server_id")
+            _validate_identifier(tool_name, "required_mcp_tool_name")
+        return cleaned
+
+    @model_validator(mode="after")
+    def _validate_requirement(self) -> AgentStageImportRequirement:
+        if not (
+            self.required_skill_ids
+            or self.required_mcp_server_ids
+            or self.required_mcp_tool_refs
+        ):
+            msg = "stage import requirement must declare at least one skill, MCP server, or MCP tool"
+            raise ValueError(msg)
+        return self
+
+
+class AgentStageImportRequirementResult(BaseModel):
+    """Validation result for required imports on one research-loop stage."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    passed: bool
+    agent_ids: tuple[str, ...] = ()
+    required_skill_ids: tuple[str, ...] = ()
+    present_skill_ids: tuple[str, ...] = ()
+    missing_skill_ids: tuple[str, ...] = ()
+    required_mcp_server_ids: tuple[str, ...] = ()
+    present_mcp_server_ids: tuple[str, ...] = ()
+    missing_mcp_server_ids: tuple[str, ...] = ()
+    required_mcp_tool_refs: tuple[str, ...] = ()
+    present_mcp_tool_refs: tuple[str, ...] = ()
+    missing_mcp_tool_refs: tuple[str, ...] = ()
+    evidence_policy: str = (
+        "Stage import requirement results prove only that a stage has Agent "
+        "profiles carrying required custom skill or MCP routing metadata. They "
+        "cannot prove scientific results, tool invocation, novelty, citation "
+        "validity, benchmark metrics, or publication readiness."
+    )
+
+
 class AgentProfileSetValidation(BaseModel):
     """Team-level validation for a set of Agent profiles assigned to loop stages."""
 
@@ -246,6 +319,8 @@ class AgentProfileSetValidation(BaseModel):
     readiness_failed_agent_ids: tuple[str, ...] = ()
     allow_all_agent_ids: tuple[str, ...] = ()
     non_scientific_contract_agent_ids: tuple[str, ...] = ()
+    stage_import_requirement_failed_stages: tuple[str, ...] = ()
+    stage_import_requirements: tuple[AgentStageImportRequirementResult, ...] = ()
     stage_coverage: tuple[AgentProfileStageCoverage, ...]
     failures: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
@@ -440,6 +515,7 @@ class AgentProfileSetBundle(BaseModel):
     profile_set_id: str = "research-agent-team"
     description: str | None = None
     required_stages: tuple[str, ...] = DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES
+    stage_import_requirements: tuple[AgentStageImportRequirement, ...] = ()
     profiles: tuple[AgentProfileBundle, ...]
 
     @field_validator("profile_set_id")
@@ -451,6 +527,18 @@ class AgentProfileSetBundle(BaseModel):
     @classmethod
     def _validate_required_stages(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(dict.fromkeys(normalize_profile_stage(stage) for stage in value))
+
+    @field_validator("stage_import_requirements")
+    @classmethod
+    def _validate_stage_import_requirements(
+        cls,
+        value: tuple[AgentStageImportRequirement, ...],
+    ) -> tuple[AgentStageImportRequirement, ...]:
+        duplicate_stages = _duplicate_values(requirement.stage for requirement in value)
+        if duplicate_stages:
+            msg = "duplicate stage import requirements: " + ", ".join(duplicate_stages)
+            raise ValueError(msg)
+        return value
 
     @model_validator(mode="after")
     def _validate_profile_set_bundle(self) -> AgentProfileSetBundle:
@@ -843,6 +931,7 @@ def evaluate_agent_profile_set(
     *,
     required_stages: Iterable[str] = DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
     readiness_reports: Iterable[AgentProfileReadinessReport] = (),
+    stage_import_requirements: Iterable[AgentStageImportRequirement] = (),
 ) -> AgentProfileSetValidation:
     """Validate a stage-scoped Agent team before unattended research-loop use."""
 
@@ -869,12 +958,22 @@ def evaluate_agent_profile_set(
     stage_coverage = tuple(
         _profile_stage_coverage(stage, profile_list) for stage in normalized_required_stages
     )
+    stage_import_requirement_results = evaluate_agent_stage_import_requirements(
+        profile_list,
+        stage_import_requirements,
+    )
+    stage_import_requirement_failed_stages = tuple(
+        result.stage for result in stage_import_requirement_results if not result.passed
+    )
     missing_stages = tuple(row.stage for row in stage_coverage if not row.covered)
-    failures = _profile_set_failures(
-        missing_stages=missing_stages,
-        duplicate_agent_ids=duplicate_agent_ids,
-        readiness_failed_agent_ids=readiness_failed_agent_ids,
-        non_scientific_contract_agent_ids=non_scientific_contract_agent_ids,
+    failures = (
+        *_profile_set_failures(
+            missing_stages=missing_stages,
+            duplicate_agent_ids=duplicate_agent_ids,
+            readiness_failed_agent_ids=readiness_failed_agent_ids,
+            non_scientific_contract_agent_ids=non_scientific_contract_agent_ids,
+        ),
+        *_stage_import_requirement_failures(stage_import_requirement_results),
     )
     warnings = _profile_set_warnings(
         profiles=profile_list,
@@ -891,9 +990,24 @@ def evaluate_agent_profile_set(
         readiness_failed_agent_ids=readiness_failed_agent_ids,
         allow_all_agent_ids=allow_all_agent_ids,
         non_scientific_contract_agent_ids=non_scientific_contract_agent_ids,
+        stage_import_requirement_failed_stages=stage_import_requirement_failed_stages,
+        stage_import_requirements=stage_import_requirement_results,
         stage_coverage=stage_coverage,
         failures=failures,
         warnings=warnings,
+    )
+
+
+def evaluate_agent_stage_import_requirements(
+    profiles: Iterable[AgentProfile],
+    requirements: Iterable[AgentStageImportRequirement],
+) -> tuple[AgentStageImportRequirementResult, ...]:
+    """Validate required custom imports for stage-specific research workers."""
+
+    profile_list = tuple(profiles)
+    return tuple(
+        _stage_import_requirement_result(profile_list, requirement)
+        for requirement in requirements
     )
 
 
@@ -1708,6 +1822,90 @@ def _profile_stage_coverage(
         skill_ids=skill_ids,
         mcp_server_ids=mcp_server_ids,
     )
+
+
+def _stage_import_requirement_result(
+    profiles: tuple[AgentProfile, ...],
+    requirement: AgentStageImportRequirement,
+) -> AgentStageImportRequirementResult:
+    stage_profiles = tuple(
+        profile for profile in profiles if requirement.stage in profile.assigned_stages
+    )
+    present_skill_ids = tuple(
+        dict.fromkeys(
+            skill.skill_id
+            for profile in stage_profiles
+            for skill in profile.skills
+        )
+    )
+    present_mcp_server_ids = tuple(
+        dict.fromkeys(
+            server.server_id
+            for profile in stage_profiles
+            for server in profile.mcp_servers
+        )
+    )
+    present_mcp_tool_refs = tuple(
+        dict.fromkeys(
+            f"{server.server_id}:{tool_name}"
+            for profile in stage_profiles
+            for server in profile.mcp_servers
+            for tool_name in server.allowed_tools
+        )
+    )
+    missing_skill_ids = tuple(
+        skill_id
+        for skill_id in requirement.required_skill_ids
+        if skill_id not in present_skill_ids
+    )
+    missing_mcp_server_ids = tuple(
+        server_id
+        for server_id in requirement.required_mcp_server_ids
+        if server_id not in present_mcp_server_ids
+    )
+    missing_mcp_tool_refs = tuple(
+        tool_ref
+        for tool_ref in requirement.required_mcp_tool_refs
+        if tool_ref not in present_mcp_tool_refs
+    )
+    return AgentStageImportRequirementResult(
+        stage=requirement.stage,
+        passed=not (
+            missing_skill_ids
+            or missing_mcp_server_ids
+            or missing_mcp_tool_refs
+        ),
+        agent_ids=tuple(profile.agent_id for profile in stage_profiles),
+        required_skill_ids=requirement.required_skill_ids,
+        present_skill_ids=present_skill_ids,
+        missing_skill_ids=missing_skill_ids,
+        required_mcp_server_ids=requirement.required_mcp_server_ids,
+        present_mcp_server_ids=present_mcp_server_ids,
+        missing_mcp_server_ids=missing_mcp_server_ids,
+        required_mcp_tool_refs=requirement.required_mcp_tool_refs,
+        present_mcp_tool_refs=present_mcp_tool_refs,
+        missing_mcp_tool_refs=missing_mcp_tool_refs,
+    )
+
+
+def _stage_import_requirement_failures(
+    results: tuple[AgentStageImportRequirementResult, ...],
+) -> tuple[str, ...]:
+    failures: list[str] = []
+    for result in results:
+        missing_parts: list[str] = []
+        if result.missing_skill_ids:
+            missing_parts.append("skills=" + ",".join(result.missing_skill_ids))
+        if result.missing_mcp_server_ids:
+            missing_parts.append("mcp_servers=" + ",".join(result.missing_mcp_server_ids))
+        if result.missing_mcp_tool_refs:
+            missing_parts.append("mcp_tools=" + ",".join(result.missing_mcp_tool_refs))
+        if missing_parts:
+            failures.append(
+                f"stage {result.stage} missing required custom imports: "
+                + "; ".join(missing_parts)
+            )
+    return tuple(failures)
 
 
 def _has_scientific_thinking_contract(thinking_contract: tuple[str, ...]) -> bool:

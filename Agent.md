@@ -10499,3 +10499,35 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Wire future stage schedulers to use these registry queries when assigning literature, experiment, review, and evidence-gate workers from loaded Agent teams.
+
+### 2026-06-24 11:36:29 +08:00 - Codex - Task 254.1 Stage import requirement gate for Agent profile teams
+
+- Request: Continue the per-Agent custom skill/MCP work by making reusable Agent teams validate that each research stage receives its required custom skills, MCP servers, or scoped MCP tool refs.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `AgentStageImportRequirement` and `AgentStageImportRequirementResult` for per-stage required skill IDs, MCP server IDs, and scoped `server_id:tool_name` refs.
+  - Extended profile-set bundle parsing and validation so missing required stage imports appear as failures with `stage_import_requirement_failed_stages`.
+  - Preserved bundle `stage_import_requirements` through `import-set`, `inspect-set`, `team-attach`, runtime bundle materialization, and `serve`/`autopilot` profile-set validation.
+  - Updated the generated default CCF-B/SCI-Q2 team template so literature, research-plan, loop-campaign, experiment, reproduction, citations, review, publication-audit, and evidence-gate stages declare their minimum custom research instruments.
+  - Documented the gate in English and Chinese README files and added task `254.1` plus dependency wave `157` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_validation_checks_stage_import_requirements tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\cli\test_main.py::test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 640 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Implement the next novelty/doability refinement so brainstorm and research-plan selection judge whether an idea is worth doing from its own data, baseline, metric, falsification, and execution path, while similarity matching is used mainly to detect direct duplicate risk and adjacent work to cite or borrow from.
