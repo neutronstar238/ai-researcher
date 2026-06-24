@@ -63,6 +63,38 @@ def test_strategy_promotion_blocks_safety_or_evidence_regression() -> None:
     assert "evidence coverage must not decrease" in decision.reasons
 
 
+def test_strategy_promotion_blocks_loop_metric_regression() -> None:
+    strategy = _candidate_strategy()
+
+    decision = promote_strategy_to_gray_release(
+        StrategyPromotionInput(
+            strategy=strategy,
+            golden_test_passed=True,
+            baseline_evidence_coverage=0.84,
+            candidate_evidence_coverage=0.86,
+            baseline_metadata_completeness=0.95,
+            candidate_metadata_completeness=0.90,
+            baseline_reproduction_delta=0.01,
+            candidate_reproduction_delta=0.04,
+            baseline_acceleration_factor=2.0,
+            candidate_acceleration_factor=1.8,
+            baseline_enhancement_factor=1.04,
+            candidate_enhancement_factor=1.01,
+            baseline_failure_recovery_rate=1.0,
+            candidate_failure_recovery_rate=0.8,
+            approval=_approval(strategy.id),
+            audit_review_ref=_audit_review_ref(),
+        )
+    )
+
+    assert decision.status is StrategyPromotionStatus.BLOCKED
+    assert "metadata completeness must not decrease" in decision.reasons
+    assert "reproduction delta must not increase" in decision.reasons
+    assert "acceleration factor must not decrease" in decision.reasons
+    assert "enhancement factor must not decrease" in decision.reasons
+    assert "failure recovery rate must not decrease" in decision.reasons
+
+
 def test_strategy_promotion_starts_small_gray_release_with_audit(
     tmp_path: Path,
 ) -> None:
@@ -97,6 +129,9 @@ def test_strategy_promotion_starts_small_gray_release_with_audit(
     assert event.metadata["audit_review_ref"] == _audit_review_ref()
     assert event.metadata["gray_traffic_share"] == 0.05
     assert event.metadata["release_status"] == "gray_release"
+    assert event.metadata["candidate_acceleration_factor"] == 1.0
+    assert event.metadata["candidate_enhancement_factor"] == 1.0
+    assert event.metadata["candidate_failure_recovery_rate"] == 1.0
 
 
 def _candidate_strategy(

@@ -18,6 +18,73 @@ from autoresearch.schemas import file_hash
 
 REVIEW_SUBJECT_MAX_CHARS = 36_000
 REVIEW_EVIDENCE_MAX_CHARS = 3_000
+PROFILE_CONTEXT_TERMS = (
+    "agent_profiles",
+    "stage_runtime_contexts",
+    "stage_agent_contexts",
+    "agent profile",
+    "profile context",
+    "mcp_runtime_contract",
+    "mcp runtime contract",
+    "runtime contract",
+    "skill",
+    "skills",
+    "mcp",
+    "allowlist",
+    "allowlists",
+)
+PROFILE_PROOF_TERMS = (
+    "prove",
+    "proves",
+    "proof",
+    "support",
+    "supports",
+    "supported",
+    "validate",
+    "validates",
+    "validated",
+    "verify",
+    "verifies",
+    "verified",
+    "confirm",
+    "confirms",
+    "confirmed",
+    "demonstrate",
+    "demonstrates",
+    "establish",
+    "establishes",
+    "evidence for",
+)
+PROFILE_SCIENTIFIC_CLAIM_TERMS = (
+    "scientific result",
+    "scientific results",
+    "result",
+    "results",
+    "novelty",
+    "benchmark",
+    "metric",
+    "metrics",
+    "accuracy",
+    "f1",
+    "citation",
+    "citations",
+    "publication readiness",
+    "publishable",
+    "tool invocation",
+    "tool was invoked",
+    "tool use",
+)
+PROFILE_CONTEXT_NEGATION_TERMS = (
+    "not evidence",
+    "not proof",
+    "cannot prove",
+    "does not prove",
+    "doesn't prove",
+    "process metadata",
+    "responsibility boundary",
+    "responsibility boundaries",
+    "available tool context",
+)
 
 
 class LLMClientError(RuntimeError):
@@ -78,6 +145,19 @@ class LLMReviewResult(BaseModel):
     usage: dict[str, Any] = Field(default_factory=dict)
     quality: LLMReviewQuality
     attempts: int = Field(default=1, ge=1)
+
+
+class LLMJsonCompletionResult(BaseModel):
+    """Raw JSON completion result from the configured provider."""
+
+    provider: str
+    base_url: str
+    model_name: str
+    endpoint: str
+    response_text: str
+    parsed_json: dict[str, Any]
+    usage: dict[str, Any] = Field(default_factory=dict)
+    temperature: float = Field(ge=0.0)
 
 
 def run_llm_smoke_test(
@@ -230,6 +310,48 @@ def run_llm_evidence_review(
     )
 
 
+def run_llm_json_completion(
+    *,
+    messages: list[dict[str, str]],
+    config_path: Path | str = Path("config.yaml"),
+    env_path: Path | str = Path(".env"),
+    timeout_seconds: int | None = None,
+    max_tokens: int | None = None,
+    temperature: float = 0.0,
+) -> LLMJsonCompletionResult:
+    """Call the configured OpenAI-compatible model and require one JSON object."""
+
+    config, api_key = _load_llm_config_and_api_key(config_path=config_path, env_path=env_path)
+    llm = config.deployment.llm
+    endpoint = _chat_completions_endpoint(llm.base_url)
+    response = _post_chat_completion(
+        endpoint=endpoint,
+        api_key=api_key,
+        model_name=llm.model_name,
+        timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+        max_tokens=max_tokens,
+        messages=messages,
+        temperature=temperature,
+    )
+    content = _extract_message_content(response)
+    try:
+        parsed = json.loads(_strip_json_fences(content))
+    except json.JSONDecodeError as exc:
+        raise LLMClientError(f"LLM JSON completion was not valid JSON: {exc.msg}") from exc
+    if not isinstance(parsed, dict):
+        raise LLMClientError("LLM JSON completion top-level value is not an object")
+    return LLMJsonCompletionResult(
+        provider=llm.provider,
+        base_url=llm.base_url,
+        model_name=llm.model_name,
+        endpoint=endpoint,
+        response_text=content,
+        parsed_json=parsed,
+        usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
+        temperature=temperature,
+    )
+
+
 def evaluate_llm_output_quality(
     response_text: str,
     *,
@@ -310,6 +432,7 @@ def evaluate_llm_review_quality(
         "finding_refs_known": False,
         "unsupported_claims_present": False,
         "next_steps_present": False,
+        "profile_context_not_used_as_scientific_evidence": False,
         "no_secret_leak": _has_no_secret_leak(response_text, secret_values or []),
         "no_fake_urls": not bool(re.search(r"https?://", response_text, flags=re.IGNORECASE)),
     }
@@ -344,6 +467,9 @@ def evaluate_llm_review_quality(
                 decoded.get("next_steps"),
                 minimum=1,
             )
+            checks["profile_context_not_used_as_scientific_evidence"] = (
+                not _review_misuses_profile_context(findings)
+            )
         else:
             issues.append("Review response JSON top-level value is not an object")
 
@@ -361,6 +487,7 @@ def evaluate_llm_review_quality(
         "finding_refs_known",
         "unsupported_claims_present",
         "next_steps_present",
+        "profile_context_not_used_as_scientific_evidence",
         "no_secret_leak",
         "no_fake_urls",
     )
@@ -393,6 +520,7 @@ def _has_failed_review_critical_checks(quality: LLMReviewQuality) -> bool:
         "finding_refs_known",
         "unsupported_claims_present",
         "next_steps_present",
+        "profile_context_not_used_as_scientific_evidence",
         "no_secret_leak",
         "no_fake_urls",
     )
@@ -407,11 +535,12 @@ def _post_chat_completion(
     timeout_seconds: int,
     max_tokens: int | None,
     messages: list[dict[str, str]] | None = None,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
         "messages": messages or _smoke_messages(),
-        "temperature": 0,
+        "temperature": temperature,
         "response_format": {"type": "json_object"},
     }
     if max_tokens is not None:
@@ -580,6 +709,13 @@ def _review_messages(
                 "Judge the subject only against the provided local evidence artifacts. "
                 "Every finding must cite one or more provided evidence IDs exactly. "
                 "Use only the outer evidence IDs supplied by this prompt as citations. "
+                "Agent profile context, including agent_profiles, stage_runtime_contexts, "
+                "stage_agent_contexts, skills, MCP allowlists, and mcp_runtime_contracts, "
+                "is process metadata only. "
+                "It may support findings about responsibility boundaries or available tool "
+                "context, but it is not evidence for scientific results, novelty, benchmark "
+                "metrics, citation validity, or publication readiness. A profile does not "
+                "prove a tool was invoked. "
                 "Do not invent URLs, papers, metrics, benchmark results, or files. "
                 "Do not encode JSON arrays as strings."
             ),
@@ -631,7 +767,9 @@ def _review_repair_messages(
             "content": (
                 "You are repairing a failed AI-Researcher local-evidence review response. "
                 "Return only one syntactically valid JSON object. Do not include markdown "
-                "fences, comments, URLs, quoted JSON arrays, or new uncited claims."
+                "fences, comments, URLs, quoted JSON arrays, or new uncited claims. "
+                "Agent profile context is process metadata only; it cannot prove scientific "
+                "results, publication readiness, or tool invocation."
             ),
         },
         {
@@ -692,6 +830,29 @@ def _finding_evidence_refs(findings: Any) -> list[list[str]]:
             continue
         refs_by_finding.append([ref for ref in refs if isinstance(ref, str) and ref.strip()])
     return refs_by_finding
+
+
+def _review_misuses_profile_context(findings: Any) -> bool:
+    if not isinstance(findings, list):
+        return False
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        claim = finding.get("claim")
+        if isinstance(claim, str) and _misuses_profile_context_as_evidence(claim):
+            return True
+    return False
+
+
+def _misuses_profile_context_as_evidence(text: str) -> bool:
+    lower = text.lower()
+    if any(term in lower for term in PROFILE_CONTEXT_NEGATION_TERMS):
+        return False
+    return (
+        any(term in lower for term in PROFILE_CONTEXT_TERMS)
+        and any(term in lower for term in PROFILE_PROOF_TERMS)
+        and any(term in lower for term in PROFILE_SCIENTIFIC_CLAIM_TERMS)
+    )
 
 
 def _chat_completions_endpoint(base_url: str) -> str:

@@ -5,6 +5,7 @@ import pytest
 
 from autoresearch.experiments import (
     classify_failure_category,
+    classify_loop_engineering_failure_category,
     execute_experiment_task,
     record_failed_run_as_knowledge,
     update_recurring_failure_patterns,
@@ -129,6 +130,27 @@ def test_classify_failure_category_covers_representative_causes(
     category: str,
 ) -> None:
     assert classify_failure_category(text) == category
+
+
+@pytest.mark.parametrize(
+    ("text", "category"),
+    [
+        ("Semantic Scholar 429 rate limit during retrieval", "source"),
+        ("protocol schema missing research plan artifact", "protocol"),
+        ("TimeoutExpired stderr exception", "execution"),
+        ("metrics.json contains NaN outside bounds", "metric"),
+        ("reproduction validator failed evidence check", "validation"),
+        ("LLM review returned needs_revision", "review"),
+        ("GPU budget and token quota exceeded", "cost"),
+        ("sandbox approval required for secret access", "safety"),
+        ("ModuleNotFoundError missing package", "execution"),
+    ],
+)
+def test_classify_loop_engineering_failure_category_uses_plan_taxonomy(
+    text: str,
+    category: str,
+) -> None:
+    assert classify_loop_engineering_failure_category(text) == category
 
 
 def test_update_recurring_failure_patterns_writes_shared_note(tmp_path: Path) -> None:

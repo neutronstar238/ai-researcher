@@ -263,7 +263,91 @@ def _cycle_artifact_checks(
         _artifact_check("evidence_map", demo.get("evidence_map_path"), base_dir),
         _artifact_check("run_record", run_record, base_dir),
     ]
+    checks.extend(_loop_campaign_checks(summary, base_dir))
     checks.extend(_reproduction_checks(summary, base_dir))
+    return checks
+
+
+def _loop_campaign_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> list[EvidenceGateCheck]:
+    loop_campaign = _dict(summary.get("loop_campaign"))
+    loop_report = _dict(summary.get("loop_report"))
+    campaign_json = loop_campaign.get("json_path") or loop_report.get("json_path")
+    report_markdown = loop_report.get("markdown_path") or loop_campaign.get("markdown_path")
+    checks = [
+        _artifact_check("loop_campaign_json", campaign_json, base_dir),
+        _artifact_check("loop_report_markdown", report_markdown, base_dir),
+    ]
+    payload: dict[str, Any] = {}
+    campaign_path = _resolve_path(campaign_json, base_dir)
+    if campaign_path is not None and campaign_path.exists():
+        payload, error = _read_json_if_exists(campaign_path)
+        if error:
+            checks.append(
+                EvidenceGateCheck(
+                    "loop_campaign_readable",
+                    EvidenceGateCheckStatus.FAIL,
+                    "blocking",
+                    f"Loop campaign JSON is not readable: {error}",
+                    (campaign_path.as_posix(),),
+                    "Regenerate the loop campaign artifact before release.",
+                )
+            )
+        else:
+            checks.append(
+                EvidenceGateCheck(
+                    "loop_campaign_readable",
+                    EvidenceGateCheckStatus.PASS,
+                    "blocking",
+                    "Loop campaign JSON is readable.",
+                    (campaign_path.as_posix(),),
+                )
+            )
+    artifact_readable = bool(payload)
+    metrics = _dict(payload.get("metrics") or loop_campaign.get("metrics"))
+    quality_gate = _dict(payload.get("quality_gate") or loop_campaign.get("quality_gate"))
+    contract_validation = _dict(
+        payload.get("contract_validation") or loop_campaign.get("contract_validation")
+    )
+    gate_passed = quality_gate.get("passed") is True
+    contract_passed = contract_validation.get("passed") is True
+    metadata = _float(metrics.get("metadata_completeness"))
+    evidence = _float(metrics.get("evidence_coverage"))
+    reproduction = _float(metrics.get("reproduction_delta"))
+    metrics_ok = (
+        metadata is not None
+        and metadata >= 0.90
+        and evidence is not None
+        and evidence >= 0.80
+        and reproduction is not None
+        and reproduction <= 0.05
+    )
+    gate_ok = artifact_readable and gate_passed and contract_passed and metrics_ok
+    checks.append(
+        EvidenceGateCheck(
+            "loop_campaign_gate",
+            EvidenceGateCheckStatus.PASS if gate_ok else EvidenceGateCheckStatus.FAIL,
+            "blocking",
+            (
+                "Loop campaign gate "
+                f"artifact_readable={str(artifact_readable).lower()}, "
+                f"passed={str(gate_passed).lower()}, "
+                f"contract_passed={str(contract_passed).lower()}, "
+                f"metadata_completeness={metadata if metadata is not None else 'missing'}, "
+                f"evidence_coverage={evidence if evidence is not None else 'missing'}, "
+                f"reproduction_delta={reproduction if reproduction is not None else 'missing'}."
+            ),
+            (campaign_path.as_posix() if campaign_path is not None else "cycle_summary.loop_campaign",),
+            None
+            if gate_ok
+            else (
+                "Do not release until the closed-loop campaign records complete metadata, "
+                "protocol contract validation, evidence coverage, and reproduction evidence."
+            ),
+        )
+    )
     return checks
 
 
@@ -497,6 +581,23 @@ def _lifecycle_trace(
             (
                 (_experiment_child(experiment_dir, "README.md"), "experiment README"),
                 (_experiment_child(experiment_dir, "config.yaml"), "experiment config"),
+            ),
+        ),
+        (
+            "optimize",
+            "Closed-loop campaign and optimizer evidence",
+            True,
+            (
+                (
+                    _nested(summary, ("loop_campaign", "json_path"))
+                    or _nested(summary, ("loop_report", "json_path")),
+                    "loop campaign JSON",
+                ),
+                (
+                    _nested(summary, ("loop_report", "markdown_path"))
+                    or _nested(summary, ("loop_campaign", "markdown_path")),
+                    "loop report Markdown",
+                ),
             ),
         ),
         (
@@ -1161,6 +1262,13 @@ def _text_sequence(value: object) -> tuple[str, ...]:
     if not isinstance(value, list | tuple):
         return ()
     return tuple(text for item in value if (text := _text(item)))
+
+
+def _float(value: object) -> float | None:
+    try:
+        return float(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def _path_text(value: object) -> str | None:

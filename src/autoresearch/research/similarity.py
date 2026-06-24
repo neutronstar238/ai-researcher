@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -66,6 +67,14 @@ DEFAULT_SOURCE_RATE_LIMITS = {
     "arxiv": 3.0,
     "openalex": 1.0,
     "semantic_scholar": 1.0,
+}
+SOURCE_TYPE_BY_ID = {
+    "arxiv": "scholarly_preprint",
+    "openalex": "scholarly_metadata",
+    "semantic_scholar": "scholarly_metadata",
+    "huggingface_datasets": "dataset_signal",
+    "hacker_news": "forum_signal",
+    "github": "code_signal",
 }
 STOPWORDS = {
     "and",
@@ -262,6 +271,69 @@ class SimilarityFinding:
 
 
 @dataclass(frozen=True)
+class NoveltyBreadthCriterion:
+    """One query/source/finding coverage dimension for novelty search breadth."""
+
+    criterion_id: str
+    status: str
+    message: str
+    evidence_refs: tuple[str, ...] = ()
+    next_action: str | None = None
+
+    def to_json_dict(self) -> dict[str, object]:
+        return {
+            "criterion_id": self.criterion_id,
+            "status": self.status,
+            "message": self.message,
+            "evidence_refs": list(self.evidence_refs),
+            "next_action": self.next_action,
+        }
+
+
+@dataclass(frozen=True)
+class NoveltySearchBreadthReport:
+    """Positive trajectory report for how broadly novelty was searched."""
+
+    candidate_id: str
+    status: str
+    score: float
+    criteria: tuple[NoveltyBreadthCriterion, ...]
+    query_origins: tuple[str, ...]
+    successful_sources: tuple[str, ...]
+    successful_source_types: tuple[str, ...]
+    source_fetch_count: int
+    finding_count: int
+    classified_finding_count: int
+    direct_duplicate_count: int
+    adjacent_work_count: int
+    contradictory_evidence_count: int
+    artifact_path: Path | None = None
+
+    @property
+    def broad_enough(self) -> bool:
+        return self.status == "broad_enough"
+
+    def to_json_dict(self) -> dict[str, object]:
+        return {
+            "candidate_id": self.candidate_id,
+            "status": self.status,
+            "broad_enough": self.broad_enough,
+            "score": self.score,
+            "criteria": [criterion.to_json_dict() for criterion in self.criteria],
+            "query_origins": list(self.query_origins),
+            "successful_sources": list(self.successful_sources),
+            "successful_source_types": list(self.successful_source_types),
+            "source_fetch_count": self.source_fetch_count,
+            "finding_count": self.finding_count,
+            "classified_finding_count": self.classified_finding_count,
+            "direct_duplicate_count": self.direct_duplicate_count,
+            "adjacent_work_count": self.adjacent_work_count,
+            "contradictory_evidence_count": self.contradictory_evidence_count,
+            "artifact_path": self.artifact_path.as_posix() if self.artifact_path else None,
+        }
+
+
+@dataclass(frozen=True)
 class ProjectSimilarityReport:
     """Result of a project-start online similarity and novelty check."""
 
@@ -272,6 +344,7 @@ class ProjectSimilarityReport:
     documents: tuple[DocumentRecord, ...]
     findings: tuple[SimilarityFinding, ...]
     summary_path: Path | None
+    novelty_breadth: NoveltySearchBreadthReport | None = None
 
 
 def generate_similarity_queries(
@@ -413,6 +486,26 @@ def run_project_similarity_check(
         findings=findings,
         summary_path=None,
     )
+    novelty_breadth = evaluate_novelty_search_breadth(
+        candidate=candidate,
+        similarity_report=report,
+    )
+    if write_summary:
+        novelty_breadth = _write_novelty_breadth_json(
+            Path(vault_root),
+            candidate,
+            novelty_breadth,
+        )
+    report = ProjectSimilarityReport(
+        candidate_id=report.candidate_id,
+        queries=report.queries,
+        fetches=report.fetches,
+        papers=report.papers,
+        documents=report.documents,
+        findings=report.findings,
+        summary_path=report.summary_path,
+        novelty_breadth=novelty_breadth,
+    )
     if write_summary:
         report = ProjectSimilarityReport(
             candidate_id=report.candidate_id,
@@ -422,6 +515,7 @@ def run_project_similarity_check(
             documents=report.documents,
             findings=report.findings,
             summary_path=_write_similarity_summary(Path(vault_root), candidate, report, timestamp),
+            novelty_breadth=report.novelty_breadth,
         )
     return report
 
@@ -509,6 +603,339 @@ def link_similarity_report_to_project(
         / f"similarity_check_{report.candidate_id}.md"
     )
     return store.write_entry(relative_path, entry)
+
+
+def evaluate_novelty_search_breadth(
+    *,
+    candidate: ResearchCandidate,
+    similarity_report: ProjectSimilarityReport,
+    inspiration_report: object | None = None,
+) -> NoveltySearchBreadthReport:
+    """Summarize whether novelty search covered enough independent angles."""
+
+    queries = tuple(getattr(similarity_report, "queries", ()) or ())
+    fetches = tuple(getattr(similarity_report, "fetches", ()) or ())
+    findings = tuple(getattr(similarity_report, "findings", ()) or ())
+    query_origins = tuple(dict.fromkeys(getattr(query, "origin", "unknown") for query in queries))
+    successful_sources = _successful_novelty_sources(
+        fetches=fetches,
+        inspiration_report=inspiration_report,
+    )
+    successful_source_types = _successful_novelty_source_types(
+        fetches=fetches,
+        inspiration_report=inspiration_report,
+    )
+    classification_counts = _classification_counts(findings)
+    classified_count = sum(
+        count for classification, count in classification_counts.items() if classification != "unknown"
+    )
+    criteria = (
+        _origin_criterion(
+            "title_or_gap_query",
+            query_origins,
+            {"candidate_title", "research_gap"},
+            "Candidate title or gap was searched for duplicate and near-duplicate risk.",
+            "Search the candidate title and research gap before treating novelty as inspected.",
+        ),
+        _origin_criterion(
+            "method_dataset_query",
+            query_origins,
+            {"method_dataset_search", "method_dataset_limitation"},
+            "Method plus dataset terms were searched for method-aligned adjacent work.",
+            "Add a method+dataset query built from candidate metadata.",
+        ),
+        _origin_criterion(
+            "baseline_query",
+            query_origins,
+            {"baseline_dataset_search", "known_baseline_search"},
+            "Baseline terms were searched so the comparison is not invented in isolation.",
+            "Add a baseline+dataset query before the research plan stage.",
+        ),
+        _origin_criterion(
+            "risk_or_negative_query",
+            query_origins,
+            {"limitation_risk_search", "negative_result_search"},
+            "Limitation, failure, or negative-result search variants were executed.",
+            "Search limitation and negative-result variants; absence of hits is not negative evidence.",
+        ),
+        _vault_criterion(query_origins),
+        _source_type_criterion(
+            "scholarly_source_breadth",
+            successful_source_types,
+            {"scholarly_preprint", "scholarly_metadata"},
+            "Scholarly metadata/preprint sources returned source-backed records.",
+            "Run at least ArXiv/OpenAlex before claiming literature-search breadth.",
+        ),
+        _source_type_criterion(
+            "ecosystem_signal_breadth",
+            successful_source_types,
+            {"dataset_signal", "forum_signal", "code_signal"},
+            "Dataset, community, or code ecosystem sources contributed inspiration signals.",
+            "Run inspiration-refresh or another ecosystem search; do not cite these as papers.",
+            partial_when_missing=True,
+        ),
+        _finding_criterion(
+            "classified_finding_coverage",
+            classified_count,
+            "Similarity findings include evidence-backed non-unknown classifications.",
+            "Resolve unknown findings into direct duplicate, adjacent work, support, contradiction, or benchmark gap where evidence permits.",
+        ),
+        _finding_criterion(
+            "adjacent_work_coverage",
+            classification_counts.get("adjacent_work", 0)
+            + classification_counts.get("supporting_prior_work", 0)
+            + classification_counts.get("benchmark_gap", 0),
+            "Adjacent, supporting, or benchmark-gap prior work was identified for positioning.",
+            "Collect adjacent-work evidence before writing novelty claims.",
+        ),
+        _duplicate_scan_criterion(
+            direct_duplicate_count=classification_counts.get("direct_duplicate", 0),
+            query_origins=query_origins,
+        ),
+    )
+    score = _novelty_breadth_score(criteria)
+    status = _novelty_breadth_status(score)
+    return NoveltySearchBreadthReport(
+        candidate_id=candidate.id,
+        status=status,
+        score=score,
+        criteria=criteria,
+        query_origins=query_origins,
+        successful_sources=successful_sources,
+        successful_source_types=successful_source_types,
+        source_fetch_count=len(fetches)
+        + len(tuple(getattr(inspiration_report, "fetches", ()) or ())),
+        finding_count=len(findings),
+        classified_finding_count=classified_count,
+        direct_duplicate_count=classification_counts.get("direct_duplicate", 0),
+        adjacent_work_count=classification_counts.get("adjacent_work", 0),
+        contradictory_evidence_count=classification_counts.get("contradictory_evidence", 0),
+    )
+
+
+def write_novelty_search_breadth_artifact(
+    *,
+    breadth: NoveltySearchBreadthReport,
+    output_dir: Path | str,
+) -> NoveltySearchBreadthReport:
+    """Persist a machine-readable novelty breadth artifact and return its path."""
+
+    root = Path(output_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    artifact_path = root / "novelty-search-breadth.json"
+    updated = NoveltySearchBreadthReport(
+        candidate_id=breadth.candidate_id,
+        status=breadth.status,
+        score=breadth.score,
+        criteria=breadth.criteria,
+        query_origins=breadth.query_origins,
+        successful_sources=breadth.successful_sources,
+        successful_source_types=breadth.successful_source_types,
+        source_fetch_count=breadth.source_fetch_count,
+        finding_count=breadth.finding_count,
+        classified_finding_count=breadth.classified_finding_count,
+        direct_duplicate_count=breadth.direct_duplicate_count,
+        adjacent_work_count=breadth.adjacent_work_count,
+        contradictory_evidence_count=breadth.contradictory_evidence_count,
+        artifact_path=artifact_path,
+    )
+    artifact_path.write_text(
+        json.dumps(updated.to_json_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return updated
+
+
+def _successful_novelty_sources(
+    *,
+    fetches: tuple[object, ...],
+    inspiration_report: object | None,
+) -> tuple[str, ...]:
+    sources = {
+        _object_text(fetch, "source")
+        for fetch in fetches
+        if not _object_text(fetch, "error") and _object_int(fetch, "paper_count") > 0
+    }
+    for fetch in tuple(getattr(inspiration_report, "fetches", ()) or ()):
+        source = _object_text(fetch, "source")
+        result_count = _object_int(fetch, "result_count")
+        error = _object_text(fetch, "error")
+        if source and not error and result_count > 0:
+            sources.add(source)
+    return tuple(sorted(sources))
+
+
+def _successful_novelty_source_types(
+    *,
+    fetches: tuple[object, ...],
+    inspiration_report: object | None,
+) -> tuple[str, ...]:
+    source_types = {
+        SOURCE_TYPE_BY_ID.get(_object_text(fetch, "source"), "scholarly_metadata")
+        for fetch in fetches
+        if not _object_text(fetch, "error") and _object_int(fetch, "paper_count") > 0
+    }
+    for fetch in tuple(getattr(inspiration_report, "fetches", ()) or ()):
+        source = _object_text(fetch, "source")
+        source_type = _object_text(fetch, "source_type") or SOURCE_TYPE_BY_ID.get(source, "")
+        result_count = _object_int(fetch, "result_count")
+        error = _object_text(fetch, "error")
+        if source_type and not error and result_count > 0:
+            source_types.add(source_type)
+    return tuple(sorted(source_types))
+
+
+def _classification_counts(findings: tuple[object, ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        classification = _object_text(finding, "classification") or "unknown"
+        counts[classification] = counts.get(classification, 0) + 1
+    return counts
+
+
+def _origin_criterion(
+    criterion_id: str,
+    query_origins: tuple[str, ...],
+    expected_origins: set[str],
+    covered_message: str,
+    next_action: str,
+) -> NoveltyBreadthCriterion:
+    matched = tuple(origin for origin in query_origins if origin in expected_origins)
+    if matched:
+        return NoveltyBreadthCriterion(
+            criterion_id=criterion_id,
+            status="covered",
+            message=covered_message,
+            evidence_refs=matched,
+        )
+    return NoveltyBreadthCriterion(
+        criterion_id=criterion_id,
+        status="missing",
+        message=f"No query origin matched {', '.join(sorted(expected_origins))}.",
+        next_action=next_action,
+    )
+
+
+def _vault_criterion(query_origins: tuple[str, ...]) -> NoveltyBreadthCriterion:
+    matched = tuple(origin for origin in query_origins if origin.startswith("vault_"))
+    if matched:
+        return NoveltyBreadthCriterion(
+            criterion_id="vault_context_query",
+            status="covered",
+            message="Obsidian vault context contributed at least one novelty search query.",
+            evidence_refs=matched,
+        )
+    return NoveltyBreadthCriterion(
+        criterion_id="vault_context_query",
+        status="partial",
+        message="No vault-derived query was needed or available for this run.",
+        next_action="Add project topic, method, dataset, failure, or strategy notes so future searches use local memory.",
+    )
+
+
+def _source_type_criterion(
+    criterion_id: str,
+    source_types: tuple[str, ...],
+    expected_types: set[str],
+    covered_message: str,
+    next_action: str,
+    *,
+    partial_when_missing: bool = False,
+) -> NoveltyBreadthCriterion:
+    matched = tuple(source_type for source_type in source_types if source_type in expected_types)
+    if matched:
+        return NoveltyBreadthCriterion(
+            criterion_id=criterion_id,
+            status="covered",
+            message=covered_message,
+            evidence_refs=matched,
+        )
+    return NoveltyBreadthCriterion(
+        criterion_id=criterion_id,
+        status="partial" if partial_when_missing else "missing",
+        message=f"No successful source type matched {', '.join(sorted(expected_types))}.",
+        next_action=next_action,
+    )
+
+
+def _finding_criterion(
+    criterion_id: str,
+    count: int,
+    covered_message: str,
+    next_action: str,
+) -> NoveltyBreadthCriterion:
+    if count > 0:
+        return NoveltyBreadthCriterion(
+            criterion_id=criterion_id,
+            status="covered",
+            message=f"{covered_message} Count: {count}.",
+            evidence_refs=(f"count:{count}",),
+        )
+    return NoveltyBreadthCriterion(
+        criterion_id=criterion_id,
+        status="missing",
+        message="No source-backed finding covered this dimension.",
+        next_action=next_action,
+    )
+
+
+def _duplicate_scan_criterion(
+    *,
+    direct_duplicate_count: int,
+    query_origins: tuple[str, ...],
+) -> NoveltyBreadthCriterion:
+    if direct_duplicate_count > 0:
+        return NoveltyBreadthCriterion(
+            criterion_id="duplicate_scan",
+            status="covered",
+            message=f"Direct-duplicate scan found {direct_duplicate_count} candidate collision(s).",
+            evidence_refs=(f"direct_duplicate:{direct_duplicate_count}",),
+            next_action="Reposition or reject the candidate before claiming novelty.",
+        )
+    if "candidate_title" in query_origins:
+        return NoveltyBreadthCriterion(
+            criterion_id="duplicate_scan",
+            status="covered",
+            message="Candidate-title duplicate scan ran and found no direct duplicate in current sources.",
+            evidence_refs=("candidate_title",),
+        )
+    return NoveltyBreadthCriterion(
+        criterion_id="duplicate_scan",
+        status="missing",
+        message="No candidate-title query was recorded for direct duplicate scanning.",
+        next_action="Search the exact candidate title before project approval.",
+    )
+
+
+def _novelty_breadth_score(criteria: tuple[NoveltyBreadthCriterion, ...]) -> float:
+    if not criteria:
+        return 0.0
+    weights = {"covered": 1.0, "partial": 0.5, "missing": 0.0}
+    return round(sum(weights.get(criterion.status, 0.0) for criterion in criteria) / len(criteria), 3)
+
+
+def _novelty_breadth_status(score: float) -> str:
+    if score >= 0.8:
+        return "broad_enough"
+    if score >= 0.5:
+        return "expanding"
+    return "thin"
+
+
+def _object_text(value: object, attribute: str) -> str:
+    raw = getattr(value, attribute, "")
+    return raw if isinstance(raw, str) else ""
+
+
+def _object_int(value: object, attribute: str) -> int:
+    raw = getattr(value, attribute, 0)
+    if isinstance(raw, bool):
+        return int(raw)
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float):
+        return int(raw)
+    return 0
 
 
 def _finding_for_document(
@@ -832,6 +1259,37 @@ def _write_similarity_summary(
     return store.write_entry(relative_path, entry)
 
 
+def _write_novelty_breadth_json(
+    vault_root: Path,
+    candidate: ResearchCandidate,
+    breadth: NoveltySearchBreadthReport,
+) -> NoveltySearchBreadthReport:
+    artifact_dir = vault_root / "exploration" / "topics"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = artifact_dir / f"similarity_check_{candidate.id}_novelty_breadth.json"
+    updated = NoveltySearchBreadthReport(
+        candidate_id=breadth.candidate_id,
+        status=breadth.status,
+        score=breadth.score,
+        criteria=breadth.criteria,
+        query_origins=breadth.query_origins,
+        successful_sources=breadth.successful_sources,
+        successful_source_types=breadth.successful_source_types,
+        source_fetch_count=breadth.source_fetch_count,
+        finding_count=breadth.finding_count,
+        classified_finding_count=breadth.classified_finding_count,
+        direct_duplicate_count=breadth.direct_duplicate_count,
+        adjacent_work_count=breadth.adjacent_work_count,
+        contradictory_evidence_count=breadth.contradictory_evidence_count,
+        artifact_path=artifact_path,
+    )
+    artifact_path.write_text(
+        json.dumps(updated.to_json_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return updated
+
+
 def _similarity_summary_body(
     candidate: ResearchCandidate,
     report: ProjectSimilarityReport,
@@ -865,6 +1323,8 @@ def _similarity_summary_body(
             f"cache {status}, rate limit `{fetch.rate_limit_seconds}` seconds{error}."
         )
 
+    lines.extend(_novelty_breadth_markdown_lines(report.novelty_breadth))
+
     lines.extend(["", "## Findings", ""])
     if not report.findings:
         lines.append("- None; online evidence remains `pending verification`.")
@@ -891,6 +1351,42 @@ def _similarity_summary_body(
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _novelty_breadth_markdown_lines(
+    breadth: NoveltySearchBreadthReport | None,
+) -> list[str]:
+    if breadth is None:
+        return ["", "## Novelty Search Breadth", "", "- Not evaluated for this run."]
+    lines = [
+        "",
+        "## Novelty Search Breadth",
+        "",
+        f"- Status: `{breadth.status}`",
+        f"- Score: `{breadth.score}`",
+        f"- Successful sources: {', '.join(f'`{source}`' for source in breadth.successful_sources) or '`none`'}",
+        f"- Successful source types: {', '.join(f'`{kind}`' for kind in breadth.successful_source_types) or '`none`'}",
+        f"- Classified findings: `{breadth.classified_finding_count}` / `{breadth.finding_count}`",
+        f"- Breadth artifact: `{breadth.artifact_path.as_posix() if breadth.artifact_path else 'not written'}`",
+        "",
+        "### Breadth Matrix",
+        "",
+        "| Dimension | Status | Evidence | Next action |",
+        "| --- | --- | --- | --- |",
+    ]
+    for criterion in breadth.criteria:
+        evidence = ", ".join(f"`{ref}`" for ref in criterion.evidence_refs) or "`none`"
+        next_action = criterion.next_action or "Already covered in this run."
+        lines.append(
+            f"| `{criterion.criterion_id}` | `{criterion.status}` | {evidence} | {next_action} |"
+        )
+    lines.extend(
+        [
+            "",
+            "This matrix measures search breadth only. It does not prove novelty, results, code availability, or publishability by itself.",
+        ]
+    )
+    return lines
+
+
 def _project_similarity_link_body(report: ProjectSimilarityReport, summary_target: str) -> str:
     counts: dict[str, int] = {}
     for finding in report.findings:
@@ -901,6 +1397,7 @@ def _project_similarity_link_body(report: ProjectSimilarityReport, summary_targe
         f"- Exploration summary: [[{summary_target}]]",
         f"- Candidate ID: `{report.candidate_id}`",
         f"- Online findings: `{len(report.findings)}`",
+        f"- Novelty breadth: `{report.novelty_breadth.status if report.novelty_breadth else 'not_evaluated'}`",
         "",
         "## Classification Counts",
         "",

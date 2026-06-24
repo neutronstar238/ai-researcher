@@ -361,6 +361,7 @@ def audit_publication_quality(
         *_related_work_inspection_checks(summary, summary_path.parent, target_config),
         *_similarity_checks(summary, summary_path.parent, target_config),
         *_script_and_data_checks(summary, summary_path.parent, target_config),
+        *_loop_engineering_checks(summary, summary_path.parent),
         *_review_checks(
             summary,
             summary_path.parent,
@@ -1031,13 +1032,16 @@ def _similarity_checks(
             "Search candidate title, research gap, method/dataset terms, baselines, negative results, and vault context.",
             ("cycle_summary.similarity.fetches",),
         ),
-        _threshold_check(
+        _similarity_novelty_potential_check(
             "similarity_finding_breadth",
             finding_count,
             target.min_similarity_findings,
-            "blocking",
             f"Similarity findings: {finding_count}; target requires at least {target.min_similarity_findings}.",
-            "Collect enough adjacent-work evidence before claiming novelty or cross-validation coverage.",
+            (
+                "If query/source breadth is already broad, treat sparse same-direction matches "
+                "as novelty potential and strengthen related-work/citation positioning instead "
+                "of rejecting the research direction."
+            ),
             ("cycle_summary.similarity.finding_count",),
         ),
         _threshold_check(
@@ -1092,13 +1096,16 @@ def _similarity_checks(
         )
     if target.require_novel_contribution:
         checks.append(
-            _threshold_check(
+            _similarity_novelty_potential_check(
                 "similarity_classified_finding_breadth",
                 classified_findings,
                 target.min_similarity_findings,
-                "blocking",
                 f"Evidence-classified similarity findings: {classified_findings}; target requires at least {target.min_similarity_findings}.",
-                "Classify enough source-backed similar-work findings before using similarity breadth as novelty support.",
+                (
+                    "Classify enough source-backed findings before making strong novelty "
+                    "claims; sparse classified matches are a positioning/revision issue, "
+                    "not proof that the direction is infeasible."
+                ),
                 ("cycle_summary.similarity.summary_path",),
             )
         )
@@ -1106,11 +1113,15 @@ def _similarity_checks(
         checks.append(
             PublicationAuditCheck(
                 "similarity_classification_coverage",
-                PublicationAuditCheckStatus.FAIL,
+                PublicationAuditCheckStatus.WARNING,
                 "high",
                 f"Similarity findings are all unclassified or unknown: unknown={unknown_findings}, classified={classified_findings}.",
                 ("cycle_summary.similarity.summary_path",),
-                "Resolve unknown similarity classifications into direct_duplicate, adjacent_work, or another supported evidence-backed category before claiming novelty.",
+                (
+                    "Resolve unknown classifications before priority or publication-ready "
+                    "novelty claims; unclassified hits do not prove duplication, but they "
+                    "leave duplicate-risk screening incomplete."
+                ),
             )
         )
     else:
@@ -1132,6 +1143,24 @@ def _similarity_checks(
                 f"Similarity check found {direct_duplicates} direct duplicate candidates.",
                 ("cycle_summary.similarity.summary_path",),
                 "Reject or substantially reposition the candidate before further experiments.",
+            )
+        )
+    elif finding_count > 0 and classified_findings <= 0:
+        checks.append(
+            PublicationAuditCheck(
+                "similarity_duplicate_risk",
+                PublicationAuditCheckStatus.WARNING,
+                "high",
+                (
+                    "No direct duplicate is confirmed, but all retrieved similarity "
+                    "findings remain unclassified."
+                ),
+                ("cycle_summary.similarity.summary_path",),
+                (
+                    "Classify retrieved findings before final publication review; until "
+                    "then, treat the candidate as potentially novel but duplicate-risk "
+                    "screening is unresolved."
+                ),
             )
         )
     elif adjacent_work:
@@ -1453,6 +1482,93 @@ def _review_checks(
     return checks
 
 
+def _loop_engineering_checks(
+    summary: dict[str, Any],
+    base_dir: Path,
+) -> list[PublicationAuditCheck]:
+    loop_campaign = _dict(summary.get("loop_campaign"))
+    loop_report = _dict(summary.get("loop_report"))
+    campaign_json = loop_campaign.get("json_path") or loop_report.get("json_path")
+    report_markdown = loop_report.get("markdown_path") or loop_campaign.get("markdown_path")
+    campaign_path = _resolve_path(campaign_json, base_dir)
+    report_path = _resolve_path(report_markdown, base_dir)
+    payload = _read_json_if_exists(campaign_path) if campaign_path is not None else {}
+    artifact_readable = bool(payload)
+    metrics = _dict(payload.get("metrics") or loop_campaign.get("metrics"))
+    quality_gate = _dict(payload.get("quality_gate") or loop_campaign.get("quality_gate"))
+    contract_validation = _dict(
+        payload.get("contract_validation") or loop_campaign.get("contract_validation")
+    )
+    artifact_ok = (
+        campaign_path is not None
+        and campaign_path.exists()
+        and report_path is not None
+        and report_path.exists()
+    )
+    gate_passed = quality_gate.get("passed") is True
+    contract_passed = contract_validation.get("passed") is True
+    metadata = _float_or_none(metrics.get("metadata_completeness"))
+    evidence = _float_or_none(metrics.get("evidence_coverage"))
+    reproduction = _float_or_none(metrics.get("reproduction_delta"))
+    metrics_ok = (
+        metadata is not None
+        and metadata >= 0.90
+        and evidence is not None
+        and evidence >= 0.80
+        and reproduction is not None
+        and reproduction <= 0.05
+    )
+    quality_ok = artifact_ok and artifact_readable and gate_passed and contract_passed and metrics_ok
+    return [
+        PublicationAuditCheck(
+            "loop_campaign_artifacts",
+            PublicationAuditCheckStatus.PASS if artifact_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Closed-loop campaign artifacts "
+                f"json={'present' if campaign_path and campaign_path.exists() else 'missing'}, "
+                f"markdown={'present' if report_path and report_path.exists() else 'missing'}."
+            ),
+            (
+                campaign_path.as_posix()
+                if campaign_path is not None
+                else "cycle_summary.loop_campaign.json_path",
+                report_path.as_posix()
+                if report_path is not None
+                else "cycle_summary.loop_report.markdown_path",
+            ),
+            None
+            if artifact_ok
+            else "Generate loop-campaign.json and loop-report.md before publication audit.",
+        ),
+        PublicationAuditCheck(
+            "loop_campaign_quality_gate",
+            PublicationAuditCheckStatus.PASS if quality_ok else PublicationAuditCheckStatus.FAIL,
+            "blocking",
+            (
+                "Closed-loop campaign gate "
+                f"artifact_readable={str(artifact_readable).lower()}, "
+                f"passed={str(gate_passed).lower()}, "
+                f"contract_passed={str(contract_passed).lower()}, "
+                f"metadata_completeness={metadata if metadata is not None else 'missing'}, "
+                f"evidence_coverage={evidence if evidence is not None else 'missing'}, "
+                f"reproduction_delta={reproduction if reproduction is not None else 'missing'}."
+            ),
+            (
+                campaign_path.as_posix()
+                if campaign_path is not None
+                else "cycle_summary.loop_campaign",
+            ),
+            None
+            if quality_ok
+            else (
+                "Publication-level claims require closed-loop metadata completeness, "
+                "protocol contract validation, evidence coverage, and reproduction metrics to pass."
+            ),
+        ),
+    ]
+
+
 def _review_artifact_binding_check(
     summary: dict[str, Any],
     base_dir: Path,
@@ -1647,6 +1763,26 @@ def _threshold_check(
     )
 
 
+def _similarity_novelty_potential_check(
+    check_id: str,
+    actual: int,
+    minimum: int,
+    message: str,
+    next_action: str,
+    evidence_refs: tuple[str, ...],
+) -> PublicationAuditCheck:
+    return PublicationAuditCheck(
+        check_id,
+        PublicationAuditCheckStatus.PASS
+        if actual >= minimum
+        else PublicationAuditCheckStatus.WARNING,
+        "high" if actual < minimum else "info",
+        message,
+        evidence_refs,
+        None if actual >= minimum else next_action,
+    )
+
+
 def _boolean_requirement_check(
     check_id: str,
     passed: bool,
@@ -1702,9 +1838,15 @@ def _verdict(
         check.status is PublicationAuditCheckStatus.FAIL and check.severity in {"blocking", "high"}
         for check in checks
     )
+    unresolved_similarity_warning = target.require_novel_contribution and any(
+        check.status is PublicationAuditCheckStatus.WARNING
+        and check.severity == "high"
+        and check.check_id.startswith("similarity_")
+        for check in checks
+    )
     if blocking_fail:
         return PublicationAuditVerdict.FAIL
-    if hard_fail or score < target.min_score:
+    if hard_fail or unresolved_similarity_warning or score < target.min_score:
         return PublicationAuditVerdict.NEEDS_REVISION
     return PublicationAuditVerdict.PASS
 

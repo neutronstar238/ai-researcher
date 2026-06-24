@@ -148,6 +148,7 @@ def generate_research_plan(
     similarity_summary: Path | str | None = None,
     literature_summary: Path | str | None = None,
     inspiration_summary: Path | str | None = None,
+    brainstorm_summary: Path | str | None = None,
     timeout_seconds: int = 120,
 ) -> ResearchPlanArtifact:
     """Generate an evidence-bound research plan and optional PDF artifact."""
@@ -159,6 +160,7 @@ def generate_research_plan(
         similarity_summary=similarity_summary,
         literature_summary=literature_summary,
         inspiration_summary=inspiration_summary,
+        brainstorm_summary=brainstorm_summary,
     )
     plan = _build_plan(candidate=candidate, project_id=project_id, context_refs=context_refs)
     initial_markdown = render_research_plan_markdown(plan=plan, audit=None)
@@ -611,7 +613,10 @@ def _build_plan(
             f"The selected direction has candidate scores novelty={candidate.novelty_score:.2f}, "
             f"feasibility={candidate.feasibility_score:.2f}, impact={candidate.impact_score:.2f}. "
             f"Its main rationale is: {candidate.description} The current limitation to address is: "
-            f"{limitation}."
+            f"{limitation}. The decision to proceed is based on the executable experiment skeleton "
+            "below: source data, baseline, metric, falsification check, and reproducible command path. "
+            "Similarity matching is used to detect direct duplicate risk and borrowable adjacent context, "
+            "not as the primary feasibility judge."
         ),
         technical_details=(
             f"Core method: {method}. Baseline/control: {baseline}. Dataset route: {dataset}. "
@@ -762,12 +767,14 @@ def _context_refs(
     similarity_summary: Path | str | None,
     literature_summary: Path | str | None,
     inspiration_summary: Path | str | None,
+    brainstorm_summary: Path | str | None,
 ) -> tuple[str, ...]:
     refs: list[str] = []
     for label, value in (
         ("similarity_summary", similarity_summary),
         ("literature_summary", literature_summary),
         ("inspiration_summary", inspiration_summary),
+        ("brainstorm_summary", brainstorm_summary),
     ):
         if value is not None:
             refs.append(f"{label}:{Path(value).as_posix()}")

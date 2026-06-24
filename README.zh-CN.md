@@ -14,13 +14,15 @@ V1.0 是单操作者的本地/服务器版本，可以在部署后挂在工作�
 
 | 模块 | V1.0 行为 |
 | --- | --- |
-| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest 和 slash 模板。 |
+| 引导式部署 | `airesearcher setup` 会引导选择模型供应商、base URL、模型名、API key、微信扫码或飞书 App 凭据、默认开启的真实通道自检、vault 路径、集成 manifest、slash 模板和默认可编辑 Agent 团队 bundle。 |
 | 常驻自循环 | `airesearcher serve` 和 `airesearcher autopilot --watch` 支持每日循环：联网文献、灵感抓取、实验、评审、审计、论文构建和 follow-up。 |
 | 灵感推送 | `--push-inspiration` 会通过 setup 配好的微信/飞书通道推送灵感摘要；缺少可送达状态时记录为 `skipped`，不会假装成功。 |
 | Obsidian 记忆 | `autoresearch-vault/` 存储文献、灵感、实验、证据、issue、失败、skill、strategy 和论文摘要。 |
 | 研究计划门禁 | 用户确认研究方向后，`airesearcher research-plan` 会先把可执行研究计划写入 vault，并在 `outputs/<project-id>/research-plan/` 下生成 LaTeX/PDF，之后才允许代码 Agent 做实验。 |
+| 闭环 campaign | 每个已确认方向会被初始化为 protocol-as-code campaign：明确目标、预算、候选空间、基线、停止条件、DOE/证据增益候选选择、闭环指标和可回滚质量门禁。 |
 | 论文产物 | Markdown 经验与归档在 vault 中；PDF、TeX、manifest 等发布产物在 `outputs/<project-id>/` 中。 |
 | 代码 Agent | 支持把 OpenCode 作为外部代码起草后端，但验证、审批、提交和回滚权仍在 AI-Researcher。 |
+| Agent profile | `airesearcher agents profile write`、`agents profile import`、`agents profile import-set`、`agents profile team-attach`、`agents profile inspect-set` 和 `agents profile team-template` 可以把自定义 skill 与 MCP server 绑定到一个或多个 Agent；`serve` / `autopilot` 可以通过可重复的 `--agent-profile <json>` 加载单 Agent profile，也可以通过 `--agent-profile-set-bundle <team.yaml>` 直接加载可复用团队 bundle，并把展开后的 profile 证据写入每轮 cycle。 |
 | 通信适配器 | OpenClaw 风格通道只作为 runbook 元数据保留，不把第三方插件源码混进仓库。 |
 | 发表门禁 | CCF-B/三区级别声明必须绑定真实来源、实验记录、复现检查、审计、PDF 构建和 evidence gate。 |
 
@@ -70,8 +72,11 @@ airesearcher setup
 7. 初始化 `autoresearch-vault/`。
 8. 写入 `integrations/` 下的集成 runbook。
 9. 写入 `.airesearcher/commands/` 下的本地 slash command 模板。
+10. 写入 `.airesearcher/agents/ccfb-team.yaml` 下的默认可编辑 Agent 团队 bundle。
 
 向导会把本地密钥和通道状态写入 `.env`，用户不需要手动编辑这个文件。公开模板在 `.env.example`。不要提交真实 API key、webhook URL、app secret、chat ID、会话或 token。
+
+setup 完成后，`npm run serve` 会在没有显式传入 Agent profile 或团队 bundle 时自动加载生成的默认 bundle，并为这支默认团队开启 profile-set 覆盖门禁。第一次无人值守启动前，运行 `npm run agent-team:inspect` 可以预览生成的 skill、MCP contract、readiness 和阶段覆盖。只有当部署环境已经有审查过的自定义团队 bundle 时，才建议在 setup 阶段传入 `--skip-agent-team`。
 
 推荐通道配置：
 
@@ -97,7 +102,7 @@ npm run prelaunch
 airesearcher readiness --push-inspiration --require-channel-config --require-channel-sent
 ```
 
-它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
+它会在启动 24h 循环前生成 `.airesearcher/readiness/report.json`，检查每日循环、vault、输出目录、模型 API、setup 默认 Agent 团队、操作者通道配置和最近一次通道自检送达证据是否就绪。若有缺失，报告会写入 `next_actions`，给出可执行的修复命令。
 报告里的计划日循环命令会使用带审批门禁的 `serve` runtime，而不是更底层的直接 `autopilot` 入口。
 
 也可以非交互式部署：
@@ -140,6 +145,12 @@ airesearcher runtime list
 airesearcher runtime approve latest --approved-by operator
 ```
 
+`serve` 和 `autopilot` 会自动把各阶段心跳写入本地状态文件，并把 watchdog 报告
+嵌入每轮 cycle summary 和 review evidence bundle。操作员可以用
+`airesearcher runtime heartbeat check --run-id <cycle-id>` 单独检查某一轮；该检查
+会检测过期阶段和重复进度签名，并在卡住时要求检查、修复或转向。该报告只证明
+运行健康状态，不能证明科研结论、引用、工具调用、创新性或发表就绪。
+
 如果这是完全可信的本地机器，也可以使用：
 
 ```bash
@@ -156,6 +167,80 @@ airesearcher serve --permission-mode allow-all --push-inspiration
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
+可以给常驻运行入口绑定单个或多个 Agent profile：
+
+```bash
+airesearcher agents profile write \
+  --agent-id literature-agent \
+  --role project_agent \
+  --stage literature \
+  --stage similarity \
+  --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md \
+  --skill-policy source-tracing:approved_runtime \
+  --mcp "page-agent=npx -y page-agent" \
+  --mcp-tool page-agent:browser.search \
+  --mcp-tool page-agent:browser.open \
+  --mcp-approval page-agent:approve_dangerous \
+  --mcp-env-key page-agent:PAGE_AGENT_TOKEN \
+  --output .airesearcher/agents/literature-agent.json
+
+airesearcher agents profile validate \
+  .airesearcher/agents/literature-agent.json \
+  --env-path .env \
+  --output .airesearcher/agents/literature-agent-readiness.json
+
+airesearcher serve \
+  --agent-profile .airesearcher/agents/literature-agent.json \
+  --agent-profile .airesearcher/agents/reviewer-agent.json
+```
+
+团队复用时也可以把同一个 profile 写成 JSON/YAML/TOML bundle，然后导入成标准 profile JSON：
+
+```yaml
+agent_id: literature-agent
+role: project_agent
+thinking_mode: scientific
+publication_target: ccf-b-or-sci-q2
+assigned_stages: [literature, similarity, research_plan]
+thinking_contract_additions:
+  - Prefer falsifiable research claims over software architecture metaphors.
+skills:
+  - skill_id: source-tracing
+    source: autoresearch-vault/_system/templates/skill-card.md
+    import_policy: approved_runtime
+mcp_servers:
+  - server_id: page-agent
+    command: npx -y page-agent
+    allowed_tools: [browser.search, browser.open]
+    approval_policy: approve_dangerous
+    env_keys: [PAGE_AGENT_TOKEN]
+```
+
+```bash
+airesearcher agents profile import literature-agent.yaml \
+  --output .airesearcher/agents/literature-agent.json
+```
+
+这些 profile 会写入 `cycle-summary.json`、`review-evidence-context.json` 和 operator monitor。可选的 `--stage` 会把某个 profile 绑定到 `literature`、`similarity`、`research_plan`、`loop_campaign`、`experiment`、`review`、`publication_audit`、`evidence_gate` 等闭环阶段，使审计记录能看到每个 Agent 的科研责任边界。`cycle-summary.json` 还会写入 `stage_runtime_contexts`，`review-evidence-context.json` 还会写入 `stage_agent_contexts`，下游阶段 worker 只能消费分配给该阶段的受控 skill/MCP 上下文。它们不能绕过证据、复现、评审、论文构建和发布门禁；LLM reviewer 也会把 profile 和 stage context 视为流程元数据，而不是科学结果、工具已调用、创新性或发表就绪的证明，本地 reviewer 质量门禁也会拦截这类误用。运行时 profile context 会带有 `context_kind=agent_profile_process_metadata` 和机器可读 evidence policy，后续阶段不用从散文里推断这条边界。
+
+`--skill-policy <skill_id>:read_only_context|shadow_evaluation|approved_runtime` 用于声明某个已绑定 skill 对 Agent 的影响范围；`--mcp-approval <server_id>:read_only|approve_dangerous|allow_all` 和 `--mcp-env-key <server_id>:ENV_KEY` 用于声明单个 MCP server 的审批策略和所需环境变量名。这些 flag 必须引用同一条命令中已经绑定的 skill 或 MCP server。`--mcp-env-key` 只保存大写环境变量名，不保存密钥值。
+
+在无人值守运行前先执行 `agents profile validate`，用于检查本地 skill 源路径和必需的 MCP 环境变量名是否存在。readiness 报告会进入运行时 profile context、`cycle-summary.json`、`review-evidence-context.json`、monitor 行和 CLI 状态输出。它只验证 profile 输入，不证明 MCP 工具已经真实调用、外部 skill 内容已经安全，也不能作为科学 claim 的证据。
+
+在 Python 进程内运行时，绑定 profile 的 Agent 还会暴露 `profile_runtime_capabilities`，包含 skill ID、MCP server ID 和带作用域的 MCP tool ref。`AgentRegistry` 可以通过 `find_by_skill`、`find_by_mcp_server` 或 `find_by_mcp_tool` 找到导入了某个自定义科研 skill 或 MCP 工具的指定 Agent，方便后续 stage scheduler 做精确路由。它不会扩展 Agent 的可执行 task capability；`run_task` 仍然执行原有能力门禁。面向 scheduler 的 Python 代码可以使用 `AgentRegistry.select_for_stage(...)`，把阶段分配、可执行 capability、必需 skill ID、MCP server ID 和带作用域的 MCP tool ref 合并成一条可审计 route。默认只返回满足条件的 Agent；传入 `include_ineligible=True` 时会返回缺少导入或 task scope 不匹配的诊断 route，但不会授予执行权限。
+
+多 Agent 部署前运行 `agents profile set-validate <profiles...>`。它会生成面向 CCF-B/SCI 二区研究闭环的 stage coverage matrix，检查每个 profile 的 readiness，阻断 literature、research_plan、experiment、reproduction、citations、review 等职责缺口，并提示 `allow_all` MCP 绑定或未分配阶段的 profile。这个检查只证明团队配置和责任边界可运行，不能证明科学结论或发表就绪。
+
+可复用团队 bundle 还可以声明 `stage_import_requirements`，指定某个阶段必须收到哪些自定义 skill、MCP server 或带作用域的 MCP tool ref。`agents profile import-set`、`agents profile inspect-set` 以及 `serve` / `autopilot` 的运行时 profile-set validation 都会报告这些要求；如果启用强制门禁，缺少必要研究工具时会在联网检索前停止本轮。这只证明指定 Agent 收到了指定流程上下文，不证明科研结论成立；结论仍必须由来源检索、实验、复现、评审和 evidence gate 支撑。
+
+如果需要把一整组 Agent 团队作为单个文件共享，运行 `agents profile import-set <team.yaml> --output-dir .airesearcher/agents`。bundle 在 `profiles:` 下复用单 Agent import schema，命令会为每个 Agent 写出标准 profile JSON，同时生成 `profile-set-validation.json`；默认在必需阶段缺失或 readiness 失败时非零退出，`--allow-incomplete` 仅用于调试或灰度 dry run。可以先用 `agents profile team-template --output .airesearcher/agents/ccfb-team.yaml` 生成一份可编辑的默认三 Agent CCF-B/SCI 二区团队和本地 skill Markdown 文件。在导入或启动 runtime 前，可以运行 `agents profile inspect-set .airesearcher/agents/ccfb-team.yaml --materialize-skills --require-complete`，直接从团队 bundle 预览每个 Agent 会收到的有界 skill 内容、MCP runtime contract、readiness 结果和阶段覆盖矩阵。如果要给某个指定 Agent 追加 skill、MCP 或阶段，不需要手改 YAML，可以运行 `agents profile team-attach .airesearcher/agents/ccfb-team.yaml --agent-id experiment-agent --skill research-architect=skills/research-architect.md`，然后再次 inspect；该命令复用单 Agent profile 的 `--skill`、`--skill-policy`、`--stage`、`--mcp`、`--mcp-tool`、`--mcp-approval` 和 `--mcp-env-key` 语法。无人值守运行时，`serve` 和 `autopilot` 也可以直接使用可重复的 `--agent-profile-set-bundle <team.yaml>` 加载同一份团队文件；每轮 cycle 会把 bundle 展开到 `agent-profile-bundles/`，把相对本地 skill 路径按 bundle 文件位置解析，然后复用 readiness、profile-set validation、stage-context packet、review evidence 和可选 `--require-agent-profile-set` 门禁。这只证明责任路由和流程元数据，不证明科研结论成立。
+
+当已加载的 profile 指向本地 skill 文件，或指向包含 `SKILL.md` 的目录时，运行时会把有界 skill 摘要写入阶段上下文，并记录 `status`、`sha256`、字节数/字符数、`max_chars` 和截断标记。紧凑 profile summary 只记录来源和状态，`stage_runtime_contexts` 与 `stage_agent_contexts` 才携带分配给 worker 的有界内容。非本地来源只保留引用；本地文件如果包含疑似密钥文本，会标记为 `blocked`，不会把内容写入 artifact。可以运行 `agents profile inspect --materialize-skills --base-dir . <profile.json>` 预览某个 Agent 实际会收到的上下文。`serve` 和 `autopilot` 还会在每轮 cycle 的 `agent-stage-contexts/` 目录下自动写出可移植 packet；每个 packet 只包含该阶段负责的 Agent、有界 skill 摘要、MCP contract、readiness 摘要和流程元数据证据边界，并额外带有 `scientific_focus` 与可直接注入阶段 Agent 的 `runtime_prompt`，让自定义 skill 和 MCP 以科研优先的方式进入运行时，而不是松散的工程元数据。同一目录会额外写出 `assignment-manifest.json`，汇总每个阶段的 Agent ID、skill ID、已物化 skill 哈希、MCP server ID 和 MCP contract 哈希，但不复制 skill 正文；它用于 review 与 publication gate 审计责任路由，仍不能证明工具已经调用或科研结论成立。同一轮还会写出 `agent-profile-set/agent-profile-set-validation.json`，用于审计已加载 Agent 团队是否覆盖默认 CCF-B/SCI 二区研究阶段矩阵；使用 `--require-agent-profile-set` 时，矩阵不完整会在联网检索前阻断本轮。
+
+MCP 绑定还会生成 `mcp_runtime_contracts`。contract 会记录命令哈希、允许的工具、审批策略、所需 env key 名称，以及是否需要运行时审批或隔离的 operator 授权。它不会记录 env 值，也仍然只是流程元数据：MCP contract 只能证明该 Agent 被允许使用什么工具，不能证明工具已经真实调用，也不能证明科研结果成立。
+
+当 MCP worker 真正调用工具时，需要用 `agents mcp-evidence add` 额外写入 JSONL ledger。该 ledger 只保存请求/响应 artifact 的路径和 SHA-256、调用状态、审批关联和非敏感结果摘要，不内嵌原始 payload；`agents mcp-evidence validate` 会把每条记录和所属 Agent profile 的 MCP allowlist 交叉校验。它只能证明某个 Agent 记录过某次工具调用，不能替代实验、文献、复现或审稿证据。
+
 `autopilot` 和 `serve` 使用同一个默认公开 benchmark；可以通过 `--demo <id>` 切换到其他 benchmark，或用 `--demo tabular_baseline` 跑快速 toy fixture。
 
 每一轮 cycle 可以执行：
@@ -164,16 +249,22 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 2. ArXiv 和 OpenAlex 文献刷新，Semantic Scholar 作为可选低优先级来源。
 3. 有来源支撑的相似工作和创新性检查。
 4. 用户确认方向后的研究计划生成与门禁。
-5. Hugging Face 和 Hacker News 灵感抓取。
-6. 本地 demo 或真实公开 benchmark 实验。
-7. 命令行复现实验检查。
-8. 可选真实 LLM 证据评审。
-9. publication audit。
-10. LaTeX 论文构建。
-11. physical evidence gate。
-12. Obsidian review、issue、skill、strategy 写入。
-13. scheduler follow-up 合并。
-14. 可选微信/飞书灵感摘要推送。
+5. 闭环 campaign 初始化与 DOE/主动学习候选选择。
+6. Hugging Face 和 Hacker News 灵感抓取。
+7. 本地 demo 或真实公开 benchmark 实验。
+8. 命令行复现实验检查。
+9. 可选真实 LLM 证据评审。
+10. 生成包含 AF、EF、复现误差、元数据完整率、失败恢复率和证据覆盖率的 loop report。
+11. publication audit。
+12. LaTeX 论文构建。
+13. physical evidence gate。
+14. Obsidian review、issue、skill、strategy 写入。
+15. scheduler follow-up 合并。
+16. 可选微信/飞书灵感摘要推送。
+
+Campaign artifact 会作为 protocol-as-code 处理。`loop-campaign.json` 会记录 data sources、baselines、protocol artifacts、候选 arm、optimizer policy、optimizer state、指标、质量门禁、`contract_validation` 和确定性的 `stop_decision`。`contract_validation` 会检查 campaign 是否声明 objective、metric、budget、data sources、baselines、protocol artifacts、candidate space、stop criteria、approval policy、evidence requirements，以及 LLM proposal 不能绕过或覆盖门禁的规则。第一轮必须是 DOE 基线；后续轮次会写入主动学习/UCB-like 分数表，包含 exploitation、uncertainty、cost、risk、冻结维度惩罚和 `llm_override_allowed=false`。失败的 loop 不能无限盲目重试：如果元数据、证据、复现、预算、审批、协议契约或连续失败检查阻断下一步，loop report 必须写清楚被冻结的维度，以及再次运行候选前需要完成的修复动作。release gate 和 publication audit 还会要求 `contract_validation.passed=true`。
+
+Strategy promotion 也使用同一组 Loop Engineering 指标：AF、EF、metadata completeness、reproduction delta、failure recovery 和 evidence coverage 在进入灰度发布前都不能退化。
 
 V1.0 的广域灵感抓取仍以 API 为优先，便于复现和限频。PageAgent 风格的浏览器网页获取会作为后续适配器参考，用来覆盖没有稳定 API 的公开页面；正式启用前必须通过 robots/ToS、限频、隔离浏览器 profile、快照证据、动作日志和审批门禁。
 
@@ -198,7 +289,7 @@ npm run monitor
 airesearcher monitor
 ```
 
-监控台会显示最近 Agent 消息、活跃文件声明、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
+监控台会显示最近 Agent 消息、活跃文件声明、已加载 Agent profile、发布关键 cycle 阶段、审批队列、follow-up 任务、git diff 和 output 预览。流程表会展开 source preflight、文献刷新、研究计划、闭环 campaign、novelty/similarity、相关工作、引用包、实验、复现、评审、发表审计、论文构建、证据门禁、follow-up 和 deliverables，并绑定对应 artifact 路径与 paper-quality 状态。
 
 | 参数 | 作用 |
 | --- | --- |
@@ -226,10 +317,11 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:autopilot` | 可选说明 | 启动带证据门禁的每日自循环。 |
 | `/research:refresh-literature` | 可选主题 | 联网刷新 ArXiv/OpenAlex 文献。 |
 | `/research:inspiration-refresh` | 查询文本 | 抓取非学术灵感来源并可推送摘要。 |
-| `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索。 |
+| `/research:brainstorm` | candidate + inspiration report | 运行临时高温 miniagent，先记录原始想法，再用实时证据 reviewer 筛查重复风险、可做性和可验证性。 |
+| `/research:similarity-check` | candidate 上下文 | 对候选课题做相近工作交叉检索，并写出创新检索广度矩阵。 |
 | `/research:research-plan` | candidate JSON + project id | 把确认方向后的研究计划写入 Obsidian 和 `outputs/`。 |
 | `/research:run-demo` | demo id | 执行本地 demo 或公开 benchmark。 |
-| `/research:publication-audit` | cycle summary 路径 | 审计发表准备度。 |
+| `/research:publication-audit` | cycle summary 路径 | 审计发表准备度；检索 query/source 广度和 direct duplicate 仍严格，少量同方向匹配会变成潜在创新的 revision warning，而不是可做性失败。 |
 | `/research:publication-stability` | 多个 cycle summary | 检查跨 cycle、模板和数据集的稳定性。 |
 | `/research:paper-build` | 报告路径或模板 id | 构建 LaTeX/PDF 论文产物。 |
 | `/research:evidence-gate` | cycle summary 路径 | 运行物理证据门禁。 |
@@ -239,6 +331,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `/research:skill-evolve` | skill 证据 | 创建受控 skill 进化候选。 |
 | `/research:skill-polish-audit` | skill id | 在 promotion 前审计 skill card。 |
 | `/research:skill-watchlist` | 无 | 将外部科研 skill 候选写入 Obsidian 隔离观察清单。 |
+| `/research:agent-profile` | agent id + skill/MCP refs | 为指定 Agent 创建受控自定义 skill/MCP profile。 |
 | `/research:channel-adapters` | 无 | 写入可选通信 adapter runbook。 |
 | `/research:channel-test` | `wechat` 或 `feishu` | 发送 setup 通道自检消息。 |
 | `/research:readiness` | 无 | 在 24h 常驻运行前写入部署就绪检查报告。 |
@@ -253,10 +346,11 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | Script | 含义 |
 | --- | --- |
 | `npm run setup` | 引导式首次部署。 |
+| `npm run agent-team:inspect` | 第一次无人值守运行前预览 setup 生成的 Agent 团队 bundle。 |
 | `npm run channel:test -- --channel feishu --require-sent` | 对已配置通道做真实送达自检。 |
 | `npm run readiness -- --no-push-inspiration` | 不要求操作者推送通道的本地 readiness 报告。 |
-| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、通道配置和送达证据。 |
-| `npm run serve` | 启动带审批门禁和灵感推送的 24h operator。 |
+| `npm run prelaunch` | 严格上线前门禁：模型、vault、每日循环、setup 默认 Agent 团队、通道配置和送达证据。 |
+| `npm run serve` | 启动带审批门禁、灵感推送和 setup 默认 Agent 团队自动加载的 24h operator。 |
 | `npm run monitor` | 打开 operator 监控台。 |
 
 | 命令 | 参数 | 含义 |
@@ -267,6 +361,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `setup` | `--feishu --feishu-app-id --feishu-app-secret` | 飞书/Lark App 凭据配置；`--feishu-home-chat-id` 可开启直接摘要推送。 |
 | `setup` | `--wechat-webhook-url`, `--feishu-webhook-url` | 给已有 incoming webhook 部署使用的 fallback。 |
 | `setup` | `--run-channel-test`, `--skip-channel-test`, `--channel-test-output` | 在 setup 阶段发送或延后送达自检；交互式 setup 默认发送，失败会先写 JSON 证据，再非零退出。 |
+| `setup` | `--agent-team-bundle`, `--skip-agent-team`, `--overwrite-agent-team` | 写入、跳过或刷新默认可编辑 Agent 团队 bundle；setup 会把它接入推荐的 `serve` 启动命令。 |
 | `channels bind-target` | `--channel wechat [--target <target>]` | 微信 QR 配对后绑定 OpenClaw target，不需要手动编辑 `.env`；省略 `--target` 会交互询问。 |
 | `channels bind-target` | `--channel feishu [--target <chat-id>]` | 机器人对话产生 home chat ID 后绑定飞书/Lark 推送目标；省略 `--target` 会交互询问。 |
 | `serve` | `--permission-mode approve-dangerous|allow-all` | 危险动作审批或全自动运行。 |
@@ -275,16 +370,40 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 | `serve` / `autopilot` | `--interval-seconds 86400` | 每日循环间隔。 |
 | `serve` / `autopilot` | `--cycles 0` | watch 模式下无限运行。 |
 | `serve` / `autopilot` | `--push-inspiration` | 把灵感摘要推送到 setup 配好的操作者通道。 |
-| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 检索广度。仅 smoke 时降低。 |
+| `serve` / `autopilot` | `--max-queries`, `--max-results-per-source` | 文献、相似工作和创新检索广度 artifact 的检索广度。仅 smoke 时降低。 |
+| `serve` / `autopilot` | 自动创新检索广度阶段 | 在研究计划前先运行广谱灵感刷新，再把 query/source/finding 广度写入 `cycle-summary.json` 和本轮 artifact 目录。 |
+| `serve` / `autopilot` | 自动头脑风暴阶段 | 在灵感刷新后、研究计划前运行临时创意 miniagent；原始想法会完整保留，然后由实时 reviewer 用文献相似度筛重复风险，并主要根据想法自身的数据集、baseline、metric、falsification 结构判断可做性。 |
+| `similarity-check` | `--max-queries`, `--max-results-per-source` | 控制项目启动阶段的创新检索广度；输出 Obsidian Markdown 和 `*_novelty_breadth.json`。 |
+| `brainstorm` | `--candidate-file`, `--inspiration-report`, `--miniagents`, `--ideas-per-agent`, `--temperature`, `--evidence-review/--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source` | 使用配置好的供应商无关 LLM 端点生成高发散假设，再用 ArXiv/OpenAlex 与 GitHub/Hugging Face/Hacker News 信号做实时审稿筛选；可做性先看想法自身的数据/来源、baseline、metric、可证伪检查和执行路径，来源匹配主要用于直接重复风险和可借鉴上下文。没有找到高相似前作会被视为潜在创新，不会被当成不可做。默认不设置 `--max-tokens`。 |
+| `publication-audit` | similarity checks | 发表级创新声明仍要求足够的检索 query 和成功来源。确认的 direct duplicate 会继续让审计失败；少量或未分类匹配会要求修订/定位相关工作，而不是否定研究方向本身。 |
 | `serve` / `autopilot` | `--max-tokens` | 可选 LLM reviewer 输出上限。默认不设置，适配长上下文模型。 |
+| `serve` / `autopilot` | `--heartbeat-state` | 覆盖自动写入的运行时心跳状态文件路径。 |
+| `serve` / `autopilot` | `--agent-profile <profile.json>` | 加载某个 Agent 的 skill/MCP profile，并写入 cycle summary、review evidence、monitor、profile-set validation 和每轮 `agent-stage-contexts/` packet artifact；可重复传入多个。 |
+| `serve` / `autopilot` | `--agent-profile-set-bundle <team.yaml>` | 把可复用多 Agent 团队 bundle 展开成每轮 profile JSON artifact，再走同一套 readiness、profile-set validation、stage-context packet 和 review-evidence 路径；可重复传入多个。 |
+| `serve` / `autopilot` | `--default-agent-team`, `--no-default-agent-team` | 没有显式传入 Agent profile 或团队 bundle 时自动加载 `.airesearcher/agents/ccfb-team.yaml`，也可以关闭这个 setup 默认团队。 |
+| `serve` / `autopilot` | `--require-agent-profile-set` | 默认只写审计报告；开启后，如果加载的 Agent profile 未覆盖默认 CCF-B/SCI 二区阶段矩阵，则在联网检索前阻断本轮。 |
 | `inspiration-refresh` | `--env-path .env` | 单次推送时加载 setup 写入的通道凭据。 |
 | `inspiration-refresh` | `--push`, `--push-channel`, `--push-timeout-seconds` | 单次灵感摘要推送。 |
 | `channels test` | `--channel`, `--require-sent`, `--output` | 发送 setup 通道自检并记录 `sent`、`failed` 或 `skipped`。 |
-| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--output` | 写入无人值守每日循环的上线前检查报告。 |
+| `readiness` | `--push-inspiration`, `--require-channel-config`, `--require-channel-sent`, `--require-agent-team`, `--output` | 写入无人值守每日循环的上线前检查报告；需要时会检查 setup 默认 Agent 团队。 |
+| `agents profile write` | `--agent-id`, `--stage`, `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, `--vault`, `--project-id` | 把自定义 skill、MCP server、可选闭环阶段责任和单 Agent 工具策略绑定给某个 Agent；MCP tool 必须显式白名单，密钥值仍保留在环境变量中。 |
+| `agents profile import` | `.json/.yaml/.toml` bundle、`--output`、`--vault`、`--project-id` | 把可复用声明式 Agent bundle 转成 `validate`、`inspect`、`serve` 和 `autopilot` 都能加载的标准 profile JSON；默认科研思维契约会保留，bundle 只追加补充项。 |
+| `agents profile import-set` | profile-set bundle `.json/.yaml/.toml`、`--output-dir`、`--validation-output`、`--base-dir`、`--vault`、`--project-id`、`--allow-incomplete` | 把可复用多 Agent bundle 转成每个 Agent 一个 profile JSON，并写出 profile-set validation report；默认在必需研究阶段缺失或 readiness 失败时非零退出。 |
+| `agents profile team-attach` | profile-set bundle、`--agent-id`、`--skill`、`--skill-policy`、`--stage`、`--mcp`、`--mcp-tool`、`--mcp-approval`、`--mcp-env-key`、`--output`、`--replace-existing` | 给可复用团队 bundle 中的某个指定 Agent 追加自定义 skill、MCP 或阶段绑定，然后校验 readiness 和阶段覆盖。 |
+| `agents profile inspect-set` | profile-set bundle `.json/.yaml/.toml`、`--materialize-skills`、`--base-dir`、`--env-path`、`--output`、`--require-complete` | 不导入文件也不启动运行，直接预览可复用多 Agent 团队 bundle；输出每个 Agent 的 runtime context、有界本地 skill 哈希、MCP contract、readiness 和阶段覆盖。 |
+| `agents profile team-template` | `--output`、`--skill-dir`、`--profile-set-id`、`--overwrite` | 写出一份可编辑的默认三 Agent CCF-B/SCI 二区团队 bundle 和本地 skill Markdown 文件，可直接用 `--agent-profile-set-bundle` 加载。 |
+| `agents profile validate` | profile JSON 路径、`--env-path`、`--base-dir`、`--output` | 检查本地 skill 源路径和必需的 MCP 环境变量名；写出 readiness JSON，缺少必需输入时非零退出。 |
+| `agents profile set-validate` | profile JSON 路径、`--required-stage`、`--env-path`、`--base-dir`、`--output` | 将多个 Agent 的 skill/MCP profile 作为研究阶段覆盖矩阵整体校验；必需阶段缺失、重复 Agent、readiness 失败或缺少科研/证据优先思维契约时非零退出。 |
+| `agents profile inspect` | profile JSON 路径、`--materialize-skills`、`--base-dir`、`--max-skill-chars` | 输出该 Agent 会收到的运行时上下文，包括 MCP runtime contracts；可选择附带有界本地 skill 内容、哈希和截断元数据。 |
+| `agents profile export-stage-context` | profile JSON 路径、`--stage`、`--base-dir`、`--output`、`--project-id`、`--cycle-id` | 导出某个闭环阶段对应 Agent 的有界 skill/MCP context packet 和可注入 `runtime_prompt`；默认在无人负责该阶段或 readiness 失败时非零退出。 |
+| `agents mcp-evidence add/list/validate` | `--profile`、`--ledger`、`--project-id`、`--cycle-id`、`--server-id`、`--tool-name`、请求/响应 artifact | 记录并校验带哈希的 MCP 工具调用证据；只能证明某个 Agent 记录过某次工具调用，不能证明科研结论成立。 |
 | `research-plan` | `--candidate-file`, `--project-id`, `--vault`, `--output-dir` | 在方向确认后生成 Markdown/TEX/PDF 研究计划。 |
+| `research-plan` | `--brainstorm-summary` | 把 brainstorm 综合筛选 note 加入可执行研究计划的证据上下文。 |
 | `research-plan` | `--no-compile-pdf` | CI 结构检查用；正常运行应编译 PDF。 |
 | `paper-build` | `--template-id` | 选择注册的 LaTeX 模板。 |
 | `runtime approve` | `latest` 或 request id | 审批等待中的危险动作。 |
+| `runtime heartbeat write` | `--run-id`, `--stage`, `--progress`, `--artifact-ref`, `--state` | 记录长任务某个阶段的一次进度心跳。 |
+| `runtime heartbeat check` | `--state`, `--run-id`, `--stale-after-seconds`, `--stall-repetition-threshold`, `--output` | 写出心跳 watchdog 报告；发现过期或卡住阶段时非零退出。 |
 
 ## 输出和仓库卫生
 
@@ -305,6 +424,7 @@ slash 命令后面的文本会作为 `{{args}}` 传入模板。
 
 - 文献和来源摘要；
 - 非学术来源灵感笔记；
+- 指定给单个 Agent 的自定义 skill 和 MCP profile；
 - 项目进展和实验记录；
 - evidence map 和验证摘要；
 - review findings 和 follow-up issue；
@@ -329,6 +449,8 @@ outputs/<project-id>/
 - `research-plan/research-plan.tex`
 - `research-plan/research-plan.pdf`
 - `research-plan/research-plan.json`
+- `loop-campaign/loop-campaign.json`
+- `loop-campaign/loop-report.md`
 - `<project-id>-<cycle-id>.pdf`
 - 生成的 `.tex`
 - `paper-build.json`
@@ -337,7 +459,7 @@ outputs/<project-id>/
 - `cycle-summary.json`
 - manifest `.json` 和 `.md`
 
-不能因为 PDF 存在就声称论文可发表。发表级声明必须来自同一 cycle 的 publication audit 和 evidence gate 通过结果。
+不能因为 PDF 存在就声称论文可发表。发表级声明必须来自同一 cycle 的闭环 campaign 质量门禁、publication audit 和 evidence gate 通过结果。
 
 ## 外部参考与许可证
 

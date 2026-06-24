@@ -26,12 +26,14 @@ def test_evidence_gate_passes_when_all_required_artifacts_are_physical(
     assert {stage["stage_id"]: stage["status"] for stage in payload["lifecycle_trace"]} == {
         "define": "pass",
         "plan": "pass",
+        "optimize": "pass",
         "build": "pass",
         "verify": "pass",
         "review": "pass",
         "ship": "pass",
     }
     checks = {check["check_id"]: check["status"] for check in payload["checks"]}
+    assert checks["loop_campaign_gate"] == "pass"
     assert checks["paper_quality_gate"] == "pass"
 
 
@@ -50,6 +52,49 @@ def test_evidence_gate_blocks_missing_physical_artifact(tmp_path: Path) -> None:
     assert report.verdict is EvidenceGateVerdict.BLOCKED
     assert report.release_allowed is False
     assert checks["evidence_map"].status.value == "fail"
+
+
+def test_evidence_gate_blocks_missing_loop_campaign_artifact(tmp_path: Path) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["loop_campaign"]["json_path"]).unlink()
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["loop_campaign_json"].status.value == "fail"
+    assert checks["loop_campaign_gate"].status.value == "fail"
+
+
+def test_evidence_gate_blocks_failed_loop_campaign_contract(tmp_path: Path) -> None:
+    summary_path, publication_audit_path, paper_build_path = _write_gate_cycle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    loop_campaign_path = Path(summary["loop_campaign"]["json_path"])
+    payload = json.loads(loop_campaign_path.read_text(encoding="utf-8"))
+    payload["contract_validation"] = {
+        "passed": False,
+        "issues": ["campaign evidence_requirements missing validation report"],
+        "warnings": [],
+        "checked_fields": ["objective", "target_metric", "evidence_requirements"],
+        "evidence_policy": "campaign contract fixture",
+    }
+    loop_campaign_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = run_evidence_gate(
+        cycle_summary_path=summary_path,
+        publication_audit_path=publication_audit_path,
+        paper_build_path=paper_build_path,
+    )
+
+    checks = {check.check_id: check for check in report.checks}
+    assert report.verdict is EvidenceGateVerdict.BLOCKED
+    assert checks["loop_campaign_gate"].status.value == "fail"
+    assert "contract_passed=false" in checks["loop_campaign_gate"].message
 
 
 def test_evidence_gate_blocks_non_publishable_publication_audit(
@@ -345,6 +390,10 @@ def _write_gate_cycle(
     paper_dir.mkdir(parents=True)
     paper_build_path = paper_dir / "paper-build.json"
     paper_pdf_path = paper_dir / "main.pdf"
+    loop_dir = cycle_dir / "loop-campaign"
+    loop_dir.mkdir(parents=True)
+    loop_campaign_path = loop_dir / "loop-campaign.json"
+    loop_report_path = loop_dir / "loop-report.md"
 
     candidate_path.write_text('{"id": "candidate_1"}', encoding="utf-8")
     literature_summary.write_text("# Literature\n", encoding="utf-8")
@@ -374,6 +423,32 @@ def _write_gate_cycle(
     )
     reproduction_markdown_path.write_text("# Reproduction Check\n", encoding="utf-8")
     publication_audit_md.write_text("# Publication Audit\n", encoding="utf-8")
+    loop_report_path.write_text("# Loop Engineering Report\n", encoding="utf-8")
+    loop_campaign_path.write_text(
+        json.dumps(
+            {
+                "metrics": {
+                    "acceleration_factor": 2.0,
+                    "enhancement_factor": 1.01,
+                    "experiment_count": 1,
+                    "failure_recovery_rate": 1.0,
+                    "reproduction_delta": 0.0,
+                    "metadata_completeness": 1.0,
+                    "evidence_coverage": 1.0,
+                    "reward": 0.4,
+                },
+                "contract_validation": {
+                    "passed": True,
+                    "issues": [],
+                    "warnings": [],
+                    "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                    "evidence_policy": "campaign contract fixture",
+                },
+                "quality_gate": {"passed": True, "issues": [], "warnings": []},
+            }
+        ),
+        encoding="utf-8",
+    )
     publication_audit_path.write_text(
         json.dumps(
             {
@@ -463,6 +538,28 @@ def _write_gate_cycle(
                     "markdown_path": reproduction_markdown_path.as_posix(),
                     "run_record_paths": [reproduction_run_record.as_posix()],
                     "validation_json_paths": [reproduction_validation.as_posix()],
+                },
+                "loop_campaign": {
+                    "campaign_id": "loop_campaign_1",
+                    "json_path": loop_campaign_path.as_posix(),
+                    "markdown_path": loop_report_path.as_posix(),
+                    "metrics": {
+                        "metadata_completeness": 1.0,
+                        "evidence_coverage": 1.0,
+                        "reproduction_delta": 0.0,
+                    },
+                    "contract_validation": {
+                        "passed": True,
+                        "issues": [],
+                        "warnings": [],
+                        "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                        "evidence_policy": "campaign contract fixture",
+                    },
+                    "quality_gate": {"passed": True},
+                },
+                "loop_report": {
+                    "json_path": loop_campaign_path.as_posix(),
+                    "markdown_path": loop_report_path.as_posix(),
                 },
                 "publication_audit": {
                     "output_path": publication_audit_path.as_posix(),

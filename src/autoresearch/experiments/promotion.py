@@ -42,6 +42,16 @@ class StrategyPromotionInput(BaseModel):
     safety_regression: bool = False
     baseline_evidence_coverage: float = Field(ge=0.0, le=1.0)
     candidate_evidence_coverage: float = Field(ge=0.0, le=1.0)
+    baseline_metadata_completeness: float = Field(default=1.0, ge=0.0, le=1.0)
+    candidate_metadata_completeness: float = Field(default=1.0, ge=0.0, le=1.0)
+    baseline_reproduction_delta: float = Field(default=0.0, ge=0.0)
+    candidate_reproduction_delta: float = Field(default=0.0, ge=0.0)
+    baseline_acceleration_factor: float = Field(default=1.0, ge=0.0)
+    candidate_acceleration_factor: float = Field(default=1.0, ge=0.0)
+    baseline_enhancement_factor: float = Field(default=1.0, ge=0.0)
+    candidate_enhancement_factor: float = Field(default=1.0, ge=0.0)
+    baseline_failure_recovery_rate: float = Field(default=1.0, ge=0.0, le=1.0)
+    candidate_failure_recovery_rate: float = Field(default=1.0, ge=0.0, le=1.0)
     approval: StrategyPromotionApproval | None = None
     audit_review_ref: str | None = Field(default=None, min_length=1)
     gray_traffic_share: float = Field(default=0.05, gt=0.0, le=0.10)
@@ -118,6 +128,24 @@ def _blocking_reasons(promotion: StrategyPromotionInput) -> list[str]:
     ):
         reasons.append("evidence coverage must not decrease")
 
+    if (
+        promotion.candidate_metadata_completeness
+        < promotion.baseline_metadata_completeness
+    ):
+        reasons.append("metadata completeness must not decrease")
+
+    if promotion.candidate_reproduction_delta > promotion.baseline_reproduction_delta:
+        reasons.append("reproduction delta must not increase")
+
+    if promotion.candidate_acceleration_factor < promotion.baseline_acceleration_factor:
+        reasons.append("acceleration factor must not decrease")
+
+    if promotion.candidate_enhancement_factor < promotion.baseline_enhancement_factor:
+        reasons.append("enhancement factor must not decrease")
+
+    if promotion.candidate_failure_recovery_rate < promotion.baseline_failure_recovery_rate:
+        reasons.append("failure recovery rate must not decrease")
+
     return reasons
 
 
@@ -144,5 +172,15 @@ def _audit_event(
             "safety_regression": promotion.safety_regression,
             "baseline_evidence_coverage": promotion.baseline_evidence_coverage,
             "candidate_evidence_coverage": promotion.candidate_evidence_coverage,
+            "baseline_metadata_completeness": promotion.baseline_metadata_completeness,
+            "candidate_metadata_completeness": promotion.candidate_metadata_completeness,
+            "baseline_reproduction_delta": promotion.baseline_reproduction_delta,
+            "candidate_reproduction_delta": promotion.candidate_reproduction_delta,
+            "baseline_acceleration_factor": promotion.baseline_acceleration_factor,
+            "candidate_acceleration_factor": promotion.candidate_acceleration_factor,
+            "baseline_enhancement_factor": promotion.baseline_enhancement_factor,
+            "candidate_enhancement_factor": promotion.candidate_enhancement_factor,
+            "baseline_failure_recovery_rate": promotion.baseline_failure_recovery_rate,
+            "candidate_failure_recovery_rate": promotion.candidate_failure_recovery_rate,
         },
     )

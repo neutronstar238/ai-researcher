@@ -14,10 +14,48 @@ from importlib import import_module
 from pathlib import Path
 from typing import Annotated, Any, cast
 
+import toml
 import typer
+import yaml
 from dotenv import load_dotenv
 
 from autoresearch import __version__
+from autoresearch.agents import (
+    DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+    DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    PROFILE_SET_EVIDENCE_POLICY,
+    AgentProfile,
+    AgentProfileReadinessReport,
+    AgentProfileSetBundle,
+    AgentProfileSetValidation,
+    AgentStageImportRequirement,
+    AgentThinkingMode,
+    McpInvocationStatus,
+    SkillSourceType,
+    append_mcp_invocation_evidence,
+    build_agent_profile_from_bundle,
+    build_agent_profiles_from_set_bundle,
+    build_agent_stage_assignment_manifest,
+    build_agent_stage_context_packet,
+    build_mcp_invocation_evidence,
+    evaluate_agent_profile_readiness,
+    evaluate_agent_profile_set,
+    load_agent_profile,
+    load_agent_profile_bundle,
+    load_agent_profile_set_bundle,
+    load_mcp_invocation_evidence,
+    parse_mcp_approval_policy_specs,
+    parse_mcp_env_key_specs,
+    parse_mcp_spec,
+    parse_server_tool_specs,
+    parse_skill_policy_specs,
+    parse_skill_spec,
+    profile_contexts_by_stage,
+    validate_mcp_invocation_evidence,
+    write_agent_profile,
+    write_agent_profile_note,
+    write_mcp_invocation_validation_report,
+)
 from autoresearch.config import (
     ConfigFormat,
     ConfigParser,
@@ -26,8 +64,15 @@ from autoresearch.config import (
     ModelProviderConfig,
     SystemConfig,
 )
-from autoresearch.experiments import run_scientistbench_demo
+from autoresearch.experiments import (
+    build_closed_loop_campaign,
+    create_loop_iteration_from_cycle_summary,
+    run_scientistbench_demo,
+    select_loop_candidate,
+    write_loop_report_artifact,
+)
 from autoresearch.inspiration import (
+    InspirationFetchRecord,
     InspirationItem,
     InspirationRefreshConfig,
     InspirationRefreshReport,
@@ -53,6 +98,7 @@ from autoresearch.integrations import (
     write_scansci_pdf_manifest,
 )
 from autoresearch.knowledge import (
+    AgentRole,
     KnowledgeEntry,
     KnowledgeEntryType,
     KnowledgeZone,
@@ -97,26 +143,37 @@ from autoresearch.reports import (
     validate_reproducibility_package,
 )
 from autoresearch.research import (
+    BrainstormConfig,
+    BrainstormEvidenceReviewConfig,
     SimilarityCheckConfig,
     audit_research_plan,
+    evaluate_novelty_search_breadth,
     generate_research_plan,
     link_similarity_report_to_project,
+    run_inspiration_brainstorm,
     run_project_similarity_check,
+    write_novelty_search_breadth_artifact,
 )
 from autoresearch.runtime import (
+    DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
+    DEFAULT_HEARTBEAT_STALL_REPETITIONS,
     AgentSession,
     AgentSessionError,
     RuntimeActionRisk,
     RuntimeApprovalDecision,
     RuntimeApprovalError,
+    RuntimeHeartbeatReport,
     RuntimePermissionMode,
     approve_runtime_request,
     claim_agent_session,
     ensure_runtime_approval,
+    evaluate_runtime_heartbeats,
     list_agent_sessions,
     list_runtime_approval_requests,
     network_approval_metadata_from_decision,
     release_agent_session,
+    write_runtime_heartbeat,
+    write_runtime_heartbeat_report,
 )
 from autoresearch.scheduler import queued_issue_followups_from_vault
 from autoresearch.schemas import CandidateStatus, ResearchCandidate, ResearchPlan, ValidationStatus
@@ -125,9 +182,13 @@ app = typer.Typer(
     help="AI-Researcher command line interface.",
     no_args_is_help=True,
 )
+agents_app = typer.Typer(help="Manage runtime agent profiles and capabilities.")
+agent_profiles_app = typer.Typer(help="Bind custom skills and MCP servers to one agent.")
+agent_mcp_evidence_app = typer.Typer(help="Record and validate MCP tool invocation evidence.")
 slash_app = typer.Typer(help="Manage project slash command templates.")
 scheduler_state_app = typer.Typer(help="Manage local scheduler state records.")
 runtime_app = typer.Typer(help="Manage always-on runtime approvals.")
+runtime_heartbeat_app = typer.Typer(help="Record and check long-running loop heartbeats.")
 sessions_app = typer.Typer(help="Coordinate concurrent agent file claims.")
 channels_app = typer.Typer(help="Manage communication channel integration manifests.")
 channel_adapters_app = typer.Typer(help="Manage optional messaging channel adapter runbooks.")
@@ -137,6 +198,7 @@ ccswitch_code_agents_app = typer.Typer(help="Manage cc-switch / Claude Code back
 opencode_code_agents_app = typer.Typer(help="Manage OpenCode direct backend manifests.")
 pdf_sources_app = typer.Typer(help="Manage optional PDF retrieval integration manifests.")
 scansci_pdf_app = typer.Typer(help="Manage ScanSci PDF source metadata.")
+app.add_typer(agents_app, name="agents")
 app.add_typer(slash_app, name="slash-commands")
 app.add_typer(scheduler_state_app, name="scheduler-state")
 app.add_typer(runtime_app, name="runtime")
@@ -149,14 +211,38 @@ channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
 code_agents_app.add_typer(opencode_code_agents_app, name="opencode")
 pdf_sources_app.add_typer(scansci_pdf_app, name="scansci-pdf")
+runtime_app.add_typer(runtime_heartbeat_app, name="heartbeat")
+agents_app.add_typer(agent_profiles_app, name="profile")
+agents_app.add_typer(agent_mcp_evidence_app, name="mcp-evidence")
 
 DEFAULT_SCHEDULER_STATE_PATH = Path(".airesearcher/scheduler-state.json")
 DEFAULT_RUNTIME_APPROVALS_PATH = Path(".airesearcher/runtime-approvals.json")
+DEFAULT_RUNTIME_HEARTBEATS_PATH = Path(".airesearcher/runtime-heartbeats.json")
 DEFAULT_AGENT_SESSIONS_PATH = Path(".airesearcher/agent-sessions.json")
+DEFAULT_AGENT_TEAM_BUNDLE_PATH = Path(".airesearcher/agents/ccfb-team.yaml")
 PUBLICATION_SEARCH_QUERIES = 4
 PUBLICATION_RESULTS_PER_SOURCE = 10
 DEFAULT_RESEARCH_DEMO = "pendigits_variance_calibrated_prototypes"
 METHOD_ALIGNED_SEED_NOT_FOUND_REF = "literature_refresh:method_aligned_seed_not_found"
+AGENT_PROFILE_ASSIGNABLE_STAGES = (
+    "source",
+    "literature",
+    "similarity",
+    "research_plan",
+    "loop_campaign",
+    "inspiration",
+    "experiment",
+    "reproduction",
+    "citations",
+    "related_work",
+    "paper_manuscript",
+    "paper_build",
+    "review",
+    "publication_audit",
+    "evidence_gate",
+    "followups",
+    "deliverables",
+)
 SERVE_NETWORK_APPROVED_DOMAINS = (
     "api.openalex.org",
     "api.semanticscholar.org",
@@ -236,6 +322,16 @@ DEFAULT_SLASH_COMMANDS = {
         "--output runs/inspiration/latest.json --push`. Results from Hugging Face datasets and Hacker News "
         "are dataset/community signals only; validate them separately before using them as research evidence. "
         "Use `--push-channel feishu` or `--push-channel wechat` to target a setup-configured channel.",
+    ),
+    "research/brainstorm.toml": (
+        "Run temporary high-temperature miniagents, then screen ideas with live evidence review.",
+        "Run `airesearcher brainstorm --candidate-file <candidate.json> "
+        "--inspiration-report runs/inspiration/latest.json --vault autoresearch-vault "
+        "--output-dir runs/brainstorm/latest --temperature 1.2`. Record raw ideas first; "
+        "the reviewer checks duplicate risk against literature and feasibility from the proposed "
+        "dataset/baseline/metric/falsification plan, with GitHub/Hugging Face/Hacker News used only "
+        "as code, data, or community signals. Selected ideas remain hypotheses until experiment "
+        "and reproduction evidence exist.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
@@ -353,6 +449,17 @@ DEFAULT_SLASH_COMMANDS = {
         "Run `airesearcher skill-watchlist --vault autoresearch-vault` after external skill "
         "discovery. This records candidate directions, source refs, license status, risks, "
         "and validation gates without installing or copying third-party skill content.",
+    ),
+    "research/agent-profile.toml": (
+        "Bind custom skills and MCP tools to one named research agent.",
+        "Run `airesearcher agents profile write --agent-id <agent> --role project_agent "
+        "--skill <skill_id>=<path-or-note> --mcp <server_id>=\"<command>\" "
+        "--mcp-tool <server_id>:<tool> --skill-policy <skill_id>:read_only_context "
+        "--mcp-approval <server_id>:approve_dangerous --mcp-env-key <server_id>:ENV_KEY "
+        "--vault autoresearch-vault --project-id <project>` to create a bounded profile. "
+        "MCP tools must be explicitly allowlisted; env-key flags store names only, not "
+        "secret values; the profile does not change safety, license, approval, or "
+        "publication gates.",
     ),
     "research/paper-build.toml": (
         "Build the final LaTeX/PDF paper artifact from an evidence-bound Markdown report.",
@@ -562,6 +669,1733 @@ def obsidian_setup(
     typer.echo(f"[OK] snippet: {assets.snippet_path}")
     if assets.local_snippet_path is not None:
         typer.echo(f"[OK] local_snippet: {assets.local_snippet_path}")
+
+
+@agent_profiles_app.command("write")
+def write_agent_profile_command(
+    agent_id: Annotated[
+        str,
+        typer.Option("--agent-id", help="Agent ID that will receive this profile."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile JSON artifact path."),
+    ] = Path(".airesearcher/agents/profile.json"),
+    role: Annotated[
+        AgentRole,
+        typer.Option("--role", help="Agent role used by vault permissions."),
+    ] = AgentRole.PROJECT_AGENT,
+    thinking_mode: Annotated[
+        AgentThinkingMode,
+        typer.Option("--thinking-mode", help="Scientific reasoning contract to attach."),
+    ] = AgentThinkingMode.SCIENTIFIC,
+    publication_target: Annotated[
+        str,
+        typer.Option("--publication-target", help="Publication-quality target for this agent."),
+    ] = "ccf-b-or-sci-q2",
+    description: Annotated[
+        str | None,
+        typer.Option("--description", help="Optional human-readable profile purpose."),
+    ] = None,
+    stage: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--stage",
+            help="Research-loop stage assigned to this agent. Repeat for multiple stages.",
+        ),
+    ] = None,
+    skill: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill",
+            help="Custom skill binding as skill_id=source. Repeat for multiple skills.",
+        ),
+    ] = None,
+    skill_policy: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill-policy",
+            help=(
+                "Skill import policy as skill_id:policy. Policies: read_only_context, "
+                "shadow_evaluation, approved_runtime."
+            ),
+        ),
+    ] = None,
+    mcp: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp",
+            help="MCP binding as server_id=\"command args\". Repeat for multiple servers.",
+        ),
+    ] = None,
+    mcp_tool: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-tool",
+            help="Allowed MCP tool as server_id:tool_name. Repeat for multiple tools.",
+        ),
+    ] = None,
+    mcp_approval: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-approval",
+            help=(
+                "MCP approval policy as server_id:policy. Policies: read_only, "
+                "approve_dangerous, allow_all."
+            ),
+        ),
+    ] = None,
+    mcp_env_key: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-env-key",
+            help=(
+                "MCP required environment variable name as server_id:ENV_KEY. "
+                "Repeat for multiple keys; secret values are never stored."
+            ),
+        ),
+    ] = None,
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for a profile note."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the optional vault note."),
+    ] = "ai_researcher_system",
+) -> None:
+    """Write a bounded custom skill/MCP profile for one agent."""
+
+    try:
+        skill_bindings = tuple(parse_skill_spec(spec) for spec in (skill or ()))
+        skill_policies = parse_skill_policy_specs(tuple(skill_policy or ()))
+        bound_skill_ids = {binding.skill_id for binding in skill_bindings}
+        unused_skill_policies = sorted(set(skill_policies) - bound_skill_ids)
+        if unused_skill_policies:
+            msg = (
+                "--skill-policy references missing --skill binding(s): "
+                f"{', '.join(unused_skill_policies)}"
+            )
+            raise ValueError(msg)
+        skill_bindings = tuple(
+            binding.model_copy(
+                update={"import_policy": skill_policies.get(binding.skill_id, binding.import_policy)}
+            )
+            for binding in skill_bindings
+        )
+        tools_by_server = parse_server_tool_specs(tuple(mcp_tool or ()))
+        mcp_approval_policies = parse_mcp_approval_policy_specs(tuple(mcp_approval or ()))
+        mcp_env_keys_by_server = parse_mcp_env_key_specs(tuple(mcp_env_key or ()))
+        mcp_servers = tuple(parse_mcp_spec(spec, tools_by_server=tools_by_server) for spec in (mcp or ()))
+        bound_server_ids = {server.server_id for server in mcp_servers}
+        unused_tool_servers = sorted(set(tools_by_server) - bound_server_ids)
+        if unused_tool_servers:
+            msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
+            raise ValueError(msg)
+        unused_mcp_policy_servers = sorted(set(mcp_approval_policies) - bound_server_ids)
+        if unused_mcp_policy_servers:
+            msg = (
+                "--mcp-approval references missing --mcp server(s): "
+                f"{', '.join(unused_mcp_policy_servers)}"
+            )
+            raise ValueError(msg)
+        unused_mcp_env_servers = sorted(set(mcp_env_keys_by_server) - bound_server_ids)
+        if unused_mcp_env_servers:
+            msg = (
+                "--mcp-env-key references missing --mcp server(s): "
+                f"{', '.join(unused_mcp_env_servers)}"
+            )
+            raise ValueError(msg)
+        mcp_servers = tuple(
+            server.model_copy(
+                update={
+                    "approval_policy": mcp_approval_policies.get(
+                        server.server_id,
+                        server.approval_policy,
+                    ),
+                    "env_keys": tuple(
+                        dict.fromkeys(
+                            (
+                                *server.env_keys,
+                                *mcp_env_keys_by_server.get(server.server_id, ()),
+                            )
+                        )
+                    ),
+                }
+            )
+            for server in mcp_servers
+        )
+        assigned_stages = _validated_agent_profile_stages(tuple(stage or ()))
+        profile = AgentProfile(
+            agent_id=agent_id,
+            role=role,
+            thinking_mode=thinking_mode,
+            publication_target=publication_target,
+            description=description,
+            assigned_stages=assigned_stages,
+            skills=skill_bindings,
+            mcp_servers=mcp_servers,
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile_path = write_agent_profile(profile, output)
+    typer.echo(f"[OK] agent_profile: {profile.agent_id}")
+    typer.echo(f"[OK] role: {profile.role.value}")
+    typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
+    if profile.assigned_stages:
+        typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages)}")
+    else:
+        typer.echo("[OK] assigned_stages: unassigned")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        note_path = write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+        typer.echo(f"[OK] vault_note: {note_path}")
+
+
+@agent_profiles_app.command("import")
+def import_agent_profile_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile bundle (.json, .yaml, .yml, or .toml)."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile JSON artifact path."),
+    ] = Path(".airesearcher/agents/profile.json"),
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for a profile note."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the optional vault note."),
+    ] = "ai_researcher_system",
+) -> None:
+    """Import a reusable JSON/YAML/TOML Agent profile bundle."""
+
+    try:
+        bundle = load_agent_profile_bundle(bundle_path)
+        profile = build_agent_profile_from_bundle(bundle)
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile_path = write_agent_profile(profile, output)
+    typer.echo(f"[OK] agent_profile_import: {profile.agent_id}")
+    typer.echo(f"[OK] source_bundle: {bundle_path}")
+    typer.echo(f"[OK] role: {profile.role.value}")
+    typer.echo(f"[OK] thinking_mode: {profile.thinking_mode.value}")
+    if profile.assigned_stages:
+        typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages)}")
+    else:
+        typer.echo("[OK] assigned_stages: unassigned")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        note_path = write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+        typer.echo(f"[OK] vault_note: {note_path}")
+
+
+@agent_profiles_app.command("import-set")
+def import_agent_profile_set_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Declarative Agent profile-set bundle (.json, .yaml, .yml, or .toml)."
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Directory for generated profile JSON files."),
+    ] = Path(".airesearcher/agents"),
+    validation_output: Annotated[
+        Path | None,
+        typer.Option("--validation-output", help="Optional profile-set validation JSON path."),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    vault: Annotated[
+        Path | None,
+        typer.Option("--vault", help="Optional Obsidian vault root for generated profile notes."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for optional vault notes."),
+    ] = "ai_researcher_system",
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless generated profiles cover the bundle's required stages.",
+        ),
+    ] = True,
+) -> None:
+    """Import a reusable multi-Agent skill/MCP profile-set bundle."""
+
+    try:
+        bundle = load_agent_profile_set_bundle(bundle_path)
+        profiles = build_agent_profiles_from_set_bundle(bundle)
+    except ValueError as exc:
+        typer.echo(f"[FAIL] agent_profile_set_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    profile_paths: list[Path] = []
+    try:
+        for profile in profiles:
+            profile_path = write_agent_profile(
+                profile,
+                output_dir / f"{_safe_path_segment(profile.agent_id)}.json",
+            )
+            profile_paths.append(profile_path)
+            if vault is not None:
+                write_agent_profile_note(profile, vault_root=vault, project_id=project_id)
+
+        env = _merged_optional_env(env_path)
+        readiness_reports = [
+            evaluate_agent_profile_readiness(
+                profile,
+                profile_path=profile_path,
+                base_dir=base_dir,
+                env=env,
+            )
+            for profile, profile_path in zip(profiles, profile_paths, strict=True)
+        ]
+        validation = evaluate_agent_profile_set(
+            profiles,
+            required_stages=bundle.required_stages,
+            readiness_reports=readiness_reports,
+            stage_import_requirements=bundle.stage_import_requirements,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_import: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    report_path = validation_output or (output_dir / "profile-set-validation.json")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(validation.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    typer.echo(f"[OK] agent_profile_set_import: {bundle.profile_set_id}")
+    typer.echo(f"[OK] source_bundle: {bundle_path}")
+    typer.echo(f"[OK] profiles: {len(profile_paths)}")
+    for profile_path in profile_paths:
+        typer.echo(f"[OK] profile: {profile_path}")
+    if vault is not None:
+        typer.echo(f"[OK] vault_project_agents: {vault / 'projects' / project_id / 'agents'}")
+    typer.echo(f"[OK] profile_set_report: {report_path}")
+    verdict = "passed" if validation.passed else "failed"
+    typer.echo(f"[OK] agent_profile_set: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {validation.covered_stage_count}/"
+        f"{len(validation.required_stages)}; profiles={validation.profile_count}"
+    )
+    for row in validation.stage_coverage:
+        status = "covered" if row.covered else "missing"
+        agents = ", ".join(row.agent_ids) if row.agent_ids else "-"
+        typer.echo(f"[STAGE] {row.stage}: {status}; agents={agents}")
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if require_complete and not validation.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("team-template")
+def write_agent_profile_team_template_command(
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Profile-set team bundle YAML output path."),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
+    skill_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--skill-dir",
+            help="Directory for generated local skill files. Defaults to <output-dir>/skills.",
+        ),
+    ] = None,
+    profile_set_id: Annotated[
+        str,
+        typer.Option("--profile-set-id", help="Profile-set ID written into the bundle."),
+    ] = "ccfb-runtime-team",
+    overwrite: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite/--no-overwrite",
+            help="Overwrite existing template or skill files.",
+        ),
+    ] = False,
+) -> None:
+    """Write a default CCF-B/Q2 runtime Agent team bundle template."""
+
+    try:
+        template = _write_default_agent_team_template(
+            output=output,
+            skill_dir=skill_dir,
+            profile_set_id=profile_set_id,
+            overwrite=overwrite,
+            allow_existing=False,
+        )
+    except (OSError, ValueError) as exc:
+        typer.echo(f"[FAIL] agent_profile_team_template: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"[OK] agent_profile_team_template: {template['profile_set_id']}")
+    typer.echo(f"[OK] bundle: {template['bundle_path']}")
+    skill_paths = cast(tuple[Path, ...], template["skill_paths"])
+    typer.echo(f"[OK] skills: {len(skill_paths)}")
+    for path in skill_paths:
+        typer.echo(f"[OK] skill: {path}")
+    typer.echo(f"[NEXT] import: airesearcher agents profile import-set {template['bundle_path']}")
+    typer.echo(f"[NEXT] runtime: --agent-profile-set-bundle {template['bundle_path']}")
+
+
+@agent_profiles_app.command("team-attach")
+def attach_agent_profile_team_binding_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile-set bundle to update."),
+    ],
+    agent_id: Annotated[
+        str,
+        typer.Option("--agent-id", help="Agent ID inside the team bundle to update."),
+    ],
+    skill: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill",
+            help="Custom skill binding as skill_id=source. Repeat for multiple skills.",
+        ),
+    ] = None,
+    skill_policy: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skill-policy",
+            help=(
+                "Skill import policy as skill_id:policy. "
+                "Policies: read_only_context, shadow_evaluation, approved_runtime."
+            ),
+        ),
+    ] = None,
+    stage: Annotated[
+        list[str] | None,
+        typer.Option("--stage", help="Research-loop stage to assign to the Agent."),
+    ] = None,
+    mcp: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp",
+            help="MCP server binding as server_id='command ...'. Repeat for multiple servers.",
+        ),
+    ] = None,
+    mcp_tool: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-tool",
+            help="Allowed MCP tool as server_id:tool_name. Repeat for multiple tools.",
+        ),
+    ] = None,
+    mcp_approval: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-approval",
+            help=(
+                "MCP approval policy as server_id:policy. "
+                "Policies: read_only, approve_dangerous, allow_all."
+            ),
+        ),
+    ] = None,
+    mcp_env_key: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--mcp-env-key",
+            help=(
+                "MCP required environment variable name as server_id:ENV_KEY. "
+                "Secret values are never stored."
+            ),
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Optional updated bundle path. Defaults to updating the source bundle.",
+        ),
+    ] = None,
+    base_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--base-dir",
+            help="Base directory for readiness checks. Defaults to the updated bundle directory.",
+        ),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    replace_existing: Annotated[
+        bool,
+        typer.Option(
+            "--replace-existing/--no-replace-existing",
+            help="Replace existing skill or MCP bindings with the same ID.",
+        ),
+    ] = False,
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless the updated team covers its required stages.",
+        ),
+    ] = True,
+) -> None:
+    """Attach custom skills, MCP servers, or stages to one Agent in a team bundle."""
+
+    try:
+        updated_bundle, validation, target_path = _attach_agent_profile_team_bindings(
+            bundle_path=bundle_path,
+            agent_id=agent_id,
+            skill_specs=tuple(skill or ()),
+            skill_policy_specs=tuple(skill_policy or ()),
+            stage_specs=tuple(stage or ()),
+            mcp_specs=tuple(mcp or ()),
+            mcp_tool_specs=tuple(mcp_tool or ()),
+            mcp_approval_specs=tuple(mcp_approval or ()),
+            mcp_env_key_specs=tuple(mcp_env_key or ()),
+            output=output,
+            base_dir=base_dir,
+            env_path=env_path,
+            replace_existing=replace_existing,
+        )
+    except (OSError, ValueError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        typer.echo(f"[FAIL] agent_profile_team_attach: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    profile = next(profile for profile in updated_bundle.profiles if profile.agent_id == agent_id)
+    typer.echo(f"[OK] agent_profile_team_attach: {agent_id}")
+    typer.echo(f"[OK] bundle: {target_path}")
+    typer.echo(f"[OK] assigned_stages: {', '.join(profile.assigned_stages) or 'unassigned'}")
+    typer.echo(f"[OK] skills: {len(profile.skills)}")
+    typer.echo(f"[OK] mcp_servers: {len(profile.mcp_servers)}")
+    typer.echo(
+        f"[OK] agent_profile_set: {'passed' if validation.passed else 'failed'}; "
+        f"covered={validation.covered_stage_count}/{len(validation.required_stages)}"
+    )
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    typer.echo(
+        "[NEXT] inspect: "
+        f"airesearcher agents profile inspect-set {target_path} "
+        "--materialize-skills --require-complete"
+    )
+    if require_complete and not validation.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("inspect")
+def inspect_agent_profile_command(
+    profile_path: Annotated[
+        Path,
+        typer.Argument(help="Profile JSON artifact to inspect."),
+    ],
+    materialize_skills: Annotated[
+        bool,
+        typer.Option(
+            "--materialize-skills/--no-materialize-skills",
+            help="Attach bounded local skill content with hashes and truncation metadata.",
+        ),
+    ] = False,
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    max_skill_chars: Annotated[
+        int,
+        typer.Option(
+            "--max-skill-chars",
+            min=0,
+            help="Maximum characters to attach per local skill when materializing.",
+        ),
+    ] = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+) -> None:
+    """Print the runtime context for a custom skill/MCP agent profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_inspect: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        json.dumps(
+            profile.to_runtime_context(
+                base_dir=base_dir,
+                materialize_skills=materialize_skills,
+                max_skill_chars=max_skill_chars,
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@agent_profiles_app.command("inspect-set")
+def inspect_agent_profile_set_command(
+    bundle_path: Annotated[
+        Path,
+        typer.Argument(help="Declarative Agent profile-set bundle to inspect."),
+    ],
+    materialize_skills: Annotated[
+        bool,
+        typer.Option(
+            "--materialize-skills/--no-materialize-skills",
+            help="Attach bounded local skill content with hashes and truncation metadata.",
+        ),
+    ] = False,
+    base_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--base-dir",
+            help="Base directory for relative local skill sources. Defaults to the bundle directory.",
+        ),
+    ] = None,
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    max_skill_chars: Annotated[
+        int,
+        typer.Option(
+            "--max-skill-chars",
+            min=0,
+            help="Maximum characters to attach per local skill when materializing.",
+        ),
+    ] = DEFAULT_SKILL_MATERIALIZATION_MAX_CHARS,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional inspection JSON output path."),
+    ] = None,
+    require_complete: Annotated[
+        bool,
+        typer.Option(
+            "--require-complete/--allow-incomplete",
+            help="Exit nonzero unless the bundle covers all required research stages.",
+        ),
+    ] = False,
+) -> None:
+    """Preview a reusable multi-Agent skill/MCP team bundle without importing it."""
+
+    try:
+        inspection = _inspect_agent_profile_set_bundle(
+            bundle_path=bundle_path,
+            base_dir=base_dir,
+            env_path=env_path,
+            materialize_skills=materialize_skills,
+            max_skill_chars=max_skill_chars,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_inspect: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    serialized = json.dumps(inspection, indent=2, sort_keys=True) + "\n"
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(serialized, encoding="utf-8")
+        typer.echo(f"[OK] profile_set_inspection: {output}")
+    else:
+        typer.echo(serialized, nl=False)
+
+    validation = inspection["validation"]
+    if isinstance(validation, Mapping):
+        passed = bool(validation.get("passed"))
+        covered = int(validation.get("covered_stage_count", 0) or 0)
+        required = _string_list(validation.get("required_stages"))
+    else:
+        passed = False
+        covered = 0
+        required = []
+    verdict = "passed" if passed else "failed"
+    typer.echo(f"[OK] agent_profile_set_inspection: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {covered}/{len(required)}; "
+        f"profiles={inspection['profile_count']}"
+    )
+    if require_complete and not passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("validate")
+def validate_agent_profile_command(
+    profile_path: Annotated[
+        Path,
+        typer.Argument(help="Profile JSON artifact to validate."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional profile readiness JSON path."),
+    ] = None,
+) -> None:
+    """Validate local readiness for one custom skill/MCP profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        report = evaluate_agent_profile_readiness(
+            profile,
+            profile_path=profile_path,
+            base_dir=base_dir,
+            env=_merged_optional_env(env_path),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] readiness_report: {output}")
+    verdict = "passed" if report.passed else "failed"
+    typer.echo(f"[OK] agent_profile_readiness: {verdict}")
+    typer.echo(
+        f"[OK] readiness_checks: {report.check_count}; "
+        f"failed={report.failed_check_count}; warnings={report.warning_count}"
+    )
+    for check in report.checks:
+        typer.echo(f"[CHECK] {check.check_id}: {check.status.value} - {check.message}")
+    if not report.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("set-validate")
+def validate_agent_profile_set_command(
+    profile_paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more Agent profile JSON artifacts to validate as a set."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    required_stage: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--required-stage",
+            help=(
+                "Research-loop stage that must have at least one assigned Agent. "
+                "Repeat to override the default CCF-B/Q2-oriented stage set."
+            ),
+        ),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional profile-set validation JSON path."),
+    ] = None,
+) -> None:
+    """Validate a stage-scoped team of custom skill/MCP Agent profiles."""
+
+    env = _merged_optional_env(env_path)
+    profiles: list[AgentProfile] = []
+    readiness_reports = []
+    try:
+        for profile_path in profile_paths:
+            profile = load_agent_profile(profile_path)
+            profiles.append(profile)
+            readiness_reports.append(
+                evaluate_agent_profile_readiness(
+                    profile,
+                    profile_path=profile_path,
+                    base_dir=base_dir,
+                    env=env,
+                )
+            )
+        validation = evaluate_agent_profile_set(
+            profiles,
+            required_stages=required_stage or DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+            readiness_reports=readiness_reports,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_profile_set_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(validation.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] profile_set_report: {output}")
+
+    verdict = "passed" if validation.passed else "failed"
+    typer.echo(f"[OK] agent_profile_set: {verdict}")
+    typer.echo(
+        f"[OK] stage_coverage: {validation.covered_stage_count}/"
+        f"{len(validation.required_stages)}; profiles={validation.profile_count}"
+    )
+    for row in validation.stage_coverage:
+        status = "covered" if row.covered else "missing"
+        agents = ", ".join(row.agent_ids) if row.agent_ids else "-"
+        typer.echo(f"[STAGE] {row.stage}: {status}; agents={agents}")
+    for failure in validation.failures:
+        typer.echo(f"[FAIL] {failure}")
+    for warning in validation.warnings:
+        typer.echo(f"[WARN] {warning}")
+    if not validation.passed:
+        raise typer.Exit(1)
+
+
+@agent_profiles_app.command("export-stage-context")
+def export_agent_stage_context_command(
+    profile_paths: Annotated[
+        list[Path],
+        typer.Argument(help="One or more Agent profile JSON artifacts to route by stage."),
+    ],
+    stage: Annotated[
+        str,
+        typer.Option("--stage", help="Research-loop stage to export context for."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Stage context packet JSON path."),
+    ],
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Environment file containing required MCP env names."),
+    ] = Path(".env"),
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative local skill sources."),
+    ] = Path("."),
+    project_id: Annotated[
+        str | None,
+        typer.Option("--project-id", help="Optional project ID to record in the packet."),
+    ] = None,
+    cycle_id: Annotated[
+        str | None,
+        typer.Option("--cycle-id", help="Optional cycle/run ID to record in the packet."),
+    ] = None,
+    require_agent: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent/--allow-empty",
+            help="Fail when no profile is assigned to the requested stage.",
+        ),
+    ] = True,
+    require_ready: Annotated[
+        bool,
+        typer.Option(
+            "--require-ready/--allow-not-ready",
+            help="Fail when assigned profiles have failing readiness checks.",
+        ),
+    ] = True,
+) -> None:
+    """Export the bounded skill/MCP context packet for one research-loop stage."""
+
+    try:
+        normalized_stage = _validated_agent_profile_stages((stage,))[0]
+        contexts = _load_agent_profile_contexts(
+            profile_paths,
+            env=_merged_optional_env(env_path),
+            base_dir=base_dir,
+        )
+        packet = build_agent_stage_context_packet(
+            contexts,
+            normalized_stage,
+            project_id=project_id,
+            cycle_id=cycle_id,
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] agent_stage_context: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(packet, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    agent_count = int(packet["agent_count"])
+    readiness = packet["readiness"]
+    readiness_passed = bool(readiness["passed"]) if isinstance(readiness, Mapping) else False
+    typer.echo(f"[OK] agent_stage_context: {normalized_stage}")
+    typer.echo(f"[OK] agents: {agent_count}; ready={str(readiness_passed).lower()}")
+    typer.echo(f"[OK] skills: {len(packet['skill_ids'])}; mcp_servers={len(packet['mcp_server_ids'])}")
+    typer.echo(f"[OK] output: {output}")
+    if require_agent and agent_count == 0:
+        typer.echo(f"[FAIL] no agent is assigned to stage {normalized_stage}", err=True)
+        raise typer.Exit(1)
+    if require_ready and not readiness_passed:
+        typer.echo(f"[FAIL] stage context readiness failed for {normalized_stage}", err=True)
+        raise typer.Exit(1)
+
+
+@agent_mcp_evidence_app.command("add")
+def add_agent_mcp_invocation_evidence_command(
+    profile_path: Annotated[
+        Path,
+        typer.Option("--profile", help="Agent profile JSON that owns this MCP binding."),
+    ],
+    ledger: Annotated[
+        Path,
+        typer.Option("--ledger", help="JSONL ledger path to append invocation evidence."),
+    ],
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID for the invocation evidence."),
+    ],
+    cycle_id: Annotated[
+        str,
+        typer.Option("--cycle-id", help="Cycle or run ID for the invocation evidence."),
+    ],
+    server_id: Annotated[
+        str,
+        typer.Option("--server-id", help="MCP server ID from the agent profile."),
+    ],
+    tool_name: Annotated[
+        str,
+        typer.Option("--tool-name", help="Allowed MCP tool name that was invoked."),
+    ],
+    request_artifact: Annotated[
+        Path,
+        typer.Option(
+            "--request-artifact",
+            help="File containing the sanitized request envelope to hash.",
+        ),
+    ],
+    response_artifact: Annotated[
+        Path | None,
+        typer.Option(
+            "--response-artifact",
+            help="File containing the sanitized response/result envelope to hash.",
+        ),
+    ] = None,
+    status: Annotated[
+        McpInvocationStatus,
+        typer.Option("--status", help="Invocation status."),
+    ] = McpInvocationStatus.SUCCESS,
+    base_dir: Annotated[
+        Path,
+        typer.Option("--base-dir", help="Base directory for relative artifact refs."),
+    ] = Path("."),
+    runtime_approval_request_id: Annotated[
+        str | None,
+        typer.Option("--runtime-approval-request-id", help="Linked runtime approval request ID."),
+    ] = None,
+    approved_by: Annotated[
+        str | None,
+        typer.Option("--approved-by", help="Operator identity for allow_all/approved actions."),
+    ] = None,
+    result_summary: Annotated[
+        str,
+        typer.Option("--result-summary", help="Short non-secret result summary."),
+    ] = "MCP tool invocation recorded.",
+    error_type: Annotated[
+        str | None,
+        typer.Option("--error-type", help="Error type for failed invocations."),
+    ] = None,
+    artifact_ref: Annotated[
+        list[str] | None,
+        typer.Option("--artifact-ref", help="Additional evidence artifact ref. Repeatable."),
+    ] = None,
+) -> None:
+    """Append hashed MCP invocation evidence for one assigned agent."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        evidence = build_mcp_invocation_evidence(
+            profile=profile,
+            project_id=project_id,
+            cycle_id=cycle_id,
+            server_id=server_id,
+            tool_name=tool_name,
+            status=status,
+            request_artifact=request_artifact,
+            response_artifact=response_artifact,
+            base_dir=base_dir,
+            runtime_approval_request_id=runtime_approval_request_id,
+            approved_by=approved_by,
+            result_summary=result_summary,
+            error_type=error_type,
+            artifact_refs=tuple(artifact_ref or ()),
+        )
+        append_mcp_invocation_evidence(ledger, evidence)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_add: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"[OK] mcp_invocation_evidence: {evidence.evidence_id}")
+    typer.echo(f"[OK] agent_id: {evidence.agent_id}")
+    typer.echo(f"[OK] server_tool: {evidence.server_id}:{evidence.tool_name}")
+    typer.echo(f"[OK] ledger: {ledger}")
+    typer.echo(f"[OK] request_sha256: {evidence.request_sha256}")
+    if evidence.response_sha256:
+        typer.echo(f"[OK] response_sha256: {evidence.response_sha256}")
+
+
+@agent_mcp_evidence_app.command("list")
+def list_agent_mcp_invocation_evidence_command(
+    ledger: Annotated[
+        Path,
+        typer.Argument(help="JSONL MCP invocation evidence ledger to inspect."),
+    ],
+) -> None:
+    """List MCP invocation evidence records."""
+
+    try:
+        records = load_mcp_invocation_evidence(ledger)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_list: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"[OK] mcp_invocation_evidence_records: {len(records)}")
+    for record in records:
+        typer.echo(
+            f"[MCP] evidence_id={record.evidence_id} status={record.status.value} "
+            f"agent={record.agent_id} tool={record.server_id}:{record.tool_name}"
+        )
+
+
+@agent_mcp_evidence_app.command("validate")
+def validate_agent_mcp_invocation_evidence_command(
+    profile_path: Annotated[
+        Path,
+        typer.Option("--profile", help="Agent profile JSON that owns these MCP bindings."),
+    ],
+    ledger: Annotated[
+        Path,
+        typer.Argument(help="JSONL MCP invocation evidence ledger to validate."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional validation JSON output path."),
+    ] = None,
+) -> None:
+    """Validate MCP invocation evidence against an agent profile."""
+
+    try:
+        profile = load_agent_profile(profile_path)
+        records = load_mcp_invocation_evidence(ledger)
+        validations = tuple(
+            validate_mcp_invocation_evidence(record, profile) for record in records
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        typer.echo(f"[FAIL] mcp_invocation_evidence_validate: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if output is not None:
+        report_path = write_mcp_invocation_validation_report(output, validations)
+        typer.echo(f"[OK] mcp_invocation_evidence_report: {report_path}")
+    passed = all(validation.passed for validation in validations)
+    typer.echo(f"[OK] mcp_invocation_evidence_validation: {'passed' if passed else 'failed'}")
+    typer.echo(f"[OK] records: {len(validations)}")
+    for validation in validations:
+        status_text = "pass" if validation.passed else "fail"
+        typer.echo(
+            f"[CHECK] {validation.evidence_id}: {status_text}; "
+            f"issues={len(validation.issues)}; warnings={len(validation.warnings)}"
+        )
+    if not passed:
+        raise typer.Exit(1)
+
+
+def _normalise_agent_profile_stage(stage: str) -> str:
+    return stage.strip().lower().replace("-", "_")
+
+
+def _validated_agent_profile_stages(stages: tuple[str, ...]) -> tuple[str, ...]:
+    normalized = tuple(_normalise_agent_profile_stage(stage) for stage in stages if stage.strip())
+    if len(normalized) != len(set(normalized)):
+        msg = "duplicate --stage values are not allowed"
+        raise ValueError(msg)
+    allowed = set(AGENT_PROFILE_ASSIGNABLE_STAGES)
+    unknown = sorted(set(normalized) - allowed)
+    if unknown:
+        msg = (
+            f"unknown agent profile stage(s): {', '.join(unknown)}; "
+            f"allowed: {', '.join(AGENT_PROFILE_ASSIGNABLE_STAGES)}"
+        )
+        raise ValueError(msg)
+    return normalized
+
+
+def _load_agent_profile_contexts(
+    profile_paths: Iterable[Path],
+    *,
+    env: Mapping[str, str] | None = None,
+    base_dir: Path | None = None,
+) -> tuple[dict[str, Any], ...]:
+    contexts: list[dict[str, Any]] = []
+    seen_agent_ids: set[str] = set()
+    readiness_env = env or {}
+    readiness_base_dir = base_dir or Path.cwd()
+    for profile_path in profile_paths:
+        try:
+            profile = load_agent_profile(profile_path)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            msg = f"failed to load agent profile {profile_path}: {exc}"
+            raise RuntimeError(msg) from exc
+        if profile.agent_id in seen_agent_ids:
+            msg = f"duplicate agent profile for agent_id {profile.agent_id}"
+            raise RuntimeError(msg)
+        try:
+            _validated_agent_profile_stages(profile.assigned_stages)
+        except ValueError as exc:
+            msg = f"invalid stage assignment in profile {profile_path}: {exc}"
+            raise RuntimeError(msg) from exc
+        seen_agent_ids.add(profile.agent_id)
+        context = profile.to_runtime_context(
+            base_dir=readiness_base_dir,
+            materialize_skills=True,
+        )
+        context["profile_path"] = profile_path.as_posix()
+        readiness = evaluate_agent_profile_readiness(
+            profile,
+            profile_path=profile_path,
+            base_dir=readiness_base_dir,
+            env=readiness_env,
+        )
+        context["readiness"] = readiness.model_dump(mode="json")
+        contexts.append(context)
+    return tuple(contexts)
+
+
+def _inspect_agent_profile_set_bundle(
+    *,
+    bundle_path: Path,
+    base_dir: Path | None,
+    env_path: Path,
+    materialize_skills: bool,
+    max_skill_chars: int,
+) -> dict[str, Any]:
+    bundle = load_agent_profile_set_bundle(bundle_path)
+    profiles = build_agent_profiles_from_set_bundle(bundle)
+    resolved_base_dir = base_dir or bundle_path.parent
+    env = _merged_optional_env(env_path)
+    readiness_reports = tuple(
+        evaluate_agent_profile_readiness(
+            profile,
+            base_dir=resolved_base_dir,
+            env=env,
+        )
+        for profile in profiles
+    )
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=bundle.required_stages,
+        readiness_reports=readiness_reports,
+        stage_import_requirements=bundle.stage_import_requirements,
+    )
+    profile_contexts = tuple(
+        profile.to_runtime_context(
+            base_dir=resolved_base_dir,
+            materialize_skills=materialize_skills,
+            max_skill_chars=max_skill_chars,
+        )
+        | {"readiness": readiness.model_dump(mode="json")}
+        for profile, readiness in zip(profiles, readiness_reports, strict=True)
+    )
+    return {
+        "inspection_kind": "agent_profile_set_inspection_process_metadata",
+        "source_bundle_path": bundle_path.as_posix(),
+        "base_dir": resolved_base_dir.as_posix(),
+        "profile_set_id": bundle.profile_set_id,
+        "profile_count": len(profiles),
+        "profiles": profile_contexts,
+        "validation": validation.model_dump(mode="json"),
+        "stage_coverage": [
+            row.model_dump(mode="json") for row in validation.stage_coverage
+        ],
+        "evidence_policy": PROFILE_SET_EVIDENCE_POLICY,
+    }
+
+
+def _attach_agent_profile_team_bindings(
+    *,
+    bundle_path: Path,
+    agent_id: str,
+    skill_specs: tuple[str, ...],
+    skill_policy_specs: tuple[str, ...],
+    stage_specs: tuple[str, ...],
+    mcp_specs: tuple[str, ...],
+    mcp_tool_specs: tuple[str, ...],
+    mcp_approval_specs: tuple[str, ...],
+    mcp_env_key_specs: tuple[str, ...],
+    output: Path | None,
+    base_dir: Path | None,
+    env_path: Path,
+    replace_existing: bool,
+) -> tuple[AgentProfileSetBundle, AgentProfileSetValidation, Path]:
+    if not any((skill_specs, stage_specs, mcp_specs)):
+        msg = "provide at least one --skill, --stage, or --mcp binding to attach"
+        raise ValueError(msg)
+
+    bundle = load_agent_profile_set_bundle(bundle_path)
+    payload = bundle.model_dump(mode="json", exclude_none=True)
+    profile_payloads = cast(list[dict[str, Any]], payload["profiles"])
+    target_profile = next(
+        (profile for profile in profile_payloads if profile.get("agent_id") == agent_id),
+        None,
+    )
+    if target_profile is None:
+        known = ", ".join(str(profile.get("agent_id")) for profile in profile_payloads)
+        msg = f"agent_id {agent_id!r} is not present in {bundle_path}; available: {known}"
+        raise ValueError(msg)
+
+    skill_payloads = _parse_bundle_skill_payloads(
+        skill_specs,
+        skill_policy_specs=skill_policy_specs,
+    )
+    mcp_payloads = _parse_bundle_mcp_payloads(
+        mcp_specs,
+        mcp_tool_specs=mcp_tool_specs,
+        mcp_approval_specs=mcp_approval_specs,
+        mcp_env_key_specs=mcp_env_key_specs,
+    )
+    stage_values = _validated_agent_profile_stages(stage_specs)
+    if stage_values:
+        existing_stages = _string_list(target_profile.get("assigned_stages"))
+        target_profile["assigned_stages"] = list(dict.fromkeys((*existing_stages, *stage_values)))
+    if skill_payloads:
+        _attach_named_bundle_entries(
+            target_profile,
+            field="skills",
+            entries=skill_payloads,
+            key="skill_id",
+            replace_existing=replace_existing,
+        )
+    if mcp_payloads:
+        _attach_named_bundle_entries(
+            target_profile,
+            field="mcp_servers",
+            entries=mcp_payloads,
+            key="server_id",
+            replace_existing=replace_existing,
+        )
+
+    updated_bundle = AgentProfileSetBundle.model_validate(payload)
+    target_path = output or bundle_path
+    _write_agent_profile_set_bundle(updated_bundle, target_path)
+    resolved_base_dir = base_dir or target_path.parent
+    profiles = build_agent_profiles_from_set_bundle(updated_bundle)
+    env = _merged_optional_env(env_path)
+    readiness_reports = tuple(
+        evaluate_agent_profile_readiness(
+            profile,
+            base_dir=resolved_base_dir,
+            env=env,
+        )
+        for profile in profiles
+    )
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=updated_bundle.required_stages,
+        readiness_reports=readiness_reports,
+        stage_import_requirements=updated_bundle.stage_import_requirements,
+    )
+    return updated_bundle, validation, target_path
+
+
+def _parse_bundle_skill_payloads(
+    skill_specs: tuple[str, ...],
+    *,
+    skill_policy_specs: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    skill_bindings = tuple(parse_skill_spec(spec) for spec in skill_specs)
+    skill_policies = parse_skill_policy_specs(skill_policy_specs)
+    bound_skill_ids = {binding.skill_id for binding in skill_bindings}
+    unused_skill_policies = sorted(set(skill_policies) - bound_skill_ids)
+    if unused_skill_policies:
+        msg = (
+            "--skill-policy references missing --skill binding(s): "
+            f"{', '.join(unused_skill_policies)}"
+        )
+        raise ValueError(msg)
+    return [
+        binding.model_copy(
+            update={"import_policy": skill_policies.get(binding.skill_id, binding.import_policy)}
+        ).model_dump(mode="json", exclude_none=True)
+        for binding in skill_bindings
+    ]
+
+
+def _parse_bundle_mcp_payloads(
+    mcp_specs: tuple[str, ...],
+    *,
+    mcp_tool_specs: tuple[str, ...],
+    mcp_approval_specs: tuple[str, ...],
+    mcp_env_key_specs: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    tools_by_server = parse_server_tool_specs(mcp_tool_specs)
+    mcp_approval_policies = parse_mcp_approval_policy_specs(mcp_approval_specs)
+    mcp_env_keys_by_server = parse_mcp_env_key_specs(mcp_env_key_specs)
+    mcp_servers = tuple(parse_mcp_spec(spec, tools_by_server=tools_by_server) for spec in mcp_specs)
+    bound_server_ids = {server.server_id for server in mcp_servers}
+    unused_tool_servers = sorted(set(tools_by_server) - bound_server_ids)
+    if unused_tool_servers:
+        msg = f"--mcp-tool references missing --mcp server(s): {', '.join(unused_tool_servers)}"
+        raise ValueError(msg)
+    unused_mcp_policy_servers = sorted(set(mcp_approval_policies) - bound_server_ids)
+    if unused_mcp_policy_servers:
+        msg = (
+            "--mcp-approval references missing --mcp server(s): "
+            f"{', '.join(unused_mcp_policy_servers)}"
+        )
+        raise ValueError(msg)
+    unused_mcp_env_servers = sorted(set(mcp_env_keys_by_server) - bound_server_ids)
+    if unused_mcp_env_servers:
+        msg = (
+            "--mcp-env-key references missing --mcp server(s): "
+            f"{', '.join(unused_mcp_env_servers)}"
+        )
+        raise ValueError(msg)
+    return [
+        server.model_copy(
+            update={
+                "approval_policy": mcp_approval_policies.get(
+                    server.server_id,
+                    server.approval_policy,
+                ),
+                "env_keys": tuple(
+                    dict.fromkeys(
+                        (
+                            *server.env_keys,
+                            *mcp_env_keys_by_server.get(server.server_id, ()),
+                        )
+                    )
+                ),
+            }
+        ).model_dump(mode="json", exclude_none=True)
+        for server in mcp_servers
+    ]
+
+
+def _attach_named_bundle_entries(
+    target_profile: dict[str, Any],
+    *,
+    field: str,
+    entries: list[dict[str, Any]],
+    key: str,
+    replace_existing: bool,
+) -> None:
+    existing = [
+        dict(item)
+        for item in target_profile.get(field, [])
+        if isinstance(item, Mapping)
+    ]
+    entry_ids = [str(entry[key]) for entry in entries]
+    duplicate_new = sorted(
+        value for value in set(entry_ids) if entry_ids.count(value) > 1
+    )
+    if duplicate_new:
+        msg = f"duplicate {field} in attach request: {', '.join(duplicate_new)}"
+        raise ValueError(msg)
+    existing_ids = {str(entry.get(key)) for entry in existing}
+    collisions = sorted(existing_ids & set(entry_ids))
+    if collisions and not replace_existing:
+        msg = (
+            f"{field} already present on agent; use --replace-existing to update: "
+            f"{', '.join(collisions)}"
+        )
+        raise ValueError(msg)
+    if replace_existing and collisions:
+        existing = [entry for entry in existing if str(entry.get(key)) not in collisions]
+    target_profile[field] = [*existing, *entries]
+
+
+def _write_agent_profile_set_bundle(bundle: AgentProfileSetBundle, path: Path) -> Path:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = bundle.model_dump(mode="json", exclude_none=True)
+    suffix = target.suffix.lower()
+    if suffix == ".json":
+        text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    elif suffix in {".yaml", ".yml"}:
+        text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+    elif suffix == ".toml":
+        text = toml.dumps(payload)
+    else:
+        msg = (
+            f"Unsupported agent profile-set bundle extension '{target.suffix}' for {target}. "
+            "Expected .json, .yaml, .yml, or .toml."
+        )
+        raise ValueError(msg)
+    target.write_text(text, encoding="utf-8")
+    return target
+
+
+def _materialize_agent_profile_set_bundles(
+    profile_set_bundle_paths: Iterable[Path],
+    *,
+    cycle_dir: Path,
+) -> dict[str, Any]:
+    """Convert runtime profile-set bundles into ordinary profile JSON artifacts."""
+
+    bundle_rows: list[dict[str, Any]] = []
+    generated_profile_paths: list[str] = []
+    source_bundle_paths: list[str] = []
+    bundle_root = cycle_dir / "agent-profile-bundles"
+    for index, bundle_path in enumerate(profile_set_bundle_paths, start=1):
+        try:
+            bundle = load_agent_profile_set_bundle(bundle_path)
+            profiles = tuple(
+                _resolve_bundle_profile_sources(profile, bundle_path=bundle_path)
+                for profile in build_agent_profiles_from_set_bundle(bundle)
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            msg = f"failed to load agent profile-set bundle {bundle_path}: {exc}"
+            raise RuntimeError(msg) from exc
+
+        source_bundle_paths.append(bundle_path.as_posix())
+        bundle_slug = _safe_path_segment(f"{index:02d}-{bundle.profile_set_id}")
+        output_dir = bundle_root / bundle_slug
+        profile_paths: list[str] = []
+        for profile in profiles:
+            profile_path = write_agent_profile(
+                profile,
+                output_dir / f"{_safe_path_segment(profile.agent_id)}.json",
+            )
+            profile_paths.append(profile_path.as_posix())
+            generated_profile_paths.append(profile_path.as_posix())
+        bundle_rows.append(
+            {
+                "profile_set_id": bundle.profile_set_id,
+                "description": bundle.description,
+                "source_bundle_path": bundle_path.as_posix(),
+                "output_dir": output_dir.as_posix(),
+                "required_stages": list(bundle.required_stages),
+                "stage_import_requirements": [
+                    requirement.model_dump(mode="json")
+                    for requirement in bundle.stage_import_requirements
+                ],
+                "agent_ids": [profile.agent_id for profile in profiles],
+                "profile_count": len(profile_paths),
+                "profile_paths": profile_paths,
+            }
+        )
+
+    manifest: dict[str, Any] = {
+        "bundle_set_kind": "agent_profile_set_bundle_runtime_materialization_process_metadata",
+        "bundle_count": len(bundle_rows),
+        "profile_count": len(generated_profile_paths),
+        "bundles": bundle_rows,
+        "source_bundle_paths": source_bundle_paths,
+        "profile_paths": generated_profile_paths,
+        "manifest_path": None,
+        "evidence_policy": (
+            "Runtime Agent profile-set bundle materialization records only how reusable "
+            "team declarations were converted into per-Agent profile JSON artifacts. "
+            "It cannot prove scientific results, novelty, metrics, citation validity, "
+            "MCP invocation, or publication readiness."
+        ),
+    }
+    if bundle_rows:
+        bundle_root.mkdir(parents=True, exist_ok=True)
+        manifest_path = bundle_root / "manifest.json"
+        manifest["manifest_path"] = manifest_path.as_posix()
+        manifest_path.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    return manifest
+
+
+def _agent_stage_import_requirements_from_bundle_manifest(
+    manifest: Mapping[str, Any],
+) -> tuple[AgentStageImportRequirement, ...]:
+    requirements: list[AgentStageImportRequirement] = []
+    for bundle in _mapping_list(manifest.get("bundles")):
+        for item in _mapping_list(bundle.get("stage_import_requirements")):
+            requirements.append(AgentStageImportRequirement.model_validate(item))
+    return tuple(requirements)
+
+
+def _resolve_bundle_profile_sources(profile: AgentProfile, *, bundle_path: Path) -> AgentProfile:
+    """Resolve relative local skill sources against the bundle file location."""
+
+    bundle_dir = bundle_path.parent
+    updated_skills = []
+    changed = False
+    for skill in profile.skills:
+        if skill.source_type != SkillSourceType.LOCAL_PATH:
+            updated_skills.append(skill)
+            continue
+        source_path = Path(skill.source)
+        if source_path.is_absolute():
+            updated_skills.append(skill)
+            continue
+        resolved_source = (bundle_dir / source_path).resolve()
+        updated_skills.append(skill.model_copy(update={"source": resolved_source.as_posix()}))
+        changed = True
+    if not changed:
+        return profile
+    return profile.model_copy(update={"skills": tuple(updated_skills)})
+
+
+def _agent_profiles_summary(profile_contexts: tuple[dict[str, Any], ...]) -> dict[str, Any]:
+    profiles: list[dict[str, Any]] = []
+    for context in profile_contexts:
+        skills = _mapping_list(context.get("skills"))
+        materialized_skills = _mapping_list(context.get("materialized_skills"))
+        mcp_servers = _mapping_list(context.get("mcp_servers"))
+        mcp_runtime_contracts = _mapping_list(context.get("mcp_runtime_contracts"))
+        profiles.append(
+            {
+                "agent_id": str(context.get("agent_id", "")),
+                "role": str(context.get("role", "")),
+                "thinking_mode": str(context.get("thinking_mode", "")),
+                "publication_target": str(context.get("publication_target", "")),
+                "assigned_stages": _string_list(context.get("assigned_stages")),
+                "profile_path": str(context.get("profile_path", "")),
+                "readiness": context.get("readiness") if isinstance(
+                    context.get("readiness"),
+                    Mapping,
+                ) else {},
+                "skill_ids": [str(skill.get("skill_id", "")) for skill in skills],
+                "materialized_skills": [
+                    {
+                        "skill_id": str(skill.get("skill_id", "")),
+                        "status": str(skill.get("status", "")),
+                        "sha256": skill.get("sha256"),
+                        "byte_count": skill.get("byte_count"),
+                        "char_count": skill.get("char_count"),
+                        "truncated": bool(skill.get("truncated", False)),
+                        "resolved_path": skill.get("resolved_path"),
+                    }
+                    for skill in materialized_skills
+                ],
+                "mcp_servers": [
+                    {
+                        "server_id": str(server.get("server_id", "")),
+                        "allowed_tools": _string_list(server.get("allowed_tools")),
+                        "approval_policy": str(server.get("approval_policy", "")),
+                    }
+                    for server in mcp_servers
+                ],
+                "mcp_runtime_contracts": [
+                    {
+                        "server_id": str(contract.get("server_id", "")),
+                        "contract_kind": str(contract.get("contract_kind", "")),
+                        "command_sha256": contract.get("command_sha256"),
+                        "allowed_tools": _string_list(contract.get("allowed_tools")),
+                        "approval_policy": str(contract.get("approval_policy", "")),
+                        "runtime_approval_required": bool(
+                            contract.get("runtime_approval_required", False)
+                        ),
+                        "operator_isolation_required": bool(
+                            contract.get("operator_isolation_required", False)
+                        ),
+                        "tool_invocation_evidence_required": bool(
+                            contract.get("tool_invocation_evidence_required", True)
+                        ),
+                    }
+                    for contract in mcp_runtime_contracts
+                ],
+            }
+        )
+    readiness_values = [
+        value
+        for value in (profile.get("readiness") for profile in profiles)
+        if isinstance(value, Mapping)
+    ]
+    failed_checks = sum(int(value.get("failed_check_count", 0) or 0) for value in readiness_values)
+    warning_checks = sum(int(value.get("warning_count", 0) or 0) for value in readiness_values)
+    stage_assignment_manifest = build_agent_stage_assignment_manifest(
+        profile_contexts,
+        AGENT_PROFILE_ASSIGNABLE_STAGES,
+    )
+    return {
+        "count": len(profiles),
+        "profiles": profiles,
+        "runtime_contexts": list(profile_contexts),
+        "readiness": {
+            "passed": failed_checks == 0,
+            "failed_check_count": failed_checks,
+            "warning_count": warning_checks,
+        },
+        "stage_assignments": _agent_profile_stage_assignments(profile_contexts),
+        "stage_assignment_manifest": stage_assignment_manifest,
+        "stage_runtime_contexts": profile_contexts_by_stage(
+            profile_contexts,
+            AGENT_PROFILE_ASSIGNABLE_STAGES,
+        ),
+        "evidence_policy": (
+            "Agent profiles provide bounded skill/MCP context only; publication claims still "
+            "require loop, review, audit, evidence, and reproduction gates."
+        ),
+    }
+
+
+def _write_agent_stage_context_packets(
+    *,
+    profile_contexts: tuple[dict[str, Any], ...],
+    cycle_dir: Path,
+    project_id: str,
+    cycle_id: str,
+) -> dict[str, Any]:
+    packet_dir = cycle_dir / "agent-stage-contexts"
+    packet_rows: list[dict[str, Any]] = []
+    assignment_manifest = build_agent_stage_assignment_manifest(
+        profile_contexts,
+        AGENT_PROFILE_ASSIGNABLE_STAGES,
+        project_id=project_id,
+        cycle_id=cycle_id,
+    )
+    for stage in AGENT_PROFILE_ASSIGNABLE_STAGES:
+        packet = build_agent_stage_context_packet(
+            profile_contexts,
+            stage,
+            project_id=project_id,
+            cycle_id=cycle_id,
+        )
+        if int(packet.get("agent_count", 0) or 0) <= 0:
+            continue
+        packet_dir.mkdir(parents=True, exist_ok=True)
+        packet_path = packet_dir / f"{stage}.json"
+        packet_path.write_text(json.dumps(packet, indent=2, sort_keys=True), encoding="utf-8")
+        packet_rows.append(
+            {
+                "stage": stage,
+                "path": packet_path.as_posix(),
+                "agent_count": packet.get("agent_count", 0),
+                "agent_ids": _string_list(packet.get("agent_ids")),
+                "skill_ids": _string_list(packet.get("skill_ids")),
+                "materialized_skill_ids": _string_list(
+                    packet.get("materialized_skill_ids")
+                ),
+                "mcp_server_ids": _string_list(packet.get("mcp_server_ids")),
+                "readiness": packet.get("readiness") if isinstance(
+                    packet.get("readiness"),
+                    Mapping,
+                ) else {},
+            }
+        )
+
+    assignment_manifest_path: str | None = None
+    if int(assignment_manifest.get("stage_count", 0) or 0) > 0:
+        packet_dir.mkdir(parents=True, exist_ok=True)
+        assignment_path = packet_dir / "assignment-manifest.json"
+        assignment_manifest["manifest_path"] = assignment_path.as_posix()
+        assignment_path.write_text(
+            json.dumps(assignment_manifest, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        assignment_manifest_path = assignment_path.as_posix()
+
+    manifest: dict[str, Any] = {
+        "packet_set_kind": "agent_stage_context_packet_set_process_metadata",
+        "cycle_id": cycle_id,
+        "project_id": project_id,
+        "packet_dir": packet_dir.as_posix(),
+        "packet_count": len(packet_rows),
+        "packets": packet_rows,
+        "packet_paths": [str(row["path"]) for row in packet_rows],
+        "assignment_manifest_path": assignment_manifest_path,
+        "assignment_manifest": assignment_manifest,
+        "manifest_path": None,
+        "evidence_policy": (
+            "Stage context packets route bounded Agent skill/MCP context to assigned "
+            "research-loop stages only; they cannot prove scientific results, novelty, "
+            "metrics, citations, tool invocation, or publication readiness."
+        ),
+    }
+    if packet_rows:
+        manifest_path = packet_dir / "manifest.json"
+        manifest["manifest_path"] = manifest_path.as_posix()
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    return manifest
+
+
+def _write_agent_profile_set_runtime_validation(
+    *,
+    profile_contexts: tuple[dict[str, Any], ...],
+    stage_import_requirements: tuple[AgentStageImportRequirement, ...] = (),
+    cycle_dir: Path,
+    require_pass: bool,
+) -> dict[str, Any]:
+    profiles: list[AgentProfile] = []
+    readiness_reports: list[AgentProfileReadinessReport] = []
+    for context in profile_contexts:
+        profile_path = str(context.get("profile_path") or "").strip()
+        if not profile_path:
+            continue
+        profiles.append(load_agent_profile(Path(profile_path)))
+        readiness = context.get("readiness")
+        if isinstance(readiness, Mapping):
+            readiness_reports.append(AgentProfileReadinessReport.model_validate(readiness))
+
+    validation = evaluate_agent_profile_set(
+        profiles,
+        required_stages=DEFAULT_AGENT_PROFILE_SET_REQUIRED_STAGES,
+        readiness_reports=readiness_reports,
+        stage_import_requirements=stage_import_requirements,
+    )
+    output_dir = cycle_dir / "agent-profile-set"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "agent-profile-set-validation.json"
+    payload: dict[str, Any] = {
+        **validation.model_dump(mode="json"),
+        "validation_kind": "agent_profile_set_runtime_preflight_process_metadata",
+        "required_for_cycle": require_pass,
+        "output_path": output_path.as_posix(),
+        "evidence_policy": (
+            "Runtime Agent profile-set validation checks stage responsibility coverage and "
+            "profile readiness plus optional stage custom-import requirements only; it cannot "
+            "prove scientific results, novelty, benchmark metrics, citation validity, MCP "
+            "invocation, or publication readiness."
+        ),
+    }
+    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return payload
+
+
+def _agent_profile_stage_assignments(
+    profile_contexts: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    stage_rows: list[dict[str, Any]] = []
+    unassigned_agent_ids: list[str] = []
+    for stage in AGENT_PROFILE_ASSIGNABLE_STAGES:
+        agent_ids = [
+            str(context.get("agent_id", ""))
+            for context in profile_contexts
+            if stage in _string_list(context.get("assigned_stages"))
+        ]
+        if agent_ids:
+            stage_rows.append({"stage": stage, "agent_ids": agent_ids})
+    for context in profile_contexts:
+        if not _string_list(context.get("assigned_stages")):
+            unassigned_agent_ids.append(str(context.get("agent_id", "")))
+    return {
+        "stages": stage_rows,
+        "unassigned_agent_ids": unassigned_agent_ids,
+        "policy": (
+            "Stage assignments define responsibility/context boundaries; they do not grant "
+            "permission to bypass scientific evidence gates."
+        ),
+    }
 
 
 @app.command("skill-evolve")
@@ -1233,6 +3067,31 @@ def setup(
         Path,
         typer.Option("--commands-dir", help="Directory for slash command templates."),
     ] = Path(".airesearcher/commands"),
+    agent_team_bundle: Annotated[
+        Path,
+        typer.Option(
+            "--agent-team-bundle",
+            help="Default Agent team bundle path created during setup.",
+        ),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
+    agent_team_profile_set_id: Annotated[
+        str,
+        typer.Option("--agent-team-profile-set-id", help="Profile-set ID for the setup team bundle."),
+    ] = "ccfb-runtime-team",
+    init_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--init-agent-team/--skip-agent-team",
+            help="Write a default editable Agent team bundle for runtime cycles.",
+        ),
+    ] = True,
+    overwrite_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite-agent-team/--no-overwrite-agent-team",
+            help="Overwrite an existing setup Agent team bundle and generated skill files.",
+        ),
+    ] = False,
     non_interactive: Annotated[
         bool,
         typer.Option("--non-interactive", help="Fail on missing required inputs instead of prompting."),
@@ -1357,9 +3216,37 @@ def setup(
         typer.echo(f"[OK] slash commands written: {written}")
         typer.echo(f"[OK] slash commands skipped: {skipped}")
         typer.echo(f"[OK] slash_commands_dir: {commands_dir}")
+    if init_agent_team:
+        agent_team_bundle_path = _setup_relative_path(env_path, agent_team_bundle)
+        try:
+            agent_team = _write_default_agent_team_template(
+                output=agent_team_bundle_path,
+                skill_dir=None,
+                profile_set_id=agent_team_profile_set_id,
+                overwrite=overwrite_agent_team,
+                allow_existing=True,
+            )
+        except (OSError, ValueError) as exc:
+            typer.echo(f"[FAIL] agent_team_bundle: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(f"[OK] agent_team_bundle: {agent_team['bundle_path']}")
+        typer.echo(f"[OK] agent_team_status: {agent_team['status']}")
+        typer.echo(
+            "[NEXT] agent_team_inspect: "
+            "airesearcher agents profile inspect-set "
+            f"{agent_team['bundle_path']} --materialize-skills --require-complete"
+        )
+        typer.echo(
+            "[NEXT] agent_team_runtime: "
+            f"--agent-profile-set-bundle {agent_team['bundle_path']} "
+            "--require-agent-profile-set"
+        )
     _echo_setup_next_steps(
         permission_mode=RuntimePermissionMode.APPROVE_DANGEROUS,
         deliverables_dir=Path("outputs"),
+        agent_team_bundle=_setup_relative_path(env_path, agent_team_bundle)
+        if init_agent_team
+        else None,
     )
 
 
@@ -1589,6 +3476,132 @@ def inspiration_refresh(
         raise typer.Exit(code=1)
 
 
+@app.command("brainstorm")
+def brainstorm(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            "-f",
+            help="JSON file containing a user-confirmed ResearchCandidate payload.",
+        ),
+    ],
+    inspiration_report: Annotated[
+        Path | None,
+        typer.Option("--inspiration-report", help="JSON report written by inspiration-refresh."),
+    ] = None,
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to update."),
+    ] = Path("autoresearch-vault"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Directory for brainstorm JSON artifacts."),
+    ] = Path("runs/brainstorm/latest"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="System config path for provider-agnostic LLM settings."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file containing the configured LLM API key."),
+    ] = Path(".env"),
+    miniagents: Annotated[
+        int,
+        typer.Option("--miniagents", min=1, max=5, help="Temporary miniagents to run."),
+    ] = 5,
+    ideas_per_agent: Annotated[
+        int,
+        typer.Option("--ideas-per-agent", min=1, max=5, help="Ideas requested from each miniagent."),
+    ] = 2,
+    temperature: Annotated[
+        float,
+        typer.Option("--temperature", min=0.0, max=2.0, help="Base creative temperature."),
+    ] = 1.2,
+    timeout_seconds: Annotated[
+        int | None,
+        typer.Option("--timeout-seconds", min=1, help="LLM request timeout override."),
+    ] = None,
+    evidence_review: Annotated[
+        bool,
+        typer.Option(
+            "--evidence-review/--no-evidence-review",
+            help=(
+                "Run the second-stage live reviewer over literature, data, code, and "
+                "community signals after raw brainstorm ideas are recorded."
+            ),
+        ),
+    ] = True,
+    evidence_cache: Annotated[
+        Path | None,
+        typer.Option("--evidence-cache", help="Cache directory for brainstorm reviewer retrieval."),
+    ] = None,
+    review_queries_per_idea: Annotated[
+        int,
+        typer.Option("--review-queries-per-idea", min=1, max=4, help="Live reviewer queries per idea."),
+    ] = 2,
+    review_results_per_source: Annotated[
+        int,
+        typer.Option("--review-results-per-source", min=1, max=5, help="Live reviewer results per source."),
+    ] = 2,
+) -> None:
+    """Run temporary high-temperature brainstorm miniagents over inspiration data."""
+
+    try:
+        candidate = _load_candidate(candidate_file)
+        loaded_inspiration = (
+            _load_inspiration_report(inspiration_report)
+            if inspiration_report is not None
+            else InspirationRefreshReport(queries=(), fetches=(), items=(), summary_path=None)
+        )
+        report = run_inspiration_brainstorm(
+            candidate=candidate,
+            inspiration_report=loaded_inspiration,
+            vault_root=vault,
+            output_dir=output_dir,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=timeout_seconds,
+            max_tokens=None,
+            config=BrainstormConfig(
+                max_miniagents=miniagents,
+                ideas_per_agent=ideas_per_agent,
+                temperature=temperature,
+            ),
+            evidence_review_config=BrainstormEvidenceReviewConfig(
+                max_reviewed_ideas=miniagents * ideas_per_agent,
+                max_queries_per_idea=review_queries_per_idea,
+                max_results_per_source=review_results_per_source,
+            ),
+            enable_evidence_review=evidence_review,
+            evidence_cache_root=evidence_cache or output_dir / "evidence-cache",
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] brainstorm failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] brainstorm: {report.status}")
+    typer.echo(f"[OK] miniagents: {len(report.prompts)}")
+    typer.echo(f"[OK] ideas: {len(report.ideas)}")
+    typer.echo(f"[OK] selected_ideas: {len(report.selected_ideas)}")
+    typer.echo(f"[OK] evidence_reviews: {len(getattr(report, 'evidence_reviews', ()))}")
+    if report.artifact_path is not None:
+        typer.echo(f"[OK] artifact: {report.artifact_path}")
+    if report.summary_path is not None:
+        typer.echo(f"[OK] summary: {report.summary_path}")
+    if report.prompt_set_path is not None:
+        typer.echo(f"[OK] prompt_set: {report.prompt_set_path}")
+    for idea in report.selected_ideas:
+        typer.echo(
+            f"[IDEA] {idea.idea_id}: {idea.title} "
+            f"(selection={idea.selection_score:.3f}, creativity={idea.creativity_score:.2f}, "
+            f"feasibility={idea.feasibility_score:.2f})"
+        )
+    if not report.ideas:
+        typer.echo("[FAIL] brainstorm returned no parseable ideas", err=True)
+        raise typer.Exit(code=1)
+
+
 @channels_app.command("test")
 def channel_test(
     env_path: Annotated[
@@ -1792,6 +3805,13 @@ def readiness(
         Path,
         typer.Option("--scheduler-state", help="Local scheduler follow-up state file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    agent_team_bundle: Annotated[
+        Path,
+        typer.Option(
+            "--agent-team-bundle",
+            help="Setup-generated Agent team bundle expected by the runtime default loader.",
+        ),
+    ] = DEFAULT_AGENT_TEAM_BUNDLE_PATH,
     channel_test_result: Annotated[
         Path,
         typer.Option(
@@ -1828,6 +3848,13 @@ def readiness(
             help="Fail readiness unless the latest channel self-test includes a sent record.",
         ),
     ] = False,
+    require_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-team/--allow-missing-agent-team",
+            help="Fail readiness unless the setup-generated Agent team bundle is present and valid.",
+        ),
+    ] = False,
 ) -> None:
     """Write a preflight report for the 24h unattended research loop."""
 
@@ -1861,6 +3888,11 @@ def readiness(
     )
     _add_readiness_result(
         checks,
+        "agent_team",
+        _agent_team_readiness(agent_team_bundle, require_agent_team=require_agent_team),
+    )
+    _add_readiness_result(
+        checks,
         "operator_channels",
         _operator_channel_readiness(
             env_values,
@@ -1891,6 +3923,7 @@ def readiness(
         config_path=config_path,
         env_path=env_path,
         channel_test_result=channel_test_result,
+        agent_team_bundle=agent_team_bundle,
     )
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -2044,6 +4077,88 @@ def _daily_loop_readiness(*, interval_seconds: int, push_inspiration: bool) -> d
         "status": "pass",
         "detail": f"planned unattended loop interval is {interval_seconds} seconds",
         "evidence": {"interval_seconds": interval_seconds, "command": command},
+    }
+
+
+def _agent_team_readiness(
+    bundle_path: Path,
+    *,
+    require_agent_team: bool,
+) -> dict[str, object]:
+    evidence: dict[str, object] = {
+        "path": bundle_path.as_posix(),
+        "exists": bundle_path.exists(),
+        "require_agent_team": require_agent_team,
+        "default_auto_load": bundle_path == DEFAULT_AGENT_TEAM_BUNDLE_PATH,
+    }
+    if not bundle_path.exists():
+        status = "fail" if require_agent_team else "pass"
+        detail = (
+            f"missing setup Agent team bundle: {bundle_path}"
+            if require_agent_team
+            else f"setup Agent team bundle not found and not required: {bundle_path}"
+        )
+        return {"status": status, "detail": detail, "evidence": evidence}
+
+    try:
+        bundle = load_agent_profile_set_bundle(bundle_path)
+        profiles = build_agent_profiles_from_set_bundle(bundle)
+        readiness_reports = tuple(
+            evaluate_agent_profile_readiness(
+                profile,
+                base_dir=bundle_path.parent,
+                env=os.environ,
+            )
+            for profile in profiles
+        )
+        validation = evaluate_agent_profile_set(
+            profiles,
+            readiness_reports=readiness_reports,
+        )
+    except (OSError, ValueError) as exc:
+        evidence["error"] = str(exc)
+        return {
+            "status": "fail",
+            "detail": f"setup Agent team bundle is not valid: {exc}",
+            "evidence": evidence,
+        }
+
+    validation_payload = validation.model_dump(mode="json")
+    failed_readiness = [
+        report.agent_id for report in readiness_reports if not report.passed
+    ]
+    evidence.update(
+        {
+            "profile_set_id": bundle.profile_set_id,
+            "profile_count": len(profiles),
+            "covered_stage_count": validation.covered_stage_count,
+            "required_stage_count": len(validation.required_stages),
+            "missing_stages": list(validation.missing_stages),
+            "readiness_failed_agent_ids": failed_readiness,
+            "validation": validation_payload,
+            "readiness": [
+                report.model_dump(mode="json") for report in readiness_reports
+            ],
+        }
+    )
+    if validation.passed:
+        return {
+            "status": "pass",
+            "detail": (
+                "setup Agent team is valid: "
+                f"{bundle.profile_set_id} covers "
+                f"{validation.covered_stage_count}/{len(validation.required_stages)} stages"
+            ),
+            "evidence": evidence,
+        }
+    return {
+        "status": "fail",
+        "detail": (
+            "setup Agent team is incomplete: "
+            f"missing={','.join(validation.missing_stages) or '-'}; "
+            f"readiness_failed={','.join(failed_readiness) or '-'}"
+        ),
+        "evidence": evidence,
     }
 
 
@@ -2202,6 +4317,7 @@ def _readiness_next_actions(
     config_path: Path,
     env_path: Path,
     channel_test_result: Path,
+    agent_team_bundle: Path,
 ) -> list[dict[str, str]]:
     checks_by_id = {str(check.get("id")): check for check in checks}
     actions: list[dict[str, str]] = []
@@ -2244,6 +4360,22 @@ def _readiness_next_actions(
     channel_setup_repair_command = (
         channel_setup_with_test_command if should_run_setup_channel_test else channel_setup_command
     )
+    agent_team_check = checks_by_id.get("agent_team")
+    agent_team_evidence = (
+        agent_team_check.get("evidence")
+        if isinstance(agent_team_check, Mapping)
+        else {}
+    )
+    agent_team_exists = (
+        bool(agent_team_evidence.get("exists"))
+        if isinstance(agent_team_evidence, Mapping)
+        else agent_team_bundle.exists()
+    )
+    agent_team_repair_command = (
+        "airesearcher agents profile team-template "
+        f"--output {_command_path(agent_team_bundle)}"
+        + (" --overwrite" if agent_team_exists else "")
+    )
 
     for check_id in ("env_file", "llm_credentials", "config_file", "vault"):
         check = checks_by_id.get(check_id)
@@ -2255,6 +4387,17 @@ def _readiness_next_actions(
                 reason="Create or repair first-deploy configuration before starting the loop.",
             )
             break
+
+    if agent_team_check and agent_team_check.get("status") in {"warn", "fail"}:
+        add(
+            "generate_agent_team",
+            severity="required" if agent_team_check.get("status") == "fail" else "recommended",
+            command=agent_team_repair_command,
+            reason=(
+                "Generate or repair the setup-default Agent team bundle before relying on "
+                "runtime auto-loading."
+            ),
+        )
 
     operator_check = checks_by_id.get("operator_channels")
     if operator_check and operator_check.get("status") in {"warn", "fail"}:
@@ -2475,6 +4618,14 @@ def similarity_check(
     typer.echo(f"[OK] candidate: {candidate.id}")
     typer.echo(f"[OK] queries: {len(report.queries)}")
     typer.echo(f"[OK] findings: {len(report.findings)}")
+    novelty_breadth = getattr(report, "novelty_breadth", None)
+    if novelty_breadth is not None:
+        typer.echo(
+            "[OK] novelty_breadth: "
+            f"{novelty_breadth.status}; score={novelty_breadth.score:.3f}"
+        )
+        if getattr(novelty_breadth, "artifact_path", None):
+            typer.echo(f"[OK] novelty_breadth_json: {novelty_breadth.artifact_path}")
     if report.summary_path is not None:
         typer.echo(f"[OK] summary: {report.summary_path}")
     if project_link is not None:
@@ -2515,6 +4666,10 @@ def research_plan(
         Path | None,
         typer.Option("--inspiration-summary", help="Optional local broad-inspiration summary path."),
     ] = None,
+    brainstorm_summary: Annotated[
+        Path | None,
+        typer.Option("--brainstorm-summary", help="Optional local brainstorm summary path."),
+    ] = None,
     compile_pdf: Annotated[
         bool,
         typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the LaTeX plan into PDF."),
@@ -2537,6 +4692,7 @@ def research_plan(
             similarity_summary=similarity_summary,
             literature_summary=literature_summary,
             inspiration_summary=inspiration_summary,
+            brainstorm_summary=brainstorm_summary,
             timeout_seconds=timeout_seconds,
         )
     except Exception as exc:
@@ -3181,6 +5337,10 @@ def autopilot(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    heartbeat_state: Annotated[
+        Path | None,
+        typer.Option("--heartbeat-state", help="Local runtime heartbeat JSON state file."),
+    ] = None,
     sessions_state: Annotated[
         Path | None,
         typer.Option("--sessions-state", help="Local agent session coordination JSON file."),
@@ -3246,6 +5406,43 @@ def autopilot(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    agent_profile: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile",
+            help="Agent profile JSON to load into this cycle. Repeat for multiple agents.",
+        ),
+    ] = None,
+    agent_profile_set_bundle: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile-set-bundle",
+            help=(
+                "Agent profile-set bundle (.json/.yaml/.toml) to materialize into "
+                "this cycle. Repeat for multiple bundles."
+            ),
+        ),
+    ] = None,
+    default_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--default-agent-team/--no-default-agent-team",
+            help=(
+                "Auto-load the setup-generated default Agent team bundle when no "
+                "explicit Agent profiles or bundles are supplied."
+            ),
+        ),
+    ] = True,
+    require_agent_profile_set: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-profile-set/--no-require-agent-profile-set",
+            help=(
+                "Block the cycle unless supplied Agent profiles cover the default "
+                "CCF-B/Q2 research-stage matrix."
+            ),
+        ),
+    ] = False,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -3278,6 +5475,20 @@ def autopilot(
     )
     completed = 0
     resolved_sessions_state = _resolve_runtime_sessions_state(sessions_state, state)
+    resolved_heartbeat_state = _resolve_runtime_heartbeat_state(heartbeat_state, state)
+    agent_profile_paths = tuple(agent_profile or ())
+    (
+        agent_profile_set_bundle_paths,
+        resolved_require_agent_profile_set,
+        default_agent_team_loaded,
+    ) = _resolve_runtime_agent_team_defaults(
+        enabled=default_agent_team,
+        agent_profile_paths=agent_profile_paths,
+        agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
+        require_agent_profile_set=require_agent_profile_set,
+    )
+    if default_agent_team_loaded:
+        typer.echo(f"[OK] default_agent_team_bundle: {DEFAULT_AGENT_TEAM_BUNDLE_PATH}")
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -3289,6 +5500,7 @@ def autopilot(
             output_dir=output_dir,
             deliverables_dir=deliverables_dir,
             state=state,
+            extra_paths=(resolved_heartbeat_state,),
         ),
     )
     try:
@@ -3303,6 +5515,7 @@ def autopilot(
                     output_dir=output_dir,
                     deliverables_dir=deliverables_dir,
                     state=state,
+                    heartbeat_state=resolved_heartbeat_state,
                     project_id=project_id,
                     demo=demo,
                     max_queries=max_queries,
@@ -3312,6 +5525,9 @@ def autopilot(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
+                    agent_profile_paths=agent_profile_paths,
+                    agent_profile_set_bundle_paths=agent_profile_set_bundle_paths,
+                    require_agent_profile_set=resolved_require_agent_profile_set,
                     push_inspiration=push_inspiration,
                 )
             except RuntimeError as exc:
@@ -3323,7 +5539,12 @@ def autopilot(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profile_bundles_status(summary)
+            _echo_agent_profiles_status(summary)
+            _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
+            _echo_loop_campaign_status(summary)
+            _echo_runtime_heartbeat_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -3379,6 +5600,10 @@ def serve(
         Path,
         typer.Option("--state", help="Local scheduler state JSON file."),
     ] = DEFAULT_SCHEDULER_STATE_PATH,
+    heartbeat_state: Annotated[
+        Path | None,
+        typer.Option("--heartbeat-state", help="Local runtime heartbeat JSON state file."),
+    ] = None,
     approvals_state: Annotated[
         Path,
         typer.Option("--approvals-state", help="Local runtime approval queue JSON file."),
@@ -3452,6 +5677,43 @@ def serve(
             help="Registered LaTeX template ID for the autonomous paper build.",
         ),
     ] = "generic-article-one-column",
+    agent_profile: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile",
+            help="Agent profile JSON to load into this runtime. Repeat for multiple agents.",
+        ),
+    ] = None,
+    agent_profile_set_bundle: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--agent-profile-set-bundle",
+            help=(
+                "Agent profile-set bundle (.json/.yaml/.toml) to materialize into "
+                "each runtime cycle. Repeat for multiple bundles."
+            ),
+        ),
+    ] = None,
+    default_agent_team: Annotated[
+        bool,
+        typer.Option(
+            "--default-agent-team/--no-default-agent-team",
+            help=(
+                "Auto-load the setup-generated default Agent team bundle when no "
+                "explicit Agent profiles or bundles are supplied."
+            ),
+        ),
+    ] = True,
+    require_agent_profile_set: Annotated[
+        bool,
+        typer.Option(
+            "--require-agent-profile-set/--no-require-agent-profile-set",
+            help=(
+                "Block the cycle unless supplied Agent profiles cover the default "
+                "CCF-B/Q2 research-stage matrix."
+            ),
+        ),
+    ] = False,
     push_inspiration: Annotated[
         bool,
         typer.Option(
@@ -3506,6 +5768,24 @@ def serve(
         state,
         approvals_state,
     )
+    resolved_heartbeat_state = _resolve_runtime_heartbeat_state(
+        heartbeat_state,
+        state,
+        approvals_state,
+    )
+    agent_profile_paths = tuple(agent_profile or ())
+    (
+        agent_profile_set_bundle_paths,
+        resolved_require_agent_profile_set,
+        default_agent_team_loaded,
+    ) = _resolve_runtime_agent_team_defaults(
+        enabled=default_agent_team,
+        agent_profile_paths=agent_profile_paths,
+        agent_profile_set_bundle_paths=tuple(agent_profile_set_bundle or ()),
+        require_agent_profile_set=require_agent_profile_set,
+    )
+    if default_agent_team_loaded:
+        typer.echo(f"[OK] default_agent_team_bundle: {DEFAULT_AGENT_TEAM_BUNDLE_PATH}")
     session = _claim_runtime_session(
         enabled=claim_session,
         sessions_state=resolved_sessions_state,
@@ -3517,7 +5797,7 @@ def serve(
             output_dir=output_dir,
             deliverables_dir=deliverables_dir,
             state=state,
-            extra_paths=(approvals_state,),
+            extra_paths=(approvals_state, resolved_heartbeat_state),
         ),
     )
     try:
@@ -3564,6 +5844,7 @@ def serve(
                     output_dir=output_dir,
                     deliverables_dir=deliverables_dir,
                     state=state,
+                    heartbeat_state=resolved_heartbeat_state,
                     project_id=project_id,
                     demo=demo,
                     max_queries=max_queries,
@@ -3573,6 +5854,9 @@ def serve(
                     min_quality_score=min_quality_score,
                     review=review,
                     paper_template_id=paper_template_id,
+                    agent_profile_paths=agent_profile_paths,
+                    agent_profile_set_bundle_paths=agent_profile_set_bundle_paths,
+                    require_agent_profile_set=resolved_require_agent_profile_set,
                     push_inspiration=push_inspiration,
                     runtime_network_metadata=runtime_network_metadata,
                 )
@@ -3585,7 +5869,12 @@ def serve(
                 preflight = summary["source_preflight"]
                 prefix = "[BLOCKED]" if preflight["verdict"] == "blocked" else "[OK]"
                 typer.echo(f"{prefix} source_preflight: {preflight['verdict']}")
+            _echo_agent_profile_bundles_status(summary)
+            _echo_agent_profiles_status(summary)
+            _echo_agent_profile_set_status(summary)
             _echo_research_plan_status(summary)
+            _echo_loop_campaign_status(summary)
+            _echo_runtime_heartbeat_status(summary)
             review_prefix, review_status = _review_status_display(summary.get("review"))
             typer.echo(f"{review_prefix} review_status: {review_status}")
             if "publication_audit" in summary:
@@ -3777,6 +6066,110 @@ def approve_runtime(
         raise typer.Exit(code=1) from exc
     typer.echo(f"[OK] approved: {request.request_id}")
     typer.echo(f"[OK] action_id: {request.action_id}")
+
+
+@runtime_heartbeat_app.command("write")
+def write_runtime_heartbeat_command(
+    run_id: Annotated[
+        str,
+        typer.Option("--run-id", help="Loop run or cycle ID emitting this heartbeat."),
+    ],
+    stage: Annotated[
+        str,
+        typer.Option("--stage", help="Research-loop stage emitting this heartbeat."),
+    ],
+    progress: Annotated[
+        str,
+        typer.Option("--progress", help="Compact progress signature for stall detection."),
+    ],
+    message: Annotated[
+        str | None,
+        typer.Option("--message", help="Optional operator-readable progress note."),
+    ] = None,
+    artifact_ref: Annotated[
+        list[str] | None,
+        typer.Option("--artifact-ref", help="Evidence artifact path or URI. Repeat as needed."),
+    ] = None,
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime heartbeat JSON state file."),
+    ] = DEFAULT_RUNTIME_HEARTBEATS_PATH,
+) -> None:
+    """Append one long-running loop heartbeat event."""
+
+    try:
+        event = write_runtime_heartbeat(
+            state_path=state,
+            run_id=run_id,
+            stage=stage,
+            progress=progress,
+            message=message,
+            artifact_refs=artifact_ref or (),
+        )
+    except ValueError as exc:
+        typer.echo(f"[FAIL] runtime heartbeat failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"[OK] heartbeat: {event.run_id}/{event.stage}")
+    typer.echo(f"[OK] progress_sha256: {event.progress_sha256}")
+    typer.echo(f"[OK] state: {state}")
+
+
+@runtime_heartbeat_app.command("check")
+def check_runtime_heartbeats(
+    state: Annotated[
+        Path,
+        typer.Option("--state", help="Local runtime heartbeat JSON state file to inspect."),
+    ] = DEFAULT_RUNTIME_HEARTBEATS_PATH,
+    run_id: Annotated[
+        str | None,
+        typer.Option("--run-id", help="Optional run or cycle ID to check in isolation."),
+    ] = None,
+    stale_after_seconds: Annotated[
+        int,
+        typer.Option(
+            "--stale-after-seconds",
+            help="Seconds after which a stage heartbeat is stale.",
+        ),
+    ] = DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS,
+    stall_repetition_threshold: Annotated[
+        int,
+        typer.Option(
+            "--stall-repetition-threshold",
+            help="Repeated identical progress signatures before a stage is stalled.",
+        ),
+    ] = DEFAULT_HEARTBEAT_STALL_REPETITIONS,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional JSON watchdog report path."),
+    ] = None,
+) -> None:
+    """Check runtime heartbeats for stale or repeated progress."""
+
+    report = evaluate_runtime_heartbeats(
+        state_path=state,
+        run_id=run_id,
+        stale_after_seconds=stale_after_seconds,
+        stall_repetition_threshold=stall_repetition_threshold,
+    )
+    if output is not None:
+        write_runtime_heartbeat_report(report, output)
+    status = "passed" if report.passed else "failed"
+    typer.echo(f"[OK] heartbeat_watchdog: {status}")
+    typer.echo(
+        f"[OK] stages: {report.stage_count}; stale={report.stale_count}; "
+        f"stalled={report.stalled_count}; events={report.event_count}"
+    )
+    for stage_report in report.stages:
+        typer.echo(
+            f"[HEARTBEAT] {stage_report.run_id}/{stage_report.stage}: "
+            f"{stage_report.status.value}; action={stage_report.action.value}; "
+            f"repeated={stage_report.repeated_progress_count}; "
+            f"age_seconds={stage_report.age_seconds:.0f}"
+        )
+    if output is not None:
+        typer.echo(f"[OK] report: {output}")
+    if not report.passed:
+        raise typer.Exit(code=1)
 
 
 @sessions_app.command("claim")
@@ -4205,6 +6598,7 @@ def _run_autopilot_cycle(
     output_dir: Path,
     deliverables_dir: Path,
     state: Path,
+    heartbeat_state: Path,
     project_id: str,
     demo: str,
     max_queries: int,
@@ -4214,6 +6608,9 @@ def _run_autopilot_cycle(
     min_quality_score: float,
     review: bool,
     paper_template_id: str,
+    agent_profile_paths: tuple[Path, ...],
+    agent_profile_set_bundle_paths: tuple[Path, ...],
+    require_agent_profile_set: bool,
     push_inspiration: bool,
     runtime_network_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -4221,7 +6618,113 @@ def _run_autopilot_cycle(
     cycle_id = f"cycle-{now.strftime('%Y%m%dT%H%M%SZ')}"
     cycle_dir = output_dir / cycle_id
     cycle_dir.mkdir(parents=True, exist_ok=True)
+    heartbeat_report_path = cycle_dir / "runtime-heartbeat-report.json"
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="cycle-start",
+        progress=f"cycle_dir={cycle_dir.as_posix()}",
+        report_path=heartbeat_report_path,
+        message="Autopilot cycle directory initialized.",
+        artifact_refs=(cycle_dir,),
+    )
     _load_optional_env(env_path)
+    agent_profile_bundles = _materialize_agent_profile_set_bundles(
+        agent_profile_set_bundle_paths,
+        cycle_dir=cycle_dir,
+    )
+    agent_stage_import_requirements = _agent_stage_import_requirements_from_bundle_manifest(
+        agent_profile_bundles
+    )
+    runtime_agent_profile_paths = (
+        *agent_profile_paths,
+        *(Path(path) for path in _string_list(agent_profile_bundles.get("profile_paths"))),
+    )
+    agent_profile_contexts = _load_agent_profile_contexts(
+        runtime_agent_profile_paths,
+        env=_merged_optional_env(env_path),
+        base_dir=Path.cwd(),
+    )
+    agent_profiles = _agent_profiles_summary(agent_profile_contexts)
+    agent_stage_context_packets = _write_agent_stage_context_packets(
+        profile_contexts=agent_profile_contexts,
+        cycle_dir=cycle_dir,
+        project_id=project_id,
+        cycle_id=cycle_id,
+    )
+    agent_profile_set_validation = _write_agent_profile_set_runtime_validation(
+        profile_contexts=agent_profile_contexts,
+        stage_import_requirements=agent_stage_import_requirements,
+        cycle_dir=cycle_dir,
+        require_pass=require_agent_profile_set,
+    )
+    agent_profile_artifact_refs = (
+        agent_profile_bundles.get("manifest_path"),
+        *_string_list(agent_profile_bundles.get("source_bundle_paths")),
+        *_string_list(agent_profile_bundles.get("profile_paths")),
+        agent_profile_set_validation.get("output_path"),
+        agent_stage_context_packets.get("manifest_path"),
+        agent_stage_context_packets.get("assignment_manifest_path"),
+        *_string_list(agent_stage_context_packets.get("packet_paths")),
+        *(
+            profile.get("profile_path")
+            for profile in _mapping_list(agent_profiles.get("profiles"))
+        ),
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="agent-profiles",
+        progress=(
+            f"profile_count={len(agent_profile_contexts)};"
+            f"stage_packets={agent_stage_context_packets['packet_count']};"
+            f"profile_set_passed={agent_profile_set_validation['passed']}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Agent profile context loaded for this cycle.",
+        artifact_refs=agent_profile_artifact_refs,
+    )
+    if require_agent_profile_set and not bool(agent_profile_set_validation.get("passed")):
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="agent-profile-set-blocked",
+            progress=(
+                "missing_stages="
+                + ",".join(_string_list(agent_profile_set_validation.get("missing_stages")))
+            ),
+            report_path=heartbeat_report_path,
+            message="Cycle blocked before online retrieval because Agent stage coverage failed.",
+            artifact_refs=agent_profile_artifact_refs,
+        )
+        agent_profile_blocked_summary: dict[str, Any] = {
+            "cycle_id": cycle_id,
+            "status": "blocked",
+            "blocked_reason": "agent_profile_set_gate",
+            "started_at": now.isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": project_id,
+            "vault": vault.as_posix(),
+            "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
+            "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
+            "agent_stage_context_packets": agent_stage_context_packets,
+            "runtime_heartbeat": runtime_heartbeat,
+            "review": {"status": "skipped_agent_profile_set_gate"},
+            "followups": {
+                "state_path": state.as_posix(),
+                "task_count": 0,
+                "tasks": [],
+            },
+        }
+        summary_path = cycle_dir / "cycle-summary.json"
+        agent_profile_blocked_summary["summary_path"] = summary_path.as_posix()
+        summary_path.write_text(
+            json.dumps(agent_profile_blocked_summary, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        return agent_profile_blocked_summary
     literature_clients = _autopilot_literature_clients(cache)
     source_preflight = _run_source_preflight_gate(
         clients=literature_clients,
@@ -4230,9 +6733,40 @@ def _run_autopilot_cycle(
         project_id=project_id,
         cycle_id=cycle_id,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="source-preflight",
+        progress=(
+            f"verdict={source_preflight['verdict']};"
+            f"blocked={len(source_preflight['blocked_sources'])};"
+            f"optional={len(source_preflight['optional_degraded_sources'])}"
+        ),
+        report_path=heartbeat_report_path,
+        message="External literature source preflight completed.",
+        artifact_refs=(
+            source_preflight.get("output_path"),
+            source_preflight.get("markdown_path"),
+            source_preflight.get("issue_path"),
+        ),
+    )
     if bool(source_preflight["blocked"]):
         followup_records = _issue_followup_records(vault, project_id)
         _merge_scheduler_state(state, followup_records)
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="source-preflight-blocked",
+            progress=f"followups={len(followup_records)}",
+            report_path=heartbeat_report_path,
+            message="Cycle blocked before costly work because a required source is unsafe.",
+            artifact_refs=(
+                source_preflight.get("output_path"),
+                source_preflight.get("markdown_path"),
+                source_preflight.get("issue_path"),
+                state,
+            ),
+        )
         blocked_summary: dict[str, Any] = {
             "cycle_id": cycle_id,
             "status": "blocked",
@@ -4241,7 +6775,12 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
+            "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
+            "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
+            "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_source_preflight"},
             "followups": {
                 "state_path": state.as_posix(),
@@ -4268,6 +6807,19 @@ def _run_autopilot_cycle(
             seed_queries=_autopilot_literature_seed_queries(demo),
         ),
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="literature-refresh",
+        progress=(
+            f"queries={len(getattr(literature_report, 'queries', ()))},"
+            f"documents={len(getattr(literature_report, 'documents', ()))},"
+            f"fetches={len(getattr(literature_report, 'fetches', ()))}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Daily literature refresh completed from configured online sources.",
+        artifact_refs=(getattr(literature_report, "summary_path", None),),
+    )
     candidate = _autopilot_candidate_from_literature(
         literature_report,
         project_id=project_id,
@@ -4276,6 +6828,15 @@ def _run_autopilot_cycle(
     )
     candidate_path = cycle_dir / "candidate.json"
     candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="candidate",
+        progress=f"candidate={candidate.id};status={candidate.status.value}",
+        report_path=heartbeat_report_path,
+        message="Research candidate derived from retrieved literature.",
+        artifact_refs=(candidate_path,),
+    )
 
     similarity_report = run_project_similarity_check(
         candidate=candidate,
@@ -4295,6 +6856,113 @@ def _run_autopilot_cycle(
             vault_root=vault,
             project_id=project_id,
         )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="similarity-check",
+        progress=(
+            f"findings={len(getattr(similarity_report, 'findings', ()))},"
+            f"fetches={len(getattr(similarity_report, 'fetches', ()))}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Adjacent-work similarity check completed.",
+        artifact_refs=(
+            getattr(similarity_report, "summary_path", None),
+            similarity_project_path,
+        ),
+    )
+
+    inspiration_report = run_inspiration_refresh(
+        vault_root=vault,
+        queries=_autopilot_inspiration_queries(candidate, demo=demo),
+        config=InspirationRefreshConfig(
+            max_queries=max_queries,
+            max_results_per_source=max_results_per_source,
+        ),
+    )
+    inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
+    if push_inspiration:
+        inspiration_pushes = send_inspiration_digest(inspiration_report)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="inspiration-refresh",
+        progress=(
+            f"items={len(getattr(inspiration_report, 'items', ()))},"
+            f"pushes={len(inspiration_pushes)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Broad inspiration refresh completed before planning; community signals remain non-scholarly evidence.",
+        artifact_refs=(getattr(inspiration_report, "summary_path", None),),
+    )
+    novelty_breadth = evaluate_novelty_search_breadth(
+        candidate=candidate,
+        similarity_report=similarity_report,
+        inspiration_report=inspiration_report,
+    )
+    novelty_breadth = write_novelty_search_breadth_artifact(
+        breadth=novelty_breadth,
+        output_dir=cycle_dir / "novelty-breadth",
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="novelty-breadth",
+        progress=(
+            f"status={novelty_breadth.status};"
+            f"score={novelty_breadth.score:.3f};"
+            f"sources={len(novelty_breadth.successful_sources)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Innovation-search breadth matrix completed before research planning.",
+        artifact_refs=(
+            getattr(similarity_report, "summary_path", None),
+            getattr(inspiration_report, "summary_path", None),
+            getattr(novelty_breadth, "artifact_path", None),
+        ),
+    )
+
+    brainstorm_report = run_inspiration_brainstorm(
+        candidate=candidate,
+        inspiration_report=inspiration_report,
+        vault_root=vault,
+        output_dir=cycle_dir / "brainstorm",
+        timeout_seconds=max(timeout_seconds, 60),
+        max_tokens=None,
+        config=BrainstormConfig(
+            max_miniagents=min(5, max_queries),
+            ideas_per_agent=2,
+            temperature=1.2,
+        ),
+        evidence_review_config=BrainstormEvidenceReviewConfig(
+            max_reviewed_ideas=min(5, max_queries) * 2,
+            max_queries_per_idea=2,
+            max_results_per_source=2,
+        ),
+        enable_evidence_review=True,
+        evidence_cache_root=cycle_dir / "brainstorm-evidence-cache",
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="brainstorm",
+        progress=(
+            f"status={brainstorm_report.status};"
+            f"ideas={len(brainstorm_report.ideas)};"
+            f"selected={len(brainstorm_report.selected_ideas)};"
+            f"reviews={len(getattr(brainstorm_report, 'evidence_reviews', ()))}"
+        ),
+        report_path=heartbeat_report_path,
+        message=(
+            "Temporary high-temperature miniagents brainstormed hypotheses and the "
+            "second-stage live reviewer screened duplicate, verifiability, and doability risks."
+        ),
+        artifact_refs=(
+            getattr(brainstorm_report, "artifact_path", None),
+            getattr(brainstorm_report, "summary_path", None),
+            getattr(brainstorm_report, "prompt_set_path", None),
+        ),
+    )
 
     research_plan_artifact = generate_research_plan(
         candidate=candidate,
@@ -4304,15 +6972,49 @@ def _run_autopilot_cycle(
         compile_pdf=True,
         similarity_summary=getattr(similarity_report, "summary_path", None),
         literature_summary=getattr(literature_report, "summary_path", None),
+        inspiration_summary=getattr(inspiration_report, "summary_path", None),
+        brainstorm_summary=getattr(brainstorm_report, "summary_path", None),
         timeout_seconds=max(timeout_seconds, 60),
     )
     research_plan_payload = research_plan_artifact.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="research-plan",
+        progress=(
+            f"audit_passed={research_plan_artifact.audit.passed};"
+            f"compile_status={research_plan_artifact.compile_status}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Executable research plan generated before experiment execution.",
+        artifact_refs=(
+            research_plan_payload.get("markdown_path"),
+            research_plan_payload.get("json_path"),
+            research_plan_payload.get("tex_path"),
+            research_plan_payload.get("pdf_path"),
+        ),
+    )
     if (
         not research_plan_artifact.audit.passed
         or research_plan_artifact.compile_status != "compiled"
     ):
         followup_records = _issue_followup_records(vault, project_id)
         _merge_scheduler_state(state, followup_records)
+        runtime_heartbeat = _write_cycle_runtime_heartbeat(
+            heartbeat_state=heartbeat_state,
+            cycle_id=cycle_id,
+            stage="research-plan-blocked",
+            progress=f"followups={len(followup_records)}",
+            report_path=heartbeat_report_path,
+            message="Cycle blocked because the research plan gate did not pass.",
+            artifact_refs=(
+                research_plan_payload.get("markdown_path"),
+                research_plan_payload.get("json_path"),
+                research_plan_payload.get("tex_path"),
+                research_plan_payload.get("pdf_path"),
+                state,
+            ),
+        )
         blocked_summary = {
             "cycle_id": cycle_id,
             "status": "blocked",
@@ -4322,6 +7024,10 @@ def _run_autopilot_cycle(
             "project_id": project_id,
             "vault": vault.as_posix(),
             "cache": cache.as_posix(),
+            "agent_profile_bundles": agent_profile_bundles,
+            "agent_profiles": agent_profiles,
+            "agent_profile_set_validation": agent_profile_set_validation,
+            "agent_stage_context_packets": agent_stage_context_packets,
             "source_preflight": source_preflight,
             "candidate_path": candidate_path.as_posix(),
             "literature": {
@@ -4336,8 +7042,22 @@ def _run_autopilot_cycle(
                 "finding_count": len(getattr(similarity_report, "findings", ())),
                 "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
                 "project_path": _path_text(similarity_project_path),
+                "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
             },
+            "inspiration": {
+                "query_count": len(getattr(inspiration_report, "queries", ())),
+                "fetches": _serialise_inspiration_fetches(
+                    getattr(inspiration_report, "fetches", ())
+                ),
+                "item_count": len(getattr(inspiration_report, "items", ())),
+                "summary_path": _path_text(getattr(inspiration_report, "summary_path", None)),
+                "evidence_policy": "dataset/community/news signals only; not scholarly evidence",
+                "pushes": [record.to_json_dict() for record in inspiration_pushes],
+            },
+            "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
+            "brainstorm": _serialise_brainstorm_report(brainstorm_report),
             "research_plan": research_plan_payload,
+            "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_research_plan_gate"},
             "followups": {
                 "state_path": state.as_posix(),
@@ -4353,17 +7073,24 @@ def _run_autopilot_cycle(
         )
         return blocked_summary
 
-    inspiration_report = run_inspiration_refresh(
-        vault_root=vault,
-        queries=_autopilot_inspiration_queries(candidate, demo=demo),
-        config=InspirationRefreshConfig(
-            max_queries=max_queries,
-            max_results_per_source=max_results_per_source,
-        ),
+    loop_campaign = build_closed_loop_campaign(
+        candidate=candidate,
+        project_id=project_id,
+        cycle_id=cycle_id,
+        research_plan=research_plan_payload,
     )
-    inspiration_pushes: tuple[NotificationSendRecord, ...] = ()
-    if push_inspiration:
-        inspiration_pushes = send_inspiration_digest(inspiration_report)
+    loop_selection = select_loop_candidate(loop_campaign)
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="loop-campaign",
+        progress=(
+            f"campaign={loop_campaign.campaign_id};"
+            f"selected={loop_selection.selected_candidate_id}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Closed-loop campaign initialized and optimizer selected a candidate.",
+    )
 
     demo_result = run_scientistbench_demo(
         demo=demo,
@@ -4371,14 +7098,55 @@ def _run_autopilot_cycle(
         timeout_seconds=timeout_seconds,
         task_metadata=runtime_network_metadata,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="experiment",
+        progress=f"demo={demo_result.demo};run_id={demo_result.run_id}",
+        report_path=heartbeat_report_path,
+        message="Controlled benchmark experiment completed.",
+        artifact_refs=(
+            demo_result.report_path,
+            demo_result.run_record_path,
+            demo_result.validation_json_path,
+            demo_result.evidence_map_path,
+        ),
+    )
     reproduction_check = _run_cycle_reproduction_check(
         cycle_dir=cycle_dir,
         demo=demo,
         timeout_seconds=timeout_seconds,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="reproduction-check",
+        progress=f"status={reproduction_check.get('status')};exit={reproduction_check.get('exit_code')}",
+        report_path=heartbeat_report_path,
+        message="Best-result reproduction check completed.",
+        artifact_refs=(
+            reproduction_check.get("json_path"),
+            reproduction_check.get("markdown_path"),
+            *(reproduction_check.get("run_record_paths") or ()),
+            *(reproduction_check.get("validation_json_paths") or ()),
+        ),
+    )
     citations = _generate_cycle_citations(
         literature_report=literature_report,
         cycle_dir=cycle_dir,
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="citation-package",
+        progress=(
+            f"status={citations.get('status')};"
+            f"verified={citations.get('verified_count')};"
+            f"blocked={citations.get('blocked_count')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Citation package generated or explicitly skipped with reason.",
+        artifact_refs=(citations.get("metadata_path"), citations.get("bib_path")),
     )
 
     summary: dict[str, Any] = {
@@ -4388,6 +7156,10 @@ def _run_autopilot_cycle(
         "project_id": project_id,
         "vault": vault.as_posix(),
         "cache": cache.as_posix(),
+        "agent_profile_bundles": agent_profile_bundles,
+        "agent_profiles": agent_profiles,
+        "agent_profile_set_validation": agent_profile_set_validation,
+        "agent_stage_context_packets": agent_stage_context_packets,
         "source_preflight": source_preflight,
         "candidate_path": candidate_path.as_posix(),
         "literature": {
@@ -4402,7 +7174,10 @@ def _run_autopilot_cycle(
             "finding_count": len(getattr(similarity_report, "findings", ())),
             "summary_path": _path_text(getattr(similarity_report, "summary_path", None)),
             "project_path": _path_text(similarity_project_path),
+            "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
         },
+        "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
+        "brainstorm": _serialise_brainstorm_report(brainstorm_report),
         "research_plan": research_plan_payload,
         "inspiration": {
             "query_count": len(getattr(inspiration_report, "queries", ())),
@@ -4435,6 +7210,45 @@ def _run_autopilot_cycle(
     network_approval = _autopilot_demo_network_summary(demo_result.run_record_path)
     if network_approval:
         summary["demo"]["network_approval"] = network_approval
+    loop_iteration = create_loop_iteration_from_cycle_summary(
+        campaign=loop_campaign,
+        decision=loop_selection,
+        summary=summary,
+        base_dir=cycle_dir,
+    )
+    loop_artifact = write_loop_report_artifact(
+        campaign=loop_campaign,
+        iterations=(loop_iteration,),
+        output_dir=cycle_dir / "loop-campaign",
+        vault_root=vault,
+        project_id=project_id,
+    )
+    loop_artifact_summary = loop_artifact.to_summary()
+    summary["loop_campaign"] = {
+        "campaign_id": loop_campaign.campaign_id,
+        "selected_candidate_id": loop_selection.selected_candidate_id,
+        "decision_policy": loop_selection.decision_policy.value,
+        **loop_artifact_summary,
+    }
+    summary["loop_report"] = {
+        "json_path": loop_artifact_summary["json_path"],
+        "markdown_path": loop_artifact_summary["markdown_path"],
+        "vault_path": loop_artifact_summary["vault_path"],
+    }
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="loop-report",
+        progress=f"loop_report={loop_artifact_summary['json_path']}",
+        report_path=heartbeat_report_path,
+        message="Closed-loop report written to artifacts and Obsidian memory.",
+        artifact_refs=(
+            loop_artifact_summary.get("json_path"),
+            loop_artifact_summary.get("markdown_path"),
+            loop_artifact_summary.get("vault_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path = cycle_dir / "cycle-summary.json"
     summary["summary_path"] = summary_path.as_posix()
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -4444,6 +7258,19 @@ def _run_autopilot_cycle(
         output_dir=cycle_dir / "related-work",
     )
     summary["related_work_inspection"] = related_work_inspection.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="related-work-inspection",
+        progress=f"status={summary['related_work_inspection'].get('status', 'completed')}",
+        report_path=heartbeat_report_path,
+        message="Related-work overlap inspection completed.",
+        artifact_refs=(
+            summary["related_work_inspection"].get("json_path"),
+            summary["related_work_inspection"].get("markdown_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     paper_manuscript = compose_publication_manuscript(
@@ -4453,6 +7280,19 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["paper_manuscript"] = paper_manuscript.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="paper-manuscript",
+        progress=f"markdown={paper_manuscript.markdown_path}",
+        report_path=heartbeat_report_path,
+        message="Publication manuscript markdown produced.",
+        artifact_refs=(
+            paper_manuscript.markdown_path,
+            *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     paper_build = build_latex_paper_from_markdown(
@@ -4463,6 +7303,21 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["paper_build"] = paper_build.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="paper-build",
+        progress=f"status={summary['paper_build'].get('status')}",
+        report_path=heartbeat_report_path,
+        message="LaTeX paper build completed.",
+        artifact_refs=(
+            summary["paper_build"].get("json_path"),
+            summary["paper_build"].get("markdown_path"),
+            summary["paper_build"].get("tex_path"),
+            summary["paper_build"].get("pdf_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_context_path = cycle_dir / "review-evidence-context.json"
@@ -4475,10 +7330,20 @@ def _run_autopilot_cycle(
         "audit_summary": review_audit_summary,
         "cycle_id": cycle_id,
         "project_id": project_id,
+        "agent_profile_bundles": summary["agent_profile_bundles"],
+        "agent_profiles": summary["agent_profiles"],
+        "agent_profile_set_validation": summary["agent_profile_set_validation"],
+        "agent_stage_context_packets": summary["agent_stage_context_packets"],
+        "agent_stage_assignments": summary["agent_stage_context_packets"].get(
+            "assignment_manifest",
+            {},
+        ),
+        "stage_agent_contexts": summary["agent_profiles"].get("stage_runtime_contexts", {}),
         "candidate": summary["candidate"],
         "literature": summary["literature"],
         "similarity": summary["similarity"],
         "research_plan": summary["research_plan"],
+        "loop_campaign": summary["loop_campaign"],
         "citations": summary["citations"],
         "related_work_inspection": summary["related_work_inspection"],
         "demo": summary["demo"],
@@ -4495,6 +7360,16 @@ def _run_autopilot_cycle(
         audit_summary=review_audit_summary,
     )
     summary["formal_reference_evidence_path"] = reference_evidence_path.as_posix()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="review-evidence",
+        progress=f"context={review_context_path.as_posix()}",
+        report_path=heartbeat_report_path,
+        message="Review evidence context and formal reference proof written.",
+        artifact_refs=(review_context_path, reference_evidence_path),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     review_evidence_paths: list[Path | str] = [
@@ -4517,9 +7392,27 @@ def _run_autopilot_cycle(
         summary["related_work_inspection"].get("markdown_path"),
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
+        getattr(inspiration_report, "summary_path", None),
+        getattr(novelty_breadth, "artifact_path", None),
+        getattr(brainstorm_report, "artifact_path", None),
+        getattr(brainstorm_report, "summary_path", None),
+        getattr(brainstorm_report, "prompt_set_path", None),
         reproduction_check.get("json_path"),
+        summary["loop_report"].get("json_path"),
+        summary["loop_report"].get("markdown_path"),
+        summary["runtime_heartbeat"].get("report_path"),
+        summary["agent_profile_bundles"].get("manifest_path"),
+        *_string_list(summary["agent_profile_bundles"].get("source_bundle_paths")),
+        summary["agent_profile_set_validation"].get("output_path"),
+        summary["agent_stage_context_packets"].get("manifest_path"),
+        summary["agent_stage_context_packets"].get("assignment_manifest_path"),
+        *_string_list(summary["agent_stage_context_packets"].get("packet_paths")),
         paper_build.to_dict().get("json_path"),
         paper_build.to_dict().get("markdown_path"),
+        *[
+            profile.get("profile_path")
+            for profile in _mapping_list(summary["agent_profiles"].get("profiles"))
+        ],
         *_review_text_artifact_paths(getattr(paper_manuscript, "analysis_artifact_paths", ())),
     ):
         if isinstance(optional_path, str | Path):
@@ -4538,6 +7431,20 @@ def _run_autopilot_cycle(
         min_quality_score=min_quality_score,
     )
     summary["review"] = review_result
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="review",
+        progress=f"status={review_result.get('status')}",
+        report_path=heartbeat_report_path,
+        message="LLM evidence review completed or was explicitly skipped.",
+        artifact_refs=(
+            review_result.get("output_path"),
+            review_result.get("review_path"),
+            review_result.get("vault_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     publication_audit = audit_publication_quality(
@@ -4548,6 +7455,24 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["publication_audit"] = publication_audit.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="publication-audit",
+        progress=(
+            f"verdict={summary['publication_audit'].get('verdict')};"
+            f"publishable={summary['publication_audit'].get('publishable')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Publication-readiness gate completed.",
+        artifact_refs=(
+            summary["publication_audit"].get("output_path"),
+            summary["publication_audit"].get("markdown_path"),
+            summary["publication_audit"].get("vault_review_path"),
+            summary["publication_audit"].get("vault_issue_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
 
     evidence_gate = run_evidence_gate(
@@ -4557,6 +7482,24 @@ def _run_autopilot_cycle(
         project_id=project_id,
     )
     summary["evidence_gate"] = evidence_gate.to_dict()
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="evidence-gate",
+        progress=(
+            f"verdict={summary['evidence_gate'].get('verdict')};"
+            f"release_allowed={summary['evidence_gate'].get('release_allowed')}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Evidence coverage gate completed.",
+        artifact_refs=(
+            summary["evidence_gate"].get("output_path"),
+            summary["evidence_gate"].get("markdown_path"),
+            summary["evidence_gate"].get("vault_review_path"),
+            summary["evidence_gate"].get("vault_issue_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
 
     followup_records = _issue_followup_records(vault, project_id)
     _merge_scheduler_state(state, followup_records)
@@ -4565,6 +7508,16 @@ def _run_autopilot_cycle(
         "task_count": len(followup_records),
         "tasks": followup_records,
     }
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="followups",
+        progress=f"task_count={len(followup_records)}",
+        report_path=heartbeat_report_path,
+        message="Scheduler follow-up tasks merged.",
+        artifact_refs=(state,),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary["completed_at"] = datetime.now(timezone.utc).isoformat()
     summary["deliverables"] = _export_cycle_deliverables(
         summary=summary,
@@ -4572,6 +7525,20 @@ def _run_autopilot_cycle(
         output_root=deliverables_dir,
         project_id=project_id,
     )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="deliverables",
+        progress=f"status={summary['deliverables'].get('status')}",
+        report_path=heartbeat_report_path,
+        message="Cycle deliverables exported.",
+        artifact_refs=(
+            summary["deliverables"].get("manifest_path"),
+            summary["deliverables"].get("pdf_path"),
+            summary["deliverables"].get("markdown_path"),
+        ),
+    )
+    summary["runtime_heartbeat"] = runtime_heartbeat
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     return summary
 
@@ -4683,6 +7650,13 @@ def _autopilot_review_audit_summary(
         citation_metadata_path=citations.get("metadata_path"),
     )
     return {
+        "agent_profile_bundles": mapping(summary.get("agent_profile_bundles")),
+        "agent_profiles": mapping(summary.get("agent_profiles")),
+        "agent_profile_set_validation": mapping(summary.get("agent_profile_set_validation")),
+        "agent_stage_context_packets": mapping(summary.get("agent_stage_context_packets")),
+        "agent_stage_assignments": mapping(
+            mapping(summary.get("agent_stage_context_packets")).get("assignment_manifest")
+        ),
         "candidate": _autopilot_candidate_review_summary(summary),
         "literature": {
             "query_count": literature.get("query_count"),
@@ -5879,6 +8853,40 @@ def _serialise_inspiration_fetches(fetches: Iterable[object]) -> list[dict[str, 
     ]
 
 
+def _serialise_novelty_breadth(breadth: object | None) -> dict[str, object] | None:
+    if breadth is None:
+        return None
+    to_json = getattr(breadth, "to_json_dict", None)
+    if callable(to_json):
+        payload = to_json()
+        if isinstance(payload, dict):
+            return payload
+    return {
+        "status": getattr(breadth, "status", "not_evaluated"),
+        "score": getattr(breadth, "score", 0.0),
+        "broad_enough": getattr(breadth, "broad_enough", False),
+        "artifact_path": _path_text(getattr(breadth, "artifact_path", None)),
+    }
+
+
+def _serialise_brainstorm_report(report: object | None) -> dict[str, object] | None:
+    if report is None:
+        return None
+    to_json = getattr(report, "to_json_dict", None)
+    if callable(to_json):
+        payload = to_json()
+        if isinstance(payload, dict):
+            return payload
+    return {
+        "status": getattr(report, "status", "not_evaluated"),
+        "idea_count": len(getattr(report, "ideas", ()) or ()),
+        "selected_idea_count": len(getattr(report, "selected_ideas", ()) or ()),
+        "artifact_path": _path_text(getattr(report, "artifact_path", None)),
+        "summary_path": _path_text(getattr(report, "summary_path", None)),
+        "prompt_set_path": _path_text(getattr(report, "prompt_set_path", None)),
+    }
+
+
 def _path_text(path: object) -> str | None:
     if path is None:
         return None
@@ -5887,6 +8895,79 @@ def _path_text(path: object) -> str | None:
     if isinstance(path, str):
         return _relative_path_text(path)
     return str(path)
+
+
+def _runtime_heartbeat_stage_payload(report: RuntimeHeartbeatReport) -> list[dict[str, object]]:
+    return [
+        {
+            "run_id": stage.run_id,
+            "stage": stage.stage,
+            "status": stage.status.value,
+            "action": stage.action.value,
+            "latest_at": stage.latest_at.isoformat(),
+            "age_seconds": stage.age_seconds,
+            "repeated_progress_count": stage.repeated_progress_count,
+            "latest_progress_sha256": stage.latest_progress_sha256,
+            "latest_message": stage.latest_message,
+            "artifact_refs": list(stage.artifact_refs),
+            "reason": stage.reason,
+        }
+        for stage in report.stages
+    ]
+
+
+def _cycle_runtime_heartbeat_summary(
+    *,
+    heartbeat_state: Path,
+    cycle_id: str,
+    report_path: Path,
+) -> dict[str, object]:
+    report = evaluate_runtime_heartbeats(
+        state_path=heartbeat_state,
+        run_id=cycle_id,
+    )
+    write_runtime_heartbeat_report(report, report_path)
+    return {
+        "state_path": heartbeat_state.as_posix(),
+        "report_path": report_path.as_posix(),
+        "passed": report.passed,
+        "event_count": report.event_count,
+        "stage_count": report.stage_count,
+        "stale_count": report.stale_count,
+        "stalled_count": report.stalled_count,
+        "stages": _runtime_heartbeat_stage_payload(report),
+        "evidence_policy": report.evidence_policy,
+    }
+
+
+def _write_cycle_runtime_heartbeat(
+    *,
+    heartbeat_state: Path,
+    cycle_id: str,
+    stage: str,
+    progress: str,
+    report_path: Path,
+    message: str | None = None,
+    artifact_refs: Iterable[object] = (),
+) -> dict[str, object]:
+    clean_refs = tuple(
+        ref_text
+        for ref in artifact_refs
+        if (ref_text := _path_text(ref)) is not None
+    )
+    write_runtime_heartbeat(
+        state_path=heartbeat_state,
+        run_id=cycle_id,
+        stage=stage,
+        progress=progress,
+        message=message,
+        artifact_refs=clean_refs,
+    )
+    return _cycle_runtime_heartbeat_summary(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        report_path=report_path,
+    )
 
 
 def _validate_optional_max_tokens(value: int | None, *, minimum: int) -> int | None:
@@ -5909,6 +8990,19 @@ def _resolve_runtime_sessions_state(
         if parent != Path(".airesearcher") and parent != Path("."):
             return parent / "agent-sessions.json"
     return DEFAULT_AGENT_SESSIONS_PATH
+
+
+def _resolve_runtime_heartbeat_state(
+    heartbeat_state: Path | None,
+    *related_paths: Path,
+) -> Path:
+    if heartbeat_state is not None:
+        return heartbeat_state
+    for path in related_paths:
+        parent = Path(path).parent
+        if parent != Path(".airesearcher") and parent != Path("."):
+            return parent / "runtime-heartbeats.json"
+    return DEFAULT_RUNTIME_HEARTBEATS_PATH
 
 
 def _runtime_claimed_paths(
@@ -6146,6 +9240,200 @@ def _safe_path_segment(value: str) -> str:
     return slug or "ai-researcher"
 
 
+def _validate_identifier_like(value: str, field_name: str) -> str:
+    cleaned = value.strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}", cleaned):
+        msg = f"{field_name} must start with a letter or digit and contain only letters, digits, _, ., :, or -"
+        raise ValueError(msg)
+    return cleaned
+
+
+def _write_default_agent_team_template(
+    *,
+    output: Path,
+    skill_dir: Path | None,
+    profile_set_id: str,
+    overwrite: bool,
+    allow_existing: bool,
+) -> dict[str, object]:
+    skill_root = skill_dir or (output.parent / "skills")
+    skill_paths = (
+        skill_root / "source.md",
+        skill_root / "experiment.md",
+        skill_root / "review.md",
+    )
+    candidate_paths = (output, *skill_paths)
+    existing_paths = [path for path in candidate_paths if path.exists()]
+    if existing_paths and not overwrite:
+        if allow_existing and output.exists():
+            return {
+                "profile_set_id": profile_set_id,
+                "bundle_path": output,
+                "skill_paths": skill_paths,
+                "status": "existing",
+            }
+        existing = ", ".join(path.as_posix() for path in existing_paths)
+        msg = f"refusing to overwrite {existing}"
+        raise ValueError(msg)
+
+    _validate_identifier_like(profile_set_id, "profile_set_id")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    skill_root.mkdir(parents=True, exist_ok=True)
+    skill_paths[0].write_text(_DEFAULT_SOURCE_SKILL_TEXT, encoding="utf-8")
+    skill_paths[1].write_text(_DEFAULT_EXPERIMENT_SKILL_TEXT, encoding="utf-8")
+    skill_paths[2].write_text(_DEFAULT_REVIEW_SKILL_TEXT, encoding="utf-8")
+    output.write_text(
+        _default_agent_team_bundle_yaml(
+            profile_set_id=profile_set_id,
+            bundle_path=output,
+            source_skill_path=skill_paths[0],
+            experiment_skill_path=skill_paths[1],
+            review_skill_path=skill_paths[2],
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "profile_set_id": profile_set_id,
+        "bundle_path": output,
+        "skill_paths": skill_paths,
+        "status": "written",
+    }
+
+
+def _resolve_runtime_agent_team_defaults(
+    *,
+    enabled: bool,
+    agent_profile_paths: tuple[Path, ...],
+    agent_profile_set_bundle_paths: tuple[Path, ...],
+    require_agent_profile_set: bool,
+) -> tuple[tuple[Path, ...], bool, bool]:
+    if not enabled:
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    if agent_profile_paths or agent_profile_set_bundle_paths:
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    if not DEFAULT_AGENT_TEAM_BUNDLE_PATH.exists():
+        return agent_profile_set_bundle_paths, require_agent_profile_set, False
+    return (DEFAULT_AGENT_TEAM_BUNDLE_PATH,), True, True
+
+
+def _default_agent_team_bundle_yaml(
+    *,
+    profile_set_id: str,
+    bundle_path: Path,
+    source_skill_path: Path,
+    experiment_skill_path: Path,
+    review_skill_path: Path,
+) -> str:
+    bundle_dir = bundle_path.parent
+    source_ref = _yaml_single_quote(_path_ref_for_bundle(source_skill_path, bundle_dir=bundle_dir))
+    experiment_ref = _yaml_single_quote(
+        _path_ref_for_bundle(experiment_skill_path, bundle_dir=bundle_dir)
+    )
+    review_ref = _yaml_single_quote(_path_ref_for_bundle(review_skill_path, bundle_dir=bundle_dir))
+    return (
+        f"profile_set_id: {_yaml_single_quote(profile_set_id)}\n"
+        "description: Default CCF-B/Q2 runtime Agent team for evidence-first research cycles.\n"
+        "stage_import_requirements:\n"
+        "  - stage: literature\n"
+        "    required_skill_ids: [source-tracing]\n"
+        "    required_mcp_tool_refs: [page-agent:browser.search]\n"
+        "  - stage: research-plan\n"
+        "    required_skill_ids: [source-tracing]\n"
+        "  - stage: loop-campaign\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: experiment\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: reproduction\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: citations\n"
+        "    required_skill_ids: [experiment-protocol]\n"
+        "  - stage: review\n"
+        "    required_skill_ids: [evidence-review]\n"
+        "  - stage: publication-audit\n"
+        "    required_skill_ids: [evidence-review]\n"
+        "  - stage: evidence-gate\n"
+        "    required_skill_ids: [evidence-review]\n"
+        "profiles:\n"
+        "  - agent_id: literature-agent\n"
+        "    role: project_agent\n"
+        "    description: Source-backed literature, similarity, and research-plan agent.\n"
+        "    assigned_stages:\n"
+        "      - literature\n"
+        "      - similarity\n"
+        "      - research-plan\n"
+        "    skills:\n"
+        "      - skill_id: source-tracing\n"
+        f"        source: {source_ref}\n"
+        "        import_policy: read_only_context\n"
+        "    mcp_servers:\n"
+        "      - server_id: page-agent\n"
+        "        command:\n"
+        "          - npx\n"
+        "          - -y\n"
+        "          - page-agent\n"
+        "        allowed_tools:\n"
+        "          - browser.search\n"
+        "          - browser.open\n"
+        "        approval_policy: read_only\n"
+        "  - agent_id: experiment-agent\n"
+        "    role: project_agent\n"
+        "    description: Protocol, experiment, reproduction, and citation agent.\n"
+        "    assigned_stages:\n"
+        "      - loop-campaign\n"
+        "      - experiment\n"
+        "      - reproduction\n"
+        "      - citations\n"
+        "    skills:\n"
+        "      - skill_id: experiment-protocol\n"
+        f"        source: {experiment_ref}\n"
+        "        import_policy: read_only_context\n"
+        "  - agent_id: review-agent\n"
+        "    role: validator_agent\n"
+        "    thinking_mode: reviewer\n"
+        "    description: Review, publication-audit, and evidence-gate agent.\n"
+        "    assigned_stages:\n"
+        "      - review\n"
+        "      - publication-audit\n"
+        "      - evidence-gate\n"
+        "    thinking_contract_additions:\n"
+        "      - Block publication prose unless artifacts prove the claim.\n"
+        "    skills:\n"
+        "      - skill_id: evidence-review\n"
+        f"        source: {review_ref}\n"
+        "        import_policy: read_only_context\n"
+    )
+
+
+def _path_ref_for_bundle(path: Path, *, bundle_dir: Path) -> str:
+    try:
+        return Path(os.path.relpath(path.resolve(), start=bundle_dir.resolve())).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _yaml_single_quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+_DEFAULT_SOURCE_SKILL_TEXT = """# Source Tracing
+
+Use retrieved literature records, source URLs, DOI metadata, and local evidence artifacts only.
+Do not invent novelty, citations, benchmark results, or undocumented tool outputs.
+"""
+
+_DEFAULT_EXPERIMENT_SKILL_TEXT = """# Experiment Protocol
+
+Treat every experiment as protocol-as-code with explicit datasets, baselines, metrics, budget,
+metadata completeness, reproduction delta, and rollback criteria.
+"""
+
+_DEFAULT_REVIEW_SKILL_TEXT = """# Evidence Review
+
+Block publication claims unless the cycle contains physical artifacts for literature, experiments,
+reproduction, citations, manuscript, audit, paper build, and evidence gate.
+"""
+
+
 def _render_deliverables_markdown(manifest: dict[str, Any]) -> str:
     paths = manifest.get("paths")
     path_lines: list[str] = []
@@ -6201,14 +9489,28 @@ def _echo_setup_next_steps(
     permission_mode: RuntimePermissionMode,
     deliverables_dir: Path,
     approvals_state: Path = DEFAULT_RUNTIME_APPROVALS_PATH,
+    agent_team_bundle: Path | None = None,
 ) -> None:
     typer.echo("[NEXT] 1. Check install: npm run doctor")
+    if agent_team_bundle is not None:
+        typer.echo(
+            "[NEXT] 2. Inspect Agent team: "
+            "airesearcher agents profile inspect-set "
+            f"{agent_team_bundle} --materialize-skills --require-complete"
+        )
+    agent_team_flags = (
+        f" --agent-profile-set-bundle {agent_team_bundle} --require-agent-profile-set"
+        if agent_team_bundle is not None
+        else ""
+    )
+    start_step = 3 if agent_team_bundle is not None else 2
+    approval_step = start_step + 1
     typer.echo(
-        "[NEXT] 2. Start runtime: "
-        f"airesearcher serve --permission-mode {permission_mode.value}"
+        f"[NEXT] {start_step}. Start runtime: "
+        f"airesearcher serve --permission-mode {permission_mode.value}{agent_team_flags}"
     )
     typer.echo(
-        "[NEXT] 3. When approval is requested, run: "
+        f"[NEXT] {approval_step}. When approval is requested, run: "
         f"airesearcher runtime approve latest --state {approvals_state}"
     )
     typer.echo("[NEXT] Optional dashboard: airesearcher monitor --watch")
@@ -6292,6 +9594,92 @@ def _load_candidate(candidate_file: Path) -> ResearchCandidate:
     except Exception as exc:
         msg = f"Invalid ResearchCandidate payload: {exc}"
         raise typer.BadParameter(msg) from exc
+
+
+def _load_inspiration_report(report_file: Path) -> InspirationRefreshReport:
+    try:
+        payload = json.loads(report_file.read_text(encoding="utf-8-sig"))
+    except OSError as exc:
+        msg = f"Could not read inspiration report {report_file}: {exc}"
+        raise typer.BadParameter(msg) from exc
+    except json.JSONDecodeError as exc:
+        msg = f"Invalid inspiration JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        raise typer.BadParameter(msg) from exc
+    if not isinstance(payload, Mapping):
+        msg = "Inspiration report JSON top-level value must be an object"
+        raise typer.BadParameter(msg)
+    query_rows = payload.get("queries", [])
+    fetch_rows = payload.get("fetches", [])
+    item_rows = payload.get("items", [])
+    queries = tuple(
+        str(query)
+        for query in (query_rows if isinstance(query_rows, list) else [])
+        if isinstance(query, str)
+    )
+    fetches = tuple(
+        _inspiration_fetch_from_payload(row)
+        for row in (fetch_rows if isinstance(fetch_rows, list) else [])
+    )
+    items = tuple(
+        _inspiration_item_from_payload(row)
+        for row in (item_rows if isinstance(item_rows, list) else [])
+    )
+    summary_value = payload.get("summary_path")
+    return InspirationRefreshReport(
+        queries=queries,
+        fetches=tuple(fetch for fetch in fetches if fetch is not None),
+        items=tuple(item for item in items if item is not None),
+        summary_path=Path(summary_value) if isinstance(summary_value, str) and summary_value else None,
+    )
+
+
+def _inspiration_fetch_from_payload(row: object) -> InspirationFetchRecord | None:
+    if not isinstance(row, Mapping):
+        return None
+    return InspirationFetchRecord(
+        source=str(row.get("source", "unknown")),
+        source_type=str(row.get("source_type", "unknown")),
+        query=str(row.get("query", "")),
+        result_count=int(row.get("result_count", 0) or 0),
+        rate_limit_seconds=float(row.get("rate_limit_seconds", 0.0) or 0.0),
+        error=str(row["error"]) if row.get("error") is not None else None,
+    )
+
+
+def _inspiration_item_from_payload(row: object) -> InspirationItem | None:
+    if not isinstance(row, Mapping):
+        return None
+    title = row.get("title")
+    url = row.get("url")
+    query = row.get("query")
+    if not (isinstance(title, str) and isinstance(url, str) and isinstance(query, str)):
+        return None
+    retrieved_at = _parse_datetime(row.get("retrieved_at"))
+    tags = tuple(str(tag) for tag in row.get("tags", []) if isinstance(tag, str))
+    metadata = row.get("metadata")
+    return InspirationItem(
+        source=str(row.get("source", "unknown")),
+        source_type=str(row.get("source_type", "unknown")),
+        title=title,
+        url=url,
+        query=query,
+        summary=str(row.get("summary", "")),
+        score=float(row.get("score", 0.0) or 0.0),
+        retrieved_at=retrieved_at,
+        author=str(row["author"]) if row.get("author") is not None else None,
+        created_at=str(row["created_at"]) if row.get("created_at") is not None else None,
+        tags=tags,
+        metadata=metadata if isinstance(metadata, Mapping) else None,
+    )
+
+
+def _parse_datetime(value: object) -> datetime:
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc)
 
 
 def _read_optional_artifact_text(
@@ -6391,6 +9779,98 @@ def _echo_research_plan_status(summary: Mapping[str, object]) -> None:
     verdict = plan_audit.get("verdict") if isinstance(plan_audit, Mapping) else "unknown"
     prefix = "[OK]" if verdict == "passed" else "[BLOCKED]"
     typer.echo(f"{prefix} research_plan: {verdict}")
+
+
+def _echo_loop_campaign_status(summary: Mapping[str, object]) -> None:
+    loop_campaign = summary.get("loop_campaign")
+    if not isinstance(loop_campaign, Mapping):
+        return
+    quality_gate = loop_campaign.get("quality_gate")
+    metrics = loop_campaign.get("metrics")
+    passed = quality_gate.get("passed") if isinstance(quality_gate, Mapping) else False
+    prefix = "[OK]" if passed is True else "[BLOCKED]"
+    metric_text = ""
+    if isinstance(metrics, Mapping):
+        metric_text = (
+            f"; metadata={metrics.get('metadata_completeness', 'unknown')}; "
+            f"evidence={metrics.get('evidence_coverage', 'unknown')}; "
+            f"repro_delta={metrics.get('reproduction_delta', 'unknown')}"
+        )
+    typer.echo(f"{prefix} loop_campaign: {str(passed).lower()}{metric_text}")
+
+
+def _echo_runtime_heartbeat_status(summary: Mapping[str, object]) -> None:
+    heartbeat = summary.get("runtime_heartbeat")
+    if not isinstance(heartbeat, Mapping):
+        return
+    passed = heartbeat.get("passed")
+    prefix = "[OK]" if passed is True else "[BLOCKED]"
+    typer.echo(
+        f"{prefix} runtime_heartbeat: {str(passed).lower()}; "
+        f"stages={heartbeat.get('stage_count', 'unknown')}; "
+        f"stale={heartbeat.get('stale_count', 'unknown')}; "
+        f"stalled={heartbeat.get('stalled_count', 'unknown')}"
+    )
+
+
+def _echo_agent_profiles_status(summary: Mapping[str, object]) -> None:
+    agent_profiles = summary.get("agent_profiles")
+    if not isinstance(agent_profiles, Mapping):
+        return
+    count = int(agent_profiles.get("count", 0) or 0)
+    if count <= 0:
+        return
+    profile_ids = [
+        str(profile.get("agent_id", "unknown"))
+        for profile in _mapping_list(agent_profiles.get("profiles"))
+    ]
+    assignments = agent_profiles.get("stage_assignments")
+    stage_count = 0
+    if isinstance(assignments, Mapping):
+        stage_count = len(_mapping_list(assignments.get("stages")))
+    readiness_text = ""
+    readiness = agent_profiles.get("readiness")
+    if isinstance(readiness, Mapping):
+        failed = int(readiness.get("failed_check_count", 0) or 0)
+        readiness_text = "; readiness=pass" if failed == 0 else f"; readiness=fail:{failed}"
+    typer.echo(
+        f"[OK] agent_profiles: {count}; agents={', '.join(profile_ids)}; "
+        f"assigned_stages={stage_count}{readiness_text}"
+    )
+
+
+def _echo_agent_profile_bundles_status(summary: Mapping[str, object]) -> None:
+    bundles = summary.get("agent_profile_bundles")
+    if not isinstance(bundles, Mapping):
+        return
+    bundle_count = int(bundles.get("bundle_count", 0) or 0)
+    if bundle_count <= 0:
+        return
+    bundle_ids = [
+        str(bundle.get("profile_set_id", "unknown"))
+        for bundle in _mapping_list(bundles.get("bundles"))
+    ]
+    typer.echo(
+        "[OK] agent_profile_bundles: "
+        f"{bundle_count}; bundles={', '.join(bundle_ids)}; "
+        f"generated_profiles={int(bundles.get('profile_count', 0) or 0)}"
+    )
+
+
+def _echo_agent_profile_set_status(summary: Mapping[str, object]) -> None:
+    validation = summary.get("agent_profile_set_validation")
+    if not isinstance(validation, Mapping):
+        return
+    required = bool(validation.get("required_for_cycle", False))
+    passed = validation.get("passed") is True
+    missing = _string_list(validation.get("missing_stages"))
+    prefix = "[OK]" if passed else ("[BLOCKED]" if required else "[WARN]")
+    typer.echo(
+        f"{prefix} agent_profile_set: {str(passed).lower()}; "
+        f"covered={validation.get('covered_stage_count', 'unknown')}/"
+        f"{len(_string_list(validation.get('required_stages')))}; "
+        f"missing={','.join(missing) if missing else '-'}"
+    )
 
 
 def _review_status_display(review: object) -> tuple[str, str]:
@@ -6831,6 +10311,16 @@ def _render_operator_monitor(
                     border_style="green",
                     box=box.ASCII,
                 ),
+                Panel(
+                    _state_table(
+                        title="Agent Profiles",
+                        rows=_agent_profile_rows(summary_path),
+                        columns=("agent", "role/stages", "skills", "mcp"),
+                    ),
+                    title="Agent Profiles",
+                    border_style="blue",
+                    box=box.ASCII,
+                ),
             ),
             equal=True,
             expand=True,
@@ -6962,6 +10452,47 @@ def _agent_session_rows(sessions_state: Path) -> list[tuple[str, str, str, str]]
                 str(session.get("task_id", "unknown")),
                 status,
                 ", ".join(str(path) for path in _string_list(session.get("claimed_paths"))),
+            )
+        )
+    return rows
+
+
+def _agent_profile_rows(summary_path: Path | None) -> list[tuple[str, str, str, str]]:
+    if summary_path is None:
+        return []
+    summary = _read_json_mapping(summary_path)
+    agent_profiles_value = summary.get("agent_profiles")
+    agent_profiles = (
+        agent_profiles_value if isinstance(agent_profiles_value, Mapping) else {}
+    )
+    rows: list[tuple[str, str, str, str]] = []
+    for profile in _mapping_list(agent_profiles.get("profiles")):
+        skill_ids = _string_list(profile.get("skill_ids"))
+        assigned_stages = _string_list(profile.get("assigned_stages"))
+        role_stages = (
+            f"{profile.get('role', 'unknown')}; {','.join(assigned_stages)}"
+            if assigned_stages
+            else f"{profile.get('role', 'unknown')}; unassigned"
+        )
+        readiness = profile.get("readiness")
+        if isinstance(readiness, Mapping):
+            failed = int(readiness.get("failed_check_count", 0) or 0)
+            warnings = int(readiness.get("warning_count", 0) or 0)
+            readiness_label = "ready=pass" if failed == 0 else f"ready=fail:{failed}"
+            if warnings:
+                readiness_label = f"{readiness_label},warn:{warnings}"
+            role_stages = f"{role_stages}; {readiness_label}"
+        mcp_parts: list[str] = []
+        for server in _mapping_list(profile.get("mcp_servers")):
+            server_id = str(server.get("server_id", "unknown"))
+            tools = ",".join(_string_list(server.get("allowed_tools"))) or "none"
+            mcp_parts.append(f"{server_id}:{tools}")
+        rows.append(
+            (
+                str(profile.get("agent_id", "unknown")),
+                role_stages,
+                ", ".join(skill_ids) or "none",
+                ", ".join(mcp_parts) or "none",
             )
         )
     return rows

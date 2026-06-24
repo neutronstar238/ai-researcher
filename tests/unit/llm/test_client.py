@@ -174,6 +174,40 @@ def test_post_chat_completion_includes_explicit_max_tokens(monkeypatch) -> None:
     assert captured["payload"]["max_tokens"] == 4096
 
 
+def test_post_chat_completion_accepts_creative_temperature(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode("utf-8")
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="https://llm.example.test/v1/chat/completions",
+        api_key="sk-testsecret",
+        model_name="research-model",
+        timeout_seconds=10,
+        max_tokens=None,
+        temperature=1.35,
+    )
+
+    assert captured["payload"]["temperature"] == 1.35
+    assert "max_tokens" not in captured["payload"]
+
+
 def test_evaluate_llm_review_quality_accepts_known_local_evidence_refs() -> None:
     result = evaluate_llm_review_quality(
         json.dumps(
@@ -269,6 +303,89 @@ def test_evaluate_llm_review_quality_caps_missing_next_steps() -> None:
 
     assert result.checks["next_steps_present"] is False
     assert result.score <= 0.5
+
+
+def test_evaluate_llm_review_quality_rejects_profile_context_as_scientific_evidence() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report is grounded in local evidence.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "stage_agent_contexts and the source-tracing skill prove "
+                            "the novelty, benchmark accuracy result, and publication "
+                            "readiness of the manuscript."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep evidence attached."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is False
+    assert result.score <= 0.5
+    assert llm_client._has_failed_review_critical_checks(result) is True
+
+
+def test_evaluate_llm_review_quality_rejects_mcp_contract_as_tool_evidence() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report is grounded in local evidence.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "The mcp_runtime_contracts prove tool invocation and "
+                            "support the benchmark metric result."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep evidence attached."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is False
+    assert result.score <= 0.5
+
+
+def test_evaluate_llm_review_quality_allows_profile_context_process_findings() -> None:
+    result = evaluate_llm_review_quality(
+        json.dumps(
+            {
+                "verdict": "pass",
+                "summary": "The report includes process context without result claims.",
+                "findings": [
+                    {
+                        "severity": "info",
+                        "claim": (
+                            "stage_agent_contexts identify the reviewer responsibility "
+                            "boundaries and available tool context."
+                        ),
+                        "evidence_refs": ["evidence_1"],
+                    }
+                ],
+                "unsupported_claims": [],
+                "next_steps": ["Keep the process context attached to the evidence bundle."],
+            }
+        ),
+        evidence_ids=["evidence_1"],
+    )
+
+    assert result.checks["profile_context_not_used_as_scientific_evidence"] is True
+    assert result.score == 1.0
 
 
 def test_run_llm_review_retries_once_on_critical_quality_failure(
@@ -411,3 +528,33 @@ def test_review_prompt_distinguishes_subject_edge_ids_from_outer_refs() -> None:
     assert "outer evidence_refs IDs" in prompt
     assert "Use verdict `pass` when unsupported_claims is empty" in prompt
     assert "evidence_1" in prompt
+
+
+def test_review_prompt_treats_agent_profiles_as_process_metadata_only() -> None:
+    messages = _review_messages(
+        subject_path=Path("paper.md"),
+        subject_text="The profile includes a source-tracing skill.",
+        evidence=[
+            LLMEvidenceArtifact(
+                evidence_id="evidence_1",
+                path="review-evidence-context.json",
+                sha256="abc123",
+                excerpt=(
+                    '{"stage_agent_contexts":{"review":[{"agent_id":"reviewer",'
+                    '"skills":[{"skill_id":"source-tracing"}],'
+                    '"mcp_runtime_contracts":[{"server_id":"page-agent",'
+                    '"tool_invocation_evidence_required":true}]}]},'
+                    '"stage_runtime_contexts":{"review":[{"agent_id":"reviewer"}]}}'
+                ),
+            )
+        ],
+    )
+
+    prompt = messages[0]["content"]
+    assert "stage_agent_contexts" in prompt
+    assert "stage_runtime_contexts" in prompt
+    assert "mcp_runtime_contracts" in prompt
+    assert "process metadata only" in prompt
+    assert "not evidence for scientific results" in prompt
+    assert "publication readiness" in prompt
+    assert "A profile does not prove a tool was invoked" in prompt

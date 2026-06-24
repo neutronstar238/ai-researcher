@@ -29,6 +29,16 @@ FAILURE_CATEGORIES = (
     "validation",
     "unknown",
 )
+LOOP_ENGINEERING_FAILURE_CATEGORIES = (
+    "source",
+    "protocol",
+    "execution",
+    "metric",
+    "validation",
+    "review",
+    "cost",
+    "safety",
+)
 CATEGORY_TERMS = {
     "dependency": (
         "importerror",
@@ -84,6 +94,73 @@ CATEGORY_TERMS = {
         "validator",
         "artifact_existence",
         "config_hash",
+    ),
+}
+LOOP_ENGINEERING_CATEGORY_TERMS = {
+    "source": (
+        "source",
+        "retrieval",
+        "rate limit",
+        "429",
+        "doi",
+        "url",
+        "arxiv",
+        "openalex",
+        "semantic scholar",
+    ),
+    "protocol": (
+        "protocol",
+        "schema",
+        "config",
+        "entrypoint",
+        "plan",
+        "contract",
+    ),
+    "execution": (
+        "runtime",
+        "timeout",
+        "exception",
+        "stderr",
+        "subprocess",
+        "nonzeroexit",
+        "memorylimitexceeded",
+    ),
+    "metric": (
+        "metric",
+        "metrics.json",
+        "nan",
+        "bounds",
+        "score",
+    ),
+    "validation": (
+        "validation",
+        "validator",
+        "artifact_existence",
+        "reproduction",
+        "evidence",
+    ),
+    "review": (
+        "review",
+        "audit",
+        "needs_revision",
+        "publication",
+        "reviewer",
+    ),
+    "cost": (
+        "budget",
+        "cost",
+        "token",
+        "gpu",
+        "quota",
+    ),
+    "safety": (
+        "permission",
+        "sandbox",
+        "access denied",
+        "approval",
+        "secret",
+        "license",
+        "unauthorized",
     ),
 }
 
@@ -209,6 +286,28 @@ def classify_failure_category(text: str) -> str:
         if any(term in normalized for term in CATEGORY_TERMS[category]):
             return category
     return "unknown"
+
+
+def classify_loop_engineering_failure_category(text: str) -> str:
+    """Classify failure text into the eight Loop Engineering failure categories."""
+
+    normalized = text.casefold()
+    for category in LOOP_ENGINEERING_FAILURE_CATEGORIES:
+        terms = LOOP_ENGINEERING_CATEGORY_TERMS[category]
+        if any(term in normalized for term in terms):
+            return category
+    legacy = classify_failure_category(text)
+    return {
+        "dependency": "execution",
+        "data": "source",
+        "runtime": "execution",
+        "metric": "metric",
+        "citation": "source",
+        "permission": "safety",
+        "cost": "cost",
+        "validation": "validation",
+        "unknown": "execution",
+    }[legacy]
 
 
 def update_recurring_failure_patterns(

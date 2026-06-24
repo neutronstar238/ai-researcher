@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from autoresearch.inspiration import (
+    GitHubRepositorySearchClient,
     HackerNewsSearchClient,
     HuggingFaceDatasetClient,
     InspirationItem,
@@ -70,6 +71,43 @@ def test_hacker_news_client_parses_story_rows() -> None:
     assert items[0].source_type == "forum_signal"
     assert items[0].score == 15
     assert items[0].author == "builder"
+
+
+def test_github_repository_client_parses_public_repo_rows() -> None:
+    def fake_get(url, params, headers):
+        assert url == "https://api.github.com/search/repositories"
+        assert params["q"] == "research agents"
+        assert params["sort"] == "stars"
+        assert params["order"] == "desc"
+        assert params["per_page"] == 1
+        assert headers is not None
+        assert headers["Accept"] == "application/vnd.github+json"
+        return {
+            "items": [
+                {
+                    "full_name": "example/research-agent",
+                    "html_url": "https://github.com/example/research-agent",
+                    "stargazers_count": 20,
+                    "forks_count": 4,
+                    "language": "Python",
+                    "license": {"key": "mit"},
+                    "topics": ["agents", "research"],
+                    "owner": {"login": "example"},
+                    "created_at": "2026-06-01T00:00:00Z",
+                }
+            ]
+        }
+
+    client = GitHubRepositorySearchClient(json_get=fake_get, rate_limiter=RateLimiter(0))
+
+    items = client.search("research agents", limit=1)
+
+    assert len(items) == 1
+    assert items[0].source == "github_repositories"
+    assert items[0].source_type == "code_signal"
+    assert items[0].title == "example/research-agent"
+    assert items[0].score == 24
+    assert items[0].metadata["license"] == "mit"
 
 
 def test_run_inspiration_refresh_writes_obsidian_summary(tmp_path: Path) -> None:

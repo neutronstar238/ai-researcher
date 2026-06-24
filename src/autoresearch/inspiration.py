@@ -184,6 +184,90 @@ class HuggingFaceDatasetClient:
         return items
 
 
+class GitHubRepositorySearchClient:
+    """Search public GitHub repositories as code/ecosystem feasibility signals."""
+
+    source_id = "github_repositories"
+    source_type = "code_signal"
+    api_url = "https://api.github.com/search/repositories"
+
+    def __init__(
+        self,
+        *,
+        json_get: JsonGet | None = None,
+        rate_limiter: RateLimiter | None = None,
+    ) -> None:
+        self.json_get = json_get or _urllib_get_json
+        self.rate_limiter = rate_limiter or RateLimiter(1.0)
+        self.rate_limit_seconds = self.rate_limiter.min_interval_seconds
+
+    def search(self, query: str, *, limit: int = 5) -> list[InspirationItem]:
+        self.rate_limiter.wait()
+        payload = self.json_get(
+            self.api_url,
+            {
+                "q": query,
+                "sort": "stars",
+                "order": "desc",
+                "per_page": limit,
+            },
+            {
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        if not isinstance(payload, dict):
+            return []
+        rows = payload.get("items", [])
+        if not isinstance(rows, list):
+            return []
+        timestamp = datetime.now(timezone.utc)
+        items: list[InspirationItem] = []
+        for row in rows[:limit]:
+            if not isinstance(row, dict):
+                continue
+            full_name = _string(row.get("full_name"))
+            url = _string(row.get("html_url"))
+            if not full_name or not url:
+                continue
+            stars = _number(row.get("stargazers_count"))
+            forks = _number(row.get("forks_count"))
+            license_key = None
+            license_row = row.get("license")
+            if isinstance(license_row, dict):
+                license_key = _string(license_row.get("key"))
+            topics = tuple(str(topic) for topic in row.get("topics", []) if isinstance(topic, str))
+            items.append(
+                InspirationItem(
+                    source=self.source_id,
+                    source_type=self.source_type,
+                    title=full_name,
+                    url=url,
+                    query=query,
+                    summary=(
+                        "Public GitHub repository signal; inspect license, maintenance, "
+                        "and reproducibility before using it as implementation evidence."
+                    ),
+                    score=stars + forks,
+                    retrieved_at=timestamp,
+                    author=_string(row.get("owner", {}).get("login"))
+                    if isinstance(row.get("owner"), dict)
+                    else None,
+                    created_at=_string(row.get("created_at")),
+                    tags=topics,
+                    metadata={
+                        "stars": stars,
+                        "forks": forks,
+                        "language": _string(row.get("language")),
+                        "license": license_key,
+                        "archived": bool(row.get("archived", False)),
+                        "disabled": bool(row.get("disabled", False)),
+                    },
+                )
+            )
+        return items
+
+
 class HackerNewsSearchClient:
     """Search Hacker News stories as community/news inspiration signals."""
 

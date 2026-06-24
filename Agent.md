@@ -33,6 +33,8 @@ This file defines the project development standard for coding agents and records
 
 - Add a `Problem.md` entry for missing modules, failed commands, unclear requirements, skipped verification, security concerns, or any issue likely to affect the next agent.
 - Link problem IDs back to the relevant task where possible.
+- For closed-loop campaigns, every loop failure, stop-decision issue, metadata gap, evidence gap, reproduction gap, blocked quality gate, or human approval point must be recorded in the run artifacts or Obsidian loop report. If it affects future work or could mislead another agent, also add or update `Problem.md`.
+- Do not retry a failed loop blindly. Record a repair hypothesis, frozen dimension, approval requirement, or stop decision before another candidate can run.
 
 ### Git Version Management
 
@@ -77,6 +79,7 @@ This file defines the project development standard for coding agents and records
   - Identified the CI root cause as Windows regression tests monkeypatching the shared `os.name` module value to `nt`, which made pytest/coverage instantiate `WindowsPath` on the Linux runner.
   - Added test injection parameters to `windows_no_window_kwargs()` so tests can exercise Windows creation flags without changing global process state.
   - Updated the process helper tests to use the injected OS/subprocess context and updated notification/research-plan call-site tests to patch only the local kwargs helper.
+  - Merged current `origin/main` into the PR branch, resolved documentation-log conflicts, and renamed the older PR-local Windows sweep problem record to `P-20260624-013` to avoid colliding with mainline `P-20260623-002`.
   - Preserved product behavior: production calls still use the real `os.name` and `subprocess.CREATE_NO_WINDOW`.
 - Verification:
   - `gh auth status`: authenticated as `neutronstar238` with repo/workflow scopes.
@@ -85,13 +88,168 @@ This file defines the project development standard for coding agents and records
   - Focused `python -m pytest tests\unit\test_process.py tests\unit\test_notifications.py::test_run_command_hides_windows_console tests\unit\research\test_plans.py::test_compile_research_plan_pdf_hides_windows_console tests\unit\research\test_plans.py::test_pdf_page_count_hides_windows_console -q`: passed with 5 tests.
   - Focused `python -m ruff check src\autoresearch\process.py tests\unit\test_process.py tests\unit\test_notifications.py tests\unit\research\test_plans.py`: passed.
   - Focused `python -m mypy src\autoresearch\process.py`: passed.
-  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 552 passed and 4 skipped.
+  - Pre-merge broad `python -m pytest tests\smoke tests\unit -q`: passed with 552 passed and 4 skipped.
+  - After merging current `origin/main`, broad `python -m pytest tests\smoke tests\unit -q`: passed with 646 passed and 4 skipped.
   - Broad `python -m ruff check src tests`: passed.
-  - Broad `python -m mypy src\autoresearch`: passed with no issues in 105 source files.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
 - Problems:
   - Added and resolved `P-20260624-012`.
+  - Renamed the PR-local Windows sweep problem record to `P-20260624-013` during the main merge to avoid duplicate problem IDs.
 - Follow-up:
   - Push this PR branch and confirm GitHub Actions reruns green for PR #2.
+
+### 2026-06-23 19:38:00 +08:00 - Codex - Task 233.1 Runtime heartbeat watchdog
+
+- Request: Continue Loop Engineering evolution by borrowing long-horizon AutoResearch protocol ideas without over-engineering, so long-running loops can expose state, heartbeat, and stall evidence instead of relying on prompt-only self-discipline.
+- Files changed:
+  - `src/autoresearch/runtime/heartbeat.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/runtime/test_heartbeat.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a bounded runtime heartbeat state contract with run ID, normalized stage, progress signature, progress SHA-256, timestamp, message, and artifact refs.
+  - Added stale-stage and repeated-progress detection with explicit actions: `continue`, `inspect`, and `repair_or_pivot`.
+  - Added `airesearcher runtime heartbeat write` and `airesearcher runtime heartbeat check` commands with JSON report output and nonzero exit for stale or stalled stages.
+  - Documented the watchdog in English and Chinese README files and added task `233.1` to the dependency graph.
+  - Kept the evidence boundary explicit: heartbeat reports prove runtime progress health only, not scientific results, novelty, benchmark metrics, citation validity, tool invocation, or publication readiness.
+- Verification:
+  - Initial focused pytest and ruff exposed a test-threshold mistake and import ordering issue; fixed and recorded as `P-20260623-014`.
+  - Focused `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\runtime\heartbeat.py src\autoresearch\runtime\__init__.py src\autoresearch\cli\main.py tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed with no issues in 5 source files.
+  - Real CLI wrote three changing heartbeat events with `node .\bin\airesearcher.mjs runtime heartbeat write --state runs\manual-live\task233-heartbeat-v1\runtime-heartbeats.json ...`.
+  - Real CLI `node .\bin\airesearcher.mjs runtime heartbeat check --state runs\manual-live\task233-heartbeat-v1\runtime-heartbeats.json --stale-after-seconds 999999 --stall-repetition-threshold 3 --output runs\manual-live\task233-heartbeat-v1\runtime-heartbeat-report.json`: passed with `stale=0`, `stalled=0`, `events=3`, and stage status `healthy`.
+  - Artifact inspection confirmed `runtime-heartbeat-report.json` has `passed=true`, `stalled_count=0`, `status=healthy`, and evidence policy text that says the report cannot support scientific results.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 608 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-014`.
+  - Existing README.zh-CN line-ending/encoding maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future `serve`/`autopilot` stage workers can call the heartbeat writer automatically during long network, experiment, review, and paper-build stages; publication and evidence gates must still rely on validated research artifacts.
+
+### 2026-06-23 16:03:12 +08:00 - Codex - Task 230.1 Reusable Agent profile bundles
+
+- Request: Continue adding custom skills and MCP imports for specific Agents while preserving scientific, evidence-first thinking instead of drifting into software-only orchestration.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added JSON/YAML/TOML `AgentProfileBundle` loading so reusable skill and MCP declarations can be imported into standard Agent profiles.
+  - Converted bundle stages, publication targets, thinking mode, skills, MCP servers, and thinking-contract additions into existing `AgentProfile` records.
+  - Preserved the default scientific thinking contract and only appended bundle-specific additions, keeping profile bundles from replacing the research-first contract.
+  - Added `airesearcher agents profile import <bundle> --output <profile.json>` and documented the bundle format in English and Chinese README files.
+  - Kept imported profiles compatible with existing validate, inspect, serve, autopilot, skill materialization, MCP runtime contract, and MCP invocation evidence flows.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_bundle_import_keeps_scientific_contract tests\unit\cli\test_main.py::test_agent_profile_import_cli_writes_standard_profile -q`: passed with 2 tests.
+  - Initial focused ruff reported one import-order issue in `src/autoresearch/cli/main.py`; fixed with `python -m ruff check src\autoresearch\cli\main.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_import_cli_writes_standard_profile tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report -q`: passed with 16 tests.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import runs\manual-live\task230-profile-bundle-v1\bundles\literature-agent.yaml --output runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --vault runs\manual-live\task230-profile-bundle-v1\vault --project-id task230_profile_bundle_v1`: passed and wrote a standard profile plus Obsidian note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --env-path .env --base-dir . --output runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task230-profile-bundle-v1\profiles\literature-agent.json --materialize-skills --base-dir . --max-skill-chars 500`: passed and showed loaded materialized skill context plus MCP runtime contract evidence policy.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 591 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. No `Problem.md` entry was added because verification completed, no blocker remained, and no loop failure/evidence gap was introduced.
+- Follow-up:
+  - Future stage workers can consume imported profiles during real cycles; actual MCP calls still need separate MCP invocation evidence before any tool-use or scientific claim can pass quality gates.
+
+### 2026-06-23 17:20:00 +08:00 - Codex - Task 229.1 Campaign protocol contract gate
+
+- Request: Implement the Loop Engineering plan by making closed-loop campaign protocol-as-code completeness a hard contract gate before release or publication claims.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `LoopCampaignContractValidation` to validate campaign objective, metric, budget, data sources, baselines, candidate space, protocol artifacts, stop criteria, approval policy, evidence requirements, and LLM non-bypass/non-override constraints.
+  - Wrote `contract_validation` into `loop-campaign.json`, loop report summaries, and Obsidian-compatible Markdown loop reports.
+  - Folded contract failures into the loop quality gate, evidence gate, and publication audit so metrics alone cannot release a campaign or support paper-level claims.
+  - Added release/publication negative tests proving `contract_validation.passed=false` blocks the corresponding gates.
+  - Updated English and Chinese README descriptions and added task `229.1` plus dependency graph entry `132`.
+- Verification:
+  - Initial focused loop tests exposed overly literal `bypass` wording; fixed and recorded as `P-20260623-013`.
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_passes_when_all_required_artifacts_are_physical tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_failed_loop_campaign_contract tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_failed_loop_campaign_contract -q`: passed, 17 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py tests\unit\experiments\test_loop.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py`: passed with no issues in 4 source files.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task229-contract-validation-v1\vault --cache runs\manual-live\task229-contract-validation-v1\cache --output-dir runs\manual-live\task229-contract-validation-v1\runs --deliverables-dir runs\manual-live\task229-contract-validation-v1\outputs --state runs\manual-live\task229-contract-validation-v1\scheduler.json --sessions-state runs\manual-live\task229-contract-validation-v1\sessions.json --project-id task229-contract-validation-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed; loop campaign reported `true`, publication audit failed and evidence gate blocked as expected because review was intentionally skipped.
+  - Real artifact inspection confirmed `loop-campaign.json` has `contract_validation.passed=true`, zero issues, zero warnings, checked protocol fields, `quality_gate.passed=true`, `metadata_completeness=0.916667`, `evidence_coverage=1.0`, and `reproduction_delta=0.0`; loop report contains `## Protocol Contract`; evidence gate and publication audit messages include `contract_passed=true`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 589 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-013`.
+- Follow-up:
+  - A future task can add richer semantic contract checks for domain-specific protocol artifacts, but V1.0 now has a hard protocol completeness gate before release and publication claims.
+
+### 2026-06-23 16:45:00 +08:00 - Codex - Task 228.1 MCP invocation evidence ledger
+
+- Request: Implement the Loop Engineering evidence-first plan by turning MCP tool-use claims into hashed, validated runtime artifacts instead of profile-contract self-report.
+- Files changed:
+  - `src/autoresearch/agents/mcp_evidence.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_mcp_evidence.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed MCP invocation evidence records and validation reports.
+  - Added JSONL ledger helpers that store hashed request/response artifact refs, status, approval linkage, result summary, and evidence policy without raw tool payloads.
+  - Validated each evidence record against the owning Agent profile MCP binding and explicit allowed-tool list.
+  - Added `airesearcher agents mcp-evidence add`, `list`, and `validate`.
+  - Documented that MCP invocation evidence is process evidence only and cannot prove scientific claims, citation validity, benchmark metrics, novelty, or publication readiness.
+- Verification:
+  - Initial focused pytest, ruff, and mypy exposed small task-local issues; fixed and recorded as `P-20260623-011`.
+  - Focused `python -m pytest tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py::test_agent_mcp_evidence_cli_add_list_and_validate -q`: passed, 5 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\mcp_evidence.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id mcp-evidence-agent --role project_agent --stage literature --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:approve_dangerous --vault runs\manual-live\task228-mcp-evidence-v1\vault --project-id task228_mcp_evidence_v1 --output runs\manual-live\task228-mcp-evidence-v1\profiles\mcp-evidence-agent.json`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence add ...`: passed and wrote a ledger record with request and response SHA-256 hashes.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence list runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations.jsonl`: passed and listed one `page-agent:browser.search` record.
+  - Real CLI `node .\bin\airesearcher.mjs agents mcp-evidence validate --profile runs\manual-live\task228-mcp-evidence-v1\profiles\mcp-evidence-agent.json runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations.jsonl --output runs\manual-live\task228-mcp-evidence-v1\artifacts\mcp-invocations-validation.json`: passed with `records=1`, `issues=0`, and `warnings=0`.
+  - Serial artifact inspection confirmed the validation JSON exists, reports `passed=true`, and the ledger/validation report do not contain raw payload markers `method-similarity-check` or `result_count`; the earlier parallel probe race is recorded as `P-20260623-012`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 586 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260623-011`.
+  - Added and resolved `P-20260623-012`.
+- Follow-up:
+  - Future MCP-backed stage workers can now append invocation evidence during real tool calls; publication gates should still require scientific source, experiment, validation, and review evidence before claims are allowed.
 
 ### 2026-06-18 10:21:40 +08:00 - Codex - Task 211.1 Root vault current project defaults
 
@@ -9126,6 +9284,1436 @@ This file defines the project development standard for coding agents and records
   - `npm run doctor`: passed.
   - Static `rg -n -C 6 "subprocess\.run\(" src\autoresearch`: reviewed remaining subprocess calls and confirmed they use `windows_no_window_kwargs()`.
 - Problems:
-  - Added and resolved `P-20260623-002`.
+  - Added and resolved `P-20260624-013`.
 - Follow-up:
   - Future code that launches external commands should import and use `windows_no_window_kwargs()` immediately, especially for notification, LaTeX, Git, and process-cleanup paths.
+
+### 2026-06-23 13:04:59 +08:00 - Codex - Task 214.1 Loop Engineering closed-loop campaign layer
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan so the self-loop becomes a governed closed-loop research system rather than prompt-only iteration.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/promotion.py`
+  - `src/autoresearch/reports/evidence_gate.py`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/experiments/test_promotion.py`
+  - `tests/unit/reports/test_evidence_gate.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a closed-loop campaign model with protocol-as-code fields for goals, metrics, budget, data sources, candidates, baselines, stop criteria, approvals, and evidence requirements.
+  - Added DOE/grid first-round candidate selection, evidence-gain selection for later rounds, and repair/freeze behavior after consecutive failures.
+  - Added loop metrics for AF, EF, metadata completeness, reproduction delta, failure recovery rate, evidence coverage, experiment count, and reward.
+  - Added failure categories for `source`, `protocol`, `execution`, `metric`, `validation`, `review`, `cost`, and `safety`.
+  - Added JSON, Markdown, and Obsidian loop-report artifact writing and wired the artifact into `autopilot`/`serve` after the research-plan gate and before experiment execution.
+  - Hardened evidence gate, publication audit, and strategy promotion so metadata/reproduction/evidence regressions or missing loop artifacts block release/promotion.
+  - Updated English and Chinese README product copy so V1.0 is described as an evidence-first closed-loop research system.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed, 42 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 556 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 106 source files.
+  - Real isolated CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task214-loop\vault --cache runs\manual-live\task214-loop\cache --output-dir runs\manual-live\task214-loop\runs --deliverables-dir runs\manual-live\task214-loop\outputs --state runs\manual-live\task214-loop\scheduler.json --sessions-state runs\manual-live\task214-loop\sessions.json --project-id task214-loop-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration`: passed.
+  - Real cycle `cycle-20260623T050627Z` wrote `loop-campaign/loop-campaign.json`, `loop-campaign/loop-report.md`, a vault progress note, `paper-build/main.pdf`, and copied the output PDF/manifest under `runs\manual-live\task214-loop\outputs\task214-loop-smoke`.
+  - Real cycle gate behavior: `loop_campaign_gate` passed with metadata completeness `0.916667`, evidence coverage `1.0`, and reproduction delta `0.0`; publication audit failed and evidence gate blocked release because the intentionally tiny smoke run had only 1 query, 2 literature records, 4 validation rows, missing ablations/statistical sanity, and a review verdict of `needs_revision`.
+- Problems:
+  - Added and resolved `P-20260623-002` for loop gates passing from summary metrics after the physical loop campaign artifact was removed.
+- Follow-up:
+  - Run the same loop on the default public benchmark with normal search breadth before claiming publication-level output; the smoke run intentionally proved the gate blocks toy-data release.
+
+### 2026-06-23 13:25:41 +08:00 - Codex - Task 215.1 Per-agent custom skill and MCP profiles
+
+- Request: Continue toward CCF-B/Sci Q2 publishable research output, avoid over-engineering the AI reasoning style, and add the ability to assign custom skills and MCP servers to a specific Agent.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/base.py`
+  - `src/autoresearch/agents/registry.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfile`, `AgentSkillBinding`, and `AgentMcpServerBinding` models for per-agent custom skill and MCP assignment.
+  - Added a default scientific thinking contract so custom tools stay grounded in research questions, hypotheses, data, baselines, falsification, evidence, and publication gates rather than engineering-only process language.
+  - Required MCP bindings to use explicit allowed tool lists and environment variable names, with no inline secrets in profile command/source fields.
+  - Added `BaseAgent.bind_profile()`, `BaseAgent.runtime_context()`, and `AgentRegistry.assign_profile()` so a validated profile can be attached to one registered agent.
+  - Added `airesearcher agents profile write` and `airesearcher agents profile inspect` plus `/research:agent-profile` slash template support.
+  - Added optional Obsidian profile notes under `projects/<project-id>/agents/`.
+  - Updated English and Chinese README usage docs.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\agents\test_agent_imports.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 8 tests.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed.
+  - Focused `python -m ruff check src\autoresearch\agents src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed after fixing one import-order issue with `python -m ruff check src\autoresearch\cli\main.py --fix`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "obsidian=npx -y obsidian-mcp --vault autoresearch-vault" --mcp-tool obsidian:search_notes --mcp-tool obsidian:read_note --vault runs\manual-live\task215-agent-profile\vault --project-id task215-agent-profile --output runs\manual-live\task215-agent-profile\profiles\literature-agent.json`: passed and wrote profile JSON plus vault note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task215-agent-profile\profiles\literature-agent.json`: passed and returned scientific thinking contract, custom skill, and MCP tool allowlist.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 562 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+- Problems:
+  - Added and resolved `P-20260623-003` for stale focused pytest names and ruff import-order cleanup during verification.
+- Follow-up:
+  - Next step should load these profiles into the active `serve`/`autopilot` cycle and operator monitor so each runtime stage can display the exact profile used by its assigned agent.
+
+### 2026-06-23 13:38:18 +08:00 - Codex - Task 216.1 Runtime agent profile loading
+
+- Request: Continue from per-agent custom skills/MCP support by loading profiles into active `serve`/`autopilot` cycles and making them visible in review evidence and the operator monitor.
+- Files changed:
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added repeatable `--agent-profile <json>` options to `autopilot` and `serve`.
+  - Added runtime profile loading with duplicate `agent_id` rejection before online retrieval or experiment execution.
+  - Wrote profile summaries and safe runtime contexts into `cycle-summary.json`, including blocked source-preflight and research-plan branches.
+  - Added profile context to `review-evidence-context.json` and the review evidence bundle.
+  - Echoed loaded agent IDs in CLI status output and added an Agent Profiles panel to `airesearcher monitor`.
+  - Updated English and Chinese README usage docs and added task `216.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 562 tests passed and 4 skipped.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task216-runtime-profile-v1\vault --project-id task216_runtime_profile_v1 --output runs\manual-live\task216-runtime-profile-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus vault note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task216-runtime-profile-v1\vault --cache runs\manual-live\task216-runtime-profile-v1\cache --output-dir runs\manual-live\task216-runtime-profile-v1\runs --deliverables-dir runs\manual-live\task216-runtime-profile-v1\outputs --state runs\manual-live\task216-runtime-profile-v1\scheduler.json --sessions-state runs\manual-live\task216-runtime-profile-v1\sessions.json --project-id task216_runtime_profile_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task216-runtime-profile-v1\profiles\literature-agent.json`: passed and printed `[OK] agent_profiles: 1; agents=literature-agent`.
+  - Real artifact grep confirmed `cycle-summary.json` and `review-evidence-context.json` contain `agent_profiles`, `literature-agent`, `source-tracing`, `page-agent`, and `browser.search`.
+  - Real monitor `node .\bin\airesearcher.mjs monitor --cycle-summary runs\manual-live\task216-runtime-profile-v1\runs\cycle-20260623T053737Z\cycle-summary.json --outputs-dir runs\manual-live\task216-runtime-profile-v1\outputs --runtime-state runs\manual-live\task216-runtime-profile-v1\approvals.json --scheduler-state runs\manual-live\task216-runtime-profile-v1\scheduler.json --sessions-state runs\manual-live\task216-runtime-profile-v1\sessions.json --agent-log Agent.md --no-diff --max-agent-entries 1`: passed and rendered the Agent Profiles panel with `literature-agent`, `source-tracing`, and `page-agent` tool allowlists.
+- Problems:
+  - Added and resolved `P-20260623-004` for a monitor test assertion that depended on Rich table wrapping.
+- Follow-up:
+  - The real task216 cycle intentionally used `--no-review` and smoke-width retrieval, so publication/evidence gates correctly blocked release; use default search breadth plus live review for publication-quality cycles.
+
+### 2026-06-23 13:51:54 +08:00 - Codex - Task 217.1 Loop-stage agent responsibility mapping
+
+- Request: Implement the Loop Engineering evolution plan by tightening auditable responsibility boundaries after the closed-loop campaign layer, while preserving evidence gates.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Confirmed task `214.1` already implements the requested Loop Engineering campaign layer: campaign schema, optimizer policy, loop metrics, failure categories, loop report, Obsidian note, and publication/evidence/promotion gates.
+  - Added optional `assigned_stages` to `AgentProfile`, normalized to snake_case and exposed in safe runtime context.
+  - Added repeatable `--stage` to `airesearcher agents profile write`, with a fixed allowlist for release-critical research-loop stages.
+  - Validated stage assignments during runtime profile loading so hand-written profile JSON cannot attach unknown stages.
+  - Added `stage_assignments` to cycle summaries and review evidence context, and updated the monitor Agent Profiles panel to show role plus assigned stages.
+  - Updated English and Chinese README usage docs and added completed task `217.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 8 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed.
+  - Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed, 42 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 563 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage similarity --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task217-stage-profile-v1\vault --project-id task217_stage_profile_v1 --output runs\manual-live\task217-stage-profile-v1\profiles\literature-agent.json`: passed and printed `assigned_stages: literature, similarity, review`.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task217-stage-profile-v1\vault --cache runs\manual-live\task217-stage-profile-v1\cache --output-dir runs\manual-live\task217-stage-profile-v1\runs --deliverables-dir runs\manual-live\task217-stage-profile-v1\outputs --state runs\manual-live\task217-stage-profile-v1\scheduler.json --sessions-state runs\manual-live\task217-stage-profile-v1\sessions.json --project-id task217_stage_profile_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task217-stage-profile-v1\profiles\literature-agent.json`: passed, printed `assigned_stages=3`, passed the loop campaign gate, and correctly blocked publication/evidence release for the smoke-width run.
+  - Real artifact grep confirmed `cycle-summary.json` and `review-evidence-context.json` contain `stage_assignments`, `assigned_stages`, `literature-agent`, and `browser.search`.
+  - Real monitor command rendered the Agent Profiles panel with `literature-agent`, `project_agent; literature,similarity,review`, `source-tracing`, and `page-agent` tool allowlists.
+- Problems:
+  - None.
+- Follow-up:
+  - Use default search breadth and live review for publication-quality cycles; stage assignments are responsibility context, not publication evidence.
+
+### 2026-06-23 14:01:50 +08:00 - Codex - Task 218.1 Stage-scoped agent context consumption
+
+- Request: Implement the Loop Engineering plan by making per-agent skills and MCP bindings consumable by assigned closed-loop stages, not only visible as display metadata.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added reusable profile helpers to normalize loop stage identifiers and filter safe runtime contexts by assigned stage.
+  - Added `stage_runtime_contexts` to `cycle-summary.json`, keyed by stage, so downstream loop workers can consume only the bounded skill/MCP context assigned to that stage.
+  - Added `stage_agent_contexts` to `review-evidence-context.json` so review/audit stages can inspect stage-scoped contexts without re-deriving them from display rows.
+  - Exported the new helpers through `autoresearch.agents` and added tests for `research-plan` to `research_plan` normalization.
+  - Updated README/README.zh-CN and added completed task `218.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 6 tests.
+  - Initial focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: failed with one fixable import-order `I001`; fixed with `python -m ruff check tests\unit\agents\test_profiles.py --fix`.
+  - Focused rerun `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed, 42 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 564 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage similarity --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task218-stage-context-v1\vault --project-id task218_stage_context_v1 --output runs\manual-live\task218-stage-context-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus Obsidian agent note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task218-stage-context-v1\vault --cache runs\manual-live\task218-stage-context-v1\cache --output-dir runs\manual-live\task218-stage-context-v1\runs --deliverables-dir runs\manual-live\task218-stage-context-v1\outputs --state runs\manual-live\task218-stage-context-v1\scheduler.json --sessions-state runs\manual-live\task218-stage-context-v1\sessions.json --project-id task218_stage_context_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task218-stage-context-v1\profiles\literature-agent.json`: passed, printed `assigned_stages=3`, passed `loop_campaign`, and correctly blocked publication/evidence release for the smoke-width run.
+  - Real artifact checks confirmed `cycle-summary.json` contains `stage_runtime_contexts.literature[0].agent_id=literature-agent` and review MCP tools `browser.search,browser.open`; `review-evidence-context.json` contains `stage_agent_contexts.similarity[0].skills[0].skill_id=source-tracing` and `stage_agent_contexts.review[0].agent_id=literature-agent`.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-005` for ruff import-order normalization in the new profile test.
+- Follow-up:
+  - Stage-scoped profile contexts are now consumable responsibility/tool context; they remain non-evidence and cannot replace review, publication-audit, evidence-gate, or reproduction gates.
+
+### 2026-06-23 14:07:59 +08:00 - Codex - Task 219.1 LLM reviewer profile-context boundary
+
+- Request: Continue implementing the Loop Engineering plan by preventing stage-scoped Agent profile context from being treated as scientific evidence.
+- Files changed:
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Clarified the evidence-constrained LLM reviewer system prompt so `agent_profiles`, `stage_runtime_contexts`, `stage_agent_contexts`, skills, and MCP allowlists are process metadata only.
+  - Explicitly prohibited profile context from supporting scientific results, novelty, benchmark metrics, citation validity, publication readiness, or claims that a tool was invoked.
+  - Applied the same boundary to the reviewer repair prompt so retry outputs cannot promote profile metadata into scientific evidence.
+  - Added unit coverage for the prompt contract and updated English/Chinese README guidance.
+  - Added completed task `219.1` and dependency graph wave `122`.
+- Verification:
+  - Focused `python -m pytest tests\unit\llm\test_client.py -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\llm\client.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\llm`: passed with no issues in 3 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 565 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Future reviewer hardening can add deterministic checks for misuse of profile context in reviewer outputs if live reviews show that failure mode.
+
+### 2026-06-23 14:12:48 +08:00 - Codex - Task 220.1 Deterministic reviewer profile-context misuse gate
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and custom Agent skill/MCP support by replacing prompt-only profile-context discipline with a local reviewer quality gate.
+- Files changed:
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `profile_context_not_used_as_scientific_evidence` to LLM review quality checks.
+  - Made the new check critical so reviewer outputs that use Agent profiles, stage contexts, skills, or MCP allowlists as proof of scientific results, novelty, benchmark metrics, citations, publication readiness, or tool invocation trigger repair or fail closed.
+  - Kept process-only findings about responsibility boundaries and available tool context valid.
+  - Updated English and Chinese README guidance and added completed task `220.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\llm\test_client.py -q`: passed, 16 tests.
+  - Focused `python -m ruff check src\autoresearch\llm\client.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\llm`: passed with no issues in 3 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 567 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - If live reviewer outputs show subtler profile-context misuse, extend the deterministic misuse detector with evidence-backed examples rather than broadening it speculatively.
+
+### 2026-06-23 14:18:16 +08:00 - Codex - Task 221.1 Runtime profile evidence policy tagging
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making profile context boundaries machine-readable in runtime artifacts.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added `context_kind=agent_profile_process_metadata` to safe Agent profile runtime contexts.
+  - Added a machine-readable `evidence_policy` listing what profile contexts can support and what they cannot support.
+  - Confirmed stage-scoped contexts in `cycle-summary.json` and `review-evidence-context.json` carry the same policy.
+  - Updated English and Chinese README guidance and added completed task `221.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 6 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed, 567 tests passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage similarity --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --vault runs\manual-live\task221-profile-policy-v1\vault --project-id task221_profile_policy_v1 --output runs\manual-live\task221-profile-policy-v1\profiles\literature-agent.json`: passed and wrote the profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task221-profile-policy-v1\vault --cache runs\manual-live\task221-profile-policy-v1\cache --output-dir runs\manual-live\task221-profile-policy-v1\runs --deliverables-dir runs\manual-live\task221-profile-policy-v1\outputs --state runs\manual-live\task221-profile-policy-v1\scheduler.json --sessions-state runs\manual-live\task221-profile-policy-v1\sessions.json --project-id task221_profile_policy_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task221-profile-policy-v1\profiles\literature-agent.json`: passed, wrote `cycle-20260623T061727Z`, passed loop campaign, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `cycle-summary.json` and `review-evidence-context.json` both contain `context_kind=agent_profile_process_metadata` and `cannot_support=scientific results, novelty claims, benchmark metrics, citation validity, publication readiness, tool invocation`.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Downstream stage workers should read `evidence_policy` from profile runtime context rather than duplicating natural-language policy fragments.
+
+### 2026-06-23 14:28:19 +08:00 - Codex - Task 222.1 Protocol-as-code stop decisions
+
+- Request: Implement the Loop Engineering evolution plan by making closed-loop campaign protocol fields and stop criteria explicit, auditable, and enforced against blind retries.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added first-class `data_sources`, `baselines`, and `protocol_artifacts` to `ClosedLoopCampaign`.
+  - Added `LoopStopReason`, `LoopStopDecision`, and `evaluate_loop_stop_criteria()` for budget, target, metadata, evidence, reproduction, consecutive-failure, and approval stops.
+  - Wrote `stop_decision` into loop campaign JSON summaries and Markdown loop reports.
+  - Added a regression that blocks repeated same-category failures without repair hypotheses or frozen dimensions.
+  - Updated README/README.zh-CN plus Agent/Problem logging rules so loop failures, evidence gaps, metadata gaps, reproduction gaps, and approval points must leave auditable traces.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py -q`: passed with 5 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py`: passed after import-order and nested-if fixes.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py`: passed.
+  - Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 44 tests.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task222-stop-decision-v1\vault --cache runs\manual-live\task222-stop-decision-v1\cache --output-dir runs\manual-live\task222-stop-decision-v1\runs --deliverables-dir runs\manual-live\task222-stop-decision-v1\outputs --state runs\manual-live\task222-stop-decision-v1\scheduler.json --sessions-state runs\manual-live\task222-stop-decision-v1\sessions.json --project-id task222_stop_decision_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed and wrote `cycle-20260623T062651Z`; publication audit and evidence gate correctly blocked release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `loop-campaign.json` contains `data_sources`, `baselines`, `protocol_artifacts`, and `stop_decision.reason=continue`; `cycle-summary.json` carries `loop_campaign.stop_decision`; `loop-report.md` includes a `Stop Decision` section.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 568 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `Problem.md` logging rules; no new numbered problem because verification completed and no blocker remained.
+- Follow-up:
+  - Future optimizer work can replace the current lightweight evidence-gain heuristic with a true BO/active-learning backend, but it must continue to obey `LoopStopDecision` and the existing publication/evidence gates.
+
+### 2026-06-23 14:36:59 +08:00 - Codex - Task 223.1 Per-agent profile policy CLI controls
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and custom Agent skill/MCP support by letting operators assign bounded skill import policies, MCP approval policies, and MCP env-key names through the CLI instead of hand-editing profile JSON.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added parser helpers for `skill_id:policy`, `server_id:policy`, and `server_id:ENV_KEY` profile specs.
+  - Added `--skill-policy`, `--mcp-approval`, and `--mcp-env-key` to `airesearcher agents profile write`.
+  - Rejected policy/env-key specs that reference missing skill or MCP bindings in the same profile command.
+  - Kept profile policy declarations as process metadata only; they still do not bypass runtime approval, evidence, publication, safety, license, or release gates.
+  - Updated English/Chinese README and `/research:agent-profile` guidance with the new flags.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_dangling_policy_specs tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_invalid_mcp_env_key tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q`: passed, 13 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --mcp-approval page-agent:approve_dangerous --mcp-env-key page-agent:PAGE_AGENT_TOKEN --mcp-env-key page-agent:PAGE_AGENT_WORKSPACE --vault runs\manual-live\task223-profile-policy-v1\vault --project-id task223_profile_policy_v1 --output runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json`: passed and confirmed `context_kind=agent_profile_process_metadata`, `import_policy=approved_runtime`, `approval_policy=approve_dangerous`, and env keys `PAGE_AGENT_TOKEN,PAGE_AGENT_WORKSPACE`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 572 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None. No `Problem.md` entry was added because this task had no blocker, failed gate, unresolved risk, or skipped required verification.
+- Follow-up:
+  - Future stage workers can use these profile policy fields when they begin executing MCP-backed steps, but must still route dangerous actions through runtime approval and record real tool invocation evidence separately.
+
+### 2026-06-23 14:51:46 +08:00 - Codex - Task 224.1 Agent profile readiness preflight
+
+- Request: Implement the Loop Engineering evolution plan by turning per-agent skill/MCP declarations into checked runtime artifacts before unattended cycles rely on them.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+- Summary:
+  - Added typed Agent profile readiness reports for local skill source existence and required MCP environment-variable-name presence.
+  - Added `airesearcher agents profile validate` with optional JSON output and nonzero exit on missing required inputs.
+  - Attached readiness reports to loaded profile runtime contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, and `autopilot`/`serve` status output.
+  - Kept readiness as process metadata only: it does not store secret values and cannot support scientific claims, tool-invocation claims, novelty, citation validity, or publication readiness.
+  - Updated README/README.zh-CN command examples and the task dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_agent_profile_validate_cli_fails_on_missing_env_key tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id readiness-agent --role project_agent --stage literature --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "model-router=npx -y model-router-mcp" --mcp-tool model-router:models.search --mcp-approval model-router:approve_dangerous --mcp-env-key model-router:AUTORESEARCH_LLM_API_KEY --vault runs\manual-live\task224-profile-readiness-v1\vault --project-id task224_profile_readiness_v1 --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json --env-path .env --base-dir . --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings; the readiness JSON contained no `sk-` secret prefix and did not record the env key value.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task224-profile-readiness-v1\vault --cache runs\manual-live\task224-profile-readiness-v1\cache --output-dir runs\manual-live\task224-profile-readiness-v1\runs --deliverables-dir runs\manual-live\task224-profile-readiness-v1\outputs --state runs\manual-live\task224-profile-readiness-v1\scheduler.json --sessions-state runs\manual-live\task224-profile-readiness-v1\sessions.json --project-id task224_profile_readiness_v1 --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json`: passed, printed `readiness=pass`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `cycle-summary.json` contains `agent_profiles.readiness.passed=True` and profile `failed_check_count=0`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 576 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - None. No `Problem.md` entry was added because verification completed, no blocker remained, and no loop failure/evidence gap was introduced.
+- Follow-up:
+  - Future MCP-backed stage workers should treat readiness as preflight only and still record real tool invocation evidence separately.
+
+### 2026-06-23 15:05:39 +08:00 - Codex - Task 225.1 Agent skill context materialization
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making assigned local skills actually available to stage workers as bounded, auditable runtime context rather than prompt-only declarations.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed materialized-skill context records for local skill files and local skill directories containing `SKILL.md`.
+  - Materialized contexts record status, resolved path, SHA-256, byte/character counts, `max_chars`, truncation state, content when allowed, and a process-metadata evidence policy.
+  - Kept non-local skill sources as references and blocked secret-like local skill files without copying their content into runtime artifacts.
+  - Loaded bounded local skill content into runtime profile contexts for `serve`/`autopilot`, including `stage_runtime_contexts` and `review-evidence-context.json`, while compact profile summaries keep content out and retain only provenance/status.
+  - Added `agents profile inspect --materialize-skills --base-dir . --max-skill-chars <n>` so operators can preview exactly what an assigned Agent receives.
+  - Updated English/Chinese README and task graph with the materialization behavior and evidence boundary.
+- Verification:
+  - Initial focused pytest exposed CRLF/path fixture issues; fixed in tests and recorded as `P-20260623-006`.
+  - Initial focused ruff exposed import-order normalization; fixed with ruff and recorded as `P-20260623-007`.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed, 14 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 7 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id skill-context-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:read_only --vault runs\manual-live\task225-skill-materialization-v1\vault --project-id task225_skill_materialization_v1 --output runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json`: passed and wrote profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json --materialize-skills --base-dir . --max-skill-chars 400`: passed and returned `status=loaded`, `sha256=5e909f7afd7f140251662817965b44c7ed1eb4ac66493c8e099b2bc55217f66f`, bounded content, and the process-metadata evidence policy.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json --env-path .env --base-dir . --output runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task225-skill-materialization-v1\vault --cache runs\manual-live\task225-skill-materialization-v1\cache --output-dir runs\manual-live\task225-skill-materialization-v1\runs --deliverables-dir runs\manual-live\task225-skill-materialization-v1\outputs --state runs\manual-live\task225-skill-materialization-v1\scheduler.json --sessions-state runs\manual-live\task225-skill-materialization-v1\sessions.json --project-id task225-skill-materialization-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task225-skill-materialization-v1\profiles\skill-context-agent.json`: passed, printed `readiness=pass`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed compact `agent_profiles.profiles[0].materialized_skills[0]` has `status=loaded` and no `content`, while `stage_runtime_contexts.literature[0].materialized_skills[0]` and `review-evidence-context.json` review stage context have `status=loaded`, content present, and the expected SHA-256.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 578 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-006` for Windows newline/path fixture failures in focused materialization tests.
+  - Added and resolved `P-20260623-007` for ruff import-order normalization after adding materialization exports/imports.
+- Follow-up:
+  - Future work can add vetted Obsidian-note or package-source materializers, but non-local skill content should remain reference-only until license, safety, provenance, and evidence-boundary checks exist.
+
+### 2026-06-23 15:16:47 +08:00 - Codex - Task 226.1 Agent MCP runtime contracts
+
+- Request: Continue toward CCF-B/Q2-ready evidence gates and per-Agent custom skill/MCP support by making MCP approval, command provenance, and invocation-evidence requirements explicit runtime contracts.
+- Files changed:
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/llm/test_client.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed `AgentMcpRuntimeContract` records for every per-agent MCP binding.
+  - Runtime contracts record command SHA-256, command token count, allowed tools, env key names, approval policy, runtime approval requirement, isolation requirement, readiness check IDs, and evidence policy.
+  - Added contract summaries to compact `agent_profiles` artifacts while full stage contexts keep the complete contract.
+  - Updated LLM reviewer prompt and deterministic quality checks so MCP runtime contracts remain process metadata only and cannot prove tool invocation, scientific results, novelty, citation validity, benchmark metrics, or publication readiness.
+  - Updated English/Chinese README guidance and added completed task `226.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_rejects_profile_context_as_scientific_evidence tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_rejects_mcp_contract_as_tool_evidence tests\unit\llm\test_client.py::test_evaluate_llm_review_quality_allows_profile_context_process_findings tests\unit\llm\test_client.py::test_review_prompt_treats_agent_profiles_as_process_metadata_only -q`: passed, 19 tests.
+  - Initial focused ruff reported one fixable import-order `I001` in `src/autoresearch/agents/__init__.py`; fixed with `python -m ruff check src\autoresearch\agents\__init__.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py src\autoresearch\llm\client.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py tests\unit\llm\test_client.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py src\autoresearch\llm\client.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id mcp-contract-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:approve_dangerous --vault runs\manual-live\task226-mcp-contract-v1\vault --project-id task226_mcp_contract_v1 --output runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json`: passed and wrote the profile JSON plus Obsidian profile note.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json --materialize-skills --base-dir . --max-skill-chars 300`: passed and showed `contract_kind=mcp_runtime_contract_process_metadata`, `runtime_approval_required=true`, `tool_invocation_evidence_required=true`, `env_values_recorded=false`, and no env values.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile validate runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json --env-path .env --base-dir . --output runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent-readiness.json`: passed with 2 checks, 0 failures, and 0 warnings.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task226-mcp-contract-v1\vault --cache runs\manual-live\task226-mcp-contract-v1\cache --output-dir runs\manual-live\task226-mcp-contract-v1\runs --deliverables-dir runs\manual-live\task226-mcp-contract-v1\outputs --state runs\manual-live\task226-mcp-contract-v1\scheduler.json --sessions-state runs\manual-live\task226-mcp-contract-v1\sessions.json --project-id task226-mcp-contract-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review --agent-profile runs\manual-live\task226-mcp-contract-v1\profiles\mcp-contract-agent.json`: passed, printed `agent_profiles: 1`, passed `loop_campaign`, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed compact `agent_profiles.profiles[0].mcp_runtime_contracts[0]` contains server `page-agent`, command hash, and runtime approval; `agent_profiles.stage_runtime_contexts.literature[0].mcp_runtime_contracts[0]` contains full contract metadata; `review-evidence-context.json` review stage contract preserves evidence policy text that contracts do not prove tool invocation.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 580 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260623-008` for ruff import-order normalization.
+  - Added and resolved `P-20260623-009` for an artifact probe that used an outdated stage-context JSON path.
+- Follow-up:
+  - MCP runtime contracts are still process metadata only. Future MCP-backed workers must record separate real tool invocation evidence and results before claims can pass publication or evidence gates.
+
+### 2026-06-23 15:25:42 +08:00 - Codex - Task 227.1 Active-learning Loop Optimizer state
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan by making the Loop Optimizer, rather than pure LLM preference text, choose candidates under auditable evidence, budget, risk, and reproduction gates.
+- Files changed:
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/__init__.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed `LoopOptimizerCandidateScore` and `LoopOptimizerState` records.
+  - Preserved mandatory first-round DOE baseline selection, then added deterministic active-learning/UCB-like scoring for later candidate choice.
+  - Recorded exploitation score, uncertainty bonus, cost penalty, risk penalty, frozen penalty, observation count, total score, evidence refs, selected candidate, rejected candidates, and optimizer notes.
+  - Made `llm_override_allowed=false`, `budget_gate_enforced=true`, and `evidence_gate_enforced=true` machine-readable in optimizer state.
+  - Attached optimizer state to selection decisions, loop iteration records, `loop-campaign.json`, and the Markdown loop report.
+  - Updated English/Chinese README language and added completed task `227.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb -q`: passed, 13 tests.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\__init__.py`: passed with no issues in 2 source files.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task227-active-optimizer-v1\vault --cache runs\manual-live\task227-active-optimizer-v1\cache --output-dir runs\manual-live\task227-active-optimizer-v1\runs --deliverables-dir runs\manual-live\task227-active-optimizer-v1\outputs --state runs\manual-live\task227-active-optimizer-v1\scheduler.json --sessions-state runs\manual-live\task227-active-optimizer-v1\sessions.json --project-id task227-active-optimizer-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration --no-review`: passed, wrote `cycle-20260623T072328Z`, passed source preflight, research plan, and loop campaign, and correctly blocked publication/evidence release for the smoke-width no-review run.
+  - Real artifact inspection confirmed `loop-campaign.json` iteration optimizer state contains `decision_policy=doe_grid`, `selected_candidate_id=arm_baseline_reproduction`, `llm_override_allowed=false`, `budget_gate_enforced=true`, `evidence_gate_enforced=true`, and 3 candidate scores; loop report Markdown contains `## Optimizer State` and `LLM override allowed`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 581 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 107 source files.
+  - `rg` confirmed README/README.zh-CN/tasks/source/tests contain optimizer-state and `llm_override_allowed=false` references.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added `P-20260623-010` for pre-existing README.zh-CN mojibake/line-ending maintenance risk; mitigated for the touched lines.
+- Follow-up:
+  - The optimizer is intentionally lightweight and deterministic. A future Bayesian optimizer backend can replace the UCB-like scorer, but it must continue to write the same optimizer-state contract and obey stop decisions, evidence gates, reproduction gates, and approval gates.
+
+### 2026-06-23 16:12:45 +08:00 - Codex - Task 231.1 Loop Engineering gate hardening
+
+- Request: Implement the AI-Researcher Loop Engineering Evolution Plan by strengthening the closed-loop campaign with repair/approval stop contracts, research-plan binding, failure taxonomy, and loop-metric strategy promotion gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/experiments/__init__.py`
+  - `src/autoresearch/experiments/failures.py`
+  - `src/autoresearch/experiments/loop.py`
+  - `src/autoresearch/experiments/promotion.py`
+  - `tests/unit/experiments/test_failures.py`
+  - `tests/unit/experiments/test_loop.py`
+  - `tests/unit/experiments/test_promotion.py`
+  - `Agent.md`
+- Summary:
+  - Added machine-readable repair, approval, and retry-blocker fields to `LoopStopDecision`.
+  - Rendered research-plan binding and the eight Loop Engineering failure categories in loop reports.
+  - Added a legacy-to-Loop-Engineering failure classifier for Obsidian failure notes.
+  - Added AF, EF, and failure-recovery regressions to strategy promotion blocking reasons and audit metadata.
+  - Added task `231.1` and README notes for the hardened Loop Engineering promotion gate.
+- Verification:
+  - Focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_failures.py tests\unit\experiments\test_promotion.py -q`: passed with 34 tests.
+  - Initial focused `python -m ruff check ...` exposed `I001` import ordering in `src/autoresearch/experiments/__init__.py`; fixed with `python -m ruff check src\autoresearch\experiments\__init__.py --fix`.
+  - Focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\failures.py src\autoresearch\experiments\promotion.py src\autoresearch\experiments\__init__.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_failures.py tests\unit\experiments\test_promotion.py`: passed.
+  - Focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\failures.py src\autoresearch\experiments\promotion.py src\autoresearch\experiments\__init__.py`: passed with no issues in 4 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 601 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - Real narrow autopilot command passed with cycle `cycle-20260623T081008Z`; publication/evidence gates correctly blocked because `--no-review` skipped review.
+  - Artifact inspection confirmed `loop-campaign.json` and `loop-report.md` include repair/approval fields, research-plan protocol refs, failure recovery `1.0`, and the eight failure categories.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future work can feed these promotion metrics from historical strategy-evaluation cohorts instead of direct promotion input fields.
+
+### 2026-06-23 16:22:32 +08:00 - Codex - Task 232.1 Agent profile set governance
+
+- Request: Continue toward CCF-B/Q2-ready AI-Researcher outputs while keeping agent reasoning scientific rather than over-engineered, and keep adding the ability to assign custom skills and MCP bindings to specific Agents.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfileSetValidation` and `AgentProfileStageCoverage` contracts for multi-Agent profile teams.
+  - Added default required stages for a CCF-B/Q2-oriented research loop: literature, research plan, campaign, experiment, reproduction, citations, review, publication audit, and evidence gate.
+  - Added profile-set blocking checks for missing required stages, duplicate Agent IDs, failed readiness reports, and non-research/evidence-first thinking contracts.
+  - Added warnings for unassigned profiles and `allow_all` MCP approval policies.
+  - Added `airesearcher agents profile set-validate <profiles...>` with optional JSON output.
+  - Updated README/README.zh-CN and added task `232.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_set_validate_cli_reports_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_set_validate_cli_fails_missing_stage -q`: passed with 17 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 605 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 108 source files.
+  - Real CLI wrote literature, experiment, and reviewer profiles under `runs\manual-live\task232-profile-set-v1\profiles`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile set-validate ... --output runs\manual-live\task232-profile-set-v1\profile-set-validation.json`: passed with 9/9 required stages covered.
+  - Artifact inspection confirmed `passed=true`, `validation_kind=agent_profile_set_process_metadata`, no missing stages, experiment-stage MCP server `opencode`, and an evidence policy that says profile-set validation cannot prove scientific results.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future runtime workers can consume the profile-set validation report as a deployment preflight artifact before starting unattended `serve`/`autopilot`, while still requiring separate literature, experiment, reproduction, review, and evidence-gate artifacts for publication claims.
+
+### 2026-06-23 21:54:11 +08:00 - Codex - Task 234.1 Autopilot runtime heartbeat integration
+
+- Request: Continue the Loop Engineering/self-loop implementation by connecting the runtime heartbeat watchdog to real `serve` and `autopilot` cycles instead of leaving it as a manual CLI-only check.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/runtime/heartbeat.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/runtime/test_heartbeat.py`
+  - `Agent.md`
+- Summary:
+  - Added `--heartbeat-state` to `serve` and `autopilot`, with defaults resolved beside the active scheduler or approval state.
+  - Added automatic cycle heartbeat emission for source preflight, literature refresh, research plan, loop campaign, inspiration, experiment, reproduction, citation package, loop report, related-work inspection, manuscript build, LaTeX build, review evidence, review, publication audit, evidence gate, followups, and deliverables.
+  - Embedded `runtime_heartbeat` in `cycle-summary.json` and wrote `runtime-heartbeat-report.json` into each cycle directory.
+  - Added the heartbeat report to review evidence bundles while preserving the evidence boundary that heartbeat health does not prove scientific claims.
+  - Added `--run-id` isolation to `runtime heartbeat check` so old cycle heartbeats do not block an active cycle.
+  - Updated README/README.zh-CN and added task `234.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_serve_allow_all_runs_without_approval_state tests\unit\cli\test_main.py::test_serve_queues_dangerous_action_until_runtime_approval -q`: passed with 7 tests.
+  - Focused `python -m ruff check src\autoresearch\runtime\heartbeat.py src\autoresearch\cli\main.py tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\runtime src\autoresearch\cli\main.py`: passed with no issues in 5 source files.
+  - Real narrow autopilot `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task234-autopilot-heartbeat-v1\vault --cache runs\manual-live\task234-autopilot-heartbeat-v1\cache --output-dir runs\manual-live\task234-autopilot-heartbeat-v1\runs --deliverables-dir runs\manual-live\task234-autopilot-heartbeat-v1\outputs --state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\runtime-heartbeats.json --project-id task234_heartbeat --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review --cycles 1`: passed with cycle `cycle-20260623T135219Z`, `runtime_heartbeat: true`, `stages=22`, `stale=0`, `stalled=0`, and PDF output `runs/manual-live/task234-autopilot-heartbeat-v1/outputs/task234_heartbeat/task234_heartbeat-cycle-20260623T135219Z.pdf`.
+  - Artifact inspection confirmed `cycle-summary.json` contains `runtime_heartbeat.passed=true`, `event_count=22`, `stage_count=22`, and report path `runs/manual-live/task234-autopilot-heartbeat-v1/runs/cycle-20260623T135219Z/runtime-heartbeat-report.json`.
+  - Real CLI `node .\bin\airesearcher.mjs runtime heartbeat check --state runs\manual-live\task234-autopilot-heartbeat-v1\.airesearcher\runtime-heartbeats.json --run-id cycle-20260623T135219Z --stale-after-seconds 999999 --stall-repetition-threshold 3 --output runs\manual-live\task234-autopilot-heartbeat-v1\runs\cycle-20260623T135219Z\runtime-heartbeat-check-cli.json`: passed with 22 events, 22 stages, stale 0, stalled 0.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 609 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future worker processes can call the same heartbeat helpers from sub-agent stages when stages become asynchronous; heartbeat evidence must remain runtime-health-only and cannot be used as publication evidence.
+
+### 2026-06-24 01:25:28 +08:00 - Codex - Task 235.1 Stage-scoped Agent context packets
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher outputs while keeping Agent thinking scientific rather than over-engineered, and continue adding the ability to assign custom skills and MCPs to specific Agents.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `build_agent_stage_context_packet()` to export a portable process-metadata packet for one research-loop stage.
+  - Packet contents include assigned agent IDs, skill IDs, materialized skill IDs, MCP server IDs, bounded per-agent runtime contexts, readiness summary, optional project/cycle IDs, and a strict evidence boundary.
+  - Added `airesearcher agents profile export-stage-context <profiles...> --stage <stage> --output <packet.json>`.
+  - The CLI fails by default if no Agent is assigned to the requested stage or if assigned profiles have failing readiness checks; `--allow-empty` and `--allow-not-ready` are available for debugging.
+  - Updated README/README.zh-CN and added task `235.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_stage_context_packet_routes_only_assigned_agents tests\unit\cli\test_main.py::test_agent_profile_export_stage_context_cli_writes_packet -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed after fixing import order in `tests\unit\agents\test_profiles.py`.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI wrote `runs\manual-live\task235-stage-context-v1\profiles\reviewer.json` using `node .\bin\airesearcher.mjs agents profile write --agent-id reviewer --role validator_agent --stage review --skill review-skill=skills/review-skill.md --mcp opencode="opencode run" --mcp-tool opencode:code.review --mcp-approval opencode:read_only ...`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile export-stage-context runs\manual-live\task235-stage-context-v1\profiles\reviewer.json --stage review --base-dir runs\manual-live\task235-stage-context-v1 --project-id task235_stage_context --cycle-id cycle-real --output runs\manual-live\task235-stage-context-v1\packets\review-context.json`: passed with one ready Agent, one skill, and one MCP server.
+  - Artifact inspection confirmed `packet_kind=agent_stage_context_packet_process_metadata`, `agent_ids=["reviewer"]`, `skill_ids=["review-skill"]`, `materialized_skill_ids=["review-skill"]`, `mcp_server_ids=["opencode"]`, loaded skill content, read-only MCP contract, and evidence policy text stating that the packet cannot prove scientific results.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 611 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future asynchronous stage workers can consume these packets directly, but any actual MCP call must still produce MCP invocation evidence and any publication claim must still pass literature, experiment, reproduction, review, publication-audit, and evidence gates.
+
+### 2026-06-24 01:34:34 +08:00 - Codex - Task 236.1 Runtime Agent stage context packet artifacts
+
+- Request: Continue implementing the Agent skill/MCP routing work so custom Agent context is usable by the real self-loop runtime rather than only by a manual export command.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added automatic per-cycle `agent-stage-contexts/<stage>.json` packet generation for every `serve`/`autopilot` stage with assigned Agents.
+  - Added `agent-stage-contexts/manifest.json` and embedded the packet manifest in `cycle-summary.json`.
+  - Added packet manifest and packet files to review evidence context and review evidence bundles so downstream stage workers and reviewers can inspect responsibility routing.
+  - Kept packet evidence scoped to process metadata only; packets explicitly cannot prove results, novelty, metrics, citations, MCP invocation, or publication readiness.
+  - Updated README/README.zh-CN and added task `236.1`.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q`: passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI wrote a `literature-agent` profile and ran `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task236-runtime-stage-packets-v1\vault --cache runs\manual-live\task236-runtime-stage-packets-v1\cache --output-dir runs\manual-live\task236-runtime-stage-packets-v1\runs --deliverables-dir runs\manual-live\task236-runtime-stage-packets-v1\outputs --state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task236-runtime-stage-packets-v1\.airesearcher\runtime-heartbeats.json --project-id task236_stage_packets --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile runs\manual-live\task236-runtime-stage-packets-v1\profiles\literature-agent.json --no-review --cycles 1`: passed with cycle `cycle-20260623T173316Z`.
+  - Real artifact inspection confirmed `packet_count=3`, manifest path `agent-stage-contexts/manifest.json`, packet paths for literature/similarity/review, review packet kind `agent_stage_context_packet_process_metadata`, agent `literature-agent`, skill `source-tracing`, MCP `page-agent`, readiness passed, and evidence policy excluding scientific proof/publication readiness.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 611 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None. Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future asynchronous stage workers can read these packet artifacts directly, but any actual external tool action still needs MCP invocation evidence and any publication claim still needs literature, experiment, reproduction, review, publication-audit, and evidence-gate support.
+
+### 2026-06-24 01:44:41 +08:00 - Codex - Task 237.1 Runtime Agent profile-set preflight
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added runtime `agent-profile-set/agent-profile-set-validation.json` generation after `serve`/`autopilot` loads Agent profiles.
+  - Embedded the profile-set validation in `cycle-summary.json`, review evidence context, and review evidence bundles.
+  - Added `--require-agent-profile-set` to `serve` and `autopilot`; when enabled, incomplete CCF-B/Q2 stage coverage blocks the cycle before online retrieval or experiment execution.
+  - Kept default behavior audit-only so MVP/demo runs still work while exposing missing Agent responsibilities.
+  - Added task `237.1` and README/README.zh-CN documentation.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix -q` failed because the new test profile lacked any skill or MCP binding; fixed by adding a local read-only skill.
+  - Initial focused `python -m mypy src\autoresearch\cli\main.py` failed because the new blocked branch reused the existing `blocked_summary` local name; fixed by renaming it to `agent_profile_blocked_summary`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix -q`: passed with 2 tests after fixes.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI wrote an incomplete `literature-agent` profile and ran `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task237-profile-set-gate-v1\vault --cache runs\manual-live\task237-profile-set-gate-v1\cache --output-dir runs\manual-live\task237-profile-set-gate-v1\runs --deliverables-dir runs\manual-live\task237-profile-set-gate-v1\outputs --state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task237-profile-set-gate-v1\.airesearcher\runtime-heartbeats.json --project-id task237_profile_set_gate --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile runs\manual-live\task237-profile-set-gate-v1\profiles\literature-agent.json --require-agent-profile-set --no-review --cycles 1`: passed with blocked cycle `cycle-20260623T174307Z`.
+  - Real artifact inspection confirmed `status=blocked`, `blocked_reason=agent_profile_set_gate`, no `source_preflight`, validation path `agent-profile-set/agent-profile-set-validation.json`, `required_for_cycle=true`, `passed=false`, `covered=1/9`, and missing stages `research_plan,loop_campaign,experiment,reproduction,citations,review,publication_audit,evidence_gate`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 612 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+- Problems:
+  - Added resolved `P-20260624-001` for the focused test fixture and mypy local-name issues found while verifying this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A future full Agent-team bundle can use `--require-agent-profile-set` as a deployment preflight for unattended publication-grade runs; profile-set coverage remains process metadata and still cannot prove scientific claims without downstream evidence gates.
+
+### 2026-06-24 01:57:43 +08:00 - Codex - Task 238.1 Reusable Agent profile-set bundle import
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `AgentProfileSetBundle` for reusable JSON/YAML/TOML multi-Agent team declarations.
+  - Added `load_agent_profile_set_bundle()` and `build_agent_profiles_from_set_bundle()` so a single team bundle can produce multiple standard Agent profiles while preserving the default scientific thinking contract.
+  - Added `airesearcher agents profile import-set <bundle> --output-dir <dir>` to write one profile JSON per Agent plus a `profile-set-validation.json` report.
+  - The import command evaluates readiness and the profile-set stage matrix immediately, exits nonzero by default when bundle-required stages are missing, and exposes `--allow-incomplete` only for dry runs or debugging.
+  - Updated README/README.zh-CN and added task `238.1` with the process-metadata evidence boundary.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_rejects_duplicate_agent_ids tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_fails_missing_required_stage -q` failed because the new CLI command used `_safe_path_part` instead of the CLI module's `_safe_path_segment`; fixed and reran successfully with 4 passed.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task238-profile-set-import-v1\ccfb-team.yaml --output-dir runs\manual-live\task238-profile-set-import-v1\profiles --validation-output runs\manual-live\task238-profile-set-import-v1\profile-set-validation.json --base-dir runs\manual-live\task238-profile-set-import-v1 --vault runs\manual-live\task238-profile-set-import-v1\vault --project-id task238_profile_set_import`: passed and wrote 3 profiles, 3 vault notes, and a 9/9 stage-coverage validation report.
+  - Artifact inspection confirmed `passed=true`, `profile_count=3`, `covered_stage_count=9`, `missing_stages=[]`, and the evidence policy still excludes scientific results, novelty claims, benchmark metrics, citation validity, MCP invocation, and publication readiness.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 616 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-002` for the safe-path helper name issue caught by focused CLI tests.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Future runtime setup can offer profile-set bundle templates during `airesearcher setup`, but the bundle import must remain a process-metadata preflight and cannot replace literature, experiment, reproduction, review, publication-audit, or evidence-gate artifacts.
+
+### 2026-06-24 02:14:00 +08:00 - Codex - Task 239.1 Runtime Agent profile-set bundle loading
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving specific-Agent custom skill/MCP assignment without over-engineering the scientific reasoning loop.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added repeatable `--agent-profile-set-bundle <team.yaml>` flags to `serve` and `autopilot`.
+  - Added runtime bundle materialization into each cycle's `agent-profile-bundles/` directory, including a manifest, generated per-Agent profile JSON files, source bundle paths, and an explicit process-metadata evidence policy.
+  - Resolved relative local skill sources against the bundle file location before runtime readiness and stage-context checks.
+  - Merged generated profile paths with explicit `--agent-profile` paths, then reused existing readiness, profile-set validation, stage-context packet, review-evidence, and `--require-agent-profile-set` gates.
+  - Added cycle-summary/review-evidence references for runtime bundle artifacts and README/README.zh-CN documentation for the new flag and evidence boundary.
+  - Added task `239.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Initial focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation -q` exposed that runtime-generated skill sources stayed relative; moved relative local skill resolution into the runtime materialization helper and reran successfully with 3 passed.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - First real CLI smoke `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task239-runtime-bundle-v1\vault --cache runs\manual-live\task239-runtime-bundle-v1\cache --output-dir runs\manual-live\task239-runtime-bundle-v1\runs --deliverables-dir runs\manual-live\task239-runtime-bundle-v1\outputs --state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task239-runtime-bundle-v1\.airesearcher\runtime-heartbeats.json --project-id task239_runtime_bundle --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task239-runtime-bundle-v1\team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session` failed because the hand-written smoke bundle used unsupported `policy`/`approval` keys and `role: reviewer`; fixed the ignored smoke fixture to use `import_policy`, `approval_policy`, `role: validator_agent`, and `thinking_mode: reviewer`.
+  - Corrected real CLI smoke passed with cycle `cycle-20260623T181146Z`; summary reported one runtime bundle, three generated profiles, profile readiness pass, `agent_profile_set=true`, `covered=9/9`, no missing stages, source preflight pass, research-plan pass, loop-campaign pass, review skipped as requested, publication audit fail and evidence gate blocked as expected for toy/no-review verification.
+  - Real artifact inspection confirmed `agent-profile-bundles/manifest.json` exists, generated profile paths are listed, the first local skill source resolves to `E:/AIResearch/runs/manual-live/task239-runtime-bundle-v1/skills/source.md`, and ten stage-context packets were written for literature, similarity, research_plan, loop_campaign, experiment, reproduction, citations, review, publication_audit, and evidence_gate.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 617 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-003` for the runtime relative local skill-source materialization issue caught by focused CLI tests.
+  - Added resolved `P-20260624-004` for the real smoke fixture schema mismatch.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Setup can later offer a guided team-bundle template, but runtime bundle loading must remain process metadata and cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence gate artifacts.
+
+### 2026-06-24 02:21:00 +08:00 - Codex - Task 240.1 Default runtime Agent team template
+
+- Request: Continue toward CCF-B/SCI-Q2 publishable AI-Researcher output while improving one-step unattended Agent team loading and specific-Agent custom skill/MCP assignment.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile team-template` to write an editable default three-Agent CCF-B/Q2 profile-set bundle and three local skill Markdown files.
+  - The generated bundle covers literature/similarity/research-plan, loop-campaign/experiment/reproduction/citations, and review/publication-audit/evidence-gate stages.
+  - The literature Agent includes a read-only `page-agent` MCP contract with explicit allowed tools and no stored secrets.
+  - The command refuses to overwrite an existing bundle or generated skill file unless `--overwrite` is passed.
+  - The generated bundle is compatible with `agents profile import-set` and direct runtime `--agent-profile-set-bundle` loading.
+  - Updated README/README.zh-CN and added task `240.1` with the template's process-metadata/evidence boundary.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml`: passed and wrote the bundle plus `source.md`, `experiment.md`, and `review.md`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml --output-dir runs\manual-live\task240-team-template-v1\profiles --validation-output runs\manual-live\task240-team-template-v1\profile-set-validation.json --base-dir runs\manual-live\task240-team-template-v1\agents`: passed with 3 profiles and `stage_coverage: 9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task240-team-template-v1\vault --cache runs\manual-live\task240-team-template-v1\cache --output-dir runs\manual-live\task240-team-template-v1\runs --deliverables-dir runs\manual-live\task240-team-template-v1\outputs --state runs\manual-live\task240-team-template-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task240-team-template-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task240-team-template-v1\.airesearcher\runtime-heartbeats.json --project-id task240_team_template --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task240-team-template-v1\agents\ccfb-team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session`: passed with cycle `cycle-20260623T181826Z`, one bundle, three generated profiles, profile readiness pass, profile-set gate `covered=9/9`, ten stage-context packets, and the expected toy/no-review publication-audit fail plus evidence-gate block.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 618 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A future `setup` wizard step can call or recommend `agents profile team-template` so first-time operators get the editable Agent team bundle without memorizing the command.
+
+### 2026-06-24 02:32:30 +08:00 - Codex - Task 241.1 Setup-generated runtime Agent team
+
+- Request: Continue one-step unattended AI-Researcher deployment so first-time setup configures the runtime Agent team without manual command chaining.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `DEFAULT_AGENT_TEAM_BUNDLE_PATH` and refactored `agents profile team-template` through a shared `_write_default_agent_team_template()` helper.
+  - Added setup options `--agent-team-bundle`, `--agent-team-profile-set-id`, `--skip-agent-team`, and `--overwrite-agent-team`.
+  - `airesearcher setup` now writes `.airesearcher/agents/ccfb-team.yaml` plus local source/experiment/review skill files by default, while preserving existing operator-edited bundles unless overwrite is explicit.
+  - Setup now prints the matching `serve --agent-profile-set-bundle ... --require-agent-profile-set` command in its next steps.
+  - Added setup regressions for default bundle generation and `--skip-agent-team`.
+  - Updated README/README.zh-CN and added task `241.1` with the process-metadata/evidence boundary.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands tests\unit\cli\test_main.py::test_setup_can_skip_agent_team_template tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Initial focused `python -m mypy src\autoresearch\cli\main.py` failed because the shared helper returned `dict[str, object]` and command output used `len(template["skill_paths"])` without narrowing; fixed with `cast(tuple[Path, ...], ...)`.
+  - Final focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs setup --config runs\manual-live\task241-setup-agent-team-v1\config.yaml --env-path runs\manual-live\task241-setup-agent-team-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task241-setup-agent-team-v1\vault --integrations-dir runs\manual-live\task241-setup-agent-team-v1\integrations --commands-dir runs\manual-live\task241-setup-agent-team-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and printed the generated Agent team bundle plus `--agent-profile-set-bundle ... --require-agent-profile-set` next step.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile import-set runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents\ccfb-team.yaml --output-dir runs\manual-live\task241-setup-agent-team-v1\profiles --validation-output runs\manual-live\task241-setup-agent-team-v1\profile-set-validation.json --base-dir runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents`: passed with 3 profiles and `stage_coverage: 9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task241-setup-agent-team-v1\vault --cache runs\manual-live\task241-setup-agent-team-v1\cache --output-dir runs\manual-live\task241-setup-agent-team-v1\runs --deliverables-dir runs\manual-live\task241-setup-agent-team-v1\outputs --state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\scheduler-state.json --sessions-state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agent-sessions.json --heartbeat-state runs\manual-live\task241-setup-agent-team-v1\.airesearcher\runtime-heartbeats.json --project-id task241_setup_agent_team --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --agent-profile-set-bundle runs\manual-live\task241-setup-agent-team-v1\.airesearcher\agents\ccfb-team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session`: passed with cycle `cycle-20260623T182644Z`, one bundle, three generated profiles, profile readiness pass, profile-set gate `covered=9/9`, source preflight pass, research-plan pass, loop-campaign pass, review skipped as requested, and the expected toy/no-review publication-audit fail plus evidence-gate block.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 619 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added resolved `P-20260624-005` for the setup Agent team helper typing issue caught by focused mypy.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The setup-generated Agent team remains process-routing scaffolding only. It must not be used as evidence for scientific results, novelty, metrics, citation validity, MCP invocation, publication readiness, or paper-build acceptance.
+
+### 2026-06-24 02:39:20 +08:00 - Codex - Task 242.1 Setup-default Agent team runtime auto-load
+
+- Request: Continue toward setup-once operation so `npm run serve`/runtime startup can use the setup-generated Agent team without copying long profile-set flags.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `--default-agent-team/--no-default-agent-team` to `serve` and `autopilot`.
+  - Added `_resolve_runtime_agent_team_defaults()` so runtime commands auto-load `.airesearcher/agents/ccfb-team.yaml` only when it exists and no explicit `--agent-profile` or `--agent-profile-set-bundle` inputs are supplied.
+  - Auto-loaded setup-default teams now force the default profile-set coverage gate before online retrieval.
+  - Explicit Agent profiles or explicit team bundles still take precedence over the setup default.
+  - Updated README/README.zh-CN to document `npm run serve` as the normal post-setup path with default Agent team auto-loading.
+  - Added task `242.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_auto_loads_default_agent_team_bundle_when_present tests\unit\cli\test_main.py::test_runtime_agent_team_defaults_can_be_disabled_or_overridden tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real setup `node .\bin\airesearcher.mjs setup --config runs\manual-live\task242-default-team-v1\config.yaml --env-path runs\manual-live\task242-default-team-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task242-default-team-v1\vault --integrations-dir runs\manual-live\task242-default-team-v1\integrations --commands-dir runs\manual-live\task242-default-team-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and wrote the setup default team bundle.
+  - Real runtime from the generated deployment directory with no explicit Agent bundle flags, `python -m autoresearch.cli.main serve --permission-mode allow-all --once --cycles 1 --project-id task242_default_agent_team --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --no-review --no-push-inspiration --no-claim-session`, passed and printed `[OK] default_agent_team_bundle: .airesearcher\agents\ccfb-team.yaml`, `agent_profile_bundles: 1`, `agent_profiles: 3`, `agent_profile_set: true; covered=9/9`, source preflight pass, research plan pass, loop campaign pass, the expected toy/no-review publication-audit fail and evidence-gate block, plus a PDF under `outputs/task242_default_agent_team/`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 621 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Runtime default-team auto-loading remains process-routing scaffolding. It cannot replace evidence from real retrieval, experiments, reproduction, citations, review, publication audit, paper build, or evidence gate artifacts.
+
+### 2026-06-24 02:46:32 +08:00 - Codex - Task 243.1 Prelaunch Agent team readiness gate
+
+- Request: Continue hardening setup-once operation so strict prelaunch detects missing or broken setup-default Agent teams before the 24h runtime starts.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `package.json`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_npm_scripts.py`
+  - `Agent.md`
+- Summary:
+  - Added `--agent-team-bundle` and `--require-agent-team` to `airesearcher readiness`.
+  - Added an `agent_team` readiness check that validates bundle parsing, per-Agent readiness, and default CCF-B/Q2 profile-set stage coverage.
+  - Missing default teams remain non-blocking in ordinary readiness unless `--require-agent-team` is set; existing broken or incomplete bundles fail because runtime auto-loading would block.
+  - Added `generate_agent_team` next action using `airesearcher agents profile team-template --output ...`, with `--overwrite` only when a broken bundle already exists.
+  - Updated `npm run prelaunch` to include `--require-agent-team`.
+  - Updated README/README.zh-CN and added task `243.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_readiness_requires_setup_agent_team_when_enabled tests\unit\cli\test_main.py::test_readiness_validates_setup_agent_team_bundle tests\unit\cli\test_main.py::test_readiness_command_writes_daily_loop_report tests\unit\test_npm_scripts.py::test_npm_scripts_expose_guided_prelaunch_commands -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py tests\unit\test_npm_scripts.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real setup from a clean deployment directory, `python -m autoresearch.cli.main setup --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --non-interactive --skip-integrations --skip-slash`, passed and wrote `.airesearcher/agents/ccfb-team.yaml`.
+  - Real readiness from that deployment directory, `python -m autoresearch.cli.main readiness --no-push-inspiration --require-agent-team --output .airesearcher\readiness\report.json`, passed with `readiness.agent_team: setup Agent team is valid: ccfb-runtime-team covers 9/9 stages`. The first-run scheduler state warning remained non-blocking.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 623 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The prelaunch Agent team gate validates runtime routing readiness only. It must not be interpreted as evidence for scientific conclusions, novelty, metrics, citations, MCP invocation, publication audit, paper build, or evidence gate acceptance.
+
+### 2026-06-24 02:55:20 +08:00 - Codex - Task 244.1 Agent team bundle inspection preview
+
+- Request: Continue toward setup-once operation while letting operators preview the exact reusable Agent skill/MCP team before importing or starting unattended runtime.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile inspect-set <team.yaml>` to preview a reusable multi-Agent profile-set bundle without importing profiles or starting a cycle.
+  - The inspection JSON includes each Agent runtime context, optional bounded local skill materialization with hashes, MCP runtime contracts, readiness reports, stage coverage, and the profile-set process-metadata evidence policy.
+  - `inspect-set` resolves relative local skill paths against the bundle file location by default and supports `--base-dir`, `--env-path`, `--output`, `--materialize-skills`, `--max-skill-chars`, and `--require-complete`.
+  - Added CLI regressions for a complete setup-style team bundle and for `--require-complete` blocking an incomplete stage matrix.
+  - Updated README/README.zh-CN and added task `244.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_inspect_set_cli_previews_materialized_team_bundle tests\unit\cli\test_main.py::test_agent_profile_inspect_set_cli_requires_complete_stage_matrix -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py src\autoresearch\agents\__init__.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py src\autoresearch\agents\__init__.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task244-inspect-set-v1\agents\ccfb-team.yaml`: passed and wrote the default three-Agent team bundle plus local skill files.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect-set runs\manual-live\task244-inspect-set-v1\agents\ccfb-team.yaml --materialize-skills --output runs\manual-live\task244-inspect-set-v1\inspection.json`: passed with `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`.
+  - Real inspection artifact check confirmed `validation.passed=true`, `covered_stage_count=9`, `profile_count=3`, loaded local skill materialization with SHA-256, and at least one MCP runtime contract.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 625 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Team bundle inspection remains process-routing metadata only. It must not be used as evidence for scientific results, novelty, benchmark metrics, citation validity, MCP invocation, publication readiness, paper-build acceptance, or evidence-gate acceptance.
+
+### 2026-06-24 03:00:25 +08:00 - Codex - Task 245.1 Guided Agent team inspection entry point
+
+- Request: Continue setup-once operation by surfacing the Agent skill/MCP team preview in normal setup and npm workflows before unattended runtime starts.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `package.json`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/test_npm_scripts.py`
+  - `Agent.md`
+- Summary:
+  - Added `npm run agent-team:inspect`, which runs `agents profile inspect-set .airesearcher/agents/ccfb-team.yaml --materialize-skills --require-complete`.
+  - Updated `airesearcher setup` output so the generated Agent team can be inspected before the recommended runtime start command.
+  - Kept runtime start guidance wired to `--agent-profile-set-bundle ... --require-agent-profile-set` after the inspection step.
+  - Updated README/README.zh-CN and added task `245.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_setup_bootstraps_env_vault_manifests_and_slash_commands tests\unit\test_npm_scripts.py::test_npm_scripts_expose_guided_prelaunch_commands -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py tests\unit\test_npm_scripts.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs setup --config runs\manual-live\task245-setup-inspect-v1\config.yaml --env-path runs\manual-live\task245-setup-inspect-v1\.env --provider openai-compatible --base-url https://llm.example.test/v1 --model-name research-model --api-key sk-test --no-wechat --no-feishu --vault runs\manual-live\task245-setup-inspect-v1\vault --integrations-dir runs\manual-live\task245-setup-inspect-v1\integrations --commands-dir runs\manual-live\task245-setup-inspect-v1\commands --non-interactive --skip-obsidian --skip-integrations --skip-slash`: passed and printed both `[NEXT] agent_team_inspect` and `[NEXT] 2. Inspect Agent team`.
+  - Real `npm run agent-team:inspect`: passed after temporarily copying the generated setup team to `.airesearcher/agents`, reported `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`, then cleaned the temporary `.airesearcher/agents` directory.
+  - Cleanup check confirmed `ROOT_AGENTS_DIR_CLEANED`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 625 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - The npm/setup inspection shortcut is still process-routing metadata only. It cannot replace real literature retrieval, experiment execution, reproduction, citation validation, review, publication audit, paper build, or evidence-gate artifacts.
+
+### 2026-06-24 03:09:26 +08:00 - Codex - Task 246.1 Targeted Agent team binding edits
+
+- Request: Continue toward configurable Agent teams by allowing one named Agent in a reusable team bundle to receive additional custom skills, MCP runtime contracts, and stage assignments without hand-editing YAML.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `airesearcher agents profile team-attach <team.yaml>` for targeted bundle edits by `--agent-id`.
+  - The command reuses the single-Agent skill/MCP grammar, supports `--skill`, `--skill-policy`, `--mcp`, `--mcp-tool`, `--mcp-approval`, `--mcp-env-key`, and `--stage`, and writes JSON/YAML/TOML according to the output extension.
+  - Duplicate skill or MCP identifiers are rejected by default and can be intentionally replaced with `--replace-existing`.
+  - The command immediately validates the updated Agent profile-set readiness and stage coverage, prints the next `inspect-set --materialize-skills --require-complete` command, and only records process metadata rather than scientific evidence.
+  - Added CLI regressions for a successful named-Agent attachment and for duplicate rejection.
+  - Updated README/README.zh-CN and added task `246.1` to the Kiro task plan and dependency graph.
+- Verification:
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_attach_cli_updates_named_agent_bundle tests\unit\cli\test_main.py::test_agent_profile_team_attach_cli_rejects_duplicate_without_replace -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-template --output runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml`: passed and wrote the default team bundle.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile team-attach runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml --agent-id experiment-agent --skill research-architect=skills/research-architect.md --skill-policy research-architect:approved_runtime --mcp "opencode=opencode run" --mcp-tool opencode:code.write --stage evidence-gate`: passed and reported `agent_profile_set: passed; covered=9/9`.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile inspect-set runs\manual-live\task246-team-attach-v1\agents\ccfb-team.yaml --materialize-skills --output runs\manual-live\task246-team-attach-v1\inspection.json --require-complete`: passed with `agent_profile_set_inspection: passed` and `stage_coverage: 9/9; profiles=3`.
+  - Real inspection artifact check confirmed `validation.passed=true`, `covered_stage_count=9`, `research-architect` was materialized with a SHA-256 hash, and the `opencode` MCP runtime contract was present.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 627 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - `team-attach` is a bundle-routing tool. It must not be treated as evidence that a skill was scientifically effective, that an MCP command was invoked, or that literature, experiment, reproduction, publication-audit, paper-build, or evidence-gate checks passed.
+
+### 2026-06-24 09:16:23 +08:00 - Codex - Task 247.1 Runtime Agent stage assignment manifest
+
+- Request: Continue toward custom skills/MCPs assignable to specific Agents while making the runtime audit trail strong enough for CCF-B/SCI-Q2 style review gates.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added `build_agent_stage_assignment_manifest`, a compact process-metadata manifest for stage-to-Agent routing, skill IDs, materialized skill hashes, MCP server IDs, MCP runtime contract hashes, readiness, per-Agent assignments, and explicit evidence boundaries.
+  - `serve`/`autopilot` now write `agent-stage-contexts/assignment-manifest.json` beside per-stage packets and include it in `cycle-summary.json`, `review-evidence-context.json`, review audit summaries, heartbeat artifact refs, and review evidence path lists.
+  - The manifest intentionally omits skill content and MCP env values; it records what context was available to an assigned Agent, not whether a tool was invoked or whether a scientific claim is true.
+  - Updated README/README.zh-CN and added task `247.1` plus dependency wave `150` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_stage_assignment_manifest_summarizes_skill_and_mcp_routing tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --stage literature --stage review --skill source-tracing=runs\manual-live\task247-assignment-manifest-v1\skills\source.md --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-approval page-agent:read_only --output runs\manual-live\task247-assignment-manifest-v1\literature-agent.json`: passed and wrote the profile.
+  - Real CLI `node .\bin\airesearcher.mjs autopilot --vault runs\manual-live\task247-assignment-manifest-v1\vault --cache runs\manual-live\task247-assignment-manifest-v1\cache --output-dir runs\manual-live\task247-assignment-manifest-v1\runs --deliverables-dir runs\manual-live\task247-assignment-manifest-v1\outputs --state runs\manual-live\task247-assignment-manifest-v1\.airesearcher\scheduler-state.json --heartbeat-state runs\manual-live\task247-assignment-manifest-v1\.airesearcher\runtime-heartbeats.json --project-id project_1 --agent-profile runs\manual-live\task247-assignment-manifest-v1\literature-agent.json --require-agent-profile-set --no-review --no-claim-session`: passed, wrote `cycle-summary.json`, and was intentionally blocked before online retrieval by the profile-set stage coverage gate.
+  - Real manifest check confirmed `agent-stage-contexts/assignment-manifest.json` existed, `manifest_kind=agent_stage_assignment_manifest_process_metadata`, `stage_count=2`, review stage skill `source-tracing` had a SHA-256 hash, and the `page-agent` MCP runtime contract required tool-invocation evidence.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 628 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Assignment manifests are audit metadata only. They should feed reviewer/publication gates, but they still cannot replace MCP invocation ledgers, real literature retrieval, experiments, reproduction, citation validation, publication audit, paper build, or evidence-gate artifacts.
+
+### 2026-06-24 09:38:01 +08:00 - Codex - Task 248.1 Innovation search breadth
+
+- Request: Prioritize innovation-search breadth as the core issue, so the system expands beyond local Obsidian memory and records enough online search breadth before research planning.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/similarity.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/research/test_similarity.py`
+  - `Agent.md`
+- Summary:
+  - Added a `novelty_breadth` report and matrix for project-start similarity checks, covering query families, source-type coverage, classified adjacent-work coverage, ecosystem signal coverage, vault context coverage, and duplicate-scan coverage.
+  - `similarity-check` now prints the novelty breadth status and writes a machine-readable `*_novelty_breadth.json` artifact beside the Obsidian Markdown similarity note.
+  - Moved autonomous `inspiration-refresh` before `research-plan`, passes its summary into research plan generation, and records the novelty breadth report in `cycle-summary.json`.
+  - Kept source classes explicit: scholarly sources can support novelty search evidence, while Hacker News/Hugging Face/GitHub-style sources are broad inspiration or ecosystem signals until later verified.
+  - Updated README/README.zh-CN and added task `248.1` plus dependency wave `151` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\research\test_similarity.py tests\unit\cli\test_main.py::test_similarity_check_command_loads_candidate_and_links_project tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 17 tests.
+  - Focused `python -m ruff check src\autoresearch\research\similarity.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py tests\unit\research\test_similarity.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\similarity.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Real `node .\bin\airesearcher.mjs similarity-check --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --vault runs\manual-live\task248-novelty-breadth-live\vault --cache runs\manual-live\task248-novelty-breadth-live\cache --max-queries 4 --max-results-per-source 3 --env-path .env`: completed against live sources; ArXiv 429/timeout errors were recorded, OpenAlex returned findings, 12 findings were written, and novelty breadth reported `broad_enough` with score `0.900`.
+  - Real narrow `inspiration-refresh` for `UCI Pendigits prototype classifier dataset`: exited nonzero with no items after recording zero Hugging Face/Hacker News results.
+  - Real broader `inspiration-refresh` for `machine learning benchmark dataset`: passed, recorded zero Hugging Face results and one deduplicated Hacker News inspiration item, `Show HN: SemHash - Fast Semantic Text Deduplication for Cleaner Datasets`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 630 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 109 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Add more opt-in broad sources such as GitHub code search, Papers with Code, curated news/RSS, and dataset registries, but keep each source's evidence class separate so ecosystem inspiration cannot masquerade as scholarly novelty proof.
+
+### 2026-06-24 10:01:05 +08:00 - Codex - Task 249.1 Inspiration-driven temporary miniagent brainstorming
+
+- Request: Add a brainstorm effect after inspiration search: use multiple temporary high-temperature miniagents from different perspectives, record the raw ideas, then integrate, justify, and filter the feasible creative ones.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/research/brainstorm.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added a provider-agnostic JSON brainstorm LLM call path with configurable temperature and no default `max_tokens` cap.
+  - Added `run_inspiration_brainstorm`, which runs ephemeral miniagent perspectives over a candidate and inspiration report, records raw responses/errors, parses ideas, scores them with deterministic creativity/feasibility/evidence-binding fields, and selects the strongest hypotheses.
+  - Persisted brainstorm artifacts as JSON in the run directory, an Obsidian run note under `exploration/brainstorm/`, and the reusable prompt set under `strategy_library/prompts/brainstorm-miniagents.md`.
+  - Added `airesearcher brainstorm` and `/research:brainstorm`, and inserted the automatic brainstorm stage between `inspiration-refresh` and `research-plan` in autopilot.
+  - Passed the selected brainstorm summary into research-plan generation while keeping the evidence boundary explicit: brainstorm ideas are hypotheses, not proof of novelty, metrics, publishability, or experimental truth.
+  - Updated README/README.zh-CN and added task `249.1` plus dependency wave `152` to the Kiro task plan.
+- Verification:
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py src\autoresearch\llm\client.py src\autoresearch\llm\__init__.py src\autoresearch\research\__init__.py src\autoresearch\research\plans.py src\autoresearch\cli\main.py tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\llm\test_client.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py src\autoresearch\research\plans.py src\autoresearch\llm\client.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\llm\test_client.py::test_post_chat_completion_accepts_creative_temperature tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 12 tests.
+  - Real provider-backed `node .\bin\airesearcher.mjs brainstorm --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --inspiration-report runs\manual-live\task248-novelty-breadth-live\inspiration-broad.json --vault runs\manual-live\task249-brainstorm-live\vault --output-dir runs\manual-live\task249-brainstorm-live\brainstorm --env-path .env --miniagents 2 --ideas-per-agent 1 --temperature 1.35 --timeout-seconds 120`: passed, selected 2 ideas from 2 miniagents, and wrote `brainstorm-ideas.json`, the Obsidian summary note, and `brainstorm-miniagents.md`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 633 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Add more brainstorm perspectives only when they correspond to concrete source classes or evaluation roles; avoid turning this into permanent agent-team bloat.
+  - Add an optional second-stage reviewer that can down-rank ideas against live scholarly/source evidence, but keep that reviewer evidence-bound and separate from the creative generation pass.
+
+### 2026-06-24 10:22:36 +08:00 - Codex - Task 250.1 Injectable stage runtime context for custom Agent skills and MCPs
+
+- Request: Continue toward assigning custom skills and MCPs to specific Agents while keeping AI reasoning scientific rather than over-engineered and moving toward CCF-B/SCI-Q2 publication quality.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added stage-specific `scientific_focus` text to Agent stage context packets so stage workers start from the scientific task instead of generic engineering orchestration.
+  - Added `render_agent_stage_runtime_prompt` and embedded `runtime_prompt` in every `agent-stage-contexts/<stage>.json` packet and `agents profile export-stage-context` output.
+  - The prompt includes assigned Agent identity, thinking contract, bounded materialized skill excerpts, MCP allowed tools, approval requirements, and the evidence boundary.
+  - The prompt intentionally omits MCP commands and secret values; MCP command hashes remain in runtime contracts and tool-call proof remains in the separate MCP invocation ledger.
+  - Updated README/README.zh-CN and added task `250.1` plus dependency wave `153` to the Kiro task plan.
+- Verification:
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_export_stage_context_cli_writes_packet -q`: passed with 20 tests.
+  - A first focused pytest selector used a stale CLI test name and returned no matching test; the corrected selector above passed.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id review-agent --stage review --skill source-tracing=runs\manual-live\task247-assignment-manifest-v1\skills\source.md --mcp "opencode=opencode run" --mcp-tool opencode:code.review --mcp-approval opencode:read_only --output runs\manual-live\task250-runtime-prompt\profiles\review-agent.json`: passed and wrote a review-stage profile.
+  - Real CLI `node .\bin\airesearcher.mjs agents profile export-stage-context runs\manual-live\task250-runtime-prompt\profiles\review-agent.json --stage review --base-dir . --project-id task250-runtime-prompt --cycle-id cycle_live --output runs\manual-live\task250-runtime-prompt\packets\review.json`: passed.
+  - Real packet inspection confirmed `stage=review`, `agentCount=1`, `skillIds=source-tracing`, `mcpIds=opencode`, and the `runtime_prompt` contains the assigned Agent, materialized skill text, `code.review`, and the evidence-boundary statement.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 633 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire real stage executors to consume `runtime_prompt` as their prompt/context input, while keeping result claims dependent on literature, experiment, reproduction, review, publication-audit, and evidence-gate artifacts.
+
+### 2026-06-24 10:31:28 +08:00 - Codex - Task 251.1 Auditable brainstorm selection rationale
+
+- Request: Strengthen the inspiration-driven temporary miniagent brainstorm so high-temperature ideas are first recorded, then integrated, justified, and filtered for feasible creative hypotheses.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `Agent.md`
+- Summary:
+  - Added `selection_reason` to every brainstorm idea and serialized it into `brainstorm-ideas.json`.
+  - Added deterministic screening reasons for selected and deferred ideas based on creativity, feasibility, evidence binding, first falsification path, and risks to check.
+  - Expanded Obsidian brainstorm notes with `Selection Argument` and `Deferred Ideas` sections so later cycles can reuse not-yet-selected ideas without confusing them for evidence.
+  - Updated README/README.zh-CN and added task `251.1` plus dependency wave `154` to the Kiro task plan.
+- Verification:
+  - Initial focused ruff/pytest exposed stale fake-runner argument names in the new test; fixed and recorded as `P-20260624-006`.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 12 tests.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 634 passed and 4 skipped.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - Added and resolved `P-20260624-006`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - A later task can add an evidence-bound reviewer pass that down-ranks brainstorm ideas against live scholarly/source evidence, but the creative high-temperature pass should remain separated from evidence validation.
+
+### 2026-06-24 10:55:53 +08:00 - Codex - Task 252.1 Evidence-backed second-stage brainstorm reviewer
+
+- Request: Connect the second-stage brainstorm reviewer to real literature/code/dataset evidence so high-temperature ideas are not only divergent, but also screened for duplicate, unverifiable, or infeasible proposals. User clarified that doability should primarily be judged from the idea itself, while matching is mainly for duplicate-risk checks.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/inspiration.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `tests/unit/test_inspiration.py`
+- Summary:
+  - Added `GitHubRepositorySearchClient` as a `code_signal` source for public repository feasibility/ecosystem checks.
+  - Added brainstorm evidence-review models for source signals, source fetch attempts, per-idea duplicate risk, doability, verifiability, decisions, score adjustments, and reasons.
+  - Added `run_brainstorm_evidence_review`, which queries live ArXiv/OpenAlex plus Hugging Face/GitHub/Hacker News, records fetches even when results are empty or rate-limited, and adjusts brainstorm selection after raw high-temperature ideas are preserved.
+  - Kept duplicate-risk matching separate from doability: high same-direction literature similarity defers an idea, while missing close prior work is treated as novelty potential rather than a feasibility failure.
+  - Made CLI and autopilot run the live evidence reviewer by default, with `--no-evidence-review`, `--review-queries-per-idea`, `--review-results-per-source`, and `--evidence-cache` controls.
+  - Expanded Obsidian brainstorm notes and JSON artifacts with an Evidence Reviewer section, source fetches, signals, decisions, and selected/deferred reasons.
+  - Updated README/README.zh-CN and task docs to describe the second-stage reviewer and its evidence boundary.
+- Verification performed:
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\test_inspiration.py tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts -q`: passed with 10 tests.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py src\autoresearch\inspiration.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py tests\unit\research\test_brainstorm.py tests\unit\test_inspiration.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py src\autoresearch\inspiration.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py`: passed.
+  - Real provider-backed live smoke `node .\bin\airesearcher.mjs brainstorm --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --inspiration-report runs\manual-live\task248-novelty-breadth-live\inspiration-broad.json --vault runs\manual-live\task252-brainstorm-reviewer-live2\vault --output-dir runs\manual-live\task252-brainstorm-reviewer-live2\brainstorm --env-path .env --miniagents 1 --ideas-per-agent 1 --temperature 1.35 --timeout-seconds 180 --evidence-review --review-results-per-source 1`: passed, selected 1 idea, wrote 1 evidence review, and recorded 10 source fetches. ArXiv returned 429 for both reviewer queries; OpenAlex/Hugging Face/GitHub/Hacker News fetches completed and returned 0 results.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 637 passed and 4 skipped.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems added or updated:
+  - Added `P-20260624-007` for ArXiv 429 during the real brainstorm reviewer smoke; status `Mitigated`.
+  - Added `P-20260624-008` for resolved task-252 verification issues: import ordering, mypy fetch variable reuse, and legacy fake-report compatibility.
+  - Added `P-20260624-009` for the resolved PowerShell `&&` staging command issue.
+- Follow-up work:
+  - Add a source-specific ArXiv backoff/circuit breaker in brainstorm reviewer literature fetches if 429s recur across cycles.
+  - Consider reviewer query diversification for dataset/code discovery so creative ideas with adjacent-source inspiration can find implementation/data support without requiring same-direction prior work.
+
+### 2026-06-24 11:05:03 +08:00 - Codex - Task 253.1 Runtime routing for per-Agent custom skill/MCP imports
+
+- Request: Continue toward CCF-B/SCI-Q2-ready research automation by making custom skills and MCP imports assignable to specific Agents in a runtime-usable way, while keeping AI reasoning research-first rather than over-engineered.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/base.py`
+  - `src/autoresearch/agents/registry.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `Agent.md`
+- Summary:
+  - Added runtime Agent helpers that expose bound skill IDs, MCP server IDs, and scoped MCP tool refs from the loaded Agent profile.
+  - Added `supports_skill()` and `supports_mcp_tool()` checks so stage schedulers can identify which specific Agent imported a custom research skill or MCP tool.
+  - Added `AgentRegistry.find_by_skill()`, `find_by_mcp_server()`, and `find_by_mcp_tool()` for precise Agent routing.
+  - Added `profile_runtime_capabilities` to Agent runtime context with an explicit process-metadata evidence boundary.
+  - Preserved the task execution safety boundary: custom skill `allowed_tasks` can guide routing, but `BaseAgent.run_task()` still requires the Agent's original executable capability.
+  - Updated English and Chinese README docs and added task `253.1` to the executable task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability tests\unit\agents\test_profiles.py::test_registry_assigns_profile_to_matching_agent -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\base.py src\autoresearch\agents\registry.py tests\unit\agents\test_profiles.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents\base.py src\autoresearch\agents\registry.py`: passed with no issues in 2 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 638 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire future stage schedulers to use these registry queries when assigning literature, experiment, review, and evidence-gate workers from loaded Agent teams.
+
+### 2026-06-24 11:36:29 +08:00 - Codex - Task 254.1 Stage import requirement gate for Agent profile teams
+
+- Request: Continue the per-Agent custom skill/MCP work by making reusable Agent teams validate that each research stage receives its required custom skills, MCP servers, or scoped MCP tool refs.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/profiles.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `tests/unit/cli/test_main.py`
+- Summary:
+  - Added `AgentStageImportRequirement` and `AgentStageImportRequirementResult` for per-stage required skill IDs, MCP server IDs, and scoped `server_id:tool_name` refs.
+  - Extended profile-set bundle parsing and validation so missing required stage imports appear as failures with `stage_import_requirement_failed_stages`.
+  - Preserved bundle `stage_import_requirements` through `import-set`, `inspect-set`, `team-attach`, runtime bundle materialization, and `serve`/`autopilot` profile-set validation.
+  - Updated the generated default CCF-B/SCI-Q2 team template so literature, research-plan, loop-campaign, experiment, reproduction, citations, review, publication-audit, and evidence-gate stages declare their minimum custom research instruments.
+  - Documented the gate in English and Chinese README files and added task `254.1` plus dependency wave `157` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_validation_checks_stage_import_requirements tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\cli\test_main.py::test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py`: passed with no issues in 8 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 640 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Implement the next novelty/doability refinement so brainstorm and research-plan selection judge whether an idea is worth doing from its own data, baseline, metric, falsification, and execution path, while similarity matching is used mainly to detect direct duplicate risk and adjacent work to cite or borrow from.
+
+### 2026-06-24 11:40:15 +08:00 - Codex - Task 255.1 Novelty doability self-judgment for brainstorm screening
+
+- Request: Adjust innovation screening so the system judges whether a direction is worth doing from the idea's own executable research structure, while source matching is mainly used to detect direct duplicate risk and borrowable adjacent context.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/research/brainstorm.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `Agent.md`
+- Summary:
+  - Updated brainstorm evidence-review policy text to state that doability is judged first from data/source, baseline, metric, and falsification plan, while matching is mainly duplicate-risk screening.
+  - Changed `_review_decision` so a low-duplicate-risk idea with strong doability and verifiability can be promoted to research-plan consideration even when no close same-direction prior work is retrieved.
+  - Expanded reviewer reasons and synthesis wording so Obsidian notes explain that can-do judgment comes from the idea's own executable plan, while retrieval matching supplies duplicate-risk evidence and borrowable context.
+  - Updated the live reviewer unit test so missing close prior work with a complete experiment skeleton is promoted, not treated as a feasibility blocker.
+  - Updated README/README.zh-CN and added task `255.1` plus dependency wave `158` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py::test_brainstorm_live_reviewer_treats_missing_close_match_as_novelty_not_blocker tests\unit\research\test_brainstorm.py::test_brainstorm_evidence_review_downranks_duplicate_without_penalizing_novel_gap -q`: passed with 2 tests.
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py`: passed with no issues in 1 source file.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 640 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Apply the same self-judgment distinction to research-plan and publication-audit wording where useful: broad source/search coverage should remain required, direct duplicates should block, and sparse same-direction matches should become novelty potential plus related-work positioning work rather than an automatic feasibility failure.
+
+### 2026-06-24 11:52:34 +08:00 - Codex - Task 256.1 Novelty search publication-audit semantics
+
+- Request: Continue the novelty/doability correction so research-plan and publication-audit layers judge "worth doing" from the idea's executable structure, while similarity search is used mainly for duplicate-risk and adjacent-work positioning.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/reports/publication_audit.py`
+  - `src/autoresearch/research/plans.py`
+  - `tests/unit/reports/test_publication_audit.py`
+  - `tests/unit/research/test_plans.py`
+  - `Agent.md`
+- Summary:
+  - Updated research-plan rationale text so a direction's can-do judgment comes from an executable experiment skeleton: data source, baseline, metric, falsification path, and reproducible command path.
+  - Changed publication-audit similarity checks so broad query/source coverage and source errors remain strict, direct duplicates still block publication, and sparse or unclassified same-direction matches produce revision warnings instead of automatic feasibility failures.
+  - Added strict-target verdict logic so unresolved high-severity similarity warnings return `needs_revision`; the system can proceed with a novel direction, but it cannot call a paper publishable until duplicate-risk and positioning gaps are resolved.
+  - Expanded publication-audit tests for unknown-only matches, sparse classified matches, and direct duplicate blockers.
+  - Updated README/README.zh-CN and added task `256.1` plus dependency wave `159` to the Kiro task plan.
+- Verification:
+  - Focused `python -m pytest tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_unknown_only_similarity_classifications tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_sparse_classified_similarity_findings tests\unit\reports\test_publication_audit.py::test_publication_audit_still_blocks_direct_duplicate_similarity_findings tests\unit\research\test_plans.py::test_generate_research_plan_writes_vault_markdown_and_outputs -q`: passed with 4 tests.
+  - Focused `python -m ruff check src\autoresearch\reports\publication_audit.py src\autoresearch\research\plans.py tests\unit\reports\test_publication_audit.py tests\unit\research\test_plans.py`: passed.
+  - Focused `python -m mypy src\autoresearch\reports\publication_audit.py src\autoresearch\research\plans.py`: passed with no issues in 2 source files.
+  - First broad `python -m pytest tests\smoke tests\unit -q`: failed 3 older publication-audit happy-path tests because they lacked adjacent-work positioning under the stricter publication readiness semantics; updated their fixtures to include adjacent positioning evidence.
+  - Recheck `python -m pytest tests\unit\reports\test_publication_audit.py::test_publication_audit_passes_when_method_innovation_has_file_evidence tests\unit\reports\test_publication_audit.py::test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings tests\unit\reports\test_publication_audit.py::test_publication_audit_accepts_standalone_review_json tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_unknown_only_similarity_classifications tests\unit\reports\test_publication_audit.py::test_publication_audit_requires_revision_for_sparse_classified_similarity_findings tests\unit\reports\test_publication_audit.py::test_publication_audit_still_blocks_direct_duplicate_similarity_findings -q`: passed with 6 tests.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 641 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed before this log entry; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Use this policy in the next real loop run: let brainstorm/research-plan promote high-quality novel gaps, then require publication audit to prove no direct duplicate and to cite adjacent work before PDF-ready claims.
+
+### 2026-06-24 12:05:23 +08:00 - Codex - CI fix for Python 3.10 stderr capture
+
+- Request: Fix the new GitHub Actions CI failure.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected GitHub Actions run `28073612560` with `gh run view`; ruff and mypy had passed, and only the Python 3.10 smoke/unit step failed.
+  - Identified the failing test as `tests/unit/cli/test_main.py::test_agent_profile_team_template_writes_importable_bundle`.
+  - Replaced the brittle `second_result.stderr` assertion with `second_result.output`, because Click/Typer may combine stderr into output depending on runner/version configuration.
+  - Kept CLI behavior unchanged; this is a test portability fix.
+- Verification:
+  - `gh auth status`: authenticated as `neutronstar238` with repo/workflow scopes.
+  - `gh run list --repo neutronstar238/ai-researcher --limit 12 --json ...`: latest failing CI run was `28073612560` on `main` commit `eeaa576`.
+  - `gh run view 28073612560 --repo neutronstar238/ai-researcher --json ...`: Python 3.10 job failed only in "Run smoke and unit tests".
+  - `gh run view 28073612560 --repo neutronstar238/ai-researcher --job 83113220484 --log`: failure was `ValueError: stderr not separately captured` in `test_agent_profile_team_template_writes_importable_bundle`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q`: passed with 1 test.
+  - Focused `python -m ruff check tests\unit\cli\test_main.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 643 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - Added and resolved `P-20260624-010`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Push this focused CI fix to trigger a fresh GitHub Actions run on `main`.
+  - Continue the separate task `257.1` commit for scheduler-facing Agent skill/MCP route selection after the CI fix is isolated.
+
+### 2026-06-24 12:09:10 +08:00 - Codex - Task 257.1 Scheduler-facing Agent skill/MCP route selection
+
+- Request: Continue adding the ability to assign custom skills and MCPs to specific Agents, while keeping AI-Researcher research-first and avoiding over-engineered process layers.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/registry.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AgentStageRoute` and `AgentRegistry.select_for_stage(...)` as a scheduler-facing bridge from stage assignment to runtime Agent selection.
+  - The route selection combines normalized stage assignment, executable task capability, required skill IDs, MCP server IDs, and scoped MCP tool refs.
+  - Added matched/missing import diagnostics and `include_ineligible=True` so schedulers can explain why an Agent was not eligible instead of silently falling back.
+  - Preserved the existing task capability gate: selecting a route remains process metadata and does not grant permission to bypass `BaseAgent.run_task`.
+  - Made skill matching respect `allowed_tasks` when a task capability is supplied, so a skill imported for literature refresh cannot silently authorize experiment execution.
+  - Exported the new route model from `autoresearch.agents`, updated README/README.zh-CN, and added task `257.1` plus dependency wave `160`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_registry_selects_stage_agent_with_required_imports_and_capability tests\unit\agents\test_profiles.py::test_registry_stage_selection_reports_missing_imports_and_task_scope tests\unit\agents\test_profiles.py::test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py tests\unit\agents\test_profiles.py`: passed.
+  - First focused `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py`: failed because the existing `AgentRegistry.list` method shadowed the built-in `list[...]` annotation inside the class body; fixed with a module-level `AgentStageRouteList` alias.
+  - Recheck focused `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py`: passed with no issues in 2 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 643 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - Added and resolved `P-20260624-011`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire future stage schedulers to consume `select_for_stage(...)` when launching literature, experiment, reproduction, review, publication-audit, and evidence-gate workers from loaded Agent teams.

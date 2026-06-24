@@ -30,6 +30,14 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Verification:
 ```
 
+## Loop Failure Logging Rule
+
+Closed-loop campaign failures are first-class audit events. Any loop failure, metadata shortfall,
+evidence gap, reproduction delta breach, blocked publication/strategy gate, repeated-failure stop,
+or human approval point must be written to the cycle artifacts or Obsidian loop report. If the issue
+changes future work, hides uncertainty, or could cause another agent to over-claim results, add or
+update a factual problem entry below.
+
 ## Problems
 
 ### P-20260624-012 - PR #2 Windows console regression tests polluted Linux CI path state
@@ -46,9 +54,9 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Next action: Do not monkeypatch global `os.name` in tests. Use explicit helper injection or patch the local subprocess kwargs function at the call site instead.
 - Linked tasks: GitHub PR #2 CI fix, no `.kiro` task ID.
 - Resolution: Added test-only injection parameters to `windows_no_window_kwargs()` and updated process, notification, and research-plan regression tests so they no longer mutate global `os.name`.
-- Verification: Focused no-window regression tests passed; broad `python -m pytest tests\smoke tests\unit -q` passed with `552 passed, 4 skipped`; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed.
+- Verification: Focused no-window regression tests passed; after merging current `origin/main`, broad `python -m pytest tests\smoke tests\unit -q` passed with `646 passed, 4 skipped`; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed with no issues in 110 source files.
 
-### P-20260623-002 - Notification and research-plan commands still opened Windows console windows
+### P-20260624-013 - Notification and research-plan commands still opened Windows console windows
 
 - Status: Resolved
 - Severity: Low
@@ -63,6 +71,390 @@ Use this file to record blockers, defects, risks, failed commands, and important
 - Linked tasks: User-requested Windows bug sweep, no `.kiro` task ID.
 - Resolution: Added `windows_no_window_kwargs()` to the missed notification and research-plan subprocess calls and added regression tests for Windows creation flags.
 - Verification: `py -3 -m pytest tests\unit\test_process.py tests\unit\test_notifications.py tests\unit\research\test_plans.py tests\unit\experiments\test_executor.py tests\smoke\test_cli.py` passed with 30 tests; focused `py -3 -m ruff check ...` passed; `npm run doctor` passed.
+
+### P-20260624-011 - Registry class method name shadowed `list[...]` type annotation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 12:01:00 +08:00
+- Source: Focused mypy verification for task `257.1`.
+- Symptom: `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py` reported `Function "autoresearch.agents.registry.AgentRegistry.list" is not valid as a type`.
+- Impact: The new stage-route API tests passed, but the focused type gate failed until the annotation avoided the class-local `list` method name.
+- Evidence: Mypy pointed at the `select_for_stage(...) -> list[AgentStageRoute]` return annotation.
+- Root cause: Inside the `AgentRegistry` class body, the existing method named `list` shadowed the built-in `list` used in a PEP 585 type annotation.
+- Workaround: Define an `AgentStageRouteList` type alias outside the class and use it for the return type and local variable annotation.
+- Next action: When adding methods inside classes with common built-in names, prefer module-level aliases or `collections.abc` interfaces for annotations that would otherwise collide.
+- Linked tasks: `257.1`
+- Resolution: Added `AgentStageRouteList: TypeAlias = list[AgentStageRoute]` at module scope and used it in `select_for_stage`.
+- Verification: Focused mypy passed after the alias; broad `python -m mypy src\autoresearch` passed with no issues in 110 source files.
+
+### P-20260624-010 - CI failed because CLI test read stderr when Click did not capture it separately
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 12:02:00 +08:00
+- Source: GitHub Actions run `28073612560` for `main` commit `eeaa576`.
+- Symptom: The Python 3.10 CI job failed only in `tests/unit/cli/test_main.py::test_agent_profile_team_template_writes_importable_bundle` with `ValueError: stderr not separately captured`.
+- Impact: The CLI behavior was not broken, but the CI test was not portable across the Click/Typer runner stderr capture mode used in GitHub Actions.
+- Evidence: `gh run view 28073612560 --repo neutronstar238/ai-researcher --job 83113220484 --log` reported `1 failed, 635 passed, 8 skipped` and the failing test plus exception.
+- Root cause: The test asserted against `second_result.stderr`, which raises when the runner combines stderr into the standard output stream.
+- Workaround: Use `second_result.output`, which is available in both combined and separate stderr capture modes.
+- Next action: Prefer `result.output` for Typer CLI error-output assertions unless a test explicitly configures and verifies separate stderr capture.
+- Linked tasks: CI fix after task `255.1`
+- Resolution: Changed the overwrite-error assertion to inspect `second_result.output`.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q` passed; `python -m pytest tests\smoke tests\unit -q` passed with 643 passed and 4 skipped; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; `git diff --check` passed with only the existing README.zh-CN CRLF warning.
+
+### P-20260624-009 - PowerShell staging command used unsupported `&&` separator
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:58:00 +08:00
+- Source: Git staging step for task `252.1`.
+- Symptom: A combined staging/status command failed in PowerShell because `&&` is not accepted as a statement separator in this shell version.
+- Impact: No files were staged by the failed command; the task was not committed until staging was rerun with separate commands.
+- Evidence: `git add ... && git status --short` failed with `The token '&&' is not a valid statement separator in this version.`
+- Root cause: Used a shell separator that is valid in newer shells but not in this PowerShell environment.
+- Workaround: Run `git add` and `git status --short` as separate commands.
+- Next action: Keep git staging/status commands separate in this repository's PowerShell sessions.
+- Linked tasks: `252.1`
+- Resolution: Reran `git add` separately and verified staged status with a separate `git status --short`.
+- Verification: `git status --short` showed all 11 task files staged.
+
+### P-20260624-008 - Task 252 verification exposed test and typing compatibility issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:55:00 +08:00
+- Source: Focused and broad verification for task `252.1`.
+- Symptom: The first focused ruff pass reported unsorted imports in `tests/unit/research/test_brainstorm.py`; a focused mypy pass later reported incompatible reuse of a `fetch` loop variable in `src/autoresearch/research/brainstorm.py`; the first broad smoke/unit pytest run failed two CLI autopilot tests because their fake brainstorm reports did not expose the new `evidence_reviews` attribute.
+- Impact: Product code was not released with the issues, but task verification could not pass until the test/typing/compatibility gaps were fixed.
+- Evidence: `python -m ruff check ...` reported `I001`; `python -m mypy ...` reported incompatible assignment and missing `source_type`/`result_count` attributes; `python -m pytest tests\smoke tests\unit -q` first reported two `AttributeError("'types.SimpleNamespace' object has no attribute 'evidence_reviews'")` failures.
+- Root cause: New reviewer fields changed report shape, and one helper reused a loop variable name across different fetch record types.
+- Workaround: None needed after import ordering, distinct `literature_fetch`/`inspiration_fetch` variables, and `getattr(..., 'evidence_reviews', ())` compatibility in CLI heartbeat output.
+- Next action: Keep broad CLI tests when extending report dataclasses because older fake reports intentionally exercise compatibility paths.
+- Linked tasks: `252.1`
+- Resolution: Fixed import order, typed fetch variable names, and compatibility reads for legacy fake reports.
+- Verification: Focused ruff/mypy/pytest passed after fixes; broad `python -m pytest tests\smoke tests\unit -q` passed with 637 passed and 4 skipped.
+
+### P-20260624-007 - Brainstorm live reviewer hit ArXiv 429 during real source fetch
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-06-24 10:49:00 +08:00
+- Source: Real provider-backed `brainstorm --evidence-review` smoke for task `252.1`.
+- Symptom: The live brainstorm reviewer completed successfully, but both ArXiv fetch attempts in the idea-level evidence review returned `HTTPError: HTTP Error 429: Unknown Error`.
+- Impact: The reviewer still wrote source fetch evidence and continued through OpenAlex, Hugging Face, GitHub, and Hacker News. The affected run should not be interpreted as exhaustive ArXiv coverage.
+- Evidence: `runs/manual-live/task252-brainstorm-reviewer-live2/brainstorm/brainstorm-ideas.json` records ArXiv fetch errors for queries `variance calibrated prototypes deduplicated handwritten digit data` and `variance calibrated prototypes deduplicated handwritten digit data removing near`, while OpenAlex and ecosystem sources returned normally.
+- Root cause: External ArXiv rate limiting during a real live smoke; the current reviewer records the error but does not yet apply a dedicated ArXiv circuit breaker.
+- Workaround: Reviewer fetch records are persisted per idea so later stages can see the partial source coverage. OpenAlex remains the primary free literature source when ArXiv is rate-limited.
+- Next action: Add source-specific backoff/circuit-breaker behavior for brainstorm reviewer literature fetches if ArXiv 429s recur across cycles.
+- Linked tasks: `252.1`
+- Resolution: Not resolved; evidence recording mitigates over-claiming.
+- Verification: The live smoke exited 0 and wrote one `evidence_reviews` entry with 10 source fetch records, including the ArXiv 429 errors.
+
+### P-20260624-006 - Brainstorm rationale focused test used stale fake-runner parameter names
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 10:31:28 +08:00
+- Source: Focused verification for task `251.1`.
+- Symptom: The first focused ruff/test pass after adding brainstorm selection rationales failed because one test fake renamed parameters to `_prompt`, `_messages`, and `_temperature` while still referencing the old names, and another fake still had unused argument names.
+- Impact: Product code was not released with the issue, but the focused verification could not pass until the test fixtures matched their usage.
+- Evidence: `python -m ruff check src\autoresearch\research\brainstorm.py tests\unit\research\test_brainstorm.py` reported `F821` undefined names and `ARG001` unused arguments; the paired focused pytest failed with `NameError: name 'temperature' is not defined`.
+- Root cause: A manual test cleanup changed the wrong fake-completion function signature.
+- Workaround: None needed after restoring the first fake's used argument names and changing only the second fake to underscore-prefixed unused arguments.
+- Next action: Keep focused brainstorm tests around future selection-rationale changes.
+- Linked tasks: `251.1`
+- Resolution: Corrected both test fake-completion signatures.
+- Verification: Focused brainstorm/plan/autopilot tests, focused ruff, focused mypy, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` passed after the fix.
+
+### P-20260624-005 - Setup Agent team helper returned untyped skill paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:28:00 +08:00
+- Source: Focused mypy verification for task `241.1`.
+- Symptom: The first focused mypy run reported that `len(...)` received `object` instead of a sized value inside the `agents profile team-template` command output.
+- Impact: Product behavior was not released with the issue, but the focused type gate could not pass until the setup/team-template helper result was narrowed.
+- Evidence: `python -m mypy src\autoresearch\cli\main.py` reported `Argument 1 to "len" has incompatible type "object"; expected "Sized" [arg-type]`.
+- Root cause: `_write_default_agent_team_template()` returns a generic `dict[str, object]`, and the command read `template["skill_paths"]` without narrowing it back to the known `tuple[Path, ...]`.
+- Workaround: None needed after the command narrows the value with `cast(tuple[Path, ...], ...)`.
+- Next action: Keep focused mypy around setup/template CLI helpers when adding new structured return dictionaries.
+- Linked tasks: `241.1`
+- Resolution: Cast the `skill_paths` entry before computing its length and iterating for operator output.
+- Verification: Focused mypy passed after the cast, and the real setup/import/runtime smoke exercised the same helper path.
+
+### P-20260624-004 - Real runtime bundle smoke fixture used unsupported bundle keys
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:12:00 +08:00
+- Source: Real CLI verification for task `239.1`.
+- Symptom: The first real `autopilot --agent-profile-set-bundle` smoke failed bundle validation because the hand-written fixture used unsupported `policy` and `approval` keys and `role: reviewer`.
+- Impact: Product code was not released with the issue, but the real verification could not exercise runtime materialization until the fixture matched the existing profile-set bundle schema.
+- Evidence: `node .\bin\airesearcher.mjs autopilot ... --agent-profile-set-bundle runs\manual-live\task239-runtime-bundle-v1\team.yaml --require-agent-profile-set --no-review --cycles 1 --no-push-inspiration --no-claim-session` exited 1 with Pydantic errors for extra `policy`, extra `approval`, and invalid role enum `reviewer`.
+- Root cause: The fixture mixed CLI flag terminology with the persisted bundle schema. Persisted bundle skills use `import_policy`, MCP servers use `approval_policy`, and reviewer-like agents use `role: validator_agent` with `thinking_mode: reviewer`.
+- Workaround: None needed after fixing the fixture.
+- Next action: Keep README examples and smoke fixtures aligned with `AgentProfileSetBundle` rather than CLI flag names.
+- Linked tasks: `239.1`
+- Resolution: Updated the real smoke bundle to use `import_policy`, `approval_policy`, `role: validator_agent`, and `thinking_mode: reviewer`.
+- Verification: The corrected real CLI smoke passed, materialized one bundle into three profiles, passed the 9/9 profile-set gate, wrote stage packets, and continued to the expected publication/evidence gates.
+
+### P-20260624-003 - Runtime profile-set bundle materialization kept relative skill paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 02:10:00 +08:00
+- Source: Focused verification for task `239.1`.
+- Symptom: The first runtime bundle focused test expected a materialized profile skill source to resolve to the bundle's local `skills/source.md`, but the generated runtime profile still contained the relative `skills/source.md` string.
+- Impact: Runtime `serve`/`autopilot` bundle loading could have failed readiness checks or resolved local skills against the wrong working directory, even though the standalone `agents profile import-set` command worked.
+- Evidence: `python -m pytest tests\unit\cli\test_main.py::test_autopilot_agent_profile_set_bundle_materializes_before_gate tests\unit\cli\test_main.py::test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation -q` initially failed the generated skill-source assertion.
+- Root cause: Relative local skill-source resolution was first applied in the manual import-set command path instead of the new runtime materialization helper.
+- Workaround: None needed after moving the resolution into runtime bundle materialization while preserving manual import-set behavior.
+- Next action: Keep a CLI regression that loads a profile-set bundle directly through `autopilot` and asserts generated profile paths, source bundle paths, readiness, and pre-retrieval blocking behavior.
+- Linked tasks: `239.1`
+- Resolution: Added `_resolve_bundle_profile_sources()` to the runtime bundle materialization path and kept `agents profile import-set` unchanged.
+- Verification: The focused runtime bundle CLI tests passed, focused ruff passed, and focused mypy passed.
+
+### P-20260624-002 - Profile-set import CLI used the wrong safe-path helper name
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 01:52:00 +08:00
+- Source: Focused verification for task `238.1`.
+- Symptom: The first focused CLI tests for `agents profile import-set` failed with `NameError("name '_safe_path_part' is not defined")`.
+- Impact: The new import-set command could not write per-Agent profile files until the helper name matched the CLI module.
+- Evidence: `python -m pytest tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_builds_multiple_profiles tests\unit\agents\test_profiles.py::test_agent_profile_set_bundle_rejects_duplicate_agent_ids tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_writes_profiles_and_validation tests\unit\cli\test_main.py::test_agent_profile_import_set_cli_fails_missing_required_stage -q` failed two CLI tests with the NameError.
+- Root cause: The command used `_safe_path_part`, which exists in the Agent profile module, instead of the CLI module's existing `_safe_path_segment` helper.
+- Workaround: None needed after using `_safe_path_segment`.
+- Next action: Keep focused CLI tests around any new command that derives file names from user-facing IDs.
+- Linked tasks: `238.1`
+- Resolution: Replaced `_safe_path_part(profile.agent_id)` with `_safe_path_segment(profile.agent_id)` in `import_agent_profile_set_command`.
+- Verification: The focused profile-set bundle/API/CLI tests passed, real CLI `agents profile import-set` produced 3 profiles and a 9/9 validation report, broad smoke/unit tests passed, broad ruff passed, and broad mypy passed.
+
+### P-20260624-001 - Runtime profile-set preflight focused checks exposed test and typing fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 01:45:00 +08:00
+- Source: Focused verification for task `237.1`.
+- Symptom: `test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix` failed because the test attempted to create an Agent profile without any skill or MCP binding. Focused mypy also reported `blocked_summary` was redefined inside `_run_autopilot_cycle`.
+- Impact: The new runtime profile-set gate behavior was not fully verified until the test fixture obeyed existing profile constraints and the duplicate local variable was renamed.
+- Evidence: Pytest reported `agent profile must bind at least one custom skill or MCP server`; mypy reported `Name "blocked_summary" already defined`.
+- Root cause: The new test fixture ignored the established AgentProfile invariant, and the new profile-set blocked branch reused the same local variable name as the existing source-preflight blocked branch.
+- Workaround: None needed after adding a local read-only skill to the test profile and renaming the first blocked summary variable.
+- Next action: Keep profile-set gate tests using valid profile artifacts with at least one bounded skill or MCP binding.
+- Linked tasks: `237.1`
+- Resolution: Added a local `source-tracing` skill to the require-gate test profile and renamed the profile-set branch summary variable to `agent_profile_blocked_summary`.
+- Verification: Focused profile-set tests, focused ruff, focused mypy, real require-gate smoke, broad smoke/unit tests, broad ruff, and broad mypy passed after the fix.
+
+### P-20260623-014 - Heartbeat focused verification needed threshold and import-order fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 18:05:00 +08:00
+- Source: Focused verification for task `233.1`.
+- Symptom: The first focused heartbeat pytest expected the research-plan stage to be stalled, but the test threshold also made it stale; focused ruff also reported import ordering in `src/autoresearch/cli/main.py`.
+- Impact: Product behavior was not released with the issue, but the heartbeat watchdog task could not pass verification until the focused test isolated stale and stalled cases correctly and imports were normalized.
+- Evidence: `python -m pytest tests\unit\runtime\test_heartbeat.py tests\unit\cli\test_main.py::test_runtime_heartbeat_cli_write_and_check_detects_stall -q` failed one assertion; `python -m ruff check ...` reported one fixable `I001` in `src/autoresearch/cli/main.py`.
+- Root cause: The initial test used `stale_after_seconds=120`, making both stages stale before the stalled assertion; new CLI imports were inserted manually.
+- Workaround: None needed after the fix.
+- Next action: Keep separate threshold coverage for stale and stalled heartbeat states.
+- Linked tasks: `233.1`
+- Resolution: Raised the stale threshold in the test so the research-plan stage is fresh but repeated, then ran ruff import normalization.
+- Verification: Focused heartbeat pytest passed with 3 tests; focused ruff passed; focused mypy passed with no issues in 5 source files.
+
+### P-20260623-013 - Loop contract gate treated override wording as missing non-bypass policy
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 17:03:00 +08:00
+- Source: Focused verification for task `229.1`.
+- Symptom: The first focused loop contract tests failed even though the default closed-loop campaign stated that `LLM proposals cannot override evidence, budget, safety, or approval gates`.
+- Impact: A valid default campaign could be blocked before writing a loop report, which would prevent the new protocol contract gate from passing on normal runs.
+- Evidence: `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py::test_evidence_gate_passes_when_all_required_artifacts_are_physical tests\unit\reports\test_evidence_gate.py::test_evidence_gate_blocks_missing_loop_campaign_artifact tests\unit\reports\test_publication_audit.py::test_publication_audit_blocks_missing_loop_campaign_for_ccfb -q` failed two loop tests with `campaign constraints must state that LLM proposals cannot bypass gates`.
+- Root cause: `validate_loop_campaign_contract` checked only for the literal word `bypass` and did not accept the existing `override` wording used by the default campaign constraint.
+- Workaround: None needed after the fix.
+- Next action: Keep focused contract validation tests around loop campaign gate changes.
+- Linked tasks: `229.1`
+- Resolution: Updated the constraint check to accept either `bypass` or `override` while still requiring an explicit LLM gate constraint.
+- Verification: Focused loop/report/evidence/publication tests passed with 17 tests; focused ruff passed; focused mypy passed with no issues in 4 source files.
+
+### P-20260623-012 - MCP evidence artifact probe raced validation report creation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 16:38:00 +08:00
+- Source: Real CLI verification for task `228.1`.
+- Symptom: A parallel `rg` probe attempted to inspect `mcp-invocations-validation.json` before the concurrent `agents mcp-evidence validate` command finished writing it, so the probe reported that the file was missing.
+- Impact: Product behavior was unaffected, but the artifact inspection result was not trustworthy until the probe was rerun after validation completed.
+- Evidence: `agents mcp-evidence validate` exited 0 and printed the report path, while the parallel `rg` reported `os error 2` for the same path.
+- Root cause: The verification probe was run in parallel with the command that creates the validation report.
+- Workaround: Run artifact existence/content probes after writer commands complete when the probe depends on the generated output.
+- Next action: Keep dependent real-CLI artifact inspections serial.
+- Linked tasks: `228.1`
+- Resolution: Re-ran `Test-Path`, `Get-Content`, and `rg` after validation completed.
+- Verification: `Test-Path` returned true; the validation JSON reported `passed=true`, `record_count=1`, `failed_count=0`, and `warning_count=0`; a raw-payload search for `method-similarity-check|result_count` returned no matches in the ledger or validation JSON.
+
+### P-20260623-011 - MCP evidence focused verification exposed assertion, import, and typing fixes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 16:11:00 +08:00
+- Source: Focused verification for task `228.1`.
+- Symptom: The first MCP evidence focused pytest failed on a case-sensitive evidence-policy assertion, focused ruff reported import ordering and one unused import, and focused mypy reported that `request_artifact_ref` could be inferred as `str | None`.
+- Impact: Product behavior was not released with the defect, but the task could not pass verification until the evidence ledger tests and typing were corrected.
+- Evidence: `python -m pytest tests\unit\agents\test_mcp_evidence.py tests\unit\cli\test_main.py::test_agent_mcp_evidence_cli_add_list_and_validate -q` failed once; `python -m ruff check ...` reported `I001` and `F401`; `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` reported one `arg-type` error in `mcp_evidence.py`.
+- Root cause: The new ledger code was inserted manually and the helper returned an optional artifact ref despite the request artifact always being required.
+- Workaround: None needed after the fix.
+- Next action: Keep focused pytest, ruff, and mypy checks around MCP evidence ledger changes.
+- Linked tasks: `228.1`
+- Resolution: Made the test assertion case-insensitive, removed the unused import, normalized imports with ruff, and converted the required request artifact ref into an explicit non-optional value before model construction.
+- Verification: Focused MCP evidence pytest passed with 5 tests; focused ruff passed; focused mypy passed with no issues in 8 source files.
+
+### P-20260623-010 - README.zh-CN contains legacy mojibake around existing Chinese copy
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-06-23 15:32:00 +08:00
+- Source: README.zh-CN update while documenting task `227.1`.
+- Symptom: PowerShell/Python UTF-8 reads showed replacement-character mojibake in existing Chinese paragraphs, and `apply_patch` could not reliably match the affected line.
+- Impact: Product behavior is unaffected, but future documentation edits can accidentally preserve or expand unreadable Chinese copy if the file is edited without checking rendered text.
+- Evidence: Existing lines around the closed-loop cycle list displayed unreadable replacement-character text before this task; the targeted task `227.1` lines were replaced with valid UTF-8 Chinese.
+- Root cause: Historical encoding damage in `README.zh-CN.md` predates this task.
+- Workaround: For targeted Chinese doc edits, inspect the exact rendered lines and replace only the affected lines; avoid broad rewrites unless explicitly requested.
+- Next action: Schedule a separate README.zh-CN cleanup pass if the user wants the full Chinese README restored.
+- Linked tasks: `227.1`
+- Resolution: Replaced only the `227.1`-touched cycle step and campaign artifact paragraph with valid UTF-8 Chinese.
+- Verification: `rg` confirmed the touched README/README.zh-CN lines now document optimizer state and `llm_override_allowed=false`; `git diff --check` exits successfully but still prints the existing README.zh-CN CRLF normalization warning.
+
+### P-20260623-009 - MCP contract artifact probe used the wrong stage-context path
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:18:00 +08:00
+- Source: Real artifact inspection while verifying task `226.1`.
+- Symptom: The first PowerShell artifact probe attempted to read top-level `stage_runtime_contexts.literature[0]` and failed with `Cannot index into a null array`; a follow-up probe attempted to call `.GetType()` on the same null field and failed.
+- Impact: Product behavior was not affected, but the real artifact verification could not be trusted until the actual JSON structure was checked.
+- Evidence: `cycle-summary.json` stores stage runtime contexts under `agent_profiles.stage_runtime_contexts`, while `review-evidence-context.json` stores them under `stage_agent_contexts`.
+- Root cause: The verification script used an outdated top-level path instead of the current nested `agent_profiles.stage_runtime_contexts` path.
+- Workaround: Use `rg` and conservative JSON reads before indexing optional artifact fields.
+- Next action: Keep artifact probes aligned with current cycle-summary schema.
+- Linked tasks: `226.1`
+- Resolution: Re-ran artifact inspection using `agent_profiles.stage_runtime_contexts.literature[0].mcp_runtime_contracts[0]` and `stage_agent_contexts.review[0].mcp_runtime_contracts[0]`.
+- Verification: Corrected inspection confirmed `contract_kind=mcp_runtime_contract_process_metadata`, `tool_invocation_evidence_required=true`, `env_values_recorded=false`, `runtime_approval_required=true`, and evidence policy text says the contract does not prove tool invocation.
+
+### P-20260623-008 - MCP runtime contract import block needed ruff normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:08:00 +08:00
+- Source: Focused lint verification for task `226.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/agents/__init__.py`.
+- Impact: Product behavior was not affected, but the lint gate could not pass until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py src\autoresearch\llm\client.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py tests\unit\llm\test_client.py` reported one fixable `I001` finding before normalization.
+- Root cause: New MCP contract exports were inserted manually.
+- Workaround: None needed after automated normalization.
+- Next action: Run focused ruff after touching shared import blocks.
+- Linked tasks: `226.1`
+- Resolution: Ran `python -m ruff check src\autoresearch\agents\__init__.py --fix`.
+- Verification: Focused pytest passed with 19 tests; focused ruff passed; focused mypy passed with no issues in 8 source files.
+
+### P-20260623-007 - Skill materialization import blocks needed ruff normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:31:00 +08:00
+- Source: Focused lint verification for task `225.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `src/autoresearch/agents/__init__.py` and `src/autoresearch/cli/main.py`.
+- Impact: Product behavior was not affected, but the lint gate could not pass until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` reported two fixable `I001` findings.
+- Root cause: New materialization exports/imports were inserted manually.
+- Workaround: None needed after automated normalization.
+- Next action: Run focused ruff after touching shared import blocks.
+- Linked tasks: `225.1`
+- Resolution: Ran `python -m ruff check src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py --fix`.
+- Verification: Focused pytest passed with 14 tests; focused ruff passed; broad `python -m pytest tests\smoke tests\unit -q` passed with 578 passed and 4 skipped; broad `python -m ruff check src tests` passed.
+
+### P-20260623-006 - Skill materialization tests used noncanonical Windows text and source paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 15:27:00 +08:00
+- Source: Focused verification for task `225.1`.
+- Symptom: The first focused pytest run failed in two profile-materialization assertions because Windows text writes produced CRLF content, and failed in `test_agent_profile_write_and_inspect_cli` because the test created a local skill file under `_system/templates/` while the profile referenced `_system/skills/`.
+- Impact: Product behavior was not affected, but the materialization verification gate could not pass until tests asserted against actual file bytes and used the declared profile source path.
+- Evidence: `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle -q` reported three failures: CRLF content mismatches and materialized status `missing` instead of `loaded`.
+- Root cause: The tests compared against hard-coded LF strings and wrote the preview file to a path that did not match the profile source.
+- Workaround: None needed after the test repair.
+- Next action: Prefer byte/hash assertions from the actual test file and keep materialization preview fixtures aligned with the profile JSON source path.
+- Linked tasks: `225.1`
+- Resolution: Updated profile tests to read expected content and hashes from the actual files, and changed the CLI preview fixture path to `autoresearch-vault/_system/skills/source-tracing.md`.
+- Verification: Focused pytest passed with 14 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with 578 passed and 4 skipped.
+
+### P-20260623-005 - Stage-context helper test needed import-order normalization
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 13:59:42 +08:00
+- Source: Focused verification for task `218.1`.
+- Symptom: Focused ruff check failed with `I001 Import block is un-sorted or un-formatted` in `tests/unit/agents/test_profiles.py`.
+- Impact: Product behavior was not affected, but the task could not pass the lint gate until import ordering matched project formatting.
+- Evidence: `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` reported one fixable `I001`.
+- Root cause: The new helper imports were inserted manually and not in ruff/isort order.
+- Workaround: None needed after the automatic import-order fix.
+- Next action: Continue using focused ruff checks after editing shared test import blocks.
+- Linked tasks: `218.1`
+- Resolution: Ran `python -m ruff check tests\unit\agents\test_profiles.py --fix`.
+- Verification: The fixer reported `Found 1 error (1 fixed, 0 remaining)`; subsequent focused ruff and broad gates are recorded in `Agent.md`.
+
+### P-20260623-004 - Agent profile monitor test asserted Rich-wrapped cell text too tightly
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 14:18:00 +08:00
+- Source: Focused verification for task `216.1`.
+- Symptom: `test_monitor_renders_agent_flow_changes_and_preview` failed while looking for the literal combined string `page-agent:browser.search` and then `browser.search` in `result.stdout`.
+- Impact: Product behavior was not broken, but the focused verification gate could not pass until the test stopped depending on terminal-width wrapping.
+- Evidence: Pytest showed the monitor command exited successfully while Rich output did not contain the exact literal due table wrapping/truncation.
+- Root cause: The test asserted on a rendered Rich table cell instead of the stable row helper output.
+- Workaround: None needed after the assertion fix.
+- Next action: Prefer helper-level exact assertions for Rich table cell content and keep stdout checks to stable panel/title/identifier text.
+- Linked tasks: `216.1`
+- Resolution: Kept stdout assertions for the Agent Profiles panel, agent ID, skill ID, and MCP server ID, and added exact coverage through `_agent_profile_rows(summary)`.
+- Verification: Focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 2 tests.
+
+### P-20260623-003 - Agent profile verification had local command hygiene issues
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-23 13:41:00 +08:00
+- Source: Verifying task `215.1`.
+- Symptom: A focused pytest command used two stale test names and collected zero tests. The first focused ruff run also failed with `I001` import ordering in `src/autoresearch/cli/main.py`.
+- Impact: No product behavior was affected, but the task could not be marked verified until the correct tests ran and imports were normalized.
+- Evidence: Pytest reported `ERROR: not found` for `test_slash_commands_init_writes_templates` and `test_slash_commands_list_shows_templates`; ruff reported one fixable `I001`.
+- Root cause: The slash-command test had a different current name, and the new CLI imports were added before isort normalization.
+- Workaround: None needed after correction.
+- Next action: Use `rg` to confirm exact test names before running focused node selections in this repository.
+- Linked tasks: `215.1`
+- Resolution: Updated the slash-command test assertions for `/research:agent-profile`, ran `python -m ruff check src\autoresearch\cli\main.py --fix`, and reran the correct focused and broad gates.
+- Verification: Focused profile/slash tests passed with 8 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with `562 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
+
+### P-20260623-002 - Loop quality gates could pass from summary metrics after artifact deletion
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-06-23 18:34:00 +08:00
+- Source: Focused Loop Engineering gate regression tests for task `214.1`.
+- Symptom: `test_evidence_gate_blocks_missing_loop_campaign_artifact` and `test_publication_audit_blocks_missing_loop_campaign_for_ccfb` failed because `loop_campaign_gate` and `loop_campaign_quality_gate` could still pass from `cycle-summary.json` metrics after the physical `loop-campaign.json` artifact was removed.
+- Impact: A release or publication gate could treat cached summary fields as sufficient proof, weakening the "no evidence file, no release" rule for closed-loop campaigns.
+- Evidence: Focused pytest reported two failures where the missing-artifact checks failed but the quality gate checks still returned `pass`.
+- Root cause: The first Loop Engineering implementation used summary metrics as a fallback for the quality gate instead of requiring the campaign JSON to be readable.
+- Workaround: None needed after the gate fix.
+- Next action: Keep loop gates fail-closed: summary fields may help display status, but cannot replace readable campaign and report artifacts.
+- Linked tasks: `214.1`
+- Resolution: Updated evidence gate and publication audit to require a readable physical loop campaign artifact before loop quality gates can pass.
+- Verification: Focused Loop Engineering tests passed with 42 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with `556 passed, 4 skipped`; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed.
 
 ### P-20260623-001 - PR 1 merge conflicts and approval shortcut guidance
 

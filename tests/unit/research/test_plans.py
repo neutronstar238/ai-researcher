@@ -79,6 +79,8 @@ def test_generate_research_plan_writes_vault_markdown_and_outputs(tmp_path: Path
     assert "# Evidence Trace Adapter for UCI Pendigits with Evidence-Calibrated Evaluation" in markdown
     assert "## Code Agent Brief" in markdown
     assert "python scripts/run_experiment.py" in markdown
+    assert "executable experiment skeleton" in markdown
+    assert "Similarity matching is used to detect direct duplicate risk" in markdown
     assert "XH-202619" not in markdown
     assert "参赛" not in markdown
     assert "AI-Researcher system proposal" not in markdown
@@ -127,6 +129,7 @@ def test_generate_research_plan_filters_unmatched_seed_marker_when_context_exist
         compile_pdf=False,
         similarity_summary=tmp_path / "runs" / "similarity.md",
         literature_summary=tmp_path / "runs" / "literature.md",
+        brainstorm_summary=tmp_path / "runs" / "brainstorm.md",
     )
 
     markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
@@ -135,6 +138,7 @@ def test_generate_research_plan_filters_unmatched_seed_marker_when_context_exist
     assert METHOD_ALIGNED_SEED_NOT_FOUND_REF not in markdown
     assert "similarity_summary:" in markdown
     assert "literature_summary:" in markdown
+    assert "brainstorm_summary:" in markdown
 
 
 def test_research_plan_audit_blocks_project_title_and_contest_terms() -> None:

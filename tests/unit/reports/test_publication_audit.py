@@ -119,7 +119,7 @@ def test_publication_audit_passes_when_method_innovation_has_file_evidence(
     summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
 
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
@@ -165,6 +165,50 @@ def test_publication_audit_blocks_missing_citation_package_for_ccfb(
     checks = {check.check_id: check for check in report.checks}
     assert checks["citation_package"].status.value == "fail"
     assert checks["verified_citation_breadth"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_missing_loop_campaign_for_ccfb(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    Path(summary["loop_campaign"]["json_path"]).unlink()
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["loop_campaign_artifacts"].status.value == "fail"
+    assert checks["loop_campaign_quality_gate"].status.value == "fail"
+    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.publishable is False
+
+
+def test_publication_audit_blocks_failed_loop_campaign_contract(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(tmp_path, novel_method=True)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    Path(summary["demo"]["report_path"]).write_text(_paper_style_report(), encoding="utf-8")
+    loop_campaign_path = Path(summary["loop_campaign"]["json_path"])
+    payload = json.loads(loop_campaign_path.read_text(encoding="utf-8"))
+    payload["contract_validation"] = {
+        "passed": False,
+        "issues": ["campaign evidence_requirements missing validation report"],
+        "warnings": [],
+        "checked_fields": ["objective", "target_metric", "evidence_requirements"],
+        "evidence_policy": "campaign contract fixture",
+    }
+    loop_campaign_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["loop_campaign_quality_gate"].status.value == "fail"
+    assert "contract_passed=false" in checks["loop_campaign_quality_gate"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
@@ -283,7 +327,7 @@ def test_publication_audit_treats_semantic_scholar_errors_as_optional_warnings(
     ]
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
 
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
@@ -302,10 +346,10 @@ def test_publication_audit_accepts_standalone_review_json(
     summary["review"] = {"status": "skipped", "quality_score": 0.0, "verdict": "missing"}
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     report_path = Path(summary["demo"]["report_path"])
-    report_path.write_text(_paper_style_report(), encoding="utf-8")
+    report_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
     manuscript_path = tmp_path / "paper-manuscript" / "manuscript.md"
     manuscript_path.parent.mkdir(parents=True)
-    manuscript_path.write_text(_paper_style_report(), encoding="utf-8")
+    manuscript_path.write_text(_paper_style_report_with_adjacent_positioning(), encoding="utf-8")
     summary["paper_manuscript"] = {"markdown_path": manuscript_path.as_posix()}
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     validation_path = Path(summary["demo"]["validation_json_path"])
@@ -450,7 +494,7 @@ def test_publication_audit_blocks_ccfb_when_reviewer_needs_revision(
     assert report.publishable is False
 
 
-def test_publication_audit_blocks_unknown_only_similarity_classifications(
+def test_publication_audit_requires_revision_for_unknown_only_similarity_classifications(
     tmp_path: Path,
 ) -> None:
     summary_path = _write_real_benchmark_cycle(
@@ -465,14 +509,15 @@ def test_publication_audit_blocks_unknown_only_similarity_classifications(
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
     checks = {check.check_id: check for check in report.checks}
-    assert checks["similarity_classification_coverage"].status.value == "fail"
-    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
+    assert checks["similarity_classification_coverage"].status.value == "warning"
+    assert checks["similarity_classified_finding_breadth"].status.value == "warning"
+    assert checks["similarity_duplicate_risk"].status.value == "warning"
     assert "unknown" in checks["similarity_classification_coverage"].message
-    assert report.verdict is PublicationAuditVerdict.FAIL
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
     assert report.publishable is False
 
 
-def test_publication_audit_blocks_sparse_classified_similarity_findings(
+def test_publication_audit_requires_revision_for_sparse_classified_similarity_findings(
     tmp_path: Path,
 ) -> None:
     summary_path = _write_real_benchmark_cycle(
@@ -487,8 +532,33 @@ def test_publication_audit_blocks_sparse_classified_similarity_findings(
     report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
 
     checks = {check.check_id: check for check in report.checks}
-    assert checks["similarity_classified_finding_breadth"].status.value == "fail"
+    assert checks["similarity_classified_finding_breadth"].status.value == "warning"
     assert checks["similarity_classification_coverage"].status.value == "pass"
+    assert "not proof that the direction is infeasible" in checks[
+        "similarity_classified_finding_breadth"
+    ].next_action
+    assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
+    assert report.publishable is False
+
+
+def test_publication_audit_still_blocks_direct_duplicate_similarity_findings(
+    tmp_path: Path,
+) -> None:
+    summary_path = _write_real_benchmark_cycle(
+        tmp_path,
+        novel_method=True,
+        similarity_classifications=("direct_duplicate", *("adjacent_work" for _ in range(9))),
+    )
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    report_path = Path(summary["demo"]["report_path"])
+    report_path.write_text(_paper_style_report(), encoding="utf-8")
+
+    report = audit_publication_quality(cycle_summary_path=summary_path, target="ccf-b")
+
+    checks = {check.check_id: check for check in report.checks}
+    assert checks["similarity_duplicate_risk"].status.value == "fail"
+    assert checks["similarity_duplicate_risk"].severity == "blocking"
+    assert "direct duplicate" in checks["similarity_duplicate_risk"].message
     assert report.verdict is PublicationAuditVerdict.FAIL
     assert report.publishable is False
 
@@ -534,6 +604,57 @@ def test_publication_audit_blocks_weak_positive_method_effect(
     assert "standard errors" in checks["method_effect_evidence"].message
     assert report.verdict is PublicationAuditVerdict.NEEDS_REVISION
     assert report.publishable is False
+
+
+def _write_loop_artifacts(cycle_dir: Path) -> dict[str, dict[str, object]]:
+    loop_dir = cycle_dir / "loop-campaign"
+    loop_dir.mkdir(parents=True, exist_ok=True)
+    loop_campaign = loop_dir / "loop-campaign.json"
+    loop_report = loop_dir / "loop-report.md"
+    loop_report.write_text("# Loop Engineering Report\n", encoding="utf-8")
+    loop_campaign.write_text(
+        json.dumps(
+            {
+                "metrics": {
+                    "acceleration_factor": 2.0,
+                    "enhancement_factor": 1.01,
+                    "experiment_count": 1,
+                    "failure_recovery_rate": 1.0,
+                    "reproduction_delta": 0.0,
+                    "metadata_completeness": 1.0,
+                    "evidence_coverage": 1.0,
+                    "reward": 0.4,
+                },
+                "contract_validation": {
+                    "passed": True,
+                    "issues": [],
+                    "warnings": [],
+                    "checked_fields": ["objective", "target_metric", "protocol_artifacts"],
+                    "evidence_policy": "campaign contract fixture",
+                },
+                "quality_gate": {"passed": True, "issues": [], "warnings": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return {
+        "loop_campaign": {
+            "campaign_id": "loop_campaign_1",
+            "json_path": loop_campaign.as_posix(),
+            "markdown_path": loop_report.as_posix(),
+            "metrics": {
+                "metadata_completeness": 1.0,
+                "evidence_coverage": 1.0,
+                "reproduction_delta": 0.0,
+            },
+            "contract_validation": {"passed": True},
+            "quality_gate": {"passed": True},
+        },
+        "loop_report": {
+            "json_path": loop_campaign.as_posix(),
+            "markdown_path": loop_report.as_posix(),
+        },
+    }
 
 
 def _write_toy_cycle(tmp_path: Path) -> Path:
@@ -637,6 +758,7 @@ def _write_toy_cycle(tmp_path: Path) -> Path:
         "- Source URL/DOI: `https://arxiv.org/abs/0000.00000` / `unknown`\n",
         encoding="utf-8",
     )
+    loop_artifacts = _write_loop_artifacts(cycle_dir)
     cycle_summary = {
         "cycle_id": "cycle-test",
         "project_id": "project_1",
@@ -677,6 +799,7 @@ def _write_toy_cycle(tmp_path: Path) -> Path:
             "quality_score": 1.0,
             "verdict": "pass",
         },
+        **loop_artifacts,
     }
     summary_path = cycle_dir / "cycle-summary.json"
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")
@@ -1045,6 +1168,7 @@ def _write_real_benchmark_cycle(
         relevant=relevant_citations,
         direct=direct_citations,
     )
+    loop_artifacts = _write_loop_artifacts(cycle_dir)
     cycle_summary = {
         "cycle_id": "cycle-real",
         "project_id": "project_1",
@@ -1078,6 +1202,7 @@ def _write_real_benchmark_cycle(
             "quality_score": 1.0,
             "verdict": "pass",
         },
+        **loop_artifacts,
     }
     summary_path = cycle_dir / "cycle-summary.json"
     summary_path.write_text(json.dumps(cycle_summary, indent=2), encoding="utf-8")

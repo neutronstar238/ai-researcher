@@ -12,9 +12,10 @@
     "autopilot": "node ./bin/airesearcher.mjs autopilot",
     "monitor": "node ./bin/airesearcher.mjs monitor",
     "doctor": "node ./bin/airesearcher.mjs doctor",
+    "agent-team:inspect": "node ./bin/airesearcher.mjs agents profile inspect-set .airesearcher/agents/ccfb-team.yaml --materialize-skills --require-complete",
     "channel:test": "node ./bin/airesearcher.mjs channels test",
     "readiness": "node ./bin/airesearcher.mjs readiness",
-    "prelaunch": "node ./bin/airesearcher.mjs readiness --push-inspiration --require-channel-config --require-channel-sent",
+    "prelaunch": "node ./bin/airesearcher.mjs readiness --push-inspiration --require-channel-config --require-channel-sent --require-agent-team",
     "test": "python -m pytest tests/smoke tests/unit"
   },
   "engines": {

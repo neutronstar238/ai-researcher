@@ -89,6 +89,1120 @@ def test_obsidian_setup_creates_vault_assets_and_local_snippet(tmp_path: Path) -
     )
 
 
+def test_agent_profile_write_and_inspect_cli(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    vault_root = tmp_path / "vault"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--role",
+            "project_agent",
+            "--stage",
+            "literature",
+            "--stage",
+            "research-plan",
+            "--skill",
+            "source-tracing=autoresearch-vault/_system/skills/source-tracing.md",
+            "--skill-policy",
+            "source-tracing:approved_runtime",
+            "--mcp",
+            "obsidian=npx -y obsidian-mcp",
+            "--mcp-tool",
+            "obsidian:search_notes",
+            "--mcp-tool",
+            "obsidian:read_note",
+            "--mcp-approval",
+            "obsidian:approve_dangerous",
+            "--mcp-env-key",
+            "obsidian:OBSIDIAN_API_KEY",
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+            "--output",
+            str(profile_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile: literature-agent" in result.stdout
+    assert "[OK] assigned_stages: literature, research_plan" in result.stdout
+    assert profile_path.is_file()
+    note_path = vault_root / "projects" / "project-a" / "agents" / "literature-agent.md"
+    assert note_path.is_file()
+    note_text = note_path.read_text(encoding="utf-8")
+    assert "`literature`, `research_plan`" in note_text
+    assert "`approved_runtime`" in note_text
+    assert "`OBSIDIAN_API_KEY`" in note_text
+
+    inspect_result = CliRunner().invoke(app, ["agents", "profile", "inspect", str(profile_path)])
+
+    assert inspect_result.exit_code == 0, inspect_result.output
+    payload = json.loads(inspect_result.stdout)
+    assert payload["agent_id"] == "literature-agent"
+    assert payload["assigned_stages"] == ["literature", "research_plan"]
+    assert payload["skills"][0]["skill_id"] == "source-tracing"
+    assert payload["skills"][0]["import_policy"] == "approved_runtime"
+    assert payload["mcp_servers"][0]["allowed_tools"] == ["search_notes", "read_note"]
+    assert payload["mcp_servers"][0]["approval_policy"] == "approve_dangerous"
+    assert payload["mcp_servers"][0]["env_keys"] == ["OBSIDIAN_API_KEY"]
+    assert payload["mcp_runtime_contracts"][0]["server_id"] == "obsidian"
+    assert payload["mcp_runtime_contracts"][0]["runtime_approval_required"] is True
+    assert payload["mcp_runtime_contracts"][0]["env_values_recorded"] is False
+    assert "tool was invoked" in payload["mcp_runtime_contracts"][0]["evidence_policy"]
+
+    local_skill = tmp_path / "autoresearch-vault" / "_system" / "skills" / "source-tracing.md"
+    local_skill.parent.mkdir(parents=True)
+    local_skill.write_text("# Source Tracing\nBind every claim to evidence.\n", encoding="utf-8")
+    materialized_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect",
+            str(profile_path),
+            "--materialize-skills",
+            "--base-dir",
+            str(tmp_path),
+            "--max-skill-chars",
+            "80",
+        ],
+    )
+
+    assert materialized_result.exit_code == 0, materialized_result.output
+    materialized_payload = json.loads(materialized_result.stdout)
+    materialized_skill = materialized_payload["materialized_skills"][0]
+    assert materialized_skill["skill_id"] == "source-tracing"
+    assert materialized_skill["status"] == "loaded"
+    assert materialized_skill["content"].startswith("# Source Tracing")
+    assert materialized_skill["sha256"]
+    assert "scientific results" in materialized_skill["evidence_policy"]
+
+
+def test_agent_profile_export_stage_context_cli_writes_packet(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "review-skill.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Review Skill\nCheck claims against evidence.\n", encoding="utf-8")
+    literature_profile = tmp_path / "profiles" / "literature-agent.json"
+    reviewer_profile = tmp_path / "profiles" / "reviewer.json"
+    packet_path = tmp_path / "packets" / "review-context.json"
+    runner = CliRunner()
+
+    literature_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            "source-tracing=skills/source.md",
+            "--output",
+            str(literature_profile),
+        ],
+    )
+    reviewer_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "reviewer",
+            "--role",
+            "validator_agent",
+            "--stage",
+            "review",
+            "--skill",
+            "review-skill=skills/review-skill.md",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.review",
+            "--mcp-approval",
+            "opencode:read_only",
+            "--output",
+            str(reviewer_profile),
+        ],
+    )
+    export_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "export-stage-context",
+            str(literature_profile),
+            str(reviewer_profile),
+            "--stage",
+            "review",
+            "--base-dir",
+            str(tmp_path),
+            "--project-id",
+            "project_1",
+            "--cycle-id",
+            "cycle_1",
+            "--output",
+            str(packet_path),
+        ],
+    )
+
+    assert literature_result.exit_code == 0, literature_result.output
+    assert reviewer_result.exit_code == 0, reviewer_result.output
+    assert export_result.exit_code == 0, export_result.output
+    assert "[OK] agent_stage_context: review" in export_result.stdout
+    assert "[OK] agents: 1; ready=true" in export_result.stdout
+    packet = json.loads(packet_path.read_text(encoding="utf-8"))
+    assert packet["stage"] == "review"
+    assert packet["agent_ids"] == ["reviewer"]
+    assert packet["skill_ids"] == ["review-skill"]
+    assert packet["mcp_server_ids"] == ["opencode"]
+    assert packet["agents"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert packet["agents"][0]["materialized_skills"][0]["content"].startswith(
+        "# Review Skill"
+    )
+    assert packet["agents"][0]["mcp_runtime_contracts"][0]["allowed_tools"] == [
+        "code.review"
+    ]
+    assert "Agent Runtime Context: review" in packet["runtime_prompt"]
+    assert "Agent: reviewer" in packet["runtime_prompt"]
+    assert "# Review Skill" in packet["runtime_prompt"]
+    assert "`code.review`" in packet["runtime_prompt"]
+    assert "cannot prove scientific results" in packet["evidence_policy"]
+
+    missing_stage_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "export-stage-context",
+            str(literature_profile),
+            str(reviewer_profile),
+            "--stage",
+            "experiment",
+            "--base-dir",
+            str(tmp_path),
+            "--output",
+            str(tmp_path / "packets" / "experiment-context.json"),
+        ],
+    )
+
+    assert missing_stage_result.exit_code == 1
+    assert "no agent is assigned to stage experiment" in missing_stage_result.output
+
+
+def test_agent_profile_import_cli_writes_standard_profile(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "bundles" / "review-agent.yaml"
+    profile_path = tmp_path / "profiles" / "review-agent.json"
+    vault_root = tmp_path / "vault"
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "agent_id: review-agent",
+                "role: validator_agent",
+                "thinking_mode: reviewer",
+                "publication_target: ccf-b-or-sci-q2",
+                "assigned_stages:",
+                "  - review",
+                "  - publication-audit",
+                "thinking_contract_additions:",
+                "  - Judge novelty and claims against local evidence before prose quality.",
+                "skills:",
+                "  - skill_id: question-validator",
+                "    source: '[[Question-Validator]]'",
+                "    import_policy: read_only_context",
+                "mcp_servers:",
+                "  - server_id: citation-db",
+                "    command:",
+                "      - npx",
+                "      - -y",
+                "      - citation-mcp",
+                "    allowed_tools:",
+                "      - citations.lookup",
+                "    approval_policy: read_only",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import",
+            str(bundle_path),
+            "--output",
+            str(profile_path),
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_import: review-agent" in result.stdout
+    assert "[OK] assigned_stages: review, publication_audit" in result.stdout
+    payload = json.loads(profile_path.read_text(encoding="utf-8"))
+    assert payload["agent_id"] == "review-agent"
+    assert payload["thinking_mode"] == "reviewer"
+    assert payload["assigned_stages"] == ["review", "publication_audit"]
+    assert payload["skills"][0]["source_type"] == "obsidian_note"
+    assert payload["mcp_servers"][0]["approval_policy"] == "read_only"
+    assert "Start from the research question" in payload["thinking_contract"][0]
+    assert any("Judge novelty" in item for item in payload["thinking_contract"])
+    note_path = vault_root / "projects" / "project-a" / "agents" / "review-agent.md"
+    assert note_path.is_file()
+    assert "`citation-db`" in note_path.read_text(encoding="utf-8")
+
+
+def test_agent_profile_import_set_cli_writes_profiles_and_validation(
+    tmp_path: Path,
+) -> None:
+    skill_dir = tmp_path / "skills"
+    skill_dir.mkdir()
+    (skill_dir / "source.md").write_text("# Source\nBind claims to sources.\n", encoding="utf-8")
+    (skill_dir / "review.md").write_text(
+        "# Review\nBlock unsupported publication claims.\n",
+        encoding="utf-8",
+    )
+    bundle_path = tmp_path / "bundles" / "ccfb-team.yaml"
+    output_dir = tmp_path / "profiles"
+    validation_path = tmp_path / "reports" / "profile-set-validation.json"
+    vault_root = tmp_path / "vault"
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: ccfb-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+                "        import_policy: read_only_context",
+                "  - agent_id: review-agent",
+                "    role: validator_agent",
+                "    thinking_mode: reviewer",
+                "    assigned_stages:",
+                "      - review",
+                "    skills:",
+                "      - skill_id: review-skill",
+                "        source: skills/review.md",
+                "        import_policy: read_only_context",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(output_dir),
+            "--validation-output",
+            str(validation_path),
+            "--base-dir",
+            str(tmp_path),
+            "--vault",
+            str(vault_root),
+            "--project-id",
+            "project-a",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_set_import: ccfb-team" in result.stdout
+    assert "[OK] profiles: 2" in result.stdout
+    assert "[OK] agent_profile_set: passed" in result.stdout
+    assert "[OK] stage_coverage: 2/2; profiles=2" in result.stdout
+    assert "[STAGE] review: covered; agents=review-agent" in result.stdout
+    assert (output_dir / "literature-agent.json").is_file()
+    assert (output_dir / "review-agent.json").is_file()
+    assert (
+        vault_root / "projects" / "project-a" / "agents" / "literature-agent.md"
+    ).is_file()
+    payload = json.loads(validation_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["profile_count"] == 2
+    assert payload["required_stages"] == ["literature", "review"]
+    assert payload["stage_coverage"][0]["agent_ids"] == ["literature-agent"]
+
+
+def test_agent_profile_team_template_writes_importable_bundle(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_team_template: ccfb-runtime-team" in result.stdout
+    assert "[NEXT] runtime: --agent-profile-set-bundle" in result.stdout
+    assert bundle_path.is_file()
+    bundle_text = bundle_path.read_text(encoding="utf-8")
+    assert "profile_set_id: 'ccfb-runtime-team'" in bundle_text
+    assert "import_policy: read_only_context" in bundle_text
+    assert "approval_policy: read_only" in bundle_text
+    assert (bundle_path.parent / "skills" / "source.md").is_file()
+    assert (bundle_path.parent / "skills" / "experiment.md").is_file()
+    assert (bundle_path.parent / "skills" / "review.md").is_file()
+
+    second_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    assert second_result.exit_code == 1
+    assert "refusing to overwrite" in second_result.output
+
+    import_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "profiles"),
+            "--validation-output",
+            str(tmp_path / "validation.json"),
+            "--base-dir",
+            str(bundle_path.parent),
+        ],
+    )
+
+    assert import_result.exit_code == 0, import_result.output
+    assert "[OK] profiles: 3" in import_result.stdout
+    assert "[OK] agent_profile_set: passed" in import_result.stdout
+    assert "[OK] stage_coverage: 9/9; profiles=3" in import_result.stdout
+    validation = json.loads((tmp_path / "validation.json").read_text(encoding="utf-8"))
+    assert validation["passed"] is True
+    assert validation["missing_stages"] == []
+
+
+def test_agent_profile_inspect_set_cli_previews_materialized_team_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    inspection_path = tmp_path / "reports" / "team-inspection.json"
+    runner = CliRunner()
+
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+            "--profile-set-id",
+            "preview-team",
+        ],
+    )
+    inspect_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--materialize-skills",
+            "--output",
+            str(inspection_path),
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert inspect_result.exit_code == 0, inspect_result.output
+    assert "[OK] profile_set_inspection:" in inspect_result.stdout
+    assert "[OK] agent_profile_set_inspection: passed" in inspect_result.stdout
+    assert "[OK] stage_coverage: 9/9; profiles=3" in inspect_result.stdout
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    assert payload["inspection_kind"] == "agent_profile_set_inspection_process_metadata"
+    assert payload["profile_set_id"] == "preview-team"
+    assert payload["profile_count"] == 3
+    assert payload["validation"]["passed"] is True
+    assert payload["validation"]["covered_stage_count"] == 9
+    assert payload["profiles"][0]["context_kind"] == "agent_profile_process_metadata"
+    assert payload["profiles"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert payload["profiles"][0]["materialized_skills"][0]["sha256"]
+    assert payload["profiles"][0]["readiness"]["passed"] is True
+    assert any(profile["mcp_runtime_contracts"] for profile in payload["profiles"])
+    assert "scientific results" in payload["evidence_policy"]
+
+
+def test_agent_profile_team_attach_cli_updates_named_agent_bundle(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    inspection_path = tmp_path / "reports" / "team-inspection.json"
+    runner = CliRunner()
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+    custom_skill = bundle_path.parent / "skills" / "research-architect.md"
+    custom_skill.write_text(
+        "# Research Architect\nPlan executable ablations before coding.\n",
+        encoding="utf-8",
+    )
+
+    attach_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-attach",
+            str(bundle_path),
+            "--agent-id",
+            "experiment-agent",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--skill-policy",
+            "research-architect:approved_runtime",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.write",
+            "--stage",
+            "evidence-gate",
+        ],
+    )
+    inspect_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--materialize-skills",
+            "--output",
+            str(inspection_path),
+            "--require-complete",
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert attach_result.exit_code == 0, attach_result.output
+    assert "[OK] agent_profile_team_attach: experiment-agent" in attach_result.stdout
+    assert "[OK] agent_profile_set: passed; covered=9/9" in attach_result.stdout
+    assert "agents profile inspect-set" in attach_result.stdout
+    updated_bundle = cli_main.load_agent_profile_set_bundle(bundle_path)
+    experiment_profile = next(
+        profile for profile in updated_bundle.profiles if profile.agent_id == "experiment-agent"
+    )
+    assert "evidence_gate" in experiment_profile.assigned_stages
+    assert {skill.skill_id for skill in experiment_profile.skills} == {
+        "experiment-protocol",
+        "research-architect",
+    }
+    assert experiment_profile.skills[-1].import_policy.value == "approved_runtime"
+    assert experiment_profile.mcp_servers[0].server_id == "opencode"
+    assert experiment_profile.mcp_servers[0].allowed_tools == ("code.write",)
+    assert inspect_result.exit_code == 0, inspect_result.output
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    experiment_context = next(
+        profile for profile in payload["profiles"] if profile["agent_id"] == "experiment-agent"
+    )
+    assert experiment_context["readiness"]["passed"] is True
+    assert experiment_context["materialized_skills"][-1]["skill_id"] == "research-architect"
+    assert experiment_context["materialized_skills"][-1]["status"] == "loaded"
+    assert experiment_context["mcp_runtime_contracts"][0]["server_id"] == "opencode"
+
+
+def test_agent_profile_team_attach_cli_rejects_duplicate_without_replace(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "agents" / "ccfb-team.yaml"
+    runner = CliRunner()
+    template_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-template",
+            "--output",
+            str(bundle_path),
+        ],
+    )
+
+    attach_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "team-attach",
+            str(bundle_path),
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            "source-tracing=skills/source.md",
+        ],
+    )
+
+    assert template_result.exit_code == 0, template_result.output
+    assert attach_result.exit_code == 1
+    assert "skills already present on agent" in attach_result.output
+
+
+def test_agent_profile_inspect_set_cli_requires_complete_stage_matrix(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    bundle_path = tmp_path / "team.yaml"
+    inspection_path = tmp_path / "reports" / "incomplete-inspection.json"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: incomplete-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                f"        source: {skill_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "inspect-set",
+            str(bundle_path),
+            "--output",
+            str(inspection_path),
+            "--require-complete",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[OK] agent_profile_set_inspection: failed" in result.stdout
+    assert "[OK] stage_coverage: 1/2; profiles=1" in result.stdout
+    payload = json.loads(inspection_path.read_text(encoding="utf-8"))
+    assert payload["validation"]["passed"] is False
+    assert payload["validation"]["missing_stages"] == ["review"]
+
+
+def test_agent_profile_import_set_cli_fails_missing_required_stage(
+    tmp_path: Path,
+) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    bundle_path = tmp_path / "team.yaml"
+    validation_path = tmp_path / "profiles" / "profile-set-validation.json"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: incomplete-team",
+                "required_stages:",
+                "  - literature",
+                "  - review",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                f"        source: {skill_path.as_posix()}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "import-set",
+            str(bundle_path),
+            "--output-dir",
+            str(tmp_path / "profiles"),
+            "--validation-output",
+            str(validation_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[OK] agent_profile_set: failed" in result.stdout
+    assert "[FAIL] missing required stage coverage: review" in result.stdout
+    payload = json.loads(validation_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is False
+    assert payload["missing_stages"] == ["review"]
+
+
+def test_agent_mcp_evidence_cli_add_list_and_validate(tmp_path: Path) -> None:
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    ledger_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations.jsonl"
+    report_path = tmp_path / "runs" / "cycle-1" / "mcp-invocations-validation.json"
+    request_path = tmp_path / "runs" / "cycle-1" / "request.json"
+    response_path = tmp_path / "runs" / "cycle-1" / "response.json"
+    request_path.parent.mkdir(parents=True)
+    request_path.write_text(json.dumps({"query": "prototype classifier"}), encoding="utf-8")
+    response_path.write_text(json.dumps({"result_count": 2}), encoding="utf-8")
+
+    profile_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-approval",
+            "page-agent:approve_dangerous",
+            "--output",
+            str(profile_path),
+        ],
+    )
+
+    assert profile_result.exit_code == 0, profile_result.output
+
+    add_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "mcp-evidence",
+            "add",
+            "--profile",
+            str(profile_path),
+            "--ledger",
+            str(ledger_path),
+            "--project-id",
+            "project_1",
+            "--cycle-id",
+            "cycle_1",
+            "--server-id",
+            "page-agent",
+            "--tool-name",
+            "browser.search",
+            "--request-artifact",
+            str(request_path),
+            "--response-artifact",
+            str(response_path),
+            "--runtime-approval-request-id",
+            "approval_1",
+            "--result-summary",
+            "Search returned two source candidates.",
+            "--base-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert add_result.exit_code == 0, add_result.output
+    assert "[OK] mcp_invocation_evidence:" in add_result.stdout
+    assert ledger_path.is_file()
+    ledger_text = ledger_path.read_text(encoding="utf-8")
+    assert "prototype classifier" not in ledger_text
+    payload = json.loads(ledger_text)
+    assert payload["evidence_kind"] == "mcp_tool_invocation_evidence"
+    assert payload["agent_id"] == "literature-agent"
+    assert payload["server_id"] == "page-agent"
+    assert payload["tool_name"] == "browser.search"
+    assert payload["request_sha256"]
+    assert payload["response_sha256"]
+
+    list_result = CliRunner().invoke(app, ["agents", "mcp-evidence", "list", str(ledger_path)])
+
+    assert list_result.exit_code == 0, list_result.output
+    assert "mcp_invocation_evidence_records: 1" in list_result.stdout
+    assert "tool=page-agent:browser.search" in list_result.stdout
+
+    validate_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "mcp-evidence",
+            "validate",
+            "--profile",
+            str(profile_path),
+            str(ledger_path),
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "mcp_invocation_evidence_validation: passed" in validate_result.stdout
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["passed"] is True
+    assert report["record_count"] == 1
+    assert "Scientific claims" in report["evidence_policy"]
+
+
+def test_agent_profile_write_cli_rejects_mcp_without_tools(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--mcp",
+            "browser=npx -y browser-mcp",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "at least 1 item" in result.output
+
+
+def test_agent_profile_write_cli_rejects_unknown_stage(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--stage",
+            "paper-writing-vibes",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "unknown agent profile stage" in result.output
+
+
+def test_agent_profile_write_cli_rejects_dangling_policy_specs(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--skill-policy",
+            "source-tracing:approved_runtime",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "--skill-policy references missing --skill binding" in result.output
+
+
+def test_agent_profile_write_cli_rejects_invalid_mcp_env_key(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "planner",
+            "--skill",
+            "research-architect=skills/research-architect.md",
+            "--mcp",
+            "browser=npx -y browser-mcp",
+            "--mcp-tool",
+            "browser:search",
+            "--mcp-env-key",
+            "browser:browser_token",
+            "--output",
+            str(tmp_path / "profile.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "uppercase environment variable" in result.output
+
+
+def test_agent_profile_validate_cli_writes_readiness_report(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    env_path = tmp_path / ".env"
+    env_path.write_text("PAGE_AGENT_TOKEN=secret-value\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    readiness_path = tmp_path / "profiles" / "literature-agent-readiness.json"
+    runner = CliRunner()
+
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-env-key",
+            "page-agent:PAGE_AGENT_TOKEN",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "validate",
+            str(profile_path),
+            "--env-path",
+            str(env_path),
+            "--output",
+            str(readiness_path),
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "[OK] agent_profile_readiness: passed" in validate_result.stdout
+    payload = json.loads(readiness_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["failed_check_count"] == 0
+    assert "secret-value" not in readiness_path.read_text(encoding="utf-8")
+
+
+def test_agent_profile_validate_cli_fails_on_missing_env_key(tmp_path: Path) -> None:
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    runner = CliRunner()
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--mcp",
+            "page-agent=npx -y page-agent",
+            "--mcp-tool",
+            "page-agent:browser.search",
+            "--mcp-env-key",
+            "page-agent:PAGE_AGENT_TOKEN",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "validate",
+            str(profile_path),
+            "--env-path",
+            str(tmp_path / ".env"),
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 1
+    assert "[CHECK] mcp_env_keys:page-agent: fail" in validate_result.stdout
+
+
+def test_agent_profile_set_validate_cli_reports_stage_matrix(tmp_path: Path) -> None:
+    skill_dir = tmp_path / "skills"
+    skill_dir.mkdir()
+    (skill_dir / "source.md").write_text("# Source\nBind sources.\n", encoding="utf-8")
+    (skill_dir / "experiment.md").write_text("# Experiment\nRun baselines.\n", encoding="utf-8")
+    literature_profile = tmp_path / "profiles" / "literature.json"
+    experiment_profile = tmp_path / "profiles" / "experiment.json"
+    report_path = tmp_path / "profiles" / "profile-set.json"
+    runner = CliRunner()
+
+    literature_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--stage",
+            "research-plan",
+            "--skill",
+            "source-tracing=skills/source.md",
+            "--output",
+            str(literature_profile),
+        ],
+    )
+    experiment_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "experiment-agent",
+            "--stage",
+            "experiment",
+            "--stage",
+            "review",
+            "--skill",
+            "empirical-paper=skills/experiment.md",
+            "--mcp",
+            "opencode=opencode run",
+            "--mcp-tool",
+            "opencode:code.write",
+            "--output",
+            str(experiment_profile),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "set-validate",
+            str(literature_profile),
+            str(experiment_profile),
+            "--base-dir",
+            str(tmp_path),
+            "--required-stage",
+            "literature",
+            "--required-stage",
+            "research-plan",
+            "--required-stage",
+            "experiment",
+            "--required-stage",
+            "review",
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert literature_result.exit_code == 0, literature_result.output
+    assert experiment_result.exit_code == 0, experiment_result.output
+    assert validate_result.exit_code == 0, validate_result.output
+    assert "[OK] agent_profile_set: passed" in validate_result.stdout
+    assert "[STAGE] research_plan: covered; agents=literature-agent" in validate_result.stdout
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert payload["passed"] is True
+    assert payload["covered_stage_count"] == 4
+    assert payload["stage_coverage"][2]["mcp_server_ids"] == ["opencode"]
+    assert "scientific results" in payload["evidence_policy"]
+
+
+def test_agent_profile_set_validate_cli_fails_missing_stage(tmp_path: Path) -> None:
+    skill_path = tmp_path / "source.md"
+    skill_path.write_text("# Source\n", encoding="utf-8")
+    profile_path = tmp_path / "profile.json"
+    runner = CliRunner()
+
+    write_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            f"source-tracing={skill_path.as_posix()}",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    validate_result = runner.invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "set-validate",
+            str(profile_path),
+            "--required-stage",
+            "literature",
+            "--required-stage",
+            "review",
+        ],
+    )
+
+    assert write_result.exit_code == 0, write_result.output
+    assert validate_result.exit_code == 1
+    assert "[STAGE] review: missing; agents=-" in validate_result.stdout
+    assert "[FAIL] missing required stage coverage: review" in validate_result.stdout
+
+
 def test_skill_watchlist_writes_external_candidates(tmp_path: Path) -> None:
     vault_root = tmp_path / "autoresearch-vault"
 
@@ -253,6 +1367,100 @@ def test_inspiration_refresh_command_writes_report(tmp_path: Path, monkeypatch) 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["items"][0]["source_type"] == "forum_signal"
     assert payload["summary_path"] == summary_path.as_posix()
+
+
+def test_brainstorm_command_loads_inspiration_and_writes_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_brainstorm",
+        title="Evidence-bound brainstorm",
+        description="Use inspiration signals before research planning.",
+        research_gap="Research plans need more creative candidate generation.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["seed"],
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8")
+    inspiration = InspirationRefreshReport(
+        queries=("machine learning benchmark dataset",),
+        fetches=(),
+        items=(
+            InspirationItem(
+                source="hacker_news",
+                source_type="forum_signal",
+                title="Show HN: Research dataset cleaner",
+                url="https://news.ycombinator.com/item?id=123",
+                query="machine learning benchmark dataset",
+                summary="Community signal only.",
+                score=4.0,
+                retrieved_at=datetime.now(timezone.utc),
+            ),
+        ),
+        summary_path=tmp_path / "vault" / "exploration" / "inspiration.md",
+    )
+    inspiration_path = tmp_path / "inspiration.json"
+    inspiration_path.write_text(
+        json.dumps(inspiration.to_json_dict(), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    artifact_path = tmp_path / "brainstorm" / "brainstorm-ideas.json"
+    summary_path = tmp_path / "vault" / "exploration" / "brainstorm.md"
+    prompt_set_path = tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["candidate"] == candidate
+        assert kwargs["inspiration_report"].items[0].title == "Show HN: Research dataset cleaner"
+        assert kwargs["config"].max_miniagents == 2
+        assert kwargs["config"].ideas_per_agent == 1
+        assert kwargs["config"].temperature == 1.4
+        idea = SimpleNamespace(
+            idea_id="cross_pollinator_1",
+            title="Cross-source benchmark cleaner",
+            selection_score=0.88,
+            creativity_score=0.91,
+            feasibility_score=0.76,
+        )
+        return SimpleNamespace(
+            status="selected",
+            prompts=(object(), object()),
+            ideas=(idea,),
+            selected_ideas=(idea,),
+            artifact_path=artifact_path,
+            summary_path=summary_path,
+            prompt_set_path=prompt_set_path,
+        )
+
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "brainstorm",
+            "--candidate-file",
+            str(candidate_path),
+            "--inspiration-report",
+            str(inspiration_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--output-dir",
+            str(tmp_path / "brainstorm"),
+            "--miniagents",
+            "2",
+            "--ideas-per-agent",
+            "1",
+            "--temperature",
+            "1.4",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] brainstorm: selected" in result.stdout
+    assert "[OK] selected_ideas: 1" in result.stdout
+    assert "[IDEA] cross_pollinator_1: Cross-source benchmark cleaner" in result.stdout
 
 
 def test_inspiration_refresh_command_can_push_digest(tmp_path: Path, monkeypatch) -> None:
@@ -607,6 +1815,136 @@ def test_readiness_command_writes_daily_loop_report(tmp_path: Path) -> None:
     assert checks["channel_delivery_test"]["status"] == "pass"
     assert checks["channel_delivery_test"]["evidence"]["sent_channels"] == ["feishu"]
     assert checks["outputs_dir"]["evidence"]["created"] is True
+
+
+def test_readiness_requires_setup_agent_team_when_enabled(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text('{"tasks": []}\n', encoding="utf-8")
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--agent-team-bundle",
+            str(agent_team_bundle),
+            "--output",
+            str(output),
+            "--no-push-inspiration",
+            "--require-agent-team",
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "[FAIL] readiness.agent_team:" in result.output
+    assert "[NEXT] readiness_action.generate_agent_team:" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["agent_team"]["status"] == "fail"
+    assert checks["agent_team"]["evidence"]["exists"] is False
+    actions = {action["id"]: action for action in payload["next_actions"]}
+    assert actions["generate_agent_team"]["command"] == (
+        f"airesearcher agents profile team-template --output {agent_team_bundle.as_posix()}"
+    )
+
+
+def test_readiness_validates_setup_agent_team_bundle(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    env_path = tmp_path / ".env"
+    vault_path = tmp_path / "autoresearch-vault"
+    scheduler_state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    output = tmp_path / "readiness.json"
+    ConfigParser().write_file(SystemConfig(), config_path)
+    vault_path.mkdir()
+    scheduler_state.parent.mkdir(parents=True)
+    scheduler_state.write_text('{"tasks": []}\n', encoding="utf-8")
+    cli_main._write_default_agent_team_template(
+        output=agent_team_bundle,
+        skill_dir=None,
+        profile_set_id="ccfb-runtime-team",
+        overwrite=False,
+        allow_existing=False,
+    )
+    env_path.write_text(
+        "\n".join(
+            [
+                "AUTORESEARCH_LLM_BASE_URL=https://llm.example.test/v1",
+                "AUTORESEARCH_LLM_MODEL_NAME=research-model",
+                "AUTORESEARCH_LLM_API_KEY=sk-test",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "readiness",
+            "--config",
+            str(config_path),
+            "--env-path",
+            str(env_path),
+            "--vault",
+            str(vault_path),
+            "--outputs-dir",
+            str(tmp_path / "outputs"),
+            "--scheduler-state",
+            str(scheduler_state),
+            "--agent-team-bundle",
+            str(agent_team_bundle),
+            "--output",
+            str(output),
+            "--no-push-inspiration",
+            "--require-agent-team",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] readiness.agent_team:" in result.stdout
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["agent_team"]["status"] == "pass"
+    assert checks["agent_team"]["evidence"]["profile_set_id"] == "ccfb-runtime-team"
+    assert checks["agent_team"]["evidence"]["covered_stage_count"] == 9
+    assert checks["agent_team"]["evidence"]["missing_stages"] == []
+    assert payload["next_actions"] == [
+        {
+            "id": "start_daily_loop",
+            "severity": "next",
+            "command": payload["planned_daily_command"],
+            "reason": "All hard readiness checks passed; start the unattended daily loop when ready.",
+        }
+    ]
 
 
 def test_readiness_requires_sent_channel_self_test(tmp_path: Path) -> None:
@@ -1723,13 +3061,63 @@ def test_setup_bootstraps_env_vault_manifests_and_slash_commands(tmp_path: Path)
     assert (commands / "research" / "autopilot.toml").is_file()
     assert (commands / "research" / "readiness.toml").is_file()
     assert (commands / "research" / "scansci-pdf.toml").is_file()
-    assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
-    assert "[NEXT] 2. Start runtime: airesearcher serve --permission-mode approve-dangerous" in result.stdout
+    agent_team_bundle = tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml"
+    assert agent_team_bundle.is_file()
+    assert (agent_team_bundle.parent / "skills" / "source.md").is_file()
+    assert "[OK] agent_team_bundle:" in result.stdout
+    assert "[OK] agent_team_status: written" in result.stdout
     assert (
-        "[NEXT] 3. When approval is requested, run: "
+        "[NEXT] agent_team_inspect: airesearcher agents profile inspect-set "
+        f"{agent_team_bundle} --materialize-skills --require-complete"
+    ) in result.stdout
+    assert "[NEXT] 1. Check install: npm run doctor" in result.stdout
+    assert (
+        "[NEXT] 2. Inspect Agent team: airesearcher agents profile inspect-set "
+        f"{agent_team_bundle} --materialize-skills --require-complete"
+    ) in result.stdout
+    assert (
+        "[NEXT] 3. Start runtime: airesearcher serve --permission-mode approve-dangerous "
+        f"--agent-profile-set-bundle {agent_team_bundle} "
+        "--require-agent-profile-set"
+    ) in result.stdout
+    assert (
+        "[NEXT] 4. When approval is requested, run: "
         f"airesearcher runtime approve latest --state {cli_main.DEFAULT_RUNTIME_APPROVALS_PATH}"
     ) in result.stdout
     assert "[NEXT] Optional dashboard: airesearcher monitor --watch" in result.stdout
+
+
+def test_setup_can_skip_agent_team_template(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "setup",
+            "--config",
+            str(tmp_path / "config.yaml"),
+            "--env-path",
+            str(tmp_path / ".env"),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "https://llm.example.test/v1",
+            "--model-name",
+            "research-model",
+            "--api-key",
+            "sk-test",
+            "--no-wechat",
+            "--no-feishu",
+            "--skip-obsidian",
+            "--skip-integrations",
+            "--skip-slash",
+            "--skip-agent-team",
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not (tmp_path / ".airesearcher" / "agents" / "ccfb-team.yaml").exists()
+    assert "[OK] agent_team_bundle:" not in result.stdout
+    assert "--agent-profile-set-bundle" not in result.stdout
 
 
 def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
@@ -1768,6 +3156,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert (commands_dir / "research" / "skill-evolve.toml").is_file()
     assert (commands_dir / "research" / "skill-polish-audit.toml").is_file()
     assert (commands_dir / "research" / "skill-watchlist.toml").is_file()
+    assert (commands_dir / "research" / "agent-profile.toml").is_file()
     assert (commands_dir / "research" / "paper-build.toml").is_file()
     assert (commands_dir / "research" / "evidence-gate.toml").is_file()
     assert (commands_dir / "research" / "session-claim.toml").is_file()
@@ -1788,6 +3177,7 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     assert "/research:skill-evolve" in list_result.stdout
     assert "/research:skill-polish-audit" in list_result.stdout
     assert "/research:skill-watchlist" in list_result.stdout
+    assert "/research:agent-profile" in list_result.stdout
     assert "/research:paper-build" in list_result.stdout
     assert "/research:evidence-gate" in list_result.stdout
     assert "/research:session-claim" in list_result.stdout
@@ -1827,6 +3217,9 @@ def test_slash_commands_init_and_list_project_templates(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "airesearcher skill-watchlist" in (
         commands_dir / "research" / "skill-watchlist.toml"
+    ).read_text(encoding="utf-8")
+    assert "airesearcher agents profile write" in (
+        commands_dir / "research" / "agent-profile.toml"
     ).read_text(encoding="utf-8")
     assert "airesearcher channels adapters init" in (
         commands_dir / "research" / "channel-adapters.toml"
@@ -2489,8 +3882,15 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
     inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
+    brainstorm_summary = tmp_path / "vault" / "exploration" / "brainstorm.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, inspiration_summary, project_similarity):
+    for path in (
+        literature_summary,
+        similarity_summary,
+        inspiration_summary,
+        brainstorm_summary,
+        project_similarity,
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -2550,11 +3950,14 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     call_order: list[str] = []
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["inspiration", "brainstorm"]
         call_order.append("research_plan")
         assert kwargs["project_id"] == "project_1"
         assert kwargs["vault_root"] == tmp_path / "vault"
         assert Path(kwargs["similarity_summary"]) == similarity_summary
         assert Path(kwargs["literature_summary"]) == literature_summary
+        assert Path(kwargs["inspiration_summary"]) == inspiration_summary
+        assert Path(kwargs["brainstorm_summary"]) == brainstorm_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -2590,7 +3993,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         )
 
     def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
-        assert call_order == ["research_plan"]
+        assert call_order == []
+        call_order.append("inspiration")
         config = kwargs["config"]
         queries = tuple(kwargs["queries"])
         assert config.max_queries == cli_main.PUBLICATION_SEARCH_QUERIES
@@ -2622,8 +4026,38 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             summary_path=inspiration_summary,
         )
 
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["inspiration"]
+        call_order.append("brainstorm")
+        assert kwargs["inspiration_report"].summary_path == inspiration_summary
+        output_dir = Path(kwargs["output_dir"])
+        artifact_path = output_dir / "brainstorm-ideas.json"
+        prompt_set_path = (
+            tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+        )
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_set_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("{}", encoding="utf-8")
+        prompt_set_path.write_text("# prompts\n", encoding="utf-8")
+        return SimpleNamespace(
+            status="selected",
+            ideas=(object(), object()),
+            selected_ideas=(object(),),
+            artifact_path=artifact_path,
+            summary_path=brainstorm_summary,
+            prompt_set_path=prompt_set_path,
+            to_json_dict=lambda: {
+                "status": "selected",
+                "ideas": [],
+                "selected_ideas": [],
+                "summary_path": brainstorm_summary.as_posix(),
+                "artifact_path": artifact_path.as_posix(),
+                "prompt_set_path": prompt_set_path.as_posix(),
+            },
+        )
+
     def fake_demo(**kwargs: object) -> SimpleNamespace:
-        assert call_order == ["research_plan"]
+        assert call_order == ["inspiration", "brainstorm", "research_plan"]
         assert kwargs["demo"] == default_demo
         assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
@@ -2821,9 +4255,21 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "research-plan.md",
             "research-plan.tex",
             "paper-build.json",
+            "runtime-heartbeat-report.json",
+            "agent-profile-set-validation.json",
+            "manifest.json",
+            "literature.json",
+            "similarity.json",
+            "review.json",
+            "literature-agent.json",
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
             "data-analysis-summary.md",
+            "inspiration.md",
+            "novelty-search-breadth.json",
+            "brainstorm-ideas.json",
+            "brainstorm.md",
+            "brainstorm-miniagents.md",
         } <= evidence_names
         assert "validated-performance-metrics.png" not in evidence_names
         return {"status": "skipped"}
@@ -2832,6 +4278,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
@@ -2845,6 +4292,49 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     output_dir = tmp_path / "runs" / "autopilot"
     deliverables_dir = tmp_path / "outputs"
     state = tmp_path / ".airesearcher" / "scheduler-state.json"
+    skill_path = tmp_path / "skills" / "source-tracing" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text(
+        "# Source Tracing\nBind every claim to a source record before review.\n",
+        encoding="utf-8",
+    )
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text(
+        json.dumps(
+            {
+                "agent_id": "literature-agent",
+                "role": "project_agent",
+                "thinking_mode": "scientific",
+                "publication_target": "ccf-b-or-sci-q2",
+                "assigned_stages": ["literature", "similarity", "review"],
+                "thinking_contract": [
+                    "Start from the research question, falsifiable hypothesis, dataset, baseline, and evidence."
+                ],
+                "skills": [
+                    {
+                        "skill_id": "source-tracing",
+                        "source": skill_path.as_posix(),
+                        "source_type": "local_path",
+                        "allowed_tasks": ["literature_refresh", "citation_validation"],
+                        "evidence_refs": ["[[skills/source-tracing]]"],
+                        "import_policy": "read_only_context",
+                    }
+                ],
+                "mcp_servers": [
+                    {
+                        "server_id": "page-agent",
+                        "command": ["npx", "page-agent"],
+                        "allowed_tools": ["browser.search"],
+                        "env_keys": [],
+                        "approval_policy": "read_only",
+                        "evidence_refs": ["[[tools/page-agent]]"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     result = CliRunner().invoke(
         app,
         [
@@ -2863,6 +4353,8 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "project_1",
             "--paper-template-id",
             "generic-article-two-column",
+            "--agent-profile",
+            str(profile_path),
             "--no-review",
         ],
     )
@@ -2873,7 +4365,13 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         "cycles=1, interval_seconds=86400, push_inspiration=false"
     ) in result.stdout
     assert "[OK] autopilot_cycle:" in result.stdout
+    assert (
+        "[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3; readiness=pass"
+    ) in result.stdout
+    assert "[WARN] agent_profile_set: false;" in result.stdout
+    assert "missing=research_plan,loop_campaign" in result.stdout
     assert "[OK] research_plan: passed" in result.stdout
+    assert "[OK] runtime_heartbeat: true;" in result.stdout
     assert "[OK] review_status: skipped" in result.stdout
     assert "[OK] publication_audit: needs_revision" in result.stdout
     assert "[OK] evidence_gate: blocked" in result.stdout
@@ -2894,14 +4392,160 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
         path.endswith("/.airesearcher/scheduler-state.json")
         for path in session["claimed_paths"]
     )
+    assert any(
+        Path(path).name == "runtime-heartbeats.json"
+        and Path(path).parent.name == ".airesearcher"
+        for path in session["claimed_paths"]
+    )
     summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
     assert len(summaries) == 1
     payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["runtime_heartbeat"]["passed"] is True
+    assert payload["runtime_heartbeat"]["stale_count"] == 0
+    assert payload["runtime_heartbeat"]["stalled_count"] == 0
+    assert payload["runtime_heartbeat"]["stage_count"] >= 10
+    assert Path(payload["runtime_heartbeat"]["report_path"]).name == (
+        "runtime-heartbeat-report.json"
+    )
+    heartbeat_payload = json.loads(
+        (state.parent / "runtime-heartbeats.json").read_text(encoding="utf-8")
+    )
+    assert any(
+        event["stage"] == "research_plan"
+        and event["run_id"] == payload["cycle_id"]
+        for event in heartbeat_payload["heartbeats"]
+    )
     assert payload["candidate"]["related_document_ids"] == []
     assert payload["candidate"]["evidence_refs"] == [
         cli_main.METHOD_ALIGNED_SEED_NOT_FOUND_REF
     ]
     assert payload["source_preflight"]["verdict"] == "pass"
+    assert payload["agent_profiles"]["count"] == 1
+    assert payload["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert payload["agent_profiles"]["profiles"][0]["assigned_stages"] == [
+        "literature",
+        "similarity",
+        "review",
+    ]
+    assert payload["agent_profiles"]["profiles"][0]["skill_ids"] == ["source-tracing"]
+    materialized_profile_skill = payload["agent_profiles"]["profiles"][0][
+        "materialized_skills"
+    ][0]
+    assert materialized_profile_skill["skill_id"] == "source-tracing"
+    assert materialized_profile_skill["status"] == "loaded"
+    assert materialized_profile_skill["sha256"]
+    assert materialized_profile_skill["truncated"] is False
+    assert "content" not in materialized_profile_skill
+    assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["server_id"] == (
+        "page-agent"
+    )
+    assert payload["agent_profiles"]["profiles"][0]["mcp_servers"][0]["allowed_tools"] == [
+        "browser.search"
+    ]
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "server_id"
+    ] == "page-agent"
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "tool_invocation_evidence_required"
+    ] is True
+    assert payload["agent_profiles"]["profiles"][0]["mcp_runtime_contracts"][0][
+        "command_sha256"
+    ]
+    assert payload["agent_profiles"]["profiles"][0]["profile_path"] == profile_path.as_posix()
+    assert payload["agent_profiles"]["readiness"]["passed"] is True
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["passed"] is True
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["failed_check_count"] == 0
+    assert payload["agent_profiles"]["stage_assignments"]["stages"] == [
+        {"stage": "literature", "agent_ids": ["literature-agent"]},
+        {"stage": "similarity", "agent_ids": ["literature-agent"]},
+        {"stage": "review", "agent_ids": ["literature-agent"]},
+    ]
+    profile_set_validation = payload["agent_profile_set_validation"]
+    assert profile_set_validation["validation_kind"] == (
+        "agent_profile_set_runtime_preflight_process_metadata"
+    )
+    assert profile_set_validation["required_for_cycle"] is False
+    assert profile_set_validation["passed"] is False
+    assert "research_plan" in profile_set_validation["missing_stages"]
+    assert "experiment" in profile_set_validation["missing_stages"]
+    assert Path(profile_set_validation["output_path"]).name == (
+        "agent-profile-set-validation.json"
+    )
+    validation_file = json.loads(
+        Path(profile_set_validation["output_path"]).read_text(encoding="utf-8")
+    )
+    assert validation_file["missing_stages"] == profile_set_validation["missing_stages"]
+    assert "publication readiness" in validation_file["evidence_policy"]
+    stage_contexts = payload["agent_profiles"]["stage_runtime_contexts"]
+    assert stage_contexts["literature"][0]["agent_id"] == "literature-agent"
+    assert stage_contexts["literature"][0]["context_kind"] == (
+        "agent_profile_process_metadata"
+    )
+    assert stage_contexts["literature"][0]["materialized_skills"][0]["status"] == "loaded"
+    assert stage_contexts["literature"][0]["materialized_skills"][0]["content"].startswith(
+        "# Source Tracing"
+    )
+    assert "scientific results" in stage_contexts["literature"][0]["evidence_policy"][
+        "cannot_support"
+    ]
+    assert stage_contexts["similarity"][0]["skills"][0]["skill_id"] == "source-tracing"
+    assert stage_contexts["review"][0]["mcp_servers"][0]["allowed_tools"] == [
+        "browser.search"
+    ]
+    assert stage_contexts["review"][0]["mcp_runtime_contracts"][0]["contract_kind"] == (
+        "mcp_runtime_contract_process_metadata"
+    )
+    assert stage_contexts["review"][0]["mcp_runtime_contracts"][0][
+        "tool_invocation_evidence_required"
+    ] is True
+    packet_manifest = payload["agent_stage_context_packets"]
+    assert packet_manifest["packet_set_kind"] == (
+        "agent_stage_context_packet_set_process_metadata"
+    )
+    assert packet_manifest["packet_count"] == 3
+    assert Path(packet_manifest["manifest_path"]).name == "manifest.json"
+    assert Path(packet_manifest["assignment_manifest_path"]).name == (
+        "assignment-manifest.json"
+    )
+    assignment_manifest = packet_manifest["assignment_manifest"]
+    assert assignment_manifest["manifest_kind"] == (
+        "agent_stage_assignment_manifest_process_metadata"
+    )
+    assert assignment_manifest["cycle_id"] == payload["cycle_id"]
+    assignment_rows = {row["stage"]: row for row in assignment_manifest["stages"]}
+    assert assignment_rows["review"]["agent_ids"] == ["literature-agent"]
+    assert assignment_rows["review"]["skill_ids"] == ["source-tracing"]
+    assert assignment_rows["review"]["materialized_skills"][0]["sha256"]
+    assert "content" not in assignment_rows["review"]["materialized_skills"][0]
+    assert assignment_rows["review"]["mcp_runtime_contracts"][0]["server_id"] == (
+        "page-agent"
+    )
+    assignment_file = json.loads(
+        Path(packet_manifest["assignment_manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert assignment_file["stages"] == assignment_manifest["stages"]
+    packet_rows = {row["stage"]: row for row in packet_manifest["packets"]}
+    assert sorted(packet_rows) == ["literature", "review", "similarity"]
+    assert packet_rows["review"]["agent_ids"] == ["literature-agent"]
+    assert packet_rows["review"]["skill_ids"] == ["source-tracing"]
+    assert packet_rows["review"]["mcp_server_ids"] == ["page-agent"]
+    review_packet = json.loads(
+        Path(packet_rows["review"]["path"]).read_text(encoding="utf-8")
+    )
+    assert review_packet["packet_kind"] == "agent_stage_context_packet_process_metadata"
+    assert review_packet["stage"] == "review"
+    assert review_packet["project_id"] == "project_1"
+    assert review_packet["cycle_id"] == payload["cycle_id"]
+    assert review_packet["agent_ids"] == ["literature-agent"]
+    assert review_packet["agents"][0]["materialized_skills"][0]["content"].startswith(
+        "# Source Tracing"
+    )
+    assert "publication readiness" in review_packet["evidence_policy"]
+    manifest_payload = json.loads(
+        Path(packet_manifest["manifest_path"]).read_text(encoding="utf-8")
+    )
+    assert manifest_payload["packet_count"] == 3
+    assert manifest_payload["packet_paths"] == packet_manifest["packet_paths"]
     assert payload["literature"]["document_count"] == 1
     assert payload["citations"]["status"] == "generated"
     assert payload["citations"]["verified_count"] == 1
@@ -2943,6 +4587,51 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     review_context = json.loads(
         Path(payload["review_context_path"]).read_text(encoding="utf-8")
     )
+    assert review_context["agent_profiles"]["profiles"][0]["agent_id"] == "literature-agent"
+    assert review_context["agent_profiles"]["profiles"][0]["materialized_skills"][0][
+        "status"
+    ] == "loaded"
+    assert review_context["agent_profiles"]["readiness"]["passed"] is True
+    assert review_context["agent_profiles"]["profiles"][0]["readiness"]["check_count"] == 2
+    assert review_context["agent_profiles"]["stage_assignments"]["stages"][0] == {
+        "stage": "literature",
+        "agent_ids": ["literature-agent"],
+    }
+    assert review_context["agent_profile_set_validation"]["passed"] is False
+    assert review_context["audit_summary"]["agent_profile_set_validation"][
+        "passed"
+    ] is False
+    assert review_context["agent_stage_context_packets"]["packet_count"] == 3
+    assert review_context["agent_stage_context_packets"]["packets"][0]["path"]
+    assert review_context["audit_summary"]["agent_stage_context_packets"][
+        "packet_count"
+    ] == 3
+    assert review_context["agent_stage_assignments"]["manifest_kind"] == (
+        "agent_stage_assignment_manifest_process_metadata"
+    )
+    assert review_context["audit_summary"]["agent_stage_assignments"]["stage_count"] == 3
+    assert review_context["stage_agent_contexts"]["literature"][0]["agent_id"] == (
+        "literature-agent"
+    )
+    assert review_context["stage_agent_contexts"]["review"][0]["context_kind"] == (
+        "agent_profile_process_metadata"
+    )
+    assert "tool invocation" in review_context["stage_agent_contexts"]["review"][0][
+        "evidence_policy"
+    ]["cannot_support"]
+    assert review_context["stage_agent_contexts"]["review"][0]["materialized_skills"][0][
+        "content"
+    ].startswith("# Source Tracing")
+    assert review_context["stage_agent_contexts"]["review"][0]["mcp_servers"][0][
+        "server_id"
+    ] == "page-agent"
+    assert review_context["stage_agent_contexts"]["review"][0]["mcp_runtime_contracts"][0][
+        "server_id"
+    ] == "page-agent"
+    assert "tool was invoked" in review_context["stage_agent_contexts"]["review"][0][
+        "mcp_runtime_contracts"
+    ][0]["evidence_policy"]
+    assert review_context["audit_summary"]["agent_profiles"]["count"] == 1
     assert review_context["audit_summary"]["reproduction_check"]["status"] == "passed"
     assert review_context["audit_summary"]["paper_build"]["status"] == "compiled"
     assert review_context["audit_summary"]["research_plan"]["passed"] is True
@@ -2996,6 +4685,384 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     assert len(review_calls) == 1
 
 
+def test_autopilot_require_agent_profile_set_blocks_missing_stage_matrix(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after profile-set block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    skill_path = tmp_path / "skills" / "source-tracing.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# Source Tracing\nKeep claims evidence-bound.\n", encoding="utf-8")
+    profile_path = tmp_path / "profiles" / "literature-agent.json"
+    write_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "profile",
+            "write",
+            "--agent-id",
+            "literature-agent",
+            "--stage",
+            "literature",
+            "--skill",
+            f"source-tracing={skill_path}",
+            "--output",
+            str(profile_path),
+        ],
+    )
+    assert write_result.exit_code == 0, write_result.output
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile",
+            str(profile_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    assert "missing=research_plan,loop_campaign" in result.stdout
+    assert "[OK] review_status: skipped_agent_profile_set_gate" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+    assert Path(validation["output_path"]).is_file()
+    assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
+
+
+def test_autopilot_agent_profile_set_bundle_materializes_before_gate(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after profile-set block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    bundle_dir = tmp_path / "bundles"
+    skill_dir = bundle_dir / "skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "source.md").write_text(
+        "# Source\nKeep claims tied to retrieved evidence.\n",
+        encoding="utf-8",
+    )
+    bundle_path = bundle_dir / "team.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: runtime-team",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile-set-bundle",
+            str(bundle_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] agent_profile_bundles: 1; bundles=runtime-team; generated_profiles=1" in (
+        result.stdout
+    )
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    bundles = payload["agent_profile_bundles"]
+    assert bundles["bundle_count"] == 1
+    assert bundles["profile_count"] == 1
+    assert bundles["bundles"][0]["source_bundle_path"] == bundle_path.as_posix()
+    assert Path(bundles["manifest_path"]).is_file()
+    generated_profile_path = Path(bundles["profile_paths"][0])
+    generated_profile = json.loads(generated_profile_path.read_text(encoding="utf-8"))
+    assert generated_profile["agent_id"] == "literature-agent"
+    assert generated_profile["skills"][0]["source"] == (skill_dir / "source.md").as_posix()
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+    assert payload["agent_profiles"]["profiles"][0]["profile_path"] == (
+        generated_profile_path.as_posix()
+    )
+    assert payload["agent_profiles"]["profiles"][0]["readiness"]["passed"] is True
+    assert payload["review"]["status"] == "skipped_agent_profile_set_gate"
+
+
+def test_autopilot_profile_set_bundle_blocks_missing_stage_import_requirement(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after import block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+
+    bundle_dir = tmp_path / "bundles"
+    skill_dir = bundle_dir / "skills"
+    skill_dir.mkdir(parents=True)
+    for name in ("source.md", "experiment.md", "review.md"):
+        (skill_dir / name).write_text(
+            f"# {name}\nKeep research claims evidence-bound.\n",
+            encoding="utf-8",
+        )
+    bundle_path = bundle_dir / "team.yaml"
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: runtime-import-gate-team",
+                "stage_import_requirements:",
+                "  - stage: literature",
+                "    required_skill_ids: [source-tracing]",
+                "  - stage: review",
+                "    required_skill_ids: [question-validator]",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages: [literature, research-plan]",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+                "  - agent_id: experiment-agent",
+                "    assigned_stages: [loop-campaign, experiment, reproduction, citations]",
+                "    skills:",
+                "      - skill_id: experiment-protocol",
+                "        source: skills/experiment.md",
+                "  - agent_id: review-agent",
+                "    role: validator_agent",
+                "    thinking_mode: reviewer",
+                "    assigned_stages: [review, publication-audit, evidence-gate]",
+                "    thinking_contract_additions:",
+                "      - Reject prose that outruns experiment evidence.",
+                "    skills:",
+                "      - skill_id: evidence-review",
+                "        source: skills/review.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--agent-profile-set-bundle",
+            str(bundle_path),
+            "--require-agent-profile-set",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    payload = json.loads(next(output_dir.glob("cycle-*/cycle-summary.json")).read_text(
+        encoding="utf-8"
+    ))
+    validation = payload["agent_profile_set_validation"]
+    assert validation["passed"] is False
+    assert validation["missing_stages"] == []
+    assert validation["stage_import_requirement_failed_stages"] == ["review"]
+    assert validation["stage_import_requirements"][1]["missing_skill_ids"] == [
+        "question-validator"
+    ]
+    assert "stage review missing required custom imports" in validation["failures"][0]
+    assert "source_preflight" not in payload
+
+
+def test_autopilot_auto_loads_default_agent_team_bundle_when_present(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    def fail_if_reached(**_kwargs: object) -> None:
+        raise AssertionError("online literature refresh should not run after default team block")
+
+    monkeypatch.setattr(cli_main, "run_daily_literature_refresh", fail_if_reached)
+    monkeypatch.chdir(tmp_path)
+
+    bundle_path = tmp_path / cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH
+    skill_dir = bundle_path.parent / "skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "source.md").write_text(
+        "# Source\nKeep claims tied to retrieved evidence.\n",
+        encoding="utf-8",
+    )
+    bundle_path.write_text(
+        "\n".join(
+            [
+                "profile_set_id: setup-default-team",
+                "profiles:",
+                "  - agent_id: literature-agent",
+                "    assigned_stages:",
+                "      - literature",
+                "    skills:",
+                "      - skill_id: source-tracing",
+                "        source: skills/source.md",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    output_dir = tmp_path / "runs" / "autopilot"
+    result = CliRunner().invoke(
+        app,
+        [
+            "autopilot",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--cache",
+            str(tmp_path / "cache"),
+            "--output-dir",
+            str(output_dir),
+            "--deliverables-dir",
+            str(tmp_path / "outputs"),
+            "--state",
+            str(tmp_path / ".airesearcher" / "scheduler-state.json"),
+            "--project-id",
+            "project_1",
+            "--no-review",
+            "--no-claim-session",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert f"[OK] default_agent_team_bundle: {cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH}" in (
+        result.stdout
+    )
+    assert "[OK] agent_profile_bundles: 1; bundles=setup-default-team; generated_profiles=1" in (
+        result.stdout
+    )
+    assert "[BLOCKED] agent_profile_set: false;" in result.stdout
+    summaries = list(output_dir.glob("cycle-*/cycle-summary.json"))
+    assert len(summaries) == 1
+    payload = json.loads(summaries[0].read_text(encoding="utf-8"))
+    assert payload["status"] == "blocked"
+    assert payload["blocked_reason"] == "agent_profile_set_gate"
+    assert "source_preflight" not in payload
+    assert payload["agent_profile_bundles"]["bundles"][0]["source_bundle_path"] == (
+        cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH.as_posix()
+    )
+    validation = payload["agent_profile_set_validation"]
+    assert validation["required_for_cycle"] is True
+    assert validation["passed"] is False
+    assert "research_plan" in validation["missing_stages"]
+
+
+def test_runtime_agent_team_defaults_can_be_disabled_or_overridden(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    bundle_path = tmp_path / cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH
+    bundle_path.parent.mkdir(parents=True)
+    bundle_path.write_text("profile_set_id: default\nprofiles: []\n", encoding="utf-8")
+
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=True,
+        agent_profile_paths=(),
+        agent_profile_set_bundle_paths=(),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == (cli_main.DEFAULT_AGENT_TEAM_BUNDLE_PATH,)
+    assert required is True
+    assert loaded is True
+
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=False,
+        agent_profile_paths=(),
+        agent_profile_set_bundle_paths=(),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == ()
+    assert required is False
+    assert loaded is False
+
+    explicit_bundle = Path("custom-team.yaml")
+    bundle_paths, required, loaded = cli_main._resolve_runtime_agent_team_defaults(
+        enabled=True,
+        agent_profile_paths=(Path("custom-profile.json"),),
+        agent_profile_set_bundle_paths=(explicit_bundle,),
+        require_agent_profile_set=False,
+    )
+    assert bundle_paths == (explicit_bundle,)
+    assert required is False
+    assert loaded is False
+
+
 def test_review_status_display_blocks_needs_revision_verdict() -> None:
     prefix, status = cli_main._review_status_display(
         {"status": "passed", "verdict": "needs_revision", "quality_score": 1.0}
@@ -3018,8 +5085,16 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
 ) -> None:
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
+    inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
+    brainstorm_summary = tmp_path / "vault" / "exploration" / "brainstorm.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, project_similarity):
+    for path in (
+        literature_summary,
+        similarity_summary,
+        inspiration_summary,
+        brainstorm_summary,
+        project_similarity,
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -3059,6 +5134,8 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
         )
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
+        assert Path(kwargs["inspiration_summary"]) == inspiration_summary
+        assert Path(kwargs["brainstorm_summary"]) == brainstorm_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -3088,6 +5165,59 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
             to_dict=lambda: payload,
         )
 
+    def fake_inspiration_refresh(**kwargs: object) -> InspirationRefreshReport:
+        queries = tuple(kwargs["queries"])
+        return InspirationRefreshReport(
+            queries=queries[:1],
+            fetches=(
+                InspirationFetchRecord(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    query=queries[0] if queries else "research",
+                    result_count=1,
+                    rate_limit_seconds=1.0,
+                ),
+            ),
+            items=(
+                InspirationItem(
+                    source="hacker_news",
+                    source_type="forum_signal",
+                    title="Research workflow discussion",
+                    url="https://news.ycombinator.com/item?id=123",
+                    query=queries[0] if queries else "research",
+                    summary="Community signal only.",
+                    score=1.0,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+            ),
+            summary_path=inspiration_summary,
+        )
+
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["inspiration_report"].summary_path == inspiration_summary
+        artifact_path = Path(kwargs["output_dir"]) / "brainstorm-ideas.json"
+        prompt_set_path = (
+            tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+        )
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_set_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("{}", encoding="utf-8")
+        prompt_set_path.write_text("# prompts\n", encoding="utf-8")
+        return SimpleNamespace(
+            status="selected",
+            ideas=(object(),),
+            selected_ideas=(object(),),
+            artifact_path=artifact_path,
+            summary_path=brainstorm_summary,
+            prompt_set_path=prompt_set_path,
+            to_json_dict=lambda: {
+                "status": "selected",
+                "ideas": [],
+                "selected_ideas": [],
+                "summary_path": brainstorm_summary.as_posix(),
+            },
+        )
+
     def fail_if_called(**_kwargs: object) -> object:
         raise AssertionError("research-plan-blocked cycle should not run later stages")
 
@@ -3096,7 +5226,8 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", lambda **_kwargs: project_similarity)
     monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
-    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fail_if_called)
+    monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
     monkeypatch.setattr(cli_main, "compose_publication_manuscript", fail_if_called)
 
@@ -3130,8 +5261,10 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     assert payload["blocked_reason"] == "research_plan_gate"
     assert payload["research_plan"]["audit"]["passed"] is False
     assert payload["research_plan"]["compile_status"] == "skipped_quality_gate"
+    assert payload["inspiration"]["item_count"] == 1
+    assert payload["novelty_breadth"]["status"] in {"thin", "expanding", "broad_enough"}
+    assert payload["brainstorm"]["status"] == "selected"
     assert payload["review"]["status"] == "skipped_research_plan_gate"
-    assert "inspiration" not in payload
     assert "demo" not in payload
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}
 
@@ -3531,6 +5664,7 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     def fake_cycle(**kwargs: object) -> dict[str, object]:
         assert kwargs["project_id"] == "project_1"
         assert kwargs["review"] is False
+        assert kwargs["heartbeat_state"] == approvals_state.parent / "runtime-heartbeats.json"
         metadata = kwargs["runtime_network_metadata"]
         assert isinstance(metadata, dict)
         assert metadata["network_access_approved"] is True
@@ -3576,6 +5710,14 @@ def test_serve_queues_dangerous_action_until_runtime_approval(
     assert {session["task_id"] for session in session_payload["sessions"]} == {
         "serve:project_1"
     }
+    assert all(
+        any(
+            Path(path).name == "runtime-heartbeats.json"
+            and Path(path).parent.name == ".airesearcher"
+            for path in session["claimed_paths"]
+        )
+        for session in session_payload["sessions"]
+    )
 
 
 def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch) -> None:
@@ -3585,6 +5727,7 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
         assert kwargs["project_id"] == "project_1"
         assert kwargs["max_queries"] == cli_main.PUBLICATION_SEARCH_QUERIES
         assert kwargs["max_results_per_source"] == cli_main.PUBLICATION_RESULTS_PER_SOURCE
+        assert kwargs["heartbeat_state"] == approvals_state.parent / "runtime-heartbeats.json"
         metadata = kwargs["runtime_network_metadata"]
         assert isinstance(metadata, dict)
         assert metadata["network_access_approved"] is True
@@ -3634,6 +5777,11 @@ def test_serve_allow_all_runs_without_approval_state(tmp_path: Path, monkeypatch
     assert len(session_payload["sessions"]) == 1
     assert session_payload["sessions"][0]["task_id"] == "serve:project_1"
     assert session_payload["sessions"][0]["status"] == "released"
+    assert any(
+        Path(path).name == "runtime-heartbeats.json"
+        and Path(path).parent.name == ".airesearcher"
+        for path in session_payload["sessions"][0]["claimed_paths"]
+    )
 
 
 def test_serve_blocks_overlapping_runtime_session_before_cycle(
@@ -3894,6 +6042,86 @@ def test_runtime_list_defaults_to_pending_requests(tmp_path: Path, monkeypatch) 
     assert "[REQUEST] status=approved" in list_all_result.stdout
 
 
+def test_runtime_heartbeat_cli_write_and_check_detects_stall(tmp_path: Path) -> None:
+    state = tmp_path / ".airesearcher" / "runtime-heartbeats.json"
+    report_path = tmp_path / "reports" / "runtime-heartbeat-report.json"
+    runner = CliRunner()
+
+    old_write = runner.invoke(
+        app,
+        [
+            "runtime",
+            "heartbeat",
+            "write",
+            "--state",
+            str(state),
+            "--run-id",
+            "cycle-old",
+            "--stage",
+            "literature",
+            "--progress",
+            "old-query-page",
+        ],
+    )
+    assert old_write.exit_code == 0, old_write.output
+
+    for index in range(3):
+        write_result = runner.invoke(
+            app,
+            [
+                "runtime",
+                "heartbeat",
+                "write",
+                "--state",
+                str(state),
+                "--run-id",
+                "cycle-1",
+                "--stage",
+                "literature",
+                "--progress",
+                "same-query-page",
+                "--message",
+                f"attempt {index}",
+                "--artifact-ref",
+                "runs/cycle-1/literature-refresh.md",
+            ],
+        )
+        assert write_result.exit_code == 0, write_result.output
+        assert "[OK] heartbeat: cycle-1/literature" in write_result.stdout
+
+    check_result = runner.invoke(
+        app,
+        [
+            "runtime",
+            "heartbeat",
+            "check",
+            "--state",
+            str(state),
+            "--run-id",
+            "cycle-1",
+            "--stale-after-seconds",
+            "999999",
+            "--stall-repetition-threshold",
+            "3",
+            "--output",
+            str(report_path),
+        ],
+    )
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert check_result.exit_code == 1, check_result.output
+    assert "[OK] heartbeat_watchdog: failed" in check_result.stdout
+    assert (
+        "[HEARTBEAT] cycle-1/literature: stalled; action=repair_or_pivot; repeated=3"
+        in check_result.stdout
+    )
+    assert payload["passed"] is False
+    assert payload["event_count"] == 3
+    assert payload["stalled_count"] == 1
+    assert payload["stages"][0]["status"] == "stalled"
+    assert "cannot support scientific results" in payload["evidence_policy"]
+
+
 def test_sessions_cli_blocks_overlapping_claim_until_release(tmp_path: Path) -> None:
     state = tmp_path / ".airesearcher" / "agent-sessions.json"
     runner = CliRunner()
@@ -4071,6 +6299,36 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
                     "status": "pass",
                     "markdown_path": "runs/project_1/source-preflight.md",
                 },
+                "agent_profiles": {
+                    "count": 1,
+                    "profiles": [
+                        {
+                            "agent_id": "literature-agent",
+                            "role": "project_agent",
+                            "assigned_stages": ["literature", "review"],
+                            "skill_ids": ["source-tracing"],
+                            "mcp_servers": [
+                                {
+                                    "server_id": "page-agent",
+                                    "allowed_tools": ["browser.search"],
+                                    "approval_policy": "read_only",
+                                }
+                            ],
+                            "readiness": {
+                                "passed": True,
+                                "failed_check_count": 0,
+                                "warning_count": 0,
+                            },
+                        }
+                    ],
+                    "stage_assignments": {
+                        "stages": [
+                            {"stage": "literature", "agent_ids": ["literature-agent"]},
+                            {"stage": "review", "agent_ids": ["literature-agent"]},
+                        ],
+                        "unassigned_agent_ids": [],
+                    },
+                },
                 "literature": {
                     "document_count": 23,
                     "fetches": [
@@ -4219,6 +6477,10 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "AI-Researcher Operator Console" in result.stdout
     assert "Agent Messages" in result.stdout
     assert "Codex A" in result.stdout
+    assert "Agent Profiles" in result.stdout
+    assert "literature-agent" in result.stdout
+    assert "source-tracing" in result.stdout
+    assert "page-agent" in result.stdout
     assert "approval_1" in result.stdout
     assert "task_open" in result.stdout
     assert "Research Loop" in result.stdout
@@ -4260,6 +6522,14 @@ def test_monitor_renders_agent_flow_changes_and_preview(tmp_path: Path) -> None:
     assert "Reviewer verdict is `needs_revision`" in rows["evidence"][1]
     assert rows["follow-ups"][0] == "1 open / 2 total"
     assert "evidence-gate.md" in rows["follow-ups"][1]
+    assert cli_main._agent_profile_rows(summary) == [
+        (
+            "literature-agent",
+            "project_agent; literature,review; ready=pass",
+            "source-tracing",
+            "page-agent:browser.search",
+        )
+    ]
 
 
 def test_recent_agent_entries_text_shows_latest_entries_first(tmp_path: Path) -> None:

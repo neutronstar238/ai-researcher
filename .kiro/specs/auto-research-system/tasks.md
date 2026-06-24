@@ -2653,6 +2653,487 @@ A task can be checked only when all applicable items are true:
     - _References: user request to learn from `Light`; Phase 2 multi-agent workflow; Phase 3 Obsidian memory; Phase 4 controlled evolution; `P-20260620-001`._
     - _Verify: Live web review checked `https://github.com/wanxingai/LightAgent`, raw `LICENSE`, raw `README.md`, raw `docs/lightflow.md`, raw `docs/tracing.md`, raw `docs/memory_trace_swarm_boundaries.md`, and raw `docs/multi_agent_failure_map.md`; upstream is Apache-2.0 and frames LightAgent as a lightweight Skills/MCP/memory/multi-agent framework with LightFlow DAG steps, opt-in trace events, memory/trace/delegation scope guidance, and multi-agent failure diagnostics. Focused `python -m pytest tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py -q` passed with 18 tests; focused `python -m ruff check src\autoresearch\knowledge\skills.py tests\unit\knowledge\test_skills.py tests\unit\compliance\test_licenses.py` passed; focused `python -m mypy src\autoresearch\knowledge\skills.py` passed. Real CLI `node .\bin\airesearcher.mjs skill-watchlist --vault runs\manual-live\task213-lightagent-watchlist-vault --source-note "2026-06-20 LightAgent reference smoke"` passed and wrote 16 quarantined candidates; `rg` confirmed the generated watchlist contains `LightAgent / LightFlow`, `lightweight-agent-runtime-reference`, trace observability, memory/trace/delegation boundaries, shared-memory pollution checks, and evidence-safe summaries. Broad `python -m pytest tests\smoke tests\unit -q` passed with 546 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
 
+- [x] 214. Loop Engineering closed-loop campaign layer
+  - [x] 214.1 Add campaign schema, optimizer, metrics, and release gates
+    - Add a `ClosedLoopCampaign` protocol-as-code model covering research objective, measurable metrics, budget, data sources, candidate space, baselines, stop criteria, approval policy, and evidence requirements.
+    - Add first-round DOE/grid selection and later-round evidence-gain/repair selection so LLM output can propose context but cannot bypass budget, failure, evidence, or reproduction gates.
+    - Add loop metrics for acceleration factor, effect improvement factor, metadata completeness, reproduction delta, failure recovery rate, evidence coverage, experiment count, and reward.
+    - Classify closed-loop failures into `source`, `protocol`, `execution`, `metric`, `validation`, `review`, `cost`, and `safety`, and freeze high-risk variables after consecutive failures instead of blind retry.
+    - Write structured `loop-campaign.json`, `loop-report.md`, and an Obsidian project-progress note for each campaign artifact.
+    - Wire the loop layer into `autopilot`/`serve` after the research-plan gate and before experiment execution, then surface loop status in CLI output and review evidence.
+    - Require loop campaign artifacts and passing loop metrics in evidence gate, publication audit, and strategy promotion decisions.
+    - Update README/README.zh-CN so users see AI-Researcher as an evidence-first closed-loop research system rather than an open-world paper-writing chatbot.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; Kiro Obsidian-first self-loop direction; project requirement that unsupported conclusions must not enter paper drafts._
+    - _Verify: focused `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; focused `python -m ruff check src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py` passed; focused `python -m mypy src\autoresearch\experiments\loop.py src\autoresearch\experiments\promotion.py src\autoresearch\reports\evidence_gate.py src\autoresearch\reports\publication_audit.py src\autoresearch\cli\main.py` passed. Real isolated CLI `node .\bin\airesearcher.mjs autopilot --env-path .env --vault runs\manual-live\task214-loop\vault --cache runs\manual-live\task214-loop\cache --output-dir runs\manual-live\task214-loop\runs --deliverables-dir runs\manual-live\task214-loop\outputs --state runs\manual-live\task214-loop\scheduler.json --sessions-state runs\manual-live\task214-loop\sessions.json --project-id task214-loop-smoke --demo tabular_baseline --max-queries 1 --max-results-per-source 1 --timeout-seconds 30 --cycles 1 --no-push-inspiration` completed `cycle-20260623T050627Z`, wrote loop campaign/report/vault note/PDF artifacts, passed `loop_campaign_gate`, and correctly blocked release because publication audit and evidence gate found toy-data and literature-breadth gaps. Broad `python -m pytest tests\smoke tests\unit -q` passed with 556 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
+- [x] 215. Per-agent custom skill and MCP profiles
+  - [x] 215.1 Bind custom skills and MCP tool allowlists to one named agent
+    - Add an `AgentProfile` model that binds custom skills and MCP servers to one `agent_id` and `AgentRole`.
+    - Preserve research-first behavior with a default scientific thinking contract: questions, hypotheses, data, baselines, falsification, evidence, and publication gates come before engineering abstractions.
+    - Require MCP servers to declare explicit allowed tools and environment variable names instead of storing secret values or implicit full access.
+    - Allow the runtime `BaseAgent` and `AgentRegistry` to attach a validated profile and expose safe runtime context for structured agent messages.
+    - Add `airesearcher agents profile write` and `airesearcher agents profile inspect` plus `/research:agent-profile` slash template support.
+    - Write optional Obsidian profile notes under `autoresearch-vault/projects/<project-id>/agents/` so agent-specific skill/MCP imports remain visible in project memory.
+    - Update README/README.zh-CN with per-agent custom skill/MCP usage and safety boundaries.
+    - _References: user request to add custom skills and MCP import ability for a specific Agent while keeping the system focused on publishable scientific output rather than over-engineered AI behavior._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\agents\test_agent_imports.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 8 tests; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed; focused ruff initially failed on import ordering in `src\autoresearch\cli\main.py`, then `python -m ruff check src\autoresearch\cli\main.py --fix` fixed it. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --mcp "obsidian=npx -y obsidian-mcp --vault autoresearch-vault" --mcp-tool obsidian:search_notes --mcp-tool obsidian:read_note --vault runs\manual-live\task215-agent-profile\vault --project-id task215-agent-profile --output runs\manual-live\task215-agent-profile\profiles\literature-agent.json` passed and wrote profile JSON plus vault note; real CLI `node .\bin\airesearcher.mjs agents profile inspect runs\manual-live\task215-agent-profile\profiles\literature-agent.json` returned the scientific thinking contract, skill binding, and MCP allowlist. Broad `python -m pytest tests\smoke tests\unit -q` passed with 562 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed._
+
+- [x] 216. Runtime agent profile loading
+  - [x] 216.1 Load per-agent skill/MCP profiles into `serve`, `autopilot`, review evidence, and monitor
+    - Add repeatable `--agent-profile <json>` flags to `serve` and `autopilot`.
+    - Validate and deduplicate profile files at cycle start before online retrieval or experiment execution.
+    - Write loaded profile summaries and safe runtime contexts into every `cycle-summary.json`, including blocked preflight and blocked research-plan branches.
+    - Include agent profile context in `review-evidence-context.json` and the review evidence path bundle so reviewer/audit stages can inspect which skill/MCP context was available.
+    - Print loaded agent IDs in CLI status output without implying that profile context is publication evidence.
+    - Render an Agent Profiles panel in `airesearcher monitor` with agent ID, role, skill IDs, and MCP tool allowlists.
+    - Update README/README.zh-CN so operators know how to create and attach profile JSON files to long-running cycles.
+    - _References: task `215.1`; user request that custom skills and MCP imports can be assigned to a specific Agent and remain visible while the system keeps scientific evidence gates._
+    - _Verify: focused `python -m pytest tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed; focused `python -m ruff check src\autoresearch\cli\main.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\cli\main.py` passed; broad and live verification recorded in `Agent.md`._
+
+- [x] 217. Loop-stage agent responsibility mapping
+  - [x] 217.1 Bind agent profiles to closed-loop research stages
+    - Add optional `assigned_stages` to `AgentProfile`, normalized to snake_case and serialized into runtime context.
+    - Add repeatable `--stage` to `airesearcher agents profile write`, with a fixed allowlist matching the release-critical loop stages.
+    - Reject unknown or duplicate stage assignments before a profile can be loaded into `serve` or `autopilot`.
+    - Include `stage_assignments` in `cycle-summary.json` and `review-evidence-context.json` so review/audit stages can inspect responsibility boundaries.
+    - Render profile role plus assigned stages in `airesearcher monitor` without treating stage context as publication evidence.
+    - Update README/README.zh-CN usage docs with `--stage` examples and safety language.
+    - _References: tasks `214.1`, `215.1`, and `216.1`; Loop Engineering requirement that closed-loop stages are auditable and cannot be bypassed by prompt-only agent behavior._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 8 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Loop regression `python -m pytest tests\unit\experiments\test_loop.py tests\unit\experiments\test_promotion.py tests\unit\reports\test_evidence_gate.py tests\unit\reports\test_publication_audit.py tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q` passed with 42 tests; broad `python -m pytest tests\smoke tests\unit -q` passed with 563 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed. Real CLI wrote a staged profile with `--stage literature --stage similarity --stage review`, ran `autopilot` once with that profile, confirmed `[OK] agent_profiles: 1; agents=literature-agent; assigned_stages=3`, confirmed summary/review context include `stage_assignments`, and `monitor` rendered `project_agent; literature,similarity,review`._
+
+- [x] 218. Stage-scoped agent context consumption
+  - [x] 218.1 Expose bounded runtime contexts per loop stage
+    - Add reusable helpers that normalize loop stage names and filter loaded agent runtime contexts by assigned stage.
+    - Include `stage_runtime_contexts` in `cycle-summary.json`, keyed by loop stage, so downstream stage workers can consume only the skill/MCP context assigned to that stage.
+    - Include `stage_agent_contexts` in `review-evidence-context.json` so review and audit can inspect the stage-scoped context without re-deriving it from display rows.
+    - Keep stage contexts bounded to profile runtime context and do not treat them as publication evidence or approval to bypass gates.
+    - Update README/README.zh-CN with the runtime artifact fields and safety boundary.
+    - _References: tasks `214.1`, `215.1`, `216.1`, and `217.1`; Loop Engineering requirement that LLM and tool use stay inside auditable stage responsibilities._
+    - _Verify: focused profile and CLI tests passed; loop regression, broad smoke/unit, ruff, mypy, real staged-profile autopilot smoke, and `git diff --check` passed. Full commands and real artifact checks are recorded in `Agent.md`._
+
+- [x] 219. LLM reviewer profile-context boundary
+  - [x] 219.1 Prevent stage profiles from being treated as scientific evidence
+    - Clarify the evidence-constrained LLM reviewer prompt that `agent_profiles`, `stage_runtime_contexts`, `stage_agent_contexts`, skills, and MCP allowlists are process metadata only.
+    - Allow profile context to support findings about responsibility boundaries or available tool context, but not scientific results, novelty, benchmark metrics, citation validity, publication readiness, or proof that a tool was invoked.
+    - Apply the same boundary to repair prompts so failed-review retries cannot promote profile metadata into scientific evidence.
+    - Add unit coverage that fixes the prompt contract for stage-scoped profile context.
+    - Update README/README.zh-CN so operators know profile context is reviewable process metadata, not a publication claim shortcut.
+    - _References: tasks `216.1`, `217.1`, and `218.1`; Loop Engineering requirement that evidence gates cannot be bypassed by agent/tool declarations._
+    - _Verify: focused LLM reviewer prompt tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
+- [x] 220. Deterministic reviewer profile-context misuse gate
+  - [x] 220.1 Block reviewer outputs that use profiles as scientific evidence
+    - Add a local LLM-review quality check named `profile_context_not_used_as_scientific_evidence`.
+    - Fail review outputs that combine profile/stage/skill/MCP context with proof language for scientific results, novelty, benchmark metrics, citations, publication readiness, or tool invocation.
+    - Keep legitimate process findings about responsibility boundaries and available tool context passing.
+    - Make the new check critical so bad outputs trigger repair or fail closed.
+    - Update README/README.zh-CN to describe the deterministic gate, not only the prompt instruction.
+    - _References: task `219.1`; user requirement to rely on evidence gates instead of prompt-only self-discipline._
+    - _Verify: focused LLM-review quality tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
+- [x] 221. Machine-readable Agent profile evidence policy
+  - [x] 221.1 Tag runtime profile contexts as process metadata
+    - Add `context_kind=agent_profile_process_metadata` to every safe Agent profile runtime context.
+    - Add a machine-readable `evidence_policy` listing what profile context can support and what it cannot support.
+    - Ensure stage-scoped contexts in `cycle-summary.json` and `review-evidence-context.json` carry the same policy.
+    - Keep the policy narrowly focused on evidence boundaries instead of adding a new orchestration abstraction.
+    - Update README/README.zh-CN to document the runtime field for downstream stage workers.
+    - _References: tasks `218.1`, `219.1`, and `220.1`; user requirement that custom skills/MCP can be assigned to Agents without weakening research evidence gates._
+    - _Verify: focused profile and CLI artifact tests, ruff, mypy, broad smoke/unit tests, and `git diff --check` passed. Full commands are recorded in `Agent.md`._
+
+- [x] 222. Protocol-as-code stop decisions
+  - [x] 222.1 Add explicit campaign protocol fields and stop criteria
+    - Add first-class `data_sources`, `baselines`, and `protocol_artifacts` fields to `ClosedLoopCampaign` so the campaign JSON exposes the protocol-as-code inputs named in the Loop Engineering plan.
+    - Add a deterministic `LoopStopDecision` with stop reasons for budget exhaustion, target reached, metadata gaps, evidence gaps, reproduction regression, consecutive failures, and human approval requirements.
+    - Write `stop_decision` into `loop-campaign.json`, `cycle-summary.json`, and `loop-report.md`.
+    - Block blind retry after repeated same-category failures unless a repair hypothesis or frozen dimension is recorded.
+    - Update README/README.zh-CN, `Agent.md`, and `Problem.md` so loop failures, evidence gaps, metadata gaps, reproduction gaps, and approval points must leave auditable traces.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; attached loop-engineering research report; task `214.1`; Scale-style physical gate idea that prompts are not enough._
+    - _Verify: focused loop tests, ruff, mypy, broad smoke/unit tests, and real isolated `autopilot` smoke passed. Full commands are recorded in `Agent.md`._
+
+- [x] 223. Per-agent profile policy controls
+  - [x] 223.1 Add CLI policy knobs for custom skills and MCP bindings
+    - Add repeatable `--skill-policy <skill_id>:read_only_context|shadow_evaluation|approved_runtime` to `airesearcher agents profile write`.
+    - Add repeatable `--mcp-approval <server_id>:read_only|approve_dangerous|allow_all` to `airesearcher agents profile write`.
+    - Add repeatable `--mcp-env-key <server_id>:ENV_KEY` so profile artifacts can declare required environment variable names without storing secret values.
+    - Reject policy and env-key specs that reference missing `--skill` or `--mcp` bindings in the same command.
+    - Keep policy declarations as auditable process metadata only; they do not bypass runtime approval, evidence, publication, safety, license, or release gates.
+    - Update README/README.zh-CN and `/research:agent-profile` guidance so operators can configure bounded per-agent skill/MCP policy without hand-editing JSON.
+    - _References: tasks `215.1`, `216.1`, `221.1`; user request to assign custom skills and MCPs to specific Agents while keeping the system scientific and evidence-first._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_mcp_without_tools tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_unknown_stage tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_dangling_policy_specs tests\unit\cli\test_main.py::test_agent_profile_write_cli_rejects_invalid_mcp_env_key tests\unit\cli\test_main.py::test_slash_commands_init_and_list_project_templates -q` passed with 13 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id literature-agent --role project_agent --stage literature --stage review --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "page-agent=npx -y page-agent" --mcp-tool page-agent:browser.search --mcp-tool page-agent:browser.open --mcp-approval page-agent:approve_dangerous --mcp-env-key page-agent:PAGE_AGENT_TOKEN --mcp-env-key page-agent:PAGE_AGENT_WORKSPACE --vault runs\manual-live\task223-profile-policy-v1\vault --project-id task223_profile_policy_v1 --output runs\manual-live\task223-profile-policy-v1\profiles\literature-agent.json` passed and wrote profile JSON plus Obsidian note; real `agents profile inspect` confirmed `context_kind=agent_profile_process_metadata`, `import_policy=approved_runtime`, `approval_policy=approve_dangerous`, and env keys `PAGE_AGENT_TOKEN,PAGE_AGENT_WORKSPACE`. Broad `python -m pytest tests\smoke tests\unit -q` passed with 572 passed and 4 skipped; broad `python -m ruff check src tests` passed; broad `python -m mypy src\autoresearch` passed; `git diff --check` passed._
+
+- [x] 224. Agent profile readiness preflight
+  - [x] 224.1 Validate skill sources and MCP env-key requirements before runtime use
+    - Add typed readiness checks for per-agent local skill source paths and required MCP environment variable names.
+    - Add `airesearcher agents profile validate <profile.json> --env-path .env --base-dir . --output <json>` so operators can preflight custom Agent profiles before unattended cycles.
+    - Attach readiness reports to loaded profile contexts, `cycle-summary.json`, `review-evidence-context.json`, monitor rows, and CLI status output.
+    - Do not record secret values; readiness is process metadata only and cannot support scientific claims, tool-invocation claims, novelty, citation validity, or publication readiness.
+    - Update README/README.zh-CN with the validate command, readiness artifacts, and command table entry.
+    - _References: tasks `215.1`, `221.1`, `223.1`; Loop Engineering requirement that Agent/tool declarations become checked artifacts rather than prompt-only assumptions._
+    - _Verify: focused `python -m pytest tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py::test_agent_profile_write_and_inspect_cli tests\unit\cli\test_main.py::test_agent_profile_validate_cli_writes_readiness_report tests\unit\cli\test_main.py::test_agent_profile_validate_cli_fails_on_missing_env_key tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_monitor_renders_agent_flow_changes_and_preview -q` passed with 14 tests; focused `python -m ruff check src\autoresearch\agents\profiles.py src\autoresearch\agents\__init__.py src\autoresearch\cli\main.py tests\unit\agents\test_profiles.py tests\unit\cli\test_main.py` passed; focused `python -m mypy src\autoresearch\agents src\autoresearch\cli\main.py` passed. Real CLI `node .\bin\airesearcher.mjs agents profile write --agent-id readiness-agent --role project_agent --stage literature --skill source-tracing=autoresearch-vault/_system/templates/skill-card.md --skill-policy source-tracing:approved_runtime --mcp "model-router=npx -y model-router-mcp" --mcp-tool model-router:models.search --mcp-approval model-router:approve_dangerous --mcp-env-key model-router:AUTORESEARCH_LLM_API_KEY --vault runs\manual-live\task224-profile-readiness-v1\vault --project-id task224_profile_readiness_v1 --output runs\manual-live\task224-profile-readiness-v1\profiles\readiness-agent.json` passed; real `agents profile validate` with `.env` passed with 2 checks, 0 failures, and 0 warnings; readiness JSON contained no `sk-` secret prefix; real narrow `autopilot` with that profile passed the cycle path and wrote `agent_profiles.readiness.passed=True` plus `failed_check_count=0` into `cycle-summary.json`. Broad gates and diff checks are recorded in `Agent.md`._
+
+- [x] 225. Agent skill context materialization
+  - [x] 225.1 Attach bounded local skill content to assigned agent stage contexts
+    - Add typed materialized-skill context records for per-agent local skill files and skill directories containing `SKILL.md`.
+    - Include status, resolved path, SHA-256, byte/character counts, `max_chars`, truncation state, and process-metadata evidence policy for every materialized skill.
+    - Keep non-local skill sources as references and block secret-like local skill files without copying content into runtime artifacts.
+    - Load bounded local skill content into `serve`/`autopilot` runtime profile contexts, `stage_runtime_contexts`, and `review-evidence-context.json`, while keeping compact profile summaries content-free.
+    - Add `agents profile inspect --materialize-skills --base-dir . --max-skill-chars <n>` so operators can preview exactly what an assigned Agent receives.
+    - Update README/README.zh-CN with materialization behavior and the evidence boundary.
+    - _References: tasks `215.1`, `218.1`, `221.1`, and `224.1`; user request that custom skills/MCPs can be assigned to specific Agents while the system remains evidence-first and avoids prompt-only assumptions._
+    - _Verify: focused profile, CLI inspect, and autopilot summary/review-context tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
+
+- [x] 226. Agent MCP runtime contracts
+  - [x] 226.1 Attach MCP approval and invocation-evidence contracts to Agent profiles
+    - Add typed MCP runtime contract records for every per-agent MCP binding.
+    - Record command SHA-256, command token count, allowed tools, approval policy, required env-key names, and whether runtime approval or isolated operator approval is required.
+    - Never record env values, and explicitly require separate tool-invocation evidence before any reviewer or paper claim can say a tool was used.
+    - Write full contracts into profile runtime context, stage contexts, and review evidence; write compact contract summaries into `agent_profiles.profiles`.
+    - Extend LLM reviewer prompt and deterministic profile-context misuse gate so `mcp_runtime_contracts` are process metadata only.
+    - Update README/README.zh-CN with the contract semantics and inspect behavior.
+    - _References: tasks `215.1`, `221.1`, `223.1`, `224.1`, and `225.1`; user request that custom MCP imports can be assigned to specific Agents while keeping tool use evidence-backed._
+    - _Verify: focused profile, CLI, and LLM reviewer tests passed; broad smoke/unit, ruff, mypy, real CLI inspect, real profile validation, and real narrow autopilot verification are recorded in `Agent.md`._
+
+- [x] 227. Active-learning Loop Optimizer state
+  - [x] 227.1 Persist optimizer scoring state for every campaign selection
+    - Add typed optimizer state records for DOE seed selection and active-learning/UCB-like candidate choice.
+    - Record candidate-level exploitation, uncertainty, cost penalty, risk penalty, frozen-dimension penalty, observation count, total score, and evidence refs.
+    - Make `llm_override_allowed=false`, `budget_gate_enforced=true`, and `evidence_gate_enforced=true` machine-readable in optimizer artifacts.
+    - Attach optimizer state to selection decisions, loop iteration records, loop-campaign JSON, and the Markdown loop report.
+    - Keep first-round DOE mandatory and use optimizer state, not LLM preference text, for later candidate selection.
+    - Update README/README.zh-CN with the optimizer-state contract.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; task `214.1`; task `222.1`; requirement that Loop Optimizer, not pure LLM prompting, chooses candidates under budget, risk, evidence, and reproduction gates._
+    - _Verify: focused loop/promotion/evidence/publication tests passed; real narrow autopilot and broad gates are recorded in `Agent.md`._
+
+- [x] 228. MCP invocation evidence ledger
+  - [x] 228.1 Record real MCP tool-use evidence separately from profile contracts
+    - Add an `AgentMcpInvocationEvidence` ledger model for real MCP tool invocation attempts by assigned agents.
+    - Store hashed request and response artifact refs, invocation status, approval request ID or operator identity, result summary, error type, and evidence policy.
+    - Validate evidence against the owning `AgentProfile` MCP server binding and explicit tool allowlist.
+    - Keep raw request and response payloads out of the JSONL ledger; the ledger records hashes and artifact refs only.
+    - Add `airesearcher agents mcp-evidence add`, `list`, and `validate` commands for runtime workers and operators.
+    - Keep MCP invocation evidence bounded: it can prove that a named agent recorded a named tool call, but it cannot prove scientific results, citation validity, benchmark metrics, novelty, or publication readiness without validated source, experiment, or review evidence.
+    - Update README/README.zh-CN with the ledger commands and evidence boundary.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `221.1`, `226.1`, and `227.1`; requirement that tool use and loop evidence are auditable artifacts rather than prompt-only self-report._
+    - _Verify: focused MCP evidence model/CLI tests, ruff, mypy, real CLI add/list/validate, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 229. Campaign protocol contract gate
+  - [x] 229.1 Require protocol-as-code contract validation before release or publication
+    - Add a `LoopCampaignContractValidation` model for closed-loop campaign protocol completeness.
+    - Validate objective, target metric, budget, data sources, baselines, protocol artifacts, candidate space, stop criteria, approval policy, evidence requirements, and LLM non-bypass constraints.
+    - Write `contract_validation` into `loop-campaign.json`, loop report summary, and the Obsidian Markdown loop report.
+    - Fold contract failures into the loop campaign quality gate instead of treating metrics alone as enough.
+    - Require `contract_validation.passed=true` in both the evidence gate and publication audit before release or publication-level claims.
+    - Update README/README.zh-CN with the contract-validation gate and its evidence boundary.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `222.1`, `227.1`, and `228.1`; requirement that protocol-as-code completeness be a hard gate, not prompt-only self-discipline._
+    - _Verify: focused loop/report/evidence/publication tests, ruff, mypy, real narrow autopilot, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 230. Reusable Agent profile bundles
+  - [x] 230.1 Import declarative Agent skill/MCP bundles into standard profiles
+    - Add JSON/YAML/TOML `AgentProfileBundle` loading for reusable per-agent skill and MCP declarations.
+    - Convert bundle skills, MCP servers, stage assignments, publication target, thinking mode, and thinking-contract additions into the existing `AgentProfile` model.
+    - Preserve the default scientific thinking contract and append bundle-specific additions instead of allowing a bundle to replace the research-first contract.
+    - Add `airesearcher agents profile import <bundle> --output <profile.json>` so operators can deploy one Agent's custom skills and MCP instruments without hand-composing long command lines.
+    - Keep imported profiles compatible with existing `validate`, `inspect`, `serve`, `autopilot`, MCP runtime contracts, skill materialization, and MCP evidence ledger flows.
+    - Update README/README.zh-CN with bundle examples and command-table entries.
+    - _References: user request to keep AI thinking scientific rather than over-engineered while continuing to add custom skill/MCP import ability for specific Agents; tasks `215.1`, `223.1`, `224.1`, `225.1`, `226.1`, and `228.1`._
+    - _Verify: focused profile bundle import/API/CLI tests, ruff, mypy, real CLI import/validate/inspect, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 231. Loop Engineering gate hardening
+  - [x] 231.1 Add repair/approval stop contracts and loop-metric strategy promotion gates
+    - Add machine-readable stop-decision fields for repair requirements, approval requirements, and retry-blocking evidence prerequisites.
+    - Render research-plan binding and the eight Loop Engineering failure categories in every loop report.
+    - Expose a bridge from legacy experiment failure notes to the eight Loop Engineering categories: source, protocol, execution, metric, validation, review, cost, and safety.
+    - Require strategy promotion candidates to avoid regressions in AF, EF, metadata completeness, reproduction delta, failure recovery, and evidence coverage before gray release.
+    - Update README/README.zh-CN with the strategy-promotion metric gate.
+    - _References: user-provided "AI-Researcher Loop Engineering Evolution Plan"; tasks `214.1`, `227.1`, `228.1`, `229.1`, and `230.1`; requirement that self-evolution use measurable loop gates, repair/freeze policy, and auditable research-plan binding instead of prompt-only self-discipline._
+    - _Verify: focused loop/failure/promotion tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real narrow autopilot, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 232. Agent profile set governance
+  - [x] 232.1 Validate multi-Agent skill/MCP profile sets before unattended research loops
+    - Add a team-level `AgentProfileSetValidation` contract for multiple per-Agent custom skill/MCP profiles.
+    - Generate a stage coverage matrix with agent IDs, skill IDs, and MCP server IDs for required CCF-B/Q2 research-loop stages.
+    - Block profile sets with missing required literature, research-plan, campaign, experiment, reproduction, citation, review, publication-audit, or evidence-gate coverage.
+    - Block duplicate agent IDs, failed readiness reports, and profiles whose thinking contract is not research/evidence-first.
+    - Warn about unassigned profiles and `allow_all` MCP approval policies that require isolated operator approval.
+    - Add `airesearcher agents profile set-validate <profiles...>` with JSON output for deployment preflight.
+    - Update README/README.zh-CN with the profile-set matrix command and evidence boundary.
+    - _References: user request to keep AI thinking scientific rather than over-engineered while allowing custom skills and MCP to be assigned to specific Agents; tasks `226.1`, `228.1`, `230.1`, and `231.1`._
+    - _Verify: focused Agent profile and CLI tests, ruff, mypy, broad smoke/unit, broad ruff, broad mypy, real CLI set validation, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 233. Runtime heartbeat watchdog
+  - [x] 233.1 Detect stale and stalled long-running loop stages
+    - Add a runtime heartbeat state file contract for long-running `serve`, `autopilot`, and future worker stages.
+    - Store bounded per-stage heartbeat events with run ID, normalized stage, progress signature hash, timestamp, message, and artifact refs.
+    - Detect stale stages when the latest heartbeat exceeds a configurable age threshold.
+    - Detect stalled stages when the same progress signature repeats beyond a configurable threshold.
+    - Return explicit actions: continue, inspect, or repair/pivot before the system keeps spending budget.
+    - Add `airesearcher runtime heartbeat write` and `airesearcher runtime heartbeat check`.
+    - Keep heartbeat evidence scoped to runtime health only; it must not support scientific results, novelty claims, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN with the watchdog commands and evidence boundary.
+    - _References: Victor Chen AutoResearch long-horizon protocol concepts; tasks `21.1`, `51.1`, `231.1`, and `232.1`; user request to keep loops genuinely running with quality gates instead of prompt-only self-discipline._
+    - _Verify: focused runtime heartbeat and CLI tests, ruff, mypy, real CLI heartbeat report, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 234. Autopilot runtime heartbeat integration
+  - [x] 234.1 Emit watchdog heartbeats from `serve` and `autopilot` cycles automatically
+    - Add `--heartbeat-state` to `serve` and `autopilot` so operators can override the default runtime heartbeat state file.
+    - Resolve the default heartbeat state beside the scheduler or approval state used by the current runtime command.
+    - Emit heartbeat events for cycle start, agent profile load, source preflight, literature refresh, candidate generation, similarity check, research-plan gate, loop campaign selection, inspiration refresh, experiment execution, reproduction, citation package, loop report, related-work inspection, manuscript composition, LaTeX paper build, review evidence, review, publication audit, evidence gate, followups, and deliverables.
+    - Write `runtime-heartbeat-report.json` into each cycle directory and embed the current report summary in `cycle-summary.json`.
+    - Add the heartbeat report to review evidence bundles while preserving the evidence boundary that heartbeat health cannot prove scientific claims.
+    - Print runtime heartbeat status in `serve` and `autopilot` summaries.
+    - Add run-ID isolation to `runtime heartbeat check` so old cycles do not block the active cycle's health check.
+    - Update README/README.zh-CN with automatic heartbeat emission, `--heartbeat-state`, and `--run-id` inspection.
+    - _References: tasks `231.1`, `232.1`, and `233.1`; user request to keep the 24h self-loop genuinely running with evidence gates and observable agent progress._
+    - _Verify: focused runtime heartbeat/API/CLI tests, ruff, mypy, real autopilot heartbeat smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 235. Stage-scoped Agent context packets
+  - [x] 235.1 Export bounded custom skill/MCP context for one assigned research stage
+    - Add a portable Agent stage context packet contract that routes only the profiles assigned to a requested research-loop stage.
+    - Include assigned agent IDs, skill IDs, materialized skill IDs, MCP server IDs, per-agent bounded runtime contexts, readiness summary, project ID, cycle ID, and an explicit process-metadata evidence policy.
+    - Keep packet evidence scoped to responsibility routing and runtime prompting only; it must not support scientific results, novelty claims, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Add `airesearcher agents profile export-stage-context <profiles...> --stage <stage> --output <packet.json>`.
+    - Fail by default when no Agent is assigned to the requested stage or when assigned profiles have failing readiness checks; expose explicit escape hatches for debugging.
+    - Update README/README.zh-CN with the stage-context packet command.
+    - _References: user request to assign custom skills and MCPs to specific Agents without over-engineering the scientific reasoning loop; tasks `228.1`, `230.1`, `232.1`, and `234.1`._
+    - _Verify: focused Agent profile/API/CLI tests, ruff, mypy, real CLI stage-context export, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 236. Runtime Agent stage context packet artifacts
+  - [x] 236.1 Write per-stage Agent context packets during each `serve`/`autopilot` cycle
+    - Generate `agent-stage-contexts/<stage>.json` artifacts for every loop stage with assigned Agents after profiles are loaded.
+    - Write `agent-stage-contexts/manifest.json` and add its summary to `cycle-summary.json`.
+    - Include packet manifest and packet files in review evidence context/bundles so downstream stage workers and reviewers can inspect routing without treating it as scientific proof.
+    - Keep packet evidence scoped to process metadata only; packets must not prove results, novelty, metrics, citations, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the automatic packet artifact behavior.
+    - _References: task `235.1`; user request for custom skills/MCPs assigned to specific Agents while preserving evidence-first scientific gates._
+    - _Verify: focused autopilot CLI regression, ruff, mypy, real autopilot packet artifact smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 237. Runtime Agent profile-set preflight
+  - [x] 237.1 Write and optionally require CCF-B/Q2 Agent stage coverage validation during `serve`/`autopilot`
+    - Write `agent-profile-set/agent-profile-set-validation.json` into every cycle after loading Agent profiles.
+    - Embed the runtime profile-set validation in `cycle-summary.json`, review evidence context, and review evidence bundles.
+    - Add `--require-agent-profile-set` to `serve` and `autopilot` so incomplete Agent stage coverage blocks the cycle before online retrieval and experiment execution.
+    - Default to audit-only mode so existing MVP/demo runs remain usable while still exposing missing Agent responsibilities.
+    - Keep profile-set validation scoped to process metadata only; it must not prove scientific results, novelty, metrics, citations, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the runtime validation artifact and require flag.
+    - _References: tasks `232.1`, `235.1`, and `236.1`; user request to assign custom skills/MCPs to specific Agents while moving toward publishable CCF-B/SCI-Q2 output gates._
+    - _Verify: focused autopilot profile-set tests, ruff, mypy, real require-gate smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 238. Reusable Agent profile-set bundles
+  - [x] 238.1 Import multi-Agent skill/MCP bundles into validated profile sets
+    - Add a JSON/YAML/TOML `AgentProfileSetBundle` schema with `profiles` entries that reuse the single-Agent `AgentProfileBundle` contract.
+    - Convert a profile-set bundle into multiple standard `AgentProfile` JSON artifacts without weakening the default scientific thinking contract.
+    - Add `airesearcher agents profile import-set <bundle> --output-dir <dir>` so operators can deploy a named Agent team from one reusable file.
+    - Write one profile JSON per Agent plus `profile-set-validation.json` immediately after import.
+    - Fail by default when bundle-required stages are missing, duplicate Agent IDs exist, readiness fails, or the research/evidence-first contract is not met; expose `--allow-incomplete` only for debugging or dry runs.
+    - Keep profile-set import scoped to process metadata and responsibility routing; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the profile-set bundle command and evidence boundary.
+    - _References: tasks `230.1`, `232.1`, `235.1`, `236.1`, and `237.1`; user request to assign custom skills and MCPs to specific Agents while keeping CCF-B/SCI-Q2 evidence gates strict._
+    - _Verify: focused profile-set bundle/API/CLI tests, ruff, mypy, real CLI import-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 239. Runtime Agent profile-set bundle loading
+  - [x] 239.1 Materialize profile-set bundles inside `serve`/`autopilot` cycles
+    - Add repeatable `--agent-profile-set-bundle <team.yaml>` flags to `serve` and `autopilot`.
+    - Materialize each reusable Agent team bundle into per-cycle `agent-profile-bundles/` profile JSON artifacts plus a bundle manifest.
+    - Resolve relative local skill sources against the bundle file location before runtime readiness checks.
+    - Merge generated profile paths with explicit `--agent-profile` paths and reuse existing readiness, profile-set validation, stage-context packet, review-evidence, and `--require-agent-profile-set` behavior.
+    - Include the bundle manifest, source bundle paths, and generated profile paths in cycle summaries and review evidence paths.
+    - Keep runtime bundle materialization scoped to process metadata and responsibility routing; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the runtime bundle flag and evidence boundary.
+    - _References: tasks `216.1`, `236.1`, `237.1`, and `238.1`; user request for one-step unattended Agent team loading while preserving strict publication evidence gates._
+    - _Verify: focused runtime bundle CLI tests, ruff, mypy, real runtime bundle autopilot smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 240. Default runtime Agent team template
+  - [x] 240.1 Add a CLI-generated editable CCF-B/Q2 Agent team bundle
+    - Add `airesearcher agents profile team-template` to write a default three-Agent profile-set bundle plus local skill Markdown files.
+    - Cover literature/similarity/research-plan, loop-campaign/experiment/reproduction/citations, and review/publication-audit/evidence-gate stages.
+    - Include a read-only `page-agent` MCP contract for the literature agent without storing secrets.
+    - Refuse to overwrite existing bundle or skill files unless `--overwrite` is explicitly passed.
+    - Ensure the generated bundle can be imported with `agents profile import-set` and loaded directly by `serve`/`autopilot --agent-profile-set-bundle`.
+    - Keep the generated template editable scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the template command and runtime usage.
+    - _References: tasks `238.1` and `239.1`; user request for guided deployment and one-step unattended Agent team loading._
+    - _Verify: focused CLI template/import/runtime tests, ruff, mypy, real template generation/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 241. Setup-generated runtime Agent team
+  - [x] 241.1 Generate the default Agent team bundle during `airesearcher setup`
+    - Add setup options for the generated Agent team bundle path, profile-set ID, skip switch, and overwrite switch.
+    - Create `.airesearcher/agents/ccfb-team.yaml` and local skill Markdown files by default during first deployment.
+    - Reuse the same CCF-B/Q2 team-template generator so setup and `agents profile team-template` stay in sync.
+    - Print the recommended `serve --agent-profile-set-bundle ... --require-agent-profile-set` next step after setup.
+    - Allow existing setup-generated bundles without overwriting user edits, unless the operator passes the explicit overwrite flag.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the setup behavior and command parameters.
+    - _References: task `240.1`; user request for one guided deployment that configures the runtime Agent team without manual command chaining._
+    - _Verify: focused setup CLI tests, focused ruff, focused mypy, real setup/import/runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 242. Setup-default Agent team runtime auto-load
+  - [x] 242.1 Auto-load the setup-generated Agent team for `serve` and `autopilot`
+    - Detect `.airesearcher/agents/ccfb-team.yaml` when no explicit `--agent-profile` or `--agent-profile-set-bundle` arguments are supplied.
+    - Automatically load that default bundle and require the default CCF-B/Q2 profile-set coverage gate before online retrieval.
+    - Add `--default-agent-team/--no-default-agent-team` so operators can disable the setup default without deleting files.
+    - Preserve explicit per-Agent profile and explicit team-bundle behavior; user-supplied runtime routing must take precedence over the setup default.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN so `npm run serve` is documented as the normal post-setup start path.
+    - _References: tasks `240.1` and `241.1`; user request for setup once, then run the 24h operator without copying long command flags._
+    - _Verify: focused runtime default-team tests, focused ruff, focused mypy, real setup plus npm-style runtime smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 243. Prelaunch Agent team readiness gate
+  - [x] 243.1 Validate the setup-generated Agent team during strict prelaunch
+    - Add a readiness check for the setup-generated Agent team bundle path.
+    - Validate bundle parsing, profile readiness, and default CCF-B/Q2 profile-set stage coverage.
+    - Keep ordinary readiness compatible when the bundle is missing and not required, but fail strict prelaunch via `--require-agent-team`.
+    - Add a `generate_agent_team` next action that points to `agents profile team-template` and uses `--overwrite` only when a broken bundle already exists.
+    - Update the npm `prelaunch` script and README/README.zh-CN to include the Agent team gate.
+    - Keep this as process-routing scaffolding only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - _References: tasks `241.1` and `242.1`; user request for deployment once, then a reliable 24h operator startup._
+    - _Verify: focused readiness/npm-script tests, focused ruff, focused mypy, real setup plus strict prelaunch smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 244. Agent team bundle inspection preview
+  - [x] 244.1 Preview reusable Agent skill/MCP teams before runtime
+    - Add `airesearcher agents profile inspect-set <team.yaml>` so operators can inspect a reusable multi-Agent bundle without importing profiles or starting a cycle.
+    - Include each Agent runtime context, readiness report, materialized local skill hashes when requested, MCP runtime contracts, stage coverage, and the profile-set evidence policy.
+    - Default to a non-mutating preview that can show incomplete bundles; add `--require-complete` to make missing stage coverage or readiness failures exit nonzero.
+    - Resolve relative local skill paths against the bundle file location unless `--base-dir` is explicitly supplied.
+    - Keep the inspection scoped to process metadata and responsibility routing only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with the team preview command and evidence boundary.
+    - _References: tasks `240.1`, `241.1`, `242.1`, and `243.1`; user request to assign custom skills and MCPs to specific Agents while preserving CCF-B/Q2 evidence gates and one-step unattended operation._
+    - _Verify: focused `inspect-set` CLI tests, focused ruff, focused mypy, real CLI team-template plus inspect-set smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 245. Guided Agent team inspection entry point
+  - [x] 245.1 Surface Agent team preview in setup and npm scripts
+    - Add `npm run agent-team:inspect` as a normal-user shortcut for previewing `.airesearcher/agents/ccfb-team.yaml` with materialized local skill hashes and `--require-complete`.
+    - Print the `agents profile inspect-set ... --materialize-skills --require-complete` command during setup before the recommended runtime start command.
+    - Keep runtime start guidance after the inspection step so first-time operators can review skill/MCP responsibility routing before unattended execution.
+    - Update README/README.zh-CN with the shortcut and first-run inspection recommendation.
+    - Keep this as deployment guidance and process metadata only; it must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - _References: task `244.1`; user request for setup-once operation with visible Agent skill/MCP assignment and strict quality gates._
+    - _Verify: focused setup/npm-script tests, focused ruff, focused mypy, real setup output smoke, real npm script smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 246. Targeted Agent team binding edits
+  - [x] 246.1 Attach custom skills, MCPs, and stages to one named Agent in a team bundle
+    - Add `airesearcher agents profile team-attach <team.yaml> --agent-id <id>` for editing the setup/default or reusable profile-set bundle without hand-editing YAML.
+    - Reuse the single-Agent profile grammar for `--skill`, `--skill-policy`, `--stage`, `--mcp`, `--mcp-tool`, `--mcp-approval`, and `--mcp-env-key`.
+    - Reject duplicate skill or MCP IDs by default; expose `--replace-existing` for intentional updates.
+    - Write the updated bundle back to YAML/JSON/TOML and immediately validate readiness plus profile-set stage coverage.
+    - Print the next `inspect-set --materialize-skills --require-complete` command so operators can review the exact per-Agent context before runtime.
+    - Keep team edits scoped to process metadata and responsibility routing only; they must not prove scientific results, novelty, metrics, citation validity, MCP invocation, or publication readiness.
+    - Update README/README.zh-CN with targeted team binding examples and command parameters.
+    - _References: tasks `238.1`, `240.1`, `244.1`, and `245.1`; user request to assign custom skills and MCPs to specific Agents while preserving scientific, not over-engineered, thinking._
+    - _Verify: focused `team-attach` CLI tests, focused ruff, focused mypy, real CLI team-template/team-attach/inspect smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 247. Runtime Agent stage assignment manifest
+  - [x] 247.1 Write cross-stage custom skill/MCP assignment evidence for each cycle
+    - Add a compact `agent_stage_assignment_manifest_process_metadata` contract that summarizes stage-to-Agent routing, skill IDs, materialized skill hashes, MCP server IDs, MCP runtime contract hashes, readiness, and per-Agent assignments.
+    - Write `agent-stage-contexts/assignment-manifest.json` during each `serve`/`autopilot` cycle beside the per-stage packet files.
+    - Embed the assignment manifest in `cycle-summary.json`, `review-evidence-context.json`, and review audit summaries so publication gates can audit which custom skills/MCP contracts were available to each stage.
+    - Keep the manifest content-free for skill bodies and secret-free for MCP env values; it must not prove scientific results, novelty, benchmark metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN with the assignment manifest location and evidence boundary.
+    - _References: tasks `235.1`, `236.1`, `237.1`, and `246.1`; user request to assign custom skills and MCPs to specific Agents while keeping AI reasoning scientific and evidence-first._
+    - _Verify: focused Agent profile/API and autopilot artifact tests, focused ruff, focused mypy, real CLI autopilot assignment-manifest smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 248. Innovation search breadth
+  - [x] 248.1 Record source/query/finding breadth before research planning
+    - Add a `novelty_breadth` matrix to project-start `similarity-check` outputs so every candidate records query families, source-type coverage, classified adjacent-work coverage, ecosystem-signal coverage, and duplicate-scan coverage before a research plan is written.
+    - Keep broad-source signals separate from scholarly novelty evidence: ArXiv/OpenAlex/Semantic Scholar-style sources count as scholarly evidence, while Hacker News, Hugging Face, GitHub, news, and forum signals are inspiration/context until later verified.
+    - Move `inspiration-refresh` before `research-plan` in the autonomous loop and pass its source-backed summary into plan generation, so research plans see both scholarly adjacent work and broader ecosystem signals.
+    - Persist machine-readable novelty breadth JSON beside the Obsidian similarity note and in per-cycle artifacts, and include the breadth status/score in CLI output and `cycle-summary.json`.
+    - Treat the breadth result as a trajectory signal for expanding search, not as standalone proof of novelty, publishability, code availability, or experimental truth.
+    - _References: Execution Plan section 6.5; tasks `21.3`, `64.1`, `79.1`, `95.1`, `104.1`; user request that innovation search breadth is the core priority._
+    - _Verify: focused similarity and autopilot tests, focused ruff, focused mypy, real `similarity-check` over ArXiv/OpenAlex with ArXiv 429/timeout recorded and OpenAlex findings returned, and real `inspiration-refresh` showing narrow zero-result evidence plus a broader Hacker News inspiration result._
+
+- [x] 249. Inspiration-driven temporary miniagent brainstorming
+  - [x] 249.1 Add high-temperature brainstorm stage between inspiration and research planning
+    - Run multiple temporary miniagent perspectives over the inspiration report after broad-source refresh and before research-plan generation.
+    - Keep the miniagents ephemeral: persist only the reusable prompt set, raw outputs, parsed ideas, and selected synthesis; do not add permanent agents to the configured team.
+    - Use creative high-temperature LLM calls while leaving `max_tokens` unset by default, so long-context providers can decide their own completion budget.
+    - Score and select ideas with deterministic creativity, feasibility, and evidence-binding fields before exposing them to the research plan stage.
+    - Store prompt templates in `strategy_library/prompts/brainstorm-miniagents.md`, store the run note in `exploration/brainstorm/`, and store machine-readable artifacts beside the cycle outputs.
+    - Treat brainstorm ideas as hypotheses only: inspiration sources are context signals, not proof of novelty, metric improvement, publishability, or experimental truth.
+    - _References: tasks `248.1`, `247.1`, `222.1`; user request to turn inspiration data into a high-creativity multi-miniagent brainstorm and then integrate, justify, and filter feasible creative ideas._
+    - _Verify: focused brainstorm/plan/LLM/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke over a stored inspiration report, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 250. Injectable stage runtime context for custom Agent skills and MCPs
+  - [x] 250.1 Render research-first runtime prompts from assigned Agent stage packets
+    - Add a `scientific_focus` field for each research-loop stage so custom skill/MCP imports are framed by the scientific task rather than by generic engineering orchestration.
+    - Add `runtime_prompt` to every `agent-stage-contexts/<stage>.json` packet and to `agents profile export-stage-context`, including the assigned Agent thinking contract, bounded skill excerpts, MCP allowed tools, approval requirements, and explicit evidence boundary.
+    - Keep MCP commands and secret values out of the prompt; expose allowed tools, approval policy, and tool-invocation evidence requirements instead.
+    - Keep the prompt scoped to process context: it can guide the assigned Agent but cannot prove scientific results, novelty, metrics, citation validity, tool invocation, or publication readiness.
+    - Update README/README.zh-CN so operators know stage packets are not only audit metadata; they are also the bounded runtime context that downstream stage workers can inject.
+    - _References: tasks `235.1`, `236.1`, `247.1`; user request to keep AI reasoning scientific rather than over-engineered while continuing to assign custom skills and MCPs to specific Agents._
+    - _Verify: focused Agent profile/API and CLI tests, focused ruff, focused mypy, real CLI stage-context export smoke, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 251. Auditable brainstorm selection rationale
+  - [x] 251.1 Record why creative miniagent ideas are selected or deferred
+    - Add deterministic selection reasons to every brainstorm idea after scoring creativity, feasibility, and evidence binding.
+    - Write selected-idea arguments and deferred-idea reasons into the Obsidian brainstorm note so later cycles can reuse or revisit unselected ideas.
+    - Preserve the raw high-temperature miniagent outputs and provider-agnostic LLM behavior; this task only strengthens the synthesis/filtering layer.
+    - Keep selection reasons as research-planning process metadata, not proof of novelty, benchmark metrics, publication readiness, or experimental truth.
+    - Update README/README.zh-CN to describe selected and deferred rationales in brainstorm artifacts.
+    - _References: task `249.1`; user request that inspiration data should drive multiple high-creativity temporary miniagents, then record, integrate, justify, and filter feasible creative ideas._
+    - _Verify: focused brainstorm/plan/autopilot tests, focused ruff, focused mypy, broad smoke/unit, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 252. Evidence-backed second-stage brainstorm reviewer
+  - [x] 252.1 Connect brainstorm selection to live literature, code, dataset, and community signals
+    - Preserve high-temperature miniagent output as the creative first stage; do not suppress raw ideas before they are recorded.
+    - Add a second-stage reviewer that queries live scholarly and ecosystem sources, writes per-idea screening evidence, and adjusts selection scores before research-plan handoff.
+    - Treat duplicate risk as a same-direction similarity problem against retrieved literature; high-similarity matches defer an idea, while missing close matches are recorded as novelty potential rather than feasibility failure.
+    - Judge doability primarily from the idea's own executable plan structure: named data/source, baseline, metric, and falsification check. Dataset and code search signals may support feasibility but are not required proof that the idea can work.
+    - Persist reviewer decisions, signals, queries, duplicate risk, doability, verifiability, and score adjustments in `brainstorm-ideas.json` and the Obsidian brainstorm note.
+    - Keep reviewer evidence as screening metadata only: it cannot prove benchmark results, novelty, publication readiness, or citation validity.
+    - _References: tasks `248.1`, `249.1`, `251.1`; user request to connect brainstorm review to real literature/code/dataset evidence while preserving creative novelty and using similarity matching only for duplicate-risk checks._
+    - _Verify: focused brainstorm/inspiration/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke with live evidence review, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 253. Runtime routing for per-Agent custom skill/MCP imports
+  - [x] 253.1 Add skill/MCP routing queries to the Agent runtime and registry
+    - Expose bound skill IDs, MCP server IDs, and scoped MCP tool refs from each runtime Agent profile.
+    - Add registry queries that can find the exact Agent assigned to a custom skill, MCP server, or MCP tool.
+    - Keep custom skill `allowed_tasks` as routing metadata only; it must not bypass `BaseAgent.run_task` capability checks.
+    - Write runtime capability metadata into Agent runtime context with an explicit process-metadata evidence boundary.
+    - Keep this layer focused on scientific responsibility routing for stage schedulers, not on claiming scientific results, novelty, metrics, citation validity, tool invocation, or publication readiness.
+    - _References: tasks `230.1`, `238.1`, `239.1`, `250.1`; user request to specify custom skills and MCP imports for a particular Agent while keeping the system research-first._
+    - _Verify: focused Agent profile tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 254. Stage import requirement gate for Agent profile teams
+  - [x] 254.1 Validate required custom skills/MCP imports per research stage
+    - Add a `stage_import_requirements` section to reusable Agent profile-set bundles so a stage can require named custom skill IDs, MCP server IDs, or scoped `server_id:tool_name` refs.
+    - Include stage import requirement results in profile-set validation, with missing skills/MCPs surfaced as failures and failed stages listed for runtime gates.
+    - Make `agents profile import-set`, `agents profile inspect-set`, `agents profile team-attach`, and runtime `serve`/`autopilot` bundle materialization preserve and validate these requirements.
+    - Update the generated default CCF-B/SCI-Q2 team template so literature, plan, experiment, reproduction, citation, review, publication-audit, and evidence-gate stages declare their minimum custom research instruments.
+    - Keep the gate as process metadata only: it proves that the intended Agent profile carries the intended skill/MCP routing context, not that a tool was invoked or that scientific claims, novelty, citations, metrics, or publication readiness are true.
+    - _References: task `253.1`; user request to assign custom skills and MCPs to specific Agents and preserve research-first stage responsibility._
+    - _Verify: focused Agent profile/CLI tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 255. Novelty doability self-judgment for brainstorm screening
+  - [x] 255.1 Promote executable novel ideas when no close prior-work match exists
+    - Treat "worth doing next" as a self-contained research-plan judgment based on the idea's declared data/source, baseline, metric, falsification check, and execution path.
+    - Use live source matching mainly to estimate direct duplicate risk, adjacent borrowable context, and related-work positioning needs.
+    - Allow a low-duplicate-risk idea with strong doability and verifiability to be promoted to research-plan consideration even when no close same-direction prior work is retrieved.
+    - Preserve the evidence boundary: promotion means "candidate for planning and experiments," not proof of novelty, benchmark results, or publication readiness.
+    - Update README/README.zh-CN so users and future agents do not interpret sparse same-direction matches as a feasibility failure.
+    - _References: tasks `251.1`, `252.1`; user clarification that innovative directions should not require high-similarity prior work, and matching should primarily detect duplicate risk._
+    - _Verify: focused brainstorm reviewer test, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 256. Novelty search publication-audit semantics
+  - [x] 256.1 Treat sparse similar-work matches as revision evidence, not feasibility failure
+    - Keep similarity query breadth, successful source breadth, and source-error handling strict before publication-level novelty claims.
+    - Keep confirmed direct duplicates as blocking failures that reject or reposition the candidate before further publication review.
+    - Convert sparse same-direction findings, sparse classified findings, and unknown-only classifications into high-priority revision warnings for novelty positioning rather than blocking failures.
+    - Make strict publication targets return `needs_revision` when high-severity similarity warnings remain, so the system does not call the paper publishable while duplicate-risk evidence is unresolved.
+    - Update research plans so the rationale explicitly states that can-do judgment comes from the executable experiment skeleton, while source matching handles direct duplicate risk and adjacent context.
+    - _References: task `255.1`; user clarification that innovative research directions should not require high-similarity prior work, and duplicate-risk matching should be separate from deciding whether the work is worth doing._
+    - _Verify: focused publication-audit/research-plan tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
+- [x] 257. Scheduler-facing Agent skill/MCP route selection
+  - [x] 257.1 Select stage-assigned Agents by capability and required custom imports
+    - Add a registry-level selection API that combines normalized stage assignment, executable task capability, required skill IDs, MCP server IDs, and scoped `server_id:tool_name` refs.
+    - Return auditable route records with matched and missing imports so scheduler code can distinguish eligible workers from diagnostic near-misses.
+    - Respect skill `allowed_tasks` when a task capability is supplied, so importing a skill for one research action cannot silently authorize it for another.
+    - Preserve the existing capability gate: selecting a route is process metadata only and must not bypass `BaseAgent.run_task`.
+    - Update README/README.zh-CN to document the scheduler-facing API and its evidence boundary.
+    - _References: tasks `253.1` and `254.1`; user request to assign custom skills and MCPs to specific Agents while keeping runtime behavior research-first and not over-engineered._
+    - _Verify: focused Agent registry tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3165,6 +3646,182 @@ A task can be checked only when all applicable items are true:
     {
       "id": 116,
       "tasks": ["149.1"]
+    },
+    {
+      "id": 117,
+      "tasks": ["214.1"]
+    },
+    {
+      "id": 118,
+      "tasks": ["215.1"]
+    },
+    {
+      "id": 119,
+      "tasks": ["216.1"]
+    },
+    {
+      "id": 120,
+      "tasks": ["217.1"]
+    },
+    {
+      "id": 121,
+      "tasks": ["218.1"]
+    },
+    {
+      "id": 122,
+      "tasks": ["219.1"]
+    },
+    {
+      "id": 123,
+      "tasks": ["220.1"]
+    },
+    {
+      "id": 124,
+      "tasks": ["221.1"]
+    },
+    {
+      "id": 125,
+      "tasks": ["222.1"]
+    },
+    {
+      "id": 126,
+      "tasks": ["223.1"]
+    },
+    {
+      "id": 127,
+      "tasks": ["224.1"]
+    },
+    {
+      "id": 128,
+      "tasks": ["225.1"]
+    },
+    {
+      "id": 129,
+      "tasks": ["226.1"]
+    },
+    {
+      "id": 130,
+      "tasks": ["227.1"]
+    },
+    {
+      "id": 131,
+      "tasks": ["228.1"]
+    },
+    {
+      "id": 132,
+      "tasks": ["229.1"]
+    },
+    {
+      "id": 133,
+      "tasks": ["230.1"]
+    },
+    {
+      "id": 134,
+      "tasks": ["231.1"]
+    },
+    {
+      "id": 135,
+      "tasks": ["232.1"]
+    },
+    {
+      "id": 136,
+      "tasks": ["233.1"]
+    },
+    {
+      "id": 137,
+      "tasks": ["234.1"]
+    },
+    {
+      "id": 138,
+      "tasks": ["235.1"]
+    },
+    {
+      "id": 139,
+      "tasks": ["236.1"]
+    },
+    {
+      "id": 140,
+      "tasks": ["237.1"]
+    },
+    {
+      "id": 141,
+      "tasks": ["238.1"]
+    },
+    {
+      "id": 142,
+      "tasks": ["239.1"]
+    },
+    {
+      "id": 143,
+      "tasks": ["240.1"]
+    },
+    {
+      "id": 144,
+      "tasks": ["241.1"]
+    },
+    {
+      "id": 145,
+      "tasks": ["242.1"]
+    },
+    {
+      "id": 146,
+      "tasks": ["243.1"]
+    },
+    {
+      "id": 147,
+      "tasks": ["244.1"]
+    },
+    {
+      "id": 148,
+      "tasks": ["245.1"]
+    },
+    {
+      "id": 149,
+      "tasks": ["246.1"]
+    },
+    {
+      "id": 150,
+      "tasks": ["247.1"]
+    },
+    {
+      "id": 151,
+      "tasks": ["248.1"]
+    },
+    {
+      "id": 152,
+      "tasks": ["249.1"]
+    },
+    {
+      "id": 153,
+      "tasks": ["250.1"]
+    },
+    {
+      "id": 154,
+      "tasks": ["251.1"]
+    },
+    {
+      "id": 155,
+      "tasks": ["252.1"]
+    },
+    {
+      "id": 156,
+      "tasks": ["253.1"]
+    },
+    {
+      "id": 157,
+      "tasks": ["254.1"]
+    },
+    {
+      "id": 158,
+      "tasks": ["255.1"]
+    },
+    {
+      "id": 159,
+      "tasks": ["256.1"]
+    },
+    {
+      "id": 160,
+      "tasks": ["257.1"]
     }
   ]
 }
