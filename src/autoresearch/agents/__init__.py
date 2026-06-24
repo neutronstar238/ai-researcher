@@ -74,7 +74,7 @@ from .profiles import (
     write_agent_profile,
     write_agent_profile_note,
 )
-from .registry import AgentRegistry, AgentRegistryError
+from .registry import AgentRegistry, AgentRegistryError, AgentStageRoute
 
 if TYPE_CHECKING:
     from .workflow import (
@@ -118,6 +118,7 @@ __all__ = [
     "AgentProfileStageCoverage",
     "AgentStageImportRequirement",
     "AgentStageImportRequirementResult",
+    "AgentStageRoute",
     "AgentRegistry",
     "AgentRegistryError",
     "AgentResult",

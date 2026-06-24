@@ -10625,3 +10625,37 @@ This file defines the project development standard for coding agents and records
 - Follow-up:
   - Push this focused CI fix to trigger a fresh GitHub Actions run on `main`.
   - Continue the separate task `257.1` commit for scheduler-facing Agent skill/MCP route selection after the CI fix is isolated.
+
+### 2026-06-24 12:09:10 +08:00 - Codex - Task 257.1 Scheduler-facing Agent skill/MCP route selection
+
+- Request: Continue adding the ability to assign custom skills and MCPs to specific Agents, while keeping AI-Researcher research-first and avoiding over-engineered process layers.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/agents/__init__.py`
+  - `src/autoresearch/agents/registry.py`
+  - `tests/unit/agents/test_profiles.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AgentStageRoute` and `AgentRegistry.select_for_stage(...)` as a scheduler-facing bridge from stage assignment to runtime Agent selection.
+  - The route selection combines normalized stage assignment, executable task capability, required skill IDs, MCP server IDs, and scoped MCP tool refs.
+  - Added matched/missing import diagnostics and `include_ineligible=True` so schedulers can explain why an Agent was not eligible instead of silently falling back.
+  - Preserved the existing task capability gate: selecting a route remains process metadata and does not grant permission to bypass `BaseAgent.run_task`.
+  - Made skill matching respect `allowed_tasks` when a task capability is supplied, so a skill imported for literature refresh cannot silently authorize experiment execution.
+  - Exported the new route model from `autoresearch.agents`, updated README/README.zh-CN, and added task `257.1` plus dependency wave `160`.
+- Verification:
+  - Focused `python -m pytest tests\unit\agents\test_profiles.py::test_registry_selects_stage_agent_with_required_imports_and_capability tests\unit\agents\test_profiles.py::test_registry_stage_selection_reports_missing_imports_and_task_scope tests\unit\agents\test_profiles.py::test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability -q`: passed with 3 tests.
+  - Focused `python -m ruff check src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py tests\unit\agents\test_profiles.py`: passed.
+  - First focused `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py`: failed because the existing `AgentRegistry.list` method shadowed the built-in `list[...]` annotation inside the class body; fixed with a module-level `AgentStageRouteList` alias.
+  - Recheck focused `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py`: passed with no issues in 2 source files.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 643 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - Added and resolved `P-20260624-011`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Wire future stage schedulers to consume `select_for_stage(...)` when launching literature, experiment, reproduction, review, publication-audit, and evidence-gate workers from loaded Agent teams.

@@ -227,7 +227,7 @@ airesearcher agents profile import literature-agent.yaml \
 
 在无人值守运行前先执行 `agents profile validate`，用于检查本地 skill 源路径和必需的 MCP 环境变量名是否存在。readiness 报告会进入运行时 profile context、`cycle-summary.json`、`review-evidence-context.json`、monitor 行和 CLI 状态输出。它只验证 profile 输入，不证明 MCP 工具已经真实调用、外部 skill 内容已经安全，也不能作为科学 claim 的证据。
 
-在 Python 进程内运行时，绑定 profile 的 Agent 还会暴露 `profile_runtime_capabilities`，包含 skill ID、MCP server ID 和带作用域的 MCP tool ref。`AgentRegistry` 可以通过 `find_by_skill`、`find_by_mcp_server` 或 `find_by_mcp_tool` 找到导入了某个自定义科研 skill 或 MCP 工具的指定 Agent，方便后续 stage scheduler 做精确路由。它不会扩展 Agent 的可执行 task capability；`run_task` 仍然执行原有能力门禁。
+在 Python 进程内运行时，绑定 profile 的 Agent 还会暴露 `profile_runtime_capabilities`，包含 skill ID、MCP server ID 和带作用域的 MCP tool ref。`AgentRegistry` 可以通过 `find_by_skill`、`find_by_mcp_server` 或 `find_by_mcp_tool` 找到导入了某个自定义科研 skill 或 MCP 工具的指定 Agent，方便后续 stage scheduler 做精确路由。它不会扩展 Agent 的可执行 task capability；`run_task` 仍然执行原有能力门禁。面向 scheduler 的 Python 代码可以使用 `AgentRegistry.select_for_stage(...)`，把阶段分配、可执行 capability、必需 skill ID、MCP server ID 和带作用域的 MCP tool ref 合并成一条可审计 route。默认只返回满足条件的 Agent；传入 `include_ineligible=True` 时会返回缺少导入或 task scope 不匹配的诊断 route，但不会授予执行权限。
 
 多 Agent 部署前运行 `agents profile set-validate <profiles...>`。它会生成面向 CCF-B/SCI 二区研究闭环的 stage coverage matrix，检查每个 profile 的 readiness，阻断 literature、research_plan、experiment、reproduction、citations、review 等职责缺口，并提示 `allow_all` MCP 绑定或未分配阶段的 profile。这个检查只证明团队配置和责任边界可运行，不能证明科学结论或发表就绪。
 

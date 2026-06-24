@@ -294,6 +294,10 @@ Inside the Python runtime, an Agent with a bound profile also exposes
 lets stage schedulers find the exact Agent that imported a custom research skill or MCP tool. This
 does not expand the Agent's executable task capabilities; `run_task` still enforces the original
 capability gate.
+For scheduler code, `AgentRegistry.select_for_stage(...)` combines stage assignment, executable
+capability, required skill IDs, MCP server IDs, and scoped MCP tool refs into one auditable route
+record. It selects only eligible Agents by default; `include_ineligible=True` returns diagnostic
+routes showing missing imports or task-scope mismatches without granting execution permission.
 
 For multi-agent deployments, run `agents profile set-validate <profiles...>` before `serve` or
 `autopilot`. It builds a stage coverage matrix for the CCF-B/Q2 research loop, checks each

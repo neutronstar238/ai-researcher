@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-011 - Registry class method name shadowed `list[...]` type annotation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 12:01:00 +08:00
+- Source: Focused mypy verification for task `257.1`.
+- Symptom: `python -m mypy src\autoresearch\agents\registry.py src\autoresearch\agents\__init__.py` reported `Function "autoresearch.agents.registry.AgentRegistry.list" is not valid as a type`.
+- Impact: The new stage-route API tests passed, but the focused type gate failed until the annotation avoided the class-local `list` method name.
+- Evidence: Mypy pointed at the `select_for_stage(...) -> list[AgentStageRoute]` return annotation.
+- Root cause: Inside the `AgentRegistry` class body, the existing method named `list` shadowed the built-in `list` used in a PEP 585 type annotation.
+- Workaround: Define an `AgentStageRouteList` type alias outside the class and use it for the return type and local variable annotation.
+- Next action: When adding methods inside classes with common built-in names, prefer module-level aliases or `collections.abc` interfaces for annotations that would otherwise collide.
+- Linked tasks: `257.1`
+- Resolution: Added `AgentStageRouteList: TypeAlias = list[AgentStageRoute]` at module scope and used it in `select_for_stage`.
+- Verification: Focused mypy passed after the alias; broad `python -m mypy src\autoresearch` passed with no issues in 110 source files.
+
 ### P-20260624-010 - CI failed because CLI test read stderr when Click did not capture it separately
 
 - Status: Resolved

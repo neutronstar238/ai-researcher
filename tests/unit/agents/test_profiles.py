@@ -517,6 +517,7 @@ def test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability() -
     profile = AgentProfile(
         agent_id="literature-agent",
         role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature",),
         skills=(
             AgentSkillBinding(
                 skill_id="source-tracing",
@@ -570,6 +571,114 @@ def test_registry_routes_by_bound_skill_and_mcp_without_bypassing_capability() -
         "page-agent:browser.search",
     ]
     assert "routing metadata only" in runtime_capabilities["evidence_policy"]
+
+
+def test_registry_selects_stage_agent_with_required_imports_and_capability() -> None:
+    profile = AgentProfile(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("literature", "similarity"),
+        skills=(
+            AgentSkillBinding(
+                skill_id="source-tracing",
+                source="skills/source.md",
+                allowed_tasks=("literature_refresh",),
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="page-agent",
+                command=("npx", "-y", "page-agent"),
+                allowed_tools=("browser.search", "browser.open"),
+            ),
+        ),
+    )
+    agent = DummyAgent(
+        agent_id="literature-agent",
+        role=AgentRole.PROJECT_AGENT,
+        capabilities=frozenset({"literature_refresh"}),
+    )
+    registry = AgentRegistry()
+    registry.add(agent)
+    registry.assign_profile("literature-agent", profile)
+
+    routes = registry.select_for_stage(
+        "literature",
+        capability="literature_refresh",
+        required_skill_ids=("source-tracing",),
+        required_mcp_tool_refs=("page-agent:browser.search",),
+    )
+
+    assert len(routes) == 1
+    route = routes[0]
+    assert route.stage == "literature"
+    assert route.agent_id == "literature-agent"
+    assert route.eligible is True
+    assert route.capability_matched is True
+    assert route.matched_skill_ids == ("source-tracing",)
+    assert route.missing_skill_ids == ()
+    assert route.matched_mcp_tool_refs == ("page-agent:browser.search",)
+    assert route.missing_mcp_tool_refs == ()
+    assert "process metadata" in route.evidence_policy
+    assert "permission to bypass" in route.evidence_policy
+
+
+def test_registry_stage_selection_reports_missing_imports_and_task_scope() -> None:
+    profile = AgentProfile(
+        agent_id="experiment-agent",
+        role=AgentRole.PROJECT_AGENT,
+        assigned_stages=("experiment",),
+        skills=(
+            AgentSkillBinding(
+                skill_id="source-tracing",
+                source="skills/source.md",
+                allowed_tasks=("literature_refresh",),
+            ),
+        ),
+        mcp_servers=(
+            AgentMcpServerBinding(
+                server_id="opencode",
+                command=("opencode", "run"),
+                allowed_tools=("code.write",),
+            ),
+        ),
+    )
+    agent = DummyAgent(
+        agent_id="experiment-agent",
+        role=AgentRole.PROJECT_AGENT,
+        capabilities=frozenset({"experiment_run"}),
+    )
+    registry = AgentRegistry()
+    registry.add(agent)
+    registry.assign_profile("experiment-agent", profile)
+
+    assert registry.select_for_stage(
+        "experiment",
+        capability="experiment_run",
+        required_skill_ids=("source-tracing", "empirical-paper"),
+        required_mcp_server_ids=("opencode",),
+        required_mcp_tool_refs=("opencode:code.review",),
+    ) == []
+
+    routes = registry.select_for_stage(
+        "experiment",
+        capability="experiment_run",
+        required_skill_ids=("source-tracing", "empirical-paper"),
+        required_mcp_server_ids=("opencode",),
+        required_mcp_tool_refs=("opencode:code.review",),
+        include_ineligible=True,
+    )
+
+    assert len(routes) == 1
+    route = routes[0]
+    assert route.eligible is False
+    assert route.capability_matched is True
+    assert route.matched_skill_ids == ()
+    assert route.missing_skill_ids == ("source-tracing", "empirical-paper")
+    assert route.matched_mcp_server_ids == ("opencode",)
+    assert route.missing_mcp_server_ids == ()
+    assert route.matched_mcp_tool_refs == ()
+    assert route.missing_mcp_tool_refs == ("opencode:code.review",)
 
 
 def test_parse_specs_and_write_vault_note(tmp_path: Path) -> None:

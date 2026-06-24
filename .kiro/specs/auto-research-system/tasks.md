@@ -3124,6 +3124,16 @@ A task can be checked only when all applicable items are true:
     - _References: task `255.1`; user clarification that innovative research directions should not require high-similarity prior work, and duplicate-risk matching should be separate from deciding whether the work is worth doing._
     - _Verify: focused publication-audit/research-plan tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [x] 257. Scheduler-facing Agent skill/MCP route selection
+  - [x] 257.1 Select stage-assigned Agents by capability and required custom imports
+    - Add a registry-level selection API that combines normalized stage assignment, executable task capability, required skill IDs, MCP server IDs, and scoped `server_id:tool_name` refs.
+    - Return auditable route records with matched and missing imports so scheduler code can distinguish eligible workers from diagnostic near-misses.
+    - Respect skill `allowed_tasks` when a task capability is supplied, so importing a skill for one research action cannot silently authorize it for another.
+    - Preserve the existing capability gate: selecting a route is process metadata only and must not bypass `BaseAgent.run_task`.
+    - Update README/README.zh-CN to document the scheduler-facing API and its evidence boundary.
+    - _References: tasks `253.1` and `254.1`; user request to assign custom skills and MCPs to specific Agents while keeping runtime behavior research-first and not over-engineered._
+    - _Verify: focused Agent registry tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3808,6 +3818,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 159,
       "tasks": ["256.1"]
+    },
+    {
+      "id": 160,
+      "tasks": ["257.1"]
     }
   ]
 }
