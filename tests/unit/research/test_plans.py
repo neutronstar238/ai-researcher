@@ -125,6 +125,7 @@ def test_generate_research_plan_filters_unmatched_seed_marker_when_context_exist
         compile_pdf=False,
         similarity_summary=tmp_path / "runs" / "similarity.md",
         literature_summary=tmp_path / "runs" / "literature.md",
+        brainstorm_summary=tmp_path / "runs" / "brainstorm.md",
     )
 
     markdown = Path(artifact.markdown_path).read_text(encoding="utf-8")
@@ -133,6 +134,7 @@ def test_generate_research_plan_filters_unmatched_seed_marker_when_context_exist
     assert METHOD_ALIGNED_SEED_NOT_FOUND_REF not in markdown
     assert "similarity_summary:" in markdown
     assert "literature_summary:" in markdown
+    assert "brainstorm_summary:" in markdown
 
 
 def test_research_plan_audit_blocks_project_title_and_contest_terms() -> None:

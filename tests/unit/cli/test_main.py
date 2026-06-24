@@ -1365,6 +1365,100 @@ def test_inspiration_refresh_command_writes_report(tmp_path: Path, monkeypatch) 
     assert payload["summary_path"] == summary_path.as_posix()
 
 
+def test_brainstorm_command_loads_inspiration_and_writes_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    candidate = ResearchCandidate(
+        id="candidate_cli_brainstorm",
+        title="Evidence-bound brainstorm",
+        description="Use inspiration signals before research planning.",
+        research_gap="Research plans need more creative candidate generation.",
+        novelty_score=0.7,
+        feasibility_score=0.8,
+        impact_score=0.6,
+        evidence_refs=["seed"],
+    )
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(candidate.model_dump_json(), encoding="utf-8")
+    inspiration = InspirationRefreshReport(
+        queries=("machine learning benchmark dataset",),
+        fetches=(),
+        items=(
+            InspirationItem(
+                source="hacker_news",
+                source_type="forum_signal",
+                title="Show HN: Research dataset cleaner",
+                url="https://news.ycombinator.com/item?id=123",
+                query="machine learning benchmark dataset",
+                summary="Community signal only.",
+                score=4.0,
+                retrieved_at=datetime.now(timezone.utc),
+            ),
+        ),
+        summary_path=tmp_path / "vault" / "exploration" / "inspiration.md",
+    )
+    inspiration_path = tmp_path / "inspiration.json"
+    inspiration_path.write_text(
+        json.dumps(inspiration.to_json_dict(), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    artifact_path = tmp_path / "brainstorm" / "brainstorm-ideas.json"
+    summary_path = tmp_path / "vault" / "exploration" / "brainstorm.md"
+    prompt_set_path = tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["candidate"] == candidate
+        assert kwargs["inspiration_report"].items[0].title == "Show HN: Research dataset cleaner"
+        assert kwargs["config"].max_miniagents == 2
+        assert kwargs["config"].ideas_per_agent == 1
+        assert kwargs["config"].temperature == 1.4
+        idea = SimpleNamespace(
+            idea_id="cross_pollinator_1",
+            title="Cross-source benchmark cleaner",
+            selection_score=0.88,
+            creativity_score=0.91,
+            feasibility_score=0.76,
+        )
+        return SimpleNamespace(
+            status="selected",
+            prompts=(object(), object()),
+            ideas=(idea,),
+            selected_ideas=(idea,),
+            artifact_path=artifact_path,
+            summary_path=summary_path,
+            prompt_set_path=prompt_set_path,
+        )
+
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "brainstorm",
+            "--candidate-file",
+            str(candidate_path),
+            "--inspiration-report",
+            str(inspiration_path),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--output-dir",
+            str(tmp_path / "brainstorm"),
+            "--miniagents",
+            "2",
+            "--ideas-per-agent",
+            "1",
+            "--temperature",
+            "1.4",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[OK] brainstorm: selected" in result.stdout
+    assert "[OK] selected_ideas: 1" in result.stdout
+    assert "[IDEA] cross_pollinator_1: Cross-source benchmark cleaner" in result.stdout
+
+
 def test_inspiration_refresh_command_can_push_digest(tmp_path: Path, monkeypatch) -> None:
     vault_path = tmp_path / "vault"
     output = tmp_path / "runs" / "inspiration.json"
@@ -3784,8 +3878,15 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
     inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
+    brainstorm_summary = tmp_path / "vault" / "exploration" / "brainstorm.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, inspiration_summary, project_similarity):
+    for path in (
+        literature_summary,
+        similarity_summary,
+        inspiration_summary,
+        brainstorm_summary,
+        project_similarity,
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -3845,13 +3946,14 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     call_order: list[str] = []
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
-        assert call_order == ["inspiration"]
+        assert call_order == ["inspiration", "brainstorm"]
         call_order.append("research_plan")
         assert kwargs["project_id"] == "project_1"
         assert kwargs["vault_root"] == tmp_path / "vault"
         assert Path(kwargs["similarity_summary"]) == similarity_summary
         assert Path(kwargs["literature_summary"]) == literature_summary
         assert Path(kwargs["inspiration_summary"]) == inspiration_summary
+        assert Path(kwargs["brainstorm_summary"]) == brainstorm_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -3920,8 +4022,38 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             summary_path=inspiration_summary,
         )
 
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert call_order == ["inspiration"]
+        call_order.append("brainstorm")
+        assert kwargs["inspiration_report"].summary_path == inspiration_summary
+        output_dir = Path(kwargs["output_dir"])
+        artifact_path = output_dir / "brainstorm-ideas.json"
+        prompt_set_path = (
+            tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+        )
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_set_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("{}", encoding="utf-8")
+        prompt_set_path.write_text("# prompts\n", encoding="utf-8")
+        return SimpleNamespace(
+            status="selected",
+            ideas=(object(), object()),
+            selected_ideas=(object(),),
+            artifact_path=artifact_path,
+            summary_path=brainstorm_summary,
+            prompt_set_path=prompt_set_path,
+            to_json_dict=lambda: {
+                "status": "selected",
+                "ideas": [],
+                "selected_ideas": [],
+                "summary_path": brainstorm_summary.as_posix(),
+                "artifact_path": artifact_path.as_posix(),
+                "prompt_set_path": prompt_set_path.as_posix(),
+            },
+        )
+
     def fake_demo(**kwargs: object) -> SimpleNamespace:
-        assert call_order == ["inspiration", "research_plan"]
+        assert call_order == ["inspiration", "brainstorm", "research_plan"]
         assert kwargs["demo"] == default_demo
         assert kwargs["task_metadata"] is None
         output_dir = Path(kwargs["output_dir"])
@@ -4129,6 +4261,11 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
             "metrics-source.json",
             "validated-performance-metrics.metadata.json",
             "data-analysis-summary.md",
+            "inspiration.md",
+            "novelty-search-breadth.json",
+            "brainstorm-ideas.json",
+            "brainstorm.md",
+            "brainstorm-miniagents.md",
         } <= evidence_names
         assert "validated-performance-metrics.png" not in evidence_names
         return {"status": "skipped"}
@@ -4137,6 +4274,7 @@ def test_autopilot_command_runs_one_non_review_cycle(tmp_path: Path, monkeypatch
     monkeypatch.setattr(cli_main, "run_project_similarity_check", fake_similarity_check)
     monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
     monkeypatch.setattr(cli_main, "_autopilot_literature_clients", lambda _cache: shared_clients)
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", fake_link_similarity_report_to_project)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fake_demo)
@@ -4850,8 +4988,15 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     literature_summary = tmp_path / "vault" / "exploration" / "literature.md"
     similarity_summary = tmp_path / "vault" / "exploration" / "similarity.md"
     inspiration_summary = tmp_path / "vault" / "exploration" / "inspiration.md"
+    brainstorm_summary = tmp_path / "vault" / "exploration" / "brainstorm.md"
     project_similarity = tmp_path / "vault" / "projects" / "project_1" / "knowledge" / "similarity.md"
-    for path in (literature_summary, similarity_summary, inspiration_summary, project_similarity):
+    for path in (
+        literature_summary,
+        similarity_summary,
+        inspiration_summary,
+        brainstorm_summary,
+        project_similarity,
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("summary", encoding="utf-8")
 
@@ -4892,6 +5037,7 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
 
     def fake_generate_research_plan(**kwargs: object) -> SimpleNamespace:
         assert Path(kwargs["inspiration_summary"]) == inspiration_summary
+        assert Path(kwargs["brainstorm_summary"]) == brainstorm_summary
         plan_dir = Path(kwargs["output_dir"]) / "project_1" / "research-plan"
         plan_dir.mkdir(parents=True, exist_ok=True)
         markdown_path = plan_dir / "research-plan.md"
@@ -4949,6 +5095,31 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
             summary_path=inspiration_summary,
         )
 
+    def fake_brainstorm(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["inspiration_report"].summary_path == inspiration_summary
+        artifact_path = Path(kwargs["output_dir"]) / "brainstorm-ideas.json"
+        prompt_set_path = (
+            tmp_path / "vault" / "strategy_library" / "prompts" / "brainstorm-miniagents.md"
+        )
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        prompt_set_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text("{}", encoding="utf-8")
+        prompt_set_path.write_text("# prompts\n", encoding="utf-8")
+        return SimpleNamespace(
+            status="selected",
+            ideas=(object(),),
+            selected_ideas=(object(),),
+            artifact_path=artifact_path,
+            summary_path=brainstorm_summary,
+            prompt_set_path=prompt_set_path,
+            to_json_dict=lambda: {
+                "status": "selected",
+                "ideas": [],
+                "selected_ideas": [],
+                "summary_path": brainstorm_summary.as_posix(),
+            },
+        )
+
     def fail_if_called(**_kwargs: object) -> object:
         raise AssertionError("research-plan-blocked cycle should not run later stages")
 
@@ -4958,6 +5129,7 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     monkeypatch.setattr(cli_main, "link_similarity_report_to_project", lambda **_kwargs: project_similarity)
     monkeypatch.setattr(cli_main, "generate_research_plan", fake_generate_research_plan)
     monkeypatch.setattr(cli_main, "run_inspiration_refresh", fake_inspiration_refresh)
+    monkeypatch.setattr(cli_main, "run_inspiration_brainstorm", fake_brainstorm)
     monkeypatch.setattr(cli_main, "run_scientistbench_demo", fail_if_called)
     monkeypatch.setattr(cli_main, "compose_publication_manuscript", fail_if_called)
 
@@ -4993,6 +5165,7 @@ def test_autopilot_research_plan_gate_blocks_before_experiment(
     assert payload["research_plan"]["compile_status"] == "skipped_quality_gate"
     assert payload["inspiration"]["item_count"] == 1
     assert payload["novelty_breadth"]["status"] in {"thin", "expanding", "broad_enough"}
+    assert payload["brainstorm"]["status"] == "selected"
     assert payload["review"]["status"] == "skipped_research_plan_gate"
     assert "demo" not in payload
     assert json.loads(state.read_text(encoding="utf-8")) == {"tasks": []}

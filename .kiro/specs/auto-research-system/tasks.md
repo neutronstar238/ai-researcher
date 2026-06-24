@@ -3042,6 +3042,17 @@ A task can be checked only when all applicable items are true:
     - _References: Execution Plan section 6.5; tasks `21.3`, `64.1`, `79.1`, `95.1`, `104.1`; user request that innovation search breadth is the core priority._
     - _Verify: focused similarity and autopilot tests, focused ruff, focused mypy, real `similarity-check` over ArXiv/OpenAlex with ArXiv 429/timeout recorded and OpenAlex findings returned, and real `inspiration-refresh` showing narrow zero-result evidence plus a broader Hacker News inspiration result._
 
+- [x] 249. Inspiration-driven temporary miniagent brainstorming
+  - [x] 249.1 Add high-temperature brainstorm stage between inspiration and research planning
+    - Run multiple temporary miniagent perspectives over the inspiration report after broad-source refresh and before research-plan generation.
+    - Keep the miniagents ephemeral: persist only the reusable prompt set, raw outputs, parsed ideas, and selected synthesis; do not add permanent agents to the configured team.
+    - Use creative high-temperature LLM calls while leaving `max_tokens` unset by default, so long-context providers can decide their own completion budget.
+    - Score and select ideas with deterministic creativity, feasibility, and evidence-binding fields before exposing them to the research plan stage.
+    - Store prompt templates in `strategy_library/prompts/brainstorm-miniagents.md`, store the run note in `exploration/brainstorm/`, and store machine-readable artifacts beside the cycle outputs.
+    - Treat brainstorm ideas as hypotheses only: inspiration sources are context signals, not proof of novelty, metric improvement, publishability, or experimental truth.
+    - _References: tasks `248.1`, `247.1`, `222.1`; user request to turn inspiration data into a high-creativity multi-miniagent brainstorm and then integrate, justify, and filter feasible creative ideas._
+    - _Verify: focused brainstorm/plan/LLM/CLI tests, focused ruff, focused mypy, real provider-backed `brainstorm` CLI smoke over a stored inspiration report, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3694,6 +3705,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 151,
       "tasks": ["248.1"]
+    },
+    {
+      "id": 152,
+      "tasks": ["249.1"]
     }
   ]
 }

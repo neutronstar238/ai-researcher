@@ -1,6 +1,14 @@
 """Research candidate and hypothesis workflow helpers."""
 
 from .approval import ApprovalRecord, ProjectAgentContext, create_project_from_approved_candidate
+from .brainstorm import (
+    BrainstormConfig,
+    BrainstormIdea,
+    BrainstormMiniAgentPrompt,
+    BrainstormMiniAgentRun,
+    BrainstormReport,
+    run_inspiration_brainstorm,
+)
 from .candidates import (
     CandidateGenerationConfig,
     CandidateLifecycleError,
@@ -42,6 +50,11 @@ from .similarity import (
 
 __all__ = [
     "ApprovalRecord",
+    "BrainstormConfig",
+    "BrainstormIdea",
+    "BrainstormMiniAgentPrompt",
+    "BrainstormMiniAgentRun",
+    "BrainstormReport",
     "CandidateGenerationConfig",
     "CandidateLifecycleError",
     "CandidateVaultLinks",
@@ -71,6 +84,7 @@ __all__ = [
     "link_similarity_report_to_project",
     "render_research_plan_markdown",
     "render_research_plan_tex",
+    "run_inspiration_brainstorm",
     "run_project_similarity_check",
     "store_candidate_lifecycle_entry",
     "transition_candidate_status",

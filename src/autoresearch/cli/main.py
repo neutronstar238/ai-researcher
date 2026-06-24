@@ -71,6 +71,7 @@ from autoresearch.experiments import (
     write_loop_report_artifact,
 )
 from autoresearch.inspiration import (
+    InspirationFetchRecord,
     InspirationItem,
     InspirationRefreshConfig,
     InspirationRefreshReport,
@@ -141,11 +142,13 @@ from autoresearch.reports import (
     validate_reproducibility_package,
 )
 from autoresearch.research import (
+    BrainstormConfig,
     SimilarityCheckConfig,
     audit_research_plan,
     evaluate_novelty_search_breadth,
     generate_research_plan,
     link_similarity_report_to_project,
+    run_inspiration_brainstorm,
     run_project_similarity_check,
     write_novelty_search_breadth_artifact,
 )
@@ -317,6 +320,13 @@ DEFAULT_SLASH_COMMANDS = {
         "--output runs/inspiration/latest.json --push`. Results from Hugging Face datasets and Hacker News "
         "are dataset/community signals only; validate them separately before using them as research evidence. "
         "Use `--push-channel feishu` or `--push-channel wechat` to target a setup-configured channel.",
+    ),
+    "research/brainstorm.toml": (
+        "Run temporary high-temperature miniagents over inspiration data, then select feasible creative ideas.",
+        "Run `airesearcher brainstorm --candidate-file <candidate.json> "
+        "--inspiration-report runs/inspiration/latest.json --vault autoresearch-vault "
+        "--output-dir runs/brainstorm/latest --temperature 1.2`. Record raw ideas first; "
+        "selected ideas are hypotheses only until literature, experiment, and reproduction evidence exist.",
     ),
     "research/similarity-check.toml": (
         "Cross-check a candidate against adjacent online work before project approval.",
@@ -3441,6 +3451,102 @@ def inspiration_refresh(
         raise typer.Exit(code=1)
 
 
+@app.command("brainstorm")
+def brainstorm(
+    candidate_file: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-file",
+            "-f",
+            help="JSON file containing a user-confirmed ResearchCandidate payload.",
+        ),
+    ],
+    inspiration_report: Annotated[
+        Path | None,
+        typer.Option("--inspiration-report", help="JSON report written by inspiration-refresh."),
+    ] = None,
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root to update."),
+    ] = Path("autoresearch-vault"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Directory for brainstorm JSON artifacts."),
+    ] = Path("runs/brainstorm/latest"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="System config path for provider-agnostic LLM settings."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Local .env file containing the configured LLM API key."),
+    ] = Path(".env"),
+    miniagents: Annotated[
+        int,
+        typer.Option("--miniagents", min=1, max=5, help="Temporary miniagents to run."),
+    ] = 5,
+    ideas_per_agent: Annotated[
+        int,
+        typer.Option("--ideas-per-agent", min=1, max=5, help="Ideas requested from each miniagent."),
+    ] = 2,
+    temperature: Annotated[
+        float,
+        typer.Option("--temperature", min=0.0, max=2.0, help="Base creative temperature."),
+    ] = 1.2,
+    timeout_seconds: Annotated[
+        int | None,
+        typer.Option("--timeout-seconds", min=1, help="LLM request timeout override."),
+    ] = None,
+) -> None:
+    """Run temporary high-temperature brainstorm miniagents over inspiration data."""
+
+    try:
+        candidate = _load_candidate(candidate_file)
+        loaded_inspiration = (
+            _load_inspiration_report(inspiration_report)
+            if inspiration_report is not None
+            else InspirationRefreshReport(queries=(), fetches=(), items=(), summary_path=None)
+        )
+        report = run_inspiration_brainstorm(
+            candidate=candidate,
+            inspiration_report=loaded_inspiration,
+            vault_root=vault,
+            output_dir=output_dir,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=timeout_seconds,
+            max_tokens=None,
+            config=BrainstormConfig(
+                max_miniagents=miniagents,
+                ideas_per_agent=ideas_per_agent,
+                temperature=temperature,
+            ),
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] brainstorm failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] brainstorm: {report.status}")
+    typer.echo(f"[OK] miniagents: {len(report.prompts)}")
+    typer.echo(f"[OK] ideas: {len(report.ideas)}")
+    typer.echo(f"[OK] selected_ideas: {len(report.selected_ideas)}")
+    if report.artifact_path is not None:
+        typer.echo(f"[OK] artifact: {report.artifact_path}")
+    if report.summary_path is not None:
+        typer.echo(f"[OK] summary: {report.summary_path}")
+    if report.prompt_set_path is not None:
+        typer.echo(f"[OK] prompt_set: {report.prompt_set_path}")
+    for idea in report.selected_ideas:
+        typer.echo(
+            f"[IDEA] {idea.idea_id}: {idea.title} "
+            f"(selection={idea.selection_score:.3f}, creativity={idea.creativity_score:.2f}, "
+            f"feasibility={idea.feasibility_score:.2f})"
+        )
+    if not report.ideas:
+        typer.echo("[FAIL] brainstorm returned no parseable ideas", err=True)
+        raise typer.Exit(code=1)
+
+
 @channels_app.command("test")
 def channel_test(
     env_path: Annotated[
@@ -4505,6 +4611,10 @@ def research_plan(
         Path | None,
         typer.Option("--inspiration-summary", help="Optional local broad-inspiration summary path."),
     ] = None,
+    brainstorm_summary: Annotated[
+        Path | None,
+        typer.Option("--brainstorm-summary", help="Optional local brainstorm summary path."),
+    ] = None,
     compile_pdf: Annotated[
         bool,
         typer.Option("--compile-pdf/--no-compile-pdf", help="Compile the LaTeX plan into PDF."),
@@ -4527,6 +4637,7 @@ def research_plan(
             similarity_summary=similarity_summary,
             literature_summary=literature_summary,
             inspiration_summary=inspiration_summary,
+            brainstorm_summary=brainstorm_summary,
             timeout_seconds=timeout_seconds,
         )
     except Exception as exc:
@@ -6752,6 +6863,37 @@ def _run_autopilot_cycle(
         ),
     )
 
+    brainstorm_report = run_inspiration_brainstorm(
+        candidate=candidate,
+        inspiration_report=inspiration_report,
+        vault_root=vault,
+        output_dir=cycle_dir / "brainstorm",
+        timeout_seconds=max(timeout_seconds, 60),
+        max_tokens=None,
+        config=BrainstormConfig(
+            max_miniagents=min(5, max_queries),
+            ideas_per_agent=2,
+            temperature=1.2,
+        ),
+    )
+    runtime_heartbeat = _write_cycle_runtime_heartbeat(
+        heartbeat_state=heartbeat_state,
+        cycle_id=cycle_id,
+        stage="brainstorm",
+        progress=(
+            f"status={brainstorm_report.status};"
+            f"ideas={len(brainstorm_report.ideas)};"
+            f"selected={len(brainstorm_report.selected_ideas)}"
+        ),
+        report_path=heartbeat_report_path,
+        message="Temporary high-temperature miniagents brainstormed hypotheses before research planning.",
+        artifact_refs=(
+            getattr(brainstorm_report, "artifact_path", None),
+            getattr(brainstorm_report, "summary_path", None),
+            getattr(brainstorm_report, "prompt_set_path", None),
+        ),
+    )
+
     research_plan_artifact = generate_research_plan(
         candidate=candidate,
         project_id=project_id,
@@ -6761,6 +6903,7 @@ def _run_autopilot_cycle(
         similarity_summary=getattr(similarity_report, "summary_path", None),
         literature_summary=getattr(literature_report, "summary_path", None),
         inspiration_summary=getattr(inspiration_report, "summary_path", None),
+        brainstorm_summary=getattr(brainstorm_report, "summary_path", None),
         timeout_seconds=max(timeout_seconds, 60),
     )
     research_plan_payload = research_plan_artifact.to_dict()
@@ -6842,6 +6985,7 @@ def _run_autopilot_cycle(
                 "pushes": [record.to_json_dict() for record in inspiration_pushes],
             },
             "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
+            "brainstorm": _serialise_brainstorm_report(brainstorm_report),
             "research_plan": research_plan_payload,
             "runtime_heartbeat": runtime_heartbeat,
             "review": {"status": "skipped_research_plan_gate"},
@@ -6963,6 +7107,7 @@ def _run_autopilot_cycle(
             "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
         },
         "novelty_breadth": _serialise_novelty_breadth(novelty_breadth),
+        "brainstorm": _serialise_brainstorm_report(brainstorm_report),
         "research_plan": research_plan_payload,
         "inspiration": {
             "query_count": len(getattr(inspiration_report, "queries", ())),
@@ -7177,6 +7322,11 @@ def _run_autopilot_cycle(
         summary["related_work_inspection"].get("markdown_path"),
         getattr(similarity_report, "summary_path", None),
         similarity_project_path,
+        getattr(inspiration_report, "summary_path", None),
+        getattr(novelty_breadth, "artifact_path", None),
+        getattr(brainstorm_report, "artifact_path", None),
+        getattr(brainstorm_report, "summary_path", None),
+        getattr(brainstorm_report, "prompt_set_path", None),
         reproduction_check.get("json_path"),
         summary["loop_report"].get("json_path"),
         summary["loop_report"].get("markdown_path"),
@@ -8649,6 +8799,24 @@ def _serialise_novelty_breadth(breadth: object | None) -> dict[str, object] | No
     }
 
 
+def _serialise_brainstorm_report(report: object | None) -> dict[str, object] | None:
+    if report is None:
+        return None
+    to_json = getattr(report, "to_json_dict", None)
+    if callable(to_json):
+        payload = to_json()
+        if isinstance(payload, dict):
+            return payload
+    return {
+        "status": getattr(report, "status", "not_evaluated"),
+        "idea_count": len(getattr(report, "ideas", ()) or ()),
+        "selected_idea_count": len(getattr(report, "selected_ideas", ()) or ()),
+        "artifact_path": _path_text(getattr(report, "artifact_path", None)),
+        "summary_path": _path_text(getattr(report, "summary_path", None)),
+        "prompt_set_path": _path_text(getattr(report, "prompt_set_path", None)),
+    }
+
+
 def _path_text(path: object) -> str | None:
     if path is None:
         return None
@@ -9336,6 +9504,92 @@ def _load_candidate(candidate_file: Path) -> ResearchCandidate:
     except Exception as exc:
         msg = f"Invalid ResearchCandidate payload: {exc}"
         raise typer.BadParameter(msg) from exc
+
+
+def _load_inspiration_report(report_file: Path) -> InspirationRefreshReport:
+    try:
+        payload = json.loads(report_file.read_text(encoding="utf-8-sig"))
+    except OSError as exc:
+        msg = f"Could not read inspiration report {report_file}: {exc}"
+        raise typer.BadParameter(msg) from exc
+    except json.JSONDecodeError as exc:
+        msg = f"Invalid inspiration JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        raise typer.BadParameter(msg) from exc
+    if not isinstance(payload, Mapping):
+        msg = "Inspiration report JSON top-level value must be an object"
+        raise typer.BadParameter(msg)
+    query_rows = payload.get("queries", [])
+    fetch_rows = payload.get("fetches", [])
+    item_rows = payload.get("items", [])
+    queries = tuple(
+        str(query)
+        for query in (query_rows if isinstance(query_rows, list) else [])
+        if isinstance(query, str)
+    )
+    fetches = tuple(
+        _inspiration_fetch_from_payload(row)
+        for row in (fetch_rows if isinstance(fetch_rows, list) else [])
+    )
+    items = tuple(
+        _inspiration_item_from_payload(row)
+        for row in (item_rows if isinstance(item_rows, list) else [])
+    )
+    summary_value = payload.get("summary_path")
+    return InspirationRefreshReport(
+        queries=queries,
+        fetches=tuple(fetch for fetch in fetches if fetch is not None),
+        items=tuple(item for item in items if item is not None),
+        summary_path=Path(summary_value) if isinstance(summary_value, str) and summary_value else None,
+    )
+
+
+def _inspiration_fetch_from_payload(row: object) -> InspirationFetchRecord | None:
+    if not isinstance(row, Mapping):
+        return None
+    return InspirationFetchRecord(
+        source=str(row.get("source", "unknown")),
+        source_type=str(row.get("source_type", "unknown")),
+        query=str(row.get("query", "")),
+        result_count=int(row.get("result_count", 0) or 0),
+        rate_limit_seconds=float(row.get("rate_limit_seconds", 0.0) or 0.0),
+        error=str(row["error"]) if row.get("error") is not None else None,
+    )
+
+
+def _inspiration_item_from_payload(row: object) -> InspirationItem | None:
+    if not isinstance(row, Mapping):
+        return None
+    title = row.get("title")
+    url = row.get("url")
+    query = row.get("query")
+    if not (isinstance(title, str) and isinstance(url, str) and isinstance(query, str)):
+        return None
+    retrieved_at = _parse_datetime(row.get("retrieved_at"))
+    tags = tuple(str(tag) for tag in row.get("tags", []) if isinstance(tag, str))
+    metadata = row.get("metadata")
+    return InspirationItem(
+        source=str(row.get("source", "unknown")),
+        source_type=str(row.get("source_type", "unknown")),
+        title=title,
+        url=url,
+        query=query,
+        summary=str(row.get("summary", "")),
+        score=float(row.get("score", 0.0) or 0.0),
+        retrieved_at=retrieved_at,
+        author=str(row["author"]) if row.get("author") is not None else None,
+        created_at=str(row["created_at"]) if row.get("created_at") is not None else None,
+        tags=tags,
+        metadata=metadata if isinstance(metadata, Mapping) else None,
+    )
+
+
+def _parse_datetime(value: object) -> datetime:
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc)
 
 
 def _read_optional_artifact_text(

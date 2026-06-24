@@ -147,6 +147,19 @@ class LLMReviewResult(BaseModel):
     attempts: int = Field(default=1, ge=1)
 
 
+class LLMJsonCompletionResult(BaseModel):
+    """Raw JSON completion result from the configured provider."""
+
+    provider: str
+    base_url: str
+    model_name: str
+    endpoint: str
+    response_text: str
+    parsed_json: dict[str, Any]
+    usage: dict[str, Any] = Field(default_factory=dict)
+    temperature: float = Field(ge=0.0)
+
+
 def run_llm_smoke_test(
     *,
     config_path: Path | str = Path("config.yaml"),
@@ -294,6 +307,48 @@ def run_llm_evidence_review(
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         quality=quality,
         attempts=attempts,
+    )
+
+
+def run_llm_json_completion(
+    *,
+    messages: list[dict[str, str]],
+    config_path: Path | str = Path("config.yaml"),
+    env_path: Path | str = Path(".env"),
+    timeout_seconds: int | None = None,
+    max_tokens: int | None = None,
+    temperature: float = 0.0,
+) -> LLMJsonCompletionResult:
+    """Call the configured OpenAI-compatible model and require one JSON object."""
+
+    config, api_key = _load_llm_config_and_api_key(config_path=config_path, env_path=env_path)
+    llm = config.deployment.llm
+    endpoint = _chat_completions_endpoint(llm.base_url)
+    response = _post_chat_completion(
+        endpoint=endpoint,
+        api_key=api_key,
+        model_name=llm.model_name,
+        timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+        max_tokens=max_tokens,
+        messages=messages,
+        temperature=temperature,
+    )
+    content = _extract_message_content(response)
+    try:
+        parsed = json.loads(_strip_json_fences(content))
+    except json.JSONDecodeError as exc:
+        raise LLMClientError(f"LLM JSON completion was not valid JSON: {exc.msg}") from exc
+    if not isinstance(parsed, dict):
+        raise LLMClientError("LLM JSON completion top-level value is not an object")
+    return LLMJsonCompletionResult(
+        provider=llm.provider,
+        base_url=llm.base_url,
+        model_name=llm.model_name,
+        endpoint=endpoint,
+        response_text=content,
+        parsed_json=parsed,
+        usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
+        temperature=temperature,
     )
 
 
@@ -480,11 +535,12 @@ def _post_chat_completion(
     timeout_seconds: int,
     max_tokens: int | None,
     messages: list[dict[str, str]] | None = None,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
         "messages": messages or _smoke_messages(),
-        "temperature": 0,
+        "temperature": temperature,
         "response_format": {"type": "json_object"},
     }
     if max_tokens is not None:

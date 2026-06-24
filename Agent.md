@@ -10320,3 +10320,44 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Add more opt-in broad sources such as GitHub code search, Papers with Code, curated news/RSS, and dataset registries, but keep each source's evidence class separate so ecosystem inspiration cannot masquerade as scholarly novelty proof.
+
+### 2026-06-24 10:01:05 +08:00 - Codex - Task 249.1 Inspiration-driven temporary miniagent brainstorming
+
+- Request: Add a brainstorm effect after inspiration search: use multiple temporary high-temperature miniagents from different perspectives, record the raw ideas, then integrate, justify, and filter the feasible creative ones.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/research/brainstorm.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/plans.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/unit/research/test_brainstorm.py`
+  - `tests/unit/research/test_plans.py`
+  - `tests/unit/cli/test_main.py`
+  - `Agent.md`
+- Summary:
+  - Added a provider-agnostic JSON brainstorm LLM call path with configurable temperature and no default `max_tokens` cap.
+  - Added `run_inspiration_brainstorm`, which runs ephemeral miniagent perspectives over a candidate and inspiration report, records raw responses/errors, parses ideas, scores them with deterministic creativity/feasibility/evidence-binding fields, and selects the strongest hypotheses.
+  - Persisted brainstorm artifacts as JSON in the run directory, an Obsidian run note under `exploration/brainstorm/`, and the reusable prompt set under `strategy_library/prompts/brainstorm-miniagents.md`.
+  - Added `airesearcher brainstorm` and `/research:brainstorm`, and inserted the automatic brainstorm stage between `inspiration-refresh` and `research-plan` in autopilot.
+  - Passed the selected brainstorm summary into research-plan generation while keeping the evidence boundary explicit: brainstorm ideas are hypotheses, not proof of novelty, metrics, publishability, or experimental truth.
+  - Updated README/README.zh-CN and added task `249.1` plus dependency wave `152` to the Kiro task plan.
+- Verification:
+  - Focused `python -m ruff check src\autoresearch\research\brainstorm.py src\autoresearch\llm\client.py src\autoresearch\llm\__init__.py src\autoresearch\research\__init__.py src\autoresearch\research\plans.py src\autoresearch\cli\main.py tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\llm\test_client.py tests\unit\cli\test_main.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\brainstorm.py src\autoresearch\research\plans.py src\autoresearch\llm\client.py src\autoresearch\cli\main.py`: passed with no issues.
+  - Focused `python -m pytest tests\unit\research\test_brainstorm.py tests\unit\research\test_plans.py tests\unit\llm\test_client.py::test_post_chat_completion_accepts_creative_temperature tests\unit\cli\test_main.py::test_brainstorm_command_loads_inspiration_and_writes_artifacts tests\unit\cli\test_main.py::test_autopilot_command_runs_one_non_review_cycle tests\unit\cli\test_main.py::test_autopilot_research_plan_gate_blocks_before_experiment -q`: passed with 12 tests.
+  - Real provider-backed `node .\bin\airesearcher.mjs brainstorm --candidate-file runs\manual-live\task248-novelty-breadth-live\candidate.json --inspiration-report runs\manual-live\task248-novelty-breadth-live\inspiration-broad.json --vault runs\manual-live\task249-brainstorm-live\vault --output-dir runs\manual-live\task249-brainstorm-live\brainstorm --env-path .env --miniagents 2 --ideas-per-agent 1 --temperature 1.35 --timeout-seconds 120`: passed, selected 2 ideas from 2 miniagents, and wrote `brainstorm-ideas.json`, the Obsidian summary note, and `brainstorm-miniagents.md`.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 633 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: exited successfully; it still prints the known README.zh-CN CRLF normalization warning tracked in `P-20260623-010`.
+- Problems:
+  - None added for this task.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Add more brainstorm perspectives only when they correspond to concrete source classes or evaluation roles; avoid turning this into permanent agent-team bloat.
+  - Add an optional second-stage reviewer that can down-rank ideas against live scholarly/source evidence, but keep that reviewer evidence-bound and separate from the creative generation pass.
