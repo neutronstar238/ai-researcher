@@ -488,7 +488,7 @@ def test_agent_profile_team_template_writes_importable_bundle(tmp_path: Path) ->
     )
 
     assert second_result.exit_code == 1
-    assert "refusing to overwrite" in second_result.stderr
+    assert "refusing to overwrite" in second_result.output
 
     import_result = CliRunner().invoke(
         app,

@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260624-010 - CI failed because CLI test read stderr when Click did not capture it separately
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-06-24 12:02:00 +08:00
+- Source: GitHub Actions run `28073612560` for `main` commit `eeaa576`.
+- Symptom: The Python 3.10 CI job failed only in `tests/unit/cli/test_main.py::test_agent_profile_team_template_writes_importable_bundle` with `ValueError: stderr not separately captured`.
+- Impact: The CLI behavior was not broken, but the CI test was not portable across the Click/Typer runner stderr capture mode used in GitHub Actions.
+- Evidence: `gh run view 28073612560 --repo neutronstar238/ai-researcher --job 83113220484 --log` reported `1 failed, 635 passed, 8 skipped` and the failing test plus exception.
+- Root cause: The test asserted against `second_result.stderr`, which raises when the runner combines stderr into the standard output stream.
+- Workaround: Use `second_result.output`, which is available in both combined and separate stderr capture modes.
+- Next action: Prefer `result.output` for Typer CLI error-output assertions unless a test explicitly configures and verifies separate stderr capture.
+- Linked tasks: CI fix after task `255.1`
+- Resolution: Changed the overwrite-error assertion to inspect `second_result.output`.
+- Verification: `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q` passed; `python -m pytest tests\smoke tests\unit -q` passed with 643 passed and 4 skipped; `python -m ruff check src tests` passed; `python -m mypy src\autoresearch` passed; `git diff --check` passed with only the existing README.zh-CN CRLF warning.
+
 ### P-20260624-009 - PowerShell staging command used unsupported `&&` separator
 
 - Status: Resolved

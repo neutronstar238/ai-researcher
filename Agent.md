@@ -10595,3 +10595,33 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Use this policy in the next real loop run: let brainstorm/research-plan promote high-quality novel gaps, then require publication audit to prove no direct duplicate and to cite adjacent work before PDF-ready claims.
+
+### 2026-06-24 12:05:23 +08:00 - Codex - CI fix for Python 3.10 stderr capture
+
+- Request: Fix the new GitHub Actions CI failure.
+- Files changed:
+  - `tests/unit/cli/test_main.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Inspected GitHub Actions run `28073612560` with `gh run view`; ruff and mypy had passed, and only the Python 3.10 smoke/unit step failed.
+  - Identified the failing test as `tests/unit/cli/test_main.py::test_agent_profile_team_template_writes_importable_bundle`.
+  - Replaced the brittle `second_result.stderr` assertion with `second_result.output`, because Click/Typer may combine stderr into output depending on runner/version configuration.
+  - Kept CLI behavior unchanged; this is a test portability fix.
+- Verification:
+  - `gh auth status`: authenticated as `neutronstar238` with repo/workflow scopes.
+  - `gh run list --repo neutronstar238/ai-researcher --limit 12 --json ...`: latest failing CI run was `28073612560` on `main` commit `eeaa576`.
+  - `gh run view 28073612560 --repo neutronstar238/ai-researcher --json ...`: Python 3.10 job failed only in "Run smoke and unit tests".
+  - `gh run view 28073612560 --repo neutronstar238/ai-researcher --job 83113220484 --log`: failure was `ValueError: stderr not separately captured` in `test_agent_profile_team_template_writes_importable_bundle`.
+  - Focused `python -m pytest tests\unit\cli\test_main.py::test_agent_profile_team_template_writes_importable_bundle -q`: passed with 1 test.
+  - Focused `python -m ruff check tests\unit\cli\test_main.py`: passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q`: passed with 643 passed and 4 skipped.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src\autoresearch`: passed with no issues in 110 source files.
+  - `git diff --check`: passed; Git still warned that `README.zh-CN.md` CRLF will be replaced by LF the next time Git touches it, matching the existing README.zh-CN line-ending risk.
+- Problems:
+  - Added and resolved `P-20260624-010`.
+  - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
+- Follow-up:
+  - Push this focused CI fix to trigger a fresh GitHub Actions run on `main`.
+  - Continue the separate task `257.1` commit for scheduler-facing Agent skill/MCP route selection after the CI fix is isolated.
