@@ -3193,9 +3193,10 @@ A task can be checked only when all applicable items are true:
       - Exclude every parent unseen system from the full recovery panel. Require every recovery unseen system to be absent from the full parent panel; retain only parent-development `advection1d` and `burgers` as development controls.
       - Freeze 10 ODE/4 PDE, clean/SNR20, fresh seeds 13/29/43, 252 attempt/config hashes, the same evidence metrics, a 5% strongest-baseline threshold, and a system-level bootstrap lower-bound-above-zero gate before any result exists.
       - _Outcome: live recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` binds matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`; an unchanged rerun reproduced both hashes, and no recovery result has run._
-    - [ ] 259.7.2 Implement and development-smoke the weak-form candidate
+    - [x] 259.7.2 Implement and development-smoke the weak-form candidate
       - Implement the two frozen mechanisms in the scientific container without copying reference-only code, then smoke only development systems and verify finite metrics, hash binding, resume, and bounded failure behavior.
       - Do not inspect or execute recovery unseen-test cells during implementation or debugging.
+      - _Outcome: the pinned PySINDy weak library and bootstrap support-stability path passed its in-image ODE/PDE self-test and a four-cell recovery-development smoke with 4/4 success, deterministic checkpoint reuse, zero human interventions, and zero access requests. Column-normalized STLSQ corrected a development-only scaling defect and recovered clean `advection1d` as `u_t=-0.100002u_x` with derivative NMSE `1.27e-6`; the SNR20 control still selected a zero equation with NMSE approximately `1`, so this task proves executable evidence only and does not claim the recovery hypothesis or Gate A passed._
     - [ ] 259.7.3 Execute and adjudicate the fresh recovery matrix
       - Drain the unchanged 252-cell matrix, preserve every failure, extend pinned truth scoring for the new systems, and apply the frozen system-level confidence gate.
       - Pass only on the preregistered criteria; otherwise retain another credible negative result and stop this mechanism family without unlocking Gate B.

@@ -814,5 +814,8 @@ claim-evidence、一键复现和透明的负结果边界。开发夹具通过不
 任务 259.7.1 已增加 `recover-preregister`：它先验证父矩阵和负结果报告，再冻结弱形式投影与
 bootstrap 支持稳定性两个机制、全新未见系统、种子 13/29/43 及 252 个配置哈希。真实恢复
 预注册哈希为 `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079`，矩阵哈希为
-`9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`。这只是执行前合同，
-不构成候选实现、smoke、Gate A 通过或 Gate B 授权。
+`9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`。任务 259.7.2 已将这两个
+机制接入版本化科学容器；镜像内合成 ODE/PDE 自测和四个 development cells 均成功，重复调用
+复用全部四条终态。列归一化修复了 clean PDE 的弱积分尺度缺陷，但 SNR20 `advection1d` 仍退化
+为零方程。这一 smoke 只授权冻结实现并进入独立的 259.7.3 全矩阵执行；它不等于 Gate A 通过，
+六个 recovery unseen cells 在 259.7.2 中仍未执行或查看，也不授权 Gate B。

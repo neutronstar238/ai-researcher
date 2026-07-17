@@ -96,6 +96,8 @@ def test_versioned_container_contract_matches_pinned_source() -> None:
     root = Path(__file__).resolve().parents[3]
     container_dir = root / "deploy" / "experiments" / "mdbench"
     dockerfile = (container_dir / "Dockerfile").read_text(encoding="utf-8")
+    runner = (container_dir / "runner.py").read_text(encoding="utf-8")
+    selftest = (container_dir / "weak_runner_selftest.py").read_text(encoding="utf-8")
     manifest = json.loads(
         (container_dir / "container-manifest.json").read_text(encoding="utf-8")
     )
@@ -106,6 +108,19 @@ def test_versioned_container_contract_matches_pinned_source() -> None:
     assert manifest["benchmark_revision"] == MDBENCH_REVISION
     assert manifest["base_image_digest"] in dockerfile
     assert manifest["processed_archive"]["checksum"] == MDBENCH_PROCESSED_CHECKSUM
+    assert manifest["pysindy"] == {
+        "license": "MIT",
+        "license_sha256": (
+            "abfa7f391ee1d5b6f51d473de5928e75ffae6e3cdbd21c19db78c98437efcbdd"
+        ),
+        "revision": "4c32d2603cbf1aa476efae72bc78436cb1e6fc75",
+        "version": "1.7.5",
+    }
+    assert "WeakPDELibrary" in dockerfile
+    assert "weak_runner_selftest.py" in dockerfile
+    assert "normalize_columns=True" in runner
+    assert 'pde_result["derivative_nmse"] < 1e-5' in selftest
+    assert "weak_stability_sindy" in manifest["supported_algorithms"]
     requirements = (container_dir / "requirements-sindy.lock").read_text(
         encoding="utf-8"
     )

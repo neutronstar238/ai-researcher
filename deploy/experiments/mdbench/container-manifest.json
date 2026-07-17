@@ -9,9 +9,18 @@
     "key": "processed.zip",
     "size_bytes": 475908142
   },
-  "scope": "official-source preflight and SINDy/PDE-FIND environment",
+  "pysindy": {
+    "license": "MIT",
+    "license_sha256": "abfa7f391ee1d5b6f51d473de5928e75ffae6e3cdbd21c19db78c98437efcbdd",
+    "revision": "4c32d2603cbf1aa476efae72bc78436cb1e6fc75",
+    "version": "1.7.5"
+  },
+  "scope": "official MDBench baselines and bounded stability/weak-form candidates",
   "supported_algorithms": [
     "sindy",
-    "pdefind"
+    "pdefind",
+    "operon_gp",
+    "stability_sindy",
+    "weak_stability_sindy"
   ]
 }

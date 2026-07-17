@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-18 00:40:38 +08:00 - Codex - Task 259.7.2 weak-form candidate development smoke
+
+- Request: Resume after the workstation restart, implement the two preregistered Gate A recovery mechanisms, and prove the candidate only on development systems without executing or inspecting recovery unseen systems.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-259-7-2-weak-form-development-smoke.md`
+  - `deploy/experiments/mdbench/Dockerfile`
+  - `deploy/experiments/mdbench/container-manifest.json`
+  - `deploy/experiments/mdbench/runner.py`
+  - `deploy/experiments/mdbench/weak_runner_selftest.py`
+  - `tests/unit/competition/test_official_preflight.py`
+- Summary:
+  - Added the pinned PySINDy v1.7.5 `WeakPDELibrary` execution path for `weak_stability_sindy`. It implements only the frozen weak-form projection and bootstrap support-stability mechanisms, uses deterministic split-local projection seeds, fits stable support in the disposable container, and evaluates code-computed strong-form metrics. No reference-only WSINDy code was copied.
+  - Added a Python 3.9 image-build self-test that recovers a synthetic oscillator and 1D transport equation with strict error/complexity assertions. The container manifest now records the PySINDy version, revision, MIT license hash, and weak candidate support.
+  - Retained the first two development smokes as negative debugging evidence. V2 exposed a raw integral-column scaling defect: clean `advection1d` had weak validation NMSE `1.46e-4` but strong test NMSE `108.86`. Development-only diagnostics identified unnormalized Ridge/STLSQ as the cause; weak-path column normalization corrected the physical coefficient and did not change the non-weak candidate.
+  - Final development smoke v3 used exactly four frozen development cells. It completed 4/4 with zero failures/timeouts, zero human interventions, and zero access requests. Clean `advection1d` recovered `u_t=-0.100002296229*u_x`, derivative NMSE `1.2669956438e-6`, complexity `2`; SNR20 `advection1d` still selected a zero equation at NMSE approximately `1`, which is recorded as adverse scientific evidence rather than a pass.
+  - Repeated the exact v3 command. All four terminal records were hash-validated and marked `reused_this_invocation=true`. Final image ID is `sha256:29796ce06e675737a02b1864c277ed545b4a6fb9c3bce8db40245c9bdc8bf88c`, runner SHA-256 is `c22b92437280aae635cbfadd1f8a349f9b49c11658553ffee184b411610942eb`, environment hash is `006f047a654fb33296cd849c27cf0f9774ebd0b809780aaca441ae0871b8f7f4`, and resumed report hash is `97be2954c4785cb79ffd4c4fa19fbc61a0f1bfb9da2aab3b061d27eddfa52756`.
+  - Kept all six recovery unseen systems sealed throughout implementation and debugging. Task `259.7.2` proves finite execution, causal binding, resume, and failure persistence only; Gate A remains negative and Gate B remains blocked.
+- Verification:
+  - `docker build --progress=plain --tag autoresearch-mdbench-gate-a-recovery:c22b9243 --build-arg MDBENCH_REVISION=f81813e760325589737fe3311ac8199ecc64188a deploy/experiments/mdbench`: passed; dependency checks and the embedded synthetic ODE/PDE self-test passed during the image build.
+  - `python -m py_compile deploy/experiments/mdbench/runner.py deploy/experiments/mdbench/weak_runner_selftest.py`: passed.
+  - `docker run --rm --network none autoresearch-mdbench-gate-a-recovery:c22b9243 python /opt/autoresearch-mdbench/weak_runner_selftest.py`: passed.
+  - `poetry run airesearcher competition mdbench execute ... --output-dir runs/manual-live/task259-mdbench-recovery-development-smoke-v3 --image autoresearch-mdbench-gate-a-recovery:c22b9243` with the four exact development attempt IDs: passed, 4 succeeded, 0 failed, 0 timed out; an unchanged repeat reused all four result hashes.
+  - `poetry run pytest tests/unit/competition/test_official_preflight.py tests/unit/competition/test_official_execution.py tests/unit/competition/test_recovery.py tests/unit/competition/test_competition_cli.py -q`: passed, 18 tests.
+  - `poetry run ruff check deploy/experiments/mdbench/weak_runner_selftest.py tests/unit/competition/test_official_preflight.py`: passed. Direct whole-file Ruff on the legacy Python 3.9 runner reported version-incompatible modernization suggestions and is documented in `P-20260718-013`; the configured repository gate below passed.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 687 passed and 4 credential-gated live smokes skipped.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 124 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated open `P-20260717-009` so the next action is the unchanged task `259.7.3` matrix execution; the negative Gate A and Gate B block remain.
+  - Added and resolved `P-20260718-011` for raw weak-library column scaling and its misleading clean PDE model.
+  - Added open `P-20260718-012` for the SNR20 development control's zero-support result; no third mechanism or post-unseen tuning is allowed in this recovery cycle.
+  - Added and resolved `P-20260718-013` for restart-related Docker unavailability and bounded diagnostic path/PowerShell/Ruff command mismatches.
+- Follow-up:
+  - Commit and push this completed task before starting `259.7.3`. Then execute and adjudicate the unchanged 252-cell recovery matrix once; if the preregistered unseen confidence gate fails, close this mechanism family as a credible negative result. Do not begin Gate B, Qwen submission evidence, or product expansion.
+
 ### 2026-07-17 23:54:17 +08:00 - Codex - Task 259.7.1 Gate A recovery preregistration
 
 - Request: Continue from the official negative Gate A boundary without tuning against revealed held-out systems; freeze a distinct, literature-grounded recovery hypothesis and experiment matrix before implementing or running it.

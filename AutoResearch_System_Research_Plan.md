@@ -606,8 +606,11 @@ sim-to-real 预测形成主参赛案例。Gate A 开发夹具只能验证工程�
 同一官方归档和两种基线，使用新种子 13/29/43；旧周期所有未见系统在恢复矩阵中一律禁用，
 恢复周期的六个未见系统也不得出现在旧矩阵任一 split，只有旧开发集 `advection1d` 与 `burgers`
 继续作为开发控制项。实现依赖固定到 MIT 许可的 PySINDy v1.7.5；未检测到许可文件的 WSINDy
-仓库只作思路参考，不复制或 vendoring 代码。恢复预注册已经产生内容哈希，但尚无实验结果，
-所以 `gate_b_allowed=false` 仍保持不变。
+仓库只作思路参考，不复制或 vendoring 代码。候选实现现已在镜像内通过合成 ODE/PDE 自测，并只在
+四个 development cells 上完成 4/4 有限结果与幂等恢复。列归一化 STLSQ 修复后，clean
+`advection1d` 恢复为 `u_t=-0.100002u_x`，导数 NMSE 为 `1.27e-6`；SNR20 development 控制
+仍选择零方程、NMSE 约为 1。这是有价值的负面开发信号，不是恢复 Gate A 的通过证据；六个新
+未见系统仍未执行或查看，`gate_b_allowed=false` 保持不变。
 
 默认 `topic_mode=auto`。用户题目、论文和指导仅是可选的 `seeded` 约束，不能绕过数据许可、
 资源、重复风险、可证伪性和可复现性硬筛选。科研选择不等待人工审批；只有 API 凭据、数据许可、

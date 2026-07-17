@@ -26,12 +26,14 @@ RUN git clone https://github.com/gryaklab/mdbench.git /opt/mdbench \
 
 ENV PYTHONPATH=/opt/mdbench
 
-COPY runner.py /opt/autoresearch-mdbench/runner.py
+COPY runner.py weak_runner_selftest.py /opt/autoresearch-mdbench/
 
 RUN cd / \
-    && python -c "from mdbench.algorithms.ode.sindy.regressor import Estimator; print(Estimator.__name__)"
+    && python -c "from mdbench.algorithms.ode.sindy.regressor import Estimator; print(Estimator.__name__)" \
+    && python -c "import pysindy; from pysindy import WeakPDELibrary; assert pysindy.__version__ == '1.7.5'; print(WeakPDELibrary.__name__)" \
+    && python /opt/autoresearch-mdbench/weak_runner_selftest.py
 
-LABEL org.opencontainers.image.title="AutoResearch MDBench Gate A runtime" \
+LABEL org.opencontainers.image.title="AutoResearch MDBench Gate A scientific runtime" \
       org.opencontainers.image.source="https://github.com/gryaklab/mdbench" \
       org.opencontainers.image.revision="${MDBENCH_REVISION}"
 

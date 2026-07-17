@@ -16,6 +16,7 @@ import signal
 import sys
 import time
 import traceback
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -355,11 +356,24 @@ def _candidate_library(states, data_type, degree, derivative_order, spatial_grid
     return _pde_library(states, spatial_grids[0], degree, derivative_order)
 
 
-def _stlsq(theta, targets, threshold, alpha, fixed_mask=None):
+def _stlsq(
+    theta,
+    targets,
+    threshold,
+    alpha,
+    fixed_mask=None,
+    normalize_columns=False,
+):
     x = np.asarray(theta, dtype=np.float64)
     y = np.asarray(targets, dtype=np.float64).reshape(-1, targets.shape[-1])
     if x.shape[0] != y.shape[0]:
         raise ValueError("feature and derivative row counts differ")
+    column_scales = np.ones(x.shape[1], dtype=np.float64)
+    if normalize_columns:
+        column_norms = np.linalg.norm(x, axis=0)
+        nonzero = column_norms > np.finfo(np.float64).eps
+        column_scales[nonzero] = column_norms[nonzero]
+        x = x / column_scales
     coefficients = np.zeros((y.shape[1], x.shape[1]), dtype=np.float64)
     for target_index in range(y.shape[1]):
         active = (
@@ -395,6 +409,8 @@ def _stlsq(theta, targets, threshold, alpha, fixed_mask=None):
             model = Ridge(alpha=float(alpha), fit_intercept=False, solver="lsqr")
             model.fit(x[:, active], y[:, target_index])
             coefficients[target_index, np.flatnonzero(active)] = model.coef_
+    if normalize_columns:
+        coefficients = coefficients / column_scales[np.newaxis, :]
     return coefficients
 
 
@@ -433,6 +449,335 @@ def _model_complexity(coefficients, feature_names):
             if abs(float(coefficient)) > 1e-10:
                 complexity += 2 + feature.count("*") + feature.count("^")
     return int(complexity)
+
+
+def _weak_library_functions(degree):
+    if int(degree) not in (1, 2, 3):
+        raise ValueError("frozen weak-form polynomial degree must be 1, 2, or 3")
+    functions = [
+        lambda x: x,
+        lambda x, y: x * y,
+        lambda x, y, z: x * y * z,
+    ]
+    function_names = [
+        lambda x: x,
+        lambda x, y: "%s*%s" % (x, y),
+        lambda x, y, z: "%s*%s*%s" % (x, y, z),
+    ]
+    return functions[: int(degree)], function_names[: int(degree)]
+
+
+def _weak_feature_names(dimension, degree, derivative_order):
+    variable_names = ["u%d" % index for index in range(int(dimension))]
+    polynomial = PolynomialFeatures(degree=int(degree), include_bias=True)
+    polynomial.fit(np.zeros((1, int(dimension))))
+    polynomial_names = [
+        str(name).replace(" ", "*")
+        for name in polynomial.get_feature_names_out(variable_names)
+    ]
+    if int(derivative_order) == 0:
+        return polynomial_names
+    derivative_names = [
+        "u%d_%s" % (variable_index, "x" * order)
+        for order in range(1, int(derivative_order) + 1)
+        for variable_index in range(int(dimension))
+    ]
+    mixed_names = [
+        "(%s)*(u%d_%s)" % (polynomial_name, variable_index, "x" * order)
+        for order in range(1, int(derivative_order) + 1)
+        for polynomial_name in polynomial_names[1:]
+        for variable_index in range(int(dimension))
+    ]
+    return polynomial_names + derivative_names + mixed_names
+
+
+def _weak_strong_library(states, data_type, degree, derivative_order, spatial_grids):
+    dimension = states.shape[-1]
+    variable_names = ["u%d" % index for index in range(dimension)]
+    polynomial, polynomial_names, _library = _polynomial_matrix(
+        states,
+        degree,
+        variable_names,
+    )
+    if data_type == "ode":
+        return polynomial, polynomial_names
+    if len(spatial_grids) != 1 or states.ndim != 3:
+        raise ValueError("weak-form recovery candidate supports one-dimensional PDEs only")
+    derivatives = _spatial_derivatives(states, spatial_grids[0], derivative_order)
+    columns = [polynomial]
+    names = list(polynomial_names)
+    flattened_derivatives = []
+    for order, derivative in derivatives:
+        flattened = derivative.reshape(-1, dimension)
+        flattened_derivatives.append((order, flattened))
+        for variable_index in range(dimension):
+            columns.append(flattened[:, variable_index : variable_index + 1])
+            names.append("u%d_%s" % (variable_index, "x" * order))
+    for order, flattened in flattened_derivatives:
+        for polynomial_index, polynomial_name in enumerate(
+            polynomial_names[1:],
+            start=1,
+        ):
+            for variable_index in range(dimension):
+                columns.append(
+                    polynomial[:, polynomial_index : polynomial_index + 1]
+                    * flattened[:, variable_index : variable_index + 1]
+                )
+                names.append(
+                    "(%s)*(u%d_%s)"
+                    % (polynomial_name, variable_index, "x" * order)
+                )
+    expected_names = _weak_feature_names(dimension, degree, derivative_order)
+    if names != expected_names:
+        raise ValueError("strong evaluation library does not match weak feature ordering")
+    return np.concatenate(columns, axis=1), names
+
+
+def _weak_spatiotemporal_grid(piece, data_type, spatial_grids):
+    if data_type == "ode":
+        return np.asarray(piece["t"], dtype=np.float64).reshape(-1, 1)
+    if len(spatial_grids) != 1 or piece["u"].ndim != 3:
+        raise ValueError("weak-form recovery candidate supports one-dimensional PDEs only")
+    x_grid, t_grid = np.meshgrid(
+        np.asarray(spatial_grids[0], dtype=np.float64),
+        np.asarray(piece["t"], dtype=np.float64),
+        indexing="ij",
+    )
+    grid = np.stack((x_grid, t_grid), axis=-1)
+    if grid.shape[:-1] != piece["u"].shape[:-1]:
+        raise ValueError("weak spatiotemporal grid does not match the state tensor")
+    return grid
+
+
+def _weak_projection(
+    piece,
+    data_type,
+    degree,
+    derivative_order,
+    spatial_grids,
+    subdomains,
+    projection_seed,
+):
+    import pysindy as ps
+
+    functions, function_names = _weak_library_functions(degree)
+    grid = _weak_spatiotemporal_grid(piece, data_type, spatial_grids)
+    random_state = np.random.get_state()
+    try:
+        np.random.seed(int(projection_seed))
+        library = ps.WeakPDELibrary(
+            library_functions=functions,
+            function_names=function_names,
+            derivative_order=int(derivative_order),
+            spatiotemporal_grid=grid,
+            interaction_only=False,
+            include_bias=True,
+            include_interaction=int(derivative_order) > 0,
+            K=int(subdomains),
+            p=4,
+        )
+    finally:
+        np.random.set_state(random_state)
+    design = np.asarray(library.fit_transform(piece["u"]), dtype=np.float64)
+    targets = np.asarray(
+        library.convert_u_dot_integral(piece["u"]),
+        dtype=np.float64,
+    )
+    feature_names = _weak_feature_names(
+        piece["u"].shape[-1],
+        degree,
+        derivative_order,
+    )
+    if design.shape != (int(subdomains), len(feature_names)):
+        raise ValueError("PySINDy weak design shape does not match the frozen library")
+    if targets.shape != (int(subdomains), piece["u"].shape[-1]):
+        raise ValueError("PySINDy weak target shape does not match the state dimension")
+    if not np.all(np.isfinite(design)) or not np.all(np.isfinite(targets)):
+        raise FloatingPointError("PySINDy weak projection produced non-finite values")
+    return design, targets, feature_names
+
+
+def _weak_projection_seed(attempt_seed, split_name):
+    split_offsets = {
+        "train": 104729,
+        "validation": 119087,
+        "train_validation": 130363,
+    }
+    if split_name not in split_offsets:
+        raise ValueError("unsupported weak projection split")
+    return int((int(attempt_seed) * 1000003 + split_offsets[split_name]) % (2**32 - 1))
+
+
+def _run_weak_stability_candidate(spec, pieces, spatial_grids, _time_axis):
+    attempt = spec["attempt"]
+    parameters = spec["method"]["parameters"]
+    if parameters.get("mechanisms") != [
+        "weak_form_projection",
+        "bootstrap_support_stability",
+    ]:
+        raise ValueError("weak recovery mechanisms differ from the frozen contract")
+    if version("pysindy") != "1.7.5":
+        raise ValueError("weak recovery candidate requires pinned PySINDy 1.7.5")
+    data_type = attempt["data_type"]
+    train = pieces["train"]
+    validation = pieces["validation"]
+    derivative_orders = (
+        [0] if data_type == "ode" else parameters["pde_derivative_order"]
+    )
+    subdomains = int(parameters["weak_subdomains"])
+    train_projection_seed = _weak_projection_seed(attempt["seed"], "train")
+    validation_projection_seed = _weak_projection_seed(
+        attempt["seed"],
+        "validation",
+    )
+    best = None
+    errors = []
+    for degree, derivative_order in itertools.product(
+        parameters["poly_order"],
+        derivative_orders,
+    ):
+        try:
+            theta_train, weak_targets, feature_names = _weak_projection(
+                train,
+                data_type,
+                degree,
+                derivative_order,
+                spatial_grids,
+                subdomains,
+                train_projection_seed,
+            )
+            theta_validation, weak_validation_targets, validation_names = _weak_projection(
+                validation,
+                data_type,
+                degree,
+                derivative_order,
+                spatial_grids,
+                subdomains,
+                validation_projection_seed,
+            )
+            if validation_names != feature_names:
+                raise ValueError("train and validation weak feature libraries differ")
+            for threshold in parameters["optimizer_threshold"]:
+                coefficients = _stlsq(
+                    theta_train,
+                    weak_targets,
+                    threshold,
+                    1e-5,
+                    normalize_columns=True,
+                )
+                prediction = _linear_predict(theta_validation, coefficients)
+                validation_nmse = _nmse(weak_validation_targets, prediction)
+                complexity = _model_complexity(coefficients, feature_names)
+                key = (
+                    validation_nmse,
+                    complexity,
+                    int(degree),
+                    int(derivative_order),
+                    float(threshold),
+                )
+                if best is None or key[:2] < best[:2]:
+                    best = key
+        except Exception as exc:
+            errors.append(
+                "degree=%s derivative_order=%s: %s"
+                % (degree, derivative_order, exc)
+            )
+    if best is None:
+        raise RuntimeError("every frozen weak-form configuration failed: %s" % errors[-3:])
+    validation_nmse, _complexity, degree, derivative_order, threshold = best
+    train_validation = pieces["train_validation"]
+    final_projection_seed = _weak_projection_seed(
+        attempt["seed"],
+        "train_validation",
+    )
+    theta_final, weak_targets, feature_names = _weak_projection(
+        train_validation,
+        data_type,
+        degree,
+        derivative_order,
+        spatial_grids,
+        subdomains,
+        final_projection_seed,
+    )
+    repetitions = int(parameters["bootstrap_repetitions"])
+    sample_size = max(
+        1,
+        int(theta_final.shape[0] * float(parameters["subsample_fraction"])),
+    )
+    rng = np.random.default_rng(int(attempt["seed"]) + 2597)
+    selected_counts = np.zeros(
+        (weak_targets.shape[1], theta_final.shape[1]),
+        dtype=np.int64,
+    )
+    for _replicate in range(repetitions):
+        indices = rng.choice(theta_final.shape[0], size=sample_size, replace=False)
+        coefficients = _stlsq(
+            theta_final[indices],
+            weak_targets[indices],
+            threshold,
+            1e-5,
+            normalize_columns=True,
+        )
+        selected_counts += np.abs(coefficients) > 1e-10
+    support_frequency = selected_counts / float(repetitions)
+    stable_mask = support_frequency >= float(parameters["selection_frequency"])
+    coefficients = _stlsq(
+        theta_final,
+        weak_targets,
+        threshold,
+        1e-5,
+        fixed_mask=stable_mask,
+        normalize_columns=True,
+    )
+    test = pieces["test"]
+    theta_test, test_names = _weak_strong_library(
+        test["u"],
+        data_type,
+        degree,
+        derivative_order,
+        spatial_grids,
+    )
+    if test_names != feature_names:
+        raise ValueError("weak and strong test feature libraries differ")
+    prediction = _linear_predict(theta_test, coefficients).reshape(test["du_true"].shape)
+    derivative_nmse = _nmse(test["du_true"], prediction)
+    trajectory_nmse = None
+    if data_type == "ode":
+        polynomial = PolynomialFeatures(degree=int(degree), include_bias=True)
+        polynomial.fit(np.zeros((1, test["u"].shape[-1])))
+        trajectory_nmse = _trajectory_nmse(
+            lambda states: polynomial.transform(states).dot(coefficients.T),
+            test["t"],
+            test["u"],
+        )
+    selected = {
+        "mechanisms": list(parameters["mechanisms"]),
+        "pysindy_version": version("pysindy"),
+        "pysindy_revision": parameters["pysindy_revision"],
+        "weak_library": parameters["weak_library"],
+        "weak_subdomains": subdomains,
+        "weak_weight_degree": 4,
+        "weak_projection_seed": final_projection_seed,
+        "validation_objective": "weak_form_derivative_nmse",
+        "bootstrap_repetitions": repetitions,
+        "subsample_fraction": float(parameters["subsample_fraction"]),
+        "selection_frequency": float(parameters["selection_frequency"]),
+        "stable_support_size": [int(np.count_nonzero(row)) for row in stable_mask],
+        "poly_order": int(degree),
+        "derivative_order": int(derivative_order),
+        "optimizer_threshold": float(threshold),
+        "optimizer_alpha": 1e-5,
+        "normalize_columns": True,
+    }
+    return {
+        "selected_hyperparameters": selected,
+        "discovered_equation": _equation_text(coefficients, feature_names),
+        "coefficients": _coefficient_payload(coefficients, feature_names),
+        "validation_nmse": float(validation_nmse),
+        "derivative_nmse": derivative_nmse,
+        "trajectory_extrapolation_nmse_ode": trajectory_nmse,
+        "model_complexity": _model_complexity(coefficients, feature_names),
+    }
 
 
 def _run_stability_candidate(spec, pieces, spatial_grids, time_axis):
@@ -822,6 +1167,13 @@ def run(spec_path, data_path, output_path):
             result = _run_sparse_baseline(spec, pieces, spatial_grids, time_axis)
         elif method_id == "stability_sindy":
             result = _run_stability_candidate(spec, pieces, spatial_grids, time_axis)
+        elif method_id == "weak_stability_sindy":
+            result = _run_weak_stability_candidate(
+                spec,
+                pieces,
+                spatial_grids,
+                time_axis,
+            )
         elif method_id == "operon_gp":
             result = _run_operon(spec, pieces, spatial_grids, time_axis)
         else:

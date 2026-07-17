@@ -288,8 +288,13 @@ and `burgers` controls are reused as development data. PySINDy v1.7.5 is the ver
 dependency; WSINDy repositories with no detected license are reference-only, and no code is copied.
 The live recovery hash is `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079`
 and its 252-cell matrix hash is `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`.
-These hashes prove only that the hypothesis and matrix were frozen before results; no recovery cell
-has run, Gate A is still negative, and Gate B remains blocked.
+The candidate is now implemented in the versioned scientific image. Its synthetic ODE/PDE self-test
+and four development-only cells completed with finite metrics; an unchanged rerun reused all four
+hash-valid results with zero human interventions and zero access requests. Column-normalized STLSQ
+recovered clean `advection1d` as `u_t=-0.100002u_x` at derivative NMSE `1.27e-6`, while the SNR20
+development control still selected a zero equation at NMSE approximately `1`. This is executable
+development evidence, not a recovery pass: no recovery unseen system was run or inspected, Gate A
+remains negative, and Gate B remains blocked.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

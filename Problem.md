@@ -67,10 +67,58 @@ update a factual problem entry below.
 - Evidence: The selected baseline is `operon_gp`. Successful-cell unseen-SNR20 median derivative NMSE is `0.1174514860` for the candidate versus `0.6864225438` for Operon, an observed 82.89% relative improvement. Under the conservative failure-aware policy, the six-system median improvement is 37.15% and the 20,000-resample 95% bootstrap CI is `[-0.2010595526, 0.8889914327]`. All-method success is 244/252.
 - Root cause: One of six unseen systems is worse for the candidate, one baseline system lacks all three successful seeds and is conservatively assigned zero improvement, and only six independent unseen systems make the uncertainty interval wide. The favorable seed-level point estimate is not sufficient independent evidence.
 - Workaround: None. Do not replace the system-level uncertainty unit with seed-level pseudo-replication, delete failures, change the frozen matrix, or begin Gate B.
-- Next action: Task `259.7.1` has frozen a distinct weak-form/support-stability recovery hypothesis on a disjoint unseen panel. Implement and smoke it only on recovery development systems under `259.7.2`; do not inspect recovery unseen results until the implementation and development checks are frozen.
+- Next action: Task `259.7.2` has frozen and development-smoked the weak-form/support-stability implementation without opening recovery unseen systems. Execute and adjudicate the unchanged matrix under `259.7.3`; do not tune after the sealed unseen results are revealed.
 - Linked tasks: `259.4`, `259.7`; blocks `259.5` and `259.6` under the current execution order.
 - Resolution: Not resolved scientifically; the system has correctly stopped and exposed the gap.
-- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests. The recovery preregistration binds this report under recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` and fresh matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`; it does not change the negative decision.
+- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests. The recovery preregistration binds this report under recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` and fresh matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`. The task `259.7.2` development smoke produced 4/4 finite candidate results and deterministic reuse, but it did not alter the negative Gate A decision.
+
+### P-20260718-011 - Raw weak-library scaling corrupted sparse coefficient selection
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-07-18 00:06:00 +08:00
+- Source: Task `259.7.2` recovery-development smoke v2.
+- Symptom: Clean `advection1d` achieved a small independent weak validation residual but produced a 14-term strong-form equation and test derivative NMSE `108.8633416630`; coefficients that should have represented the physical `-0.1*u_x` term were shrunk to approximately `1e-4` to `1e-3` scales.
+- Impact: The weak-form candidate could execute, but its selected coefficients were not physically meaningful and the implementation smoke could have falsely looked complete from finite metrics alone.
+- Evidence: A development-only container diagnostic showed the clean degree-1 weak design has the least-squares solution `u0_x=-0.100009...`; applying Ridge and thresholds directly to raw integral columns instead produced mixed `u0_x`/`u0*u0_x` support. The v2 result is retained at `runs/manual-live/task259-mdbench-recovery-development-smoke-v2/`.
+- Root cause: `_stlsq` applied the frozen sparsity thresholds and `alpha=1e-5` Ridge penalty before column normalization. Weak integral feature norms have different physical scales, so the optimizer semantics did not match PySINDy's normalized-column usage.
+- Workaround: None needed after the numerical fix.
+- Next action: Preserve the normalization regression in the in-image synthetic ODE/PDE self-test and do not change it after recovery unseen execution begins.
+- Linked tasks: `259.7.2`, `259.7.3`.
+- Resolution: Added weak-path-only column normalization with coefficient unscaling, leaving the existing non-weak candidate path unchanged.
+- Verification: The image self-test recovered oscillator coefficients near `+/-0.99999` and transport `u_t=-0.99999u_x`. Development smoke v3 recovered clean `advection1d` as `u_t=-0.100002296229*u_x`, derivative NMSE `1.2669956438e-6`, complexity `2`; the repeat invocation reused its original result hash.
+
+### P-20260718-012 - Weak recovery candidate degenerates on noisy PDE development control
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-18 00:17:20 +08:00
+- Source: Task `259.7.2` recovery-development smokes v1 through v3.
+- Symptom: The SNR20 `advection1d` development cell selects an empty stable support and reports `u0_t = 0`, derivative NMSE `0.9999999999997785`, despite successful container execution.
+- Impact: The frozen hypothesis specifically targets noisy derivative robustness. This development result is an adverse scientific signal and may prevent the candidate from beating the strongest baseline or passing the recovery confidence gate.
+- Evidence: The same zero-support behavior persisted after switching to independent weak-form validation and after correcting column scaling. Smoke v3 records validation NMSE `0.9999837162568695`, stable support size `0`, and result hash `f44aad22557b1e197f9ff2ef34861b8547fe7496c77f7406308df6de7c28cf93`.
+- Root cause: Not established as an implementation defect. On this control, the independent noisy weak validation residual favors the zero model over the preregistered nonzero configurations; forcing a nonzero support would be development overfitting and would not establish unseen robustness.
+- Workaround: None. Retain the zero model as evidence; do not add a third denoising mechanism or change the frozen search space inside this recovery cycle.
+- Next action: Run and adjudicate the unchanged 252-cell matrix under task `259.7.3`. If the pre-registered unseen confidence gate fails, close this mechanism family as a credible negative result.
+- Linked tasks: `259.7.2`, `259.7.3`; continues to block `259.5` and `259.6` through `P-20260717-009`.
+- Resolution: Open scientific limitation; task `259.7.2` is complete because execution, finite metrics, hash binding, resume, and failure persistence passed, not because the hypothesis succeeded.
+- Verification: The v3 smoke and its identical resume report 4/4 succeeded, 0 failed, 0 timed out, 0 human interventions, and 0 access requests while preserving this negative cell unchanged.
+
+### P-20260718-013 - Workstation restart and diagnostic command mismatches interrupted recovery smoke
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-18 00:00:00 +08:00
+- Source: Task `259.7.2` local container and reporting workflow.
+- Symptom: After the workstation restart, Docker Desktop was installed but its Linux engine was unavailable. Earlier diagnostics also used one incorrect in-container runner path, one incorrect archive data path, and PowerShell `foreach ... |` forms that raised `ParserError: An empty pipe element is not allowed`. Direct Ruff over the Python 3.9 container runner also reported 20 legacy/style findings outside the configured `src tests` gate.
+- Impact: These commands interrupted inspection or produced no diagnostic output, but they did not modify frozen matrices, official data, terminal results, or any recovery unseen system.
+- Evidence: The correct container path is `/opt/autoresearch-mdbench/runner.py`; the prepared data root comes from `archive-manifest.json`; assigning `foreach` output before piping resolved the PowerShell error. The deploy runner intentionally targets Python 3.9, so root Ruff suggestions such as `X | Y` and `zip(..., strict=...)` are not blindly applied.
+- Root cause: Expected external process loss during reboot plus command-path/shell syntax mistakes in ad hoc diagnostics; the direct Ruff target differs from the repository's configured supported gate.
+- Workaround: Start Docker Desktop with a hidden window, wait for `docker info`, use manifest-resolved paths, capture long-running sessions, and run the documented `ruff check src tests` gate plus the Python 3.9 in-image self-test.
+- Next action: None.
+- Linked tasks: `259.7.2`.
+- Resolution: Docker engine `29.6.1` resumed, the pre-restart images were intact, the corrected image built successfully, and v3 completed plus reused all four development results.
+- Verification: Image `sha256:29796ce06e675737a02b1864c277ed545b4a6fb9c3bce8db40245c9bdc8bf88c` passed the embedded self-test and the hash-bound host probe; no recovery unseen result exists in any development-smoke directory.
 
 ### P-20260717-010 - Windows console encoding interrupted the first literature fallback
 
