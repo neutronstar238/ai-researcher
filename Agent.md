@@ -64,6 +64,24 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 23:37:44 +08:00 - Codex - User-requested change-log cleanup
+
+- Request: Remove the user-identified unrelated historical log lines, push the completed research work, and continue from the current evidence boundary.
+- Files changed:
+  - `Agent.md`
+  - `Problem.md` (uncommitted lines removed; no resulting tracked diff)
+- Summary:
+  - Removed five unrelated uncommitted history blocks from `Agent.md` and three matching uncommitted problem blocks from `Problem.md` without touching their ignored artifact directory.
+  - Removed four already-committed cross-task preservation notes that referred to those discarded working-tree blocks.
+  - Kept all task 259 competition evidence, failures, decisions, and verification records unchanged.
+- Verification:
+  - Targeted text search over `Agent.md` and `Problem.md`: no matching historical-log references remain.
+  - `git diff --check`: passed.
+- Problems:
+  - None.
+- Follow-up:
+  - Push `main`, then continue with the first result-blind Gate A recovery task; do not tune against the revealed held-out systems or begin Gate B.
+
 ### 2026-07-17 23:23:00 +08:00 - Codex - Task 259.4 official Gate A adjudication
 
 - Request: Evaluate the complete frozen MDBench matrix without dropping failures, pass Gate A only on reproducible held-out evidence, and otherwise produce a credible negative result that keeps downstream work closed.
@@ -155,7 +173,7 @@ This file defines the project development standard for coding agents and records
   - The disposable container runs with `--network none`, read-only root/data/spec mounts, bounded CPU/memory/PIDs/time, dropped capabilities, and no-new-privileges. It implements the frozen official SINDy/PDE-FIND baseline, bounded seeded PyOperon baseline, and train-only Savitzky-Golay plus bootstrap stability-selected candidate.
   - Built image `autoresearch-mdbench-gate-a:f81813e` as image ID `sha256:254b1bbddb1735af76dadf5d6a5f329b36cd322e366a2379a2e328f34389cbb8`; runner SHA-256 is `8f0f590cd0de305f337fa0d7e5edbdc5da20699c22fa736c59dead7ed40b8b26`, code hash is `dde88f29d1d51bb9790359bf8902709eb564d09d9411d77bc0e258cc43f5208e`, and environment hash is `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`.
   - Live `execution-v5` ran all three frozen method families on official clean harmonic-oscillator seed 11. SINDy, Operon, and stability-SINDy derivative NMSE values were approximately `2.20e-6`, `2.07e-6`, and `2.05e-11`; all also produced finite trajectory NMSE and non-empty equations. A repeated invocation reused all three validated terminal results.
-  - This is official single-system/single-seed execution evidence only: 249 of 252 cells remain pending. It does not establish cross-system improvement, three-seed reproducibility, Gate A, Gate B, submission readiness, or an award claim. Earlier failed `execution-v1/v3/v4` artifacts were preserved. Unrelated course-paper changes in `Agent.md` and `Problem.md` remain outside this task.
+  - This is official single-system/single-seed execution evidence only: 249 of 252 cells remain pending. It does not establish cross-system improvement, three-seed reproducibility, Gate A, Gate B, submission readiness, or an award claim. Earlier failed `execution-v1/v3/v4` artifacts were preserved.
 - Verification:
   - `python -m pytest tests/unit/competition/test_official_execution.py tests/unit/competition/test_competition_cli.py -q`: passed with 7 tests covering complete causal persistence, idempotent resume, result tampering, spec tampering, infrastructure failure persistence, concrete overlap rejection, and CLI registration.
   - `docker build --tag autoresearch-mdbench-gate-a:f81813e --build-arg MDBENCH_REVISION=f81813e760325589737fe3311ac8199ecc64188a deploy/experiments/mdbench`: passed; build assertions found the exact pinned SINDy, PDE-FIND, and Operon adapters and imported SINDy from `/`.
@@ -193,7 +211,7 @@ This file defines the project development standard for coding agents and records
   - Added `competition mdbench preregister`, which reads only the verified archive manifest and freezes 252 cells under matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`; it does not inspect NPZ numeric payloads or method results.
   - Preregistered chronological 64/16/20 train/validation/test splits, seeds 11/23/37, clean plus SNR 20, sparse SINDy/PDE-FIND, bounded Operon GP, and the candidate stability-selected SINDy/PDE-FIND method. Metrics, resource bounds, paired-bootstrap acceptance, and no-post-hoc-substitution rules are immutable content.
   - Recorded the pinned upstream validation-overlap and fixed-seed divergences rather than representing the corrected future adapter as unchanged upstream evaluation.
-  - No scientific method cell ran in this subtask; Gate A, Gate B, external submission, and award claims remain blocked. Unrelated course-paper changes already present in `Agent.md` and `Problem.md` were preserved and excluded from this task's commit.
+  - No scientific method cell ran in this subtask; Gate A, Gate B, external submission, and award claims remain blocked.
 - Verification:
   - `python -m pytest tests/unit/competition/test_preregistration.py tests/unit/competition/test_competition_cli.py -q`: passed with 7 tests, including exact coverage, idempotence, artifact absence, content/hash tampering, and split-overlap rejection.
   - `poetry run airesearcher competition mdbench preregister --archive-manifest runs/manual-live/task259-mdbench-official-v1/data/prepared/archive-manifest.json --output runs/manual-live/task259-mdbench-official-v1/gate-a-preregistration.json`: exited 0, wrote 252 attempts with six unseen systems, and reported `created_before_results=true`; an idempotent rerun revalidated the frozen content hash.
@@ -229,7 +247,6 @@ This file defines the project development standard for coding agents and records
   - Ran the path on the licensed official `processed.zip`; the immutable inventory contains 63 ODE systems, 14 PDE systems, clean plus SNR 40/30/20/10, and 385 NPZ artifacts. Archive SHA-256 is `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`; inventory hash is `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`.
   - Split task `259.3` into completed data preparation `259.3.1` and still-pending preregistered method execution `259.3.2`. No algorithm metric, Gate A pass, Gate B authorization, or award claim was created.
   - Audited the pinned upstream evaluator and logged its overlapping hyperparameter-validation slice before result execution so the adapter must use and disclose non-overlapping boundaries.
-  - Preserved unrelated course-paper changes already present in `Agent.md` and `Problem.md`; they are not part of this task's commit.
 - Verification:
   - `python -m pytest tests/unit/competition/test_official_data.py tests/unit/competition/test_official_preflight.py tests/unit/competition/test_competition_cli.py -q`: passed with 11 tests, covering checksum, inventory, idempotence, extracted-file tampering, unsafe ZIP paths, license-aware preflight, network failure classification, and CLI registration.
   - Focused Ruff and Mypy for the competition adapter/tests: passed.
@@ -273,7 +290,6 @@ This file defines the project development standard for coding agents and records
   - Added `competition mdbench preflight` with a non-zero blocked exit and machine-readable evidence.
   - Added and built a versioned Python 3.9 scientific image with a digest-pinned base and fully version-pinned direct/transitive SINDy/PDE-FIND dependencies, without adding them to the lightweight core package.
   - Updated the plan so official matrix execution is a separate task `259.3`; preflight, image build, and evaluator help are explicitly not represented as Gate A benchmark evidence.
-  - Preserved unrelated course-paper changes already present in `Agent.md` and `Problem.md`; they are not part of this task's commit.
 - Verification:
   - `python -m pytest tests/unit/competition/test_official_preflight.py tests/unit/competition/test_competition_cli.py -q`: passed with 6 tests, including the network-failure versus permission-request boundary.
   - Focused Ruff and Mypy for the new official-preflight path: passed.
