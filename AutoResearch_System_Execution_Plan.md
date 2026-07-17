@@ -793,7 +793,7 @@ project_demo/
 7. Gate A 通过后再接入 Qwen/DashScope 调用证据和 RealPDEBench Cylinder Gate B。
 
 公共入口为 `competition run/resume/status/export`、`competition access grant` 与
-`competition mdbench preflight/prepare/preregister/execute`。默认自动选题；
+`competition mdbench preflight/prepare/preregister/execute/evaluate`。默认自动选题；
 `seeded` 模式只缩小候选空间。授权范围内不逐实验审批，资源耗尽时保存检查点并停止。所有导出均为
 本地产物；外部提交必须有显式权限且同时通过科学证据门、复现门和榜题内部评分门。
 
@@ -806,5 +806,7 @@ claim-evidence、一键复现和透明的负结果边界。开发夹具通过不
 非空的导数/轨迹/复杂度指标，具体 64/16/20 索引互不重叠；再次调用必须复用已验链终态。
 烟测通过只授权继续执行余下单元，不授权 Gate A、Gate B 或提交结论。
 冻结矩阵现已排空并通过完整恢复复验：252 个单元中 244 成功、8 失败、0 超时，第二次调用
-复用全部终态。下一独立任务是 Gate A 聚合与负结果门；任何失败单元都必须进入覆盖率、配对和
-不确定性说明，不能通过删行或更换基线制造优势。
+复用全部终态。Gate A 聚合器保留全部失败单元，以开发集覆盖率和误差选择 Operon 基线，完成
+固定真实方程的结构评分、未见系统比较和 20,000 次系统级 bootstrap。成功单元点估计有利，
+但失败感知 95% CI 为 `[-0.201060, 0.888991]`，全方法复现门也只有 244/252。因此任务 259.4
+以可信负结果完成并保持 `gate_b_allowed=false`；Gate B、Qwen 提交证据和产品扩张不启动。

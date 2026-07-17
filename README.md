@@ -222,6 +222,7 @@ airesearcher competition mdbench preflight
 airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
 airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
 airesearcher competition mdbench execute --matrix runs/competition/mdbench-official/gate-a-preregistration.json --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench evaluate --matrix runs/competition/mdbench-official/gate-a-preregistration.json --execution-report runs/competition/mdbench-official/execution/execution-report.json
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -232,11 +233,10 @@ licenses, compute, storage, cost, validity, and optional external-submission per
 accepts or stores credential values. Work inside a valid grant proceeds without per-experiment
 approval; missing access produces a scoped `AccessRequest`, not a scientific-choice prompt.
 
-The current Gate A implementation is a real sandboxed three-seed equation-discovery
-characterization fixture. It proves lifecycle, resume, causal hashing, and negative-release gates;
-it is **not** an official MDBench result. Its manifest reports one ODE, zero PDE, and
-`release_eligible=false` until the pinned official 10-ODE/4-PDE clean/noisy matrix and baseline
-comparison are actually executed and reproduced.
+The original sandboxed three-seed equation-discovery characterization fixture remains explicitly
+labelled as development-only. It proves lifecycle, resume, causal hashing, and negative-release
+gates, but its one ODE and zero PDE are never represented as an official MDBench result. Official
+Gate A evidence is kept in a separate pinned 10-ODE/4-PDE clean/noisy chain.
 
 `competition mdbench preflight` independently verifies the pinned upstream commit, code license,
 Zenodo record license, processed-archive size/checksum, and local container runtime. It writes
@@ -265,9 +265,18 @@ runner, orchestrator, container, log, and result hashes. The frozen official mat
 252/252 terminal cells: 244 succeeded, 8 failed, 0 timed out, and 0 remain pending. All 84 candidate
 cells succeeded; the sparse baseline has 78 successes and 6 failures, while Operon has 82 successes
 and 2 failures. A full second invocation reused all 252 validated terminal results in about four
-seconds. This is official execution and recovery evidence, but it is not yet a Gate A pass: task
-259.4 must retain the failed cells, compute the preregistered held-out comparisons and confidence
-interval, and emit either a passing report or a credible negative result before Gate B can start.
+seconds.
+
+`competition mdbench evaluate` now verifies the frozen matrix, every attempt/spec/result/log hash,
+the execution environment, and pinned true-equation sources before computing structure F1,
+derivative and trajectory error, model complexity, clean/noisy robustness, and execution cost. It
+selects Operon as the strongest development baseline and retains every failed baseline cell under a
+conservative zero-improvement policy. The official adjudication is a credible negative result:
+the candidate's successful-cell median derivative-NMSE improvement is 82.89% and its failure-aware
+unseen-system median improvement is 37.15%, but the 20,000-resample system-level bootstrap 95% CI
+is `[-0.201060, 0.888991]`; only 244/252 all-method cells succeeded. Therefore
+`gate_b_allowed=false`, and Qwen submission evidence, RealPDEBench training, product expansion, and
+award/submission claims remain blocked rather than being inferred from the favorable point estimate.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

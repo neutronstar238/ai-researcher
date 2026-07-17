@@ -176,6 +176,10 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 airesearcher competition run --topic-mode auto
 airesearcher competition run --topic-mode seeded --topic "噪声鲁棒方程发现" --guidance "优先可解释模型"
 airesearcher competition mdbench preflight
+airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
+airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench execute --matrix runs/competition/mdbench-official/gate-a-preregistration.json --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench evaluate --matrix runs/competition/mdbench-official/gate-a-preregistration.json --execution-report runs/competition/mdbench-official/execution/execution-report.json
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -185,15 +189,23 @@ airesearcher competition export runs/competition/<run-id>
 费用、有效期和可选的外部提交权限，绝不接收或保存密钥值。有效授权范围内无需逐实验
 审批；缺少权限时只生成最小范围 `AccessRequest`，不会向用户提出科研选择题。
 
-当前 Gate A 是在真实子进程沙箱中执行的三随机种子方程发现 characterization fixture，
-用于证明生命周期、断点恢复、因果哈希链和负向发布门；它不是 MDBench 官方成绩。
-manifest 会如实报告 1 个 ODE、0 个 PDE 和 `release_eligible=false`。只有真正执行并复现
-固定版本的官方 10 ODE/4 PDE、无噪声/噪声和基线矩阵后，才可能解除该门禁。
+原有三随机种子方程发现 characterization fixture 仍明确标记为开发夹具，只证明生命周期、
+断点恢复、因果哈希链和负向发布门；其 1 个 ODE、0 个 PDE 永远不作为 MDBench 官方成绩。
+正式 Gate A 使用独立的固定版本 10 ODE/4 PDE、clean/SNR20、三种子证据链。
 
 `competition mdbench preflight` 独立核验固定的上游 commit、代码许可、Zenodo 记录许可、
 处理后归档的大小/校验和以及本地容器运行时。缺少明确数据许可或运行时时，它会写出稳定、
 最小范围的 `AccessRequest` 并拒绝授权下载。版本化 Python 3.9 SINDy/PDE-FIND 镜像已经真实
 构建，官方评测 CLI 也已烟测通过；这些是环境证据，不是基准成绩。
+
+正式矩阵已经排空并可幂等恢复：252 个单元中 244 成功、8 失败、0 超时，候选方法 84/84
+成功。`competition mdbench evaluate` 会重新验证矩阵、attempt/spec/result/log、执行环境和
+真实方程来源的哈希，再计算结构 F1、导数与轨迹误差、模型复杂度、噪声鲁棒性和执行成本。
+最终选择 Operon 为开发集最强基线，并以缺失系统改进记零的保守策略保留全部失败单元。
+候选在成功单元上的导数 NMSE 中位相对改进为 82.89%，失败感知的未见系统中位改进为
+37.15%，但 20,000 次系统级 bootstrap 的 95% CI 为 `[-0.201060, 0.888991]`，且全方法
+三种子复现仅为 244/252。因此正式结论是可信负结果、`gate_b_allowed=false`；不会据此启动
+RealPDEBench、提交或获奖声明。
 
 可以给常驻运行入口绑定单个或多个 Agent profile：
 

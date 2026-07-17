@@ -64,6 +64,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 23:23:00 +08:00 - Codex - Task 259.4 official Gate A adjudication
+
+- Request: Evaluate the complete frozen MDBench matrix without dropping failures, pass Gate A only on reproducible held-out evidence, and otherwise produce a credible negative result that keeps downstream work closed.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/gate_a.py`
+  - `src/autoresearch/competition/official.py`
+  - `tests/unit/competition/test_gate_a.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added immutable Gate A report contracts and `competition mdbench evaluate`. The adjudicator revalidates the frozen matrix, execution report, attempt/spec/result/log/environment hashes, result set, pinned MDBench revision, and exact true-equation source hashes before analysis.
+  - Added safe AST-based equation-support scoring against a pinned 10-ODE/4-PDE truth registry. The report covers structure F1, derivative NMSE, ODE trajectory extrapolation, model complexity, clean/noisy robustness, wall time, peak RSS, coverage, and failure reasons; numerical evidence remains code-computed.
+  - Selects the strongest baseline only from development-SNR20 evidence by successful coverage, derivative-NMSE median, and deterministic method-ID tie-break. Operon was selected. The held-out comparison uses unseen systems as the bootstrap unit, 20,000 deterministic resamples, and a conservative zero-improvement rule when either side lacks all three seeds.
+  - Closed official Gate A as `negative_result`: the candidate completed 84/84 cells and its successful-cell median derivative-NMSE relative improvement was 82.89%, but all-method success was 244/252 and the failure-aware six-system bootstrap 95% CI was `[-0.201060, 0.888991]`. The report sets `gate_b_allowed=false`; no Gate B, Qwen submission evidence, product expansion, submission, or award claim was started.
+  - The final live report is `runs/manual-live/task259-mdbench-official-v1/gate-a-v3/gate-a-adjudication.json`, with matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`, environment hash `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`, result-set hash `6bd3cbd42752cb46a7075005877d5e2298ea16b20fdd61eb7e8f2461f0396274`, analysis hash `5bf5dcde89eac6e50e1a03e7f0a993c4212690d1136502edee77d3b34c4c5a18`, and report hash `3381083f1d1390eb18f54e29855eb6e2ecd5ace567e20babef56e48479e4cf99`.
+- Verification:
+  - `poetry run airesearcher competition mdbench evaluate --matrix runs/manual-live/task259-mdbench-official-v1/gate-a-preregistration.json --execution-report runs/manual-live/task259-mdbench-official-v1/execution-v5/execution-report.json --output-dir runs/manual-live/task259-mdbench-official-v1/gate-a-v3`: exited 0 twice; the second invocation reused the identical hash-bound negative report.
+  - The live report contains 252 terminal attempts, 244 successes, 8 retained failures, 0 timeouts, `human_intervention_count=0`, `access_request_count=0`, selected baseline `operon_gp`, failure-aware median improvement `0.3715348181`, and system-level bootstrap 95% CI `[-0.2010595526, 0.8889914327]`.
+  - `poetry run python -m pytest tests/unit/competition/test_gate_a.py tests/unit/competition/test_competition_cli.py tests/unit/competition/test_official_execution.py -q`: 9 passed.
+  - `poetry run python -m pytest tests -q`: 698 passed, 4 skipped.
+  - `poetry run python -m ruff check src tests`: passed.
+  - `poetry run python -m mypy src/autoresearch`: passed with no issues in 123 source files.
+  - `git diff --check`: passed after documentation and log updates.
+- Problems:
+  - Resolved `P-20260717-001` by producing an official decision without upgrading the development fixture.
+  - Resolved `P-20260717-007` by retaining all eight failures in coverage, reproducibility, sensitivity, limitations, and the stop decision.
+  - Added and resolved `P-20260717-008` for the first truth-registry JSON-hash failure.
+  - Added open `P-20260717-009` for the scientific negative result and mandatory Gate B stop.
+- Follow-up:
+  - Do not tune against the revealed held-out systems or begin tasks `259.5`/`259.6` under the current ordering. A future attempt must be a new result-blind, preregistered Gate A cycle with a distinct cross-system-stability repair hypothesis.
+
 ### 2026-07-17 23:01:32 +08:00 - Codex - Task 259.3.2.2.2 complete MDBench matrix execution
 
 - Request: Execute all 252 frozen official MDBench cells unchanged, persist every success/failure/timeout, and prove the complete checkpoint can resume without rerunning scientific work.

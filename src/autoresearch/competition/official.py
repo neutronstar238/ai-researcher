@@ -240,7 +240,7 @@ def _processed_file(record: Mapping[str, Any]) -> MDBenchDatasetFile | None:
         links = _mapping(file_data.get("links"))
         content_url = str(links.get("self") or links.get("content") or "")
         raw_size = file_data.get("size")
-        if not isinstance(raw_size, (int, str)) or isinstance(raw_size, bool):
+        if not isinstance(raw_size, int | str) or isinstance(raw_size, bool):
             return None
         try:
             size_bytes = int(raw_size)

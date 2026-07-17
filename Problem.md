@@ -40,21 +40,53 @@ update a factual problem entry below.
 
 ## Problems
 
-### P-20260717-001 - Official MDBench execution exists, but Gate A is not yet adjudicated
+### P-20260717-001 - Official MDBench Gate A required real benchmark adjudication
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-17 21:26:51 +08:00
 - Source: Task `259.1` competition-first unattended Gate A contract.
-- Symptom: The development fixture remains correctly blocked, while the separate official execution now contains all 252 frozen MDBench cells. The official matrix is complete and resumable, but no aggregate Gate A decision or release-eligible competition manifest exists yet.
-- Impact: The repository can now support an official matrix analysis, but it still cannot support a Gate A pass, RealPDEBench start decision, competition-quality superiority claim, submission, or award claim until task `259.4` applies the preregistered held-out and uncertainty gates.
-- Evidence: `runs/manual-live/task259-mdbench-official-v1/execution-v5/execution-report.json` binds matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`, environment hash `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`, and 252 terminal attempts: 244 succeeded, 8 failed, 0 timed out, and 0 pending. A second full invocation set every record's `reused_this_invocation=true`. The earlier development manifest still reports `release_eligible=false` and remains separate.
+- Symptom: The development fixture was correctly blocked, but the competition path initially lacked an aggregate decision over the separate 252-cell official MDBench execution.
+- Impact: Until task `259.4`, the repository could not support a Gate A decision, RealPDEBench start decision, competition-quality superiority claim, submission, or award claim.
+- Evidence: `runs/manual-live/task259-mdbench-official-v1/gate-a-v3/gate-a-adjudication.json` binds matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`, environment hash `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`, result-set hash `6bd3cbd42752cb46a7075005877d5e2298ea16b20fdd61eb7e8f2461f0396274`, and report hash `3381083f1d1390eb18f54e29855eb6e2ecd5ace567e20babef56e48479e4cf99`.
 - Root cause: Task `259.3` intentionally ends at immutable official execution evidence. Structure scoring, clean/noisy robustness, strongest-baseline selection, paired bootstrap confidence, and the final pass/negative decision belong to task `259.4`.
-- Workaround: Keep the earlier development outputs labelled `generated-characterization-fixture-not-official-mdbench-result` with `development_fixture=true`; keep official execution evidence separate and block release/export until task `259.4` adjudicates it.
-- Next action: Implement task `259.4` without changing or dropping any frozen cell; produce either a reproducible Gate A pass or a credible negative result.
+- Workaround: The earlier development outputs remain labelled `generated-characterization-fixture-not-official-mdbench-result`; official execution and adjudication evidence stay separate.
+- Next action: None for the missing-adjudicator defect. The scientific negative result and Gate B stop are tracked separately in `P-20260717-009`.
 - Linked tasks: `259.1`, `259.2`, `259.3`, `259.4`.
-- Resolution: None; the official execution blocker is resolved, while the aggregate Gate A decision remains intentionally open.
-- Verification: The unchanged execution command completed at 252/252 and a second invocation reused all 252 hash-validated checkpoints. Matrix and environment hashes each have cardinality one; every system/condition/method group contains seeds 11, 23, and 37; successful derivative NMSE has 141 distinct values, so the result set is not a constant-metric fixture.
+- Resolution: Task `259.4` added a hash-bound official adjudicator and closed Gate A as `negative_result` with `gate_b_allowed=false`; it did not upgrade the development fixture or manufacture a passing result.
+- Verification: Two unchanged `competition mdbench evaluate` invocations reused the same final report. The adjudicator checked all 252 terminal cells, pinned equation sources, causal hashes, metric coverage, three-seed coverage, and a 20,000-resample system-level bootstrap.
+
+### P-20260717-009 - Official Gate A is a negative result and blocks Gate B
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-17 23:17:42 +08:00
+- Source: Task `259.4` official MDBench adjudication.
+- Symptom: Stability-SINDy completed 84/84 candidate cells and has a favorable held-out point estimate, but the all-method matrix contains 8 terminal baseline failures and the system-level uncertainty interval crosses zero.
+- Impact: Gate A does not pass. Qwen submission evidence, full RealPDEBench Cylinder training, product-surface expansion, external submission, and award-level claims remain blocked under the competition-first plan.
+- Evidence: The selected baseline is `operon_gp`. Successful-cell unseen-SNR20 median derivative NMSE is `0.1174514860` for the candidate versus `0.6864225438` for Operon, an observed 82.89% relative improvement. Under the conservative failure-aware policy, the six-system median improvement is 37.15% and the 20,000-resample 95% bootstrap CI is `[-0.2010595526, 0.8889914327]`. All-method success is 244/252.
+- Root cause: One of six unseen systems is worse for the candidate, one baseline system lacks all three successful seeds and is conservatively assigned zero improvement, and only six independent unseen systems make the uncertainty interval wide. The favorable seed-level point estimate is not sufficient independent evidence.
+- Workaround: None. Do not replace the system-level uncertainty unit with seed-level pseudo-replication, delete failures, change the frozen matrix, or begin Gate B.
+- Next action: If work continues, start a new result-blind, preregistered Gate A candidate cycle with a distinct repair hypothesis aimed at cross-system stability and complete baseline evidence; do not tune against this held-out result.
+- Linked tasks: `259.4`, blocks `259.5` and `259.6` under the current execution order.
+- Resolution: Not resolved scientifically; the system has correctly stopped and exposed the gap.
+- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests.
+
+### P-20260717-008 - Tuple-key truth registry initially blocked report hashing
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-17 23:14:00 +08:00
+- Source: First live task `259.4` Gate A adjudication attempt.
+- Symptom: Canonical JSON serialization raised `TypeError: keys must be str, int, float, bool or None, not tuple` before writing the report.
+- Impact: The first live adjudication command stopped before producing a decision; official execution artifacts were unchanged.
+- Evidence: The equation-support registry intentionally uses `(target, monomial)` tuples for scoring, but the registry was passed directly to JSON hashing.
+- Root cause: The in-memory scoring representation was not converted to a JSON-key-safe representation at the hashing boundary.
+- Workaround: None required after the fix; the failed output directory remains separate from the final report directory.
+- Next action: None.
+- Linked tasks: `259.4`.
+- Resolution: Registry keys are deterministically serialized as strings only for the registry content hash; the typed tuple-key representation remains internal to structure scoring.
+- Verification: Focused tests passed, and two final live adjudication invocations produced/reused the same `gate-a-v3` report with truth-registry hash `f384429d0ec70acce5bc37208fca48abdc97f924461c58c13fe3fb63d95263f2`.
 
 ### P-20260717-003 - Official MDBench hyperparameter validation slices overlap
 
@@ -72,9 +104,9 @@ update a factual problem entry below.
 - Resolution: The official source remains pinned and unmodified. The adapter validates normalized contiguity before execution, materializes `[0,96)`, `[96,120)`, and `[120,150)` on the live 150-point ODE smoke, persists those indices in every result, and rejects overlapping concrete-index fixtures. This mitigates the leak without hiding the divergence.
 - Verification: Direct source inspection, focused normalized/concrete overlap regression tests, the live smoke, and all 252 terminal matrix results using the corrected concrete split adapter.
 
-### P-20260717-007 - Eight frozen official cells failed and must remain in Gate A analysis
+### P-20260717-007 - Eight frozen official cells failed and had to remain in Gate A analysis
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-17 23:00:34 +08:00
 - Source: Task `259.3.2.2.2` complete official matrix execution.
@@ -82,11 +114,11 @@ update a factual problem entry below.
 - Impact: Dropping failed baseline cells could bias the strongest-baseline and paired-bootstrap comparison. Treating them as successful or silently rerunning with changed configuration would violate the frozen matrix.
 - Evidence: The complete `execution-v5` report records 244 successes, 8 failures, 0 timeouts, and 0 pending. All 252 result hashes were accepted on resume, and the failures remain terminal records with reasons and logs.
 - Root cause: The bounded baseline adapters do not produce a valid scored equation for every frozen noisy system/seed; the execution contract correctly converts invalid or incomplete payloads into failed evidence.
-- Workaround: None. Task `259.4` must report coverage by method, use a preregistered-conservative missing-cell policy, and expose both complete-case and failure-aware sensitivity results without replacing cells.
-- Next action: Implement the Gate A adjudicator and explicitly determine whether the preregistered reproducibility and paired-improvement gates can be evaluated or must close as a credible negative result.
+- Workaround: The adjudicator reports coverage by method, exposes successful-cell and failure-aware effects, and assigns zero system improvement whenever either compared method lacks all three seeds; no cell is replaced or deleted.
+- Next action: None for failure retention. The resulting scientific stop is tracked in `P-20260717-009`.
 - Linked tasks: `259.3.2.2.2`, `259.4`.
-- Resolution: None; this is observed official evidence for the next gate.
-- Verification: Full execution and full resume both completed; method/status counts are 84/0 candidate, 78/6 sparse, and 82/2 Operon.
+- Resolution: All eight failures remain terminal evidence in coverage, reproducibility, missing-cell sensitivity, limitations, and the negative Gate A decision.
+- Verification: Full execution and resume completed; the final adjudication reports method/status counts of 84/0 candidate, 78/6 sparse, and 82/2 Operon, then fails `all_methods_three_seed_reproducible` rather than dropping those rows.
 
 ### P-20260717-005 - Absolute container runner initially could not import pinned MDBench
 

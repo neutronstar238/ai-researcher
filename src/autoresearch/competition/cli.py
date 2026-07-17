@@ -9,6 +9,10 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from autoresearch.competition.gate_a import (
+    GateAAdjudicationError,
+    adjudicate_mdbench_gate_a,
+)
 from autoresearch.competition.manifest import (
     load_cycle_manifest,
     write_json_model,
@@ -157,9 +161,7 @@ def competition_mdbench_preregister(
     except (MDBenchPreregistrationError, OSError, ValidationError) as exc:
         typer.echo(f"[BLOCKED] mdbench_preregister: {exc}")
         raise typer.Exit(code=2) from exc
-    unseen_count = sum(
-        case.evaluation_split == "unseen_test" for case in matrix.systems
-    )
+    unseen_count = sum(case.evaluation_split == "unseen_test" for case in matrix.systems)
     typer.echo(f"[OK] mdbench_matrix: {matrix.output_path}")
     typer.echo(f"[OK] matrix_hash: {matrix.matrix_hash}")
     typer.echo(f"[OK] matrix_attempts: {len(matrix.attempts)}")
@@ -223,6 +225,43 @@ def competition_mdbench_execute(
     typer.echo(f"[OK] timed_out: {report.timed_out_count}")
     typer.echo(f"[OK] pending: {report.pending_count}")
     typer.echo(f"[OK] complete: {str(report.complete).lower()}")
+
+
+@competition_mdbench_app.command("evaluate")
+def competition_mdbench_evaluate(
+    matrix: Annotated[
+        Path,
+        typer.Option("--matrix", help="Frozen gate-a-preregistration.json."),
+    ] = Path("runs/competition/mdbench-official/gate-a-preregistration.json"),
+    execution_report: Annotated[
+        Path,
+        typer.Option(
+            "--execution-report",
+            help="Complete hash-bound execution-report.json.",
+        ),
+    ] = Path("runs/competition/mdbench-official/execution/execution-report.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Final Gate A JSON and Markdown directory."),
+    ] = Path("runs/competition/mdbench-official/gate-a"),
+) -> None:
+    """Produce an immutable Gate A pass or credible negative result."""
+
+    try:
+        report = adjudicate_mdbench_gate_a(matrix, execution_report, output_dir)
+    except (GateAAdjudicationError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_evaluate: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] mdbench_gate_a_report: {report.output_path}")
+    typer.echo(f"[OK] mdbench_gate_a_markdown: {report.markdown_path}")
+    typer.echo(f"[OK] decision: {report.decision.value}")
+    typer.echo(f"[OK] selected_baseline: {report.selected_baseline_method_id}")
+    typer.echo(
+        "[OK] bootstrap_ci95: "
+        f"[{report.primary_comparison.bootstrap_ci95_lower:.6f}, "
+        f"{report.primary_comparison.bootstrap_ci95_upper:.6f}]"
+    )
+    typer.echo(f"[OK] gate_b_allowed: {str(report.gate_b_allowed).lower()}")
 
 
 @competition_app.command("run")
@@ -426,12 +465,6 @@ def competition_access_grant(
 def _echo_result(result: CycleResult) -> None:
     typer.echo(f"[OK] competition_cycle: {result.outcome.value}")
     typer.echo(f"[OK] manifest: {result.manifest_path}")
-    typer.echo(
-        "[OK] human_intervention_count: "
-        f"{result.human_intervention_count}"
-    )
+    typer.echo(f"[OK] human_intervention_count: {result.human_intervention_count}")
     typer.echo(f"[OK] access_request_count: {result.access_request_count}")
-    typer.echo(
-        "[OK] release_eligible: "
-        f"{str(result.release_eligible).lower()}"
-    )
+    typer.echo(f"[OK] release_eligible: {str(result.release_eligible).lower()}")

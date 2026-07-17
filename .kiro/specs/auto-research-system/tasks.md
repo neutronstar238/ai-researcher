@@ -3181,10 +3181,11 @@ A task can be checked only when all applicable items are true:
           - Run the preregistered sparse-linear, bounded Operon GP-symbolic, and stability-selected candidate cells in the versioned container with automatic timeout/failure persistence and resume.
           - Record official result schemas, split indices, data/code/config/environment/result hashes, resource use, failures, equations, and all repetitions without changing the frozen matrix.
           - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
-  - [ ] 259.4 Pass or honestly close Gate A
+  - [x] 259.4 Pass or honestly close Gate A
     - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.
     - Gate B and product-surface expansion remain blocked until this task has real official-benchmark evidence.
+    - _Outcome: the hash-bound official adjudication closed Gate A as `negative_result`; the candidate completed 84/84 cells, but all-method reproducibility was 244/252 and the failure-aware unseen-system bootstrap 95% CI was `[-0.201060, 0.888991]`, so `gate_b_allowed=false`._
   - [ ] 259.5 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
     - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
     - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.
