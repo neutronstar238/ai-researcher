@@ -175,6 +175,7 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 ```bash
 airesearcher competition run --topic-mode auto
 airesearcher competition run --topic-mode seeded --topic "噪声鲁棒方程发现" --guidance "优先可解释模型"
+airesearcher competition mdbench preflight
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -188,6 +189,11 @@ airesearcher competition export runs/competition/<run-id>
 用于证明生命周期、断点恢复、因果哈希链和负向发布门；它不是 MDBench 官方成绩。
 manifest 会如实报告 1 个 ODE、0 个 PDE 和 `release_eligible=false`。只有真正执行并复现
 固定版本的官方 10 ODE/4 PDE、无噪声/噪声和基线矩阵后，才可能解除该门禁。
+
+`competition mdbench preflight` 独立核验固定的上游 commit、代码许可、Zenodo 记录许可、
+处理后归档的大小/校验和以及本地容器运行时。缺少明确数据许可或运行时时，它会写出稳定、
+最小范围的 `AccessRequest` 并拒绝授权下载。版本化 Python 3.9 SINDy/PDE-FIND 镜像已经真实
+构建，官方评测 CLI 也已烟测通过；这些是环境证据，不是基准成绩。
 
 可以给常驻运行入口绑定单个或多个 Agent profile：
 

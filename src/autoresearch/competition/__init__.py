@@ -26,6 +26,8 @@ from .models import (
     ExperimentAttempt,
     ExperimentProtocol,
     HypothesisProposal,
+    MDBenchDatasetFile,
+    MDBenchOfficialPreflight,
     ResearchOperation,
     ResearchTaskSpec,
     TopicCandidate,
@@ -33,6 +35,7 @@ from .models import (
     TopicMode,
     TopicSelectionReport,
 )
+from .official import run_mdbench_official_preflight
 from .planning import PlanCompilationError, PlanCompiler, hypothesis_from_topic
 from .selection import TopicSelectionEngine, competition_topic_candidates
 from .service import ResearchCycleService, load_capability_grant
@@ -55,6 +58,8 @@ __all__ = [
     "ExperimentProtocol",
     "HypothesisProposal",
     "MDBenchAdapter",
+    "MDBenchDatasetFile",
+    "MDBenchOfficialPreflight",
     "ManifestIntegrityError",
     "PlanCompilationError",
     "PlanCompiler",
@@ -72,6 +77,7 @@ __all__ = [
     "hypothesis_from_topic",
     "load_capability_grant",
     "load_cycle_manifest",
+    "run_mdbench_official_preflight",
     "validate_cycle_evidence",
     "write_cycle_manifest",
 ]

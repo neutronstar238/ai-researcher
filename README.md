@@ -218,6 +218,7 @@ feasibility or evidence gates.
 ```bash
 airesearcher competition run --topic-mode auto
 airesearcher competition run --topic-mode seeded --topic "noise-robust equation discovery" --guidance "prefer interpretable models"
+airesearcher competition mdbench preflight
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -233,6 +234,12 @@ characterization fixture. It proves lifecycle, resume, causal hashing, and negat
 it is **not** an official MDBench result. Its manifest reports one ODE, zero PDE, and
 `release_eligible=false` until the pinned official 10-ODE/4-PDE clean/noisy matrix and baseline
 comparison are actually executed and reproduced.
+
+`competition mdbench preflight` independently verifies the pinned upstream commit, code license,
+Zenodo record license, processed-archive size/checksum, and local container runtime. It writes
+stable, minimum-scope `AccessRequest` files and refuses to authorize a download if an explicit
+dataset license or runtime is missing. The versioned Python 3.9 SINDy/PDE-FIND image has been built
+and its official evaluator CLI smoke-tested; this is environment evidence, not benchmark evidence.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

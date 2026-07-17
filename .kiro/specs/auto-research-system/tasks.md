@@ -3155,20 +3155,26 @@ A task can be checked only when all applicable items are true:
     - Add `competition run`, `resume`, `status`, `export`, and `access grant` CLI commands. Missing capabilities may create an `AccessRequest`; scientific choices must not create human-intervention requests.
     - _References: user-approved competition-first refactor; MDBench official repository and benchmark paper; tasks `2.2`, `2.3`, `40.2`, `49.1`, `54.1`, and `214.1`._
     - _Verify: focused competition/research/fixture tests, broad smoke/unit tests, broad ruff, broad mypy, a real local unattended three-seed CLI smoke, official MDBench source preflight, and `git diff --check`; exact commands and boundaries are recorded in `Agent.md`._
-  - [ ] 259.2 Execute the official MDBench data and baseline matrix
-    - Add a versioned scientific-compute container and a pinned adapter for the official dataset/result schemas without adding heavy dependencies to the core package.
+  - [x] 259.2 Pin and preflight the official MDBench source, data contract, and container
+    - Pin the official repository revision, code license, Zenodo DOI/license, and processed-archive size/checksum in a typed live preflight without adding scientific dependencies to the core package.
+    - Add `competition mdbench preflight`; write stable minimum-scope access requests and refuse download authorization if the dataset license or container runtime is unavailable.
+    - Build a versioned Python 3.9 SINDy/PDE-FIND scientific-compute image, verify its dependency closure, immutable revision label, and official evaluator CLI.
+    - Keep the evidence boundary explicit: source/data/container readiness is not an official benchmark result and cannot release Gate A.
+    - _Verify: deterministic preflight/CLI/container-contract tests, focused Ruff/Mypy, live GitHub/Zenodo/Docker preflight, real image build, `pip check`, official evaluator CLI smoke, broad regression gates, and `git diff --check` are recorded in `Agent.md`._
+  - [ ] 259.3 Execute the official MDBench data and baseline matrix
+    - Add a pinned adapter for the official dataset/result schemas without adding heavy dependencies to the core package.
     - Run at least 10 ODEs and 4 PDEs under clean and noisy conditions against preregistered linear, genetic-programming, and symbolic-regression baselines.
     - Record dataset licenses, immutable upstream revisions, data hashes, resource use, failures, and three independent repetitions.
     - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
-  - [ ] 259.3 Pass or honestly close Gate A
+  - [ ] 259.4 Pass or honestly close Gate A
     - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.
     - Gate B and product-surface expansion remain blocked until this task has real official-benchmark evidence.
-  - [ ] 259.4 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
+  - [ ] 259.5 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
     - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
     - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.
     - Require user-provided environment credentials for live text, vision, code, and structured-output smoke tests.
-  - [ ] 259.5 Implement RealPDEBench Cylinder Gate B after Gate A
+  - [ ] 259.6 Implement RealPDEBench Cylinder Gate B after Gate A
     - Add the pinned sim-to-real Cylinder adapter, official DMD/FNO/Transolver baselines, bounded two-mechanism search, three-stage data schedule, three seeds, bootstrap confidence intervals, and required ablations.
     - Block innovation and submission claims unless unseen-real `Rel L2`, fRMSE, KE, MVPE, update-ratio, ablation, reproducibility, and 40/30/30 internal-review gates all pass.
 
@@ -3884,6 +3890,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 166,
       "tasks": ["259.5"]
+    },
+    {
+      "id": 167,
+      "tasks": ["259.6"]
     }
   ]
 }

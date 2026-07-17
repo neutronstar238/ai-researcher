@@ -17,6 +17,7 @@ def test_competition_cli_is_registered() -> None:
     assert "status" in result.stdout
     assert "export" in result.stdout
     assert "access" in result.stdout
+    assert "mdbench" in result.stdout
 
 
 def test_competition_access_grant_writes_names_not_secrets(tmp_path: Path) -> None:

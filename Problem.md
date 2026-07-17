@@ -48,13 +48,13 @@ update a factual problem entry below.
 - Source: Task `259.1` competition-first unattended Gate A contract.
 - Symptom: The new competition CLI completes a real sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the manifest remains `release_eligible=false`.
 - Impact: The run proves lifecycle, checkpoint, execution, tamper detection, and negative-release behavior only. It cannot support an official MDBench result, a Gate A pass, a RealPDEBench start decision, a competition-quality scientific claim, or an award claim.
-- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Live source preflight pinned official MDBench HEAD `f81813e760325589737fe3311ac8199ecc64188a` and confirmed its MIT license and 63 ODE/14 PDE scope, but did not execute the official dataset.
-- Root cause: Task `259.1` deliberately implements a lightweight characterization fixture. The versioned scientific-compute container, official Zenodo data, official result schema, baseline dependencies, held-out split, 10 ODE/4 PDE clean/noisy matrix, and three independent full repetitions are not implemented yet.
+- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` then verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, MIT code license, Zenodo `metadata.license.id=mit-license`, and the pinned `processed.zip` metadata, and built/smoke-tested the versioned Docker image; it still did not execute the official dataset.
+- Root cause: Task `259.1` deliberately implements a lightweight characterization fixture, while task `259.2` deliberately stops at source/data/container readiness. The official result adapter, held-out split, preregistered baselines, 10 ODE/4 PDE clean/noisy matrix, and three independent full repetitions are not implemented yet.
 - Workaround: Keep all outputs labelled `generated-characterization-fixture-not-official-mdbench-result`, keep `development_fixture=true`, and block release/export regardless of favorable fixture metrics.
-- Next action: Implement task `259.2`, run the official matrix against preregistered baselines, and let the evidence gate produce either a reproducible Gate A pass or a credible negative result.
-- Linked tasks: `259.1`, `259.2`, `259.3`.
+- Next action: Implement task `259.3`, run the official matrix against preregistered baselines, and let task `259.4` produce either a reproducible Gate A pass or a credible negative result.
+- Linked tasks: `259.1`, `259.2`, `259.3`, `259.4`.
 - Resolution: None; this is an intentional, visible boundary of the completed first slice.
-- Verification: Broad tests, Ruff, Mypy, real local CLI smoke, blocked export, and live official-source preflight all passed; none is represented as official benchmark execution.
+- Verification: Broad tests, Ruff, Mypy, real local characterization CLI, blocked export, live official preflight, image build, container `pip check`, and official evaluator CLI smoke passed; none is represented as official benchmark execution.
 
 ### P-20260717-002 - Legacy autopilot remains monolithic outside the new competition service
 

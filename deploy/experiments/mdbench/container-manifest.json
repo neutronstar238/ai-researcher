@@ -1,0 +1,17 @@
+{
+  "base_image": "python:3.9.23-slim-bookworm",
+  "base_image_digest": "sha256:7bffea15bcc3d7fb87cf10a027986203e4281e078fa2f5b234c30fca291f0834",
+  "benchmark_revision": "f81813e760325589737fe3311ac8199ecc64188a",
+  "benchmark_source": "https://github.com/gryaklab/mdbench",
+  "dataset_doi": "10.5281/zenodo.17611099",
+  "processed_archive": {
+    "checksum": "md5:9fe483c64ad6e67a07153b00a4665d26",
+    "key": "processed.zip",
+    "size_bytes": 475908142
+  },
+  "scope": "official-source preflight and SINDy/PDE-FIND environment",
+  "supported_algorithms": [
+    "sindy",
+    "pdefind"
+  ]
+}

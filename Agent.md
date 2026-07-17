@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 21:41:34 +08:00 - Codex - Task 259.2 official MDBench preflight and container
+
+- Request: Continue the competition-first unattended refactor by establishing a version-pinned, license-aware official MDBench execution boundary before downloading data or claiming benchmark evidence.
+- Files changed:
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/models.py`
+  - `src/autoresearch/competition/official.py`
+  - `deploy/experiments/mdbench/Dockerfile`
+  - `deploy/experiments/mdbench/requirements-sindy.lock`
+  - `deploy/experiments/mdbench/container-manifest.json`
+  - `tests/unit/competition/test_official_preflight.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a typed live preflight for pinned MDBench revision `f81813e760325589737fe3311ac8199ecc64188a`, MIT code license, Zenodo record `17611099`, explicit dataset-license metadata, and pinned `processed.zip` size/checksum.
+  - Added stable data-license and container-runtime `AccessRequest` outputs. Public file access alone never passes the license gate, and the preflight never downloads the archive when blocked.
+  - Added `competition mdbench preflight` with a non-zero blocked exit and machine-readable evidence.
+  - Added and built a versioned Python 3.9 scientific image with a digest-pinned base and fully version-pinned direct/transitive SINDy/PDE-FIND dependencies, without adding them to the lightweight core package.
+  - Updated the plan so official matrix execution is a separate task `259.3`; preflight, image build, and evaluator help are explicitly not represented as Gate A benchmark evidence.
+  - Preserved unrelated course-paper changes already present in `Agent.md` and `Problem.md`; they are not part of this task's commit.
+- Verification:
+  - `python -m pytest tests/unit/competition/test_official_preflight.py tests/unit/competition/test_competition_cli.py -q`: passed with 6 tests, including the network-failure versus permission-request boundary.
+  - Focused Ruff and Mypy for the new official-preflight path: passed.
+  - Live `python -m autoresearch.cli.main competition mdbench preflight --output-dir runs/manual-live/task259-mdbench-preflight-v1 --timeout-seconds 20`: exited 0; verified the pinned revision, `MIT License`, Zenodo `metadata.license.id=mit-license`, `processed.zip` size `475908142`, checksum `md5:9fe483c64ad6e67a07153b00a4665d26`, Docker server `29.6.1`, zero blockers, and zero access requests.
+  - `docker build --progress=plain -t autoresearch-mdbench-sindy:f81813e -f deploy/experiments/mdbench/Dockerfile deploy/experiments/mdbench`: passed after digest/complete dependency pinning; image ID is `sha256:0171c68d1976bdac5949442716f0af286f83abf476b4d031127fa5c615ea0d4e`.
+  - `docker run --rm autoresearch-mdbench-sindy:f81813e python -m pip check`: passed with no broken requirements.
+  - `docker run --rm autoresearch-mdbench-sindy:f81813e`: exited 0 and printed the official `mdbench.evaluate_method` CLI help.
+  - Broad `python -m pytest tests -q`: passed with 681 passed, 4 skipped, one upstream LangGraph deprecation warning, and 88% coverage.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src/autoresearch`: passed with no issues in 119 source files.
+  - Parsed the task dependency graph JSON with PowerShell `ConvertFrom-Json`: passed.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260717-001`: official source/data/container readiness is now verified, but no official 10 ODE/4 PDE result exists yet.
+- Follow-up:
+  - Continue with task `259.3`: download and hash the licensed official archive through the pinned adapter, preregister splits/baselines, and run the 10 ODE/4 PDE clean/noisy three-repetition matrix. Gate B remains blocked.
+
 ### 2026-07-17 21:26:51 +08:00 - Codex - Task 259.1 Competition-first unattended Gate A contract
 
 - Request: Implement the first fixed slice of the competition-first unattended research refactor: behavior characterization, a resumable research contract, and a minimum Gate A loop, while keeping existing Vault/evidence/sandbox/reproduction gates and preserving unrelated dirty changes.

@@ -19,6 +19,7 @@ from autoresearch.competition.models import (
     CycleResult,
     TopicMode,
 )
+from autoresearch.competition.official import run_mdbench_official_preflight
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
 competition_app = typer.Typer(
@@ -29,7 +30,40 @@ competition_access_app = typer.Typer(
     help="Create bounded capability grants without storing credential values.",
     no_args_is_help=True,
 )
+competition_mdbench_app = typer.Typer(
+    help="Inspect and run the pinned official MDBench benchmark path.",
+    no_args_is_help=True,
+)
 competition_app.add_typer(competition_access_app, name="access")
+competition_app.add_typer(competition_mdbench_app, name="mdbench")
+
+
+@competition_mdbench_app.command("preflight")
+def competition_mdbench_preflight(
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Preflight evidence and access-request directory."),
+    ] = Path("runs/competition/mdbench-preflight"),
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Network/container probe timeout."),
+    ] = 20,
+) -> None:
+    """Verify revision, license, archive metadata, and container readiness."""
+
+    report = run_mdbench_official_preflight(
+        output_dir,
+        timeout_seconds=timeout_seconds,
+    )
+    typer.echo(f"[OK] mdbench_preflight: {report.output_path}")
+    typer.echo(f"[OK] pinned_revision_available: {str(report.revision_available).lower()}")
+    typer.echo(f"[OK] container_available: {str(report.container_available).lower()}")
+    typer.echo(f"[OK] dataset_license: {report.dataset_license or 'missing'}")
+    typer.echo(f"[OK] access_request_count: {len(report.access_request_ids)}")
+    if not report.ready_to_execute:
+        for blocker in report.blockers:
+            typer.echo(f"[BLOCKED] {blocker}")
+        raise typer.Exit(code=2)
 
 
 @competition_app.command("run")

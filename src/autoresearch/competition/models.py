@@ -70,6 +70,7 @@ class AttemptStatus(str, Enum):
 class AccessKind(str, Enum):
     CAPABILITY_GRANT = "capability_grant"
     API_KEY = "api_key"
+    CONTAINER_RUNTIME = "container_runtime"
     NETWORK = "network"
     DATA_LICENSE = "data_license"
     GPU = "gpu"
@@ -327,6 +328,41 @@ class AccessRequest(StrictFrozenModel):
     minimum_scope: str = Field(min_length=1)
     environment_variable_names: tuple[str, ...] = ()
     created_at: datetime = Field(default_factory=_utc_now)
+
+
+class MDBenchDatasetFile(StrictFrozenModel):
+    """Immutable metadata for one official MDBench dataset archive."""
+
+    key: str
+    size_bytes: int = Field(ge=0)
+    checksum: str
+    content_url: str
+
+
+class MDBenchOfficialPreflight(StrictFrozenModel):
+    """Live source, license, archive, and container readiness evidence."""
+
+    checked_at: datetime = Field(default_factory=_utc_now)
+    repository_url: str
+    expected_revision: str
+    resolved_revision: str | None = None
+    head_revision: str | None = None
+    revision_available: bool = False
+    head_matches_pin: bool = False
+    code_license: str | None = None
+    dataset_doi: str
+    dataset_record_id: int
+    dataset_access_right: str | None = None
+    dataset_license: str | None = None
+    processed_file: MDBenchDatasetFile | None = None
+    processed_metadata_matches: bool = False
+    container_runtime: str | None = None
+    container_available: bool = False
+    ready_to_download: bool = False
+    ready_to_execute: bool = False
+    blockers: tuple[str, ...] = ()
+    access_request_ids: tuple[str, ...] = ()
+    output_path: str
 
 
 class EvidenceGateReport(StrictFrozenModel):
