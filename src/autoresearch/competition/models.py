@@ -397,6 +397,128 @@ class MDBenchArchiveManifest(StrictFrozenModel):
     output_path: str
 
 
+class MDBenchTemporalSplit(StrictFrozenModel):
+    """Chronological, non-overlapping split fractions frozen before execution."""
+
+    train: tuple[float, float] = (0.0, 0.64)
+    validation: tuple[float, float] = (0.64, 0.8)
+    test: tuple[float, float] = (0.8, 1.0)
+
+    @model_validator(mode="after")
+    def _require_disjoint_contiguous_intervals(self) -> MDBenchTemporalSplit:
+        intervals = (self.train, self.validation, self.test)
+        if any(start < 0.0 or end > 1.0 or start >= end for start, end in intervals):
+            raise ValueError("split intervals must be non-empty and contained in [0, 1]")
+        if self.train[0] != 0.0 or self.test[1] != 1.0:
+            raise ValueError("split intervals must cover the full normalized time axis")
+        if self.train[1] != self.validation[0] or self.validation[1] != self.test[0]:
+            raise ValueError("train, validation, and test intervals must be contiguous")
+        return self
+
+
+class MDBenchSystemCase(StrictFrozenModel):
+    """One preregistered system and its immutable official artifacts."""
+
+    data_type: Literal["ode", "pde"]
+    system_name: str
+    evaluation_split: Literal["development", "unseen_test"]
+    selection_reason: str
+    artifact_paths: dict[str, str]
+    artifact_sha256: dict[str, str]
+
+
+class MDBenchMethodSpec(StrictFrozenModel):
+    """Bounded baseline or candidate configuration frozen before results."""
+
+    method_id: str
+    family: Literal["sparse_linear", "genetic_symbolic", "agent_candidate"]
+    implementation: str
+    applicable_data_types: tuple[Literal["ode", "pde"], ...]
+    parameters: dict[str, Any]
+    max_seconds_per_attempt: int = Field(ge=1)
+    max_cpu_cores: int = Field(ge=1)
+    max_memory_mb: int = Field(ge=128)
+
+
+class MDBenchMatrixAttemptSpec(StrictFrozenModel):
+    """One deterministic cell in the official method/system/condition/seed matrix."""
+
+    attempt_id: str
+    data_type: Literal["ode", "pde"]
+    system_name: str
+    evaluation_split: Literal["development", "unseen_test"]
+    condition: str
+    seed: int
+    method_id: str
+    artifact_path: str
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    config_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class MDBenchExperimentMatrix(StrictFrozenModel):
+    """Pre-result Gate A matrix whose hash prevents post-hoc target switching."""
+
+    schema_version: str = "mdbench-experiment-matrix-v1"
+    benchmark_revision: str
+    dataset_doi: str
+    dataset_license: str
+    archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    inventory_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    selection_policy: str
+    split_policy: MDBenchTemporalSplit
+    conditions: tuple[str, ...]
+    seeds: tuple[int, ...]
+    systems: tuple[MDBenchSystemCase, ...]
+    methods: tuple[MDBenchMethodSpec, ...]
+    attempts: tuple[MDBenchMatrixAttemptSpec, ...]
+    metrics: tuple[str, ...]
+    acceptance_criteria: tuple[str, ...]
+    upstream_divergences: tuple[str, ...]
+    created_before_results: bool = True
+    matrix_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    output_path: str
+
+    @model_validator(mode="after")
+    def _require_complete_gate_a_matrix(self) -> MDBenchExperimentMatrix:
+        ode_count = sum(case.data_type == "ode" for case in self.systems)
+        pde_count = sum(case.data_type == "pde" for case in self.systems)
+        if (ode_count, pde_count) != (10, 4):
+            raise ValueError("Gate A v1 requires exactly 10 ODE and 4 PDE systems")
+        if len(self.seeds) != 3 or len(set(self.seeds)) != 3:
+            raise ValueError("Gate A v1 requires three distinct seeds")
+        if len(self.conditions) != 2 or "clean" not in self.conditions:
+            raise ValueError("Gate A v1 requires clean plus one noisy condition")
+        system_keys = {(case.data_type, case.system_name) for case in self.systems}
+        if len(system_keys) != len(self.systems):
+            raise ValueError("preregistered systems must be unique")
+        if not any(case.evaluation_split == "unseen_test" for case in self.systems):
+            raise ValueError("Gate A v1 requires unseen-test systems")
+        method_ids = {method.method_id for method in self.methods}
+        if len(method_ids) != len(self.methods):
+            raise ValueError("preregistered method IDs must be unique")
+        expected = {
+            (case.data_type, case.system_name, condition, seed, method.method_id)
+            for case in self.systems
+            for condition in self.conditions
+            for seed in self.seeds
+            for method in self.methods
+            if case.data_type in method.applicable_data_types
+        }
+        actual = {
+            (
+                attempt.data_type,
+                attempt.system_name,
+                attempt.condition,
+                attempt.seed,
+                attempt.method_id,
+            )
+            for attempt in self.attempts
+        }
+        if len(actual) != len(self.attempts) or actual != expected:
+            raise ValueError("attempts must be the complete unique preregistered matrix")
+        return self
+
+
 class EvidenceGateReport(StrictFrozenModel):
     """Causal-chain validation distinct from scientific release eligibility."""
 

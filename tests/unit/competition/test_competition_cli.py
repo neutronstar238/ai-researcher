@@ -23,6 +23,7 @@ def test_competition_cli_is_registered() -> None:
     assert mdbench_result.exit_code == 0, mdbench_result.output
     assert "preflight" in mdbench_result.stdout
     assert "prepare" in mdbench_result.stdout
+    assert "preregister" in mdbench_result.stdout
 
 
 def test_competition_access_grant_writes_names_not_secrets(tmp_path: Path) -> None:

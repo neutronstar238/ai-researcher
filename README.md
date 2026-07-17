@@ -220,6 +220,7 @@ airesearcher competition run --topic-mode auto
 airesearcher competition run --topic-mode seeded --topic "noise-robust equation discovery" --guidance "prefer interpretable models"
 airesearcher competition mdbench preflight
 airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
+airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -248,6 +249,13 @@ directory, and writes per-NPZ SHA-256 inventory evidence. The live preparation h
 ODE systems, 14 PDE systems, clean plus four SNR conditions, and 385 NPZ artifacts. This is official
 data evidence, but it is still **not** a method result: Gate A stays blocked until the preregistered
 10-ODE/4-PDE matrix and three repetitions finish.
+
+`competition mdbench preregister` is result-blind: it opens only the verified inventory and freezes
+10 ODEs, 4 PDEs, clean/SNR20, chronological disjoint 64/16/20 splits, six unseen-test systems,
+seeds 11/23/37, bounded sparse-linear/Operon-GP/candidate methods, metrics, and acceptance rules.
+It materializes 252 hash-bound cells and recomputes the matrix hash when reloaded. The live frozen
+matrix hash is `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`;
+freezing it does not mean any of those 252 cells has run.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

@@ -29,7 +29,12 @@ from .models import (
     MDBenchArchiveManifest,
     MDBenchDatasetArtifact,
     MDBenchDatasetFile,
+    MDBenchExperimentMatrix,
+    MDBenchMatrixAttemptSpec,
+    MDBenchMethodSpec,
     MDBenchOfficialPreflight,
+    MDBenchSystemCase,
+    MDBenchTemporalSplit,
     ResearchOperation,
     ResearchTaskSpec,
     TopicCandidate,
@@ -44,6 +49,11 @@ from .official_data import (
     prepare_mdbench_official_data,
 )
 from .planning import PlanCompilationError, PlanCompiler, hypothesis_from_topic
+from .preregistration import (
+    MDBenchPreregistrationError,
+    preregister_mdbench_gate_a,
+    validate_mdbench_preregistration,
+)
 from .selection import TopicSelectionEngine, competition_topic_candidates
 from .service import ResearchCycleService, load_capability_grant
 
@@ -69,7 +79,13 @@ __all__ = [
     "MDBenchDataError",
     "MDBenchDatasetArtifact",
     "MDBenchDatasetFile",
+    "MDBenchExperimentMatrix",
+    "MDBenchMatrixAttemptSpec",
+    "MDBenchMethodSpec",
     "MDBenchOfficialPreflight",
+    "MDBenchPreregistrationError",
+    "MDBenchSystemCase",
+    "MDBenchTemporalSplit",
     "ManifestIntegrityError",
     "PlanCompilationError",
     "PlanCompiler",
@@ -89,7 +105,9 @@ __all__ = [
     "load_capability_grant",
     "load_cycle_manifest",
     "prepare_mdbench_official_data",
+    "preregister_mdbench_gate_a",
     "run_mdbench_official_preflight",
     "validate_cycle_evidence",
+    "validate_mdbench_preregistration",
     "write_cycle_manifest",
 ]

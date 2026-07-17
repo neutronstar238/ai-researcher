@@ -3168,9 +3168,15 @@ A task can be checked only when all applicable items are true:
       - Execute the adapter on the official archive and retain the immutable revision, DOI, license, archive hashes, 63 ODE/14 PDE system names, five conditions, and 385 NPZ records as local run evidence.
       - _Verify: focused archive/preflight/CLI tests, focused and broad Ruff/Mypy/Pytest, a real official archive prepare run, and `git diff --check` are recorded in `Agent.md`._
     - [ ] 259.3.2 Preregister and execute the held-out official baseline matrix
-      - Freeze at least 10 ODEs and 4 PDEs, clean plus a declared noisy condition, development versus unseen-test systems, three independent seeds, bounded resources, and non-overlapping train/validation/test semantics before inspecting method results.
-      - Run linear, genetic-programming/symbolic-regression, and generated candidate methods; record official result schemas, data/code/config hashes, resource use, failures, and all repetitions.
-      - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
+      - [x] 259.3.2.1 Freeze the result-blind official matrix
+        - Freeze 10 ODEs and 4 PDEs, clean plus SNR 20, eight development versus six unseen-test systems, seeds 11/23/37, bounded sparse/GP-symbolic/candidate methods, chronological 64/16/20 splits, metrics, and acceptance criteria before inspecting method results.
+        - Materialize all 252 unique matrix cells, bind each to the official artifact SHA-256 and method/config hash, and reject missing artifacts, overlapping splits, incomplete Cartesian coverage, changed frozen files, or content/hash tampering.
+        - Record the upstream validation-overlap and fixed-seed divergences; do not silently represent the corrected adapter as an unchanged upstream evaluator.
+        - _Verify: focused preregistration/CLI tests, focused and broad Ruff/Mypy/Pytest, a live result-blind preregistration against the official inventory, and `git diff --check` are recorded in `Agent.md`._
+      - [ ] 259.3.2.2 Execute and checkpoint the frozen matrix
+        - Run the preregistered sparse-linear, bounded Operon GP-symbolic, and stability-selected candidate cells in the versioned container with automatic timeout/failure persistence and resume.
+        - Record official result schemas, split indices, data/code/config/environment/result hashes, resource use, failures, equations, and all repetitions without changing the frozen matrix.
+        - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
   - [ ] 259.4 Pass or honestly close Gate A
     - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.

@@ -17,6 +17,7 @@ from autoresearch.competition.models import (
     CapabilityGrant,
     CompetitionRunSpec,
     CycleResult,
+    MDBenchArchiveManifest,
     MDBenchOfficialPreflight,
     TopicMode,
 )
@@ -25,6 +26,10 @@ from autoresearch.competition.official_data import (
     MDBenchDataError,
     download_mdbench_processed_archive,
     prepare_mdbench_official_data,
+)
+from autoresearch.competition.preregistration import (
+    MDBenchPreregistrationError,
+    preregister_mdbench_gate_a,
 )
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
@@ -122,6 +127,40 @@ def competition_mdbench_prepare(
     typer.echo(f"[OK] official_ode_systems: {len(manifest.ode_systems)}")
     typer.echo(f"[OK] official_pde_systems: {len(manifest.pde_systems)}")
     typer.echo(f"[OK] official_npz_artifacts: {len(manifest.artifacts)}")
+
+
+@competition_mdbench_app.command("preregister")
+def competition_mdbench_preregister(
+    archive_manifest: Annotated[
+        Path,
+        typer.Option(
+            "--archive-manifest",
+            help="Verified archive-manifest.json produced by mdbench prepare.",
+        ),
+    ] = Path("runs/competition/mdbench-official/data/archive-manifest.json"),
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="Immutable pre-result experiment matrix JSON."),
+    ] = Path("runs/competition/mdbench-official/gate-a-preregistration.json"),
+) -> None:
+    """Freeze systems, splits, methods, metrics, seeds, and budgets before results."""
+
+    try:
+        manifest = MDBenchArchiveManifest.model_validate_json(
+            archive_manifest.read_text(encoding="utf-8")
+        )
+        matrix = preregister_mdbench_gate_a(manifest, output)
+    except (MDBenchPreregistrationError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_preregister: {exc}")
+        raise typer.Exit(code=2) from exc
+    unseen_count = sum(
+        case.evaluation_split == "unseen_test" for case in matrix.systems
+    )
+    typer.echo(f"[OK] mdbench_matrix: {matrix.output_path}")
+    typer.echo(f"[OK] matrix_hash: {matrix.matrix_hash}")
+    typer.echo(f"[OK] matrix_attempts: {len(matrix.attempts)}")
+    typer.echo(f"[OK] unseen_test_systems: {unseen_count}")
+    typer.echo(f"[OK] created_before_results: {str(matrix.created_before_results).lower()}")
 
 
 @competition_app.command("run")

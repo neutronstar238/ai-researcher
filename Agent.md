@@ -64,6 +64,41 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 22:10:40 +08:00 - Codex - Task 259.3.2.1 result-blind official MDBench matrix
+
+- Request: Freeze the official Gate A experiment matrix before observing any method result, with disjoint temporal splits, exact Cartesian coverage, immutable hashes, and explicit acceptance criteria.
+- Files changed:
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/models.py`
+  - `src/autoresearch/competition/preregistration.py`
+  - `tests/unit/competition/test_preregistration.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `README.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed temporal-split, system, method, attempt, and experiment-matrix contracts. Validation requires exactly 10 ODEs, 4 PDEs, three unique seeds, clean plus one noisy condition, six unseen-test systems, and the complete unique Cartesian product.
+  - Added `competition mdbench preregister`, which reads only the verified archive manifest and freezes 252 cells under matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`; it does not inspect NPZ numeric payloads or method results.
+  - Preregistered chronological 64/16/20 train/validation/test splits, seeds 11/23/37, clean plus SNR 20, sparse SINDy/PDE-FIND, bounded Operon GP, and the candidate stability-selected SINDy/PDE-FIND method. Metrics, resource bounds, paired-bootstrap acceptance, and no-post-hoc-substitution rules are immutable content.
+  - Recorded the pinned upstream validation-overlap and fixed-seed divergences rather than representing the corrected future adapter as unchanged upstream evaluation.
+  - No scientific method cell ran in this subtask; Gate A, Gate B, external submission, and award claims remain blocked. Unrelated course-paper changes already present in `Agent.md` and `Problem.md` were preserved and excluded from this task's commit.
+- Verification:
+  - `python -m pytest tests/unit/competition/test_preregistration.py tests/unit/competition/test_competition_cli.py -q`: passed with 7 tests, including exact coverage, idempotence, artifact absence, content/hash tampering, and split-overlap rejection.
+  - `poetry run airesearcher competition mdbench preregister --archive-manifest runs/manual-live/task259-mdbench-official-v1/data/prepared/archive-manifest.json --output runs/manual-live/task259-mdbench-official-v1/gate-a-preregistration.json`: exited 0, wrote 252 attempts with six unseen systems, and reported `created_before_results=true`; an idempotent rerun revalidated the frozen content hash.
+  - Broad `python -m pytest tests -q`: passed with 691 passed, 4 skipped, one upstream LangGraph deprecation warning, and 88% coverage.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src/autoresearch`: passed with no issues in 121 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260717-001` with the frozen matrix evidence while keeping official Gate A execution blocked.
+  - `P-20260717-003` remains open: the preregistration contract rejects overlapping normalized boundaries, and task `259.3.2.2` must prove that the container runner persists the corresponding concrete disjoint indices.
+- Follow-up:
+  - Continue task `259.3.2.2`: execute the unchanged 252-cell matrix in the versioned container with bounded resources, terminal failure persistence, resume, and full data/code/config/environment/result hashes. Gate B remains blocked.
+
 ### 2026-07-17 22:01:29 +08:00 - Codex - Task 259.3.1 verified official MDBench data inventory
 
 - Request: Continue Gate A by preparing the licensed official MDBench archive through a resumable, integrity-checked, safe, and auditable adapter without representing data readiness as a method result.
