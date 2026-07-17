@@ -29,7 +29,8 @@ def generate_hypotheses(
     method = str(candidate.metadata.get("method", "candidate method"))
     dataset = str(candidate.metadata.get("dataset", "target benchmark"))
     limitation = str(candidate.metadata.get("limitation", candidate.research_gap))
-    metric = _metric_for_limitation(limitation)
+    configured_metric = str(candidate.metadata.get("metric", "")).strip()
+    metric = configured_metric or _metric_for_limitation(limitation)
     baseline = str(candidate.metadata.get("baseline", config.default_baseline))
 
     hypothesis = Hypothesis(

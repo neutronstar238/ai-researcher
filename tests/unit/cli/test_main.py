@@ -3845,6 +3845,31 @@ def test_autopilot_skin_demo_uses_method_aligned_search_contract() -> None:
     assert "skin-color" in candidate.metadata["limitation"]
 
 
+def test_legacy_autopilot_blocks_candidate_demo_mismatch() -> None:
+    seed_document = SimpleNamespace(
+        id="doc_seed",
+        title="Nearest centroid prototype classification for handwritten digits",
+        source_uri="https://example.test/source",
+        abstract="Prototype classifiers for handwritten digit recognition.",
+    )
+    candidate = cli_main._autopilot_candidate_from_literature(
+        SimpleNamespace(documents=(seed_document,)),
+        project_id="project_1",
+        demo="pendigits_variance_calibrated_prototypes",
+        now=datetime(2026, 7, 17, 12, 0, tzinfo=timezone.utc),
+    )
+
+    cli_main._require_autopilot_candidate_demo_alignment(
+        candidate,
+        "pendigits_variance_calibrated_prototypes",
+    )
+    with pytest.raises(RuntimeError, match="candidate/demo mismatch"):
+        cli_main._require_autopilot_candidate_demo_alignment(
+            candidate,
+            "tabular_baseline",
+        )
+
+
 def test_autopilot_literature_clients_share_persistent_circuit_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

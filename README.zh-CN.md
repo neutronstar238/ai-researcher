@@ -167,6 +167,28 @@ airesearcher serve --permission-mode allow-all --push-inspiration
 airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspiration
 ```
 
+## 榜题优先的无人值守闭环
+
+榜题路径是面向科学机器学习、数学建模和动力系统发现的独立可恢复证据链。默认自动
+选题；人工题目或指导仅约束候选空间，不能绕过可行性和证据门。
+
+```bash
+airesearcher competition run --topic-mode auto
+airesearcher competition run --topic-mode seeded --topic "噪声鲁棒方程发现" --guidance "优先可解释模型"
+airesearcher competition status runs/competition/<run-id>
+airesearcher competition resume runs/competition/<run-id>
+airesearcher competition export runs/competition/<run-id>
+```
+
+`competition access grant` 只记录有界的环境变量名、网络域名、许可、算力、存储、
+费用、有效期和可选的外部提交权限，绝不接收或保存密钥值。有效授权范围内无需逐实验
+审批；缺少权限时只生成最小范围 `AccessRequest`，不会向用户提出科研选择题。
+
+当前 Gate A 是在真实子进程沙箱中执行的三随机种子方程发现 characterization fixture，
+用于证明生命周期、断点恢复、因果哈希链和负向发布门；它不是 MDBench 官方成绩。
+manifest 会如实报告 1 个 ODE、0 个 PDE 和 `release_eligible=false`。只有真正执行并复现
+固定版本的官方 10 ODE/4 PDE、无噪声/噪声和基线矩阵后，才可能解除该门禁。
+
 可以给常驻运行入口绑定单个或多个 Agent profile：
 
 ```bash

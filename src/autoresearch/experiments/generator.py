@@ -13,7 +13,12 @@ from autoresearch.schemas import ExperimentTask
 
 
 def generate_experiment_directory(root: Path | str, task: ExperimentTask) -> Path:
-    """Generate a minimal runnable experiment directory for a task."""
+    """Generate a regression fixture, never a production scientific experiment.
+
+    The generated runner intentionally emits constant placeholder metrics.  Its
+    explicit ``regression_fixture`` scope lets production evidence gates reject
+    it even when files exist and the process exits successfully.
+    """
 
     root_path = Path(root)
     experiment_dir = root_path / _experiment_dir_name(task)
@@ -43,6 +48,7 @@ def _task_config(task: ExperimentTask) -> dict[str, Any]:
         "dataset_assumptions": task.metadata.get("dataset_assumptions", {}),
         "validation_checks": task.metadata.get("validation_checks", []),
         "resource_budget": task.resource_budget,
+        "execution_scope": "regression_fixture",
     }
 
 
@@ -96,6 +102,7 @@ def _run_py() -> str:
                 payload = {
                     "status": "success",
                     "task_id": config["task_id"],
+                    "execution_scope": config["execution_scope"],
                     "metrics": metrics,
                     "generated_at": datetime.now(timezone.utc).isoformat(),
                 }

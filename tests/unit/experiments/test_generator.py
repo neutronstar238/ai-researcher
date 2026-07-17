@@ -57,6 +57,7 @@ def test_generated_demo_experiment_runs_and_writes_metrics(tmp_path: Path) -> No
     assert completed.returncode == 0
     assert metrics["status"] == "success"
     assert metrics["task_id"] == "task_demo"
+    assert metrics["execution_scope"] == "regression_fixture"
     assert metrics["metrics"] == {"demo_score": 1.0}
     assert (experiment_dir / "logs" / "run.log").read_text(encoding="utf-8")
 

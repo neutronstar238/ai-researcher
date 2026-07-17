@@ -208,6 +208,32 @@ airesearcher autopilot --watch --cycles 0 --interval-seconds 86400 --push-inspir
 `autopilot` uses the same default public benchmark as `serve`; pass `--demo <id>` to choose
 another benchmark or `--demo tabular_baseline` for the fast toy fixture.
 
+## Competition-first unattended loop
+
+The competition path is a separate, resumable evidence chain for scientific machine learning,
+mathematical modelling, and dynamical-system discovery. It selects a topic automatically by
+default; a seeded topic or guidance only constrains the candidate space and cannot bypass
+feasibility or evidence gates.
+
+```bash
+airesearcher competition run --topic-mode auto
+airesearcher competition run --topic-mode seeded --topic "noise-robust equation discovery" --guidance "prefer interpretable models"
+airesearcher competition status runs/competition/<run-id>
+airesearcher competition resume runs/competition/<run-id>
+airesearcher competition export runs/competition/<run-id>
+```
+
+`competition access grant` records bounded environment-variable names, network domains,
+licenses, compute, storage, cost, validity, and optional external-submission permission. It never
+accepts or stores credential values. Work inside a valid grant proceeds without per-experiment
+approval; missing access produces a scoped `AccessRequest`, not a scientific-choice prompt.
+
+The current Gate A implementation is a real sandboxed three-seed equation-discovery
+characterization fixture. It proves lifecycle, resume, causal hashing, and negative-release gates;
+it is **not** an official MDBench result. Its manifest reports one ODE, zero PDE, and
+`release_eligible=false` until the pinned official 10-ODE/4-PDE clean/noisy matrix and baseline
+comparison are actually executed and reproduced.
+
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 
 ```bash

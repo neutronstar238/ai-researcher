@@ -64,6 +64,59 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 21:26:51 +08:00 - Codex - Task 259.1 Competition-first unattended Gate A contract
+
+- Request: Implement the first fixed slice of the competition-first unattended research refactor: behavior characterization, a resumable research contract, and a minimum Gate A loop, while keeping existing Vault/evidence/sandbox/reproduction gates and preserving unrelated dirty changes.
+- Files changed:
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/manifest.py`
+  - `src/autoresearch/competition/mdbench.py`
+  - `src/autoresearch/competition/models.py`
+  - `src/autoresearch/competition/planning.py`
+  - `src/autoresearch/competition/selection.py`
+  - `src/autoresearch/competition/service.py`
+  - `src/autoresearch/cli/main.py`
+  - `src/autoresearch/experiments/generator.py`
+  - `src/autoresearch/research/hypotheses.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_cycle_service.py`
+  - `tests/unit/competition/test_selection_and_planning.py`
+  - `tests/unit/cli/test_main.py`
+  - `tests/unit/experiments/test_generator.py`
+  - `tests/unit/research/test_hypotheses.py`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added strict persisted contracts for `CompetitionRunSpec`, `TopicCandidate`, `HypothesisProposal`, `ExperimentProtocol`, `ExperimentAttempt`, `CycleManifest`, `CapabilityGrant`, `AccessRequest`, evidence reports, and local competition exports.
+  - Added an idempotent `ResearchCycleService` with atomic checkpoints, absolute artifact paths, resume-without-rerun behavior, one topic-hypothesis-plan-code-data-result hash chain, Vault experiment notes, and local export blocking.
+  - Added automatic hard filtering, 40/30/30 ranking, three executable feasibility smokes, optional seeded constraints, the existing hypothesis generator, and the existing experiment planner in the production competition path.
+  - Added a standard-library, subprocess-sandboxed, three-seed equation-discovery characterization fixture with an executed baseline and code-computed equation, derivative, extrapolation, complexity, noise, runtime, and scope metrics. The fixture reports one ODE, zero PDE, and `full_gate_a_passed=0`.
+  - Added evidence checks for causal identifiers, plan/code/config/data/metric hashes, executed artifacts, required seeds, parent attempts, non-constant metrics, claim bindings, and official Gate A release requirements. Persisted metric tampering, candidate/demo mismatch, and constant demo metrics are rejected.
+  - Added `competition run`, `competition resume`, `competition status`, `competition export`, and `competition access grant`. Missing grants produce one idempotent capability request; scientific choices do not increment human intervention.
+  - Preserved the legacy autopilot CLI and added an early compatibility guard so a candidate bound to one demo cannot execute another. The old constant-metric generator is explicitly labelled `regression_fixture` and is not accepted by the new competition evidence path.
+  - Updated the research/execution plans, task graph, and English/Chinese README with the Gate A-first boundary and ordered follow-up tasks. Existing unrelated `Agent.md` and `Problem.md` working-tree changes were preserved.
+- Verification:
+  - Focused `python -m pytest tests/unit/competition tests/unit/cli/test_main.py::test_legacy_autopilot_blocks_candidate_demo_mismatch tests/unit/cli/test_main.py::test_autopilot_command_runs_one_non_review_cycle tests/unit/research/test_hypotheses.py tests/unit/experiments/test_generator.py -q`: passed with 21 tests.
+  - Broad `python -m pytest tests -q`: passed with 677 passed, 4 skipped, one upstream LangGraph deprecation warning, and 88% coverage.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src/autoresearch`: passed with no issues in 118 source files.
+  - `git diff --check`: passed.
+  - Parsed the task dependency graph JSON with PowerShell `ConvertFrom-Json`: passed.
+  - Real local unattended CLI `python -m autoresearch.cli.main competition run --topic-mode auto --run-id gate-a-characterization --project-id task259_gate_a_characterization --output-dir runs/manual-live/task259-gate-a-characterization-v2/runs --vault runs/manual-live/task259-gate-a-characterization-v2/vault --timeout-seconds 30`: passed three feasibility probes and seeds 11/23/37, recorded zero human interventions and zero access requests, used absolute artifact paths, passed the causal evidence check, and correctly kept `release_eligible=false`.
+  - Real `competition status` reported `stage=complete`, `outcome=development_smoke_passed`, and three attempts; real local `competition export` created `EXPORT-BLOCKED.md` and printed that external submission was blocked.
+  - Live public-source preflight shallow-cloned `https://github.com/gryaklab/mdbench.git`; HEAD matched the pinned `f81813e760325589737fe3311ac8199ecc64188a`, the license header was MIT, and the current README mentioned 63 ODE and 14 PDE systems. This verifies upstream access/version only, not benchmark completion.
+- Problems:
+  - Added `P-20260717-001`: the current Gate A result is a development characterization fixture, not official MDBench evidence.
+  - Added `P-20260717-002`: the general legacy autopilot remains monolithic; the new service currently owns only the competition path.
+- Follow-up:
+  - Continue with task `259.2`: add the versioned scientific-compute container and official MDBench data/baseline adapter, then run the preregistered 10 ODE/4 PDE clean/noisy matrix. Do not begin full RealPDEBench training or product UI expansion before Gate A has real evidence.
+
 ### 2026-06-23 19:38:00 +08:00 - Codex - Task 233.1 Runtime heartbeat watchdog
 
 - Request: Continue Loop Engineering evolution by borrowing long-horizon AutoResearch protocol ideas without over-engineering, so long-running loops can expose state, heartbeat, and stall evidence instead of relying on prompt-only self-discipline.

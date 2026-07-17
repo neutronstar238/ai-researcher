@@ -1,0 +1,244 @@
+"""Typer commands for the competition-first research service."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Annotated
+
+import typer
+from pydantic import ValidationError
+
+from autoresearch.competition.manifest import (
+    load_cycle_manifest,
+    write_json_model,
+)
+from autoresearch.competition.models import (
+    CapabilityGrant,
+    CompetitionRunSpec,
+    CycleResult,
+    TopicMode,
+)
+from autoresearch.competition.service import ResearchCycleService, load_capability_grant
+
+competition_app = typer.Typer(
+    help="Run the resumable, competition-first unattended research loop.",
+    no_args_is_help=True,
+)
+competition_access_app = typer.Typer(
+    help="Create bounded capability grants without storing credential values.",
+    no_args_is_help=True,
+)
+competition_app.add_typer(competition_access_app, name="access")
+
+
+@competition_app.command("run")
+def competition_run(
+    topic_mode: Annotated[
+        str,
+        typer.Option("--topic-mode", help="auto or seeded; auto is the default."),
+    ] = TopicMode.AUTO.value,
+    topic: Annotated[
+        str | None,
+        typer.Option("--topic", help="Optional topic constraint for seeded mode."),
+    ] = None,
+    guidance: Annotated[
+        list[str] | None,
+        typer.Option("--guidance", help="Optional guidance; repeat for multiple constraints."),
+    ] = None,
+    reference_uri: Annotated[
+        list[str] | None,
+        typer.Option("--reference-uri", help="Optional reference; repeat as needed."),
+    ] = None,
+    run_id: Annotated[
+        str | None,
+        typer.Option("--run-id", help="Stable path-safe ID used for checkpoint resume."),
+    ] = None,
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Vault project ID."),
+    ] = "competition-gate-a",
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Competition run root."),
+    ] = Path("runs/competition"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root."),
+    ] = Path("autoresearch-vault"),
+    capability_grant: Annotated[
+        Path | None,
+        typer.Option("--capability-grant", help="Optional CapabilityGrant JSON."),
+    ] = None,
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-experiment timeout."),
+    ] = 30,
+) -> None:
+    """Run Gate A autonomously; optional topic input never bypasses gates."""
+
+    try:
+        mode = TopicMode(topic_mode)
+    except ValueError as exc:
+        raise typer.BadParameter("topic mode must be auto or seeded") from exc
+    grant = load_capability_grant(capability_grant) if capability_grant else None
+    payload: dict[str, object] = {
+        "project_id": project_id,
+        "topic_mode": mode,
+        "topic": topic,
+        "guidance": tuple(guidance or ()),
+        "reference_uris": tuple(reference_uri or ()),
+        "timeout_seconds": timeout_seconds,
+        "capability_grant_id": grant.grant_id if grant is not None else None,
+    }
+    if run_id is not None:
+        payload["run_id"] = run_id
+    try:
+        spec = CompetitionRunSpec.model_validate(payload)
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    service = ResearchCycleService(
+        output_root=output_dir,
+        vault_root=vault,
+        capability_grant=grant,
+    )
+    result = service.run(spec)
+    _echo_result(result)
+
+
+@competition_app.command("resume")
+def competition_resume(
+    cycle_dir: Annotated[Path, typer.Argument(help="Existing competition cycle directory.")],
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root."),
+    ] = Path("autoresearch-vault"),
+    capability_grant: Annotated[
+        Path | None,
+        typer.Option("--capability-grant", help="CapabilityGrant that satisfies a request."),
+    ] = None,
+) -> None:
+    """Resume an interrupted or access-blocked cycle from its manifest."""
+
+    grant = load_capability_grant(capability_grant) if capability_grant else None
+    service = ResearchCycleService(
+        output_root=cycle_dir.parent,
+        vault_root=vault,
+        capability_grant=grant,
+    )
+    _echo_result(service.resume(cycle_dir))
+
+
+@competition_app.command("status")
+def competition_status(
+    cycle_dir: Annotated[Path, typer.Argument(help="Competition cycle directory.")],
+) -> None:
+    """Print persisted status without changing the cycle."""
+
+    manifest = load_cycle_manifest(cycle_dir / "cycle-manifest.json")
+    typer.echo(f"run_id={manifest.run_id}")
+    typer.echo(f"stage={manifest.stage.value}")
+    typer.echo(f"outcome={manifest.outcome.value}")
+    typer.echo(f"attempts={len(manifest.attempts)}")
+    typer.echo(f"human_intervention_count={manifest.human_intervention_count}")
+    typer.echo(f"access_request_count={len(manifest.access_request_ids)}")
+    typer.echo(f"release_eligible={str(manifest.release_eligible).lower()}")
+
+
+@competition_app.command("export")
+def competition_export(
+    cycle_dir: Annotated[Path, typer.Argument(help="Completed competition cycle directory.")],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Local export root; this does not upload anything."),
+    ] = Path("outputs/competition"),
+) -> None:
+    """Export required fields locally while preserving the submission gate."""
+
+    service = ResearchCycleService(output_root=cycle_dir.parent)
+    path = service.export(cycle_dir, output_dir)
+    typer.echo(f"[OK] competition_export: {path}")
+    payload = path.read_text(encoding="utf-8")
+    if '"submission_ready": false' in payload:
+        typer.echo("[BLOCKED] external_submission: evidence gate has not passed")
+
+
+@competition_access_app.command("grant")
+def competition_access_grant(
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="CapabilityGrant JSON output path."),
+    ] = Path(".airesearcher/competition-capability-grant.json"),
+    api_env_var: Annotated[
+        list[str] | None,
+        typer.Option("--api-env-var", help="Environment variable name only; repeat as needed."),
+    ] = None,
+    network_domain: Annotated[
+        list[str] | None,
+        typer.Option("--network-domain", help="Approved network domain; repeat as needed."),
+    ] = None,
+    dataset_license: Annotated[
+        list[str] | None,
+        typer.Option("--dataset-license", help="Approved dataset license identifier."),
+    ] = None,
+    max_cpu_hours: Annotated[
+        float,
+        typer.Option("--max-cpu-hours", min=0.0),
+    ] = 1.0,
+    max_gpu_hours: Annotated[
+        float,
+        typer.Option("--max-gpu-hours", min=0.0),
+    ] = 0.0,
+    max_storage_gb: Annotated[
+        float,
+        typer.Option("--max-storage-gb", min=0.0),
+    ] = 1.0,
+    max_cost_usd: Annotated[
+        float,
+        typer.Option("--max-cost-usd", min=0.0),
+    ] = 0.0,
+    valid_days: Annotated[
+        int,
+        typer.Option("--valid-days", min=1),
+    ] = 7,
+    allow_external_submission: Annotated[
+        bool,
+        typer.Option(
+            "--allow-external-submission/--no-external-submission",
+            help="Explicitly authorize or deny final external upload.",
+        ),
+    ] = False,
+) -> None:
+    """Create one reusable bounded grant; secret values are never accepted."""
+
+    try:
+        grant = CapabilityGrant(
+            api_env_vars=tuple(api_env_var or ()),
+            network_domains=tuple(network_domain or ()),
+            dataset_licenses=tuple(dataset_license or ()),
+            max_cpu_hours=max_cpu_hours,
+            max_gpu_hours=max_gpu_hours,
+            max_storage_gb=max_storage_gb,
+            max_cost_usd=max_cost_usd,
+            valid_until=datetime.now(timezone.utc) + timedelta(days=valid_days),
+            allow_external_submission=allow_external_submission,
+        )
+    except ValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    write_json_model(output, grant)
+    typer.echo(f"[OK] capability_grant: {output}")
+    typer.echo(f"[OK] grant_id: {grant.grant_id}")
+
+
+def _echo_result(result: CycleResult) -> None:
+    typer.echo(f"[OK] competition_cycle: {result.outcome.value}")
+    typer.echo(f"[OK] manifest: {result.manifest_path}")
+    typer.echo(
+        "[OK] human_intervention_count: "
+        f"{result.human_intervention_count}"
+    )
+    typer.echo(f"[OK] access_request_count: {result.access_request_count}")
+    typer.echo(
+        "[OK] release_eligible: "
+        f"{str(result.release_eligible).lower()}"
+    )

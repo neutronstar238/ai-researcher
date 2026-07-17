@@ -3144,6 +3144,34 @@ A task can be checked only when all applicable items are true:
     - _References: tasks `254.1`, `257.1`; user request to keep adding per-Agent custom skills/MCP ability while making runtime behavior auditable and research-first._
     - _Verify: focused Agent profile/CLI tests, focused ruff, focused mypy, broad smoke/unit tests, broad ruff, broad mypy, and `git diff --check` are recorded in `Agent.md`._
 
+- [ ] 259. Competition-first unattended scientific-ML loop
+  - [x] 259.1 Characterize the legacy mismatch and establish the resumable Gate A contract
+    - Add strict public contracts for competition runs, candidates, hypotheses, protocols, attempts, manifests, capability grants, access requests, and local submission exports.
+    - Add an idempotent `ResearchCycleService` that persists every stage, resumes completed seeds without rerunning them, and records a single topic-hypothesis-plan-code-data-result hash chain.
+    - Add automatic 40/30/30 candidate ranking with hard feasibility filters and top-three executable smokes; seeded input constrains candidates but cannot bypass the gates.
+    - Add an honest MDBench-shaped equation-discovery characterization fixture executed in the existing subprocess sandbox over three seeds. Mark it as a development fixture, report one ODE and zero PDE, and block competition release until the official matrix is complete.
+    - Keep the old constant-metric demo generator only as an explicitly labelled regression fixture and reject constant, missing, or causally mismatched evidence from the new competition path.
+    - Add a compatibility guard to legacy `autopilot` so a candidate bound to one demo cannot execute a different demo.
+    - Add `competition run`, `resume`, `status`, `export`, and `access grant` CLI commands. Missing capabilities may create an `AccessRequest`; scientific choices must not create human-intervention requests.
+    - _References: user-approved competition-first refactor; MDBench official repository and benchmark paper; tasks `2.2`, `2.3`, `40.2`, `49.1`, `54.1`, and `214.1`._
+    - _Verify: focused competition/research/fixture tests, broad smoke/unit tests, broad ruff, broad mypy, a real local unattended three-seed CLI smoke, official MDBench source preflight, and `git diff --check`; exact commands and boundaries are recorded in `Agent.md`._
+  - [ ] 259.2 Execute the official MDBench data and baseline matrix
+    - Add a versioned scientific-compute container and a pinned adapter for the official dataset/result schemas without adding heavy dependencies to the core package.
+    - Run at least 10 ODEs and 4 PDEs under clean and noisy conditions against preregistered linear, genetic-programming, and symbolic-regression baselines.
+    - Record dataset licenses, immutable upstream revisions, data hashes, resource use, failures, and three independent repetitions.
+    - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
+  - [ ] 259.3 Pass or honestly close Gate A
+    - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
+    - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.
+    - Gate B and product-surface expansion remain blocked until this task has real official-benchmark evidence.
+  - [ ] 259.4 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
+    - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
+    - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.
+    - Require user-provided environment credentials for live text, vision, code, and structured-output smoke tests.
+  - [ ] 259.5 Implement RealPDEBench Cylinder Gate B after Gate A
+    - Add the pinned sim-to-real Cylinder adapter, official DMD/FNO/Transolver baselines, bounded two-mechanism search, three-stage data schedule, three seeds, bootstrap confidence intervals, and required ablations.
+    - Block innovation and submission claims unless unseen-real `Rel L2`, fRMSE, KE, MVPE, update-ratio, ablation, reproducibility, and 40/30/30 internal-review gates all pass.
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3836,6 +3864,26 @@ A task can be checked only when all applicable items are true:
     {
       "id": 161,
       "tasks": ["258.1"]
+    },
+    {
+      "id": 162,
+      "tasks": ["259.1"]
+    },
+    {
+      "id": 163,
+      "tasks": ["259.2"]
+    },
+    {
+      "id": 164,
+      "tasks": ["259.3"]
+    },
+    {
+      "id": 165,
+      "tasks": ["259.4"]
+    },
+    {
+      "id": 166,
+      "tasks": ["259.5"]
     }
   ]
 }

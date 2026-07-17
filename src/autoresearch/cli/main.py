@@ -56,6 +56,7 @@ from autoresearch.agents import (
     write_agent_profile_note,
     write_mcp_invocation_validation_report,
 )
+from autoresearch.competition.cli import competition_app
 from autoresearch.config import (
     ConfigFormat,
     ConfigParser,
@@ -206,6 +207,7 @@ app.add_typer(sessions_app, name="sessions")
 app.add_typer(channels_app, name="channels")
 app.add_typer(code_agents_app, name="code-agents")
 app.add_typer(pdf_sources_app, name="pdf-sources")
+app.add_typer(competition_app, name="competition")
 channels_app.add_typer(channel_adapters_app, name="adapters")
 channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")
@@ -6829,6 +6831,7 @@ def _run_autopilot_cycle(
         demo=demo,
         now=now,
     )
+    _require_autopilot_candidate_demo_alignment(candidate, demo)
     candidate_path = cycle_dir / "candidate.json"
     candidate_path.write_text(candidate.model_dump_json(indent=2), encoding="utf-8")
     runtime_heartbeat = _write_cycle_runtime_heartbeat(
@@ -8658,6 +8661,20 @@ def _autopilot_candidate_from_literature(
             "limitation": "system-level candidate must be validated across multiple real research cycles",
         },
     )
+
+
+def _require_autopilot_candidate_demo_alignment(
+    candidate: ResearchCandidate,
+    demo: str,
+) -> None:
+    """Block the legacy compatibility path before an unrelated demo can execute."""
+
+    candidate_demo = candidate.metadata.get("demo")
+    if candidate_demo != demo:
+        raise RuntimeError(
+            "autopilot candidate/demo mismatch: selected candidate is bound to "
+            f"{candidate_demo!r}, but execution requested {demo!r}"
+        )
 
 
 def _run_autopilot_review(

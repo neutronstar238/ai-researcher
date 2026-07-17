@@ -40,3 +40,13 @@ def test_generate_hypotheses_from_approved_candidate() -> None:
 def test_generate_hypotheses_rejects_unapproved_candidate() -> None:
     with pytest.raises(PermissionError):
         generate_hypotheses(_candidate(CandidateStatus.READY_FOR_REVIEW))
+
+
+def test_generate_hypotheses_respects_explicit_compiled_metric() -> None:
+    candidate = _candidate().model_copy(
+        update={"metadata": {**_candidate().metadata, "metric": "derivative_nmse"}}
+    )
+
+    hypothesis = generate_hypotheses(candidate)[0]
+
+    assert hypothesis.metric == "derivative_nmse"
