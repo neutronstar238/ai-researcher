@@ -3186,7 +3186,7 @@ A task can be checked only when all applicable items are true:
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.
     - Gate B and product-surface expansion remain blocked until this task has real official-benchmark evidence.
     - _Outcome: the hash-bound official adjudication closed Gate A as `negative_result`; the candidate completed 84/84 cells, but all-method reproducibility was 244/252 and the failure-aware unseen-system bootstrap 95% CI was `[-0.201060, 0.888991]`, so `gate_b_allowed=false`._
-  - [ ] 259.7 Recover Gate A on a fresh sealed matrix
+  - [x] 259.7 Recover Gate A on a fresh sealed matrix
     - [x] 259.7.1 Freeze a literature-grounded recovery hypothesis and disjoint matrix
       - Bind the recovery cycle to the hash-valid negative parent report and unchanged official archive; refuse a passed parent, changed lineage, result-bearing output directory, partial output, or tampered hash.
       - Freeze exactly two candidate mechanisms: weak-form projection and bootstrap support stability. Reuse the exact parent baselines and the MIT-licensed PySINDy v1.7.5 dependency; treat unlicensed WSINDy repositories as reference-only and copy no code.
@@ -3197,13 +3197,14 @@ A task can be checked only when all applicable items are true:
       - Implement the two frozen mechanisms in the scientific container without copying reference-only code, then smoke only development systems and verify finite metrics, hash binding, resume, and bounded failure behavior.
       - Do not inspect or execute recovery unseen-test cells during implementation or debugging.
       - _Outcome: the pinned PySINDy weak library and bootstrap support-stability path passed its in-image ODE/PDE self-test and a four-cell recovery-development smoke with 4/4 success, deterministic checkpoint reuse, zero human interventions, and zero access requests. Column-normalized STLSQ corrected a development-only scaling defect and recovered clean `advection1d` as `u_t=-0.100002u_x` with derivative NMSE `1.27e-6`; the SNR20 control still selected a zero equation with NMSE approximately `1`, so this task proves executable evidence only and does not claim the recovery hypothesis or Gate A passed._
-    - [ ] 259.7.3 Execute and adjudicate the fresh recovery matrix
+    - [x] 259.7.3 Execute and adjudicate the fresh recovery matrix
       - [x] 259.7.3.1 Freeze recovery truth scoring before unseen execution
         - Extend the pinned equation-support registry to every recovery system, bind the exact upstream source hashes, and make candidate/seed checks resolve from the frozen matrix rather than the parent cycle.
         - Freeze the adjudicator and analysis-policy hashes while recovery unseen results are still sealed; exact-source structure tests must pass before execution.
-      - [ ] 259.7.3.2 Drain and adjudicate the unchanged recovery matrix
+      - [x] 259.7.3.2 Drain and adjudicate the unchanged recovery matrix
         - Drain the unchanged 252-cell matrix, preserve every failure, and apply the frozen system-level confidence gate without changing the candidate, truth registry, or policy after unseen results appear.
         - Pass only on the preregistered criteria; otherwise retain another credible negative result and stop this mechanism family without unlocking Gate B.
+        - _Outcome: the unchanged recovery matrix reached 252/252 terminal cells with 241 successes, 11 retained failures, 0 timeouts, 0 human interventions, and 0 access requests; an identical execution reused all 252 unique result hashes. The candidate succeeded on 82/84 cells, but its unseen-SNR20 derivative-NMSE median was `6.717294` versus `0.698001` for the selected Operon baseline, the failure-aware six-system median relative improvement was `-1.704061`, and the frozen 20,000-resample system-level bootstrap 95% CI was `[-4.116249, 0.292912]`. The idempotent adjudication therefore closed this recovery as `negative_result`, kept `gate_b_allowed=false`, and stopped the weak-form/support-stability mechanism family without post-unseen tuning._
   - [ ] 259.5 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
     - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
     - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.

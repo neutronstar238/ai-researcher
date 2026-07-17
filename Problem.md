@@ -62,15 +62,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-17 23:17:42 +08:00
 - Source: Task `259.4` official MDBench adjudication.
-- Symptom: Stability-SINDy completed 84/84 candidate cells and has a favorable held-out point estimate, but the all-method matrix contains 8 terminal baseline failures and the system-level uncertainty interval crosses zero.
+- Symptom: The parent Stability-SINDy cycle and the disjoint weak-form/support-stability recovery cycle both closed as negative results. The recovery candidate completed only 82/84 cells, its unseen-SNR20 error was worse than the strongest baseline, and the system-level uncertainty interval still crosses zero.
 - Impact: Gate A does not pass. Qwen submission evidence, full RealPDEBench Cylinder training, product-surface expansion, external submission, and award-level claims remain blocked under the competition-first plan.
-- Evidence: The selected baseline is `operon_gp`. Successful-cell unseen-SNR20 median derivative NMSE is `0.1174514860` for the candidate versus `0.6864225438` for Operon, an observed 82.89% relative improvement. Under the conservative failure-aware policy, the six-system median improvement is 37.15% and the 20,000-resample 95% bootstrap CI is `[-0.2010595526, 0.8889914327]`. All-method success is 244/252.
-- Root cause: One of six unseen systems is worse for the candidate, one baseline system lacks all three successful seeds and is conservatively assigned zero improvement, and only six independent unseen systems make the uncertainty interval wide. The favorable seed-level point estimate is not sufficient independent evidence.
+- Evidence: The parent report selected `operon_gp` and recorded a favorable but uncertain failure-aware CI of `[-0.2010595526, 0.8889914327]`. The sealed recovery reused the same baseline family on a disjoint panel and fresh seeds: 241/252 cells succeeded, the candidate succeeded on 82/84, and exact rerun reused all 252 unique result hashes. Recovery unseen-SNR20 median derivative NMSE is `6.7172942065` for the candidate versus `0.6980009446` for Operon; the failure-aware six-system median relative improvement is `-1.7040611207` and the 20,000-resample 95% bootstrap CI is `[-4.1162493517, 0.2929116899]`.
+- Root cause: The recovery mechanism improves clean unseen derivative fitting but is not noise robust across systems. Four of six recovery system effects are negative, two candidate noisy cells lack valid scientific payloads, and only six independent unseen systems still produce a wide confidence interval. This is scientific falsification of the frozen mechanism family, not permission to retune the revealed panel.
 - Workaround: None. Do not replace the system-level uncertainty unit with seed-level pseudo-replication, delete failures, change the frozen matrix, or begin Gate B.
-- Next action: Task `259.7.2` has frozen and development-smoked the weak-form/support-stability implementation without opening recovery unseen systems. Execute and adjudicate the unchanged matrix under `259.7.3`; do not tune after the sealed unseen results are revealed.
+- Next action: None inside the parent or recovery mechanism families. Do not start tasks `259.5` or `259.6`. Any future Gate A attempt must be a separately justified, result-blind hypothesis with a newly sealed panel and stopping rule; task `259.7.3` does not authorize such a third cycle.
 - Linked tasks: `259.4`, `259.7`; blocks `259.5` and `259.6` under the current execution order.
-- Resolution: Not resolved scientifically; the system has correctly stopped and exposed the gap.
-- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests. The recovery preregistration binds this report under recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` and fresh matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`. The task `259.7.2` development smoke produced 4/4 finite candidate results and deterministic reuse, but it did not alter the negative Gate A decision.
+- Resolution: Not resolved scientifically; two preregistered cycles have now stopped honestly and Gate B remains closed.
+- Verification: The idempotent recovery report records `decision=negative_result`, `gate_b_allowed=false`, four failed mandatory checks, all six system effects, zero human interventions, and zero access requests. Report hash `4e2c49ec0e3be5bfe482f153468d17496c74d48b8fa17903a89787dadb2b623d` binds result-set hash `2a9b402c5f0a17410aaff8c0918b5b37021e08cf0c6c2ae46387544c9a55564c`, pre-result truth hash `38d549143207b177b6a2c9430e5b68cdd89e4dd80b41eaf04d082f5b255b04dd`, policy hash `ef60d9a245a7a0937b99361d71ed31d2c79116b25ff45098d9f39c554d9cbd9f`, and adjudicator SHA-256 `b2037a1c765aa8274205da85c59c35958405abbea81ee5498a515ef8796b7d31`.
 
 ### P-20260718-011 - Raw weak-library scaling corrupted sparse coefficient selection
 
@@ -88,21 +88,21 @@ update a factual problem entry below.
 - Resolution: Added weak-path-only column normalization with coefficient unscaling, leaving the existing non-weak candidate path unchanged.
 - Verification: The image self-test recovered oscillator coefficients near `+/-0.99999` and transport `u_t=-0.99999u_x`. Development smoke v3 recovered clean `advection1d` as `u_t=-0.100002296229*u_x`, derivative NMSE `1.2669956438e-6`, complexity `2`; the repeat invocation reused its original result hash.
 
-### P-20260718-012 - Weak recovery candidate degenerates on noisy PDE development control
+### P-20260718-012 - Weak recovery candidate degenerates under noisy evaluation
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-18 00:17:20 +08:00
 - Source: Task `259.7.2` recovery-development smokes v1 through v3.
 - Symptom: The SNR20 `advection1d` development cell selects an empty stable support and reports `u0_t = 0`, derivative NMSE `0.9999999999997785`, despite successful container execution.
-- Impact: The frozen hypothesis specifically targets noisy derivative robustness. This development result is an adverse scientific signal and may prevent the candidate from beating the strongest baseline or passing the recovery confidence gate.
-- Evidence: The same zero-support behavior persisted after switching to independent weak-form validation and after correcting column scaling. Smoke v3 records validation NMSE `0.9999837162568695`, stable support size `0`, and result hash `f44aad22557b1e197f9ff2ef34861b8547fe7496c77f7406308df6de7c28cf93`.
-- Root cause: Not established as an implementation defect. On this control, the independent noisy weak validation residual favors the zero model over the preregistered nonzero configurations; forcing a nonzero support would be development overfitting and would not establish unseen robustness.
-- Workaround: None. Retain the zero model as evidence; do not add a third denoising mechanism or change the frozen search space inside this recovery cycle.
-- Next action: Run and adjudicate the unchanged 252-cell matrix under task `259.7.3`. If the pre-registered unseen confidence gate fails, close this mechanism family as a credible negative result.
+- Impact: The frozen hypothesis specifically targets noisy derivative robustness. The full recovery result confirms that this limitation prevents the candidate from beating the strongest baseline or passing the recovery confidence gate.
+- Evidence: The development zero-support behavior persisted after independent weak validation and corrected column scaling. In the sealed recovery evaluation, candidate clean unseen derivative NMSE median is `0.0146375294` versus Operon's `0.0914147362`, but noisy unseen median degrades to `6.7172942065` versus `0.6980009446`. Candidate noise-robustness ratio median is `131112.7612`, four of six system effects are negative, and two noisy candidate cells fail required scientific evidence.
+- Root cause: Not established as a code defect. The frozen weak projection/support-selection objective can fit clean dynamics but does not select stable predictive support under the benchmark noise distribution. Forcing support or adding denoising after seeing the sealed panel would be post-unseen overfitting.
+- Workaround: None. Retain the development zero model and all full-matrix failures as evidence; do not add a third mechanism inside this completed cycle.
+- Next action: None for this mechanism family. Gate B remains blocked through `P-20260717-009`.
 - Linked tasks: `259.7.2`, `259.7.3`; continues to block `259.5` and `259.6` through `P-20260717-009`.
-- Resolution: Open scientific limitation; task `259.7.2` is complete because execution, finite metrics, hash binding, resume, and failure persistence passed, not because the hypothesis succeeded.
-- Verification: The v3 smoke and its identical resume report 4/4 succeeded, 0 failed, 0 timed out, 0 human interventions, and 0 access requests while preserving this negative cell unchanged.
+- Resolution: Task `259.7.3` adjudicated the unchanged sealed matrix as a credible negative result and stopped the weak-form/support-stability family without post-unseen tuning. “Resolved” means the risk has been conclusively handled by the stop rule, not that noisy recovery was fixed.
+- Verification: The full execution reached 252/252 terminal cells with 241 successes, 11 failures, 0 timeouts, 0 human interventions, and 0 access requests; its exact rerun reused all 252 hashes. The frozen adjudicator returned `negative_result` twice with identical file SHA-256 `64b64775d519eb4cf289ad0a1e8bf1e2a5848bc966917dd2c1c5a9fc7c01f6d8`.
 
 ### P-20260718-013 - Workstation restart and diagnostic command mismatches interrupted recovery smoke
 

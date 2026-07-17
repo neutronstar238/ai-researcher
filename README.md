@@ -292,9 +292,18 @@ The candidate is now implemented in the versioned scientific image. Its syntheti
 and four development-only cells completed with finite metrics; an unchanged rerun reused all four
 hash-valid results with zero human interventions and zero access requests. Column-normalized STLSQ
 recovered clean `advection1d` as `u_t=-0.100002u_x` at derivative NMSE `1.27e-6`, while the SNR20
-development control still selected a zero equation at NMSE approximately `1`. This is executable
-development evidence, not a recovery pass: no recovery unseen system was run or inspected, Gate A
-remains negative, and Gate B remains blocked.
+development control still selected a zero equation at NMSE approximately `1`. After freezing and
+committing the truth registry and adjudication policy, the unchanged recovery matrix completed all
+252 cells: 241 succeeded, 11 failed, 0 timed out, with zero human interventions and zero access
+requests. An identical invocation revalidated and reused all 252 unique result hashes without
+recomputation. Operon remained the strongest development baseline. The candidate's clean unseen
+derivative-NMSE median was `0.014638` versus Operon's `0.091415`, but the preregistered SNR20 primary
+median reversed to `6.717294` versus `0.698001`; candidate success was only 82/84. The failure-aware
+six-system median relative improvement was `-1.704061`, and the 20,000-resample system-level
+bootstrap 95% CI was `[-4.116249, 0.292912]`. The idempotent adjudication therefore closes the
+recovery as a credible `negative_result`, keeps `gate_b_allowed=false`, and stops this mechanism
+family without post-unseen tuning. Gate B, Qwen submission evidence, product expansion, and award
+claims remain blocked.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

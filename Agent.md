@@ -64,6 +64,40 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-18 01:32:37 +08:00 - Codex - Task 259.7.3.2 recovery execution and adjudication
+
+- Request: Resume after the workstation restart, drain and reproduce the unchanged 252-cell recovery matrix, apply the pre-result frozen Gate A adjudicator, stop on a negative result, update the evidence boundary, and push the completed task.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-259-7-3-2-recovery-negative-adjudication.md`
+- Summary:
+  - Executed the unchanged recovery matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e` in pinned image `autoresearch-mdbench-gate-a-recovery:c22b9243`. All 252 cells became terminal: 241 succeeded, 11 failed, 0 timed out, and 0 remained pending; human intervention and access-request counts were both zero.
+  - Repeated the identical execution command. All 252 records reported `reused_this_invocation=true`, none was recomputed, and all 252 result hashes were unique. The final execution report hash is `c86d8d8e607eecc1e25bd89f1e744894d35a2e6acc079a82f8110ddd4da3373b`; environment hash remained `006f047a654fb33296cd849c27cf0f9774ebd0b809780aaca441ae0871b8f7f4`.
+  - Preserved every failure: `sindy_or_pdefind` has six noisy-PDE `SympifyError` cells and three clean-Lorenz missing-evidence cells; `weak_stability_sindy` has two noisy seed-43 missing-evidence cells; Operon completed 84/84.
+  - Applied the committed truth-registry hash `38d549143207b177b6a2c9430e5b68cdd89e4dd80b41eaf04d082f5b255b04dd`, analysis-policy hash `ef60d9a245a7a0937b99361d71ed31d2c79116b25ff45098d9f39c554d9cbd9f`, and adjudicator SHA-256 `b2037a1c765aa8274205da85c59c35958405abbea81ee5498a515ef8796b7d31` without post-unseen changes.
+  - Closed recovery as `negative_result`. Operon was the strongest baseline; candidate clean unseen derivative-NMSE median was `0.0146375294` versus `0.0914147362`, but noisy unseen median was `6.7172942065` versus `0.6980009446`. Candidate success was 82/84, failure-aware six-system median relative improvement was `-1.7040611207`, and the 20,000-resample system-level bootstrap 95% CI was `[-4.1162493517, 0.2929116899]`.
+  - Repeated adjudication produced identical file SHA-256 `64b64775d519eb4cf289ad0a1e8bf1e2a5848bc966917dd2c1c5a9fc7c01f6d8`. Canonical report hash is `4e2c49ec0e3be5bfe482f153468d17496c74d48b8fa17903a89787dadb2b623d`; result-set hash is `2a9b402c5f0a17410aaff8c0918b5b37021e08cf0c6c2ae46387544c9a55564c`.
+  - Marked tasks `259.7.3.2`, `259.7.3`, and `259.7` complete as an honest negative-result stop, documented the result in both plans, both READMEs, and the canonical Vault, and kept `gate_b_allowed=false`. No Gate B, Qwen submission evidence, product expansion, external submission, or award claim was started.
+- Verification:
+  - `poetry run airesearcher competition mdbench execute --matrix runs/manual-live/task259-mdbench-recovery-v1/gate-a-recovery-matrix.json --archive-manifest runs/manual-live/task259-mdbench-official-v1/data/prepared/archive-manifest.json --output-dir runs/manual-live/task259-mdbench-recovery-official-v1/execution-v1 --image autoresearch-mdbench-gate-a-recovery:c22b9243`: passed; 252 terminal, 241 succeeded, 11 failed, 0 timed out. The exact repeat passed and reused 252/252 results.
+  - `poetry run airesearcher competition mdbench evaluate --matrix runs/manual-live/task259-mdbench-recovery-v1/gate-a-recovery-matrix.json --execution-report runs/manual-live/task259-mdbench-recovery-official-v1/execution-v1/execution-report.json --output-dir runs/manual-live/task259-mdbench-recovery-official-v1/gate-a-v1`: passed twice; both runs returned `negative_result`, Operon baseline, CI `[-4.116249, 0.292912]`, and `gate_b_allowed=false` with identical report bytes.
+  - `poetry run pytest -q`: passed, 718 tests; 4 live tests skipped; coverage 87%.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 124 source files.
+  - `git diff --check`: passed before the final Agent entry and will be repeated before commit.
+- Problems:
+  - Updated open `P-20260717-009` with the second sealed negative result, mandatory Gate B stop, and no authorized third cycle.
+  - Resolved `P-20260718-012` through the preregistered scientific stop rule: the full noisy evaluation confirmed the limitation and closed the mechanism family; this does not claim the noisy-recovery defect was fixed.
+- Follow-up:
+  - None inside this mechanism family. Keep tasks `259.5` and `259.6` blocked. Any future Gate A attempt requires a separately justified, result-blind hypothesis, a newly sealed panel, and a new pre-result stop rule; do not tune the revealed recovery systems.
+
 ### 2026-07-18 00:50:31 +08:00 - Codex - Task 259.7.3.1 recovery truth freeze
 
 - Request: Continue after the pushed development-smoke checkpoint, but freeze all recovery truth scoring and adjudication policy before revealing any recovery unseen result.
