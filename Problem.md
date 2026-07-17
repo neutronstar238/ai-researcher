@@ -40,21 +40,21 @@ update a factual problem entry below.
 
 ## Problems
 
-### P-20260717-001 - Gate A remains a development fixture, not official MDBench evidence
+### P-20260717-001 - Official MDBench execution exists, but Gate A is not yet adjudicated
 
 - Status: Open
 - Severity: High
 - Discovered: 2026-07-17 21:26:51 +08:00
 - Source: Task `259.1` competition-first unattended Gate A contract.
-- Symptom: The development competition CLI completes a sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every development attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the official archive and 252-cell result-blind matrix are verified, while only three official single-system/single-seed smoke cells have executed and the competition manifest remains `release_eligible=false`.
-- Impact: The run proves lifecycle, checkpoint, execution, tamper detection, and negative-release behavior only. It cannot support an official MDBench result, a Gate A pass, a RealPDEBench start decision, a competition-quality scientific claim, or an award claim.
-- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, licenses, archive metadata, and Docker. Task `259.3.1` verified archive MD5 `9fe483c64ad6e67a07153b00a4665d26`, SHA-256 `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`, and inventory hash `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`, covering 63 ODEs, 14 PDEs, five conditions, and 385 NPZ files. Task `259.3.2.1` froze 252 cells under matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`. Task `259.3.2.2.1` then ran SINDy, bounded Operon, and stability-SINDy on official clean harmonic-oscillator seed 11; all three hash-bound cells succeeded and resumed without rerun, but 249 cells remain pending.
-- Root cause: Tasks through `259.3.2.2.1` establish lifecycle, environment, data, frozen design, and a real single-cell-per-method execution path only. The remaining official matrix, aggregate metrics, and three independent full repetitions are not complete.
-- Workaround: Keep all outputs labelled `generated-characterization-fixture-not-official-mdbench-result`, keep `development_fixture=true`, and block release/export regardless of favorable fixture metrics.
-- Next action: Implement task `259.3.2.2`, execute and checkpoint the already-frozen matrix without changing its hash, and let task `259.4` produce either a reproducible Gate A pass or a credible negative result.
+- Symptom: The development fixture remains correctly blocked, while the separate official execution now contains all 252 frozen MDBench cells. The official matrix is complete and resumable, but no aggregate Gate A decision or release-eligible competition manifest exists yet.
+- Impact: The repository can now support an official matrix analysis, but it still cannot support a Gate A pass, RealPDEBench start decision, competition-quality superiority claim, submission, or award claim until task `259.4` applies the preregistered held-out and uncertainty gates.
+- Evidence: `runs/manual-live/task259-mdbench-official-v1/execution-v5/execution-report.json` binds matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`, environment hash `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`, and 252 terminal attempts: 244 succeeded, 8 failed, 0 timed out, and 0 pending. A second full invocation set every record's `reused_this_invocation=true`. The earlier development manifest still reports `release_eligible=false` and remains separate.
+- Root cause: Task `259.3` intentionally ends at immutable official execution evidence. Structure scoring, clean/noisy robustness, strongest-baseline selection, paired bootstrap confidence, and the final pass/negative decision belong to task `259.4`.
+- Workaround: Keep the earlier development outputs labelled `generated-characterization-fixture-not-official-mdbench-result` with `development_fixture=true`; keep official execution evidence separate and block release/export until task `259.4` adjudicates it.
+- Next action: Implement task `259.4` without changing or dropping any frozen cell; produce either a reproducible Gate A pass or a credible negative result.
 - Linked tasks: `259.1`, `259.2`, `259.3`, `259.4`.
-- Resolution: None; this is an intentional, visible boundary of the completed first slice.
-- Verification: Broad tests, Ruff, Mypy, real local characterization CLI, blocked export, live official preflight, image build, container dependency/import checks, and the three real single-cell official executions passed. Only the last item is method-result evidence, and it remains explicitly insufficient for matrix-wide Gate A.
+- Resolution: None; the official execution blocker is resolved, while the aggregate Gate A decision remains intentionally open.
+- Verification: The unchanged execution command completed at 252/252 and a second invocation reused all 252 hash-validated checkpoints. Matrix and environment hashes each have cardinality one; every system/condition/method group contains seeds 11, 23, and 37; successful derivative NMSE has 141 distinct values, so the result set is not a constant-metric fixture.
 
 ### P-20260717-003 - Official MDBench hyperparameter validation slices overlap
 
@@ -67,10 +67,26 @@ update a factual problem entry below.
 - Evidence: Pinned revision `f81813e760325589737fe3311ac8199ecc64188a` assigns `time_train = time_train[:-validation_cutoff]` before `time_val = time_train[-validation_cutoff:]` and repeats the same ordering for observations and derivatives.
 - Root cause: The validation slice is taken after the source variable has been rebound to its shortened training prefix.
 - Workaround: Characterize the upstream output separately, but make task `259.3.2` use a recorded, non-overlapping chronological train/validation/test split in the adapter. Persist the divergence and split indices in the experiment manifest.
-- Next action: Keep the upstream divergence disclosed while task `259.3.2.2.2` executes every frozen cell through the corrected adapter; do not call the adapter an unchanged upstream evaluator.
+- Next action: Keep the upstream divergence disclosed in task `259.4`; do not call the corrected adapter an unchanged upstream evaluator.
 - Linked tasks: `259.3.1`, `259.3.2`, `259.4`.
 - Resolution: The official source remains pinned and unmodified. The adapter validates normalized contiguity before execution, materializes `[0,96)`, `[96,120)`, and `[120,150)` on the live 150-point ODE smoke, persists those indices in every result, and rejects overlapping concrete-index fixtures. This mitigates the leak without hiding the divergence.
-- Verification: Direct source inspection, focused normalized/concrete overlap regression tests, and the live three-method harmonic-oscillator smoke.
+- Verification: Direct source inspection, focused normalized/concrete overlap regression tests, the live smoke, and all 252 terminal matrix results using the corrected concrete split adapter.
+
+### P-20260717-007 - Eight frozen official cells failed and must remain in Gate A analysis
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-17 23:00:34 +08:00
+- Source: Task `259.3.2.2.2` complete official matrix execution.
+- Symptom: Of 252 frozen cells, the sparse SINDy/PDE-FIND family has 78 successes and 6 failures, Operon has 82 successes and 2 failures, and stability-SINDy has 84 successes and no failures. The sparse failures are `SympifyError: None` cases; the two Operon failures are successful runner payloads rejected for missing required scientific evidence.
+- Impact: Dropping failed baseline cells could bias the strongest-baseline and paired-bootstrap comparison. Treating them as successful or silently rerunning with changed configuration would violate the frozen matrix.
+- Evidence: The complete `execution-v5` report records 244 successes, 8 failures, 0 timeouts, and 0 pending. All 252 result hashes were accepted on resume, and the failures remain terminal records with reasons and logs.
+- Root cause: The bounded baseline adapters do not produce a valid scored equation for every frozen noisy system/seed; the execution contract correctly converts invalid or incomplete payloads into failed evidence.
+- Workaround: None. Task `259.4` must report coverage by method, use a preregistered-conservative missing-cell policy, and expose both complete-case and failure-aware sensitivity results without replacing cells.
+- Next action: Implement the Gate A adjudicator and explicitly determine whether the preregistered reproducibility and paired-improvement gates can be evaluated or must close as a credible negative result.
+- Linked tasks: `259.3.2.2.2`, `259.4`.
+- Resolution: None; this is observed official evidence for the next gate.
+- Verification: Full execution and full resume both completed; method/status counts are 84/0 candidate, 78/6 sparse, and 82/2 Operon.
 
 ### P-20260717-005 - Absolute container runner initially could not import pinned MDBench
 

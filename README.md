@@ -258,14 +258,16 @@ It materializes 252 hash-bound cells and recomputes the matrix hash when reloade
 matrix hash is `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`;
 freezing it by itself does not mean that any cell has run.
 
-`competition mdbench execute` now verifies the matrix and archive again, probes the exact local
-image and runner bytes, mounts each NPZ read-only into a network-disabled disposable container,
+`competition mdbench execute` verifies the matrix and archive again, probes the exact local image
+and runner bytes, mounts each NPZ read-only into a network-disabled disposable container,
 materializes concrete disjoint indices, and checkpoints terminal results with data, config, spec,
-runner, orchestrator, container, log, and result hashes. A live smoke has executed all three frozen
-method families on the same official clean harmonic-oscillator/seed-11 cell; all three succeeded,
-and a second invocation reused the three validated terminal results without rerunning them. This is
-real official single-cell execution evidence, not Gate A completion: 249 of 252 cells remain pending,
-so no benchmark-wide superiority, reproducibility, Gate B, submission, or award claim is allowed.
+runner, orchestrator, container, log, and result hashes. The frozen official matrix has now reached
+252/252 terminal cells: 244 succeeded, 8 failed, 0 timed out, and 0 remain pending. All 84 candidate
+cells succeeded; the sparse baseline has 78 successes and 6 failures, while Operon has 82 successes
+and 2 failures. A full second invocation reused all 252 validated terminal results in about four
+seconds. This is official execution and recovery evidence, but it is not yet a Gate A pass: task
+259.4 must retain the failed cells, compute the preregistered held-out comparisons and confidence
+interval, and emit either a passing report or a credible negative result before Gate B can start.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

@@ -64,6 +64,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 23:01:32 +08:00 - Codex - Task 259.3.2.2.2 complete MDBench matrix execution
+
+- Request: Execute all 252 frozen official MDBench cells unchanged, persist every success/failure/timeout, and prove the complete checkpoint can resume without rerunning scientific work.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `README.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Drained the result-blind matrix in `execution-v5` without changing matrix, container, runner, dependency, data, or configuration hashes. The report reached 252 terminal attempts: 244 succeeded, 8 failed, 0 timed out, and 0 pending, with `human_intervention_count=0` and `access_request_count=0`.
+  - Preserved all failures as evidence: stability-SINDy succeeded on 84/84 cells, SINDy/PDE-FIND on 78/84 with 6 failures, and bounded Operon on 82/84 with 2 failures. No failed cell was deleted, relabelled, or rerun under a changed frozen configuration.
+  - Repeated the complete execution command. It finished in approximately four seconds and marked all 252 records `reused_this_invocation=true`, proving whole-matrix checkpoint recovery and causal revalidation.
+  - Closed task `259.3.2.2.2` and its parent execution tasks. This does not close Gate A: task `259.4` must retain the eight failures and apply structure, held-out metric, noise, cost, reproducibility, and paired-bootstrap gates before any superiority or Gate B claim.
+- Verification:
+  - Full `competition mdbench execute` completed with matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`, environment hash `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`, 252 terminal attempts, 244 successes, 8 failures, 0 timeouts, 0 pending, and `complete=true`.
+  - The unchanged command reran successfully and reused all 252 terminal checkpoints; no container experiment was relaunched.
+  - A read-only evidence audit found 252 unique attempt IDs, exactly one matrix hash, exactly one environment hash, complete three-seed terminal coverage for every system/condition/method group, 141 distinct successful derivative-NMSE values, 134 validation-NMSE values, and 46 complexity values.
+  - Method/status audit reported `stability_sindy:succeeded=84`, `sindy_or_pdefind:succeeded=78`, `sindy_or_pdefind:failed=6`, `operon_gp:succeeded=82`, and `operon_gp:failed=2`.
+- Problems:
+  - Updated `P-20260717-001`: official execution now exists, but Gate A is not adjudicated.
+  - Updated `P-20260717-003`: all frozen cells used the corrected, disclosed disjoint split adapter.
+  - Added `P-20260717-007` so the eight failed baseline cells cannot be silently dropped from task `259.4`.
+- Follow-up:
+  - Implement task `259.4` as an immutable Gate A adjudicator. Produce either a reproducible pass or a credible negative report; keep Gate B, Qwen submission evidence, and product expansion blocked until that decision exists.
+
 ### 2026-07-17 22:39:37 +08:00 - Codex - Task 259.3.2.2.1 hash-bound MDBench runner smoke
 
 - Request: Build the resumable official-matrix runner, prove one unchanged cell can execute in the bounded container with a complete causal chain, and reject or reuse checkpoints before scaling to all 252 cells.

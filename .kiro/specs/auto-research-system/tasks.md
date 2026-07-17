@@ -3161,23 +3161,23 @@ A task can be checked only when all applicable items are true:
     - Build a versioned Python 3.9 SINDy/PDE-FIND scientific-compute image, verify its dependency closure, immutable revision label, and official evaluator CLI.
     - Keep the evidence boundary explicit: source/data/container readiness is not an official benchmark result and cannot release Gate A.
     - _Verify: deterministic preflight/CLI/container-contract tests, focused Ruff/Mypy, live GitHub/Zenodo/Docker preflight, real image build, `pip check`, official evaluator CLI smoke, broad regression gates, and `git diff --check` are recorded in `Agent.md`._
-  - [ ] 259.3 Execute the official MDBench data and baseline matrix
+  - [x] 259.3 Execute the official MDBench data and baseline matrix
     - [x] 259.3.1 Prepare a verified, resumable official-data inventory
       - Add a pinned adapter for resumable download, fixed size/MD5 verification, safe atomic ZIP extraction, per-file SHA-256 hashing, and typed ODE/PDE/noise inventory without adding scientific dependencies to the core package.
       - Require the successful live preflight and explicit dataset-license metadata before download; reject partial, altered, path-traversing, or manifest-mismatched archives.
       - Execute the adapter on the official archive and retain the immutable revision, DOI, license, archive hashes, 63 ODE/14 PDE system names, five conditions, and 385 NPZ records as local run evidence.
       - _Verify: focused archive/preflight/CLI tests, focused and broad Ruff/Mypy/Pytest, a real official archive prepare run, and `git diff --check` are recorded in `Agent.md`._
-    - [ ] 259.3.2 Preregister and execute the held-out official baseline matrix
+    - [x] 259.3.2 Preregister and execute the held-out official baseline matrix
       - [x] 259.3.2.1 Freeze the result-blind official matrix
         - Freeze 10 ODEs and 4 PDEs, clean plus SNR 20, eight development versus six unseen-test systems, seeds 11/23/37, bounded sparse/GP-symbolic/candidate methods, chronological 64/16/20 splits, metrics, and acceptance criteria before inspecting method results.
         - Materialize all 252 unique matrix cells, bind each to the official artifact SHA-256 and method/config hash, and reject missing artifacts, overlapping splits, incomplete Cartesian coverage, changed frozen files, or content/hash tampering.
         - Record the upstream validation-overlap and fixed-seed divergences; do not silently represent the corrected adapter as an unchanged upstream evaluator.
         - _Verify: focused preregistration/CLI tests, focused and broad Ruff/Mypy/Pytest, a live result-blind preregistration against the official inventory, and `git diff --check` are recorded in `Agent.md`._
-      - [ ] 259.3.2.2 Execute and checkpoint the frozen matrix
+      - [x] 259.3.2.2 Execute and checkpoint the frozen matrix
         - [x] 259.3.2.2.1 Build and live-smoke the hash-bound container runner
           - Run one unchanged official matrix cell end to end with read-only data, disabled network, bounded CPU/memory/time, concrete disjoint indices, code/data/config/environment/result hashes, logs, equations, metrics, and terminal failure persistence.
           - Prove that resume reuses a valid terminal result and rejects tampered or causally mismatched checkpoints before scaling the same runner.
-        - [ ] 259.3.2.2.2 Execute all 252 frozen cells
+        - [x] 259.3.2.2.2 Execute all 252 frozen cells
           - Run the preregistered sparse-linear, bounded Operon GP-symbolic, and stability-selected candidate cells in the versioned container with automatic timeout/failure persistence and resume.
           - Record official result schemas, split indices, data/code/config/environment/result hashes, resource use, failures, equations, and all repetitions without changing the frozen matrix.
           - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
