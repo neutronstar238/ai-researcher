@@ -3162,10 +3162,15 @@ A task can be checked only when all applicable items are true:
     - Keep the evidence boundary explicit: source/data/container readiness is not an official benchmark result and cannot release Gate A.
     - _Verify: deterministic preflight/CLI/container-contract tests, focused Ruff/Mypy, live GitHub/Zenodo/Docker preflight, real image build, `pip check`, official evaluator CLI smoke, broad regression gates, and `git diff --check` are recorded in `Agent.md`._
   - [ ] 259.3 Execute the official MDBench data and baseline matrix
-    - Add a pinned adapter for the official dataset/result schemas without adding heavy dependencies to the core package.
-    - Run at least 10 ODEs and 4 PDEs under clean and noisy conditions against preregistered linear, genetic-programming, and symbolic-regression baselines.
-    - Record dataset licenses, immutable upstream revisions, data hashes, resource use, failures, and three independent repetitions.
-    - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
+    - [x] 259.3.1 Prepare a verified, resumable official-data inventory
+      - Add a pinned adapter for resumable download, fixed size/MD5 verification, safe atomic ZIP extraction, per-file SHA-256 hashing, and typed ODE/PDE/noise inventory without adding scientific dependencies to the core package.
+      - Require the successful live preflight and explicit dataset-license metadata before download; reject partial, altered, path-traversing, or manifest-mismatched archives.
+      - Execute the adapter on the official archive and retain the immutable revision, DOI, license, archive hashes, 63 ODE/14 PDE system names, five conditions, and 385 NPZ records as local run evidence.
+      - _Verify: focused archive/preflight/CLI tests, focused and broad Ruff/Mypy/Pytest, a real official archive prepare run, and `git diff --check` are recorded in `Agent.md`._
+    - [ ] 259.3.2 Preregister and execute the held-out official baseline matrix
+      - Freeze at least 10 ODEs and 4 PDEs, clean plus a declared noisy condition, development versus unseen-test systems, three independent seeds, bounded resources, and non-overlapping train/validation/test semantics before inspecting method results.
+      - Run linear, genetic-programming/symbolic-regression, and generated candidate methods; record official result schemas, data/code/config hashes, resource use, failures, and all repetitions.
+      - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
   - [ ] 259.4 Pass or honestly close Gate A
     - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.

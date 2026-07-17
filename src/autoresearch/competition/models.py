@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -362,6 +362,38 @@ class MDBenchOfficialPreflight(StrictFrozenModel):
     ready_to_execute: bool = False
     blockers: tuple[str, ...] = ()
     access_request_ids: tuple[str, ...] = ()
+    output_path: str
+
+
+class MDBenchDatasetArtifact(StrictFrozenModel):
+    """One extracted official NPZ file with an immutable content hash."""
+
+    relative_path: str
+    data_type: Literal["ode", "pde"]
+    system_name: str
+    condition: str
+    size_bytes: int = Field(ge=0)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class MDBenchArchiveManifest(StrictFrozenModel):
+    """Verified official archive and extracted-dataset inventory."""
+
+    schema_version: str = "mdbench-archive-manifest-v1"
+    repository_url: str
+    benchmark_revision: str
+    dataset_doi: str
+    dataset_license: str
+    archive_path: str
+    archive_size_bytes: int = Field(ge=0)
+    archive_md5: str = Field(pattern=r"^[0-9a-f]{32}$")
+    archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    extracted_root: str
+    artifacts: tuple[MDBenchDatasetArtifact, ...] = ()
+    ode_systems: tuple[str, ...] = ()
+    pde_systems: tuple[str, ...] = ()
+    noise_conditions: tuple[str, ...] = ()
+    inventory_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     output_path: str
 
 

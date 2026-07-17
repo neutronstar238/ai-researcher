@@ -219,6 +219,7 @@ feasibility or evidence gates.
 airesearcher competition run --topic-mode auto
 airesearcher competition run --topic-mode seeded --topic "noise-robust equation discovery" --guidance "prefer interpretable models"
 airesearcher competition mdbench preflight
+airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -240,6 +241,13 @@ Zenodo record license, processed-archive size/checksum, and local container runt
 stable, minimum-scope `AccessRequest` files and refuses to authorize a download if an explicit
 dataset license or runtime is missing. The versioned Python 3.9 SINDy/PDE-FIND image has been built
 and its official evaluator CLI smoke-tested; this is environment evidence, not benchmark evidence.
+
+`competition mdbench prepare` consumes only a successful preflight, resumes the official archive
+download, verifies the fixed byte count and MD5, safely extracts through an atomic staging
+directory, and writes per-NPZ SHA-256 inventory evidence. The live preparation has confirmed 63
+ODE systems, 14 PDE systems, clean plus four SNR conditions, and 385 NPZ artifacts. This is official
+data evidence, but it is still **not** a method result: Gate A stays blocked until the preregistered
+10-ODE/4-PDE matrix and three repetitions finish.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

@@ -46,15 +46,47 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-17 21:26:51 +08:00
 - Source: Task `259.1` competition-first unattended Gate A contract.
-- Symptom: The new competition CLI completes a real sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the manifest remains `release_eligible=false`.
+- Symptom: The new competition CLI completes a real sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the official archive is now verified and inventoried, but no official method matrix exists and the manifest remains `release_eligible=false`.
 - Impact: The run proves lifecycle, checkpoint, execution, tamper detection, and negative-release behavior only. It cannot support an official MDBench result, a Gate A pass, a RealPDEBench start decision, a competition-quality scientific claim, or an award claim.
-- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` then verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, MIT code license, Zenodo `metadata.license.id=mit-license`, and the pinned `processed.zip` metadata, and built/smoke-tested the versioned Docker image; it still did not execute the official dataset.
-- Root cause: Task `259.1` deliberately implements a lightweight characterization fixture, while task `259.2` deliberately stops at source/data/container readiness. The official result adapter, held-out split, preregistered baselines, 10 ODE/4 PDE clean/noisy matrix, and three independent full repetitions are not implemented yet.
+- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, licenses, archive metadata, and Docker. Task `259.3.1` then verified archive MD5 `9fe483c64ad6e67a07153b00a4665d26`, SHA-256 `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`, and inventory hash `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`, covering 63 ODEs, 14 PDEs, five conditions, and 385 NPZ files; it still did not execute a method.
+- Root cause: Tasks `259.1` and `259.2` deliberately stop at lifecycle and environment evidence, and task `259.3.1` stops at official-data integrity. The held-out split, preregistered baselines, 10 ODE/4 PDE clean/noisy result matrix, and three independent full repetitions are not implemented yet.
 - Workaround: Keep all outputs labelled `generated-characterization-fixture-not-official-mdbench-result`, keep `development_fixture=true`, and block release/export regardless of favorable fixture metrics.
-- Next action: Implement task `259.3`, run the official matrix against preregistered baselines, and let task `259.4` produce either a reproducible Gate A pass or a credible negative result.
+- Next action: Implement task `259.3.2`, freeze the held-out matrix before result inspection, run it against preregistered baselines, and let task `259.4` produce either a reproducible Gate A pass or a credible negative result.
 - Linked tasks: `259.1`, `259.2`, `259.3`, `259.4`.
 - Resolution: None; this is an intentional, visible boundary of the completed first slice.
 - Verification: Broad tests, Ruff, Mypy, real local characterization CLI, blocked export, live official preflight, image build, container `pip check`, and official evaluator CLI smoke passed; none is represented as official benchmark execution.
+
+### P-20260717-003 - Official MDBench hyperparameter validation slices overlap
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-17 22:00:00 +08:00
+- Source: Task `259.3.1` audit of pinned `mdbench/evaluate_method.py` before preregistration.
+- Symptom: `hyperparameter_pareto_front` first truncates `time_train`, `observation_train`, and `derivative_train`, then derives validation arrays from those already-truncated training arrays. The resulting validation tail is contained inside the arrays passed to model fitting rather than being a disjoint holdout.
+- Impact: Calling the upstream hyperparameter path unchanged would leak validation observations into training and could inflate model-selection evidence. It cannot satisfy this project's held-out causal and reproducibility gate.
+- Evidence: Pinned revision `f81813e760325589737fe3311ac8199ecc64188a` assigns `time_train = time_train[:-validation_cutoff]` before `time_val = time_train[-validation_cutoff:]` and repeats the same ordering for observations and derivatives.
+- Root cause: The validation slice is taken after the source variable has been rebound to its shortened training prefix.
+- Workaround: Characterize the upstream output separately, but make task `259.3.2` use a recorded, non-overlapping chronological train/validation/test split in the adapter. Persist the divergence and split indices in the experiment manifest.
+- Next action: Add a regression test that proves disjoint indices and block any matrix attempt whose split hashes or boundaries overlap.
+- Linked tasks: `259.3.1`, `259.3.2`, `259.4`.
+- Resolution: None; the official source remains pinned and unmodified, while the execution adapter must correct and disclose the evaluation split.
+- Verification: Direct source inspection of the pinned revision; no algorithm result was consumed.
+
+### P-20260717-004 - Direct module CLI requires project environment activation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-17 22:00:00 +08:00
+- Source: Real official-data prepare run for task `259.3.1`.
+- Symptom: `python -m autoresearch.cli.main ...` failed with `ModuleNotFoundError: No module named 'autoresearch'` because the active global Python did not include the repository `src` directory.
+- Impact: The first command did not start data preparation; downloaded data was unchanged and no partial extraction target was created.
+- Evidence: The direct invocation exited 1 before importing the CLI. The same command through `poetry run airesearcher` completed successfully.
+- Root cause: The source-layout package is available through the project environment/test configuration, not the unconfigured global interpreter module path.
+- Workaround: Use the declared Poetry console entry point for live CLI work.
+- Next action: Keep README examples on `airesearcher` and run them through `poetry run` in source checkouts.
+- Linked tasks: `259.3.1`.
+- Resolution: Retried with `poetry run airesearcher competition mdbench prepare ...`.
+- Verification: The Poetry invocation exited 0 and wrote the 385-artifact official archive manifest.
 
 ### P-20260717-002 - Legacy autopilot remains monolithic outside the new competition service
 

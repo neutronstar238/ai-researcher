@@ -788,12 +788,12 @@ project_demo/
 2. 建立持久化、幂等、可恢复的 `ResearchCycleService`，接通选题、假设、实验 DAG、沙箱执行和哈希证据门；
 3. 用明确标注的 MDBench-shaped 开发夹具验证零人工科研输入、三种子执行、恢复和负向发布门；
 4. 预检固定的 MDBench revision、代码/数据许可、归档元数据和容器运行时，真实构建并烟测版本化科学计算镜像；
-5. 在该容器中接入官方 MDBench 数据和基线，真实完成至少 10 ODE、4 PDE、clean/noisy 和三次独立复现；
+5. 通过已通过的预检续传官方 MDBench 归档，固定大小/MD5、逐文件 SHA-256 和安全解压清单，然后在该容器中接入基线，真实完成至少 10 ODE、4 PDE、clean/noisy 和三次独立复现；
 6. Gate A 未通过时形成负结果并停止，不开展完整 RealPDEBench 训练和产品界面扩张；
 7. Gate A 通过后再接入 Qwen/DashScope 调用证据和 RealPDEBench Cylinder Gate B。
 
 公共入口为 `competition run/resume/status/export`、`competition access grant` 与
-`competition mdbench preflight`。默认自动选题；
+`competition mdbench preflight/prepare`。默认自动选题；
 `seeded` 模式只缩小候选空间。授权范围内不逐实验审批，资源耗尽时保存检查点并停止。所有导出均为
 本地产物；外部提交必须有显式权限且同时通过科学证据门、复现门和榜题内部评分门。
 

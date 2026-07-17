@@ -26,6 +26,8 @@ from .models import (
     ExperimentAttempt,
     ExperimentProtocol,
     HypothesisProposal,
+    MDBenchArchiveManifest,
+    MDBenchDatasetArtifact,
     MDBenchDatasetFile,
     MDBenchOfficialPreflight,
     ResearchOperation,
@@ -36,6 +38,11 @@ from .models import (
     TopicSelectionReport,
 )
 from .official import run_mdbench_official_preflight
+from .official_data import (
+    MDBenchDataError,
+    download_mdbench_processed_archive,
+    prepare_mdbench_official_data,
+)
 from .planning import PlanCompilationError, PlanCompiler, hypothesis_from_topic
 from .selection import TopicSelectionEngine, competition_topic_candidates
 from .service import ResearchCycleService, load_capability_grant
@@ -58,6 +65,9 @@ __all__ = [
     "ExperimentProtocol",
     "HypothesisProposal",
     "MDBenchAdapter",
+    "MDBenchArchiveManifest",
+    "MDBenchDataError",
+    "MDBenchDatasetArtifact",
     "MDBenchDatasetFile",
     "MDBenchOfficialPreflight",
     "ManifestIntegrityError",
@@ -74,9 +84,11 @@ __all__ = [
     "build_competition_submission",
     "canonical_model_hash",
     "competition_topic_candidates",
+    "download_mdbench_processed_archive",
     "hypothesis_from_topic",
     "load_capability_grant",
     "load_cycle_manifest",
+    "prepare_mdbench_official_data",
     "run_mdbench_official_preflight",
     "validate_cycle_evidence",
     "write_cycle_manifest",

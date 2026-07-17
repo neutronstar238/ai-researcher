@@ -19,6 +19,11 @@ def test_competition_cli_is_registered() -> None:
     assert "access" in result.stdout
     assert "mdbench" in result.stdout
 
+    mdbench_result = CliRunner().invoke(app, ["competition", "mdbench", "--help"])
+    assert mdbench_result.exit_code == 0, mdbench_result.output
+    assert "preflight" in mdbench_result.stdout
+    assert "prepare" in mdbench_result.stdout
+
 
 def test_competition_access_grant_writes_names_not_secrets(tmp_path: Path) -> None:
     output = tmp_path / "grant.json"

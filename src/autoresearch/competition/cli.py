@@ -17,9 +17,15 @@ from autoresearch.competition.models import (
     CapabilityGrant,
     CompetitionRunSpec,
     CycleResult,
+    MDBenchOfficialPreflight,
     TopicMode,
 )
 from autoresearch.competition.official import run_mdbench_official_preflight
+from autoresearch.competition.official_data import (
+    MDBenchDataError,
+    download_mdbench_processed_archive,
+    prepare_mdbench_official_data,
+)
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
 competition_app = typer.Typer(
@@ -64,6 +70,58 @@ def competition_mdbench_preflight(
         for blocker in report.blockers:
             typer.echo(f"[BLOCKED] {blocker}")
         raise typer.Exit(code=2)
+
+
+@competition_mdbench_app.command("prepare")
+def competition_mdbench_prepare(
+    preflight_report: Annotated[
+        Path,
+        typer.Option(
+            "--preflight-report",
+            help="Successful official-preflight.json produced by mdbench preflight.",
+        ),
+    ] = Path("runs/competition/mdbench-preflight/official-preflight.json"),
+    archive_path: Annotated[
+        Path,
+        typer.Option(
+            "--archive-path",
+            help="Resumable processed.zip destination or an existing complete archive.",
+        ),
+    ] = Path("runs/competition/mdbench-official/data/processed.zip"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Verified extraction and manifest directory."),
+    ] = Path("runs/competition/mdbench-official/data"),
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-download-attempt timeout."),
+    ] = 60,
+) -> None:
+    """Download, verify, safely extract, and inventory official MDBench data."""
+
+    try:
+        preflight = MDBenchOfficialPreflight.model_validate_json(
+            preflight_report.read_text(encoding="utf-8")
+        )
+        archive = download_mdbench_processed_archive(
+            archive_path,
+            preflight,
+            timeout_seconds=timeout_seconds,
+        )
+        if preflight.dataset_license is None:
+            raise MDBenchDataError("preflight does not contain a dataset license")
+        manifest = prepare_mdbench_official_data(
+            archive,
+            output_dir,
+            dataset_license=preflight.dataset_license,
+        )
+    except (MDBenchDataError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_prepare: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] mdbench_archive_manifest: {manifest.output_path}")
+    typer.echo(f"[OK] official_ode_systems: {len(manifest.ode_systems)}")
+    typer.echo(f"[OK] official_pde_systems: {len(manifest.pde_systems)}")
+    typer.echo(f"[OK] official_npz_artifacts: {len(manifest.artifacts)}")
 
 
 @competition_app.command("run")

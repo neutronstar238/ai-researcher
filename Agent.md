@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 22:01:29 +08:00 - Codex - Task 259.3.1 verified official MDBench data inventory
+
+- Request: Continue Gate A by preparing the licensed official MDBench archive through a resumable, integrity-checked, safe, and auditable adapter without representing data readiness as a method result.
+- Files changed:
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/models.py`
+  - `src/autoresearch/competition/official_data.py`
+  - `tests/unit/competition/test_official_data.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `README.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added typed official-archive and per-NPZ artifact contracts plus `competition mdbench prepare`.
+  - The preparation path requires a successful license-aware preflight, resumes partial downloads, enforces the pinned byte count and MD5, records archive SHA-256, rejects unsafe ZIP members, extracts through a same-volume temporary staging directory, and verifies every reused artifact against its recorded size and SHA-256.
+  - Ran the path on the licensed official `processed.zip`; the immutable inventory contains 63 ODE systems, 14 PDE systems, clean plus SNR 40/30/20/10, and 385 NPZ artifacts. Archive SHA-256 is `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`; inventory hash is `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`.
+  - Split task `259.3` into completed data preparation `259.3.1` and still-pending preregistered method execution `259.3.2`. No algorithm metric, Gate A pass, Gate B authorization, or award claim was created.
+  - Audited the pinned upstream evaluator and logged its overlapping hyperparameter-validation slice before result execution so the adapter must use and disclose non-overlapping boundaries.
+  - Preserved unrelated course-paper changes already present in `Agent.md` and `Problem.md`; they are not part of this task's commit.
+- Verification:
+  - `python -m pytest tests/unit/competition/test_official_data.py tests/unit/competition/test_official_preflight.py tests/unit/competition/test_competition_cli.py -q`: passed with 11 tests, covering checksum, inventory, idempotence, extracted-file tampering, unsafe ZIP paths, license-aware preflight, network failure classification, and CLI registration.
+  - Focused Ruff and Mypy for the competition adapter/tests: passed.
+  - `Get-FileHash ...processed.zip -Algorithm MD5/SHA256`: confirmed MD5 `9FE483C64AD6E67A07153B00A4665D26` and SHA-256 `57B77FC349007C681F07458751D41C21FEAE510A301066BEC2090F85016217D3`; file size is `475908142` bytes.
+  - First direct global-Python CLI invocation failed before import because the source-layout package was not on that interpreter's module path; this resolved environment issue is recorded as `P-20260717-004`.
+  - `poetry run airesearcher competition mdbench prepare --preflight-report runs/manual-live/task259-mdbench-preflight-v1/official-preflight.json --archive-path runs/manual-live/task259-mdbench-official-v1/data/processed.zip --output-dir runs/manual-live/task259-mdbench-official-v1/data/prepared --timeout-seconds 60`: exited 0 and wrote the 385-artifact manifest.
+  - Broad `python -m pytest tests -q`: passed with 686 passed, 4 skipped, one upstream LangGraph deprecation warning, and 88% coverage.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src/autoresearch`: passed with no issues in 120 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260717-001` with official archive and inventory evidence while keeping Gate A blocked.
+  - Added `P-20260717-003` for the pinned upstream validation-overlap defect and required adapter correction.
+  - Added and resolved `P-20260717-004` for the source-layout CLI environment invocation.
+- Follow-up:
+  - Continue task `259.3.2`: preregister disjoint splits, exact 10 ODE/4 PDE systems, clean/noisy conditions, seeds, bounded baseline/candidate budgets, then execute and persist the official result matrix. Gate B remains blocked.
+
 ### 2026-07-17 21:41:34 +08:00 - Codex - Task 259.2 official MDBench preflight and container
 
 - Request: Continue the competition-first unattended refactor by establishing a version-pinned, license-aware official MDBench execution boundary before downloading data or claiming benchmark evidence.
