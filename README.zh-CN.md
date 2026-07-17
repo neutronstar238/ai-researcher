@@ -178,6 +178,7 @@ airesearcher competition run --topic-mode seeded --topic "噪声鲁棒方程发�
 airesearcher competition mdbench preflight
 airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
 airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench recover-preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json --parent-matrix runs/competition/mdbench-official/gate-a-preregistration.json --parent-report runs/competition/mdbench-official/gate-a/gate-a-adjudication.json
 airesearcher competition mdbench execute --matrix runs/competition/mdbench-official/gate-a-preregistration.json --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
 airesearcher competition mdbench evaluate --matrix runs/competition/mdbench-official/gate-a-preregistration.json --execution-report runs/competition/mdbench-official/execution/execution-report.json
 airesearcher competition status runs/competition/<run-id>
@@ -206,6 +207,16 @@ airesearcher competition export runs/competition/<run-id>
 37.15%，但 20,000 次系统级 bootstrap 的 95% CI 为 `[-0.201060, 0.888991]`，且全方法
 三种子复现仅为 244/252。因此正式结论是可信负结果、`gate_b_allowed=false`；不会据此启动
 RealPDEBench、提交或获奖声明。
+
+`competition mdbench recover-preregister` 只能从哈希有效的父周期负结果启动一个独立、结果盲
+的新周期。当前恢复合同冻结“弱形式投影 + bootstrap 支持稳定性”两个机制，保留父周期完全相同的
+两种基线，并使用新种子 13/29/43。父周期六个未见系统不得出现在恢复矩阵任何位置；恢复周期
+六个未见系统也从未出现在父矩阵。唯一复用的是父开发集 `advection1d` 与 `burgers`，且仍只作
+开发控制。实现依赖固定为已核验 MIT 许可的 PySINDy v1.7.5；未检测到许可文件的 WSINDy 仓库
+只作参考，不复制代码。真实恢复预注册哈希是
+`1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079`，252 单元矩阵哈希是
+`9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`。这只证明结果产生前已冻结
+假设和矩阵；恢复单元尚未执行，Gate A 仍是负结果，Gate B 仍被阻断。
 
 可以给常驻运行入口绑定单个或多个 Agent profile：
 

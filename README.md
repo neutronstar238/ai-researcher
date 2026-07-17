@@ -221,6 +221,7 @@ airesearcher competition run --topic-mode seeded --topic "noise-robust equation 
 airesearcher competition mdbench preflight
 airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
 airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench recover-preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json --parent-matrix runs/competition/mdbench-official/gate-a-preregistration.json --parent-report runs/competition/mdbench-official/gate-a/gate-a-adjudication.json
 airesearcher competition mdbench execute --matrix runs/competition/mdbench-official/gate-a-preregistration.json --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
 airesearcher competition mdbench evaluate --matrix runs/competition/mdbench-official/gate-a-preregistration.json --execution-report runs/competition/mdbench-official/execution/execution-report.json
 airesearcher competition status runs/competition/<run-id>
@@ -277,6 +278,18 @@ unseen-system median improvement is 37.15%, but the 20,000-resample system-level
 is `[-0.201060, 0.888991]`; only 244/252 all-method cells succeeded. Therefore
 `gate_b_allowed=false`, and Qwen submission evidence, RealPDEBench training, product expansion, and
 award/submission claims remain blocked rather than being inferred from the favorable point estimate.
+
+`competition mdbench recover-preregister` starts a separate result-blind cycle only from a
+hash-valid negative parent report. The current recovery contract freezes weak-form projection plus
+bootstrap support stability, keeps the exact two parent baselines, and uses fresh seeds 13/29/43.
+All six parent unseen systems are excluded from the complete recovery panel; all six recovery
+unseen systems are absent from the complete parent panel. Only the parent-development `advection1d`
+and `burgers` controls are reused as development data. PySINDy v1.7.5 is the verified MIT-licensed
+dependency; WSINDy repositories with no detected license are reference-only, and no code is copied.
+The live recovery hash is `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079`
+and its 252-cell matrix hash is `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`.
+These hashes prove only that the hypothesis and matrix were frozen before results; no recovery cell
+has run, Gate A is still negative, and Gate B remains blocked.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

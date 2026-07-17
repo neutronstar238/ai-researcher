@@ -67,10 +67,26 @@ update a factual problem entry below.
 - Evidence: The selected baseline is `operon_gp`. Successful-cell unseen-SNR20 median derivative NMSE is `0.1174514860` for the candidate versus `0.6864225438` for Operon, an observed 82.89% relative improvement. Under the conservative failure-aware policy, the six-system median improvement is 37.15% and the 20,000-resample 95% bootstrap CI is `[-0.2010595526, 0.8889914327]`. All-method success is 244/252.
 - Root cause: One of six unseen systems is worse for the candidate, one baseline system lacks all three successful seeds and is conservatively assigned zero improvement, and only six independent unseen systems make the uncertainty interval wide. The favorable seed-level point estimate is not sufficient independent evidence.
 - Workaround: None. Do not replace the system-level uncertainty unit with seed-level pseudo-replication, delete failures, change the frozen matrix, or begin Gate B.
-- Next action: If work continues, start a new result-blind, preregistered Gate A candidate cycle with a distinct repair hypothesis aimed at cross-system stability and complete baseline evidence; do not tune against this held-out result.
-- Linked tasks: `259.4`, blocks `259.5` and `259.6` under the current execution order.
+- Next action: Task `259.7.1` has frozen a distinct weak-form/support-stability recovery hypothesis on a disjoint unseen panel. Implement and smoke it only on recovery development systems under `259.7.2`; do not inspect recovery unseen results until the implementation and development checks are frozen.
+- Linked tasks: `259.4`, `259.7`; blocks `259.5` and `259.6` under the current execution order.
 - Resolution: Not resolved scientifically; the system has correctly stopped and exposed the gap.
-- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests.
+- Verification: The final JSON and Markdown reports both record `decision=negative_result`, `gate_b_allowed=false`, the two failed mandatory checks, all six system effects, four disclosed limitations, zero human interventions, and zero access requests. The recovery preregistration binds this report under recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` and fresh matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`; it does not change the negative decision.
+
+### P-20260717-010 - Windows console encoding interrupted the first literature fallback
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-17 23:54:17 +08:00
+- Source: Task `259.7.1` multi-source literature search after the academic MCP route was unavailable.
+- Symptom: The first OpenAlex fallback invocation encountered a Windows GBK console-encoding failure while serializing search output.
+- Impact: The first compact search command did not produce usable terminal output; no preregistration or scientific result existed yet.
+- Evidence: Re-running the same bounded search through `python -X utf8` returned the WENDy, weak-form latent-dynamics, DSINDy, EKF-SINDy, Ensemble-SINDy, and PySINDy records used for source verification.
+- Root cause: The fallback script emitted Unicode metadata through the active Windows console encoding rather than a forced UTF-8 runtime.
+- Workaround: Invoke the fallback script with `python -X utf8` on this Windows workspace.
+- Next action: Preserve UTF-8 mode for future fallback searches; prefer the academic MCP route when it is available.
+- Linked tasks: `259.7.1`.
+- Resolution: The UTF-8 retry completed, primary paper/repository links and revisions were independently verified, and no search evidence was lost.
+- Verification: Pinned repository revisions were rechecked with `git ls-remote`; the PySINDy v1.7.5 MIT license SHA-256 was recomputed, while both WSINDy GitHub license endpoints returned 404 and were therefore frozen as reference-only.
 
 ### P-20260717-008 - Tuple-key truth registry initially blocked report hashing
 

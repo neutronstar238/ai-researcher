@@ -789,11 +789,12 @@ project_demo/
 3. 用明确标注的 MDBench-shaped 开发夹具验证零人工科研输入、三种子执行、恢复和负向发布门；
 4. 预检固定的 MDBench revision、代码/数据许可、归档元数据和容器运行时，真实构建并烟测版本化科学计算镜像；
 5. 通过已通过的预检续传官方 MDBench 归档，固定大小/MD5、逐文件 SHA-256 和安全解压清单，然后在该容器中接入基线，真实完成至少 10 ODE、4 PDE、clean/noisy 和三次独立复现；
-6. Gate A 未通过时形成负结果并停止，不开展完整 RealPDEBench 训练和产品界面扩张；
-7. Gate A 通过后再接入 Qwen/DashScope 调用证据和 RealPDEBench Cylinder Gate B。
+6. Gate A 未通过时先形成负结果并关闭该冻结周期，不在已揭示未见系统上调参，也不开展完整 RealPDEBench 训练和产品界面扩张；
+7. 若继续 Gate A，只允许建立不同假设的新周期：绑定父负结果哈希、换用与旧矩阵完全隔离的新未见系统和新种子，并在执行任何结果前冻结机制、矩阵和停止规则；
+8. Gate A 真实通过后再接入 Qwen/DashScope 调用证据和 RealPDEBench Cylinder Gate B。
 
 公共入口为 `competition run/resume/status/export`、`competition access grant` 与
-`competition mdbench preflight/prepare/preregister/execute/evaluate`。默认自动选题；
+`competition mdbench preflight/prepare/preregister/recover-preregister/execute/evaluate`。默认自动选题；
 `seeded` 模式只缩小候选空间。授权范围内不逐实验审批，资源耗尽时保存检查点并停止。所有导出均为
 本地产物；外部提交必须有显式权限且同时通过科学证据门、复现门和榜题内部评分门。
 
@@ -810,3 +811,8 @@ claim-evidence、一键复现和透明的负结果边界。开发夹具通过不
 固定真实方程的结构评分、未见系统比较和 20,000 次系统级 bootstrap。成功单元点估计有利，
 但失败感知 95% CI 为 `[-0.201060, 0.888991]`，全方法复现门也只有 244/252。因此任务 259.4
 以可信负结果完成并保持 `gate_b_allowed=false`；Gate B、Qwen 提交证据和产品扩张不启动。
+任务 259.7.1 已增加 `recover-preregister`：它先验证父矩阵和负结果报告，再冻结弱形式投影与
+bootstrap 支持稳定性两个机制、全新未见系统、种子 13/29/43 及 252 个配置哈希。真实恢复
+预注册哈希为 `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079`，矩阵哈希为
+`9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`。这只是执行前合同，
+不构成候选实现、smoke、Gate A 通过或 Gate B 授权。

@@ -86,6 +86,14 @@ from .preregistration import (
     preregister_mdbench_gate_a,
     validate_mdbench_preregistration,
 )
+from .recovery import (
+    MDBenchGateARecoveryPreregistration,
+    MDBenchRecoveryError,
+    MDBenchRecoverySystemRef,
+    RecoverySource,
+    preregister_mdbench_gate_a_recovery,
+    validate_mdbench_recovery_preregistration,
+)
 from .selection import TopicSelectionEngine, competition_topic_candidates
 from .service import ResearchCycleService, load_capability_grant
 
@@ -129,10 +137,13 @@ __all__ = [
     "MDBenchExecutionReport",
     "MDBenchExperimentMatrix",
     "MDBenchGateAReport",
+    "MDBenchGateARecoveryPreregistration",
     "MDBenchMatrixAttemptSpec",
     "MDBenchMethodSpec",
     "MDBenchOfficialPreflight",
     "MDBenchPreregistrationError",
+    "MDBenchRecoveryError",
+    "MDBenchRecoverySystemRef",
     "MDBenchSystemCase",
     "MDBenchSplitIndices",
     "MDBenchTargetCoefficients",
@@ -144,6 +155,7 @@ __all__ = [
     "ResearchCycleService",
     "ResearchOperation",
     "ResearchTaskSpec",
+    "RecoverySource",
     "TopicCandidate",
     "TopicFeasibility",
     "TopicMode",
@@ -163,11 +175,13 @@ __all__ = [
     "load_mdbench_gate_a_report",
     "prepare_mdbench_official_data",
     "preregister_mdbench_gate_a",
+    "preregister_mdbench_gate_a_recovery",
     "probe_mdbench_container",
     "run_mdbench_attempt_container",
     "run_mdbench_official_preflight",
     "score_equation_structure",
     "validate_cycle_evidence",
     "validate_mdbench_preregistration",
+    "validate_mdbench_recovery_preregistration",
     "write_cycle_manifest",
 ]

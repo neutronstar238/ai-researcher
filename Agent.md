@@ -64,6 +64,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 23:54:17 +08:00 - Codex - Task 259.7.1 Gate A recovery preregistration
+
+- Request: Continue from the official negative Gate A boundary without tuning against revealed held-out systems; freeze a distinct, literature-grounded recovery hypothesis and experiment matrix before implementing or running it.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-259-7-1-gate-a-recovery-preregistration.md`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/recovery.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_recovery.py`
+- Summary:
+  - Added immutable recovery-source, system-reference, hypothesis, leakage, and matrix contracts plus `competition mdbench recover-preregister`. The command requires the hash-valid negative parent report and unchanged official archive, refuses passed/tampered/partial/result-bearing inputs, and is idempotent.
+  - Froze `weak_stability_sindy` with exactly two mechanisms: weak-form projection and bootstrap support stability. The two parent baselines are reused byte-for-byte from the frozen parent matrix; fresh seeds are 13/29/43.
+  - Excluded all six parent unseen systems from the complete recovery panel and selected six recovery unseen systems absent from the complete parent panel. Only parent-development `advection1d` and `burgers` remain as development controls.
+  - Recorded WENDy, weak-form latent dynamics, and Ensemble-SINDy as conceptual sources. PySINDy v1.7.5 commit `4c32d2603cbf1aa476efae72bc78436cb1e6fc75` is the verified MIT dependency; the revision-pinned WSINDy ODE/PDE repositories are reference-only because no license file was detected, and their code is not copied or vendored.
+  - The live result-free contract at `runs/manual-live/task259-mdbench-recovery-v1/` has recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` and 252-cell matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`. Its only top-level artifacts are the contract and matrix; Gate A remains negative and Gate B remains blocked.
+  - Added an Obsidian project-progress note so the negative-result recovery decision, source/license boundary, hashes, and next development-only action remain in the canonical Vault memory.
+- Verification:
+  - `git ls-remote` for PySINDy v1.7.5, WENDy, WSINDy ODE, and WSINDy PDE: passed; revisions matched the frozen source records.
+  - Live PySINDy v1.7.5 license fetch and SHA-256 recomputation: passed with MIT hash `abfa7f391ee1d5b6f51d473de5928e75ffae6e3cdbd21c19db78c98437efcbdd`; GitHub license endpoints for both WSINDy repositories returned 404, so dependency reuse was prohibited.
+  - `poetry run pytest tests/unit/competition/test_recovery.py tests/unit/competition/test_competition_cli.py -q`: passed, 9 tests.
+  - `poetry run airesearcher competition mdbench recover-preregister ...`: exited 0 twice against the official archive, parent matrix, and final negative report; both runs returned the same recovery and matrix hashes.
+  - `poetry run airesearcher competition mdbench --help`: exited 0 and listed `recover-preregister`.
+  - Independent live contract load plus `validate_mdbench_recovery_preregistration`: passed; confirmed the output directory contains only `gate-a-recovery-matrix.json` and `gate-a-recovery-preregistration.json`.
+  - `poetry run pytest tests/smoke tests/unit -q`: passed, 687 passed and 4 skipped (credential-gated live smokes).
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 124 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated `P-20260717-009` with the sealed recovery boundary while retaining its open negative-result/Gate B block.
+  - Added and resolved `P-20260717-010` for the first OpenAlex fallback's Windows GBK output failure; `python -X utf8` completed the search without evidence loss.
+- Follow-up:
+  - Implement task `259.7.2` in the versioned scientific container and smoke only recovery development systems. Do not execute or inspect recovery unseen-test cells until the implementation and development behavior are frozen; do not start Gate B or make superiority claims.
+
 ### 2026-07-17 23:37:44 +08:00 - Codex - User-requested change-log cleanup
 
 - Request: Remove the user-identified unrelated historical log lines, push the completed research work, and continue from the current evidence boundary.

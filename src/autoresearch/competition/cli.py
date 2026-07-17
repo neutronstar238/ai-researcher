@@ -39,6 +39,10 @@ from autoresearch.competition.preregistration import (
     MDBenchPreregistrationError,
     preregister_mdbench_gate_a,
 )
+from autoresearch.competition.recovery import (
+    MDBenchRecoveryError,
+    preregister_mdbench_gate_a_recovery,
+)
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
 competition_app = typer.Typer(
@@ -166,6 +170,58 @@ def competition_mdbench_preregister(
     typer.echo(f"[OK] matrix_hash: {matrix.matrix_hash}")
     typer.echo(f"[OK] matrix_attempts: {len(matrix.attempts)}")
     typer.echo(f"[OK] unseen_test_systems: {unseen_count}")
+    typer.echo(f"[OK] created_before_results: {str(matrix.created_before_results).lower()}")
+
+
+@competition_mdbench_app.command("recover-preregister")
+def competition_mdbench_recover_preregister(
+    archive_manifest: Annotated[
+        Path,
+        typer.Option("--archive-manifest", help="Verified archive-manifest.json."),
+    ] = Path("runs/competition/mdbench-official/data/archive-manifest.json"),
+    parent_matrix: Annotated[
+        Path,
+        typer.Option("--parent-matrix", help="Frozen matrix from the closed parent cycle."),
+    ] = Path("runs/competition/mdbench-official/gate-a-preregistration.json"),
+    parent_report: Annotated[
+        Path,
+        typer.Option(
+            "--parent-report",
+            help="Hash-valid negative gate-a-adjudication.json from the parent cycle.",
+        ),
+    ] = Path("runs/competition/mdbench-official/gate-a/gate-a-adjudication.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Result-free recovery preregistration directory."),
+    ] = Path("runs/competition/mdbench-recovery"),
+) -> None:
+    """Freeze a disjoint, literature-grounded recovery cycle before any result."""
+
+    try:
+        manifest = MDBenchArchiveManifest.model_validate_json(
+            archive_manifest.read_text(encoding="utf-8")
+        )
+        preregistration, matrix = preregister_mdbench_gate_a_recovery(
+            manifest,
+            parent_matrix,
+            parent_report,
+            output_dir,
+        )
+    except (MDBenchRecoveryError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_recover_preregister: {exc}")
+        raise typer.Exit(code=2) from exc
+    unseen = tuple(
+        f"{case.data_type}/{case.system_name}"
+        for case in matrix.systems
+        if case.evaluation_split == "unseen_test"
+    )
+    typer.echo(f"[OK] mdbench_recovery_preregistration: {preregistration.output_path}")
+    typer.echo(f"[OK] recovery_hash: {preregistration.recovery_hash}")
+    typer.echo(f"[OK] recovery_matrix: {matrix.output_path}")
+    typer.echo(f"[OK] matrix_hash: {matrix.matrix_hash}")
+    typer.echo(f"[OK] matrix_attempts: {len(matrix.attempts)}")
+    typer.echo("[OK] candidate_method: weak_stability_sindy")
+    typer.echo(f"[OK] fresh_unseen_systems: {','.join(unseen)}")
     typer.echo(f"[OK] created_before_results: {str(matrix.created_before_results).lower()}")
 
 

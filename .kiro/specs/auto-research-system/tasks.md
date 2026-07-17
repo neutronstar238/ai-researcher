@@ -3186,6 +3186,19 @@ A task can be checked only when all applicable items are true:
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.
     - Gate B and product-surface expansion remain blocked until this task has real official-benchmark evidence.
     - _Outcome: the hash-bound official adjudication closed Gate A as `negative_result`; the candidate completed 84/84 cells, but all-method reproducibility was 244/252 and the failure-aware unseen-system bootstrap 95% CI was `[-0.201060, 0.888991]`, so `gate_b_allowed=false`._
+  - [ ] 259.7 Recover Gate A on a fresh sealed matrix
+    - [x] 259.7.1 Freeze a literature-grounded recovery hypothesis and disjoint matrix
+      - Bind the recovery cycle to the hash-valid negative parent report and unchanged official archive; refuse a passed parent, changed lineage, result-bearing output directory, partial output, or tampered hash.
+      - Freeze exactly two candidate mechanisms: weak-form projection and bootstrap support stability. Reuse the exact parent baselines and the MIT-licensed PySINDy v1.7.5 dependency; treat unlicensed WSINDy repositories as reference-only and copy no code.
+      - Exclude every parent unseen system from the full recovery panel. Require every recovery unseen system to be absent from the full parent panel; retain only parent-development `advection1d` and `burgers` as development controls.
+      - Freeze 10 ODE/4 PDE, clean/SNR20, fresh seeds 13/29/43, 252 attempt/config hashes, the same evidence metrics, a 5% strongest-baseline threshold, and a system-level bootstrap lower-bound-above-zero gate before any result exists.
+      - _Outcome: live recovery hash `1331a21f1d49f8330433d1a8b05a49bdbf1028cab39b968b24a92ff89bb76079` binds matrix hash `9dba5411b3ae5244950d8f056008370510009a7b9ba1a1d2fbf60956230cd19e`; an unchanged rerun reproduced both hashes, and no recovery result has run._
+    - [ ] 259.7.2 Implement and development-smoke the weak-form candidate
+      - Implement the two frozen mechanisms in the scientific container without copying reference-only code, then smoke only development systems and verify finite metrics, hash binding, resume, and bounded failure behavior.
+      - Do not inspect or execute recovery unseen-test cells during implementation or debugging.
+    - [ ] 259.7.3 Execute and adjudicate the fresh recovery matrix
+      - Drain the unchanged 252-cell matrix, preserve every failure, extend pinned truth scoring for the new systems, and apply the frozen system-level confidence gate.
+      - Pass only on the preregistered criteria; otherwise retain another credible negative result and stop this mechanism family without unlocking Gate B.
   - [ ] 259.5 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
     - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
     - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.
@@ -3910,6 +3923,10 @@ A task can be checked only when all applicable items are true:
     {
       "id": 167,
       "tasks": ["259.6"]
+    },
+    {
+      "id": 168,
+      "tasks": ["259.7"]
     }
   ]
 }
