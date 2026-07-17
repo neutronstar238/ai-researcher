@@ -64,6 +64,33 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-18 00:50:31 +08:00 - Codex - Task 259.7.3.1 recovery truth freeze
+
+- Request: Continue after the pushed development-smoke checkpoint, but freeze all recovery truth scoring and adjudication policy before revealing any recovery unseen result.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-259-7-3-1-recovery-truth-freeze.md`
+  - `src/autoresearch/competition/gate_a.py`
+  - `tests/unit/competition/test_gate_a.py`
+- Summary:
+  - Extended the pinned truth-support registry from the parent panel to every recovery ODE/PDE system before recovery unseen execution. Added the exact `scripts/fenics_heat_soil_uniform.py` source hash because its zero forcing specializes the README heat equation to the `u_xx` support used by `heat_soil_uniform_1d_p1`.
+  - Made the adjudicator resolve exactly one generated candidate and the required seed set from the immutable matrix. The parent matrix remains compatible, while recovery can use `weak_stability_sindy` and seeds 13/29/43 without a post-result code change.
+  - Added exact-source structure tests for all 12 systems newly introduced by the recovery panel, including rational/activation ODE terms and the two new PDEs. Each reference equation scores structure F1 `1.0`.
+  - Froze pre-execution truth registry hash `38d549143207b177b6a2c9430e5b68cdd89e4dd80b41eaf04d082f5b255b04dd`, recovery analysis-policy hash `ef60d9a245a7a0937b99361d71ed31d2c79116b25ff45098d9f39c554d9cbd9f`, and adjudicator SHA-256 `b2037a1c765aa8274205da85c59c35958405abbea81ee5498a515ef8796b7d31` while all recovery unseen results remained sealed.
+- Verification:
+  - Recomputed the pinned MDBench source hashes in the network-disabled image: README `4fceb40a3fe44a96557f56538738005e633d851985c653e2b77aea3819e0eafe`, Strogatz ODE source `fe39de6cf002d62e62c3f1d7e026b514ac5046b8c96778a610ff5ff9dc8f0958`, and uniform-soil heat source `f5c9ebd62048de1a62afaf3b57d3ce87954c86564a86185116852b67ae829fdc`.
+  - `poetry run pytest tests/unit/competition/test_gate_a.py -q`: passed, 15 tests.
+  - `poetry run pytest tests/unit/competition -q`: passed, 54 tests.
+  - `poetry run ruff check src/autoresearch/competition/gate_a.py tests/unit/competition/test_gate_a.py`: passed.
+  - `poetry run mypy src/autoresearch/competition/gate_a.py`: passed with no issues.
+  - `git diff --check`: passed.
+- Problems:
+  - None. The open scientific risks remain `P-20260717-009` and `P-20260718-012`; this subtask does not alter their Gate B block.
+- Follow-up:
+  - Commit this truth/policy freeze, then run task `259.7.3.2` against the unchanged 252-cell recovery matrix. Do not modify this registry or policy in response to revealed unseen results.
+
 ### 2026-07-18 00:40:38 +08:00 - Codex - Task 259.7.2 weak-form candidate development smoke
 
 - Request: Resume after the workstation restart, implement the two preregistered Gate A recovery mechanisms, and prove the candidate only on development systems without executing or inspecting recovery unseen systems.

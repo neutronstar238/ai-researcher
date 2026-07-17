@@ -16,12 +16,14 @@ from autoresearch.competition import (
     MDBenchContainerInvocation,
     MDBenchContainerOutcome,
     MDBenchDatasetArtifact,
+    MDBenchExperimentMatrix,
     adjudicate_mdbench_gate_a,
     execute_mdbench_matrix,
     load_mdbench_gate_a_report,
     preregister_mdbench_gate_a,
     score_equation_structure,
 )
+from autoresearch.competition.gate_a import _candidate_method_id
 from autoresearch.competition.manifest import canonical_model_hash
 from autoresearch.competition.planning import MDBENCH_REVISION
 
@@ -45,6 +47,62 @@ _UNSEEN_CANDIDATE_FACTORS = {
     "autocatalytic-gene-switching": 0.1,
     "kdv": 0.3,
     "kuramoto_sivishinky": 0.9,
+}
+_RECOVERY_TRUTH_EQUATIONS = {
+    ("ode", "harmonic-oscillator-damping"): (
+        "u0_t = u1\n"
+        "u1_t = -4.5*u0 - 0.43*u1"
+    ),
+    ("ode", "lotka-volterra-competition"): (
+        "u0_t = u0*(3.0-u0-2.0*u1)\n"
+        "u1_t = u1*(2.0-u0-u1)"
+    ),
+    ("ode", "damped-double-well-oscillator"): (
+        "u0_t = u1\n"
+        "u1_t = -0.18*u1 + u0 - u0^3"
+    ),
+    ("ode", "seir-infection"): (
+        "u0_t = -0.28*u0*u2\n"
+        "u1_t = 0.28*u0*u2 - 0.47*u1\n"
+        "u2_t = 0.47*u1 - 0.3*u2\n"
+        "u3_t = 0.3*u2"
+    ),
+    ("ode", "maxwell-bloch-equations"): (
+        "u0_t = 0.1*(u1-u0)\n"
+        "u1_t = 0.21*(u0*u2-u1)\n"
+        "u2_t = 0.34*(4.1-u2-3.1*u0*u1)"
+    ),
+    ("ode", "rössler-attractor-periodic"): (
+        "u0_t = 5.0*(-u1-u2)\n"
+        "u1_t = 5.0*(u0+0.1*u1)\n"
+        "u2_t = 5.0*(0.2+u2*(u0-5.7))"
+    ),
+    ("ode", "chen-lee-attractor"): (
+        "u0_t = 5.0*u0-u1*u2\n"
+        "u1_t = -10.0*u1+u0*u2\n"
+        "u2_t = -3.8*u2+u0*u1/3.0"
+    ),
+    ("ode", "lorenz-equations-complex-periodic"): (
+        "u0_t = 10.0*(u1-u0)\n"
+        "u1_t = 99.96*u0-u1-u0*u2\n"
+        "u2_t = u0*u1-(8.0/3.0)*u2"
+    ),
+    ("ode", "apoptosis-model"): (
+        "u0_t = 0.1-0.4*(u0*u1/(0.1+u0))-0.05*u0\n"
+        "u1_t = 0.6*u2*(0.1+u1)-0.2*(u1/(0.1+u1))-7.95*(u0*u1/(2.0+u1))\n"
+        "u2_t = -0.6*u2*(0.1+u1)+0.2*(u1/(0.1+u1))+7.95*(u0*u1/(2.0+u1))"
+    ),
+    ("ode", "binocular-rivalry-adaptation"): (
+        "u0_t = -u0+1/(1+exp(0.89*u2+0.4*u1-1.4))\n"
+        "u1_t = u0-u1\n"
+        "u2_t = -u2+1/(1+exp(0.89*u0+0.4*u3-1.4))\n"
+        "u3_t = u2-u3"
+    ),
+    ("pde", "heat_soil_uniform_1d_p1"): "u0_t = 2.3/(1500*1600)*u0_xx",
+    ("pde", "nls"): (
+        "u0_t = 0.5*u1_xx+u0^2*u1+u1^3\n"
+        "u1_t = -0.5*u0_xx-u0*u1^2-u0^3"
+    ),
 }
 
 
@@ -113,6 +171,34 @@ def test_structure_scoring_expands_nested_operon_and_pde_terms() -> None:
     )
     assert harmonic == 1.0
     assert kdv == 1.0
+
+
+def test_gate_a_resolves_recovery_candidate_from_the_frozen_matrix(tmp_path: Path) -> None:
+    matrix_path, _manifest_path, _environment = _official_inputs(tmp_path)
+    matrix = MDBenchExperimentMatrix.model_validate_json(
+        matrix_path.read_text(encoding="utf-8")
+    )
+    recovery_methods = tuple(
+        method.model_copy(update={"method_id": "weak_stability_sindy"})
+        if method.family == "agent_candidate"
+        else method
+        for method in matrix.methods
+    )
+    recovery_matrix = matrix.model_copy(update={"methods": recovery_methods})
+
+    assert _candidate_method_id(recovery_matrix) == "weak_stability_sindy"
+
+
+@pytest.mark.parametrize(
+    ("data_type", "system_name", "equation"),
+    [(*system, equation) for system, equation in _RECOVERY_TRUTH_EQUATIONS.items()],
+)
+def test_structure_scoring_covers_recovery_truth_before_execution(
+    data_type: Literal["ode", "pde"],
+    system_name: str,
+    equation: str,
+) -> None:
+    assert score_equation_structure(data_type, system_name, equation) == 1.0
 
 
 def _official_inputs(

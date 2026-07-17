@@ -3198,8 +3198,12 @@ A task can be checked only when all applicable items are true:
       - Do not inspect or execute recovery unseen-test cells during implementation or debugging.
       - _Outcome: the pinned PySINDy weak library and bootstrap support-stability path passed its in-image ODE/PDE self-test and a four-cell recovery-development smoke with 4/4 success, deterministic checkpoint reuse, zero human interventions, and zero access requests. Column-normalized STLSQ corrected a development-only scaling defect and recovered clean `advection1d` as `u_t=-0.100002u_x` with derivative NMSE `1.27e-6`; the SNR20 control still selected a zero equation with NMSE approximately `1`, so this task proves executable evidence only and does not claim the recovery hypothesis or Gate A passed._
     - [ ] 259.7.3 Execute and adjudicate the fresh recovery matrix
-      - Drain the unchanged 252-cell matrix, preserve every failure, extend pinned truth scoring for the new systems, and apply the frozen system-level confidence gate.
-      - Pass only on the preregistered criteria; otherwise retain another credible negative result and stop this mechanism family without unlocking Gate B.
+      - [x] 259.7.3.1 Freeze recovery truth scoring before unseen execution
+        - Extend the pinned equation-support registry to every recovery system, bind the exact upstream source hashes, and make candidate/seed checks resolve from the frozen matrix rather than the parent cycle.
+        - Freeze the adjudicator and analysis-policy hashes while recovery unseen results are still sealed; exact-source structure tests must pass before execution.
+      - [ ] 259.7.3.2 Drain and adjudicate the unchanged recovery matrix
+        - Drain the unchanged 252-cell matrix, preserve every failure, and apply the frozen system-level confidence gate without changing the candidate, truth registry, or policy after unseen results appear.
+        - Pass only on the preregistered criteria; otherwise retain another credible negative result and stop this mechanism family without unlocking Gate B.
   - [ ] 259.5 Add DashScope/Qwen execution evidence and bounded experiment-tree roles
     - Probe only the configured Qwen model pool, persist resolved model versions and redacted request/cost evidence, and keep all numerical metrics code-computed.
     - Add the bounded Supervisor, Evidence, Topic, Hypothesis, Critic, Experiment, Code, Statistician, Reviewer, and Submission role routes without weakening the manifest gate.

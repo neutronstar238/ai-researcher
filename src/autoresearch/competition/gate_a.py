@@ -33,7 +33,6 @@ from autoresearch.competition.preregistration import validate_mdbench_preregistr
 
 _REPORT_NAME = "gate-a-adjudication.json"
 _MARKDOWN_NAME = "gate-a-report.md"
-_CANDIDATE_METHOD = "stability_sindy"
 _NOISY_CONDITION = "snr_20"
 _PRIMARY_METRIC = "derivative_nmse"
 _RELATIVE_IMPROVEMENT_THRESHOLD = 0.05
@@ -44,6 +43,9 @@ _STRUCTURE_ABSOLUTE_COEFFICIENT_THRESHOLD = 1e-8
 _TRUTH_SOURCE_REVISION = "f81813e760325589737fe3311ac8199ecc64188a"
 _TRUTH_SOURCE_FILES = {
     "README.md": "4fceb40a3fe44a96557f56538738005e633d851985c653e2b77aea3819e0eafe",
+    "scripts/fenics_heat_soil_uniform.py": (
+        "f5c9ebd62048de1a62afaf3b57d3ce87954c86564a86185116852b67ae829fdc"
+    ),
     "scripts/strogatz_ode.py": ("fe39de6cf002d62e62c3f1d7e026b514ac5046b8c96778a610ff5ff9dc8f0958"),
 }
 
@@ -91,11 +93,65 @@ _TRUTH_SUPPORTS: dict[tuple[str, str], dict[str, tuple[str, ...]]] = {
     ("ode", "autocatalytic-gene-switching"): {
         "u0_t": ("1", "u0", "u0^2/(1+u0^2)"),
     },
+    ("ode", "harmonic-oscillator-damping"): {
+        "u0_t": ("u1",),
+        "u1_t": ("u0", "u1"),
+    },
+    ("ode", "lotka-volterra-competition"): {
+        "u0_t": ("u0", "u0^2", "u0*u1"),
+        "u1_t": ("u1", "u0*u1", "u1^2"),
+    },
+    ("ode", "damped-double-well-oscillator"): {
+        "u0_t": ("u1",),
+        "u1_t": ("u0", "u1", "u0^3"),
+    },
+    ("ode", "seir-infection"): {
+        "u0_t": ("u0*u2",),
+        "u1_t": ("u0*u2", "u1"),
+        "u2_t": ("u1", "u2"),
+        "u3_t": ("u2",),
+    },
+    ("ode", "maxwell-bloch-equations"): {
+        "u0_t": ("u0", "u1"),
+        "u1_t": ("u1", "u0*u2"),
+        "u2_t": ("1", "u2", "u0*u1"),
+    },
+    ("ode", "rössler-attractor-periodic"): {
+        "u0_t": ("u1", "u2"),
+        "u1_t": ("u0", "u1"),
+        "u2_t": ("1", "u2", "u0*u2"),
+    },
+    ("ode", "chen-lee-attractor"): {
+        "u0_t": ("u0", "u1*u2"),
+        "u1_t": ("u1", "u0*u2"),
+        "u2_t": ("u2", "u0*u1"),
+    },
+    ("ode", "lorenz-equations-complex-periodic"): {
+        "u0_t": ("u0", "u1"),
+        "u1_t": ("u0", "u1", "u0*u2"),
+        "u2_t": ("u2", "u0*u1"),
+    },
+    ("ode", "apoptosis-model"): {
+        "u0_t": ("1", "u0", "u0*u1/(0.1+u0)"),
+        "u1_t": ("u2", "u1*u2", "u1/(0.1+u1)", "u0*u1/(2.0+u1)"),
+        "u2_t": ("u2", "u1*u2", "u1/(0.1+u1)", "u0*u1/(2.0+u1)"),
+    },
+    ("ode", "binocular-rivalry-adaptation"): {
+        "u0_t": ("u0", "1/(1+exp(0.89*u2+0.4*u1-1.4))"),
+        "u1_t": ("u0", "u1"),
+        "u2_t": ("u2", "1/(1+exp(0.89*u0+0.4*u3-1.4))"),
+        "u3_t": ("u2", "u3"),
+    },
     ("pde", "advection1d"): {"u0_t": ("u0_x",)},
     ("pde", "burgers"): {"u0_t": ("u0*u0_x", "u0_xx")},
     ("pde", "kdv"): {"u0_t": ("u0*u0_x", "u0_xxx")},
     ("pde", "kuramoto_sivishinky"): {
         "u0_t": ("u0*u0_x", "u0_xx", "u0_xxxx"),
+    },
+    ("pde", "heat_soil_uniform_1d_p1"): {"u0_t": ("u0_xx",)},
+    ("pde", "nls"): {
+        "u0_t": ("u1_xx", "u0^2*u1", "u1^3"),
+        "u1_t": ("u0_xx", "u0*u1^2", "u0^3"),
     },
 }
 
@@ -247,6 +303,15 @@ class MDBenchGateAReport(_FrozenModel):
     markdown_path: str
 
 
+def _candidate_method_id(matrix: MDBenchExperimentMatrix) -> str:
+    candidate_methods = tuple(
+        method.method_id for method in matrix.methods if method.family == "agent_candidate"
+    )
+    if len(candidate_methods) != 1:
+        raise GateAAdjudicationError("Gate A requires exactly one generated candidate method")
+    return candidate_methods[0]
+
+
 def adjudicate_mdbench_gate_a(
     matrix_path: Path | str,
     execution_report_path: Path | str,
@@ -257,11 +322,7 @@ def adjudicate_mdbench_gate_a(
     matrix, execution, results = _load_verified_bundle(matrix_path, execution_report_path)
     if execution.total_attempt_count != 252 or len(matrix.attempts) != 252:
         raise GateAAdjudicationError("Gate A v1 requires the exact 252-cell matrix")
-    candidate_methods = [
-        method.method_id for method in matrix.methods if method.family == "agent_candidate"
-    ]
-    if candidate_methods != [_CANDIDATE_METHOD]:
-        raise GateAAdjudicationError("Gate A v1 candidate method changed")
+    candidate_method = _candidate_method_id(matrix)
     baseline_methods = tuple(
         method.method_id for method in matrix.methods if method.family != "agent_candidate"
     )
@@ -280,12 +341,12 @@ def adjudicate_mdbench_gate_a(
     selection_scores, selected_baseline = _select_baseline(results, baseline_methods)
     method_summaries = tuple(
         _summarize_method(matrix, results, structure_scores, method_id)
-        for method_id in (baseline_methods + (_CANDIDATE_METHOD,))
+        for method_id in (baseline_methods + (candidate_method,))
     )
     primary = _primary_comparison(
         matrix,
         results,
-        candidate_method=_CANDIDATE_METHOD,
+        candidate_method=candidate_method,
         baseline_method=selected_baseline,
     )
     checks = _gate_checks(
@@ -294,6 +355,7 @@ def adjudicate_mdbench_gate_a(
         results,
         structure_scores,
         primary,
+        candidate_method,
     )
     decision = (
         GateADecision.PASSED
@@ -309,7 +371,7 @@ def adjudicate_mdbench_gate_a(
         "The frozen matrix specified the 5% effect and bootstrap confidence gates but not a missing-baseline-cell policy; the adjudicator therefore uses the conservative zero-improvement policy and discloses it.",
         "Equation-structure F1 is post-processed from the pinned equation sources and discovered equation text; it does not alter the immutable attempt results.",
         "Only six unseen systems are available, so the system-level bootstrap interval is necessarily wide and must not be replaced by a seed-level pseudo-replication interval.",
-        "Eight baseline cells are terminal failures and remain in coverage and failure-aware sensitivity checks.",
+        f"{sum(result.method_id in baseline_methods and result.status is not MDBenchAttemptState.SUCCEEDED for result in results)} baseline cells are terminal failures or timeouts and remain in coverage and failure-aware sensitivity checks.",
     )
     resolved_matrix = Path(matrix_path).resolve()
     resolved_execution = Path(execution_report_path).resolve()
@@ -328,7 +390,7 @@ def adjudicate_mdbench_gate_a(
             },
         }
     )
-    policy = _analysis_policy()
+    policy = _analysis_policy(candidate_method)
     policy_hash = canonical_model_hash(policy)
     result_set_hash = canonical_model_hash(
         {
@@ -351,7 +413,7 @@ def adjudicate_mdbench_gate_a(
         "adjudicator_sha256": adjudicator_sha,
         "analysis_policy_hash": policy_hash,
         "truth_registry_hash": truth_registry_hash,
-        "candidate_method_id": _CANDIDATE_METHOD,
+        "candidate_method_id": candidate_method,
         "selected_baseline_method_id": selected_baseline,
         "baseline_selection_scores": [item.model_dump(mode="json") for item in selection_scores],
         "method_summaries": [item.model_dump(mode="json") for item in method_summaries],
@@ -391,7 +453,7 @@ def adjudicate_mdbench_gate_a(
         timed_out_count=execution.timed_out_count,
         human_intervention_count=execution.human_intervention_count,
         access_request_count=execution.access_request_count,
-        candidate_method_id=_CANDIDATE_METHOD,
+        candidate_method_id=candidate_method,
         selected_baseline_method_id=selected_baseline,
         baseline_selection_rule=str(policy["baseline_selection_rule"]),
         baseline_selection_scores=selection_scores,
@@ -799,6 +861,7 @@ def _gate_checks(
     results: tuple[MDBenchAttemptResult, ...],
     structure_scores: dict[str, float],
     primary: GateAPrimaryComparison,
+    candidate_method: str,
 ) -> tuple[GateACheck, ...]:
     expected_seeds = set(matrix.seeds)
     grouped: dict[tuple[str, str, str, str], list[MDBenchAttemptResult]] = defaultdict(list)
@@ -815,10 +878,13 @@ def _gate_checks(
         and all(result.status is MDBenchAttemptState.SUCCEEDED for result in group)
         for group in grouped.values()
     )
-    candidate_results = [result for result in results if result.method_id == _CANDIDATE_METHOD]
+    candidate_results = [result for result in results if result.method_id == candidate_method]
+    expected_candidate_count = sum(
+        attempt.method_id == candidate_method for attempt in matrix.attempts
+    )
     candidate_success = (
         all(result.status is MDBenchAttemptState.SUCCEEDED for result in candidate_results)
-        and len(candidate_results) == 84
+        and len(candidate_results) == expected_candidate_count
     )
     nonconstant_by_method = {
         method.method_id: len(
@@ -886,15 +952,25 @@ def _gate_checks(
         ),
         GateACheck(
             check_id="three_seed_terminal_coverage",
-            requirement="Every frozen method/system/condition group contains seeds 11, 23, and 37.",
+            requirement=(
+                "Every frozen method/system/condition group contains seeds "
+                f"{', '.join(str(seed) for seed in matrix.seeds)}."
+            ),
             passed=terminal_three_seed,
             observed=f"groups={len(grouped)}, complete_terminal_seed_groups={sum({result.seed for result in group} == expected_seeds and len(group) == len(expected_seeds) for group in grouped.values())}",
         ),
         GateACheck(
             check_id="candidate_three_seed_success",
-            requirement="The generated candidate succeeds on all 84 frozen cells.",
+            requirement=(
+                "The generated candidate succeeds on all "
+                f"{expected_candidate_count} frozen cells."
+            ),
             passed=candidate_success,
-            observed=f"candidate_successes={sum(result.status is MDBenchAttemptState.SUCCEEDED for result in candidate_results)}/84",
+            observed=(
+                "candidate_successes="
+                f"{sum(result.status is MDBenchAttemptState.SUCCEEDED for result in candidate_results)}"
+                f"/{expected_candidate_count}"
+            ),
         ),
         GateACheck(
             check_id="all_methods_three_seed_reproducible",
@@ -957,10 +1033,10 @@ def _gate_checks(
     )
 
 
-def _analysis_policy() -> dict[str, Any]:
+def _analysis_policy(candidate_method: str) -> dict[str, Any]:
     return {
         "schema_version": "mdbench-gate-a-analysis-policy-v1",
-        "candidate_method": _CANDIDATE_METHOD,
+        "candidate_method": candidate_method,
         "primary_metric": _PRIMARY_METRIC,
         "primary_condition": _NOISY_CONDITION,
         "primary_evaluation_split": "unseen_test",
