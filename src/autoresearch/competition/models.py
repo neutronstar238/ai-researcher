@@ -519,6 +519,208 @@ class MDBenchExperimentMatrix(StrictFrozenModel):
         return self
 
 
+class MDBenchAttemptState(str, Enum):
+    """Terminal states for one frozen official-matrix cell."""
+
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    TIMED_OUT = "timed_out"
+
+
+class MDBenchSplitIndices(StrictFrozenModel):
+    """Concrete chronological indices materialized from the frozen fractions."""
+
+    time_axis_size: int = Field(ge=3)
+    train_start: int = Field(ge=0)
+    train_end: int = Field(ge=1)
+    validation_start: int = Field(ge=1)
+    validation_end: int = Field(ge=2)
+    test_start: int = Field(ge=2)
+    test_end: int = Field(ge=3)
+
+    @model_validator(mode="after")
+    def _require_disjoint_complete_indices(self) -> MDBenchSplitIndices:
+        if self.train_start != 0 or self.test_end != self.time_axis_size:
+            raise ValueError("concrete split indices must cover the full time axis")
+        if self.train_end != self.validation_start:
+            raise ValueError("train and validation indices must be contiguous and disjoint")
+        if self.validation_end != self.test_start:
+            raise ValueError("validation and test indices must be contiguous and disjoint")
+        return self
+
+
+class MDBenchAttemptMetrics(StrictFrozenModel):
+    """Code-computed metrics for one terminal official attempt."""
+
+    equation_structure_f1: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        allow_inf_nan=False,
+    )
+    derivative_nmse: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
+    validation_nmse: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
+    trajectory_extrapolation_nmse_ode: float | None = Field(
+        default=None,
+        ge=0.0,
+        allow_inf_nan=False,
+    )
+    model_complexity: int | None = Field(default=None, ge=0)
+    noise_robustness_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        allow_inf_nan=False,
+    )
+    wall_time_seconds: float = Field(ge=0.0, allow_inf_nan=False)
+    peak_rss_mb: float = Field(ge=0.0, allow_inf_nan=False)
+
+
+class MDBenchCoefficientTerm(StrictFrozenModel):
+    """One explicit learned term retained for later structure scoring."""
+
+    feature: str
+    coefficient: float = Field(allow_inf_nan=False)
+
+
+class MDBenchTargetCoefficients(StrictFrozenModel):
+    """Sparse coefficient evidence for one discovered derivative target."""
+
+    target: str
+    terms: tuple[MDBenchCoefficientTerm, ...] = ()
+
+
+class MDBenchContainerEnvironment(StrictFrozenModel):
+    """Immutable container and code identity required by every attempt."""
+
+    image: str
+    image_id: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    repo_digests: tuple[str, ...] = ()
+    benchmark_revision: str
+    runner_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    requirements_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    dockerfile_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    orchestrator_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    preregistration_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    contract_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    code_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    environment_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class MDBenchAttemptResult(StrictFrozenModel):
+    """Hash-bound terminal evidence for one preregistered matrix cell."""
+
+    schema_version: str = "mdbench-attempt-result-v1"
+    attempt_id: str
+    matrix_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    benchmark_revision: str
+    data_type: Literal["ode", "pde"]
+    system_name: str
+    evaluation_split: Literal["development", "unseen_test"]
+    condition: str
+    seed: int
+    method_id: str
+    status: MDBenchAttemptState
+    artifact_path: str
+    data_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    config_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    spec_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    code_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    environment_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    container_image: str
+    container_image_id: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    split_indices: MDBenchSplitIndices | None = None
+    selected_hyperparameters: dict[str, Any] = Field(default_factory=dict)
+    discovered_equation: str | None = None
+    coefficients: tuple[MDBenchTargetCoefficients, ...] = ()
+    metrics: MDBenchAttemptMetrics
+    failure_reason: str | None = None
+    stdout_path: str
+    stdout_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    stderr_path: str
+    stderr_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    started_at: datetime
+    completed_at: datetime
+    result_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    output_path: str
+
+    @model_validator(mode="after")
+    def _require_terminal_evidence(self) -> MDBenchAttemptResult:
+        if self.completed_at < self.started_at:
+            raise ValueError("attempt completion cannot precede its start")
+        if self.status is MDBenchAttemptState.SUCCEEDED:
+            if self.split_indices is None:
+                raise ValueError("successful attempts require concrete split indices")
+            if self.metrics.derivative_nmse is None or self.metrics.validation_nmse is None:
+                raise ValueError("successful attempts require derivative and validation NMSE")
+            if self.metrics.model_complexity is None:
+                raise ValueError("successful attempts require model complexity")
+            if (
+                self.data_type == "ode"
+                and self.metrics.trajectory_extrapolation_nmse_ode is None
+            ):
+                raise ValueError("successful ODE attempts require trajectory extrapolation NMSE")
+            if not self.discovered_equation:
+                raise ValueError("successful attempts require a discovered equation")
+            if self.failure_reason is not None:
+                raise ValueError("successful attempts cannot carry a failure reason")
+        elif not self.failure_reason:
+            raise ValueError("failed and timed-out attempts require a failure reason")
+        return self
+
+
+class MDBenchExecutionRecord(StrictFrozenModel):
+    """Checkpoint pointer for one terminal attempt result."""
+
+    attempt_id: str
+    status: MDBenchAttemptState
+    result_path: str
+    result_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reused_this_invocation: bool = False
+
+
+class MDBenchExecutionReport(StrictFrozenModel):
+    """Resumable matrix checkpoint rewritten after every terminal cell."""
+
+    schema_version: str = "mdbench-execution-report-v1"
+    matrix_path: str
+    matrix_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    archive_manifest_path: str
+    inventory_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    environment: MDBenchContainerEnvironment
+    records: tuple[MDBenchExecutionRecord, ...] = ()
+    total_attempt_count: int = Field(ge=1)
+    terminal_attempt_count: int = Field(ge=0)
+    succeeded_count: int = Field(ge=0)
+    failed_count: int = Field(ge=0)
+    timed_out_count: int = Field(ge=0)
+    pending_count: int = Field(ge=0)
+    complete: bool
+    human_intervention_count: int = Field(default=0, ge=0)
+    access_request_count: int = Field(default=0, ge=0)
+    updated_at: datetime = Field(default_factory=_utc_now)
+    report_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    output_path: str
+
+    @model_validator(mode="after")
+    def _require_consistent_counts(self) -> MDBenchExecutionReport:
+        statuses = [record.status for record in self.records]
+        expected = {
+            MDBenchAttemptState.SUCCEEDED: self.succeeded_count,
+            MDBenchAttemptState.FAILED: self.failed_count,
+            MDBenchAttemptState.TIMED_OUT: self.timed_out_count,
+        }
+        for status, count in expected.items():
+            if statuses.count(status) != count:
+                raise ValueError(f"execution count mismatch for {status.value}")
+        if len(self.records) != self.terminal_attempt_count:
+            raise ValueError("terminal attempt count must equal checkpoint records")
+        if self.terminal_attempt_count + self.pending_count != self.total_attempt_count:
+            raise ValueError("terminal and pending counts must cover the frozen matrix")
+        if self.complete != (self.pending_count == 0):
+            raise ValueError("execution completeness must match the pending count")
+        return self
+
+
 class EvidenceGateReport(StrictFrozenModel):
     """Causal-chain validation distinct from scientific release eligibility."""
 

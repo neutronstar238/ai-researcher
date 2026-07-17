@@ -3174,9 +3174,13 @@ A task can be checked only when all applicable items are true:
         - Record the upstream validation-overlap and fixed-seed divergences; do not silently represent the corrected adapter as an unchanged upstream evaluator.
         - _Verify: focused preregistration/CLI tests, focused and broad Ruff/Mypy/Pytest, a live result-blind preregistration against the official inventory, and `git diff --check` are recorded in `Agent.md`._
       - [ ] 259.3.2.2 Execute and checkpoint the frozen matrix
-        - Run the preregistered sparse-linear, bounded Operon GP-symbolic, and stability-selected candidate cells in the versioned container with automatic timeout/failure persistence and resume.
-        - Record official result schemas, split indices, data/code/config/environment/result hashes, resource use, failures, equations, and all repetitions without changing the frozen matrix.
-        - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
+        - [x] 259.3.2.2.1 Build and live-smoke the hash-bound container runner
+          - Run one unchanged official matrix cell end to end with read-only data, disabled network, bounded CPU/memory/time, concrete disjoint indices, code/data/config/environment/result hashes, logs, equations, metrics, and terminal failure persistence.
+          - Prove that resume reuses a valid terminal result and rejects tampered or causally mismatched checkpoints before scaling the same runner.
+        - [ ] 259.3.2.2.2 Execute all 252 frozen cells
+          - Run the preregistered sparse-linear, bounded Operon GP-symbolic, and stability-selected candidate cells in the versioned container with automatic timeout/failure persistence and resume.
+          - Record official result schemas, split indices, data/code/config/environment/result hashes, resource use, failures, equations, and all repetitions without changing the frozen matrix.
+          - _Gate: official results must pass causal-chain, reproducibility, and non-constant evidence checks; otherwise retain a negative result and stop._
   - [ ] 259.4 Pass or honestly close Gate A
     - Evaluate structure agreement, derivative error, trajectory extrapolation, model complexity, noise robustness, and cost on held-out systems.
     - Require stable improvement over the strongest baseline on at least one preregistered metric; otherwise publish only a credible negative report.

@@ -27,6 +27,10 @@ from autoresearch.competition.official_data import (
     download_mdbench_processed_archive,
     prepare_mdbench_official_data,
 )
+from autoresearch.competition.official_execution import (
+    MDBenchExecutionError,
+    execute_mdbench_matrix,
+)
 from autoresearch.competition.preregistration import (
     MDBenchPreregistrationError,
     preregister_mdbench_gate_a,
@@ -161,6 +165,64 @@ def competition_mdbench_preregister(
     typer.echo(f"[OK] matrix_attempts: {len(matrix.attempts)}")
     typer.echo(f"[OK] unseen_test_systems: {unseen_count}")
     typer.echo(f"[OK] created_before_results: {str(matrix.created_before_results).lower()}")
+
+
+@competition_mdbench_app.command("execute")
+def competition_mdbench_execute(
+    matrix: Annotated[
+        Path,
+        typer.Option("--matrix", help="Frozen gate-a-preregistration.json."),
+    ] = Path("runs/competition/mdbench-official/gate-a-preregistration.json"),
+    archive_manifest: Annotated[
+        Path,
+        typer.Option("--archive-manifest", help="Verified archive-manifest.json."),
+    ] = Path("runs/competition/mdbench-official/data/archive-manifest.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Hash-bound result/checkpoint directory."),
+    ] = Path("runs/competition/mdbench-official/execution"),
+    image: Annotated[
+        str,
+        typer.Option("--image", help="Versioned local Gate A container image."),
+    ] = "autoresearch-mdbench-gate-a:f81813e",
+    max_attempts: Annotated[
+        int | None,
+        typer.Option(
+            "--max-attempts",
+            min=1,
+            help="Run at most this many pending cells; omit to drain the selection.",
+        ),
+    ] = None,
+    attempt_id: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--attempt-id",
+            help="Optional exact frozen attempt ID; repeat to select multiple cells.",
+        ),
+    ] = None,
+) -> None:
+    """Execute or resume the unchanged official matrix in disposable containers."""
+
+    try:
+        report = execute_mdbench_matrix(
+            matrix,
+            archive_manifest,
+            output_dir,
+            image=image,
+            max_attempts=max_attempts,
+            attempt_ids=attempt_id,
+        )
+    except (MDBenchExecutionError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_execute: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] mdbench_execution_report: {report.output_path}")
+    typer.echo(f"[OK] environment_hash: {report.environment.environment_hash}")
+    typer.echo(f"[OK] terminal_attempts: {report.terminal_attempt_count}")
+    typer.echo(f"[OK] succeeded: {report.succeeded_count}")
+    typer.echo(f"[OK] failed: {report.failed_count}")
+    typer.echo(f"[OK] timed_out: {report.timed_out_count}")
+    typer.echo(f"[OK] pending: {report.pending_count}")
+    typer.echo(f"[OK] complete: {str(report.complete).lower()}")
 
 
 @competition_app.command("run")

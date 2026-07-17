@@ -221,6 +221,7 @@ airesearcher competition run --topic-mode seeded --topic "noise-robust equation 
 airesearcher competition mdbench preflight
 airesearcher competition mdbench prepare --preflight-report runs/competition/mdbench-preflight/official-preflight.json
 airesearcher competition mdbench preregister --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
+airesearcher competition mdbench execute --matrix runs/competition/mdbench-official/gate-a-preregistration.json --archive-manifest runs/competition/mdbench-official/data/archive-manifest.json
 airesearcher competition status runs/competition/<run-id>
 airesearcher competition resume runs/competition/<run-id>
 airesearcher competition export runs/competition/<run-id>
@@ -255,7 +256,16 @@ data evidence, but it is still **not** a method result: Gate A stays blocked unt
 seeds 11/23/37, bounded sparse-linear/Operon-GP/candidate methods, metrics, and acceptance rules.
 It materializes 252 hash-bound cells and recomputes the matrix hash when reloaded. The live frozen
 matrix hash is `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`;
-freezing it does not mean any of those 252 cells has run.
+freezing it by itself does not mean that any cell has run.
+
+`competition mdbench execute` now verifies the matrix and archive again, probes the exact local
+image and runner bytes, mounts each NPZ read-only into a network-disabled disposable container,
+materializes concrete disjoint indices, and checkpoints terminal results with data, config, spec,
+runner, orchestrator, container, log, and result hashes. A live smoke has executed all three frozen
+method families on the same official clean harmonic-oscillator/seed-11 cell; all three succeeded,
+and a second invocation reused the three validated terminal results without rerunning them. This is
+real official single-cell execution evidence, not Gate A completion: 249 of 252 cells remain pending,
+so no benchmark-wide superiority, reproducibility, Gate B, submission, or award claim is allowed.
 
 Per-agent custom skill and MCP profiles can be attached to either runtime entry point:
 

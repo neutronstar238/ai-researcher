@@ -19,9 +19,19 @@ RUN python -m pip install --upgrade pip==25.1.1 \
 RUN git clone https://github.com/gryaklab/mdbench.git /opt/mdbench \
     && git -C /opt/mdbench checkout "${MDBENCH_REVISION}" \
     && test "$(git -C /opt/mdbench rev-parse HEAD)" = "${MDBENCH_REVISION}" \
+    && test -f /opt/mdbench/mdbench/algorithms/ode/sindy/regressor.py \
+    && test -f /opt/mdbench/mdbench/algorithms/pde/pdefind/regressor.py \
+    && test -f /opt/mdbench/mdbench/algorithms/sr/operon/regressor.py \
     && rm -rf /opt/mdbench/.git
 
-LABEL org.opencontainers.image.title="AutoResearch MDBench SINDy/PDE-FIND runtime" \
+ENV PYTHONPATH=/opt/mdbench
+
+COPY runner.py /opt/autoresearch-mdbench/runner.py
+
+RUN cd / \
+    && python -c "from mdbench.algorithms.ode.sindy.regressor import Estimator; print(Estimator.__name__)"
+
+LABEL org.opencontainers.image.title="AutoResearch MDBench Gate A runtime" \
       org.opencontainers.image.source="https://github.com/gryaklab/mdbench" \
       org.opencontainers.image.revision="${MDBENCH_REVISION}"
 

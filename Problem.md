@@ -46,19 +46,19 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-17 21:26:51 +08:00
 - Source: Task `259.1` competition-first unattended Gate A contract.
-- Symptom: The new competition CLI completes a real sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the official archive and 252-cell result-blind matrix are now verified, but no official method cell has executed and the manifest remains `release_eligible=false`.
+- Symptom: The development competition CLI completes a sandboxed three-seed equation-discovery calculation and passes its causal-chain checks, but every development attempt reports `ode_system_count=1`, `pde_system_count=0`, and `full_gate_a_passed=0`; the official archive and 252-cell result-blind matrix are verified, while only three official single-system/single-seed smoke cells have executed and the competition manifest remains `release_eligible=false`.
 - Impact: The run proves lifecycle, checkpoint, execution, tamper detection, and negative-release behavior only. It cannot support an official MDBench result, a Gate A pass, a RealPDEBench start decision, a competition-quality scientific claim, or an award claim.
-- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, licenses, archive metadata, and Docker. Task `259.3.1` verified archive MD5 `9fe483c64ad6e67a07153b00a4665d26`, SHA-256 `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`, and inventory hash `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`, covering 63 ODEs, 14 PDEs, five conditions, and 385 NPZ files. Task `259.3.2.1` froze 252 cells under matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`; the run directory contains no method result yet.
-- Root cause: Tasks `259.1`, `259.2`, and `259.3.1` deliberately stop at lifecycle/environment/data evidence, while task `259.3.2.1` stops at pre-result experimental design. The container runner, checkpointed executions, official metrics, and three independent full repetitions are not implemented yet.
+- Evidence: `runs/manual-live/task259-gate-a-characterization-v2/runs/gate-a-characterization/cycle-manifest.json` contains seeds 11/23/37 and the development-only counters; `evidence-gate.json` passes the causal chain while setting `release_allowed=false`; local export writes `EXPORT-BLOCKED.md`. Task `259.2` verified pinned revision `f81813e760325589737fe3311ac8199ecc64188a`, licenses, archive metadata, and Docker. Task `259.3.1` verified archive MD5 `9fe483c64ad6e67a07153b00a4665d26`, SHA-256 `57b77fc349007c681f07458751d41c21feae510a301066bec2090f85016217d3`, and inventory hash `3d6e5f7413723f2182c0f20335418f1229fd71c435ca7998f651d76d0778ba51`, covering 63 ODEs, 14 PDEs, five conditions, and 385 NPZ files. Task `259.3.2.1` froze 252 cells under matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04`. Task `259.3.2.2.1` then ran SINDy, bounded Operon, and stability-SINDy on official clean harmonic-oscillator seed 11; all three hash-bound cells succeeded and resumed without rerun, but 249 cells remain pending.
+- Root cause: Tasks through `259.3.2.2.1` establish lifecycle, environment, data, frozen design, and a real single-cell-per-method execution path only. The remaining official matrix, aggregate metrics, and three independent full repetitions are not complete.
 - Workaround: Keep all outputs labelled `generated-characterization-fixture-not-official-mdbench-result`, keep `development_fixture=true`, and block release/export regardless of favorable fixture metrics.
 - Next action: Implement task `259.3.2.2`, execute and checkpoint the already-frozen matrix without changing its hash, and let task `259.4` produce either a reproducible Gate A pass or a credible negative result.
 - Linked tasks: `259.1`, `259.2`, `259.3`, `259.4`.
 - Resolution: None; this is an intentional, visible boundary of the completed first slice.
-- Verification: Broad tests, Ruff, Mypy, real local characterization CLI, blocked export, live official preflight, image build, container `pip check`, and official evaluator CLI smoke passed; none is represented as official benchmark execution.
+- Verification: Broad tests, Ruff, Mypy, real local characterization CLI, blocked export, live official preflight, image build, container dependency/import checks, and the three real single-cell official executions passed. Only the last item is method-result evidence, and it remains explicitly insufficient for matrix-wide Gate A.
 
 ### P-20260717-003 - Official MDBench hyperparameter validation slices overlap
 
-- Status: Open
+- Status: Mitigated
 - Severity: High
 - Discovered: 2026-07-17 22:00:00 +08:00
 - Source: Task `259.3.1` audit of pinned `mdbench/evaluate_method.py` before preregistration.
@@ -67,10 +67,42 @@ update a factual problem entry below.
 - Evidence: Pinned revision `f81813e760325589737fe3311ac8199ecc64188a` assigns `time_train = time_train[:-validation_cutoff]` before `time_val = time_train[-validation_cutoff:]` and repeats the same ordering for observations and derivatives.
 - Root cause: The validation slice is taken after the source variable has been rebound to its shortened training prefix.
 - Workaround: Characterize the upstream output separately, but make task `259.3.2` use a recorded, non-overlapping chronological train/validation/test split in the adapter. Persist the divergence and split indices in the experiment manifest.
-- Next action: Add a regression test that proves disjoint indices and block any matrix attempt whose split hashes or boundaries overlap.
+- Next action: Keep the upstream divergence disclosed while task `259.3.2.2.2` executes every frozen cell through the corrected adapter; do not call the adapter an unchanged upstream evaluator.
 - Linked tasks: `259.3.1`, `259.3.2`, `259.4`.
-- Resolution: None; the official source remains pinned and unmodified, while the execution adapter must correct and disclose the evaluation split.
-- Verification: Direct source inspection of the pinned revision; no algorithm result was consumed.
+- Resolution: The official source remains pinned and unmodified. The adapter validates normalized contiguity before execution, materializes `[0,96)`, `[96,120)`, and `[120,150)` on the live 150-point ODE smoke, persists those indices in every result, and rejects overlapping concrete-index fixtures. This mitigates the leak without hiding the divergence.
+- Verification: Direct source inspection, focused normalized/concrete overlap regression tests, and the live three-method harmonic-oscillator smoke.
+
+### P-20260717-005 - Absolute container runner initially could not import pinned MDBench
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-17 22:29:12 +08:00
+- Source: Task `259.3.2.2.1` live official harmonic-oscillator SINDy smoke.
+- Symptom: The first hash-bound cell persisted `RuntimeError: every frozen sparse configuration failed` because every candidate raised `No module named 'mdbench'`.
+- Impact: The image could pass `python -m mdbench.evaluate_method --help` from `/opt/mdbench`, yet the absolute `/opt/autoresearch-mdbench/runner.py` entrypoint could not import the pinned package; this exposed the earlier evaluator-help smoke as insufficient execution proof.
+- Evidence: `runs/manual-live/task259-mdbench-official-v1/execution-v1/` retains the failed terminal result, logs, environment hash, and result hash.
+- Root cause: Python placed the absolute runner directory on `sys.path`; the repository working directory was not a reliable import path for that entrypoint.
+- Workaround: None used for evidence; the failed result was preserved and a new environment/output directory was used after correction.
+- Next action: None.
+- Linked tasks: `259.3.2.2.1`.
+- Resolution: The image declares `PYTHONPATH=/opt/mdbench` and its build now imports the official SINDy adapter from `/`, after verifying all three pinned adapter files exist.
+- Verification: Rebuilt image plus live `execution-v5` ran all three method families successfully.
+
+### P-20260717-006 - Operon prediction required owned Fortran-order arrays
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-17 22:32:00 +08:00
+- Source: Task `259.3.2.2.1` live bounded-Operon smoke.
+- Symptom: Operon fit and Pareto selection completed, but validation or ODE trajectory prediction raised a `pyoperon.Dataset` constructor `TypeError` for ordinary NumPy arrays.
+- Impact: Operon cells would be recorded as failed even when a valid symbolic model had been fitted, preventing a fair frozen-baseline comparison.
+- Evidence: `execution-v3` and `execution-v4` preserve the two successive failures: validation data first lacked the required memory layout, then the one-row trajectory callback did.
+- Root cause: PyOperon `0.5.0` requires compatible owned contiguous arrays at its Dataset boundary; the upstream wrapper normalizes ordinary prediction arrays, while the new validation and integration paths initially did not normalize every boundary.
+- Workaround: None used for final evidence; failed environments were preserved rather than overwritten.
+- Next action: None.
+- Linked tasks: `259.3.2.2.1`.
+- Resolution: The adapter converts train/validation/test and trajectory callback inputs to owned `float64` Fortran-order arrays before PyOperon evaluation.
+- Verification: In `execution-v5`, bounded Operon succeeded with finite validation, derivative, and trajectory NMSE; the subsequent invocation reused its validated terminal result.
 
 ### P-20260717-004 - Direct module CLI requires project environment activation
 

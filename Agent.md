@@ -64,6 +64,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-17 22:39:37 +08:00 - Codex - Task 259.3.2.2.1 hash-bound MDBench runner smoke
+
+- Request: Build the resumable official-matrix runner, prove one unchanged cell can execute in the bounded container with a complete causal chain, and reject or reuse checkpoints before scaling to all 252 cells.
+- Files changed:
+  - `deploy/experiments/mdbench/Dockerfile`
+  - `deploy/experiments/mdbench/requirements-sindy.lock`
+  - `deploy/experiments/mdbench/runner.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/models.py`
+  - `src/autoresearch/competition/official_execution.py`
+  - `tests/unit/competition/test_official_execution.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `README.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `competition mdbench execute` and immutable contracts for concrete splits, code-computed metrics, learned terms, container identity, terminal attempts, and matrix checkpoints. Successful ODE cells require finite derivative, validation, trajectory, complexity, time, and memory evidence; failed and timed-out cells require a reason.
+  - The host revalidates the frozen matrix and inventory, hashes the artifact bytes, runner, dependencies, Dockerfile, orchestrator, preregistration, contracts, image, spec, stdout, stderr, and terminal result. Resume rejects changed result/spec/log/environment chains and reuses valid terminal cells.
+  - The disposable container runs with `--network none`, read-only root/data/spec mounts, bounded CPU/memory/PIDs/time, dropped capabilities, and no-new-privileges. It implements the frozen official SINDy/PDE-FIND baseline, bounded seeded PyOperon baseline, and train-only Savitzky-Golay plus bootstrap stability-selected candidate.
+  - Built image `autoresearch-mdbench-gate-a:f81813e` as image ID `sha256:254b1bbddb1735af76dadf5d6a5f329b36cd322e366a2379a2e328f34389cbb8`; runner SHA-256 is `8f0f590cd0de305f337fa0d7e5edbdc5da20699c22fa736c59dead7ed40b8b26`, code hash is `dde88f29d1d51bb9790359bf8902709eb564d09d9411d77bc0e258cc43f5208e`, and environment hash is `412f587955bf3cfefe753403e79184206a27b786564ca2b7c7d4738067c1e859`.
+  - Live `execution-v5` ran all three frozen method families on official clean harmonic-oscillator seed 11. SINDy, Operon, and stability-SINDy derivative NMSE values were approximately `2.20e-6`, `2.07e-6`, and `2.05e-11`; all also produced finite trajectory NMSE and non-empty equations. A repeated invocation reused all three validated terminal results.
+  - This is official single-system/single-seed execution evidence only: 249 of 252 cells remain pending. It does not establish cross-system improvement, three-seed reproducibility, Gate A, Gate B, submission readiness, or an award claim. Earlier failed `execution-v1/v3/v4` artifacts were preserved. Unrelated course-paper changes in `Agent.md` and `Problem.md` remain outside this task.
+- Verification:
+  - `python -m pytest tests/unit/competition/test_official_execution.py tests/unit/competition/test_competition_cli.py -q`: passed with 7 tests covering complete causal persistence, idempotent resume, result tampering, spec tampering, infrastructure failure persistence, concrete overlap rejection, and CLI registration.
+  - `docker build --tag autoresearch-mdbench-gate-a:f81813e --build-arg MDBENCH_REVISION=f81813e760325589737fe3311ac8199ecc64188a deploy/experiments/mdbench`: passed; build assertions found the exact pinned SINDy, PDE-FIND, and Operon adapters and imported SINDy from `/`.
+  - Container `python -m pip check`, imports of the three method dependencies, and runner `--help`: passed with no broken requirements.
+  - Real `competition mdbench execute` against matrix hash `77fd4376bff5fcffa4445da049071a8498dd76d274a2e3bc24686c52f3adaf04` wrote three succeeded terminal cells in `runs/manual-live/task259-mdbench-official-v1/execution-v5`; concrete indices were `[0,96)`, `[96,120)`, and `[120,150)`, and the repeated command marked every record `reused_this_invocation=true`.
+  - Broad `python -m pytest tests -q`: passed with 696 passed, 4 skipped, one upstream LangGraph deprecation warning, and 88% coverage.
+  - Broad `python -m ruff check src tests`: passed.
+  - Broad `python -m mypy src/autoresearch`: passed with no issues in 122 source files.
+  - `python -m py_compile deploy/experiments/mdbench/runner.py` and `git diff --check`: passed; Git emitted only expected LF-to-CRLF working-copy warnings for the Docker experiment files.
+- Problems:
+  - Updated `P-20260717-001`: three official smoke cells exist, but Gate A remains blocked with 249 cells pending.
+  - Mitigated `P-20260717-003`: normalized and concrete split-overlap guards now pass, and live results persist disjoint indices while disclosing the upstream divergence.
+  - Added and resolved `P-20260717-005` for the absolute-runner Python import path and `P-20260717-006` for PyOperon array-layout boundaries; failed live artifacts were retained rather than overwritten.
+- Follow-up:
+  - Continue task `259.3.2.2.2` by draining the unchanged remaining 249 cells into the same hash-bound execution contract, then evaluate the complete matrix under task `259.4`. Gate B remains blocked.
+
 ### 2026-07-17 22:10:40 +08:00 - Codex - Task 259.3.2.1 result-blind official MDBench matrix
 
 - Request: Freeze the official Gate A experiment matrix before observing any method result, with disjoint temporal splits, exact Cartesian coverage, immutable hashes, and explicit acceptance criteria.

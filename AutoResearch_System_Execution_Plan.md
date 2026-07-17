@@ -793,7 +793,7 @@ project_demo/
 7. Gate A 通过后再接入 Qwen/DashScope 调用证据和 RealPDEBench Cylinder Gate B。
 
 公共入口为 `competition run/resume/status/export`、`competition access grant` 与
-`competition mdbench preflight/prepare`。默认自动选题；
+`competition mdbench preflight/prepare/preregister/execute`。默认自动选题；
 `seeded` 模式只缩小候选空间。授权范围内不逐实验审批，资源耗尽时保存检查点并停止。所有导出均为
 本地产物；外部提交必须有显式权限且同时通过科学证据门、复现门和榜题内部评分门。
 
@@ -802,3 +802,6 @@ claim-evidence、一键复现和透明的负结果边界。开发夹具通过不
 在正式方法执行前，系统还要写入结果盲的 252 单元预注册矩阵：10 ODE、4 PDE、clean/SNR20、
 开发/未见测试系统、64/16/20 不重叠时间切分、三个种子、方法预算、指标和接受门均进入内容哈希；
 矩阵冻结本身仍不等于运行过任何一个方法。
+正式排空矩阵前先执行 hash-bound runner 烟测：三种方法族在同一官方 ODE 单元均产生有限、
+非空的导数/轨迹/复杂度指标，具体 64/16/20 索引互不重叠；再次调用必须复用已验链终态。
+烟测通过只授权继续执行余下单元，不授权 Gate A、Gate B 或提交结论。
