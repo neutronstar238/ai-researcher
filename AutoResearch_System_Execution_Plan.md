@@ -828,3 +828,28 @@ bootstrap 支持稳定性两个机制、全新未见系统、种子 13/29/43 及
 95% CI 为 `[-4.116249, 0.292912]`。两次裁决生成相同文件哈希并返回 `negative_result`、
 `gate_b_allowed=false`。按预注册停止规则，弱形式/支持稳定性机制族关闭，任务 259.5 和 259.6
 不启动，也不围绕已揭示恢复未见系统继续调参。
+
+---
+
+## 24. 跨周期自主成果 campaign 增量
+
+任务 260 按以下顺序执行：
+
+1. `260.1` 建立独立 `autoresearch.campaign` 控制层，先解决单周期服务无法自动把负结果变为新
+   假设的问题；
+2. `260.2` 注册 `campaign start/resume/status/export`，让每轮研究报告、失败报告、实验指标、
+   validation、evidence map、loop report 和论文版本成为强制可见产物；
+3. `260.3` 以 provider-agnostic OpenAI-compatible 配置接入本地 Ollama `qwen3.5:9b`，并把
+   competition 的真实执行/裁决器适配为 campaign round；
+4. 若没有至少六个可信未揭示系统，或 72 小时开发门无法产生合格候选，立即进入 `260.4` 的本地
+   自主科研系统对比矩阵，不把旧 MDBench 未见结果冒充新方法 holdout；
+5. `260.5` 只在真实贡献门通过后构建论文、独立复现包和完整交付索引，外部提交保持人工门禁。
+
+`260.1` 已实现逐阶段原子持久化和恢复。每个 round 记录 parent result、parent round manifest、
+design、artifact 和 final decision 哈希；campaign manifest 再对所有 round manifest 建立 lineage
+hash。proposal-time context 没有当前 unseen refs；如果 proposal 文本或证据引用泄露当前未见
+引用，运行立即失败。负结果之后相同机制族也被拒绝。development 选择、最终 config、代码和
+adjudicator 必须匹配冻结证据，未见结果不完整或含科研决策人工介入时不能通过 contribution gate。
+
+当前自动双轮测试使用受控适配器验证状态机、恢复和证据边界，不是科学结果。真实 adapter、真实
+双轮实验、完整报告/PDF 与 CCF-B 投稿就绪判断仍分别由 `260.2`—`260.5` 完成。

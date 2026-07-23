@@ -64,6 +64,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-23 16:28:52 +08:00 - Codex - Task 260.1 autonomous campaign state machine
+
+- Request: Implement the approved autonomous CCF-B contribution loop so a real negative result can drive a different hypothesis, newly frozen experiment, unseen adjudication, report transition, and next round without post-unseen tuning or human scientific decisions.
+- Files changed:
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/models.py`
+  - `src/autoresearch/campaign/service.py`
+  - `tests/unit/campaign/test_campaign_service.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added strict machine-readable campaign, round, diagnosis, hypothesis, screening, preregistration, development, freeze, unseen evaluation, contribution gate, decision, and result contracts.
+  - Added `AutonomousResearchCampaign`, which atomically persists and resumes every approved state, binds parent result and parent round hashes, maintains a campaign lineage hash, creates the next result-blind round after a failed gate, and stops instead of weakening gates when the deadline or reserved designs are exhausted.
+  - Kept current-round unseen references outside proposal-time adapter context and added runtime rejection for leaked references, changed preregistered adjudicators/configs, incomplete or human-directed passing evidence, and same-mechanism children of negative rounds.
+  - Added runtime-owned Obsidian round notes. These notes and the controlled adapter tests prove the control plane and evidence boundary only; they do not claim a real CCF-B result.
+- Verification:
+  - `python -m pytest tests/unit/campaign/test_campaign_service.py -q`: passed, 6 tests.
+  - `python -m pytest tests -q`: passed, 724 passed and 4 skipped with one upstream LangGraph deprecation warning; total coverage remained 88%.
+  - `python -m ruff check src tests`: passed.
+  - `python -m mypy src/autoresearch`: passed with no issues in 127 source files.
+  - `git diff --check`: passed.
+- Problems:
+  - Added and resolved `P-20260723-014` for the missing cross-cycle negative-result-to-new-hypothesis orchestrator.
+  - Existing scientific blocker `P-20260717-009` remains unchanged: the two official MDBench cycles are negative and Gate B remains closed.
+- Follow-up:
+  - Implement task `260.2` with campaign CLI and complete human-readable/report/deliverables export, then task `260.3` with the local Ollama and real benchmark adapters plus two new experimental rounds. Do not treat task `260.1` tests as scientific or publication evidence.
+
 ### 2026-07-18 01:32:37 +08:00 - Codex - Task 259.7.3.2 recovery execution and adjudication
 
 - Request: Resume after the workstation restart, drain and reproduce the unchanged 252-cell recovery matrix, apply the pre-result frozen Gate A adjudicator, stop on a negative result, update the evidence boundary, and push the completed task.

@@ -3213,6 +3213,28 @@ A task can be checked only when all applicable items are true:
     - Add the pinned sim-to-real Cylinder adapter, official DMD/FNO/Transolver baselines, bounded two-mechanism search, three-stage data schedule, three seeds, bootstrap confidence intervals, and required ablations.
     - Block innovation and submission claims unless unseen-real `Rel L2`, fRMSE, KE, MVPE, update-ratio, ablation, reproducibility, and 40/30/30 internal-review gates all pass.
 
+- [ ] 260. Autonomous CCF-B contribution campaign
+  - [x] 260.1 Add the persistent negative-result-to-new-hypothesis campaign state machine
+    - Add strict campaign, round, failure diagnosis, hypothesis, preregistration, freeze, unseen evaluation, contribution gate, and decision contracts.
+    - Persist `observe -> diagnose -> propose -> screen -> preregister -> develop -> freeze -> unseen evaluate -> adjudicate -> report` with atomic artifacts, per-stage resume, parent-result/round hashes, and a top-level lineage hash.
+    - Keep current-round unseen references outside proposal-time adapter context, reject leaked unseen references, freeze the adjudicator before development, reject code/config/adjudicator changes before unseen execution, and require a new mechanism family after a negative result.
+    - Automatically create the next result-blind round when a gate fails, require the configured number of new experimental rounds before paper build, stop rather than lower a gate when designs or the deadline are exhausted, and write runtime-owned round evidence to the Obsidian vault.
+    - _Outcome: deterministic tests complete a new two-round lineage in which round one is negative, round two changes mechanism and passes, terminal resume performs no scientific calls, current-unseen leakage and same-mechanism recovery are rejected, and persisted artifact tampering is blocked._
+    - _Verify: focused campaign tests, full `tests` regression, full Ruff, full Mypy, and `git diff --check`; exact commands are recorded in `Agent.md`._
+  - [ ] 260.2 Add campaign CLI and complete per-round/deliverables exports
+    - Add `campaign start/resume/status/export`, human-readable research/failure/loop reports, evidence maps, experiment manifests, manuscript versions, and a complete indexed local export.
+    - Export every scientific artifact without treating an internal contribution gate as external-submission authorization.
+  - [ ] 260.3 Connect local Ollama and real benchmark adapters, then run two new rounds
+    - Use provider-agnostic local OpenAI-compatible configuration for Ollama `qwen3.5:9b`; keep numerical decisions code-computed and fall back to deterministic proposal templates if structured generation fails.
+    - Audit unused MDBench holdout capacity before any third method cycle; otherwise pivot immediately to the frozen local systems-paper benchmark route.
+    - Run and resume at least two new experimental rounds with zero research-decision human interventions and preserve every positive or negative result.
+  - [ ] 260.4 Execute the autonomous-research systems-paper matrix when Route A cannot pass
+    - Compare one-shot, execute-once, and evidence-bound self-loop modes across the frozen local UCI/MDBench task set, three seeds, and the preregistered memory/failure-feedback/preregistration/evidence-gate ablations.
+    - Require paired uncertainty, reproduction, unsupported-claim, intervention, runtime, and cost evidence before a systems contribution may pass.
+  - [ ] 260.5 Build and independently reproduce the final paper package
+    - Produce manuscript sources, compiled PDF, figures/tables, citations, evidence graph, review/audit, environment lock, reproduction commands, artifact hashes, and the complete campaign dossier.
+    - Keep external submission blocked until an explicit human approval is recorded.
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3933,6 +3955,26 @@ A task can be checked only when all applicable items are true:
     {
       "id": 168,
       "tasks": ["259.7"]
+    },
+    {
+      "id": 169,
+      "tasks": ["260.1"]
+    },
+    {
+      "id": 170,
+      "tasks": ["260.2"]
+    },
+    {
+      "id": 171,
+      "tasks": ["260.3"]
+    },
+    {
+      "id": 172,
+      "tasks": ["260.4"]
+    },
+    {
+      "id": 173,
+      "tasks": ["260.5"]
     }
   ]
 }
