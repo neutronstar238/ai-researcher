@@ -174,6 +174,8 @@ def test_campaign_cli_start_status_resume_and_export(tmp_path: Path) -> None:
             campaign_id,
             "--deadline",
             "2099-08-15",
+            "--adapter",
+            "development-fixture-v1",
             "--output-dir",
             str(output_root),
             "--vault",

@@ -15,12 +15,15 @@
     "revision": "4c32d2603cbf1aa476efae72bc78436cb1e6fc75",
     "version": "1.7.5"
   },
-  "scope": "official MDBench baselines and bounded stability/weak-form candidates",
+  "scope": "official MDBench baselines and bounded stability/weak-form/task-260 campaign candidates",
   "supported_algorithms": [
     "sindy",
     "pdefind",
     "operon_gp",
     "stability_sindy",
-    "weak_stability_sindy"
+    "weak_stability_sindy",
+    "noise_conditioned_ensemble_sindy",
+    "spline_group_sparse_sindy",
+    "three frozen ablations per task-260 mechanism"
   ]
 }

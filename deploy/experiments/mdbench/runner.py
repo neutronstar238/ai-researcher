@@ -21,6 +21,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.interpolate import UnivariateSpline
 from scipy.signal import savgol_filter
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
@@ -928,6 +929,433 @@ def _run_stability_candidate(spec, pieces, spatial_grids, time_axis):
     }
 
 
+def _noise_proxy(states, time_axis):
+    """Estimate relative high-frequency energy using training observations only."""
+
+    moved = np.moveaxis(np.asarray(states, dtype=np.float64), time_axis, 0)
+    if moved.shape[0] < 5:
+        raise ValueError("training split is too short for a noise proxy")
+    second_difference = np.diff(moved, n=2, axis=0)
+    centered = moved - np.median(moved, axis=0, keepdims=True)
+    signal_scale = float(np.median(np.abs(centered))) + np.finfo(np.float64).eps
+    return float(np.median(np.abs(second_difference)) / signal_scale)
+
+
+def _conditioned_windows(parameters, train, time_axis):
+    windows = [
+        int(window)
+        for window in parameters["savgol_windows"]
+        if int(window) <= len(train["t"])
+        and int(window) % 2 == 1
+        and int(window) > int(parameters["savgol_polyorder"])
+    ]
+    if not windows:
+        raise ValueError("no valid frozen Savitzky-Golay window remains")
+    if not bool(parameters.get("noise_conditioning", True)):
+        return windows, _noise_proxy(train["u"], time_axis)
+    proxy = _noise_proxy(train["u"], time_axis)
+    if proxy < 0.05:
+        selected = windows[: max(1, min(2, len(windows)))]
+    elif proxy < 0.2:
+        midpoint = max(0, (len(windows) - 2) // 2)
+        selected = windows[midpoint : midpoint + 2]
+    else:
+        selected = windows[-max(1, min(2, len(windows))) :]
+    return selected, proxy
+
+
+def _coefficient_ensemble(theta, targets, parameters, threshold, seed):
+    repetitions = (
+        int(parameters["ensemble_repetitions"])
+        if bool(parameters.get("ensemble", True))
+        else 1
+    )
+    if repetitions == 1:
+        return _stlsq(theta, targets, threshold, 1e-5, normalize_columns=True)
+    x = np.asarray(theta, dtype=np.float64)
+    y = np.asarray(targets, dtype=np.float64).reshape(-1, targets.shape[-1])
+    sample_size = max(
+        1,
+        int(x.shape[0] * float(parameters["subsample_fraction"])),
+    )
+    rng = np.random.default_rng(int(seed))
+    coefficients = []
+    for _replicate in range(repetitions):
+        indices = rng.choice(x.shape[0], size=sample_size, replace=False)
+        coefficients.append(
+            _stlsq(
+                x[indices],
+                y[indices],
+                threshold,
+                1e-5,
+                normalize_columns=True,
+            )
+        )
+    return np.median(np.stack(coefficients, axis=0), axis=0)
+
+
+def _smoothed_or_finite_pair(piece, time_axis, parameters, window):
+    if bool(parameters.get("smoothing", True)):
+        return _savgol_pair(
+            piece,
+            time_axis,
+            int(window),
+            int(parameters["savgol_polyorder"]),
+        )
+    return (
+        np.asarray(piece["u"], dtype=np.float64),
+        _finite_difference(piece["u"], piece["t"], time_axis),
+    )
+
+
+def _run_noise_conditioned_ensemble(spec, pieces, spatial_grids, time_axis):
+    """Train-noise-conditioned derivative smoothing plus coefficient bagging."""
+
+    attempt = spec["attempt"]
+    parameters = spec["method"]["parameters"]
+    if attempt["data_type"] != "ode":
+        raise ValueError("noise-conditioned campaign candidate is ODE-only")
+    train = pieces["train"]
+    validation = pieces["validation"]
+    windows, noise_proxy = _conditioned_windows(parameters, train, time_axis)
+    if not bool(parameters.get("smoothing", True)):
+        windows = [windows[0]]
+    best = None
+    for window, degree, threshold in itertools.product(
+        windows,
+        parameters["poly_order"],
+        parameters["optimizer_threshold"],
+    ):
+        train_states, train_dot = _smoothed_or_finite_pair(
+            train,
+            time_axis,
+            parameters,
+            window,
+        )
+        validation_states, validation_dot = _smoothed_or_finite_pair(
+            validation,
+            time_axis,
+            parameters,
+            window,
+        )
+        theta_train, names = _candidate_library(
+            train_states,
+            "ode",
+            degree,
+            0,
+            spatial_grids,
+        )
+        theta_validation, validation_names = _candidate_library(
+            validation_states,
+            "ode",
+            degree,
+            0,
+            spatial_grids,
+        )
+        if validation_names != names:
+            raise ValueError("ensemble feature library changed across splits")
+        coefficients = _coefficient_ensemble(
+            theta_train,
+            train_dot,
+            parameters,
+            threshold,
+            int(attempt["seed"]) + int(window) * 1009 + int(degree) * 9176,
+        )
+        prediction = _linear_predict(theta_validation, coefficients)
+        validation_nmse = _nmse(validation_dot, prediction)
+        complexity = _model_complexity(coefficients, names)
+        key = (
+            validation_nmse,
+            complexity,
+            int(window),
+            int(degree),
+            float(threshold),
+        )
+        if best is None or key[:2] < best[:2]:
+            best = key
+    if best is None:
+        raise RuntimeError("no noise-conditioned ensemble configuration succeeded")
+    validation_nmse, _complexity, window, degree, threshold = best
+    final_states, final_dot = _smoothed_or_finite_pair(
+        pieces["train_validation"],
+        time_axis,
+        parameters,
+        window,
+    )
+    theta_final, feature_names = _candidate_library(
+        final_states,
+        "ode",
+        degree,
+        0,
+        spatial_grids,
+    )
+    coefficients = _coefficient_ensemble(
+        theta_final,
+        final_dot,
+        parameters,
+        threshold,
+        int(attempt["seed"]) + 2603,
+    )
+    test_states, _test_dot = _smoothed_or_finite_pair(
+        pieces["test"],
+        time_axis,
+        parameters,
+        window,
+    )
+    theta_test, test_names = _candidate_library(
+        test_states,
+        "ode",
+        degree,
+        0,
+        spatial_grids,
+    )
+    if test_names != feature_names:
+        raise ValueError("ensemble test library differs from the fitted library")
+    prediction = _linear_predict(theta_test, coefficients).reshape(
+        pieces["test"]["du_true"].shape
+    )
+    derivative_nmse = _nmse(pieces["test"]["du_true"], prediction)
+    polynomial = PolynomialFeatures(degree=int(degree), include_bias=True)
+    polynomial.fit(np.zeros((1, pieces["test"]["u"].shape[-1])))
+    trajectory_nmse = _trajectory_nmse(
+        lambda states: polynomial.transform(states).dot(coefficients.T),
+        pieces["test"]["t"],
+        pieces["test"]["u"],
+    )
+    selected = {
+        "campaign_candidate_kind": parameters["campaign_candidate_kind"],
+        "mechanisms": list(parameters["mechanisms"]),
+        "train_noise_proxy": noise_proxy,
+        "candidate_windows_after_noise_conditioning": list(windows),
+        "savgol_window": int(window),
+        "savgol_polyorder": int(parameters["savgol_polyorder"]),
+        "poly_order": int(degree),
+        "optimizer_threshold": float(threshold),
+        "optimizer_alpha": 1e-5,
+        "ensemble_repetitions": int(parameters["ensemble_repetitions"]),
+        "subsample_fraction": float(parameters["subsample_fraction"]),
+        "noise_conditioning": bool(parameters.get("noise_conditioning", True)),
+        "smoothing": bool(parameters.get("smoothing", True)),
+        "ensemble": bool(parameters.get("ensemble", True)),
+    }
+    return {
+        "selected_hyperparameters": selected,
+        "discovered_equation": _equation_text(coefficients, feature_names),
+        "coefficients": _coefficient_payload(coefficients, feature_names),
+        "validation_nmse": float(validation_nmse),
+        "derivative_nmse": derivative_nmse,
+        "trajectory_extrapolation_nmse_ode": trajectory_nmse,
+        "model_complexity": _model_complexity(coefficients, feature_names),
+    }
+
+
+def _spline_pair(piece, smoothing_scale):
+    times = np.asarray(piece["t"], dtype=np.float64).reshape(-1)
+    states = np.asarray(piece["u"], dtype=np.float64)
+    if states.ndim != 2 or len(times) < 5:
+        raise ValueError("spline campaign candidate requires a two-dimensional ODE series")
+    smooth = np.empty_like(states)
+    derivative = np.empty_like(states)
+    for target_index in range(states.shape[-1]):
+        values = states[:, target_index]
+        noise_scale = float(np.median(np.abs(np.diff(values, n=2)))) / 0.6745
+        smoothing = float(smoothing_scale) * len(times) * noise_scale**2
+        spline = UnivariateSpline(
+            times,
+            values,
+            k=min(3, len(times) - 1),
+            s=max(0.0, smoothing),
+        )
+        smooth[:, target_index] = spline(times)
+        derivative[:, target_index] = spline.derivative()(times)
+    if not np.all(np.isfinite(smooth)) or not np.all(np.isfinite(derivative)):
+        raise FloatingPointError("spline derivative produced non-finite values")
+    return smooth, derivative
+
+
+def _spline_or_finite_pair(piece, time_axis, parameters, smoothing_scale):
+    if bool(parameters.get("spline_derivative", True)):
+        return _spline_pair(piece, smoothing_scale)
+    return (
+        np.asarray(piece["u"], dtype=np.float64),
+        _finite_difference(piece["u"], piece["t"], time_axis),
+    )
+
+
+def _group_sparse_fit(theta, targets, threshold, parameters):
+    if not bool(parameters.get("group_sparse", True)):
+        return _stlsq(theta, targets, threshold, 1e-5, normalize_columns=True)
+    x = np.asarray(theta, dtype=np.float64)
+    y = np.asarray(targets, dtype=np.float64).reshape(-1, targets.shape[-1])
+    scales = np.linalg.norm(x, axis=0)
+    scales[scales <= np.finfo(np.float64).eps] = 1.0
+    normalized = x / scales
+    active = np.ones(normalized.shape[1], dtype=bool)
+    coefficients = np.zeros((y.shape[1], normalized.shape[1]), dtype=np.float64)
+    for _iteration in range(20):
+        if not np.any(active):
+            break
+        model = Ridge(alpha=1e-5, fit_intercept=False, solver="lsqr", tol=1e-8)
+        model.fit(normalized[:, active], y)
+        current = np.asarray(model.coef_, dtype=np.float64)
+        if current.ndim == 1:
+            current = current.reshape(1, -1)
+        if bool(parameters.get("shared_support", True)):
+            group_norm = np.linalg.norm(current, axis=0) / np.sqrt(current.shape[0])
+            keep = group_norm >= float(threshold)
+        else:
+            keep = np.any(np.abs(current) >= float(threshold), axis=0)
+        indices = np.flatnonzero(active)
+        next_active = active.copy()
+        next_active[indices] = keep
+        if np.array_equal(next_active, active):
+            coefficients[:, indices] = current
+            break
+        active = next_active
+    if np.any(active) and not np.any(coefficients):
+        model = Ridge(alpha=1e-5, fit_intercept=False, solver="lsqr", tol=1e-8)
+        model.fit(normalized[:, active], y)
+        current = np.asarray(model.coef_, dtype=np.float64)
+        if current.ndim == 1:
+            current = current.reshape(1, -1)
+        coefficients[:, np.flatnonzero(active)] = current
+    return coefficients / scales[np.newaxis, :]
+
+
+def _run_spline_group_sparse(spec, pieces, spatial_grids, time_axis):
+    """Cubic-spline analytic derivatives with cross-output group sparsity."""
+
+    attempt = spec["attempt"]
+    parameters = spec["method"]["parameters"]
+    if attempt["data_type"] != "ode":
+        raise ValueError("spline group-sparse campaign candidate is ODE-only")
+    smoothing_scales = list(parameters["spline_smoothing_scales"])
+    if not bool(parameters.get("spline_derivative", True)):
+        smoothing_scales = [0.0]
+    best = None
+    for smoothing_scale, degree, threshold in itertools.product(
+        smoothing_scales,
+        parameters["poly_order"],
+        parameters["optimizer_threshold"],
+    ):
+        train_states, train_dot = _spline_or_finite_pair(
+            pieces["train"],
+            time_axis,
+            parameters,
+            smoothing_scale,
+        )
+        validation_states, validation_dot = _spline_or_finite_pair(
+            pieces["validation"],
+            time_axis,
+            parameters,
+            smoothing_scale,
+        )
+        theta_train, names = _candidate_library(
+            train_states,
+            "ode",
+            degree,
+            0,
+            spatial_grids,
+        )
+        theta_validation, validation_names = _candidate_library(
+            validation_states,
+            "ode",
+            degree,
+            0,
+            spatial_grids,
+        )
+        if validation_names != names:
+            raise ValueError("spline feature library changed across splits")
+        coefficients = _group_sparse_fit(
+            theta_train,
+            train_dot,
+            threshold,
+            parameters,
+        )
+        validation_nmse = _nmse(
+            validation_dot,
+            _linear_predict(theta_validation, coefficients),
+        )
+        complexity = _model_complexity(coefficients, names)
+        key = (
+            validation_nmse,
+            complexity,
+            float(smoothing_scale),
+            int(degree),
+            float(threshold),
+        )
+        if best is None or key[:2] < best[:2]:
+            best = key
+    if best is None:
+        raise RuntimeError("no spline group-sparse configuration succeeded")
+    validation_nmse, _complexity, smoothing_scale, degree, threshold = best
+    final_states, final_dot = _spline_or_finite_pair(
+        pieces["train_validation"],
+        time_axis,
+        parameters,
+        smoothing_scale,
+    )
+    theta_final, feature_names = _candidate_library(
+        final_states,
+        "ode",
+        degree,
+        0,
+        spatial_grids,
+    )
+    coefficients = _group_sparse_fit(
+        theta_final,
+        final_dot,
+        threshold,
+        parameters,
+    )
+    test_states, _test_dot = _spline_or_finite_pair(
+        pieces["test"],
+        time_axis,
+        parameters,
+        smoothing_scale,
+    )
+    theta_test, test_names = _candidate_library(
+        test_states,
+        "ode",
+        degree,
+        0,
+        spatial_grids,
+    )
+    if test_names != feature_names:
+        raise ValueError("spline test library differs from the fitted library")
+    prediction = _linear_predict(theta_test, coefficients).reshape(
+        pieces["test"]["du_true"].shape
+    )
+    derivative_nmse = _nmse(pieces["test"]["du_true"], prediction)
+    polynomial = PolynomialFeatures(degree=int(degree), include_bias=True)
+    polynomial.fit(np.zeros((1, pieces["test"]["u"].shape[-1])))
+    trajectory_nmse = _trajectory_nmse(
+        lambda states: polynomial.transform(states).dot(coefficients.T),
+        pieces["test"]["t"],
+        pieces["test"]["u"],
+    )
+    selected = {
+        "campaign_candidate_kind": parameters["campaign_candidate_kind"],
+        "mechanisms": list(parameters["mechanisms"]),
+        "spline_smoothing_scale": float(smoothing_scale),
+        "poly_order": int(degree),
+        "optimizer_threshold": float(threshold),
+        "optimizer_alpha": 1e-5,
+        "group_sparse": bool(parameters.get("group_sparse", True)),
+        "spline_derivative": bool(parameters.get("spline_derivative", True)),
+        "shared_support": bool(parameters.get("shared_support", True)),
+    }
+    return {
+        "selected_hyperparameters": selected,
+        "discovered_equation": _equation_text(coefficients, feature_names),
+        "coefficients": _coefficient_payload(coefficients, feature_names),
+        "validation_nmse": float(validation_nmse),
+        "derivative_nmse": derivative_nmse,
+        "trajectory_extrapolation_nmse_ode": trajectory_nmse,
+        "model_complexity": _model_complexity(coefficients, feature_names),
+    }
+
+
 def _operon_inputs(piece, data_type, spatial_grids, time_axis):
     derivative = _finite_difference(piece["u"], piece["t"], time_axis)
     if data_type == "ode":
@@ -1169,6 +1597,24 @@ def run(spec_path, data_path, output_path):
             result = _run_stability_candidate(spec, pieces, spatial_grids, time_axis)
         elif method_id == "weak_stability_sindy":
             result = _run_weak_stability_candidate(
+                spec,
+                pieces,
+                spatial_grids,
+                time_axis,
+            )
+        elif spec["method"]["parameters"].get("campaign_candidate_kind") == (
+            "noise_conditioned_ensemble"
+        ):
+            result = _run_noise_conditioned_ensemble(
+                spec,
+                pieces,
+                spatial_grids,
+                time_axis,
+            )
+        elif spec["method"]["parameters"].get("campaign_candidate_kind") == (
+            "spline_group_sparse"
+        ):
+            result = _run_spline_group_sparse(
                 spec,
                 pieces,
                 spatial_grids,

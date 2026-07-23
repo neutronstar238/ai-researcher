@@ -482,8 +482,24 @@ class MDBenchExperimentMatrix(StrictFrozenModel):
     def _require_complete_gate_a_matrix(self) -> MDBenchExperimentMatrix:
         ode_count = sum(case.data_type == "ode" for case in self.systems)
         pde_count = sum(case.data_type == "pde" for case in self.systems)
-        if (ode_count, pde_count) != (10, 4):
-            raise ValueError("Gate A v1 requires exactly 10 ODE and 4 PDE systems")
+        if self.schema_version == "mdbench-experiment-matrix-v1":
+            if (ode_count, pde_count) != (10, 4):
+                raise ValueError("Gate A v1 requires exactly 10 ODE and 4 PDE systems")
+        elif self.schema_version == "mdbench-campaign-matrix-v1":
+            development_count = sum(
+                case.evaluation_split == "development" for case in self.systems
+            )
+            unseen_count = sum(
+                case.evaluation_split == "unseen_test" for case in self.systems
+            )
+            if pde_count != 0 or ode_count != len(self.systems):
+                raise ValueError("campaign matrix v1 currently supports ODE systems only")
+            if development_count < 2 or unseen_count < 6:
+                raise ValueError(
+                    "campaign matrix v1 requires at least two development and six unseen systems"
+                )
+        else:
+            raise ValueError(f"unsupported MDBench matrix schema: {self.schema_version}")
         if len(self.seeds) != 3 or len(set(self.seeds)) != 3:
             raise ValueError("Gate A v1 requires three distinct seeds")
         if len(self.conditions) != 2 or "clean" not in self.conditions:

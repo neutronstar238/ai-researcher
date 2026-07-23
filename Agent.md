@@ -64,6 +64,63 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-23 23:26:21 +08:00 - Codex - Task 260.3 real Ollama/MDBench autonomous rounds
+
+- Request: Close task `260.3` on the fastest evidence-first path: connect local Ollama and the real official MDBench execution chain, audit genuinely unused holdouts, run at least two new autonomous mechanism rounds, preserve every result, and pivot rather than weaken the gate if Route A fails.
+- Files changed:
+  - `configs/campaign/ollama-qwen35-9b.yaml`
+  - `src/autoresearch/campaign/mdbench.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/models.py`
+  - `src/autoresearch/campaign/service.py`
+  - `src/autoresearch/competition/models.py`
+  - `deploy/experiments/mdbench/runner.py`
+  - `deploy/experiments/mdbench/campaign_runner_selftest.py`
+  - `deploy/experiments/mdbench/Dockerfile`
+  - `deploy/experiments/mdbench/container-manifest.json`
+  - `tests/unit/campaign/test_mdbench_campaign.py`
+  - `tests/unit/campaign/test_campaign_reporting.py`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/experiments/task260-autonomous-ccfb-v1-round-001.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/experiments/task260-autonomous-ccfb-v1-round-002.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task260-route-a-decision.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a provider-agnostic local OpenAI-compatible Ollama configuration for `qwen3.5:9b`. The adapter asks for schema-valid diagnosis/proposal text, rejects unusable output, records whether the local model or deterministic fallback was used, and leaves every numerical selection and gate decision to deterministic code.
+  - Added a metadata-only MDBench holdout audit that excludes every system from the immutable official and recovery preregistrations. It found 49 unused ODE and 8 unused PDE systems and froze two disjoint six-ODE unseen panels before any current result existed.
+  - Added the real campaign matrix/adapter and changed the fast-CCFB CLI default from the lifecycle fixture to that adapter. Each round binds the official archive, parent negative-result hash, two development systems, six unseen systems, clean/SNR20, three fresh seeds, Operon, three ablations, code/config/matrix/adjudicator hashes, stop rule, development threshold, and system-level bootstrap policy.
+  - Added two distinct mechanism families to the pinned scientific container: noise-conditioned Savitzky--Golay derivative estimation with bootstrap coefficient ensembling, and smoothing-spline analytic derivatives with cross-output group-sparse projection. Both have three independently executable ablations and a network-disabled image self-test.
+  - Executed formal campaign `task260-autonomous-ccfb-v1`. Round 1 ran 240 cells (238 succeeded), passed development with `0.779785` median relative improvement, and failed unseen with bootstrap 95% CI `[-3.053723, 0.953866]`. Round 2 changed mechanism, inherited round 1's negative result hash, ran 240 cells (237 succeeded), passed development at `0.672083`, and failed unseen with `[-2.157336, 0.921594]`. Failed ablation cells were retained. Both rounds closed as hash-bound negative results with zero research-decision human interventions; no revealed panel, threshold, or same-round parameter was changed.
+  - Exported every mandatory report, metric, log, chart, decision, evidence map, and manuscript version. The campaign stopped with lineage hash `72fc5080f1058a095086f8f2c1a6135868d775ce8e1320d112b8618ac3944158`; the indexed local dossier contains 1,289 manifest-listed files and keeps `external_submission_authorized=false`.
+- Verification:
+  - `poetry run pytest tests/unit/campaign/test_mdbench_campaign.py tests/unit/campaign/test_campaign_service.py tests/unit/campaign/test_campaign_reporting.py -q`: passed, 15 tests including four new holdout/adapter tests.
+  - `poetry run pytest -q`: passed, 733 tests and 4 opt-in live tests skipped; total coverage 87%.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src/autoresearch`: passed with no issues in 131 source files.
+  - `docker build -t autoresearch-mdbench:task260 deploy/experiments/mdbench`: passed; image manifest digest `sha256:6c8928e967cc...`.
+  - `docker run --rm --network none autoresearch-mdbench:task260 python /app/campaign_runner_selftest.py`: passed both task-260 ODE mechanisms.
+  - `docker run --rm --network none autoresearch-mdbench:task260 python -m pip check`: passed with no broken requirements.
+  - Direct local OpenAI-compatible Ollama request without the failing small token cap: passed and returned `{"status":"ok","model":"local-qwen"}` from `qwen3.5:9b`.
+  - Two official SNR20 development smokes, one per new mechanism at seeds 131 and 149: passed; repeated calls reused checkpointed terminal results.
+  - `poetry run airesearcher campaign start --campaign-id task260-autonomous-ccfb-v1 --project-id autoresearch-ccfb --policy fast-ccfb --deadline 2026-08-15 --output-dir runs/manual-live --vault autoresearch-vault`: completed two real 240-cell rounds and stopped honestly after two negative contribution decisions, with 0 research-decision human interventions.
+  - `poetry run airesearcher campaign status runs/manual-live/task260-autonomous-ccfb-v1`: passed and verified the stopped two-round lineage.
+  - `poetry run airesearcher campaign resume runs/manual-live/task260-autonomous-ccfb-v1 --vault autoresearch-vault`: passed idempotently without a new scientific call or round.
+  - `poetry run airesearcher campaign export runs/manual-live/task260-autonomous-ccfb-v1 --output-dir outputs/task260-autonomous-ccfb-v1`: passed and produced the complete local dossier.
+  - `& 'outputs/task260-autonomous-ccfb-v1/task260-autonomous-ccfb-v1/deliverables/reproduce.ps1'`: passed campaign-chain and SHA-256 verification for all 1,289 manifest-listed files.
+  - `git diff --check`: passed after code and documentation updates.
+- Problems:
+  - Resolved `P-20260723-014`: the recursive control plane has now been exercised through two real parent-linked scientific rounds, not only a fixture.
+  - Added `P-20260723-016`: both Route A mechanisms are credible negative results and force task `260.4`; they cannot support a method-contribution claim.
+  - Added mitigated `P-20260723-017`: formal capped Ollama calls selected the recorded deterministic text fallback, although an uncapped compatibility smoke succeeded. Scientific adjudication was unaffected.
+- Follow-up:
+  - Immediately implement task `260.4`: freeze and execute the 4-UCI/6-MDBench one-shot, execute-once, and evidence-bound self-loop matrix with three seeds and four ablations. Keep both revealed Route A panels and negative results immutable.
+
 ### 2026-07-23 16:49:14 +08:00 - Codex - Task 260.2 campaign CLI and complete reports/export
 
 - Request: Continue the approved autonomous CCF-B contribution plan by exposing the persistent campaign lifecycle and making every round produce visible research evidence and a complete local delivery dossier.

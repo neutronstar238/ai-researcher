@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
@@ -10,6 +11,11 @@ import typer
 from pydantic import ValidationError
 
 from autoresearch.campaign.development import DevelopmentFixtureCampaignAdapter
+from autoresearch.campaign.mdbench import (
+    MDBenchAdapterConfig,
+    MDBenchCampaignAdapter,
+    audit_mdbench_holdout,
+)
 from autoresearch.campaign.models import (
     CampaignPolicy,
     CampaignRoundDesign,
@@ -18,7 +24,7 @@ from autoresearch.campaign.models import (
 )
 from autoresearch.campaign.reporting import CampaignExporter
 from autoresearch.campaign.service import AutonomousResearchCampaign
-from autoresearch.schemas import data_hash
+from autoresearch.schemas import data_hash, file_hash
 
 campaign_app = typer.Typer(
     help="Run, resume, inspect, and export recursive evidence-first research campaigns.",
@@ -54,11 +60,11 @@ def campaign_start(
         typer.Option(
             "--adapter",
             help=(
-                "Scientific adapter ID. development-fixture-v1 is lifecycle evidence "
-                "only and can never pass a contribution gate."
+                "Scientific adapter ID. The default uses local Qwen and the real "
+                "hash-bound MDBench runner; development-fixture-v1 is lifecycle-only."
             ),
         ),
-    ] = DevelopmentFixtureCampaignAdapter.adapter_id,
+    ] = MDBenchCampaignAdapter.adapter_id,
     output_dir: Annotated[
         Path,
         typer.Option("--output-dir", help="Campaign run root."),
@@ -78,14 +84,25 @@ def campaign_start(
         else:
             if policy != CampaignPolicy.FAST_CCFB.value:
                 raise ValueError("campaign policy must be fast-ccfb")
-            spec = _development_campaign_spec(
-                campaign_id=campaign_id,
-                project_id=project_id,
-                deadline=_parse_deadline(deadline),
-                adapter_id=adapter_id,
-            )
+            parsed_deadline = _parse_deadline(deadline)
+            if adapter_id == DevelopmentFixtureCampaignAdapter.adapter_id:
+                spec = _development_campaign_spec(
+                    campaign_id=campaign_id,
+                    project_id=project_id,
+                    deadline=parsed_deadline,
+                    adapter_id=adapter_id,
+                )
+            elif adapter_id == MDBenchCampaignAdapter.adapter_id:
+                spec = _mdbench_campaign_spec(
+                    campaign_id=campaign_id,
+                    project_id=project_id,
+                    deadline=parsed_deadline,
+                    output_dir=output_dir,
+                )
+            else:
+                raise ValueError(f"campaign adapter is not installed: {adapter_id}")
         adapter = _resolve_adapter(
-            spec.adapter_id,
+            spec,
             Path(output_dir) / spec.campaign_id / "adapter-evidence",
         )
         service = AutonomousResearchCampaign(
@@ -94,7 +111,7 @@ def campaign_start(
             vault_root=vault,
         )
         result = service.run(spec)
-    except (OSError, ValidationError, ValueError) as exc:
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
         typer.echo(f"[BLOCKED] campaign_start: {exc}")
         raise typer.Exit(code=2) from exc
     _echo_result(result)
@@ -123,7 +140,7 @@ def campaign_resume(
             (campaign_dir / "campaign-spec.json").read_text(encoding="utf-8")
         )
         adapter = _resolve_adapter(
-            spec.adapter_id,
+            spec,
             campaign_dir / "adapter-evidence",
         )
         result = AutonomousResearchCampaign(
@@ -131,7 +148,7 @@ def campaign_resume(
             output_root=campaign_dir.parent,
             vault_root=vault,
         ).resume(campaign_dir)
-    except (OSError, ValidationError, ValueError) as exc:
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
         typer.echo(f"[BLOCKED] campaign_resume: {exc}")
         raise typer.Exit(code=2) from exc
     _echo_result(result)
@@ -151,14 +168,14 @@ def campaign_status(
             (campaign_dir / "campaign-spec.json").read_text(encoding="utf-8")
         )
         adapter = _resolve_adapter(
-            spec.adapter_id,
+            spec,
             campaign_dir / "adapter-evidence",
         )
         result = AutonomousResearchCampaign(
             adapter=adapter,
             output_root=campaign_dir.parent,
         ).status(campaign_dir)
-    except (OSError, ValidationError, ValueError) as exc:
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
         typer.echo(f"[BLOCKED] campaign_status: {exc}")
         raise typer.Exit(code=2) from exc
     _echo_result(result)
@@ -232,16 +249,150 @@ def _development_campaign_spec(
     )
 
 
-def _resolve_adapter(
-    adapter_id: str,
-    evidence_root: Path,
-) -> DevelopmentFixtureCampaignAdapter:
-    if adapter_id != DevelopmentFixtureCampaignAdapter.adapter_id:
+def _mdbench_campaign_spec(
+    *,
+    campaign_id: str,
+    project_id: str,
+    deadline: datetime,
+    output_dir: Path,
+) -> CampaignSpec:
+    archive_manifest = _required_existing_path(
+        "official MDBench archive manifest",
+        Path(
+            "runs/manual-live/task259-mdbench-official-v1/data/prepared/"
+            "archive-manifest.json"
+        ),
+    )
+    original_preregistration = _required_existing_path(
+        "original MDBench preregistration",
+        Path(
+            "runs/manual-live/task259-mdbench-official-v1/"
+            "gate-a-preregistration.json"
+        ),
+    )
+    recovery_preregistration = _required_existing_path(
+        "recovery MDBench preregistration",
+        Path(
+            "runs/manual-live/task259-mdbench-recovery-v1/"
+            "gate-a-recovery-preregistration.json"
+        ),
+    )
+    root_adjudication = _required_existing_path(
+        "latest immutable negative adjudication",
+        Path(
+            "runs/manual-live/task259-mdbench-recovery-official-v1/"
+            "gate-a-v1/gate-a-adjudication.json"
+        ),
+    )
+    llm_config = _required_existing_path(
+        "local Ollama campaign config",
+        Path("configs/campaign/ollama-qwen35-9b.yaml"),
+    )
+    preflight_path = (
+        Path(output_dir).resolve()
+        / "_campaign-preflight"
+        / f"{campaign_id}-holdout-audit.json"
+    )
+    audit = audit_mdbench_holdout(
+        archive_manifest,
+        (original_preregistration, recovery_preregistration),
+        preflight_path,
+        required_rounds=2,
+        systems_per_round=6,
+    )
+    if audit.route_decision != "route_a":
         raise ValueError(
-            f"campaign adapter is not installed: {adapter_id}; "
-            "task 260.3 adds the local scientific adapter"
+            f"{audit.decision_reason}; task 260.4 Route B adapter must be used"
         )
-    return DevelopmentFixtureCampaignAdapter(evidence_root)
+    root_payload = json.loads(root_adjudication.read_text(encoding="utf-8"))
+    root_result_hash = root_payload.get("report_hash")
+    if not isinstance(root_result_hash, str) or len(root_result_hash) != 64:
+        raise ValueError("latest negative adjudication has no valid report_hash")
+    mechanisms = {
+        "1": "noise_conditioned_ensemble_sindy",
+        "2": "spline_group_sparse_sindy",
+    }
+    adapter_config = MDBenchAdapterConfig(
+        archive_manifest_path=archive_manifest.as_posix(),
+        historical_metadata_paths=(
+            original_preregistration.as_posix(),
+            recovery_preregistration.as_posix(),
+        ),
+        root_adjudication_path=root_adjudication.as_posix(),
+        root_adjudication_sha256=file_hash(root_adjudication),
+        holdout_audit_path=Path(audit.output_path).as_posix(),
+        holdout_audit_hash=_required_hash(audit.audit_hash, "holdout audit"),
+        llm_config_path=llm_config.as_posix(),
+        round_mechanisms=mechanisms,
+    )
+    designs: list[CampaignRoundDesign] = []
+    for round_number, seeds in ((1, (131, 137, 139)), (2, (149, 151, 157))):
+        panel = audit.selected_panels[str(round_number)]
+        designs.append(
+            CampaignRoundDesign(
+                round_number=round_number,
+                track=CampaignTrack.SCIENTIFIC_ML_METHOD,
+                development_data_refs=tuple(
+                    f"mdbench:ode:{system}:development"
+                    for system in adapter_config.development_systems
+                ),
+                unseen_data_refs=tuple(
+                    f"mdbench:ode:{system}:unseen" for system in panel
+                ),
+                seeds=seeds,
+                candidate_mechanism_families=(mechanisms[str(round_number)],),
+                primary_metric="failure_aware_snr20_relative_improvement",
+                acceptance_criteria=(
+                    "development paired median improvement >= 15 percent",
+                    "candidate and Operon clean/noisy cells succeed across three seeds",
+                    "unseen system-bootstrap 95 percent CI lower bound > 0",
+                    "three frozen ablations and idempotent one-command rerun pass",
+                ),
+                max_wall_time_seconds=10_800,
+            )
+        )
+    return CampaignSpec(
+        campaign_id=campaign_id,
+        project_id=project_id,
+        policy=CampaignPolicy.FAST_CCFB,
+        adapter_id=MDBenchCampaignAdapter.adapter_id,
+        adapter_config=adapter_config.model_dump(mode="json"),
+        deadline=deadline,
+        pivot_after_hours=72,
+        min_experimental_rounds=2,
+        root_result_hash=root_result_hash,
+        root_evidence_refs=(
+            root_adjudication.as_posix(),
+            original_preregistration.as_posix(),
+            recovery_preregistration.as_posix(),
+            Path(audit.output_path).as_posix(),
+        ),
+        round_designs=tuple(designs),
+    )
+
+
+def _resolve_adapter(
+    spec: CampaignSpec,
+    evidence_root: Path,
+) -> DevelopmentFixtureCampaignAdapter | MDBenchCampaignAdapter:
+    if spec.adapter_id == DevelopmentFixtureCampaignAdapter.adapter_id:
+        return DevelopmentFixtureCampaignAdapter(evidence_root)
+    if spec.adapter_id == MDBenchCampaignAdapter.adapter_id:
+        return MDBenchCampaignAdapter(evidence_root, spec.adapter_config)
+    raise ValueError(f"campaign adapter is not installed: {spec.adapter_id}")
+
+
+def _required_existing_path(label: str, path: Path) -> Path:
+    resolved = path.resolve()
+    if not resolved.is_file():
+        raise ValueError(f"{label} is missing: {resolved}")
+    return resolved
+
+
+def _required_hash(value: str | None, label: str) -> str:
+    if value is None:
+        raise ValueError(f"{label} has no content hash")
+    return value
 
 
 def _parse_deadline(value: str) -> datetime:

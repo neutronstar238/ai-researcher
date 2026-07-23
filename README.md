@@ -74,9 +74,16 @@ metrics/logs, validation, failure/research/loop reports, evidence map, table, fi
 and manuscript version. The export command verifies the hash chain and builds a complete indexed
 local dossier. It never grants external-submission permission.
 
-The currently bundled `development-fixture-v1` adapter validates this lifecycle only and is
-hard-blocked from passing the scientific contribution gate. Local Ollama and real benchmark
-execution are tracked separately in task `260.3`; fixture output is not CCF-B evidence.
+The `development-fixture-v1` adapter remains available only through an explicit opt-in and is
+hard-blocked from passing the scientific contribution gate. The default fast-CCFB adapter now
+uses local Ollama plus the real MDBench execution chain.
+
+Task `260.3` completed two new, fully frozen 240-cell method rounds with zero research-decision
+human interventions. Both passed their development screen but failed the preregistered unseen
+system-level confidence gate, with 95% CIs `[-3.053723, 0.953866]` and
+`[-2.157336, 0.921594]`. They are preserved as credible negative results, not CCF-B evidence.
+The hard policy therefore routes current work to task `260.4`, the autonomous-research systems
+comparison.
 
 ## First Deployment
 

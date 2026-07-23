@@ -137,6 +137,7 @@ class CampaignSpec(StrictCampaignModel):
     project_id: str = Field(default="autoresearch-ccfb", min_length=1)
     policy: CampaignPolicy = CampaignPolicy.FAST_CCFB
     adapter_id: str = Field(default="development-fixture-v1", min_length=1)
+    adapter_config: dict[str, Any] = Field(default_factory=dict)
     deadline: datetime
     pivot_after_hours: int = Field(default=72, ge=1)
     min_experimental_rounds: int = Field(default=2, ge=1)
@@ -164,6 +165,7 @@ class CampaignSpec(StrictCampaignModel):
             raise ValueError("fast-ccfb campaign must keep execution and language models local")
         if self.allow_external_submission:
             raise ValueError("campaign runtime cannot authorize external submission")
+        _reject_embedded_secrets(self.adapter_config)
 
         previously_reserved: set[str] = set()
         for design in self.round_designs:
@@ -173,6 +175,37 @@ class CampaignSpec(StrictCampaignModel):
             if design.disjoint_unseen_required:
                 previously_reserved.update(current)
         return self
+
+
+def _reject_embedded_secrets(value: Any, *, path: str = "adapter_config") -> None:
+    """Keep persisted campaign specifications free of credentials and bearer tokens."""
+
+    secret_markers = (
+        "api_key",
+        "apikey",
+        "access_token",
+        "auth_token",
+        "bearer",
+        "password",
+        "secret",
+    )
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized = str(key).lower().replace("-", "_")
+            if any(marker in normalized for marker in secret_markers) and not normalized.endswith(
+                "_env"
+            ):
+                raise ValueError(f"{path}.{key} must reference an environment variable, not a secret")
+            _reject_embedded_secrets(item, path=f"{path}.{key}")
+        return
+    if isinstance(value, list | tuple):
+        for index, item in enumerate(value):
+            _reject_embedded_secrets(item, path=f"{path}[{index}]")
+        return
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered.startswith(("sk-", "bearer ", "ghp_", "github_pat_")):
+            raise ValueError(f"{path} contains a credential-like value")
 
 
 class RoundDevelopmentContext(StrictCampaignModel):
@@ -185,6 +218,7 @@ class RoundDevelopmentContext(StrictCampaignModel):
     parent_result_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     historical_evidence_refs: tuple[str, ...] = ()
     development_data_refs: tuple[str, ...] = Field(min_length=1)
+    seeds: tuple[int, ...] = Field(min_length=3)
     candidate_mechanism_families: tuple[str, ...] = Field(min_length=1)
     primary_metric: str
     deadline: datetime

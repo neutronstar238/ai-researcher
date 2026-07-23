@@ -858,6 +858,22 @@ manuscript version 写入 round manifest 的哈希链。export 会先复验 camp
 gate 都不会把 `external_submission_authorized` 改为 true。Vault 写入只维护当前 campaign 的
 project index，不能重建无关条目。
 
-当前 CLI 双轮 smoke 使用不可通过贡献门的 development fixture，只验证状态机、恢复、报告、
-导出和证据边界，不是科学结果。真实 adapter、真实双轮实验、PDF 与 CCF-B 投稿就绪判断仍分别由
-`260.3`—`260.5` 完成。
+`260.3` 已完成真实执行。结果盲审计排除历史 official/recovery 面板后找到 49 个未使用 ODE 和
+8 个未使用 PDE，并冻结两组互斥的 6-ODE 未见面板。镜像
+`autoresearch-mdbench:task260` 通过两个新机制的离线自测；本地 Ollama
+`qwen3.5:9b` 通过 OpenAI-compatible JSON 烟测，正式轮次在结构化内容为空时按预注册使用
+deterministic fallback，所有数值选择和裁决仍由代码完成。
+
+正式 `task260-autonomous-ccfb-v1` campaign 完成两个各 240-cell 的新轮次，累计科研决策人工介入
+为 0。第一轮 `noise_conditioned_ensemble_sindy` 的开发中位改进为 `0.779785`，正式未见系统级
+95% CI 为 `[-3.053723, 0.953866]`；第二轮 `spline_group_sparse_sindy` 的开发中位改进为
+`0.672083`，未见 CI 为 `[-2.157336, 0.921594]`。两轮的强基线、三种子和幂等复现完成，但 CI
+下界均未大于 0，且 frozen ablation cells 分别有 2 和 3 个失败。两轮因此被不可变地关闭为
+negative result，campaign 以 `stopped` 终止，lineage hash 为
+`72fc5080f1058a095086f8f2c1a6135868d775ce8e1320d112b8618ac3944158`。完整 exporter 收录
+1,289 个 manifest 文件并通过 SHA-256 integrity reproduction。
+
+72 小时 Route A 判断已提前得到明确负结论：不重开已揭示面板、不降低置信门、不在同轮调参。
+下一执行任务固定为 `260.4` 的 4 UCI + 6 MDBench、one-shot/execute-once/full-loop、三种子与
+四项消融系统矩阵。`260.5` 只从真实证据构建论文和独立复现包，不会把上述方法负结果改写为
+投稿就绪结论。

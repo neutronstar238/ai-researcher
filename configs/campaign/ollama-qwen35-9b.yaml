@@ -1,0 +1,17 @@
+project_root: .
+compute:
+  prefer_local: true
+  sandbox_enabled: true
+  sandbox_root: runs
+  max_cpu_seconds: 10800
+  max_memory_mb: 8192
+  max_gpu_hours: 0.0
+deployment:
+  environment: local-ollama
+  llm:
+    provider: ollama-openai-compatible
+    base_url: http://127.0.0.1:11434/v1
+    model_name: qwen3.5:9b
+    api_key_env: AUTORESEARCH_LOCAL_OLLAMA_API_KEY
+    request_timeout_seconds: 180
+    fallback_model_names: []

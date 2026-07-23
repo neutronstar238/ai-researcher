@@ -1053,6 +1053,7 @@ class AutonomousResearchCampaign:
             parent_result_hash=round_manifest.parent_result_hash,
             historical_evidence_refs=tuple(dict.fromkeys(historical)),
             development_data_refs=design.development_data_refs,
+            seeds=design.seeds,
             candidate_mechanism_families=design.candidate_mechanism_families,
             primary_metric=design.primary_metric,
             deadline=spec.deadline,

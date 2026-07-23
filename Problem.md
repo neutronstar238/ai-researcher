@@ -51,8 +51,10 @@ update a factual problem entry below.
 - Evidence: The pre-task architecture kept competition and autopilot orchestration separate; `P-20260717-009` closed two mechanism families correctly, while `P-20260717-002` documented the remaining orchestration split.
 - Root cause: Persistence and hashes were scoped to one `CycleManifest`; there was no top-level campaign manifest, parent-result/parent-round link, proposal-time unseen-data boundary, or deterministic next-round policy.
 - Workaround: None was used. The closed MDBench parent and recovery artifacts remain immutable and are not reopened.
-- Next action: Complete task `260.3`: connect the local Ollama and real benchmark adapters and execute at least two new experimental rounds. Tasks `260.1` and `260.2` prove the control/reporting plane only, not CCF-B scientific evidence.
+- Next action: None for the missing recursive orchestrator. Route A's real negative results and the mandatory systems-paper pivot are tracked in `P-20260723-016`.
 - Linked tasks: `259.1`, `259.4`, `259.7`, `260.1`, `260.2`, `260.3`.
+- Resolution: Added `autoresearch.campaign` contracts and `AutonomousResearchCampaign` with atomic stage persistence, verified resume, parent/round/lineage hashes, current-unseen proposal isolation, preregistered adjudicator identity, frozen code/config checks, mandatory mechanism changes after negative results, deadline/design exhaustion stops, and runtime-owned Obsidian round notes. Tasks `260.2` and `260.3` then exercised this control plane through complete exports and two real benchmark rounds.
+- Verification: The formal real campaign completed two parent-linked experimental rounds, stopped after both contribution gates failed, reported zero research-decision human interventions, and resumed idempotently with lineage hash `72fc5080f1058a095086f8f2c1a6135868d775ce8e1320d112b8618ac3944158`.
 
 ### P-20260723-015 - Initial campaign CLI smoke hit local entrypoint and timezone-data portability failures
 
@@ -69,8 +71,34 @@ update a factual problem entry below.
 - Linked tasks: `260.2`.
 - Resolution: `_parse_deadline` now accepts ISO dates or datetimes and assigns date-only values `23:59:59+08:00` without `tzdata`; the exported PowerShell reproduction entrypoint uses `poetry run airesearcher`.
 - Verification: A dedicated timezone regression test passes, and the live start/status/resume/export smoke completed a two-round local lifecycle with 64 indexed files and `external_submission_authorized=false`.
-- Resolution: Added `autoresearch.campaign` contracts and `AutonomousResearchCampaign` with atomic stage persistence, verified resume, parent/round/lineage hashes, current-unseen proposal isolation, preregistered adjudicator identity, frozen code/config checks, mandatory mechanism changes after negative results, deadline/design exhaustion stops, and runtime-owned Obsidian round notes.
-- Verification: Six focused tests passed, including a two-round negative-to-different-hypothesis-to-positive lineage, idempotent terminal resume, current-unseen leakage rejection, same-mechanism rejection after a negative result, file-tamper detection, development-screen failure routing, and deadline stop. Full regression passed with 724 tests and 4 skips; full Ruff and Mypy passed.
+
+### P-20260723-016 - Two new Route A mechanisms failed the frozen unseen contribution gate
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-23 23:19:04 +08:00
+- Source: Task `260.3` real autonomous campaign `task260-autonomous-ccfb-v1`.
+- Symptom: Both new method families exceeded the 15% development threshold but their frozen unseen system-level bootstrap confidence intervals crossed zero; each round also retained failed ablation cells.
+- Impact: Route A cannot support a CCF-B method-contribution claim. The system must preserve both negative results and execute the preregistered Route B systems-paper matrix instead of tuning on revealed panels or weakening the gate.
+- Evidence: Round 1 development median improvement was `0.779785`, while its unseen 95% CI was `[-3.053723, 0.953866]` with 238/240 successful cells. Round 2 development median improvement was `0.672083`, while its unseen CI was `[-2.157336, 0.921594]` with 237/240 successful cells. Both rounds reproduced idempotently and closed as `negative_result`.
+- Root cause: Candidate benefits were heterogeneous across the six unseen systems; negative system effects made the failure-aware uncertainty lower bounds non-positive. Frozen ablation configurations also failed on two and three cells respectively.
+- Workaround: None. Keep the revealed panels, thresholds, matrices, failures, and negative decisions immutable.
+- Next action: Complete task `260.4` using the frozen 4-UCI/6-MDBench systems matrix, three modes, three seeds, and four preregistered ablations.
+- Linked tasks: `260.3`, `260.4`, `260.5`.
+
+### P-20260723-017 - Formal Ollama calls used the deterministic structured-output fallback
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-23 22:53:59 +08:00
+- Source: Task `260.3` local `qwen3.5:9b` diagnosis and proposal evidence.
+- Symptom: A direct OpenAI-compatible JSON smoke without an explicit small token cap returned valid JSON, but the formal campaign requests with the adapter's token cap returned empty structured content and selected the preregistered deterministic diagnosis/proposal fallback.
+- Impact: The two rounds remain scientifically valid because numerical choices, panels, statistics, and decisions are deterministic and the fallback path is explicit, but the formal text-generation path did not contribute model-authored structured content.
+- Evidence: The uncapped local smoke returned `{"status":"ok","model":"local-qwen"}`. Each round's `local-qwen-*.json` records the empty response and deterministic fallback selection.
+- Root cause: The local model's OpenAI-compatible endpoint did not return usable structured content under the campaign request's explicit output-token constraint.
+- Workaround: The adapter rejects unusable content and emits schema-valid deterministic templates; no scientific gate depends on LLM text.
+- Next action: In task `260.4`, test the provider's token option separately and freeze the working request shape before the systems matrix. Do not alter the already hash-bound task `260.3` evidence.
+- Linked tasks: `260.3`, `260.4`.
 
 ### P-20260717-001 - Official MDBench Gate A required real benchmark adjudication
 

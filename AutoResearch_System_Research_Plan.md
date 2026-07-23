@@ -657,7 +657,16 @@ evidence map、图表、round decision 和逐轮 manuscript 设为强制产物�
 contribution gate 永远不会自动变成外部投稿许可。运行期 Vault 写入只更新本 campaign 的 project
 索引，不重建或改写无关知识条目。
 
-当前两轮 CLI smoke 使用明确标注的 development fixture，只证明递归控制面、报告面和恢复/导出
-链路，不证明已经得到 CCF-B 成果。任务 260.3 还要用本地 Ollama 和真实 benchmark adapter 完成
-至少两个新实验轮次；只有真实未见证据、强基线、三种子、统计不确定性、消融、复现、引用与论文
-门同时通过，才能进入 paper build。外部投稿始终需要人工批准。
+任务 260.3 已用真实 MDBench adapter 取代默认 fixture。元数据审计在排除两轮历史面板后确认还有
+49 个未使用 ODE 与 8 个未使用 PDE，并在结果揭示前冻结两组互斥的六系统 ODE holdout。正式
+campaign `task260-autonomous-ccfb-v1` 独立完成两个新实验轮次，每轮 240 个 frozen cells、
+clean/SNR20、三个新种子、Operon 强基线与三项消融，科研决策人工介入为 0。
+
+第一轮 noise-conditioned Savitzky--Golay + coefficient-bootstrap ensemble 的开发中位相对改进为
+`0.779785`，但未见系统级 bootstrap 95% CI 为 `[-3.053723, 0.953866]`；第二轮 smoothing
+spline analytic derivative + cross-output group-sparse projection 的开发中位相对改进为
+`0.672083`，未见 CI 为 `[-2.157336, 0.921594]`。两轮点估计都不能抵消跨系统异质性与负下界，
+且各有一项消融在部分 frozen cells 失败，因此确定性贡献门均返回 negative result。系统保留完整
+报告、原始指标、图表、日志、父子哈希与逐轮 manuscript，终态重启不产生新科研调用。Route A
+据此关闭并强制转入任务 260.4 的 systems-paper matrix；这两个负结果不能被描述为 CCF-B 方法
+贡献通过。外部投稿始终需要人工批准。
