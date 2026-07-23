@@ -40,7 +40,6 @@ from autoresearch.knowledge import (
     KnowledgeEntry,
     KnowledgeEntryType,
     KnowledgeZone,
-    MarkdownKnowledgeStore,
     create_vault_layout,
 )
 from autoresearch.schemas import data_hash, file_hash
@@ -841,7 +840,15 @@ class AutonomousResearchCampaign:
         campaign_manifest: CampaignManifest,
         round_manifest: RoundManifest,
     ) -> CampaignManifest:
+        from autoresearch.campaign.reporting import CampaignRoundReporter
+
         decision = self._load_round_decision(campaign_dir, round_manifest)
+        round_manifest = CampaignRoundReporter().write_round_reports(
+            campaign_dir=campaign_dir,
+            spec=spec,
+            round_manifest=round_manifest,
+            decision=decision,
+        )
         round_manifest = self._write_vault_round_note(
             spec,
             round_manifest,
@@ -1099,7 +1106,6 @@ class AutonomousResearchCampaign:
         decision: RoundDecision,
     ) -> RoundManifest:
         layout = create_vault_layout(self.vault_root, spec.project_id)
-        store = MarkdownKnowledgeStore(layout.root)
         parent_link = (
             f"[[{spec.campaign_id}-{round_manifest.parent_round_id}]]"
             if round_manifest.parent_round_id
@@ -1138,21 +1144,26 @@ class AutonomousResearchCampaign:
             / "experiments"
             / f"{spec.campaign_id}-{round_manifest.round_id}.md"
         )
-        note_path = store.write_entry(
-            relative_path,
-            KnowledgeEntry(
-                entry_id=f"{spec.campaign_id}-{round_manifest.round_id}",
-                entry_type=entry_type,
-                zone=KnowledgeZone.PROJECT,
-                title=f"{spec.campaign_id} {round_manifest.round_id}",
-                project_id=spec.project_id,
-                tags=["autonomous-campaign", round_manifest.track.value, decision.outcome.value],
-                keywords=["autonomous research campaign", "research iteration"],
-                source_refs=list(round_manifest.artifact_paths.values()),
-                related_run_ids=[spec.campaign_id],
-                body=body,
+        entry = KnowledgeEntry(
+            entry_id=f"{spec.campaign_id}-{round_manifest.round_id}",
+            entry_type=entry_type,
+            zone=KnowledgeZone.PROJECT,
+            title=f"{spec.campaign_id} {round_manifest.round_id}",
+            project_id=spec.project_id,
+            tags=["autonomous-campaign", round_manifest.track.value, decision.outcome.value],
+            keywords=["autonomous research campaign", "research iteration"],
+            source_refs=list(round_manifest.artifact_paths.values()),
+            links=(
+                [f"{spec.campaign_id}-{round_manifest.parent_round_id}"]
+                if round_manifest.parent_round_id
+                else []
             ),
+            related_run_ids=[spec.campaign_id],
+            body=body,
         )
+        note_path = layout.root / relative_path
+        _write_text_atomic(note_path, entry.to_markdown())
+        _write_campaign_project_index(layout.project, spec.campaign_id)
         return round_manifest.model_copy(
             update={"vault_note_path": note_path.resolve().as_posix()}
         )
@@ -1217,45 +1228,9 @@ class AutonomousResearchCampaign:
         spec: CampaignSpec,
         manifest: CampaignManifest,
     ) -> None:
-        actual_hashes: list[str] = []
-        previous: RoundManifest | None = None
-        for relative_path, expected_hash in zip(
-            manifest.round_manifest_paths,
-            manifest.round_manifest_hashes,
-            strict=True,
-        ):
-            round_manifest = load_round_manifest(campaign_dir / relative_path)
-            if round_manifest.campaign_id != manifest.campaign_id:
-                raise CampaignIntegrityError("round belongs to another campaign")
-            if round_manifest.manifest_hash != expected_hash:
-                raise CampaignIntegrityError("campaign records a stale round manifest hash")
-            if previous is None:
-                if round_manifest.parent_round_id is not None:
-                    raise CampaignIntegrityError("first round unexpectedly has a parent round")
-            elif (
-                round_manifest.parent_round_id != previous.round_id
-                or round_manifest.parent_round_manifest_hash != previous.manifest_hash
-            ):
-                raise CampaignIntegrityError("round parent manifest link is invalid")
-            self._validate_round_artifacts(campaign_dir, round_manifest)
-            actual_hashes.append(expected_hash)
-            previous = round_manifest
-        expected_lineage = _lineage_hash(spec.root_result_hash, tuple(actual_hashes))
-        if manifest.lineage_hash != expected_lineage:
-            raise CampaignIntegrityError("campaign lineage hash mismatch")
-
-    def _validate_round_artifacts(
-        self,
-        campaign_dir: Path,
-        round_manifest: RoundManifest,
-    ) -> None:
-        if round_manifest.artifact_paths.keys() != round_manifest.artifact_hashes.keys():
-            raise CampaignIntegrityError("round artifact paths and hashes do not align")
-        for name, raw_path in round_manifest.artifact_paths.items():
-            path = _resolve_artifact_path(campaign_dir, raw_path)
-            if not path.is_file() or file_hash(path) != round_manifest.artifact_hashes[name]:
-                raise CampaignIntegrityError(f"round artifact {name} file hash mismatch")
-
+        validated_spec, validated_manifest, _ = validate_campaign_directory(campaign_dir)
+        if validated_spec != spec or validated_manifest != manifest:
+            raise CampaignIntegrityError("validated campaign differs from loaded contracts")
 
 def load_campaign_manifest(path: Path | str) -> CampaignManifest:
     """Load and verify a top-level campaign manifest."""
@@ -1275,6 +1250,87 @@ def load_round_manifest(path: Path | str) -> RoundManifest:
         RoundManifest,
         "manifest_hash",
     )
+
+
+def validate_campaign_directory(
+    campaign_dir: Path | str,
+) -> tuple[CampaignSpec, CampaignManifest, tuple[RoundManifest, ...]]:
+    """Validate the full campaign lineage and every managed artifact."""
+
+    resolved = Path(campaign_dir).resolve()
+    spec = CampaignSpec.model_validate_json(
+        (resolved / "campaign-spec.json").read_text(encoding="utf-8")
+    )
+    manifest = load_campaign_manifest(resolved / "campaign-manifest.json")
+    if manifest.spec_hash != data_hash(spec):
+        raise CampaignIntegrityError("campaign spec hash does not match manifest")
+    if manifest.campaign_id != spec.campaign_id:
+        raise CampaignIntegrityError("campaign manifest does not match campaign spec")
+    if len(manifest.round_manifest_paths) > len(spec.round_designs):
+        raise CampaignIntegrityError("campaign has more rounds than frozen designs")
+
+    actual_hashes: list[str] = []
+    rounds: list[RoundManifest] = []
+    previous: RoundManifest | None = None
+    previous_decision: RoundDecision | None = None
+    for index, (relative_path, expected_hash) in enumerate(
+        zip(
+            manifest.round_manifest_paths,
+            manifest.round_manifest_hashes,
+            strict=True,
+        )
+    ):
+        round_manifest = load_round_manifest(resolved / relative_path)
+        if round_manifest.campaign_id != manifest.campaign_id:
+            raise CampaignIntegrityError("round belongs to another campaign")
+        if round_manifest.manifest_hash != expected_hash:
+            raise CampaignIntegrityError("campaign records a stale round manifest hash")
+        if round_manifest.round_number != index + 1:
+            raise CampaignIntegrityError("round number does not match lineage position")
+        if round_manifest.design_hash != data_hash(spec.round_designs[index]):
+            raise CampaignIntegrityError("round design hash mismatch")
+        if previous is None:
+            if round_manifest.parent_round_id is not None:
+                raise CampaignIntegrityError("first round unexpectedly has a parent round")
+            if round_manifest.parent_result_hash != spec.root_result_hash:
+                raise CampaignIntegrityError("first round parent result does not match spec root")
+        else:
+            if (
+                round_manifest.parent_round_id != previous.round_id
+                or round_manifest.parent_round_manifest_hash != previous.manifest_hash
+            ):
+                raise CampaignIntegrityError("round parent manifest link is invalid")
+            if (
+                previous_decision is None
+                or round_manifest.parent_result_hash != previous_decision.result_hash
+            ):
+                raise CampaignIntegrityError("round parent result link is invalid")
+
+        if round_manifest.artifact_paths.keys() != round_manifest.artifact_hashes.keys():
+            raise CampaignIntegrityError("round artifact paths and hashes do not align")
+        for name, raw_path in round_manifest.artifact_paths.items():
+            path = _resolve_artifact_path(resolved, raw_path)
+            if not path.is_file() or file_hash(path) != round_manifest.artifact_hashes[name]:
+                raise CampaignIntegrityError(f"round artifact {name} file hash mismatch")
+
+        decision_path = round_manifest.artifact_paths.get("round_decision")
+        previous_decision = (
+            _load_stamped_model(
+                _resolve_artifact_path(resolved, decision_path),
+                RoundDecision,
+                "decision_hash",
+            )
+            if decision_path is not None
+            else None
+        )
+        actual_hashes.append(expected_hash)
+        rounds.append(round_manifest)
+        previous = round_manifest
+
+    expected_lineage = _lineage_hash(spec.root_result_hash, tuple(actual_hashes))
+    if manifest.lineage_hash != expected_lineage:
+        raise CampaignIntegrityError("campaign lineage hash mismatch")
+    return spec, manifest, tuple(rounds)
 
 
 def _write_campaign_manifest(
@@ -1307,6 +1363,57 @@ def _write_json_model(path: Path, model: BaseModel | dict[str, object]) -> Path:
     )
     temporary.replace(path)
     return path
+
+
+def _write_text_atomic(path: Path, content: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(content.rstrip() + "\n", encoding="utf-8")
+    temporary.replace(path)
+    return path
+
+
+def _write_campaign_project_index(project_root: Path, campaign_id: str) -> None:
+    experiment_dir = project_root / "experiments"
+    notes = sorted(experiment_dir.glob(f"{campaign_id}-round-*.md"))
+    start_marker = f"<!-- AUTORESEARCH-CAMPAIGN:{campaign_id}:START -->"
+    end_marker = f"<!-- AUTORESEARCH-CAMPAIGN:{campaign_id}:END -->"
+    block = "\n".join(
+        [
+            start_marker,
+            f"## Campaign {campaign_id}",
+            "",
+            *[f"- [[{path.stem}]]" for path in notes],
+            "",
+            "External submission remains human-gated.",
+            end_marker,
+        ]
+    )
+    index_path = project_root / "index.md"
+    existing = (
+        index_path.read_text(encoding="utf-8")
+        if index_path.is_file()
+        else "\n".join(
+            [
+                f"# {campaign_id}",
+                "",
+                "Project knowledge index for AI-Researcher.",
+            ]
+        )
+    )
+    if start_marker in existing and end_marker in existing:
+        prefix, remainder = existing.split(start_marker, maxsplit=1)
+        _, suffix = remainder.split(end_marker, maxsplit=1)
+        content = f"{prefix.rstrip()}\n\n{block}{suffix}"
+    else:
+        content = "\n".join(
+            [
+                existing.rstrip(),
+                "",
+                block,
+            ]
+        )
+    _write_text_atomic(index_path, content)
 
 
 def _stamp_model(model: ModelT, hash_field: str) -> ModelT:
@@ -1354,8 +1461,16 @@ def _lineage_hash(root_result_hash: str | None, round_hashes: tuple[str, ...]) -
 
 
 def _resolve_artifact_path(campaign_dir: Path, raw_path: str) -> Path:
+    root = campaign_dir.resolve()
     path = Path(raw_path)
-    return path if path.is_absolute() else campaign_dir / path
+    candidate = path.resolve() if path.is_absolute() else (root / path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise CampaignIntegrityError(
+            "managed campaign artifact escapes the campaign directory"
+        ) from exc
+    return candidate
 
 
 def _require_round_parent(

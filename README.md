@@ -58,6 +58,26 @@ airesearcher version
 node ./bin/airesearcher.mjs version
 ```
 
+## Autonomous Campaign CLI
+
+The persistent cross-round control plane is available through:
+
+```bash
+airesearcher campaign start --policy fast-ccfb --deadline 2026-08-15
+airesearcher campaign status runs/campaigns/<campaign-id>
+airesearcher campaign resume runs/campaigns/<campaign-id>
+airesearcher campaign export runs/campaigns/<campaign-id>
+```
+
+Every completed round exports its hypothesis, preregistration, experiment manifest, raw
+metrics/logs, validation, failure/research/loop reports, evidence map, table, figure, decision,
+and manuscript version. The export command verifies the hash chain and builds a complete indexed
+local dossier. It never grants external-submission permission.
+
+The currently bundled `development-fixture-v1` adapter validates this lifecycle only and is
+hard-blocked from passing the scientific contribution gate. Local Ollama and real benchmark
+execution are tracked separately in task `260.3`; fixture output is not CCF-B evidence.
+
 ## First Deployment
 
 Run the guided setup wizard:

@@ -51,8 +51,24 @@ update a factual problem entry below.
 - Evidence: The pre-task architecture kept competition and autopilot orchestration separate; `P-20260717-009` closed two mechanism families correctly, while `P-20260717-002` documented the remaining orchestration split.
 - Root cause: Persistence and hashes were scoped to one `CycleManifest`; there was no top-level campaign manifest, parent-result/parent-round link, proposal-time unseen-data boundary, or deterministic next-round policy.
 - Workaround: None was used. The closed MDBench parent and recovery artifacts remain immutable and are not reopened.
-- Next action: Complete tasks `260.2` and `260.3`: expose campaign CLI/report exports, connect the local Ollama and real benchmark adapters, and execute at least two new experimental rounds. Task `260.1` alone is not CCF-B scientific evidence.
+- Next action: Complete task `260.3`: connect the local Ollama and real benchmark adapters and execute at least two new experimental rounds. Tasks `260.1` and `260.2` prove the control/reporting plane only, not CCF-B scientific evidence.
 - Linked tasks: `259.1`, `259.4`, `259.7`, `260.1`, `260.2`, `260.3`.
+
+### P-20260723-015 - Initial campaign CLI smoke hit local entrypoint and timezone-data portability failures
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-23 16:00:00 +08:00
+- Source: Task `260.2` live local campaign lifecycle smoke.
+- Symptom: The first bare `python -m autoresearch.cli.main` invocation could not import the source package, and the first Poetry CLI invocation failed while constructing `ZoneInfo("Asia/Shanghai")` because the Poetry interpreter did not include the optional `tzdata` package.
+- Impact: The first two smoke attempts stopped before campaign creation; no round, experiment, report, or Vault evidence was partially written by either failed attempt.
+- Evidence: Running through the repository's installed Poetry entrypoint resolved package discovery. A date-only deadline still failed until its local timezone construction stopped depending on the optional IANA database.
+- Root cause: The source tree is installed in the Poetry environment rather than the bare interpreter, while a fixed UTC+8 project deadline does not require an external timezone database.
+- Workaround: Use `poetry run airesearcher` for repository reproduction and represent the configured Shanghai deadline with a fixed `+08:00` offset.
+- Next action: None.
+- Linked tasks: `260.2`.
+- Resolution: `_parse_deadline` now accepts ISO dates or datetimes and assigns date-only values `23:59:59+08:00` without `tzdata`; the exported PowerShell reproduction entrypoint uses `poetry run airesearcher`.
+- Verification: A dedicated timezone regression test passes, and the live start/status/resume/export smoke completed a two-round local lifecycle with 64 indexed files and `external_submission_authorized=false`.
 - Resolution: Added `autoresearch.campaign` contracts and `AutonomousResearchCampaign` with atomic stage persistence, verified resume, parent/round/lineage hashes, current-unseen proposal isolation, preregistered adjudicator identity, frozen code/config checks, mandatory mechanism changes after negative results, deadline/design exhaustion stops, and runtime-owned Obsidian round notes.
 - Verification: Six focused tests passed, including a two-round negative-to-different-hypothesis-to-positive lineage, idempotent terminal resume, current-unseen leakage rejection, same-mechanism rejection after a negative result, file-tamper detection, development-screen failure routing, and deadline stop. Full regression passed with 724 tests and 4 skips; full Ruff and Mypy passed.
 

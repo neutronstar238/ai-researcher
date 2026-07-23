@@ -851,5 +851,13 @@ hash。proposal-time context 没有当前 unseen refs；如果 proposal 文本�
 引用，运行立即失败。负结果之后相同机制族也被拒绝。development 选择、最终 config、代码和
 adjudicator 必须匹配冻结证据，未见结果不完整或含科研决策人工介入时不能通过 contribution gate。
 
-当前自动双轮测试使用受控适配器验证状态机、恢复和证据边界，不是科学结果。真实 adapter、真实
-双轮实验、完整报告/PDF 与 CCF-B 投稿就绪判断仍分别由 `260.2`—`260.5` 完成。
+`260.2` 已注册四个 campaign CLI，并把每轮 hypothesis、preregistration、experiment manifest、
+raw metrics/logs、validation、failure/research/loop report、evidence map、表图、decision 和
+manuscript version 写入 round manifest 的哈希链。export 会先复验 campaign 全链，再把内部产物
+与 adapter 原始证据复制到带集中 `index.md`、环境锁、复现脚本和文件哈希的 dossier；任何内部
+gate 都不会把 `external_submission_authorized` 改为 true。Vault 写入只维护当前 campaign 的
+project index，不能重建无关条目。
+
+当前 CLI 双轮 smoke 使用不可通过贡献门的 development fixture，只验证状态机、恢复、报告、
+导出和证据边界，不是科学结果。真实 adapter、真实双轮实验、PDF 与 CCF-B 投稿就绪判断仍分别由
+`260.3`—`260.5` 完成。

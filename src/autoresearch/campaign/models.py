@@ -136,6 +136,7 @@ class CampaignSpec(StrictCampaignModel):
     campaign_id: str = Field(default_factory=lambda: _id("campaign"), min_length=1)
     project_id: str = Field(default="autoresearch-ccfb", min_length=1)
     policy: CampaignPolicy = CampaignPolicy.FAST_CCFB
+    adapter_id: str = Field(default="development-fixture-v1", min_length=1)
     deadline: datetime
     pivot_after_hours: int = Field(default=72, ge=1)
     min_experimental_rounds: int = Field(default=2, ge=1)

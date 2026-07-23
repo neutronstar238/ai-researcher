@@ -51,6 +51,24 @@ airesearcher version
 node ./bin/airesearcher.mjs version
 ```
 
+## 自主科研 Campaign CLI
+
+跨轮次持久化控制面已经提供以下命令：
+
+```bash
+airesearcher campaign start --policy fast-ccfb --deadline 2026-08-15
+airesearcher campaign status runs/campaigns/<campaign-id>
+airesearcher campaign resume runs/campaigns/<campaign-id>
+airesearcher campaign export runs/campaigns/<campaign-id>
+```
+
+每个完成的 round 都会导出假设、预注册、实验 manifest、原始指标/日志、validation、失败/研究/
+循环报告、证据图、表格、图形、裁决和论文版本。export 会复验哈希链并生成完整的本地集中索引，
+但绝不会自动授予外部投稿权限。
+
+当前内置的 `development-fixture-v1` 只用于验证这条工程生命周期，而且被硬性禁止通过科学贡献
+门。任务 `260.3` 才负责本地 Ollama 与真实 benchmark；fixture 产物不是 CCF-B 科学证据。
+
 ## 首次部署
 
 运行引导式配置：

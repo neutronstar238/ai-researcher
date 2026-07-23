@@ -27,22 +27,35 @@ from .models import (
     RoundOutcome,
     UnseenEvaluation,
 )
+from .reporting import (
+    CampaignExporter,
+    CampaignExportFile,
+    CampaignExportManifest,
+    CampaignExportResult,
+    CampaignRoundReporter,
+)
 from .service import (
     AutonomousResearchCampaign,
     CampaignIntegrityError,
     CampaignResearchAdapter,
     load_campaign_manifest,
     load_round_manifest,
+    validate_campaign_directory,
 )
 
 __all__ = [
     "AutonomousResearchCampaign",
+    "CampaignExporter",
+    "CampaignExportFile",
+    "CampaignExportManifest",
+    "CampaignExportResult",
     "CampaignIntegrityError",
     "CampaignManifest",
     "CampaignOutcome",
     "CampaignPolicy",
     "CampaignResearchAdapter",
     "CampaignResult",
+    "CampaignRoundReporter",
     "CampaignRoundDesign",
     "CampaignSpec",
     "CampaignStage",
@@ -66,5 +79,5 @@ __all__ = [
     "UnseenEvaluation",
     "load_campaign_manifest",
     "load_round_manifest",
+    "validate_campaign_directory",
 ]
-

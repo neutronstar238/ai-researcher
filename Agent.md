@@ -64,6 +64,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-23 16:49:14 +08:00 - Codex - Task 260.2 campaign CLI and complete reports/export
+
+- Request: Continue the approved autonomous CCF-B contribution plan by exposing the persistent campaign lifecycle and making every round produce visible research evidence and a complete local delivery dossier.
+- Files changed:
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/models.py`
+  - `src/autoresearch/campaign/service.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/development.py`
+  - `src/autoresearch/campaign/reporting.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/campaign/test_campaign_reporting.py`
+  - `autoresearch-vault/projects/task260-campaign-cli-smoke/index.md`
+  - `autoresearch-vault/projects/task260-campaign-cli-smoke/experiments/task260-campaign-cli-smoke-round-001.md`
+  - `autoresearch-vault/projects/task260-campaign-cli-smoke/experiments/task260-campaign-cli-smoke-round-002.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Registered `airesearcher campaign start/resume/status/export`. Start accepts a complete `CampaignSpec` or the explicit `fast-ccfb` lifecycle fixture; status is read-only, resume verifies the persisted hash chain before advancing, and export never grants external-submission permission.
+  - Added mandatory per-round hypothesis, experiment manifest, raw metrics/log references, validation, failure analysis, research report, loop report, evidence map, metrics table/SVG, round summary, paper-build status, and versioned manuscript outputs. Their paths and file hashes are bound into each final round manifest.
+  - Added a complete exporter that verifies the campaign lineage, copies all campaign artifacts plus adapter evidence, and writes `index.md`, campaign report, environment lock, PowerShell integrity-reproduction entrypoint, explicit submission block, and a SHA-256 deliverables manifest. The integrity entrypoint does not pretend to re-execute an adapter-specific scientific experiment.
+  - Added an honest two-round development adapter for lifecycle/integration checks. It writes non-constant local metrics and logs but can never pass the scientific contribution gate, so its positive-looking second metric cannot be cited as CCF-B evidence.
+  - Changed runtime Vault persistence to atomically write only the campaign round note and its project-local index. A regression test protects unrelated Vault indexes from being rebuilt or rewritten.
+- Verification:
+  - `poetry run pytest tests/unit/campaign -q`: passed, 11 tests.
+  - `poetry run pytest -q`: passed, 729 tests and 4 live tests skipped; total coverage remained 88%.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src/autoresearch`: passed with no issues in 130 source files.
+  - `poetry run airesearcher campaign start --campaign-id task260-campaign-cli-smoke --project-id task260-campaign-cli-smoke --deadline 2026-08-15 --output-dir runs/manual-live --vault autoresearch-vault`: passed; stopped honestly after two completed experimental fixture rounds with zero human interventions.
+  - `poetry run airesearcher campaign status runs/manual-live/task260-campaign-cli-smoke`: passed and verified the stopped two-round lineage.
+  - `poetry run airesearcher campaign resume runs/manual-live/task260-campaign-cli-smoke --vault autoresearch-vault`: passed idempotently without another scientific call or new round.
+  - `poetry run airesearcher campaign export runs/manual-live/task260-campaign-cli-smoke --output-dir outputs/task260-campaign-cli-smoke`: passed; 64 indexed files, two research reports, two loop reports, two copied raw unseen-metric artifacts, a Poetry reproduction entrypoint, and `external_submission_authorized=false`.
+  - `& 'outputs/task260-campaign-cli-smoke/task260-campaign-cli-smoke/deliverables/reproduce.ps1'`: passed; revalidated the copied campaign lineage and SHA-256 hashes for all 63 manifest-listed files while explicitly leaving scientific experiment re-execution to its adapter.
+  - `git diff --check`: passed before this entry and repeated before commit.
+- Problems:
+  - Added and resolved `P-20260723-015`: the initial bare-Python entrypoint and optional `tzdata` dependency blocked the first CLI attempts; the repository entrypoint and fixed `+08:00` deadline parser now work without optional timezone data.
+  - Updated resolved `P-20260723-014` to leave real local Ollama/benchmark rounds as task `260.3`; the existing official MDBench negative-result blocker remains unchanged.
+- Follow-up:
+  - Implement task `260.3`: provider-agnostic local Ollama structured proposal/diagnosis, a result-blind holdout audit, the real benchmark adapter or mandatory Route B pivot, and at least two new autonomous experimental rounds. Do not count this development fixture as scientific evidence.
+
 ### 2026-07-23 16:28:52 +08:00 - Codex - Task 260.1 autonomous campaign state machine
 
 - Request: Implement the approved autonomous CCF-B contribution loop so a real negative result can drive a different hypothesis, newly frozen experiment, unseen adjudication, report transition, and next round without post-unseen tuning or human scientific decisions.

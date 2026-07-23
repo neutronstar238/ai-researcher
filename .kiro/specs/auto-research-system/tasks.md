@@ -3221,9 +3221,12 @@ A task can be checked only when all applicable items are true:
     - Automatically create the next result-blind round when a gate fails, require the configured number of new experimental rounds before paper build, stop rather than lower a gate when designs or the deadline are exhausted, and write runtime-owned round evidence to the Obsidian vault.
     - _Outcome: deterministic tests complete a new two-round lineage in which round one is negative, round two changes mechanism and passes, terminal resume performs no scientific calls, current-unseen leakage and same-mechanism recovery are rejected, and persisted artifact tampering is blocked._
     - _Verify: focused campaign tests, full `tests` regression, full Ruff, full Mypy, and `git diff --check`; exact commands are recorded in `Agent.md`._
-  - [ ] 260.2 Add campaign CLI and complete per-round/deliverables exports
+  - [x] 260.2 Add campaign CLI and complete per-round/deliverables exports
     - Add `campaign start/resume/status/export`, human-readable research/failure/loop reports, evidence maps, experiment manifests, manuscript versions, and a complete indexed local export.
     - Export every scientific artifact without treating an internal contribution gate as external-submission authorization.
+    - Keep the development fixture visibly non-scientific and unable to pass the contribution gate; task `260.3` owns the local Ollama and real benchmark adapter.
+    - _Outcome: a CLI smoke started, inspected, idempotently resumed, and exported a two-round campaign; each round contains hypothesis, preregistration, experiment manifest, raw metrics/logs, validation, failure/research/loop reports, evidence map, table, figure, decision, and manuscript version. The indexed 64-file dossier includes copied adapter evidence, environment/reproduction records, hashes, and an explicit external-submission block._
+    - _Verify: 11 focused campaign tests, the 733-test full suite, full Ruff, full Mypy, live CLI lifecycle smoke, export/integrity audit, and `git diff --check`; exact commands and evidence boundaries are recorded in `Agent.md`._
   - [ ] 260.3 Connect local Ollama and real benchmark adapters, then run two new rounds
     - Use provider-agnostic local OpenAI-compatible configuration for Ollama `qwen3.5:9b`; keep numerical decisions code-computed and fall back to deterministic proposal templates if structured generation fails.
     - Audit unused MDBench holdout capacity before any third method cycle; otherwise pivot immediately to the frozen local systems-paper benchmark route.

@@ -56,6 +56,7 @@ from autoresearch.agents import (
     write_agent_profile_note,
     write_mcp_invocation_validation_report,
 )
+from autoresearch.campaign.cli import campaign_app
 from autoresearch.competition.cli import competition_app
 from autoresearch.config import (
     ConfigFormat,
@@ -208,6 +209,7 @@ app.add_typer(channels_app, name="channels")
 app.add_typer(code_agents_app, name="code-agents")
 app.add_typer(pdf_sources_app, name="pdf-sources")
 app.add_typer(competition_app, name="competition")
+app.add_typer(campaign_app, name="campaign")
 channels_app.add_typer(channel_adapters_app, name="adapters")
 channels_app.add_typer(openclaw_channels_app, name="openclaw")
 code_agents_app.add_typer(ccswitch_code_agents_app, name="cc-switch")

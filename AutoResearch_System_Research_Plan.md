@@ -650,7 +650,14 @@ hash、截止时间与最小新实验轮数门。提案适配器只接收历史�
 代码与配置。负结果子轮必须改变机制族，重启只复用已验链阶段，内容篡改直接阻断。每轮终态由
 runtime 写入 `autoresearch-vault/`，但 Obsidian 记录本身不等于科学贡献或投稿许可。
 
-当前这一步证明递归科研控制面成立，不证明已经得到 CCF-B 成果。任务 260.2 还要接通 CLI、完整
-研究报告与交付导出；任务 260.3 还要用本地 Ollama 和真实 benchmark adapter 完成至少两个新实验
-轮次；只有真实未见证据、强基线、三种子、统计不确定性、消融、复现、引用与论文门同时通过，才
-能进入 paper build。外部投稿始终需要人工批准。
+任务 260.2 已把该控制面注册为 `campaign start/resume/status/export`，并将 hypothesis、
+preregistration、experiment manifest、原始指标/日志、validation、failure/research/loop report、
+evidence map、图表、round decision 和逐轮 manuscript 设为强制产物。exporter 先复验完整父子哈希
+链，再复制 campaign 与 adapter 原始证据，生成集中索引、环境锁、复现入口和文件哈希清单；内部
+contribution gate 永远不会自动变成外部投稿许可。运行期 Vault 写入只更新本 campaign 的 project
+索引，不重建或改写无关知识条目。
+
+当前两轮 CLI smoke 使用明确标注的 development fixture，只证明递归控制面、报告面和恢复/导出
+链路，不证明已经得到 CCF-B 成果。任务 260.3 还要用本地 Ollama 和真实 benchmark adapter 完成
+至少两个新实验轮次；只有真实未见证据、强基线、三种子、统计不确定性、消融、复现、引用与论文
+门同时通过，才能进入 paper build。外部投稿始终需要人工批准。
