@@ -1,0 +1,57 @@
+\section{Limitations and Responsible Use}
+
+\paragraph{Controlled transitions are not open-ended discovery.}
+The \routeb{} harness applies frozen deterministic repair transitions to
+controlled workflow faults. It does not ask a model to invent arbitrary code
+repairs or discover a new scientific law. Because the evaluator and repair
+policy were designed together, the absolute success rates may overestimate
+performance on independently authored tasks. The ablations test internal
+mechanism consistency, not broad autonomous-research competence.
+
+\paragraph{Seeds do not provide independent stochastic policies.}
+The three seeds produce independently identified and hash-checked cells, but
+the current controller transition function is deterministic. Repeated seed
+outcomes therefore test idempotency and accidental seed dependence, not
+variation from model sampling. The bootstrap interval is over 30 task-seed
+pairs and consequently includes repeated outcomes for each task. Treating all
+30 as fully independent would be too strong. A future confirmatory study
+should bootstrap at the task level or use independently sampled controller
+trajectories.
+
+\paragraph{Task coverage is narrow.}
+The matrix contains four tabular-data workflows and six equation-discovery
+trace workflows. It does not cover laboratory robotics, human participants,
+private clinical data, large-scale training, or long-horizon literature
+claims. The source evidence is real, but each injected fault is a workflow
+construct. Results should not be generalized beyond comparable
+file-oriented, deterministic research pipelines.
+
+\paragraph{Revealed traces are behavior evidence only.}
+The MDBench traces had already been revealed during \routea{}. They cannot
+serve as unseen evidence for a method claim. We label them at the source,
+preregistration, report, and claim-evidence layers. The two \routea{} panels
+do provide new unseen evaluation for their respective candidates, and both
+results are negative. We do not claim a successful new equation-discovery
+algorithm.
+
+\paragraph{Local model role is limited.}
+The model proposes policy language and structured hypotheses, but the
+deterministic harness chooses all transitions and decisions in \routeb{}.
+One local request timed out and used the declared fallback. This is useful for
+availability testing but does not establish that Qwen or another model can
+autonomously generate every successful repair.
+
+\paragraph{Novelty and review remain human responsibilities.}
+Automated citation checks verify identifiers and source availability, not
+whether every related work interpretation is complete. Hashes detect changed
+files, not conceptual errors. The internal contribution gate and paper audit
+are engineering controls and must not be represented as peer review or venue
+acceptance. Every external upload remains blocked pending human review of
+novelty, scientific value, authorship, licensing, privacy, and venue policy.
+
+\paragraph{Safety boundary.}
+Experiments execute locally and use no cloud GPU, paid external model, private
+dataset, or autonomous publication action. The campaign cannot modify safety,
+license, or submission policies through self-iteration. Extending the system
+to physical experiments, sensitive data, or public communication would
+require new approval and containment mechanisms.

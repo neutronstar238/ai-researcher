@@ -684,3 +684,18 @@ evidence map、科研结果哈希和同种子 reproduction hash。
 `[0.333333, 0.666667]`。无 Vault、无失败反馈、无预注册、无证据门成功率依次为 `0.70`、
 `0.50`、`0.00`、`0.80`；无证据门留下 6 个错误声明。内部 systems contribution gate 因此
 通过，但它只授权任务 260.5 构建和独立审查论文证据，不等于 CCF-B 就绪或外部投稿许可。
+
+任务 260.5 已把两条不可变证据链合并为论文包
+`task260-final-paper-v2`。论文题为 *Evidence-Bound Self-Iteration for Autonomous Research:
+A Preregistered Local Systems Study*，使用 ACM `sigconf` 双栏格式，共 11 页、40 条正文实际引用
+且在线来源审计 40/40 通过。正文明确区分 Route A 的两个真实方法负结果与 Route B 的受控系统
+行为贡献，并披露受控故障、确定性转移策略、种子非独立、已揭示 MDBench trace 仅用于行为评测
+等有效性限制。
+
+独立复现从全新目录重新读取冻结输入、复算 20,000 次 bootstrap、编译五张矢量图和完整论文；
+主目录与复现目录 PDF 的 SHA-256 均为
+`9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`。最终哈希清单覆盖
+3,269 个文件，包括两条完整 campaign dossier；claim-evidence、citation、LaTeX reference、
+表图、页数、布局、严格审稿和复现门全部通过。包级结论只为
+`ready_for_human_submission_review`，不是 CCF-B 录用保证；作者、创新性、venue fit、许可和任何
+外部投稿仍必须由人类明确批准。

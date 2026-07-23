@@ -1,0 +1,135 @@
+\section{Artifact and Reproduction Details}
+
+\subsection{Delivered directory}
+
+The package has four top-level evidence surfaces. \texttt{paper/source}
+contains the human-editable manuscript, generated value macros, references,
+tables, vector-figure sources, compiled figures, and the ACM PDF.
+\texttt{frozen-inputs} contains copies of the campaign manifest, both unseen
+round results, the systems preregistration, matrix manifest, aggregate result,
+contribution gate, and a compact paper-values file.
+\texttt{dossier} contains the complete \routea{} and \routeb{} directories,
+including all raw metrics and per-cell reports. \texttt{reproduction}
+contains the environment lock, a standalone Python script, exact commands,
+and the independent reproduction report.
+
+The delivery index links every surface. A separate artifact manifest records
+the SHA-256 digest and byte size of every file, including the complete
+campaign dossier. The paper-package manifest binds the route lineage,
+systems-result hash, systems-gate hash, audit hash, and all output locations.
+The manifest and audit are themselves canonical-model hashes. They always
+store \texttt{external\_submission\_authorized=false}.
+
+\subsection{Clean-directory procedure}
+
+The paper builder launches the following procedure in a directory that must
+be absent or empty:
+
+\begin{enumerate}
+  \item load the frozen paired differences and aggregate values;
+  \item recompute the paired mean and the exact
+  \BootstrapResamples{}-resample percentile bootstrap using the registered
+  seed;
+  \item compare every recomputed scalar with the frozen value to numerical
+  tolerance \(10^{-12}\);
+  \item copy the complete paper source rather than using build outputs from
+  the primary directory;
+  \item compile the five standalone vector figures; and
+  \item compile the ACM two-column paper and record its digest.
+\end{enumerate}
+
+The process writes a machine-readable report and exits nonzero if any
+statistic differs, a figure fails, or the manuscript fails. The primary
+package copies that report but does not infer success from process output
+alone. The final auditor loads the report and checks its explicit status.
+
+\subsection{Round-level evidence contract}
+
+For each \routea{} round, the dossier includes:
+
+\begin{itemize}
+  \item \path{observation.json}, \path{failure_diagnosis.json}, and
+  \path{hypothesis.json};
+  \item \path{screening.json}, \path{preregistration.json}, and
+  \path{frozen_protocol.json};
+  \item development and unseen results with all cell paths and hashes;
+  \item deterministic contribution-gate and round-decision records;
+  \item research, failure, loop, and validation reports;
+  \item evidence-map JSON, tables, figures, and manuscript version; and
+  \item the round manifest linking its parent and child records.
+\end{itemize}
+
+Round 1 changes the derivative estimator and coefficient aggregation relative
+to the parent failure. Round 2 changes both the derivative representation and
+the cross-output support operation relative to Round 1. The second round does
+not reopen the rejected weak-form or support-stability family. Both unseen
+panels remain immutable after reveal.
+
+\subsection{Systems cell semantics}
+
+Each systems cell stores task, family, mode, seed, source-evidence hash, policy
+evidence, initial and final failure codes, attempted actions, attempt count,
+success, recovery, reproduction, claim support, preregistration state, gate
+state, memory and feedback use, intervention count, report claim, scientific
+result hash, reproduction hash, wall time, cost, and a canonical result hash.
+
+An initial fault changes one Boolean invariant. A planning controller may
+repair only a planning-visible fault. A full-loop controller obtains runtime
+failure codes. If feedback is available, it attempts the registered repair;
+if the repair needs a \vault{} card and memory is absent, it records a blocked
+action. The evidence-gate ablation removes \texttt{claim\_supported} from
+visible runtime failures but still evaluates that invariant in the final
+task-success vector. This accounts for both its nonzero success rate and its
+unsupported-claim count.
+
+\subsection{Citation and manuscript audit}
+
+The citation audit parses every \texttt{\textbackslash cite} command and every
+BibTeX key, requiring no missing or unused entries and at least 30 references.
+Every entry must include author, title, year, and a DOI, URL, or e-print
+identifier. The live audit retrieves the registered primary or metadata
+source and records status, resolved URL, and content digest. The LaTeX audit
+fails on undefined citations or references, failed standalone figures, a
+failed paper build, fewer than eight pages, or an overfull box.
+
+The deterministic pre-submission review also checks section completeness,
+placeholder text, disallowed promotional phrases, unresolved quantitative
+macros, disclosure of both negative \routea{} results, claim-evidence
+coverage, and the clean-directory result. Passing this review means only
+``ready for human submission review.'' It never means submitted, accepted, or
+authorized for release.
+
+\section{Additional Numerical Results}
+
+Table~\ref{tab:all-modes} is generated directly from the frozen
+machine-readable aggregate. For clarity, the central values are repeated
+here. Full-loop success is \FullLoopSuccess{}, negative recovery is
+\FullLoopRecovery{}, and exact reproduction is \FullLoopReproduction{}.
+The execute-once success rate is \ExecuteOnceSuccess{}. The paired gain is
+\PairedGain{} with interval [\PairedCILower{}, \PairedCIUpper{}].
+
+The ablation success rates are \NoVaultSuccess{} without \vault{} memory,
+\NoFeedbackSuccess{} without failure feedback, \NoPreregSuccess{} without
+preregistration, and \NoGateSuccess{} without the evidence gate. The last
+condition emits \NoGateUnsupported{} unsupported claims. These are descriptive
+outcomes of the frozen controlled matrix and should not be read as population
+estimates for autonomous research tasks.
+
+\section{Human Review Checklist}
+
+Before any external use, a reviewer should:
+
+\begin{enumerate}
+  \item inspect the two negative \routea{} decisions and confirm that the
+  systems manuscript does not imply a positive method result;
+  \item examine all task-source licenses and the distinction between fresh
+  UCI runs and revealed MDBench trace replay;
+  \item assess whether the systems contribution is novel and substantial for
+  the selected venue;
+  \item verify author identity, affiliations, acknowledgments, conflicts, and
+  venue disclosure rules;
+  \item rerun the standalone reproduction command from a clean directory;
+  \item review every claim-evidence edge and all bibliography metadata; and
+  \item provide explicit approval before upload, public release, or
+  submission.
+\end{enumerate}

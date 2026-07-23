@@ -63,6 +63,8 @@ airesearcher campaign export runs/campaigns/<campaign-id>
 airesearcher campaign systems-preregister --deadline 2026-08-15
 airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
+airesearcher campaign paper-build
+airesearcher campaign paper-status runs/manual-live/task260-final-paper-v2
 ```
 
 每个完成的 round 都会导出假设、预注册、实验 manifest、原始指标/日志、validation、失败/研究/
@@ -81,7 +83,14 @@ CCF-B 证据；硬策略因此转入任务 `260.4` 的自主科研系统对比�
 MDBench trace-replay 任务。one-shot、execute-once、完整证据循环的成功率为
 `0.20/0.50/1.00`；完整循环相对 execute-once 的配对增益 bootstrap 95% CI 为
 `[0.333333, 0.666667]`，复现率为 `1.00`，错误声明和科研决策人工介入均为 0，四项消融全部
-完成。这只通过内部系统贡献门；独立复现、论文审计和外部投稿批准仍未完成。
+完成。
+
+任务 `260.5` 已从上述不可变证据生成 11 页 ACM 双栏论文：40 条正文实际引用均完成在线来源
+核验，五张矢量图、claim-evidence map、arXiv 源码包以及 Route A/Route B 完整 dossier 均已
+导出。全新目录重新计算冻结的 20,000 次 bootstrap，并独立编译图和论文；生成的 PDF
+SHA-256 与主构建完全一致。3,269 文件论文包通过内部
+`ready_for_human_submission_review` 审计，但这不代表 CCF-B 录用或自动投稿。创新性、venue
+fit、作者、许可与外部提交仍需人类明确审查和批准。
 
 ## 首次部署
 

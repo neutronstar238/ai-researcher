@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-24 00:40:25 +08:00 - Codex - Task 260.5 final paper package
+
+- Request: Complete the August 15 hard-deadline campaign by constructing, independently reproducing, and auditing a full paper package from the immutable task `260.3` Route A negatives and task `260.4` Route B systems evidence, without authorizing external submission or overstating CCF-B readiness.
+- Files changed:
+  - `src/autoresearch/campaign/paper.py`
+  - `src/autoresearch/campaign/paper_assets/`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `tests/unit/campaign/test_paper_package.py`
+  - `autoresearch-vault/projects/autoresearch-ccfb/paper/task260-final-paper-package.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `campaign paper-build` and `campaign paper-status`, immutable paper-package schemas, frozen Route A/Route B input collection, deterministic paper values, result tables, TikZ/pgfplots figures, citation and claim-evidence audits, ACM compilation, clean-directory reproduction, review, complete dossier copying, and end-to-end hash validation.
+  - Added an anonymous ACM `sigconf` manuscript, “Evidence-Bound Self-Iteration for Autonomous Research: A Preregistered Local Systems Study,” with 40 used references, five vector figures, appendix material, generated values, and explicit limitations. It states that Route B is a controlled deterministic transition harness over real source evidence and injected workflow faults, that the three seeds test idempotency rather than independent learned policies, and that revealed MDBench traces are behaviour evidence rather than new-method holdouts.
+  - The first formal package, `task260-final-paper-v1`, honestly returned `not_ready`: it compiled an 11-page PDF but selected a Windows `pdfinfo.cmd` shim and falsely counted zero pages. The implementation now resolves the native `pdfinfo.exe`; regression coverage prevents recurrence, and the failed v1 package remains preserved as diagnostic evidence.
+  - Formal package `task260-final-paper-v2` passes every final audit check with package hash `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`. It includes an 11-page ACM PDF, arXiv source archive, five compiled figures, claim-evidence graph, citation audit, deterministic pre-submission review, environment lock, reproduction commands, complete Route A/Route B dossier, and a 3,269-file SHA-256 manifest whose own digest is bound by the package manifest.
+  - A standalone process in a fresh directory independently validated frozen inputs, recomputed the paired mean and 20,000-resample bootstrap, regenerated every figure, and compiled a PDF byte-identical to the primary build: SHA-256 `9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`.
+  - The internal verdict is deliberately limited to `ready_for_human_submission_review`. Every package surface records `external_submission_authorized=false`; no acceptance, venue-fit, or external CCF-B-readiness claim is made.
+- Verification:
+  - `poetry run pytest tests/unit/campaign/test_paper_package.py -q --no-cov`: passed, 4 tests covering bibliography/source completeness, clean-directory statistical reproduction and tamper rejection, artifact-manifest binding and tamper rejection, and native PDF page-count parsing.
+  - `poetry run pytest`: passed, 741 tests with 4 opt-in live tests skipped in 258.02 seconds; total coverage 86%.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 134 source files.
+  - `poetry run airesearcher campaign paper-build --output-dir runs/manual-live/task260-final-paper-v2 --reproduction-dir runs/manual-live/task260-final-paper-reproduction-v2`: passed; all 12 final checks are true, 40/40 registered sources resolved, five figures and the 11-page manuscript compiled, and the independent reproduction matched exactly.
+  - `poetry run airesearcher campaign paper-status runs/manual-live/task260-final-paper-v2`: passed; package, audit, dossier, reproduction, and all recorded artifact hashes revalidated.
+  - The citation-management structure check parsed all 40 bibliography entries with zero structural errors. Its optional direct-doi.org mode produced documented publisher/network false negatives and two false duplicate warnings; the package's primary arXiv, ACL, Crossref, JMLR, UCI, and Zenodo source audit passed 40/40. Both diagnostic reports are retained under `runs/manual-live/`.
+  - Rendered PDF pages 1, 5, 6, and 10 were visually inspected for two-column layout, tables, figures, references, and appendix readability; no clipping or layout defect was observed.
+  - `git diff --check`: passed before documentation closeout and again before commit.
+- Problems:
+  - Resolved `P-20260723-018`: the internal Route B result is now an independently reproduced and hash-audited paper package, while human review and external approval remain mandatory.
+  - Added and mitigated `P-20260724-019`: recorded and repaired the Windows PDF page-count false negative, and retained the optional DOI/arXiv utility failures without treating them as authoritative citation failures.
+- Follow-up:
+  - A human must still decide novelty, final venue fit, author identity/order, licenses, ethics/disclosures, and whether to authorize any external upload. No further automated implementation task is required for the task `260` acceptance criteria.
+
 ### 2026-07-23 23:56:25 +08:00 - Codex - Task 260.4 autonomous-research systems matrix
 
 - Request: Follow the hard Route A stop by immediately implementing and executing the preregistered systems-paper route: four UCI plus six MDBench tasks, one-shot/execute-once/full-loop, three seeds, four ablations, deterministic statistical adjudication, no research-decision human intervention, and no misuse of revealed MDBench traces as new method evidence.

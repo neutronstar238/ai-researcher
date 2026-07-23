@@ -1,0 +1,100 @@
+\section{Introduction}
+
+Language-model agents can now search, plan, write code, run tools, and draft
+scientific text. Several systems combine these abilities into broad research
+workflows \cite{lu2024aiscientist,yamada2025aiscientistv2,schmidgall2025agentlab}.
+The difficult question is no longer whether an agent can generate a plausible
+paper-shaped artifact. It is whether a failed result changes the next
+scientific action in a way that is both substantive and auditable. Repeating
+the same parameters, rewriting an explanation, or selecting a favorable
+metric after seeing a test set can look iterative while adding no new
+scientific evidence.
+
+Existing evaluations illuminate important parts of this problem. Agent
+benchmarks measure tool use and multi-step execution
+\cite{liu2023agentbench,zhou2024webarena,xie2024osworld}. Machine-learning
+benchmarks evaluate model development \cite{huang2023mlagentbench,chan2024mlebench},
+and scientific-agent benchmarks measure program generation or recovery of
+published computations \cite{chen2024scienceagentbench,siegel2024corebench,
+starace2025paperbench}. These settings establish useful capabilities, but an
+execution score alone does not reveal whether a system distinguishes a
+negative scientific result from an infrastructure failure, proposes a
+mechanistically different successor, freezes the successor before evaluation,
+and reports the failure when the gate is missed.
+
+Figure~\ref{fig:running-example} gives the distinction studied here. A
+one-pass controller may retry or rewrite after a failed experiment. The
+evidence-bound controller instead records a typed diagnosis, binds a new
+hypothesis to the failed result, commits a falsification rule, and evaluates
+the frozen artifact. A failed successor is not erased. It becomes the parent
+evidence for another round or an explicit route change. This design treats
+the research history as part of the result rather than as disposable
+intermediate context.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=.94\textwidth]{figures/running-example.pdf}
+  \Description{Two workflow paths after a failed experiment. The upper path
+  retries or rewrites once. The lower path records a hash-bound diagnosis,
+  proposes a new mechanism, freezes before reveal, and exports evidence and a
+  report before looping to a new diagnosis.}
+  \caption{Running example. A retry can change an artifact without creating a
+  new scientific iteration. The evidence-bound path requires a hash-linked
+  diagnosis, a changed mechanism, a pre-result freeze, deterministic
+  adjudication, and a visible report.}
+  \label{fig:running-example}
+\end{figure*}
+
+We operationalize this distinction in \method{}, a persistent local research
+campaign. The language model proposes structured diagnoses and candidate
+mechanisms, while deterministic code owns data partitioning, metric
+calculation, stopping rules, and decisions. The campaign uses a shared,
+versioned \vault{} as project memory. Each round produces a hypothesis,
+preregistration, experiment manifest, raw metrics, validation record, failure
+analysis, research report, loop report, evidence map, figures, decision, and
+manuscript version. Parent and child manifests form a content-hash chain.
+Unseen outcomes cannot flow back into the already frozen round.
+
+The evaluation has two connected parts. First, two new scientific machine
+learning rounds respond to an existing noise-robustness failure in equation
+discovery. Round 1 tests noise-conditioned smoothing with bootstrap ensemble
+sparse regression. Round 2 tests analytic spline derivatives with
+cross-output group-sparse projection. Each uses disjoint, previously unused
+unseen systems, three fresh seeds, clean and noisy conditions, a strong
+baseline, and three ablations. Both candidates clear the development screen
+and both fail the preregistered unseen criterion. Those negative results are
+the observable trigger for a route change, not an inconvenience removed from
+the paper.
+
+Second, we evaluate the research-control mechanism itself on a frozen matrix
+of \UciTaskCount{} freshly executed UCI tasks and \MDBenchTaskCount{} revealed
+MDBench trace-replay tasks. The matrix compares \oneshot{}, \executeonce{},
+and the \systemloop{} across \SeedCount{} seeds. Four ablations remove
+\vault{} memory, failure feedback, preregistration, or the claim-evidence
+gate. The principal endpoint is paired task-success gain over \executeonce{}.
+Additional endpoints measure recovery from an initially negative state, exact
+reproduction, unsupported scientific claims, research-decision intervention,
+wall time, and external cost. Revealed benchmark traces are explicitly
+restricted to workflow-behavior evaluation and are not presented as new
+holdout evidence for an equation-discovery method.
+
+The study makes three bounded contributions:
+
+\begin{itemize}
+  \item It specifies a recursive research state machine in which a scientific
+  round is counted only when a parent-linked mechanism change reaches a new,
+  precommitted experiment and a visible decision.
+  \item It provides an end-to-end audit trail showing two real negative
+  method rounds followed by a preregistered systems pivot, with no
+  research-decision human intervention after campaign start.
+  \item It reports a controlled comparison and component ablations showing
+  that the full evidence-bound loop outperforms execute-once on this task
+  matrix while preserving exact reruns and zero unsupported claims.
+\end{itemize}
+
+The conclusion is deliberately narrow. We do not infer general scientific
+autonomy, venue acceptance, or a successful new equation-discovery method.
+The experiment tests whether a particular control architecture recovers from
+specified workflow failures under a frozen evaluator. Human judgment remains
+necessary for novelty, scientific importance, authorship, licensing, venue
+fit, and every external submission decision.

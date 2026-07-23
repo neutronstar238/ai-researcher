@@ -27,6 +27,13 @@ from .models import (
     RoundOutcome,
     UnseenEvaluation,
 )
+from .paper import (
+    PaperPackageAudit,
+    PaperPackageManifest,
+    PaperPackageResult,
+    build_task260_paper_package,
+    validate_task260_paper_package,
+)
 from .reporting import (
     CampaignExporter,
     CampaignExportFile,
@@ -70,6 +77,9 @@ __all__ = [
     "HypothesisScreening",
     "Preregistration",
     "PreregistrationInputs",
+    "PaperPackageAudit",
+    "PaperPackageManifest",
+    "PaperPackageResult",
     "RoundDecision",
     "RoundDecisionKind",
     "RoundDevelopmentContext",
@@ -77,7 +87,9 @@ __all__ = [
     "RoundObservation",
     "RoundOutcome",
     "UnseenEvaluation",
+    "build_task260_paper_package",
     "load_campaign_manifest",
     "load_round_manifest",
     "validate_campaign_directory",
+    "validate_task260_paper_package",
 ]

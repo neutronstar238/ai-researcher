@@ -70,6 +70,8 @@ airesearcher campaign export runs/campaigns/<campaign-id>
 airesearcher campaign systems-preregister --deadline 2026-08-15
 airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
+airesearcher campaign paper-build
+airesearcher campaign paper-status runs/manual-live/task260-final-paper-v2
 ```
 
 Every completed round exports its hypothesis, preregistration, experiment manifest, raw
@@ -93,8 +95,16 @@ evidence runs and six revealed MDBench trace-replay tasks. One-shot, execute-onc
 full evidence-bound loop achieved task success rates of `0.20`, `0.50`, and `1.00`;
 the paired full-loop gain had a bootstrap 95% CI of `[0.333333, 0.666667]`. Full-loop
 reproduction was `1.00`, unsupported claims and research-decision human interventions were
-zero, and all four ablations completed. This passes an internal systems-contribution gate
-only. Independent reproduction, paper audit, and external submission approval remain pending.
+zero, and all four ablations completed.
+
+Task `260.5` has built the evidence-bound systems paper as an 11-page ACM two-column PDF with
+40 used and live-verified references, five compiled vector figures, a claim-evidence map, an
+arXiv source archive, and the complete Route A/Route B dossier. A fresh-directory run recomputed
+the frozen 20,000-resample bootstrap and independently rebuilt the figures and paper; its PDF
+SHA-256 exactly matches the primary build. The 3,269-file package passes the internal
+`ready_for_human_submission_review` audit. This is not a CCF-B acceptance claim, and external
+submission remains blocked pending explicit human review of novelty, venue fit, authorship,
+and licenses.
 
 ## First Deployment
 

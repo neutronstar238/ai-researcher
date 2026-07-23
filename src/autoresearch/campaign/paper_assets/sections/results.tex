@@ -1,0 +1,119 @@
+\section{Results}
+
+\subsection{Two development passes become two unseen failures}
+
+Both new equation-discovery mechanisms pass the development screen. Round 1
+has a median development improvement of \RouteOneDevelopment{}, and Round 2
+has \RouteTwoDevelopment{}. If evaluation stopped at development performance,
+either round could be narrated as promising. The frozen unseen panels reverse
+that conclusion. Round 1 obtains a system-level 95\% interval of
+[\RouteOneCILower{}, \RouteOneCIUpper{}], and Round 2 obtains
+[\RouteTwoCILower{}, \RouteTwoCIUpper{}]. Both intervals cross zero, so both
+rounds are negative under the preregistered decision.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/route-a-results.pdf}
+  \Description{Two horizontal confidence intervals cross a vertical zero
+  boundary, so neither equation-discovery round passes its unseen gate.}
+  \caption{\routea{} unseen results. Points show median failure-aware relative
+  improvement and bars show frozen system-level bootstrap intervals. The
+  dashed line is the acceptance boundary; both lower endpoints are below
+  zero.}
+  \label{fig:route-a}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Development and unseen decisions for the two parent-linked mechanism
+rounds. Full mechanism identifiers are retained for auditability.}
+\label{tab:route-a}
+\resizebox{\columnwidth}{!}{\input{tables/route-a-results}}
+\end{table}
+
+This result matters in two ways. Scientifically, the tested smoothing and
+support-selection mechanisms do not establish robust improvement over the
+strong baseline on their held-out systems. Operationally, the campaign does
+not reuse a panel, tune after reveal, or lower the confidence threshold.
+Round 1's negative hash becomes the parent of Round 2, and the second negative
+decision triggers the preregistered systems route. The paper therefore
+contains actual failed evidence that changed the next research object.
+
+\subsection{Main controller comparison}
+
+Figure~\ref{fig:main-results} reports task success for the three main
+controllers. The \oneshot{} controller succeeds on \OneShotSuccess{} of
+cells, \executeonce{} on \ExecuteOnceSuccess{}, and the \systemloop{} on
+\FullLoopSuccess{}. Relative to \executeonce{}, the paired mean gain is
+\PairedGain{}. The \BootstrapResamples{}-resample 95\% interval is
+[\PairedCILower{}, \PairedCIUpper{}], whose lower endpoint is above zero.
+All 30 paired differences are included in the frozen result and recomputed by
+the standalone reproduction script.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/main-results.pdf}
+  \Description{Bar chart with success rates 0.20 for one-shot, 0.50 for
+  execute-once, and 1.00 for the full loop.}
+  \caption{Task success in the preregistered main comparison. Each rate
+  aggregates ten tasks and three seeds.}
+  \label{fig:main-results}
+\end{figure}
+
+The \systemloop{} starts with 24 negative cells and recovers 15, for a recovery
+rate of \FullLoopRecovery{}. Execute-once repairs planning-visible faults but
+does not recover a runtime failure, so its measured recovery rate is zero.
+The full-loop scientific and reproduction hashes agree for every cell,
+yielding exact reproduction \FullLoopReproduction{}. Its reports contain
+\FullLoopUnsupported{} unsupported claims, and the campaign records
+\HumanInterventions{} research-decision human interventions.
+
+\subsection{Component ablations}
+
+Figure~\ref{fig:ablations} and Table~\ref{tab:all-modes} show the four
+preregistered ablations. Removing \vault{} memory reduces success from
+\FullLoopSuccess{} to \NoVaultSuccess{} because memory-dependent evidence-map
+and checkpoint repairs remain blocked. Removing failure feedback produces
+\NoFeedbackSuccess{}, matching execute-once because the controller cannot
+act on runtime diagnosis. Removing preregistration produces
+\NoPreregSuccess{} under a metric that requires the frozen contract.
+Removing the evidence gate retains \NoGateSuccess{} apparent success but
+allows \NoGateUnsupported{} unsupported claims. This last contrast shows why
+task completion alone is insufficient as a research-system endpoint.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/ablation-results.pdf}
+  \Description{Bar chart comparing the full-loop success rate of 1.00 with
+  four ablations: no Vault 0.70, no feedback 0.50, no preregistration 0.00,
+  and no evidence gate 0.80.}
+  \caption{Task success for the complete loop and four frozen ablations.
+  The no-evidence-gate bar must be read with its six unsupported claims.}
+  \label{fig:ablations}
+\end{figure}
+
+\begin{table*}[t]
+\centering
+\caption{All controller modes. Recovery is conditional on an initially failed
+cell. Reproduction compares the primary and exact-rerun scientific hashes.
+Unsupported is a count over 30 cells per mode.}
+\label{tab:all-modes}
+\small
+\input{tables/mode-results}
+\end{table*}
+
+\subsection{Local execution and evidence completeness}
+
+The main controller summaries cause \LocalRequests{} requests to the local
+model. \LocalFallbacks{} request reaches the timeout boundary and uses the
+predeclared deterministic fallback. The fallback is visible in the policy
+evidence and does not affect numerical adjudication. Scientific computation
+and model inference remain local; the recorded external cost is zero.
+
+Every matrix cell has a result JSON, a reproduction JSON, a Markdown report,
+and hashes of its source and policy evidence. The aggregate package contains
+the frozen preregistration, fault policy, evaluator hash, all \CellCount{}
+cells, a mode table, figures, failure analysis, loop report, and contribution
+decision. The final paper builder additionally checks bibliography resolution,
+claim-evidence links, LaTeX references, vector-figure compilation, layout
+overflow, and a clean-directory rebuild.

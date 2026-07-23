@@ -106,7 +106,7 @@ update a factual problem entry below.
 
 ### P-20260723-018 - Internal Route B gate is not yet an independently reproduced CCF-B paper package
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-23 23:59:00 +08:00
 - Source: Task `260.4` systems contribution gate.
@@ -115,8 +115,26 @@ update a factual problem entry below.
 - Evidence: Gate hash `1257ba5b721748539cd3846dd7f0df78237614f98fec417fda48b4f0b5b2e6a7` has no failed internal checks and explicitly records `external_submission_authorized=false`. Six MDBench tasks are revealed trace replay and cannot support new-method holdout claims.
 - Root cause: Task `260.4` intentionally ends at system experiment execution and internal contribution adjudication; paper assembly and independent reproduction belong to task `260.5`.
 - Workaround: Keep every manuscript and delivery index visibly blocked from external submission until the final audit and explicit human approval.
-- Next action: Complete task `260.5`: fresh-directory reproduction, claim-evidence/citation/table/figure audit, strict review, ACM two-column compilation, and complete hashed dossier.
+- Next action: Human reviewers must still decide novelty, venue fit, authorship, licensing, and whether to approve an external submission. The automated package does not decide acceptance or authorize upload.
 - Linked tasks: `260.4`, `260.5`.
+- Resolution: Task `260.5` built `task260-final-paper-v2`, an 11-page ACM two-column manuscript with 40 used and live-verified references, five vector figures, generated result tables, claim-evidence graph, strict deterministic review, arXiv source archive, environment lock, complete Route A/Route B dossier, and a 3,269-file SHA-256 manifest. A standalone process in a fresh directory revalidated frozen inputs, recomputed the paired mean and 20,000-resample bootstrap, and independently rebuilt every figure and the paper.
+- Verification: All final audit checks pass with package hash `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`. Primary and independent PDFs share SHA-256 `9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`. The verdict is only `ready_for_human_submission_review`, and every manifest keeps `external_submission_authorized=false`.
+
+### P-20260724-019 - External paper utilities produced citation and PDF false negatives
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-24 00:20:00 +08:00
+- Source: Task `260.5` final paper build and citation cross-check.
+- Symptom: The first formal paper package compiled an 11-page PDF but the Python page counter selected a `pdfinfo.cmd` runtime wrapper that could not execute through the direct subprocess path and therefore reported zero pages. Separately, the optional citation-management script's doi.org probe reported nine valid DOI records as unresolved and its title-similarity heuristic marked AI Scientist and AI Scientist-v2 as duplicates. The arXiv bulk export API also timed out or returned 503 during metadata preparation.
+- Impact: The v1 package correctly returned `not_ready` on the false page count. Treating the optional DOI probe as authoritative would incorrectly reject ACL, ACM, Science, PNAS, and Operon references that resolve through their primary metadata services.
+- Evidence: Native TeX Live `pdfinfo.exe` reports 11 pages. The package's parallel source audit returned 40/40 verified records using official arXiv pages, ACL/Crossref metadata, JMLR, UCI, and Zenodo. The same citation script without its unreliable network probe parsed all 40 entries with zero structural errors; its remaining volume/page warnings concern arXiv preprints or proceedings metadata and do not indicate missing identifiers.
+- Root cause: Windows command wrappers are not native executables for direct `subprocess.run` invocation. The optional citation script relies on doi.org response behavior and a coarse title similarity rule, while the relevant publishers may redirect, throttle, or reject that request shape.
+- Workaround: Resolve the native `pdfinfo.exe` beside TeX Live's `pdftotext`; use primary arXiv pages and Crossref/ACL metadata for live citation evidence; preserve optional-validator output as supplementary diagnostics rather than rewriting correct bibliography entries.
+- Next action: Improve the generic citation-management utility separately to use Crossref/DataCite fallbacks and identifier-aware duplicate checks. This does not block task `260.5`.
+- Linked tasks: `260.5`.
+- Resolution: The page-count implementation now selects a native executable and the v2 package passes its 11-page gate. Citation structure and all 40 registered primary/metadata sources pass; the failed optional DOI report remains retained at `runs/manual-live/task260-citation-validation-v2.json`.
+- Verification: `campaign paper-status runs/manual-live/task260-final-paper-v2` revalidates the package and all recorded file hashes. The v2 audit has no failed checks, and both independent PDF builds have the same SHA-256.
 
 ### P-20260717-001 - Official MDBench Gate A required real benchmark adjudication
 

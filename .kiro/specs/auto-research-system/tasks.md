@@ -3213,7 +3213,7 @@ A task can be checked only when all applicable items are true:
     - Add the pinned sim-to-real Cylinder adapter, official DMD/FNO/Transolver baselines, bounded two-mechanism search, three-stage data schedule, three seeds, bootstrap confidence intervals, and required ablations.
     - Block innovation and submission claims unless unseen-real `Rel L2`, fRMSE, KE, MVPE, update-ratio, ablation, reproducibility, and 40/30/30 internal-review gates all pass.
 
-- [ ] 260. Autonomous CCF-B contribution campaign
+- [x] 260. Autonomous CCF-B contribution campaign
   - [x] 260.1 Add the persistent negative-result-to-new-hypothesis campaign state machine
     - Add strict campaign, round, failure diagnosis, hypothesis, preregistration, freeze, unseen evaluation, contribution gate, and decision contracts.
     - Persist `observe -> diagnose -> propose -> screen -> preregister -> develop -> freeze -> unseen evaluate -> adjudicate -> report` with atomic artifacts, per-stage resume, parent-result/round hashes, and a top-level lineage hash.
@@ -3238,9 +3238,11 @@ A task can be checked only when all applicable items are true:
     - Require paired uncertainty, reproduction, unsupported-claim, intervention, runtime, and cost evidence before a systems contribution may pass.
     - _Outcome: preregistration `db4f372081be8ffb146a6acb133cdf7626618e4f94aae31aa1a4805b7d9e2da2` froze four fresh real UCI evidence runs, six revealed real MDBench trace-replay tasks, seeds 211/223/227, three main modes, four ablations, controlled faults, source hashes, evaluator bytes, and a 20,000-resample paired gate. The unchanged 210-cell matrix produced success rates `0.20` (one-shot), `0.50` (execute-once), and `1.00` (full loop); full-loop negative-result recovery was `0.625`, exact reproduction was `1.00`, unsupported claims and research-decision human interventions were both zero, and the paired success-gain 95% CI was `[0.333333, 0.666667]`. All ablations completed and degraded on their targeted criterion. The internal systems gate passed, while external submission remains false and revealed MDBench traces are explicitly barred from method-holdout claims._
     - _Verify: 4 new deterministic tests, 19 focused campaign tests, four fresh UCI live runs, six hash-audited MDBench source summaries, 3 local-Qwen policy calls (2 live structured successes and 1 recorded timeout fallback), all 210 primary/reproduction cells, hash-valid status, idempotent terminal rerun, full pytest/Ruff/Mypy, and `git diff --check`; exact commands are recorded in `Agent.md`._
-  - [ ] 260.5 Build and independently reproduce the final paper package
+  - [x] 260.5 Build and independently reproduce the final paper package
     - Produce manuscript sources, compiled PDF, figures/tables, citations, evidence graph, review/audit, environment lock, reproduction commands, artifact hashes, and the complete campaign dossier.
     - Keep external submission blocked until an explicit human approval is recorded.
+    - _Outcome: package `task260-final-paper-v2` contains an 11-page anonymous ACM two-column manuscript, 40 used and live-verified references, five compiled vector figures, generated result tables, a claim-evidence graph, strict review, an arXiv source archive, an environment lock, and the complete immutable Route A/Route B dossier. A standalone clean-directory process revalidated every frozen input, recomputed the paired effect and 20,000-resample bootstrap, regenerated all figures, and rebuilt a byte-identical PDF. The package binds 3,269 files with SHA-256, has package hash `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`, and returns only `ready_for_human_submission_review`; `external_submission_authorized=false` remains immutable._
+    - _Verify: 4 focused paper-package tests; full suite 741 passed and 4 opt-in live tests skipped; full Ruff and Mypy; primary and independent ACM builds with identical PDF SHA-256 `9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`; 40/40 live citation sources; five standalone figure builds; no undefined citations/references, overfull boxes, or failed final-audit checks; package-status/hash audit; visual inspection of representative pages; and `git diff --check`. Exact commands and the retained v1 false-negative diagnostics are recorded in `Agent.md` and `Problem.md`._
 
 ## Checkpoints
 

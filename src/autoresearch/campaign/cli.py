@@ -22,6 +22,10 @@ from autoresearch.campaign.models import (
     CampaignSpec,
     CampaignTrack,
 )
+from autoresearch.campaign.paper import (
+    build_task260_paper_package,
+    validate_task260_paper_package,
+)
 from autoresearch.campaign.reporting import CampaignExporter
 from autoresearch.campaign.service import AutonomousResearchCampaign
 from autoresearch.campaign.systems import (
@@ -308,6 +312,105 @@ def campaign_systems_status(
     typer.echo(f"result_hash={status.result_hash}")
     typer.echo(f"contribution_gate_passed={status.contribution_gate_passed}")
     typer.echo(f"cell_count={status.cell_count}")
+    typer.echo("external_submission_authorized=false")
+
+
+@campaign_app.command("paper-build")
+def campaign_paper_build(
+    route_a_campaign: Annotated[
+        Path,
+        typer.Option("--route-a-campaign", help="Completed two-round Route A campaign."),
+    ] = Path("runs/manual-live/task260-autonomous-ccfb-v1"),
+    systems_benchmark: Annotated[
+        Path,
+        typer.Option(
+            "--systems-benchmark",
+            help="Completed preregistered Route B systems benchmark.",
+        ),
+    ] = Path("runs/manual-live/task260-autonomous-systems-v1"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Final hash-bound paper package directory."),
+    ] = Path("runs/manual-live/task260-final-paper-v1"),
+    reproduction_dir: Annotated[
+        Path,
+        typer.Option(
+            "--reproduction-dir",
+            help="Absent or empty directory used for the independent rebuild.",
+        ),
+    ] = Path("runs/manual-live/task260-final-paper-reproduction-v1"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root."),
+    ] = Path("autoresearch-vault"),
+    live_citations: Annotated[
+        bool,
+        typer.Option(
+            "--live-citations/--no-live-citations",
+            help="Resolve every registered bibliography source during the audit.",
+        ),
+    ] = True,
+    compile_pdf: Annotated[
+        bool,
+        typer.Option(
+            "--compile/--no-compile",
+            help="Compile all vector figures and the ACM two-column manuscript.",
+        ),
+    ] = True,
+    copy_dossier: Annotated[
+        bool,
+        typer.Option(
+            "--copy-dossier/--no-copy-dossier",
+            help="Copy both complete campaign directories into the package.",
+        ),
+    ] = True,
+) -> None:
+    """Build, independently reproduce, and audit the task 260 paper package."""
+
+    try:
+        result = build_task260_paper_package(
+            route_a_campaign_dir=route_a_campaign,
+            systems_benchmark_dir=systems_benchmark,
+            output_dir=output_dir,
+            reproduction_dir=reproduction_dir,
+            vault_root=vault,
+            live_citation_check=live_citations,
+            compile_pdf=compile_pdf,
+            copy_dossier=copy_dossier,
+        )
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_paper_build: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"package_dir={result.package_dir}")
+    typer.echo(f"package_hash={result.package_hash}")
+    typer.echo(f"verdict={result.verdict}")
+    typer.echo(f"manuscript_pdf={result.manuscript_pdf_path}")
+    typer.echo(f"deliverables_index={result.deliverables_index_path}")
+    typer.echo(f"reproduction_report={result.reproduction_report_path}")
+    typer.echo("external_submission_authorized=false")
+    if result.verdict != "ready_for_human_submission_review":
+        raise typer.Exit(code=3)
+
+
+@campaign_app.command("paper-status")
+def campaign_paper_status(
+    package_dir: Annotated[
+        Path,
+        typer.Argument(help="Existing task 260 paper package directory."),
+    ],
+) -> None:
+    """Verify the paper manifest, audit, and every recorded artifact hash."""
+
+    try:
+        result = validate_task260_paper_package(package_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_paper_status: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"package_dir={result.package_dir}")
+    typer.echo(f"package_hash={result.package_hash}")
+    typer.echo(f"verdict={result.verdict}")
+    typer.echo(f"manuscript_pdf={result.manuscript_pdf_path}")
+    typer.echo(f"deliverables_index={result.deliverables_index_path}")
     typer.echo("external_submission_authorized=false")
 
 

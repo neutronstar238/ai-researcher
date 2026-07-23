@@ -895,3 +895,15 @@ execute-once、full-loop 成功率为 `0.20/0.50/1.00`，full-loop 恢复率 `0.
 `5f69cac379409d1abf5cd682682f54d76d181dc7aaf45c021f525ac50a5830cb`，内部系统贡献门通过，
 外部投稿仍为 false。下一任务 `260.5` 必须从全新目录独立复现、完成引用/审稿/表图一致性审计
 并编译论文；若任一最终门失败，只能交付标注清楚的负结果或未就绪论文包。
+
+`260.5` 已完成。新增 `campaign paper-build` 与 `campaign paper-status`，从不可变 Route A
+lineage 和 Route B result/gate 生成 ACM 双栏正文、附录、五张矢量图、两张结果表、40 条引用、
+claim-evidence graph、环境锁、arXiv source archive、完整 dossier 和逐文件哈希。首次 v1
+构建因 Windows `pdfinfo.cmd` 包装器把 11 页 PDF 误判为 0 页而诚实返回 `not_ready`，未覆盖；
+修正为原生 `pdfinfo.exe` 后，v2 的所有最终门通过。
+
+全新目录复现重新验证冻结输入 SHA-256、复算 paired mean 与固定 seed 的 20,000-resample
+bootstrap，并独立编译五张图和 11 页论文。主构建与独立构建的 PDF SHA-256 完全一致：
+`9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`。包哈希为
+`bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`，3,269 个文件全部
+进入哈希清单。内部状态为 `ready_for_human_submission_review`，外部投稿许可仍固定为 false。

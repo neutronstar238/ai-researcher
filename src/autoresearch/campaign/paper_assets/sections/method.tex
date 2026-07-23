@@ -1,0 +1,124 @@
+\section{Evidence-Bound Research Loop}
+
+\subsection{Campaign state and counted iterations}
+
+A campaign is a persistent state machine rather than a chain of independent
+prompts. Figure~\ref{fig:pipeline} shows the ten states exercised before a
+round can affect the manuscript. The persisted campaign manifest contains the
+policy, deadline, resource limits, current state, current round, completed
+round count, intervention count, and lineage hash. Every round manifest
+contains its parent result hash and the hash of each structured artifact.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=.98\textwidth]{figures/campaign-pipeline.pdf}
+  \Description{Ten stages from observation through report. A feedback arrow
+  connects report to a new diagnosis after a negative decision.}
+  \caption{Persistent campaign state machine. Unseen evidence becomes
+  available only after the freeze. A negative adjudication returns to
+  diagnosis through a new round; it cannot alter the revealed round.}
+  \label{fig:pipeline}
+\end{figure*}
+
+Let \(r_i\) be round \(i\), \(e_{i-1}\) the parent result, \(h(\cdot)\) a
+SHA-256 content hash, and \(m_i\) the proposed mechanism family. We count
+\(r_i\) as a new scientific iteration only when all of the following hold:
+
+\begin{enumerate}
+  \item the proposal records \(h(e_{i-1})\) and a typed diagnosis of the
+  parent failure;
+  \item \(m_i\) differs from the rejected mechanism in a stated causal or
+  statistical operation, not only in parameters or prose;
+  \item the campaign freezes code, data identifiers, seeds, metrics, stopping
+  rule, and adjudicator before unseen evaluation;
+  \item execution produces new raw observations and a deterministic decision;
+  and
+  \item the round exports both a research report and a failure report,
+  irrespective of sign.
+\end{enumerate}
+
+Rerunning identical parameters is reproduction, not iteration. Revising the
+manuscript is reporting, not iteration. Editing a prompt without reaching new
+evidence is also not iteration. This definition prevents cheap loop counts
+and makes a negative result an explicit state transition.
+
+\subsection{Separation of proposal and adjudication}
+
+The local language model receives only the parent diagnosis, the allowed
+development context, mechanism constraints, and the expected JSON schema. In
+this study it runs through a local Ollama endpoint with Qwen, a model family
+described by Yang et al. \cite{yang2025qwen3}. Its output may propose a
+diagnosis, mechanism, falsifier, or concise policy. It cannot choose the
+unseen panel after reveal, compute the acceptance statistic, change the
+threshold, or mark a contribution as passed.
+
+All scientific decisions are functions of frozen records. The deterministic
+screen verifies that a proposal changes the mechanism family and does not
+reopen an explicitly rejected family. The development gate computes the
+registered median improvement and validates cell coverage. The freeze writes
+an immutable protocol with hashes of the candidate code, parameter space,
+seeds, metric implementation, stopping rule, and adjudicator. The unseen
+evaluator reads that protocol and writes results exactly once. The
+adjudicator then maps the result to \texttt{positive}, \texttt{negative}, or
+\texttt{invalid}. A timeout or malformed model response selects a
+deterministic fallback proposal; it never changes a numerical result.
+
+This separation is central to the claim boundary. The language model is a
+hypothesis interface, not the source of truth. The campaign's scientific
+outputs remain recoverable when a local model call fails, and an appealing
+explanation cannot convert a failed confidence interval into a positive
+decision.
+
+\subsection{Pre-result freeze and non-leakage}
+
+Data references are capability-labeled as development, unseen, or revealed
+behavior evidence. Proposal and screening views contain development
+identifiers but not unseen observations. Immediately before unseen execution,
+the campaign serializes a preregistration containing the complete evaluation
+matrix. Once any unseen result exists, the round rejects attempts to mutate
+that preregistration or rerun with a changed parameter. The only allowed
+post-reveal operation is an idempotent reproduction against the same hashes.
+
+For a round \(r_i\), let \(P_i\) be the canonical serialization of the
+preregistration and \(A_i\) the adjudicator source. The freeze identity is
+\[
+F_i = h\!\left(h(P_i) \,\|\, h(A_i) \,\|\, h(e_{i-1})\right).
+\]
+The unseen result stores \(F_i\), and the round decision stores the unseen
+result hash. The campaign lineage recursively binds the decision to its
+parent. Hashes do not prove that an experiment is scientifically important,
+but they make post-hoc replacement detectable.
+
+\subsection{Shared project memory}
+
+The \vault{} is an Obsidian-compatible, Git-friendly memory substrate. It
+contains literature notes, project state, experiment records, failure cases,
+strategy cards, skill cards, evidence links, and version history. The
+controller retrieves only artifacts allowed by the current state. A
+failure-analysis card, for example, may inform the next diagnosis; an unseen
+metric cannot enter a proposal view.
+
+This role differs from an unconstrained conversation transcript. Each memory
+item has a stable path and can be referenced from a manifest. Round reports
+link to their hypotheses, runs, and decisions. Failed mechanisms remain
+visible, which reduces accidental repetition and permits an ablation in which
+memory-dependent repairs fail when the \vault{} is removed.
+
+\subsection{Reports as terminal research artifacts}
+
+Each completed round exports structured and reader-facing artifacts. The
+minimum set is:
+
+\begin{itemize}
+  \item hypothesis and preregistration in Markdown and JSON;
+  \item experiment manifest, raw metrics, run logs, and validation report;
+  \item failure analysis, research report, and loop report;
+  \item claim-evidence map, figures, ablations, and round decision; and
+  \item a manuscript version that states the result even when negative.
+\end{itemize}
+
+The final package copies the complete campaign dossier, builds a
+claim-evidence graph, verifies every bibliography key against a stable source,
+compiles vector figures and the ACM manuscript, and launches a standalone
+reproduction process in a fresh directory. External submission is encoded as
+false in the round, campaign, contribution, paper, and delivery manifests.

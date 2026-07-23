@@ -1,0 +1,162 @@
+[
+  {
+    "key": "lu2024aiscientist",
+    "source_url": "https://arxiv.org/abs/2408.06292"
+  },
+  {
+    "key": "yamada2025aiscientistv2",
+    "source_url": "https://arxiv.org/abs/2504.08066"
+  },
+  {
+    "key": "schmidgall2025agentlab",
+    "source_url": "https://arxiv.org/abs/2501.04227"
+  },
+  {
+    "key": "baek2025researchagent",
+    "source_url": "https://api.crossref.org/works/10.18653/v1/2025.naacl-long.342"
+  },
+  {
+    "key": "wang2024scimon",
+    "source_url": "https://api.crossref.org/works/10.18653/v1/2024.acl-long.18"
+  },
+  {
+    "key": "li2024boxlm",
+    "source_url": "https://arxiv.org/abs/2402.17879"
+  },
+  {
+    "key": "huang2023mlagentbench",
+    "source_url": "https://arxiv.org/abs/2310.03302"
+  },
+  {
+    "key": "chan2024mlebench",
+    "source_url": "https://arxiv.org/abs/2410.07095"
+  },
+  {
+    "key": "siegel2024corebench",
+    "source_url": "https://arxiv.org/abs/2409.11363"
+  },
+  {
+    "key": "starace2025paperbench",
+    "source_url": "https://arxiv.org/abs/2504.01848"
+  },
+  {
+    "key": "chen2024scienceagentbench",
+    "source_url": "https://arxiv.org/abs/2410.05080"
+  },
+  {
+    "key": "kapoor2024agentsmatter",
+    "source_url": "https://arxiv.org/abs/2407.01502"
+  },
+  {
+    "key": "yao2023react",
+    "source_url": "https://arxiv.org/abs/2210.03629"
+  },
+  {
+    "key": "shinn2023reflexion",
+    "source_url": "https://arxiv.org/abs/2303.11366"
+  },
+  {
+    "key": "madaan2023selfrefine",
+    "source_url": "https://arxiv.org/abs/2303.17651"
+  },
+  {
+    "key": "wu2023autogen",
+    "source_url": "https://arxiv.org/abs/2308.08155"
+  },
+  {
+    "key": "hong2024metagpt",
+    "source_url": "https://arxiv.org/abs/2308.00352"
+  },
+  {
+    "key": "park2023generativeagents",
+    "source_url": "https://api.crossref.org/works/10.1145/3586183.3606763"
+  },
+  {
+    "key": "wang2023voyager",
+    "source_url": "https://arxiv.org/abs/2305.16291"
+  },
+  {
+    "key": "jimenez2024swebench",
+    "source_url": "https://arxiv.org/abs/2310.06770"
+  },
+  {
+    "key": "liu2023agentbench",
+    "source_url": "https://arxiv.org/abs/2308.03688"
+  },
+  {
+    "key": "zhou2024webarena",
+    "source_url": "https://arxiv.org/abs/2307.13854"
+  },
+  {
+    "key": "xie2024osworld",
+    "source_url": "https://arxiv.org/abs/2404.07972"
+  },
+  {
+    "key": "mialon2023gaia",
+    "source_url": "https://arxiv.org/abs/2311.12983"
+  },
+  {
+    "key": "pineau2021improving",
+    "source_url": "https://jmlr.org/papers/v22/20-303.html"
+  },
+  {
+    "key": "nosek2015open",
+    "source_url": "https://api.crossref.org/works/10.1126/science.aab2374"
+  },
+  {
+    "key": "gundersen2018state",
+    "source_url": "https://api.crossref.org/works/10.1609/aaai.v32i1.11503"
+  },
+  {
+    "key": "mitchell2019modelcards",
+    "source_url": "https://api.crossref.org/works/10.1145/3287560.3287596"
+  },
+  {
+    "key": "gebru2021datasheets",
+    "source_url": "https://api.crossref.org/works/10.1145/3458723"
+  },
+  {
+    "key": "arnold2019factsheets",
+    "source_url": "https://api.crossref.org/works/10.1147/JRD.2019.2942288"
+  },
+  {
+    "key": "peng2011reproducible",
+    "source_url": "https://api.crossref.org/works/10.1126/science.1213847"
+  },
+  {
+    "key": "wilkinson2016fair",
+    "source_url": "https://api.crossref.org/works/10.1038/sdata.2016.18"
+  },
+  {
+    "key": "bender2021stochastic",
+    "source_url": "https://api.crossref.org/works/10.1145/3442188.3445922"
+  },
+  {
+    "key": "efron1979bootstrap",
+    "source_url": "https://api.crossref.org/works/10.1214/aos/1176344552"
+  },
+  {
+    "key": "brunton2016sindy",
+    "source_url": "https://api.crossref.org/works/10.1073/pnas.1517384113"
+  },
+  {
+    "key": "desilva2020pysindy",
+    "source_url": "https://api.crossref.org/works/10.21105/joss.02104"
+  },
+  {
+    "key": "burlacu2020operon",
+    "source_url": "https://api.crossref.org/works/10.1145/3377929.3398099"
+  },
+  {
+    "key": "dua2019uci",
+    "source_url": "https://archive.ics.uci.edu/"
+  },
+  {
+    "key": "ziaei2025mdbench",
+    "source_url": "https://zenodo.org/records/17611099"
+  },
+  {
+    "key": "yang2025qwen3",
+    "source_url": "https://arxiv.org/abs/2505.09388"
+  }
+]

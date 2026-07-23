@@ -1,0 +1,146 @@
+\section{Experimental Design}
+
+\subsection{\routea{}: real mechanism rounds}
+
+The campaign begins from an immutable negative result: existing sparse
+equation-discovery methods degraded under observation noise. Sparse
+identification of nonlinear dynamics provides the underlying formulation
+\cite{brunton2016sindy}, and PySINDy supplies a reference implementation
+pattern \cite{desilva2020pysindy}. Operon is included as a strong genetic
+programming baseline \cite{burlacu2020operon}. The benchmark source contains
+ODE and PDE systems under multiple noise settings
+\cite{ziaei2025mdbench}. None of these citations is treated as evidence for
+our candidate's success; success is determined only by the frozen local
+results.
+
+Before the current campaign, an archive audit excludes every system in two
+historical panels. It finds enough unused ODE systems to freeze two mutually
+exclusive unseen panels of six systems. Each round uses two development
+systems, one six-system unseen panel, clean and SNR20 conditions, and three
+fresh seeds. The candidate, Operon baseline, and three mechanism-specific
+ablations form 240 evaluated cells per round. The unseen result is revealed
+only if the development median improvement is at least 0.15 and all required
+candidate and baseline cells are valid.
+
+Round 1, \path{noise_conditioned_ensemble_sindy}, applies
+noise-conditioned Savitzky--Golay derivative estimation and coefficient
+bootstrap aggregation. Its ablations remove noise conditioning, ensemble
+aggregation, or smoothing. Round 2,
+\path{spline_group_sparse_sindy}, replaces the derivative path with
+analytic smoothing-spline derivatives and projects coefficients through
+cross-output group sparsity. Its ablations remove spline derivatives, group
+projection, or adaptive thresholding. Round 2 is linked to the Round 1
+negative-result hash, so the change is a successor mechanism rather than an
+independent retrospective comparison.
+
+The preregistered method gate requires a system-level, failure-aware bootstrap
+95\% confidence interval whose lower endpoint exceeds zero, three-seed
+reproduction, the strong baseline, all ablations, and an idempotent rerun.
+Failure on any item produces a negative report. No threshold is weakened and
+no revealed panel is exchanged.
+
+\subsection{\routeb{}: controlled research-workflow matrix}
+
+After both \routea{} rounds fail their unseen gate, the campaign freezes the
+systems study. The sources comprise \UciTaskCount{} fresh local executions
+over UCI datasets \cite{dua2019uci} and \MDBenchTaskCount{} replayed trace
+summaries from the revealed equation-discovery campaign. Each source record
+contains file hashes, validated scalar metrics, a positive or negative truth
+label, and an explicit use restriction. UCI runs establish that the workflow
+ingests newly computed real evidence. MDBench traces establish continuity
+with the failed research rounds. Because those traces are already revealed,
+they test controller behavior only.
+
+We inject one frozen workflow state into each otherwise valid source task.
+Table~\ref{tab:tasks} shows the matrix. Faults cover source integrity,
+metric direction, configuration freeze, missing evidence maps, unsupported
+claims, missing seed coverage, failed experiment cells, and
+claim-evidence mismatch. Three tasks require a prior \vault{} record for
+repair. Two faults are visible during planning; the remainder require
+execution feedback or the evidence gate. One task in each family has no
+fault, preventing a controller from benefiting simply by always changing the
+input.
+
+\begin{table*}[t]
+\centering
+\caption{Frozen task and controlled-fault matrix. Source evidence is real;
+the workflow fault is deliberately introduced to isolate controller
+behavior. MDBench rows reuse revealed traces and are not method holdouts.}
+\label{tab:tasks}
+\small
+\begin{tabular}{llll}
+\toprule
+Family & Source task & Initial workflow state & Required repair \\
+\midrule
+UCI & PenDigits prototypes & none & retain valid evidence \\
+UCI & Letter prototypes & stale source hash & rehash source \\
+UCI & Spambase prototypes & wrong metric direction & bind direction \\
+UCI & Skin prototypes & missing evidence map & restore from \vault{} \\
+\midrule
+MDBench & binocular rivalry & none & retain valid evidence \\
+MDBench & interacting magnets & unfrozen configuration & freeze configuration \\
+MDBench & oscillator death & unsupported claim & evidence-bound decision \\
+MDBench & population growth & incomplete seed coverage & resume checkpoint \\
+MDBench & RC circuit & failed experiment cell & classify and recover \\
+MDBench & Van der Pol & claim-evidence mismatch & rewrite claim \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Controllers and ablations}
+
+The \oneshot{} controller emits one result from the initial state. The
+\executeonce{} controller plans once and repairs only a fault that is visible
+at planning time; it has no post-execution recovery. The \systemloop{}
+preregisters, executes, classifies visible failures, obtains the allowed
+\vault{} context, performs the task's frozen repair action, reruns once, and
+enforces claim support. These are deterministic transition policies in the
+evaluation harness. A local Qwen call provides a structured policy summary
+for each main mode, but the summary cannot change transitions or scoring.
+
+Four ablations remove one contract:
+
+\begin{itemize}
+  \item \textbf{No \vault{} memory} blocks repairs whose evidence card exists
+  only in persistent project memory.
+  \item \textbf{No failure feedback} prevents the second attempt after a
+  runtime failure.
+  \item \textbf{No preregistration} makes the full-loop completion contract
+  false for every evaluated cell.
+  \item \textbf{No evidence gate} hides claim-support failures from recovery,
+  allowing an unsupported claim to survive.
+\end{itemize}
+
+Each of seven modes runs on \TaskCount{} tasks and \SeedCount{} seeds,
+producing \MainCellCount{} main cells and \AblationCellCount{} ablation cells.
+The total is \CellCount{}. An exact reproduction recomputes the scientific
+result hash for every cell. Seeds are included in each cell identity even
+though the present deterministic transition harness does not sample a
+stochastic repair policy. We retain this redundancy to detect accidental
+seed-dependent behavior and to keep the protocol compatible with future
+stochastic controllers.
+
+\subsection{Metrics and statistical gate}
+
+Task success means that source integrity, experiment completion, evidence-map
+completion, reproduction readiness, claim support, and, for full-loop modes,
+preregistration are all true after the allowed actions. Negative-result
+recovery is counted only when an initially failed cell makes a second attempt
+and then succeeds. An unsupported claim is a report claim whose polarity or
+scope does not match the frozen source record. Research-decision intervention
+counts any human selection after campaign start. External cost records paid
+API or cloud-compute usage.
+
+For task \(t\) and seed \(s\), the paired difference is
+\[
+d_{t,s} =
+\mathbb{1}[\text{full loop succeeds}]
+-\mathbb{1}[\text{execute-once succeeds}].
+\]
+We report the mean over the 30 task-seed pairs. A percentile bootstrap samples
+the paired differences with replacement for \BootstrapResamples{} resamples
+using a frozen random seed, following the nonparametric bootstrap
+\cite{efron1979bootstrap}. The internal systems gate passes only if the
+confidence interval lower endpoint is above zero, exact reproduction is at
+least 0.90, the full loop emits no unsupported claim, intervention is zero,
+and every ablation cell completes.

@@ -1,0 +1,27 @@
+\begin{abstract}
+Autonomous research systems are usually evaluated on whether they produce an
+answer, execute a program, or reproduce a published result. These evaluations
+do not establish whether a system can turn its own failed experiment into a
+new, falsifiable mechanism and preserve the resulting evidence without
+post-result adaptation. We study that narrower capability under a
+preregistered, fully local protocol. \method{} binds each hypothesis to the
+hash of a parent negative result, freezes code and adjudication before unseen
+evaluation, and opens a new round rather than tuning after reveal. We first
+exercise this protocol in two real equation-discovery rounds. Both candidates
+passed development screening, both failed their frozen unseen confidence
+gate, and both were retained as negative results. The resulting pivot then
+motivates a systems study over \TaskCount{} tasks from two task families,
+\SeedCount{} seeds, three controllers, and four component ablations
+(\CellCount{} total cells). The full loop attains task success
+\FullLoopSuccess{} versus \ExecuteOnceSuccess{} for execute-once, a paired
+gain of \PairedGain{} with a \BootstrapResamples{}-resample bootstrap
+confidence interval of [\PairedCILower{}, \PairedCIUpper{}]. It recovers
+\FullLoopRecovery{} of initially negative cases, exactly reproduces
+\FullLoopReproduction{} of evaluated cells, and emits \FullLoopUnsupported{}
+unsupported scientific claims under the frozen evaluator. These results
+support a systems claim about evidence-bound recovery in this controlled
+task matrix, not a claim of general autonomous discovery or a new
+equation-discovery method. We release the complete hash-linked campaign,
+negative results, source evidence, paper source, and clean-directory
+reproduction entry point for human review.
+\end{abstract}

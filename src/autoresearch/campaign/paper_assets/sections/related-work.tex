@@ -1,0 +1,114 @@
+\section{Related Work}
+
+\subsection{Agents for research and model development}
+
+End-to-end research agents have made the research process an explicit systems
+target. The AI Scientist combines ideation, experimentation, manuscript
+generation, and automated review \cite{lu2024aiscientist}; its successor
+expands the experimental workflow and evaluation setting
+\cite{yamada2025aiscientistv2}. Agent Laboratory organizes specialized roles
+around literature, experimentation, and writing
+\cite{schmidgall2025agentlab}. ResearchAgent focuses on idea generation
+grounded in retrieved literature \cite{baek2025researchagent}, while SciMON
+uses retrieval and iterative novelty-oriented feedback for scientific
+inspiration \cite{wang2024scimon}. Box's Loop takes a related approach to
+automated statistical model discovery \cite{li2024boxlm}. These systems
+motivate end-to-end automation, but their breadth also makes it hard to
+isolate which control mechanism turns a failed scientific result into a valid
+new round.
+
+Research automation intersects with general agent architectures. ReAct
+interleaves reasoning and action \cite{yao2023react}; Reflexion stores
+feedback in language for later attempts \cite{shinn2023reflexion}; and
+Self-Refine iterates through self-generated feedback
+\cite{madaan2023selfrefine}. AutoGen supports conversational multi-agent
+applications \cite{wu2023autogen}, and MetaGPT maps role-based collaboration
+onto structured operating procedures \cite{hong2024metagpt}. Persistent
+agent memory appears in simulated communities
+\cite{park2023generativeagents} and embodied exploration
+\cite{wang2023voyager}. These designs explain how iteration can be
+implemented. Our study instead asks what evidence must exist before an
+iteration counts as a scientific successor. In particular, language feedback
+is not permitted to overrule the frozen quantitative adjudicator.
+
+\subsection{Benchmarks for agents and scientific workflows}
+
+General agent benchmarks cover broad interactive capabilities. AgentBench
+evaluates agents across multiple environments \cite{liu2023agentbench},
+WebArena provides realistic web tasks \cite{zhou2024webarena}, and OSWorld
+evaluates open-ended computer use \cite{xie2024osworld}. GAIA targets
+real-world questions that combine reasoning, tools, and multimodal
+information \cite{mialon2023gaia}. SWE-bench grounds software agents in real
+repository issues \cite{jimenez2024swebench}. These benchmarks provide useful
+execution patterns, especially isolated tasks and verifiable terminal
+conditions, but they do not require a new scientific hypothesis to descend
+from a negative result.
+
+Several benchmarks move closer to the scientific setting. MLAgentBench
+measures agents that improve machine-learning experiments
+\cite{huang2023mlagentbench}. MLE-bench evaluates agents on Kaggle
+competitions and emphasizes practical model engineering
+\cite{chan2024mlebench}. ScienceAgentBench converts data-driven scientific
+tasks into executable programs and reports both performance and cost
+\cite{chen2024scienceagentbench}. CORE-Bench measures the reproduction of
+published computational results \cite{siegel2024corebench}; PaperBench
+similarly asks agents to replicate AI research from paper specifications
+\cite{starace2025paperbench}. These are valuable capability tests. Our
+dependent variable differs: we start from controlled negative workflow states
+and measure whether a controller repairs them without violating a frozen
+scientific evidence contract.
+
+Table~\ref{tab:positioning} summarizes the evaluation distinction. The table
+is based on documented protocol features rather than an assertion that one
+benchmark is globally better. A check means that the cited system or
+benchmark explicitly centers the feature; a partial mark means the feature is
+present but is not the principal frozen unit of evaluation. The final row is
+the protocol evaluated in this paper.
+
+\begin{table*}[t]
+\centering
+\caption{Positioning by explicit protocol feature. ``Failure successor''
+means that a failed result must cause a parent-linked, mechanistically changed
+round. ``Pre-result freeze'' means the evaluation contract is committed before
+outcome reveal.}
+\label{tab:positioning}
+\small
+\begin{tabular}{lccccc}
+\toprule
+System or benchmark & End-to-end research & Failure successor &
+Pre-result freeze & Exact rerun & Claim-evidence gate \\
+\midrule
+AI Scientist \cite{lu2024aiscientist} & \checkmark & partial & partial & partial & partial \\
+Agent Laboratory \cite{schmidgall2025agentlab} & \checkmark & partial &  & partial & partial \\
+MLAgentBench \cite{huang2023mlagentbench} &  & partial &  & \checkmark &  \\
+MLE-bench \cite{chan2024mlebench} &  &  & \checkmark & partial &  \\
+CORE-Bench \cite{siegel2024corebench} &  &  & \checkmark & \checkmark &  \\
+PaperBench \cite{starace2025paperbench} & partial &  & \checkmark & \checkmark & partial \\
+ScienceAgentBench \cite{chen2024scienceagentbench} & partial & partial & \checkmark & \checkmark & partial \\
+\method{} (this study) & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Reproducibility, documentation, and evidence boundaries}
+
+The protocol draws on established reproducibility norms rather than treating
+agent traces as sufficient evidence. Calls for a more open research culture
+emphasize transparency and error correction \cite{nosek2015open}. Work on
+machine-learning reproducibility distinguishes executable artifacts from
+claims that cannot be reconstructed \cite{gundersen2018state,pineau2021improving}.
+Literate, inspectable computational research predates current agents
+\cite{peng2011reproducible}, and the FAIR principles stress that research
+objects should be findable, accessible, interoperable, and reusable
+\cite{wilkinson2016fair}.
+
+Documentation frameworks make the object and its limits explicit. Model cards
+record intended use and evaluation context \cite{mitchell2019modelcards};
+datasheets document dataset motivation, composition, and maintenance
+\cite{gebru2021datasheets}; and AI FactSheets organize system-level
+transparency \cite{arnold2019factsheets}. We adapt the same logic to a research
+campaign: each claim resolves to a file, content hash, and frozen value, and
+the package records disallowed uses. This is especially important because
+fluent models can amplify unsupported claims and inherited data limitations
+\cite{bender2021stochastic}. In our protocol, claim support is a deterministic
+gate, not a style preference.
