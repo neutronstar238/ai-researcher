@@ -670,3 +670,17 @@ spline analytic derivative + cross-output group-sparse projection 的开发中�
 报告、原始指标、图表、日志、父子哈希与逐轮 manuscript，终态重启不产生新科研调用。Route A
 据此关闭并强制转入任务 260.4 的 systems-paper matrix；这两个负结果不能被描述为 CCF-B 方法
 贡献通过。外部投稿始终需要人工批准。
+
+任务 260.4 已把 Route B 实现为预注册、可重复执行的系统行为 benchmark，而不是让模型自评。
+四个 UCI 任务在预注册前重新执行并生成真实 run record、validation、evidence map 和数据哈希；
+六个 MDBench 任务只回放任务 260.3 已揭示的真实 trace，明确禁止作为新方法 holdout。冻结合同
+包含 10 个任务、种子 211/223/227、one-shot、execute-once、full-loop、四项消融、受控失败、
+源证据哈希、evaluator 字节哈希和 20,000 次配对 bootstrap。每个 cell 独立输出研究报告、
+evidence map、科研结果哈希和同种子 reproduction hash。
+
+正式 210-cell 结果中 one-shot、execute-once 和 full-loop 的任务成功率分别为 `0.20`、`0.50`
+和 `1.00`；完整循环的负结果恢复率为 `0.625`，精确复现率为 `1.00`，错误科研声明与科研决策
+人工介入均为 0。相对 execute-once 的配对成功率增益为 `0.50`，bootstrap 95% CI 为
+`[0.333333, 0.666667]`。无 Vault、无失败反馈、无预注册、无证据门成功率依次为 `0.70`、
+`0.50`、`0.00`、`0.80`；无证据门留下 6 个错误声明。内部 systems contribution gate 因此
+通过，但它只授权任务 260.5 构建和独立审查论文证据，不等于 CCF-B 就绪或外部投稿许可。

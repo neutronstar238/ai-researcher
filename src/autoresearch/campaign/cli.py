@@ -24,6 +24,11 @@ from autoresearch.campaign.models import (
 )
 from autoresearch.campaign.reporting import CampaignExporter
 from autoresearch.campaign.service import AutonomousResearchCampaign
+from autoresearch.campaign.systems import (
+    build_task260_systems_preregistration,
+    run_systems_benchmark,
+    systems_benchmark_status,
+)
 from autoresearch.schemas import data_hash, file_hash
 
 campaign_app = typer.Typer(
@@ -204,6 +209,106 @@ def campaign_export(
     typer.echo(f"[OK] manifest: {result.manifest_path}")
     typer.echo(f"[OK] file_count: {result.file_count}")
     typer.echo("[BLOCKED] external_submission_authorized=false")
+
+
+@campaign_app.command("systems-preregister")
+def campaign_systems_preregister(
+    benchmark_id: Annotated[
+        str,
+        typer.Option("--benchmark-id", help="Stable Route B benchmark ID."),
+    ] = "task260-autonomous-systems-v1",
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Obsidian project ID."),
+    ] = "autoresearch-ccfb",
+    deadline: Annotated[
+        str,
+        typer.Option("--deadline", help="ISO date or timezone-aware datetime."),
+    ] = "2026-08-15",
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Route B run root."),
+    ] = Path("runs/manual-live"),
+    route_a_campaign: Annotated[
+        Path,
+        typer.Option(
+            "--route-a-campaign",
+            help="Completed two-round Route A campaign to bind.",
+        ),
+    ] = Path("runs/manual-live/task260-autonomous-ccfb-v1"),
+    llm_config: Annotated[
+        Path,
+        typer.Option("--llm-config", help="Local Ollama OpenAI-compatible config."),
+    ] = Path("configs/campaign/ollama-qwen35-9b.yaml"),
+) -> None:
+    """Freeze the ten-task systems matrix before any controller result exists."""
+
+    benchmark_dir = Path(output_dir) / benchmark_id
+    try:
+        prereg = build_task260_systems_preregistration(
+            benchmark_dir,
+            project_id=project_id,
+            deadline=_parse_deadline(deadline),
+            route_a_campaign_dir=route_a_campaign,
+            llm_config_path=llm_config,
+        )
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_systems_preregister: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"benchmark_dir={benchmark_dir.resolve()}")
+    typer.echo(f"preregistration_hash={prereg.preregistration_hash}")
+    typer.echo(f"task_count={len(prereg.tasks)}")
+    typer.echo(f"seed_count={len(prereg.seeds)}")
+    typer.echo("external_submission_authorized=false")
+
+
+@campaign_app.command("systems-run")
+def campaign_systems_run(
+    benchmark_dir: Annotated[
+        Path,
+        typer.Argument(help="Frozen Route B benchmark directory."),
+    ],
+) -> None:
+    """Run or idempotently resume the complete systems-paper matrix."""
+
+    try:
+        result = run_systems_benchmark(benchmark_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_systems_run: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"benchmark_id={result.benchmark_id}")
+    typer.echo(f"result_hash={result.result_hash}")
+    typer.echo(f"cell_count={result.cell_count}")
+    typer.echo(
+        "paired_bootstrap_ci95="
+        f"[{result.bootstrap_ci95_lower:.6f},{result.bootstrap_ci95_upper:.6f}]"
+    )
+    typer.echo(f"report={result.report_path}")
+    typer.echo(f"contribution_gate={result.contribution_gate_path}")
+    typer.echo("external_submission_authorized=false")
+
+
+@campaign_app.command("systems-status")
+def campaign_systems_status(
+    benchmark_dir: Annotated[
+        Path,
+        typer.Argument(help="Frozen or completed Route B benchmark directory."),
+    ],
+) -> None:
+    """Verify the preregistration, sources, cell hashes, and aggregate decision."""
+
+    try:
+        status = systems_benchmark_status(benchmark_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_systems_status: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"benchmark_dir={status.benchmark_dir}")
+    typer.echo(f"preregistration_hash={status.preregistration_hash}")
+    typer.echo(f"completed={str(status.completed).lower()}")
+    typer.echo(f"result_hash={status.result_hash}")
+    typer.echo(f"contribution_gate_passed={status.contribution_gate_passed}")
+    typer.echo(f"cell_count={status.cell_count}")
+    typer.echo("external_submission_authorized=false")
 
 
 def _development_campaign_spec(

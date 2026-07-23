@@ -877,3 +877,21 @@ negative result，campaign 以 `stopped` 终止，lineage hash 为
 下一执行任务固定为 `260.4` 的 4 UCI + 6 MDBench、one-shot/execute-once/full-loop、三种子与
 四项消融系统矩阵。`260.5` 只从真实证据构建论文和独立复现包，不会把上述方法负结果改写为
 投稿就绪结论。
+
+`260.4` 已按冻结次序执行。预注册哈希
+`db4f372081be8ffb146a6acb133cdf7626618e4f94aae31aa1a4805b7d9e2da2` 绑定四个重新执行的
+UCI run records、六个已揭示 MDBench trace summaries、10 项受控 workflow failure、三种模式、
+四项消融、种子 211/223/227、evaluator SHA-256 与 20,000 次配对 bootstrap。该设计测量
+`source integrity -> execution -> failure diagnosis -> bounded repair -> evidence gate -> report`
+的系统行为；MDBench replay 不得进入方法贡献或新未见结果表述。
+
+正式 210 个 primary cells 及其 210 个 deterministic reproduction 均完成。one-shot、
+execute-once、full-loop 成功率为 `0.20/0.50/1.00`，full-loop 恢复率 `0.625`、复现率
+`1.00`、错误声明 0、科研决策人工介入 0；相对 execute-once 的配对增益为 `0.50`，95% CI
+`[0.333333, 0.666667]`。无 Vault、无失败反馈、无预注册、无证据门的成功率分别为
+`0.70/0.50/0.00/0.80`，其中无证据门保留 6 个错误声明。三次本地 Qwen policy framing
+调用有两次产生有效结构化输出，一次 180 秒超时并使用已冻结 deterministic fallback；所有成功
+与 gate 数值均由确定性 evaluator 给出。结果哈希为
+`5f69cac379409d1abf5cd682682f54d76d181dc7aaf45c021f525ac50a5830cb`，内部系统贡献门通过，
+外部投稿仍为 false。下一任务 `260.5` 必须从全新目录独立复现、完成引用/审稿/表图一致性审计
+并编译论文；若任一最终门失败，只能交付标注清楚的负结果或未就绪论文包。

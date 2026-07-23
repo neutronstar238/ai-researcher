@@ -60,6 +60,9 @@ airesearcher campaign start --policy fast-ccfb --deadline 2026-08-15
 airesearcher campaign status runs/campaigns/<campaign-id>
 airesearcher campaign resume runs/campaigns/<campaign-id>
 airesearcher campaign export runs/campaigns/<campaign-id>
+airesearcher campaign systems-preregister --deadline 2026-08-15
+airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
+airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
 ```
 
 每个完成的 round 都会导出假设、预注册、实验 manifest、原始指标/日志、validation、失败/研究/
@@ -72,7 +75,13 @@ fast-CCFB adapter 已接入本地 Ollama 和真实 MDBench 执行链。
 任务 `260.3` 已完成两个全冻结、各 240-cell 的新方法轮次，科研决策人工介入为 0。两轮都通过
 开发筛选，但未通过预注册的未见系统级置信门，95% CI 分别为
 `[-3.053723, 0.953866]` 和 `[-2.157336, 0.921594]`。它们被完整保留为可信负结果，不能称作
-CCF-B 证据；硬策略现已转入任务 `260.4` 的自主科研系统对比路线。
+CCF-B 证据；硬策略因此转入任务 `260.4` 的自主科研系统对比路线。
+
+任务 `260.4` 已完成预注册的 210-cell 比较，覆盖 4 个重新执行的 UCI 证据任务和 6 个已揭示
+MDBench trace-replay 任务。one-shot、execute-once、完整证据循环的成功率为
+`0.20/0.50/1.00`；完整循环相对 execute-once 的配对增益 bootstrap 95% CI 为
+`[0.333333, 0.666667]`，复现率为 `1.00`，错误声明和科研决策人工介入均为 0，四项消融全部
+完成。这只通过内部系统贡献门；独立复现、论文审计和外部投稿批准仍未完成。
 
 ## 首次部署
 

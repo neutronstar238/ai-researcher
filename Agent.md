@@ -64,6 +64,49 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-23 23:56:25 +08:00 - Codex - Task 260.4 autonomous-research systems matrix
+
+- Request: Follow the hard Route A stop by immediately implementing and executing the preregistered systems-paper route: four UCI plus six MDBench tasks, one-shot/execute-once/full-loop, three seeds, four ablations, deterministic statistical adjudication, no research-decision human intervention, and no misuse of revealed MDBench traces as new method evidence.
+- Files changed:
+  - `src/autoresearch/campaign/systems.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `tests/unit/campaign/test_systems_benchmark.py`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task260-route-b-systems-result.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `campaign systems-preregister/systems-run/systems-status` and immutable Route B contracts for source evidence, task/fault specifications, local policy evidence, cells, mode metrics, contribution gates, aggregate results, and read-only status.
+  - Added fresh local execution and normalization of UCI Pendigits, Letter Recognition, Spambase, and Skin Segmentation. Each source binds its real run record, validation, evidence map, report, derived data, metrics, and SHA-256 hashes.
+  - Normalized six task `260.3` MDBench systems into revealed-trace system-behaviour tasks with candidate/baseline three-seed SNR20 evidence. These records are explicitly marked `revealed_behaviour_evidence_only=true` and cannot support a new-method holdout claim.
+  - Froze ten controlled workflow faults, source hashes, evaluator bytes, seeds 211/223/227, one-shot/execute-once/full-loop, no-Vault/no-failure-feedback/no-preregistration/no-evidence-gate ablations, and 20,000-resample paired bootstrap before any controller result. Source or evaluator changes invalidate the preregistration.
+  - Added deterministic cell execution with plan-only and feedback-enabled capability boundaries, bounded Vault repair, preregistered retries, claim-evidence enforcement, per-cell research reports/evidence maps, exact scientific result hashes, and an immediate same-seed reproduction. Local Qwen supplies concise policy framing only; deterministic code computes every success, recovery, error, cost, and contribution decision.
+  - Formal preregistration `db4f372081be8ffb146a6acb133cdf7626618e4f94aae31aa1a4805b7d9e2da2` completed all 210 cells. One-shot/execute-once/full-loop success was `0.20/0.50/1.00`; full-loop negative-result recovery was `0.625`, exact reproduction `1.00`, unsupported claims 0, and research-decision human interventions 0. The paired success gain was `0.50` with bootstrap 95% CI `[0.333333, 0.666667]`.
+  - All four ablations completed: no Vault `0.70`, no failure feedback `0.50`, no preregistration `0.00`, and no evidence gate `0.80` success; no evidence gate retained six unsupported claims. The internal systems gate passed with result hash `5f69cac379409d1abf5cd682682f54d76d181dc7aaf45c021f525ac50a5830cb` and gate hash `1257ba5b721748539cd3846dd7f0df78237614f98fec417fda48b4f0b5b2e6a7`, while `external_submission_authorized=false`.
+- Verification:
+  - `poetry run pytest tests/unit/campaign/test_systems_benchmark.py -q --no-cov`: passed, 4 tests covering the exact contract, 210-cell outcomes/ablations, idempotent status, and source-tamper blocking.
+  - `poetry run pytest tests/unit/campaign -q --no-cov`: passed, 19 tests.
+  - `poetry run pytest -q`: passed, 737 tests and 4 opt-in live tests skipped; total coverage 87%.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src/autoresearch`: passed with no issues in 132 source files.
+  - `poetry run airesearcher campaign systems-preregister --benchmark-id task260-autonomous-systems-v1 --project-id autoresearch-ccfb --deadline 2026-08-15 --output-dir runs/manual-live --route-a-campaign runs/manual-live/task260-autonomous-ccfb-v1 --llm-config configs/campaign/ollama-qwen35-9b.yaml`: passed; froze ten tasks and three seeds after four fresh UCI executions and six MDBench trace audits.
+  - Initial `poetry run airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1`: passed with zero result cells and the preregistration hash unchanged.
+  - `poetry run airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1`: passed; completed 210 cells, exact per-cell reproduction, all four ablations, reports, evidence maps, table, SVG, manuscript v1, and the internal contribution decision.
+  - Three uncapped local policy requests were attempted: one-shot and full-loop returned valid structured `qwen3.5:9b` output; execute-once timed out after 180 seconds and used its hash-recorded deterministic fallback. External API cost was zero and scientific metrics did not depend on policy prose.
+  - Repeated `campaign systems-run` returned the same result hash without changing cells. Final `campaign systems-status` verified all source, preregistration, policy, cell, reproduction, matrix, result, and gate hashes with `cell_count=210` and `contribution_gate_passed=True`.
+  - `git diff --check`: passed after implementation and documentation.
+- Problems:
+  - Resolved `P-20260723-016` by executing the mandatory Route B pivot while leaving both Route A method negatives immutable.
+  - Updated mitigated `P-20260723-017`: the uncapped request shape works for two formal policy calls; one long call still timed out and used the explicit fallback.
+  - Added `P-20260723-018`: the internal systems gate is positive, but independent clean-directory reproduction, citation verification, ACM compilation, strict review, and human submission approval remain task `260.5`.
+- Follow-up:
+  - Complete task `260.5` from the immutable Route A/Route B evidence: build the full paper and appendices, independently reproduce in a fresh directory, audit every claim/citation/table/figure, compile the ACM two-column PDF, and publish a complete local hashed dossier without authorizing external submission.
+
 ### 2026-07-23 23:26:21 +08:00 - Codex - Task 260.3 real Ollama/MDBench autonomous rounds
 
 - Request: Close task `260.3` on the fastest evidence-first path: connect local Ollama and the real official MDBench execution chain, audit genuinely unused holdouts, run at least two new autonomous mechanism rounds, preserve every result, and pivot rather than weaken the gate if Route A fails.

@@ -74,7 +74,7 @@ update a factual problem entry below.
 
 ### P-20260723-016 - Two new Route A mechanisms failed the frozen unseen contribution gate
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-23 23:19:04 +08:00
 - Source: Task `260.3` real autonomous campaign `task260-autonomous-ccfb-v1`.
@@ -83,8 +83,10 @@ update a factual problem entry below.
 - Evidence: Round 1 development median improvement was `0.779785`, while its unseen 95% CI was `[-3.053723, 0.953866]` with 238/240 successful cells. Round 2 development median improvement was `0.672083`, while its unseen CI was `[-2.157336, 0.921594]` with 237/240 successful cells. Both rounds reproduced idempotently and closed as `negative_result`.
 - Root cause: Candidate benefits were heterogeneous across the six unseen systems; negative system effects made the failure-aware uncertainty lower bounds non-positive. Frozen ablation configurations also failed on two and three cells respectively.
 - Workaround: None. Keep the revealed panels, thresholds, matrices, failures, and negative decisions immutable.
-- Next action: Complete task `260.4` using the frozen 4-UCI/6-MDBench systems matrix, three modes, three seeds, and four preregistered ablations.
+- Next action: None for the required pivot. Task `260.5` independent reproduction and paper audit are tracked separately in `P-20260723-018`.
 - Linked tasks: `260.3`, `260.4`, `260.5`.
+- Resolution: Task `260.4` froze and completed the Route B 210-cell systems matrix without reopening either Route A mechanism. The internal systems contribution gate passed while both Route A method decisions remain immutable negative results.
+- Verification: Full-loop versus execute-once paired success gain was `0.50` with bootstrap 95% CI `[0.333333, 0.666667]`; the full loop had exact reproduction `1.00`, zero unsupported claims, and zero research-decision human interventions.
 
 ### P-20260723-017 - Formal Ollama calls used the deterministic structured-output fallback
 
@@ -97,8 +99,24 @@ update a factual problem entry below.
 - Evidence: The uncapped local smoke returned `{"status":"ok","model":"local-qwen"}`. Each round's `local-qwen-*.json` records the empty response and deterministic fallback selection.
 - Root cause: The local model's OpenAI-compatible endpoint did not return usable structured content under the campaign request's explicit output-token constraint.
 - Workaround: The adapter rejects unusable content and emits schema-valid deterministic templates; no scientific gate depends on LLM text.
-- Next action: In task `260.4`, test the provider's token option separately and freeze the working request shape before the systems matrix. Do not alter the already hash-bound task `260.3` evidence.
+- Next action: Keep the tested uncapped request shape and bounded deterministic fallback for task `260.5`; investigate the remaining long-response timeout only outside frozen benchmark evidence.
 - Linked tasks: `260.3`, `260.4`.
+- Resolution: Task `260.4` removed the explicit output-token cap. Two of three formal policy-framing calls returned valid structured `qwen3.5:9b` output; the execute-once call hit the 180-second timeout and used the recorded deterministic fallback.
+- Verification: Policy records bind prompt, provider/model, response or failure, wall time, fallback flag, and evidence hash. The deterministic evaluator, not policy prose, produced every cell and gate metric.
+
+### P-20260723-018 - Internal Route B gate is not yet an independently reproduced CCF-B paper package
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-23 23:59:00 +08:00
+- Source: Task `260.4` systems contribution gate.
+- Symptom: The frozen 210-cell matrix passes its internal statistical, reproduction, unsupported-claim, intervention, and ablation checks, but the manuscript is still an evidence-generated v1 draft without an independent clean-directory run, verified citation package, ACM compilation, or strict external-style review.
+- Impact: The result supports proceeding to paper construction, not claiming CCF-B readiness, acceptance, or permission to submit.
+- Evidence: Gate hash `1257ba5b721748539cd3846dd7f0df78237614f98fec417fda48b4f0b5b2e6a7` has no failed internal checks and explicitly records `external_submission_authorized=false`. Six MDBench tasks are revealed trace replay and cannot support new-method holdout claims.
+- Root cause: Task `260.4` intentionally ends at system experiment execution and internal contribution adjudication; paper assembly and independent reproduction belong to task `260.5`.
+- Workaround: Keep every manuscript and delivery index visibly blocked from external submission until the final audit and explicit human approval.
+- Next action: Complete task `260.5`: fresh-directory reproduction, claim-evidence/citation/table/figure audit, strict review, ACM two-column compilation, and complete hashed dossier.
+- Linked tasks: `260.4`, `260.5`.
 
 ### P-20260717-001 - Official MDBench Gate A required real benchmark adjudication
 

@@ -67,6 +67,9 @@ airesearcher campaign start --policy fast-ccfb --deadline 2026-08-15
 airesearcher campaign status runs/campaigns/<campaign-id>
 airesearcher campaign resume runs/campaigns/<campaign-id>
 airesearcher campaign export runs/campaigns/<campaign-id>
+airesearcher campaign systems-preregister --deadline 2026-08-15
+airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
+airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
 ```
 
 Every completed round exports its hypothesis, preregistration, experiment manifest, raw
@@ -82,8 +85,16 @@ Task `260.3` completed two new, fully frozen 240-cell method rounds with zero re
 human interventions. Both passed their development screen but failed the preregistered unseen
 system-level confidence gate, with 95% CIs `[-3.053723, 0.953866]` and
 `[-2.157336, 0.921594]`. They are preserved as credible negative results, not CCF-B evidence.
-The hard policy therefore routes current work to task `260.4`, the autonomous-research systems
+The hard policy therefore routed work to task `260.4`, the autonomous-research systems
 comparison.
+
+Task `260.4` has now completed a preregistered 210-cell comparison over four fresh UCI
+evidence runs and six revealed MDBench trace-replay tasks. One-shot, execute-once, and the
+full evidence-bound loop achieved task success rates of `0.20`, `0.50`, and `1.00`;
+the paired full-loop gain had a bootstrap 95% CI of `[0.333333, 0.666667]`. Full-loop
+reproduction was `1.00`, unsupported claims and research-decision human interventions were
+zero, and all four ablations completed. This passes an internal systems-contribution gate
+only. Independent reproduction, paper audit, and external submission approval remain pending.
 
 ## First Deployment
 
