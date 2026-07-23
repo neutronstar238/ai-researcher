@@ -318,6 +318,9 @@ def run_llm_json_completion(
     timeout_seconds: int | None = None,
     max_tokens: int | None = None,
     temperature: float = 0.0,
+    reasoning_effort: str | None = None,
+    response_schema: dict[str, Any] | None = None,
+    response_schema_name: str = "autoresearch_output",
 ) -> LLMJsonCompletionResult:
     """Call the configured OpenAI-compatible model and require one JSON object."""
 
@@ -332,6 +335,9 @@ def run_llm_json_completion(
         max_tokens=max_tokens,
         messages=messages,
         temperature=temperature,
+        reasoning_effort=reasoning_effort,
+        response_schema=response_schema,
+        response_schema_name=response_schema_name,
     )
     content = _extract_message_content(response)
     try:
@@ -536,15 +542,31 @@ def _post_chat_completion(
     max_tokens: int | None,
     messages: list[dict[str, str]] | None = None,
     temperature: float = 0.0,
+    reasoning_effort: str | None = None,
+    response_schema: dict[str, Any] | None = None,
+    response_schema_name: str = "autoresearch_output",
 ) -> dict[str, Any]:
     payload = {
         "model": model_name,
         "messages": messages or _smoke_messages(),
         "temperature": temperature,
-        "response_format": {"type": "json_object"},
+        "response_format": (
+            {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_schema_name,
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
+            if response_schema is not None
+            else {"type": "json_object"}
+        ),
     }
     if max_tokens is not None:
         payload["max_tokens"] = max_tokens
+    if reasoning_effort is not None:
+        payload["reasoning_effort"] = reasoning_effort
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),

@@ -65,6 +65,8 @@ airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign paper-build
 airesearcher campaign paper-status runs/manual-live/task260-final-paper-v2
+airesearcher campaign sprint-run --sprint-id <id> --brief "<高层研究目标>"
+airesearcher campaign sprint-status runs/autonomous-sprints/<id>
 ```
 
 每个完成的 round 都会导出假设、预注册、实验 manifest、原始指标/日志、validation、失败/研究/
@@ -91,6 +93,21 @@ MDBench trace-replay 任务。one-shot、execute-once、完整证据循环的成
 SHA-256 与主构建完全一致。3,269 文件论文包通过内部
 `ready_for_human_submission_review` 审计，但这不代表 CCF-B 录用或自动投稿。创新性、venue
 fit、作者、许可与外部提交仍需人类明确审查和批准。
+
+任务 `261.1` 新增了更严格的一命令自治来源审计。`campaign sprint-run` 会实时获取文献快照，
+要求本地 `qwen3.5:9b` 在至少三个可执行程序之间提出候选并选出主问题，然后在同一条哈希账本中
+执行所选比较、完成 task-level 统计、生成论文正文并编译 ACM PDF。选题和正文没有确定性回退：
+本地模型两次都不合规就阻断。数值裁决、图表、引用绑定、结果解释和 PDF 质量门仍由确定性代码
+负责。
+
+正式 clean run `task261-bounded-autonomous-clean-v2` 的运行期人工科研决策与模型回退均为 0。
+它选择证据门错误声明程序，在 10 个独立任务上运行，每任务三个组内重复。均值增益为 `0.20`，
+但配对 bootstrap 95% CI 为 `[0.00, 0.50]`，所以科学贡献门保留负结果。同一个命令自动编译出
+通过物理质量门的六页 PDF。自治结论被严格限制为 `bounded_autonomous`：高层目标、导入的
+Route A 证据、可执行程序目录和实验实现都在启动前固定。这证明自动编排真实发生，不证明系统已
+开放式独立发明选题/方法，也不证明达到 CCF-B 创新度、录用或投稿就绪。任务 `261.2` 必须从该
+负结果生成并实际执行新的父哈希绑定机制，使用新的评价面板，并关闭正文 claim/citation 覆盖
+缺口，才允许提出更强结论。
 
 ## 首次部署
 

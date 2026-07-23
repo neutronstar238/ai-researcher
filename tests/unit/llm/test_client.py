@@ -174,6 +174,91 @@ def test_post_chat_completion_includes_explicit_max_tokens(monkeypatch) -> None:
     assert captured["payload"]["max_tokens"] == 4096
 
 
+def test_post_chat_completion_includes_explicit_reasoning_effort(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode(
+                "utf-8"
+            )
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="http://127.0.0.1:11434/v1/chat/completions",
+        api_key="ollama-local",
+        model_name="qwen3.5-sprint:9b-8k",
+        timeout_seconds=10,
+        max_tokens=500,
+        reasoning_effort="none",
+    )
+
+    assert captured["payload"]["reasoning_effort"] == "none"
+
+
+def test_post_chat_completion_includes_explicit_json_schema(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode(
+                "utf-8"
+            )
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+    schema = {
+        "type": "object",
+        "properties": {"decision": {"type": "string"}},
+        "required": ["decision"],
+        "additionalProperties": False,
+    }
+
+    llm_client._post_chat_completion(
+        endpoint="http://127.0.0.1:11434/v1/chat/completions",
+        api_key="ollama-local",
+        model_name="qwen3.5-sprint:9b-8k",
+        timeout_seconds=10,
+        max_tokens=500,
+        response_schema=schema,
+        response_schema_name="research_decision",
+    )
+
+    response_format = captured["payload"]["response_format"]
+    assert response_format == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "research_decision",
+            "strict": True,
+            "schema": schema,
+        },
+    }
+
+
 def test_post_chat_completion_accepts_creative_temperature(monkeypatch) -> None:
     captured: dict[str, object] = {}
 

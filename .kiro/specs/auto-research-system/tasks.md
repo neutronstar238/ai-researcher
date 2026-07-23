@@ -3244,6 +3244,23 @@ A task can be checked only when all applicable items are true:
     - _Outcome: package `task260-final-paper-v2` contains an 11-page anonymous ACM two-column manuscript, 40 used and live-verified references, five compiled vector figures, generated result tables, a claim-evidence graph, strict review, an arXiv source archive, an environment lock, and the complete immutable Route A/Route B dossier. A standalone clean-directory process revalidated every frozen input, recomputed the paired effect and 20,000-resample bootstrap, regenerated all figures, and rebuilt a byte-identical PDF. The package binds 3,269 files with SHA-256, has package hash `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`, and returns only `ready_for_human_submission_review`; `external_submission_authorized=false` remains immutable._
     - _Verify: 4 focused paper-package tests; full suite 741 passed and 4 opt-in live tests skipped; full Ruff and Mypy; primary and independent ACM builds with identical PDF SHA-256 `9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`; 40/40 live citation sources; five standalone figure builds; no undefined citations/references, overfull boxes, or failed final-audit checks; package-status/hash audit; visual inspection of representative pages; and `git diff --check`. Exact commands and the retained v1 false-negative diagnostics are recorded in `Agent.md` and `Problem.md`._
 
+- [ ] 261. Close the autonomous-origin and manuscript-evidence gaps
+  - [x] 261.1 Add truthful bounded-autonomy sprint orchestration and task-level inference
+    - Add one command that retrieves a live literature snapshot, requires local Qwen to select among at least three executable research programs, runs the selected program, adjudicates at the independent-task level, generates the manuscript, and compiles its PDF inside one hash-linked runtime ledger.
+    - Give topic and manuscript generation at most two schema-constrained local-model attempts. If either remains unavailable or invalid, stop with a retained blocked result; never substitute a code-authored topic, policy, or manuscript and never count a fallback run as autonomous.
+    - Treat seed reruns as repeated measurements within tasks. Freeze the selected program before primary analysis and let deterministic code own task aggregation, bootstrap inference, gate decisions, exact numbers, figures, references, result interpretation, and PDF quality checks.
+    - Separate prelaunch operator choices from post-start decisions. The audit must report `bounded_autonomous`, not open-ended autonomy, while Route A is imported and the executable program catalogue and experiment implementations remain code-authored.
+    - Use the same local `qwen3.5:9b` weights through an 8K-context Ollama alias, `reasoning_effort=none`, and strict OpenAI-compatible JSON schemas; keep base URL, API-key environment name, and model name configurable.
+    - Add deterministic unit coverage plus an opt-in live Ollama/literature smoke; keep external submission false.
+    - _Outcome: one `campaign sprint-run` invocation created `task261-bounded-autonomous-clean-v2` from an empty directory. Live local Qwen selected candidate `C003` and `systems-evidence-gate-claims-task-v2` after two valid structured-selection attempts; no fallback or post-start manual research decision occurred. The selected comparison ran 10 independent tasks with three within-task repeats. Its mean gain was `0.20`, but the task-level paired bootstrap 95% CI was `[0.00, 0.50]`, so the frozen contribution gate retained a negative result. The same ledger generated a 2,218-word structured draft and automatically compiled a six-page ACM PDF; physical quality passed with 4,219 rendered words, 21 technical terms, one data figure, one data table, and zero overfull boxes. The autonomy audit is `bounded_autonomous`, not unrestricted autonomous science, and the one-reference literature coverage is explicitly insufficient for submission readiness._
+    - _Verify: 24 focused unit tests; focused Ruff; one opt-in live local Ollama/literature smoke; a deterministic paper-rendering probe; the complete clean-v2 runtime; `campaign sprint-status` hash validation; citation-token/reference coverage scan; full pytest/Ruff/Mypy and `git diff --check`. Exact commands, failed diagnostic attempts, hashes, and evidence boundaries are recorded in `Agent.md` and `Problem.md`._
+  - [ ] 261.2 Generate and test a new mechanism from the retained negative result
+    - Start from the clean-v2 endpoint hash and require a parent-bound mechanism diagnosis, novelty search, structured code-change proposal, sandboxed implementation, development-screen decision, new preregistration, and untouched evaluation panel before a new scientific result can exist.
+    - Keep generated-code security review, tests, resource bounds, experiment hashes, and deterministic adjudication mandatory; a prompt rewrite, manuscript rewrite, threshold change, or rerun of the revealed ten-task panel does not count as a new research iteration.
+    - Replace catalogue-only selection with a bounded proposal-to-code path while retaining a safe executable fallback state of `blocked`, never a fallback scientific result. Do not set `open_ended_experiment_code_generation=true` until the generated mechanism and its exact executed code share a verified causal hash.
+    - Add a manuscript claim-evidence audit that binds every named prior work and material method/experiment statement to the frozen literature or execution graph. Require adequate adjacent-work coverage and source-backed figure descriptions before any submission-readiness verdict.
+    - Use a newly frozen independent task panel for confirmatory inference, produce a new round report and paper version automatically, and keep negative results and external-submission approval rules unchanged.
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -3984,6 +4001,14 @@ A task can be checked only when all applicable items are true:
     {
       "id": 173,
       "tasks": ["260.5"]
+    },
+    {
+      "id": 174,
+      "tasks": ["261.1"]
+    },
+    {
+      "id": 175,
+      "tasks": ["261.2"]
     }
   ]
 }

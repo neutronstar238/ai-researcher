@@ -28,6 +28,11 @@ from autoresearch.campaign.paper import (
 )
 from autoresearch.campaign.reporting import CampaignExporter
 from autoresearch.campaign.service import AutonomousResearchCampaign
+from autoresearch.campaign.sprint import (
+    AutonomousResearchSprint,
+    SprintOutcome,
+    build_sprint_spec,
+)
 from autoresearch.campaign.systems import (
     build_task260_systems_preregistration,
     run_systems_benchmark,
@@ -243,7 +248,7 @@ def campaign_systems_preregister(
     llm_config: Annotated[
         Path,
         typer.Option("--llm-config", help="Local Ollama OpenAI-compatible config."),
-    ] = Path("configs/campaign/ollama-qwen35-9b.yaml"),
+    ] = Path("configs/campaign/ollama-qwen35-sprint-8k.yaml"),
 ) -> None:
     """Freeze the ten-task systems matrix before any controller result exists."""
 
@@ -412,6 +417,110 @@ def campaign_paper_status(
     typer.echo(f"manuscript_pdf={result.manuscript_pdf_path}")
     typer.echo(f"deliverables_index={result.deliverables_index_path}")
     typer.echo("external_submission_authorized=false")
+
+
+@campaign_app.command("sprint-run")
+def campaign_sprint_run(
+    sprint_id: Annotated[
+        str,
+        typer.Option("--sprint-id", help="Stable path-safe sprint ID."),
+    ] = "autoresearch-bounded-sprint-v1",
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Obsidian project ID."),
+    ] = "autoresearch-ccfb",
+    brief: Annotated[
+        str,
+        typer.Option(
+            "--brief",
+            help=(
+                "High-level research objective. The local model selects the primary "
+                "question from executable programs after live literature retrieval."
+            ),
+        ),
+    ] = (
+        "Identify and execute the strongest falsifiable local experiment about "
+        "evidence-bound autonomous research loops under the August 15 deadline."
+    ),
+    deadline: Annotated[
+        str,
+        typer.Option("--deadline", help="ISO date or timezone-aware datetime."),
+    ] = "2026-08-15",
+    route_a_campaign: Annotated[
+        Path,
+        typer.Option(
+            "--route-a-campaign",
+            help=(
+                "Completed Route A evidence imported as a prelaunch boundary. "
+                "The autonomy audit records that it was not generated in this sprint."
+            ),
+        ),
+    ] = Path("runs/manual-live/task260-autonomous-ccfb-v1"),
+    llm_config: Annotated[
+        Path,
+        typer.Option("--llm-config", help="Local Ollama OpenAI-compatible config."),
+    ] = Path("configs/campaign/ollama-qwen35-sprint-8k.yaml"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Autonomous sprint run root."),
+    ] = Path("runs/autonomous-sprints"),
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Canonical Obsidian vault root."),
+    ] = Path("autoresearch-vault"),
+    compile_pdf: Annotated[
+        bool,
+        typer.Option(
+            "--compile/--no-compile",
+            help="Automatically compile the generated manuscript in the same run.",
+        ),
+    ] = True,
+) -> None:
+    """Run live topic selection, experiment, task-level inference, and PDF build."""
+
+    try:
+        spec = build_sprint_spec(
+            sprint_id=sprint_id,
+            project_id=project_id,
+            high_level_brief=brief,
+            deadline=_parse_deadline(deadline),
+            route_a_campaign_path=route_a_campaign,
+            llm_config_path=llm_config,
+            compile_pdf=compile_pdf,
+        )
+        result = AutonomousResearchSprint(
+            output_root=output_dir,
+            vault_root=vault,
+        ).run(spec)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_sprint_run: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_sprint_result(result)
+    if result.outcome is SprintOutcome.BLOCKED:
+        typer.echo(
+            "[BLOCKED] sprint stopped rather than using a topic, policy, or "
+            "manuscript fallback"
+        )
+        raise typer.Exit(code=2)
+
+
+@campaign_app.command("sprint-status")
+def campaign_sprint_status(
+    sprint_dir: Annotated[
+        Path,
+        typer.Argument(help="Existing autonomous sprint directory."),
+    ],
+) -> None:
+    """Verify sprint hashes and print the audited autonomy boundary."""
+
+    try:
+        result = AutonomousResearchSprint(
+            output_root=sprint_dir.parent,
+        ).status(sprint_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_sprint_status: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_sprint_result(result)
 
 
 def _development_campaign_spec(
@@ -635,3 +744,23 @@ def _echo_result(result: object) -> None:
         if hasattr(value, "value"):
             value = value.value
         typer.echo(f"{name}={value}")
+
+
+def _echo_sprint_result(result: object) -> None:
+    for name in (
+        "sprint_dir",
+        "outcome",
+        "stage",
+        "selected_candidate_id",
+        "selected_program_id",
+        "endpoint_passed",
+        "autonomy_level",
+        "manuscript_path",
+        "manuscript_pdf_path",
+        "manifest_path",
+    ):
+        value = getattr(result, name)
+        if hasattr(value, "value"):
+            value = value.value
+        typer.echo(f"{name}={value}")
+    typer.echo("external_submission_authorized=false")

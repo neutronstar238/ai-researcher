@@ -72,6 +72,8 @@ airesearcher campaign systems-run runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign systems-status runs/manual-live/task260-autonomous-systems-v1
 airesearcher campaign paper-build
 airesearcher campaign paper-status runs/manual-live/task260-final-paper-v2
+airesearcher campaign sprint-run --sprint-id <id> --brief "<high-level objective>"
+airesearcher campaign sprint-status runs/autonomous-sprints/<id>
 ```
 
 Every completed round exports its hypothesis, preregistration, experiment manifest, raw
@@ -105,6 +107,25 @@ SHA-256 exactly matches the primary build. The 3,269-file package passes the int
 `ready_for_human_submission_review` audit. This is not a CCF-B acceptance claim, and external
 submission remains blocked pending explicit human review of novelty, venue fit, authorship,
 and licenses.
+
+Task `261.1` adds a stricter one-command autonomy audit. `campaign sprint-run` retrieves a live
+literature snapshot, requires local `qwen3.5:9b` to select among at least three executable
+programs, runs the selected comparison, performs task-level inference, generates manuscript
+prose, and compiles an ACM PDF in one hash-linked ledger. Topic and manuscript generation have
+no deterministic fallback: two invalid local-model attempts block the run. Numerical decisions,
+figures, references, result interpretation, and the PDF quality gate remain deterministic.
+
+The clean run `task261-bounded-autonomous-clean-v2` completed with zero runtime manual research
+decisions and zero model fallbacks. It selected the evidence-gate claim-error program and ran
+10 independent tasks with three within-task repeats. The mean gain was `0.20`, but the paired
+bootstrap 95% CI was `[0.00, 0.50]`, so the scientific gate retained a negative result. The same
+invocation automatically compiled a six-page PDF that passed the physical document gate. The
+autonomy verdict is deliberately `bounded_autonomous`: the high-level brief, imported Route A
+evidence, executable program catalogue, and experiment implementations were fixed before
+runtime. This is proof of automatic orchestration, not proof of unrestricted topic/method
+invention, CCF-B-level novelty, acceptance, or submission readiness. Task `261.2` must generate
+and execute a new parent-bound mechanism on a new evaluation panel and close the manuscript's
+claim/citation coverage gaps before any stronger claim is permitted.
 
 ## First Deployment
 

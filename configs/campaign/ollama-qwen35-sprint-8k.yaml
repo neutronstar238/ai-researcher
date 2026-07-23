@@ -1,0 +1,18 @@
+project_root: .
+compute:
+  prefer_local: true
+  sandbox_enabled: true
+  sandbox_root: runs
+  max_cpu_seconds: 10800
+  max_memory_mb: 8192
+  max_gpu_hours: 0.0
+deployment:
+  environment: local-ollama-sprint
+  llm:
+    provider: ollama-openai-compatible
+    base_url: http://127.0.0.1:11434/v1
+    # Local alias built from qwen3.5:9b with PARAMETER num_ctx 8192.
+    model_name: qwen3.5-sprint:9b-8k
+    api_key_env: AUTORESEARCH_LOCAL_OLLAMA_API_KEY
+    request_timeout_seconds: 300
+    fallback_model_names: []

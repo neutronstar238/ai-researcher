@@ -64,6 +64,61 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-24 02:33:27 +08:00 - Codex - Task 261.1 truthful bounded-autonomy sprint
+
+- Request: Continue the August 15 sprint by making topic selection, selected-program execution, task-level adjudication, manuscript generation, and PDF compilation occur automatically inside one auditable run, while answering truthfully whether the result was independently originated and how innovative it is.
+- Files changed:
+  - `src/autoresearch/campaign/sprint.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/llm/client.py`
+  - `configs/campaign/Modelfile.qwen35-sprint-8k`
+  - `configs/campaign/ollama-qwen35-sprint-8k.yaml`
+  - `tests/unit/campaign/test_autonomous_sprint.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/smoke/test_autonomous_sprint_live.py`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/campaign/task261-bounded-autonomous-clean-v1/`
+  - `autoresearch-vault/projects/autoresearch-ccfb/campaign/task261-bounded-autonomous-clean-v2/`
+  - `autoresearch-vault/projects/autoresearch-ccfb/paper/paper-build.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added `AutonomousResearchSprint`, strict sprint/spec/manifest/topic/endpoint/manuscript/audit models, an atomic resumable stage flow, hash-linked autonomy events, and `campaign sprint-run/sprint-status`.
+  - Added three distinct executable research programs. A live local model must generate exactly three program-bound candidates and select the primary question; the selected program fixes comparison modes, endpoint, direction, minimum independent units, analysis, and paper result. A malformed/unavailable topic or manuscript gets one schema-constrained repair attempt and then blocks; there is no topic, policy, or manuscript fallback that can count as autonomous.
+  - Extended the provider-agnostic OpenAI-compatible client with optional `reasoning_effort` and strict JSON-schema `response_format`. Added a same-weight local Ollama alias `qwen3.5-sprint:9b-8k` so the RTX 5060 8GB workstation can run structured output without the upstream 262K-context CPU spill.
+  - Made task the statistical unit. Three seed reruns are averaged within each of 10 tasks before the fixed 20,000-resample paired bootstrap; seed rows cannot inflate `n`. Deterministic code owns the contribution verdict, exact values, table, figure, result interpretation, limitations, conclusion, citation-ID validation/normalization, bibliography union, and PDF quality gate.
+  - Clean-v1 completed physically but post-run review found an unsupported “falsified” interpretation and incomplete bibliography binding. It remains retained and explicitly superseded. Results/Limitations/Conclusion and citation binding were moved out of model control before another run.
+  - A new empty-directory clean-v2 then completed from one `sprint-run` command without implementation changes during execution. Local Qwen selected C003 / `systems-evidence-gate-claims-task-v2` after two structured topic attempts and produced the 2,218-word manuscript fields in one attempt. The sprint recorded zero local-model fallbacks, zero post-start manual research decisions, eight hash-linked events, and autonomy level `bounded_autonomous`.
+  - Clean-v2 executed 10 independent tasks with three within-task repeats. The registered mean gain was `0.20` and the paired task-level 95% bootstrap CI was `[0.00, 0.50]`; the contribution gate therefore failed and the negative result was retained. The same process automatically compiled a six-page ACM PDF with 4,219 rendered words, 21 technical terms, one source figure, one data table, and zero overfull boxes.
+  - Kept the autonomy claim deliberately narrow. The high-level brief, imported Route A evidence, program catalogue, controlled fault harness, and implementations were prelaunch inputs; `route_a_generated_inside_same_sprint=false` and `open_ended_experiment_code_generation=false`. The run proves bounded automatic orchestration, not unrestricted independent topic/method invention, high novelty, CCF-B readiness, acceptance, or permission to submit.
+  - Audited the clean-v2 manuscript after completion. Its deterministic negative conclusion and citation token/reference binding are correct, but it has only one cited source, some model prose generalizes the controlled harness too broadly, the figure lacks an ACM description, and the final page is sparse. These defects are preserved as task `261.2` gates instead of being hidden behind a passing physical PDF check.
+- Verification:
+  - `python -m pytest tests/unit/campaign/test_autonomous_sprint.py tests/unit/llm/test_client.py -q`: passed, 24 tests.
+  - Focused and full `python -m ruff check ...` / `python -m ruff check src tests`: passed.
+  - Opt-in live smoke with `AUTORESEARCH_RUN_LIVE_SPRINT_SMOKE=1` and local Ollama: passed, one test performing live ArXiv retrieval and schema-constrained three-program Qwen selection.
+  - Direct local structured-output probe against `qwen3.5-sprint:9b-8k`: passed with valid JSON and no fallback; Ollama reported about 6.4 GB loaded with 8,192-token context and approximately 86% GPU placement.
+  - Paper probe v2 honestly returned `compiled_with_quality_issues` because the deterministic conclusion was 116 words versus the 120-word floor. After adding a non-interpretive audit sentence, probe v3 passed: six pages, 4,352 words, 21 technical terms, one figure, one table, six bound references, no short section, and zero overfull boxes.
+  - `campaign sprint-run --sprint-id task261-bounded-autonomous-clean-v2 ...`: completed from an absent directory in one process; endpoint hash `e4535efd50c34c2d104b367dfa1fc3a7ba1dde51081d8b07738d8c68e9c03c52`, manifest hash `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`, audit hash `23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`, and PDF SHA-256 `591a371bf0a358632c7bc99d354deccc6eadf5c932d85dd0037213cc15431826`.
+  - `python -m autoresearch.cli.main campaign sprint-status runs/manual-live/task261-bounded-autonomous-clean-v2`: passed hash validation; reported `completed`, `endpoint_passed=False`, `bounded_autonomous`, and `external_submission_authorized=false`.
+  - Clean-v2 citation scan: no bare `[Lnnn]` tokens, inline IDs and reference IDs both exactly `L012`, no missing binding, and no unsupported positive-result, mechanism-falsification, superiority, acceptance, or CCF-B-readiness conclusion.
+  - Independent LaTeX skill check used TeX Live `latexmk` on the persisted `main.tex`: exit code 0, six-page letter PDF. The log has no overfull box, undefined reference, or fatal error; it retains the missing image-description accessibility warning. Visual inspection of pages 1 and 6 found readable two-column text without clipping and confirmed the sparse final page/single-reference limitation.
+  - `poetry run pytest`: passed, 747 tests with 5 opt-in live tests skipped; total coverage 86%.
+  - Bare `python -m mypy src/autoresearch` found only the active global interpreter's missing existing `types-requests` stub in unchanged `campaign/paper.py`. The authoritative locked-environment gate `poetry run mypy src` passed with no issues in 135 source files.
+  - The dependency-wave JSON parsed successfully with task `261.2` as final wave 175. `git diff --check` passed; Git retained the existing CRLF-to-LF warning for the Vault project index.
+- Problems:
+  - Added and resolved `P-20260724-020` for the upstream context-size CPU spill and local timeout.
+  - Added and resolved `P-20260724-021` for early source-layout/PowerShell invocation, schema, truncation, and PDF-depth diagnostics.
+  - Added mitigated `P-20260724-022` for clean-v1 result overclaim and the remaining clean-v2 semantic citation, controlled-harness wording, accessibility, and layout gaps.
+  - Added open `P-20260724-023`: task `261.1` is bounded catalogue selection and not open-ended mechanism invention.
+- Follow-up:
+  - Implement task `261.2` from the clean-v2 negative endpoint hash: local diagnosis and new mechanism proposal, generated and reviewed executed code, development screening, new preregistration, untouched independent task panel, task-level adjudication, complete named-work/claim evidence coverage, automatic next paper version, and retained failure instead of prompt/paper/threshold manipulation.
+
 ### 2026-07-24 00:40:25 +08:00 - Codex - Task 260.5 final paper package
 
 - Request: Complete the August 15 hard-deadline campaign by constructing, independently reproducing, and auditing a full paper package from the immutable task `260.3` Route A negatives and task `260.4` Route B systems evidence, without authorizing external submission or overstating CCF-B readiness.

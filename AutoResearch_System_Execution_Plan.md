@@ -907,3 +907,64 @@ bootstrap，并独立编译五张图和 11 页论文。主构建与独立构建�
 `9199a1146fce116b0035090dbca3df27dc38a4c740fb1f935f06c587317a4a3b`。包哈希为
 `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`，3,269 个文件全部
 进入哈希清单。内部状态为 `ready_for_human_submission_review`，外部投稿许可仍固定为 false。
+
+---
+
+## 25. bounded-autonomy 冲刺与下一轮机制生成
+
+任务 261.1 使用以下单命令边界关闭任务 260 的来源审计缺口：
+
+```text
+live literature
+  -> local Qwen topic candidates and selection
+  -> selected executable program
+  -> frozen task matrix
+  -> task-level deterministic inference
+  -> local Qwen manuscript fields
+  -> deterministic results/limitations/conclusion
+  -> automatic ACM PDF
+  -> autonomy audit
+```
+
+CLI 为：
+
+```powershell
+airesearcher campaign sprint-run `
+  --sprint-id <id> `
+  --brief "<high-level research objective>" `
+  --deadline 2026-08-15
+airesearcher campaign sprint-status runs/autonomous-sprints/<id>
+```
+
+运行使用 provider-agnostic OpenAI-compatible 配置。为避免原始 262K 上下文导致 8GB 工作站
+CPU spill 与请求超时，本地 Ollama 别名 `qwen3.5-sprint:9b-8k` 复用同一
+`qwen3.5:9b` 权重，只把 context 固定为 8192，并发送 `reasoning_effort=none` 与严格
+`json_schema`。topic 与 manuscript 各最多两次调用；失败后 sprint 进入 `blocked`，不存在
+deterministic topic/manuscript fallback。systems policy 同样要求 live local Qwen，任何 fallback
+都会使自治门失败。
+
+每个程序预先声明 baseline/candidate mode、主 endpoint、方向、最低独立任务数与机制理由。模型
+必须从至少三个不同可执行程序生成候选；选中 program ID 后，主分析、统计方向和论文 endpoint
+不能再改变。三个 seed 先在每个 task 内取平均，20,000 次 bootstrap 只重采样十个 task。代码
+冻结 task 顺序、bootstrap seed、通过门和外部提交 false；LLM 不能解释 CI 是否通过。
+
+自治账本记录八个顺序事件及父哈希，分别标注 `operator_prelaunch`、`local_llm` 与
+`deterministic_policy`，并单独统计 prelaunch 选择、runtime manual research decision 和
+fallback。只有 live local selection、三个可执行程序、所选程序控制主分析、task-level inference、
+同一账本自动 PDF、零运行期人工科研决策和无外部投稿同时成立，才可返回
+`bounded_autonomous`。Route A 同次生成与任意实验代码生成当前强制为 false，所以不可能返回
+open-ended autonomy。
+
+正式 `task261-bounded-autonomous-clean-v2` 一次命令完成，manifest hash 为
+`eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`，autonomy audit hash 为
+`23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`。Qwen 在第二次合规选题
+响应中选择 C003，正文一次响应成功，两个 fallback 标志均为 false。task-level endpoint hash
+为 `e4535efd50c34c2d104b367dfa1fc3a7ba1dde51081d8b07738d8c68e9c03c52`，均值 `0.20`、
+95% CI `[0.00, 0.50]`，贡献门失败。自动 PDF 为六页且物理门通过；这是一份 retained negative
+artifact，不是 CCF-B 就绪论文。
+
+下一任务 261.2 不得继续在已揭示十任务面板上挑机制。它必须读取上述 endpoint/parent hash，
+由本地模型产生机制级差异和结构化代码变更，经静态安全审查、单测和开发集筛选后冻结实际代码
+哈希，再使用新独立任务面板裁决。论文阶段必须为每个 named prior work 和重要方法/实验声明绑定
+文献或执行证据。只有该完整因果链成立，才可升级“模型在预置程序中选题”为“模型产生并执行了
+新机制”；任何失败保留为报告并进入下一轮，绝不通过改提示、改论文或降门槛制造成功。

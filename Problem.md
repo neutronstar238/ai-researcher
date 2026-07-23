@@ -40,6 +40,70 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-24 01:00:00 +08:00
+- Source: Task `261.1` live local structured-output preparation.
+- Symptom: Loading `qwen3.5:9b` with its upstream 262,144-token context required about 16 GB and spilled substantially onto CPU; long structured topic/manuscript requests exceeded the bounded request window.
+- Impact: The sprint could not truthfully require live local topic and manuscript generation on the RTX 5060 8GB workstation while retaining the original context setting.
+- Evidence: Ollama process inspection showed the full-context model exceeding the GPU budget. The same weights under the final alias use about 6.4 GB with an 8,192-token context and approximately 86% GPU placement. A strict JSON-schema probe and the clean-v2 topic/manuscript calls completed locally.
+- Root cause: Context-cache allocation, rather than model weights alone, exceeded the available VRAM and caused CPU offload and slow generation.
+- Workaround: None remains necessary.
+- Next action: Keep sprint prompts within the measured 8K budget; a future larger-context requirement needs an explicit hardware or quantization review.
+- Linked tasks: `261.1`.
+- Resolution: Added the versioned `qwen3.5-sprint:9b-8k` Ollama Modelfile using the same `qwen3.5:9b` weights, `num_ctx 8192`, `/no_think`, deterministic sampling, and OpenAI-compatible `reasoning_effort=none` plus strict JSON schema.
+- Verification: The live structured-output smoke passed, the opt-in sprint smoke passed, and clean-v2 completed topic selection and a 2,218-word structured manuscript without fallback.
+
+### P-20260724-021 - Early sprint diagnostics exposed CLI quoting, schema, and PDF-depth failures
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-24 01:20:00 +08:00
+- Source: Task `261.1` diagnostic runs before the final clean sprint.
+- Symptom: A bare Python invocation initially lacked `PYTHONPATH=src`; the first Windows background command split the spaced `--brief`; the first live topic response was not schema-valid; an early manuscript response was truncated; later prose contained a forbidden superiority phrase; and the first generated PDF was four pages with shallow sections and overfull boxes.
+- Impact: Treating any of those attempts as a completed autonomous sprint would have hidden operational failures, malformed model output, or a physically inadequate paper.
+- Evidence: The entrypoint and argument failures occurred before sprint creation. Diagnostic sprint `task261-bounded-autonomous-live-v1` retained each stage failure. Paper probes recorded the four-page failure and a later 116-word conclusion that missed the 120-word section minimum.
+- Root cause: Source-layout invocation and PowerShell argument boundaries were not explicit; free-form JSON was too weak for the local model; result prose was unnecessarily delegated to the model; and the first deterministic paper appendix was too short for the registered ACM physical gate.
+- Workaround: Retain the failed diagnostic artifacts and launch final runs through an encoded PowerShell command with explicit environment and arguments.
+- Next action: None for task `261.1`; task `261.2` must preserve the same fail-closed launch and schema discipline for generated code.
+- Linked tasks: `261.1`, `261.2`.
+- Resolution: Added strict response schemas, two-attempt repair without fallback, compact manuscript evidence, deterministic result/limitation/conclusion rendering, citation-token normalization, reproducibility/audit appendices, and a conclusion-depth regression. No failed entrypoint attempt wrote a scientific artifact.
+- Verification: Focused tests pass; paper quality probe v3 compiled six pages with 4,352 words, 21 technical terms, no short section, and zero overfull boxes; clean-v2 then completed without code changes during its run.
+
+### P-20260724-022 - Model-authored paper prose could overstate a failed gate and under-cite prior work
+
+- Status: Mitigated
+- Severity: High
+- Discovered: 2026-07-24 02:00:00 +08:00
+- Source: Task `261.1` clean-v1 and clean-v2 manuscript audits.
+- Symptom: Clean-v1 called a non-positive confidence-bound result “falsified” and used inline literature IDs that were absent from its declared citation list. After deterministic result rendering fixed that defect, clean-v2 produced a correct negative conclusion and complete token-to-bibliography binding, but cited only one of the live retrieved works and described some controlled fault-harness behavior in language that can sound like general deployed-Agent behavior.
+- Impact: The task-level statistic and autonomy provenance remain valid, but the automatically generated paper is not submission-ready and cannot support a broad novelty, generalization, or CCF-B-quality claim merely because its six-page physical PDF gate passed.
+- Evidence: Clean-v1 conclusion generalized beyond CI support and omitted several bibliography bindings. Clean-v2 has no bare `[Lnnn]` tokens, its sole inline ID `L012` is present in References, and its deterministic conclusion states only that the frozen gate failed to establish the selected improvement. The clean-v2 paper-quality report nevertheless records `bibliography_item_count=1`; an independent TeX Live compile also reports the ACM accessibility warning that the metric image has no description. Visual inspection found readable two-column pages without clipping, but the final page has substantial unused space and only the single reference.
+- Root cause: Scientific result interpretation and citation completeness were initially delegated too broadly to a small local model. The physical paper gate checks document structure and reference syntax, not whether every named work and material method statement has adequate claim-level support.
+- Workaround: Use clean-v2 only as a bounded-autonomy negative artifact; do not use it as the August 15 submission paper or as evidence of high innovation.
+- Next action: Task `261.2` must add named-work and material-claim evidence coverage, distinguish the deterministic harness from actual model-driven policies in every method statement, add source-backed figure descriptions, check final-page balance, and require adequate adjacent-work positioning before a submission-readiness verdict.
+- Linked tasks: `261.1`, `261.2`.
+- Resolution: Deterministic code now owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. The remaining semantic citation and harness-description gap is explicitly open for task `261.2`.
+- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Its scientific endpoint remains `passed=false`.
+
+### P-20260724-023 - The sprint is bounded catalogue selection, not open-ended mechanism invention
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-24 02:22:00 +08:00
+- Source: Task `261.1` autonomy audit of `task261-bounded-autonomous-clean-v2`.
+- Symptom: Local Qwen independently selected the primary question and executable program after runtime start, but the high-level brief, Route A import, three program definitions, fault suite, and experiment code were fixed by humans before the sprint.
+- Impact: The run proves one-command bounded autonomous selection, execution, analysis, manuscript generation, and PDF compilation. It does not prove that the system independently originated an unrestricted topic, invented a new mechanism, wrote the executed experiment code, or achieved a CCF-B-level original contribution.
+- Evidence: The autonomy audit records one prelaunch operator research decision, zero post-start manual research decisions, zero local-model fallbacks, `route_a_generated_inside_same_sprint=false`, `open_ended_experiment_code_generation=false`, and final level `bounded_autonomous`.
+- Root cause: Task `261.1` intentionally used an installed executable catalogue so a model-selected topic always mapped to a safe, testable program; task 260's prior method choices were also imported rather than created inside this invocation.
+- Workaround: None. The audit and user-facing documentation prohibit stronger autonomy claims.
+- Next action: Implement task `261.2`: bind a new diagnosis and mechanism proposal to the clean-v2 negative endpoint, generate and review the executed code, freeze a new independent panel, and retain a blocked result unless proposal-code-execution hashes close the causal chain.
+- Linked tasks: `260.3`, `260.4`, `260.5`, `261.1`, `261.2`.
+- Resolution: Pending task `261.2`.
+- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; audit hash is `23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`.
+
 ### P-20260723-014 - Single-cycle services could not autonomously turn a negative result into a new scientific round
 
 - Status: Resolved

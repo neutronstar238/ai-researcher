@@ -1,0 +1,10 @@
+FROM qwen3.5:9b
+
+# Same local qwen3.5:9b weights with a bounded context that fits the RTX 5060
+# sprint budget.  The upstream model defaults to a 262144-token context, which
+# spills most of this 9B model to CPU on an 8GB GPU.
+SYSTEM /no_think
+PARAMETER num_ctx 8192
+PARAMETER temperature 0
+PARAMETER top_k 20
+PARAMETER top_p 0.9
