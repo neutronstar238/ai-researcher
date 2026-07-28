@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260728-028 - Live-model and broad-test verification hit transient external limits
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-28 23:26:00 +08:00
+- Source: Task `262.4` configured local-Qwen and broad regression verification.
+- Symptom: The first `ollama pull qwen3.5:9b` attempt reported a TLS handshake timeout while reading the registry manifest. A later first full `poetry run pytest tests/smoke tests/unit -q` attempt was terminated by the command wrapper after 184 seconds because its 180-second limit was shorter than this repository's real full-suite runtime.
+- Impact: Neither attempt provided valid live or full-regression evidence, so task `262.4` remained unchecked until both gates were rerun to a terminal result. No scientific result, repository secret, or persisted harness episode was created by the failed attempts.
+- Evidence: Ollama printed `TLS handshake timeout` for the registry request. The first broad pytest command exited 124 after 184.1 seconds without a test summary. Subsequent `ollama list` and `/v1/models` checks exposed both `qwen3.5:9b` and `qwen3.5-sprint:9b-8k`; the explicit live smoke passed. The polled broad rerun completed in 196.88 seconds.
+- Root cause: Registry TLS availability was transient, and the initial pytest wrapper budget underestimated coverage-enabled runtime by roughly 17 seconds.
+- Workaround: Confirm model availability through the local endpoint before pulling, and use a polled command with a timeout above the observed coverage-enabled runtime.
+- Next action: Keep the live test opt-in and retain a generous, observable full-suite timeout in later vNext tasks.
+- Linked tasks: `262.4`.
+- Resolution: Rechecked the running local Ollama server and configured model alias, ran the real opt-in smoke to completion, then reran the full suite with a 600-second outer limit while polling for progress.
+- Verification: `AUTORESEARCH_HARNESS_LIVE=1` with the configured process-local placeholder key passed `tests/smoke/test_harness_live.py` in 45.18 seconds; the full regression passed with 824 tests and 6 opt-in live tests skipped in 196.88 seconds.
+
+### P-20260728-027 - Initial harness checks exposed normalization and fixture defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-28 22:40:00 +08:00
+- Source: Task `262.4` focused contract, runner, adapter, and quality verification.
+- Symptom: Initial Mypy rejected an invariant `list` where a sequence was required. A default failure-domain list was not normalized until Pydantic revalidation, so a freshly created `HarnessSpec` and its JSON round trip could compute different content hashes. The first runner test rerun then passed 24 of 26 tests: a retry-forbidden fixture accidentally enabled retries, and an explicitly empty grader mapping fell back to the default grader because the helper used truthiness instead of testing for `None`.
+- Impact: The focused verification gate initially failed; no task completion, journal promotion, legacy state change, or scientific output occurred.
+- Evidence: Focused Mypy reported the list-invariance mismatch; the round-trip test reported a spec-hash mismatch; pytest then reported exactly two failures and 24 passes.
+- Root cause: The initial contracts mixed mutable collection typing with a sequence consumer, one model default bypassed the intended sorting validator on first construction, and two test-helper defaults did not preserve the exact negative-case input.
+- Workaround: None remains necessary.
+- Next action: Keep create/round-trip hash equality, explicit empty dependency mappings, and intervention-denial fixtures in the focused regression set.
+- Linked tasks: `262.4`.
+- Resolution: Accepted a `Sequence`, made the default failure domains canonical at declaration time, separated the fixture's retry-policy switch, and preserved an explicit empty grader mapping with an `is not None` check.
+- Verification: Final focused verification passed 31 tests with one default-skipped live test; `harness.py` reached 92% and `llm/harness.py` 98% line coverage; focused Ruff and Mypy passed.
+
 ### P-20260728-026 - Initial journal checks exposed test-fixture timing and mechanical lint defects
 
 - Status: Resolved
@@ -83,10 +115,10 @@ update a factual problem entry below.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete tasks `262.4` through `262.8`: HarnessSpec, LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
+- Next action: Complete tasks `262.5` through `262.8`: LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
-- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, and task `262.3` supplies atomic lineage, recovery, replay, and fork without changing legacy behavior. The underlying duplication remains open until parity-gated migration completes.
-- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.3` passed 33 focused tests, temporary-filesystem smoke, an 811-test regression, Ruff, and Mypy.
+- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, and task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics without changing legacy behavior. The underlying duplication remains open until parity-gated migration completes.
+- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.4` passed 31 focused tests, a real local-Qwen smoke, an 824-test regression, Ruff, and Mypy.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

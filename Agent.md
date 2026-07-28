@@ -64,6 +64,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-28 23:37:18 +08:00 - Codex - Task 262.4 bounded HarnessSpec and episode packages
+
+- Request: Continue the evidence-backed vNext refactor by adding a provider-neutral, policy-bounded Harness and truthful episode packages, including a deterministic fixture and one real configured local-Qwen path, before implementing multi-node loop control.
+- Files changed:
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/kernel/journal.py`
+  - `src/autoresearch/kernel/harness.py`
+  - `src/autoresearch/llm/__init__.py`
+  - `src/autoresearch/llm/harness.py`
+  - `tests/unit/kernel/test_harness.py`
+  - `tests/unit/llm/test_harness_adapter.py`
+  - `tests/smoke/test_harness_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-4-bounded-harness.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a strict provider-neutral `HarnessSpec` with content hashing and cross-policy validation for task, context, model, tool, memory, state, permission, verification, observability, failure-attribution, cost, entropy/intervention, and evaluation behavior. No vendor SDK, provider endpoint, credential, LangGraph state, or raw model response enters the domain contract.
+  - Added structured-output contracts and explicit model/tool/grader protocols plus deterministic fixture and exact-field grader implementations. Model identity/capabilities/attempts, tool allowlists and side effects, permission/approval boundaries, context and mutable-state limits, artifact requirements, token/cost/time/tool/retry budgets, uncertainty stops, and grader thresholds fail closed.
+  - Added a single-trial `HarnessRunner` over `EventJournal`. It checks spec integrity and sensitive content, runs permission/tool/budget preflight, records a started event, invokes one adapter, validates policy and output, runs frozen graders, emits a truthful terminal event, seals the journal, and returns a content-addressed episode. Durable graph-level retry/pivot/resume remains task `262.5`.
+  - Added `EpisodePackage` with separately addressable task/spec, trials, full trajectory, environment outcome, graders, costs, interventions, approvals, failures, tool calls, artifacts, terminal event, seal, and lineage. Nested mutation is detectable before export.
+  - Preserved outcome truth: missing model/tool/approval and exhausted budget are blocked; invalid structured output, tool/grader/configuration failures are failed; valid but non-passing evaluation is a negative result; only a policy-passing outcome succeeds. Failed/blocked paths do not synthesize scientific output.
+  - Exposed a public persistence-content validator so specs, runtime inputs, adapter/grader results, and episode packages reuse the journal's secret/direct-email rejection before persistence. Raw model text, endpoint, and credential fields are never recorded.
+  - Added `OpenAICompatibleHarnessAdapter` over the existing configurable client plus a frozen characterization spec and deterministic grader. The configured local `qwen3.5-sprint:9b-8k` path completed one real schema-constrained run and produced a sealed successful episode; this verifies adapter mechanics only and is not a model-quality or scientific claim.
+  - Preserved the strangler boundary: Competition, Campaign, Sprint, EvidenceGraph, AuditLog, dependency versions, existing state, and scientific artifacts remain authoritative and unchanged.
+- Verification:
+  - Focused `poetry run pytest tests/unit/kernel/test_harness.py tests/unit/llm/test_harness_adapter.py tests/smoke/test_harness_live.py -q`: passed 31 deterministic tests with 1 opt-in live test skipped; `src/autoresearch/kernel/harness.py` reached 92% and `src/autoresearch/llm/harness.py` 98% line coverage.
+  - The focused matrix covers canonical spec/package round trips and nested tamper detection; malformed structured output; missing model/tool/grader/approval; denied/unknown permissions; pre/post budget exhaustion; unknown cost; wall-time, tool-call, retry, and uncertainty limits; failed/unapproved tools; sensitive task/model output; adapter identity/capability mismatch; unexpected adapter error; grader error/mismatch; explicit approval/intervention separation; negative-result semantics; and journal/run reuse rejection.
+  - Explicit live `$env:AUTORESEARCH_HARNESS_LIVE='1'; $env:AUTORESEARCH_LOCAL_OLLAMA_API_KEY='ollama-local'; poetry run pytest tests/smoke/test_harness_live.py -q -s`: passed 1 test in 45.18 seconds against configured local `qwen3.5-sprint:9b-8k`. The placeholder local key existed only in that child process; endpoint, key, and raw model text were not persisted.
+  - Live preflight `GET http://127.0.0.1:11434/v1/models` exposed `qwen3.5:9b` and `qwen3.5-sprint:9b-8k`; the smoke asserted successful structured output, exact configured model identity, known zero local cost, no failure records, and a terminal journal seal.
+  - Full `poetry run pytest tests/smoke tests/unit -q`: passed with 824 tests and 6 opt-in live tests skipped in 196.88 seconds; total repository line coverage was 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 140 source files.
+  - `git diff --check` passed before log synchronization; final staged checks are rerun before the focused commit.
+  - Initial contract/fixture findings and live/full-command transients are recorded in resolved problems `P-20260728-027` and `P-20260728-028`.
+- Problems:
+  - Added and resolved `P-20260728-027` for initial collection normalization, invariant typing, retry-fixture, and empty-grader-map defects.
+  - Added and resolved `P-20260728-028` for a transient Ollama registry TLS timeout and the first broad command's too-short 180-second wrapper limit.
+  - Updated open `P-20260728-024`: the bounded Harness now exists, but duplicate service control planes remain until tasks `262.5`—`262.8` complete durable loop semantics, provenance/export projections, and parity-gated migration.
+- Follow-up:
+  - Implement task `262.5` in a separate commit: versioned `LoopSpec`, deterministic durable Control Graph execution, explicit retries/approvals/compensation/stop/pivot/escalation/holdout rules, fault recovery and side-effect idempotency, then a characterized LangGraph adapter without upgrading dependencies.
+
 ### 2026-07-28 15:16:37 +08:00 - Codex - Task 262.3 atomic event journal, replay, and fork
 
 - Request: Continue the evidence-backed vNext refactor sequentially by adding durable event history, deterministic recovery/replay, and immutable-parent fork semantics before introducing a harness or migrating any current service.

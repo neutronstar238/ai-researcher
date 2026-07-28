@@ -900,8 +900,15 @@ def _validate_terminal_seal(
 
 
 def _reject_sensitive_event(event: RunEvent) -> None:
-    content = event.model_dump(mode="json", exclude={"event_hash"})
-    _scan_sensitive_value(content, path="$")
+    validate_persistable_content(
+        event.model_dump(mode="json", exclude={"event_hash"}),
+    )
+
+
+def validate_persistable_content(value: object) -> None:
+    """Reject secret-like values and direct identifiers before local persistence."""
+
+    _scan_sensitive_value(value, path="$")
 
 
 def _scan_sensitive_value(value: object, *, path: str) -> None:

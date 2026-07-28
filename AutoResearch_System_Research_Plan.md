@@ -820,3 +820,15 @@ checkpoint、确定性 replay，并创建首事件绑定不可变父 checkpoint 
 smoke、811-test regression 及全量 Ruff/Mypy 均通过；`journal.py` 行覆盖率为 89%。该实现仍未接入
 Competition、Campaign、Sprint 或 AuditLog，旧状态文件继续权威，下一切片由 `262.4` 定义
 `HarnessSpec` 与 episode package。
+
+`262.4` 现已完成 provider-neutral Harness 层。content-addressed `HarnessSpec` 冻结并交叉校验 task、
+context、model、tool、memory、state、permission、verification、observability、failure-attribution、
+cost、entropy/intervention 与 evaluation policy；`HarnessRunner` 在 task `262.3` journal 上执行一个
+有界 trial，并把 task/spec、trial、全 trajectory、environment outcome、grader、cost、intervention、
+approval、failure、tool call、artifact、terminal event、seal 与 lineage 分离绑定到
+content-addressed `EpisodePackage`。缺模型/工具/审批和预算耗尽进入 `blocked`，无效结构输出、工具/
+grader/configuration 错误进入 `failed`，执行有效但未过冻结 grader 的结果进入 `negative_result`，
+只有通过 evaluation policy 才进入 `succeeded`；失败路径不生成伪科研输出。31 个 deterministic
+focused tests、真实本地 `qwen3.5-sprint:9b-8k` opt-in smoke、824-test regression、全量 Ruff 与
+140-file Mypy 均通过。该 smoke 只证明 provider adapter 与 sealed episode，不是模型质量或科研结果；
+多节点 retry/pivot/resume 必须由 `262.5` 的 LoopSpec/Control Graph 实现，不能藏进 Harness。
