@@ -863,3 +863,25 @@ artifact hash、confidence、validity 与 supersession 的 Markdown。真实
 和代码，经 unseen evaluation、确定性 contribution gate 与当前验证到 `next_round` 决策；原正向
 假设同时保留 contradictory 和 limiting evidence。该任务没有改变历史 endpoint、旧 writer、依赖、
 公开导出或投稿权限；RO-Crate/JSON-LD 与公开视图仍属于 `262.7`。
+
+`262.7` 已于 2026-07-29 完成开放科研互操作切片。新的 exporter 在验证
+`ProvenanceBundle` 后，以旁路目录生成 RO-Crate 1.3、Workflow RO-Crate 1.0、Process/Workflow/
+Provenance Run RO-Crate 0.5、W3C PROV JSON-LD、CodeMeta 3.1、CFF 1.2、CRediT、DataCite 4.7
+draft、SPDX 3.0.1 与 SLSA provenance-v1。Workflow Run 0.5 仍正式继承 RO-Crate 1.1，因此
+descriptor 同时声明 1.3 当前 profile 与 1.1/Workflow RO-Crate 兼容 profile；这两个版本层被明确
+区分，不把旧 profile 验证冒充为 1.3 外部认证。无真实 DOI 时 DataCite draft 固定
+`depositReady=false` 且不生成 identifier；SWHID 只允许与 Git commit 相等的 revision intrinsic ID，
+不声称已经归档。SLSA 只描述本地导出构建，明确 unsigned、无 level、无 trusted builder 与无科研
+真值 attestation。
+
+每次导出分为 internal-complete、review-reproduction 与审批后才可能出现的 public view。review
+对 JSON 私有路径和敏感字段做确定性脱敏，不携带内部 provenance bundle；public 还必须同时通过
+scope-matched 人工批准、显式 public artifact、许可与源文件敏感扫描。独立 clean-directory verifier
+只在 `python -I` 下重算声明的 SHA-256 与冻结 JSON pointer 断言，不重跑科研实验。真实
+`task260-autonomous-ccfb-v1/round-001` 的七个源产物和 provenance bundle hash 未变，六个负结果/
+决策断言在新目录通过，public view 因无批准和无公开许可产物保持关闭。四个 WRROC/WROC 必需 profile
+和 WROC 推荐 profile 均由外部 validator 通过，CFF 1.2.0 与 SPDX 3.0.1 官方 JSON Schema
+均为零错误；Run-Crate
+推荐层只保留“本地 workflow 文件应使用 HTTP ID”的两个重复 advisory，因为把已打包文件改成远程
+资源会破坏 RO-Crate 数据实体语义。该任务没有替换旧 reproducibility package、修改科研结果、升级
+依赖或执行公开发布；旧服务迁移仍属于 `262.8`。

@@ -1012,7 +1012,7 @@ idempotency 和 serialization 的 characterization tests，再单独迁移依赖
 | 262.9 | task/trial/trajectory/outcome eval、OTel、Agentic security fault matrix | promotion 同时满足 outcome、evidence、security、cost 和重复试验门 |
 | 262.10 | LangGraph/LangChain 升级、兼容窗口、旧路径弃用、rollback rehearsal | 两个真实 vertical run、全量质量门、独立复现与回滚演练通过 |
 
-### 26.3 已完成的内核切片：262.2—262.6
+### 26.3 已完成的内核切片：262.2—262.7
 
 `262.2` 只新增纯 Pydantic/标准库契约和测试，不修改现有服务写路径。最小交付包括：
 
@@ -1075,8 +1075,28 @@ artifact hash、confidence、validity 和 supersession 的 source-anchored Markd
 重跑或重解释科学实验；它生成 bundle hash
 `a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782`，阻断嵌套篡改和缺失 gate
 generation，并在隔离 Vault 中写入 12 条批准投影。全量 858 tests、7 skips、86% coverage、Ruff 与
-145-file Mypy 通过。Open Science research-object export、许可/隐私/public views 仍由 `262.7`
-负责，旧服务迁移仍由 `262.8` 负责。
+145-file Mypy 通过。该切片本身没有生成 Open Science research object；后续 `262.7` 独立完成
+许可/隐私/public-view 边界，旧服务迁移仍由 `262.8` 负责。
+
+`262.7` 在现有 reproducibility package 旁增加 `reports.open_science`，不替换旧目录或 writer。
+exporter 只接受完整校验的 provenance-v2 bundle、显式 artifact policy、统一 metadata 与冻结 JSON
+assertions；源 hash 漂移、非法 path、未知 CRediT role、DOI/ORCID/SWHID 不一致、secret-like 内容和
+public approval/license/privacy 缺口全部 fail closed。每个 view 生成 RO-Crate 1.3 + WRROC/WROC
+兼容 JSON-LD、PROV JSON-LD、workflow、CodeMeta/CFF/CRediT/DataCite、SPDX 3.0.1、unsigned
+SLSA-v1、README、export policy、reproduction plan、hash manifest 与 validation report。internal
+可以保留 canonical bundle，review 使用确定性 JSON 脱敏，public 必须有 scope-matched 人工批准和
+显式开放许可产物；任何导出都不执行 upload、DOI mint、publication 或 submission。
+
+真实 `task260-autonomous-ccfb-v1/round-001` opt-in smoke 保持 bundle hash
+`a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782`，校验七个原始 artifact，
+在隔离目录重算四个被断言文件并通过六个冻结负结果/决策断言。review 不含内部 bundle 或私有路径，
+public 因缺少批准和 public artifact 正确不生成。`rocrate-validator` 0.11.2 对 Workflow RO-Crate
+1.0、Process/Workflow/Provenance Run 0.5 的 required checks 全部通过，WROC recommended 也零问题；
+其余 recommended 仅剩 packaged workflow 相对文件 ID 与 HTTP-ID 建议冲突的两个 advisory。
+validator 尚无 RO-Crate 1.3 profile，因此没有把旧 base-profile 结果冒充 1.3 外部验证；内部 1.3
+contract 与官方规范单独校验。官方 CFF 1.2.0 与 SPDX 3.0.1 JSON Schema 均为零错误。8 个
+focused tests、1 个真实 smoke、866-test regression、全量 Ruff 与 146-file Mypy 通过；旧服务迁移
+仍由 `262.8` 负责。
 
 ### 26.4 迁移与回滚
 
@@ -1119,8 +1139,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
   LangGraph characterization 通过；一个开发 fixture 已在统一 Harness/Control Graph 上完成并双重封印。
 - **G1（证据图，2026-07-29 已通过）**：262.6 的 W3C PROV-aligned bundle、EvidenceGraph v1
   compatibility、批准制 Vault projection、真实 round 查询与篡改阻断通过。
-- **O1（开放科研对象）**：262.7 通过，一个真实 round 导出经 profile/许可/隐私门验证的 research
-  object；不得把 G1 的内部 provenance bundle 冒充公开 RO-Crate。
+- **O1（开放科研对象，2026-07-29 已通过）**：262.7 的真实负结果 round 已导出为经 profile、
+  许可、隐私、hash 和独立 assertion replay 验证的 internal/review research objects；public view
+  保持审批关闭，G1 的内部 provenance bundle 未被冒充为公开 RO-Crate。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 

@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 01:12:30 +08:00 - Codex - Task 262.7 validated Open Science research objects
+
+- Request: Continue the evidence-first vNext upgrade in sequence by exporting validated Open Science research objects over provenance v2, preserving the existing reproducibility package and legacy writers, separating internal/review/public views, and proving profile, privacy, identifier/license/contribution, supply-chain, and clean-directory reproduction gates on one existing real negative-result round.
+- Files changed:
+  - `src/autoresearch/evidence/__init__.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/open_science.py`
+  - `tests/unit/reports/test_open_science.py`
+  - `tests/smoke/test_open_science_real_round.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-7-open-science-research-object.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a side-by-side `reports.open_science` exporter that consumes a verified provenance-v2 bundle, explicit artifact policies, unified metadata, and frozen JSON assertions. It does not replace the existing reproducibility package, mutate source artifacts, or publish anything.
+  - Added RO-Crate 1.3 JSON-LD with explicit RO-Crate 1.1/Workflow RO-Crate 1.0 compatibility for Process, Workflow, and Provenance Run Crate 0.5; W3C PROV JSON-LD; a prospective workflow; a reader-facing README; and cross-linked actions, tools, contributors, affiliations, artifacts, profiles, and build instructions.
+  - Added consistent CodeMeta 3.1, Citation File Format 1.2.0, all fourteen CRediT roles, DataCite 4.7 draft, DOI/ORCID/SWHID checks, SPDX 3.0.1 Core/Software/SimpleLicensing/Build metadata, and SLSA provenance-v1 construction records. Missing DOI remains an honest non-deposit-ready draft; SWHID must match the Git revision; SLSA is explicitly unsigned with no level, trusted-builder, or scientific-attestation claim.
+  - Added internal-complete and sanitized review/reproduction views plus a fail-closed public gate requiring scope-matched human approval, explicitly public artifacts, compatible artifact and object licenses, and clean sensitive-content scans. JSON sanitization replaces private paths and secret-valued fields deterministically; the review view excludes the internal provenance bundle. User artifacts cannot collide with or overwrite generated crate metadata.
+  - Added complete hash-manifest, cross-format consistency, payload/reference, visibility, secret/private-path, SPDX/SLSA subject, and approval validation. Added a pure-standard-library verifier that runs under `python -I` in a copied clean directory and recomputes artifact hashes and frozen assertions without claiming to rerun the scientific experiment.
+  - Changed provenance package re-exports to lazy loading after clean import verification exposed an eager `reports -> evidence -> campaign -> reports` cycle. Existing public names and legacy evidence behavior remain intact.
+  - Ran the real opt-in export against `task260-autonomous-ccfb-v1/round-001` without rerunning science or calling a model. Its bundle hash remained `a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782`; seven source artifact hashes remained bound, six negative-result/decision assertions passed in a clean directory, review contained no repository-private paths or internal bundle, and public materialization remained correctly blocked.
+  - Preserved the strangler boundary: Campaign/Competition/Sprint writers, historical scientific artifacts and gates, dependency versions, public release, DOI minting, SLSA-level claims, and submission authority remain unchanged.
+- Verification:
+  - Focused `poetry run pytest tests/unit/reports/test_open_science.py -q --no-cov`: passed 8 tests covering internal/review/public views, source immutability, generated-path collision, sanitization, profile/cross-format metadata, no-DOI DataCite behavior, CFF/SWHID, unsigned SLSA policy, clean reproduction, tamper detection, artifact/object license and approval blocking, invalid identifiers/roles, and secret rejection.
+  - Focused `poetry run ruff check src/autoresearch/reports/open_science.py tests/unit/reports/test_open_science.py tests/smoke/test_open_science_real_round.py`: passed.
+  - Focused `poetry run mypy src/autoresearch/reports/open_science.py`: passed with no issues.
+  - Default smoke collection skips `tests/smoke/test_open_science_real_round.py` unless `AUTORESEARCH_OPEN_SCIENCE_REAL=1`.
+  - Real `$env:AUTORESEARCH_OPEN_SCIENCE_REAL='1'; $env:AUTORESEARCH_OPEN_SCIENCE_CAMPAIGN='runs/manual-live/task260-autonomous-ccfb-v1'; $env:AUTORESEARCH_OPEN_SCIENCE_OUTPUT='runs/manual-live/task262-open-science-v6'; poetry run pytest tests/smoke/test_open_science_real_round.py -q --no-cov`: passed 1 test in 1.65 seconds. The output contains both views, clean reproduction, source hashes, validator reports, and `smoke-summary.json`; no public view or publication was produced.
+  - External `rocrate-validator` 0.11.2 in a temporary environment outside the repository passed required validation for `workflow-ro-crate-1.0`, `process-run-crate-0.5`, `workflow-run-crate-0.5`, and `provenance-run-crate-0.5`. Workflow RO-Crate recommended validation passed with zero issues; each inherited Run-Crate recommended report retained only two duplicate advisories for the relative ID of the same packaged local workflow file. The tool exposes base RO-Crate profiles only through 1.2, so no external 1.3 claim was made.
+  - Official `https://raw.githubusercontent.com/citation-file-format/citation-file-format/1.2.0/schema.json` validation with `jsonschema` 4.25.1 and PyYAML 6.0.2 in the temporary validator environment: passed with zero errors for the v6 review CFF.
+  - Official `https://spdx.org/schema/3.0.1/spdx-json-schema.json` validation with `jsonschema` 4.25.1: passed with zero errors for the v6 review SBOM.
+  - Full `poetry run pytest tests/smoke tests/unit -q`: passed 866 tests with 8 opt-in live tests skipped in 79.50 seconds; repository line coverage remained 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 146 source files.
+  - Final `git diff --check`, staged diff check, task/Vault link check, public import smoke, status review, and staged-file review passed before commit.
+- Problems:
+  - Added mitigated `P-20260729-031` for early PowerShell/command/path/fixture/import/profile diagnostics, the validator's missing RO-Crate 1.3 profile, and its two retained packaged-file/HTTP-ID advisories.
+  - Updated open `P-20260728-024`: event, control, evidence, and Open Science semantics are now shared, but duplicate legacy control/write planes remain until task `262.8` completes parity-gated migration.
+- Follow-up:
+  - Implement task `262.8` in separate focused commits, migrating Competition, Campaign, and Sprint one vertical slice at a time through characterization, shadow comparison, reversible feature flags, two equivalent formal runs, and rollback rehearsal. Do not upgrade LangGraph/LangChain or disable a legacy writer during the first migration slice.
+
 ### 2026-07-29 00:35:11 +08:00 - Codex - Task 262.6 W3C PROV-aligned evidence v2 and Vault projections
 
 - Request: Continue the evidence-backed vNext upgrade in sequence by implementing W3C PROV-aligned provenance/evidence v2, preserving EvidenceGraph v1 readers, projecting only approved source-anchored records into Obsidian, and proving a tamper-blocking causal query over one existing real campaign round before any Open Science export or service migration.

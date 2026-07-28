@@ -22,6 +22,7 @@ validation, review, or paper-build artifacts.
 - [[projects/ai_researcher_system/progress/task-262-4-bounded-harness|Task 262.4 bounded HarnessSpec and episode packages]] — versioned execution policies, truthful blocked/failed/negative-result semantics, sealed content-addressed episodes, deterministic fixtures, and a verified local Qwen adapter.
 - [[projects/ai_researcher_system/progress/task-262-5-durable-control-graph|Task 262.5 durable LoopSpec and Control Graph]] — frozen loop topology and policy, journal-only replay, idempotent crash recovery, explicit approval/retry/compensation/pivot/escalation/holdout semantics, LangGraph characterization, and a sealed Harness-to-Control-Graph development vertical.
 - [[projects/ai_researcher_system/progress/task-262-6-prov-evidence-v2|Task 262.6 W3C PROV-aligned evidence v2 and Vault projections]] — content-addressed Entity/Activity/Agent causal records, support/contradict/limit evidence, validation history, EvidenceGraph v1 compatibility, approval-gated source notes, and a tamper-blocking real-round query.
+- [[projects/ai_researcher_system/progress/task-262-7-open-science-research-object|Task 262.7 validated Open Science research objects]] — RO-Crate/Workflow Run/PROV interoperability, consistent software/citation/contribution/identifier metadata, SPDX/SLSA construction records, approval-gated views, sensitive-data checks, and clean-directory assertion replay over a real negative-result round.
 
 ## Current Competition Evidence
 
