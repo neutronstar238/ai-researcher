@@ -809,4 +809,14 @@ LangGraph 主版本升级、图数据库和旧状态机弃用都延后到 charac
 canonical SHA-256；图快照拒绝重复、悬空、跨平面、自环和未显式标记的控制循环，并稳定导出 JSON
 Schema。31 个 focused/property tests 覆盖全部 contract 代码，全量回归通过。该任务没有写 journal、
 没有迁移旧服务，也没有改变依赖或历史结果；链连续性、原子持久化、敏感字段拒绝、replay 与 fork
-仍由 `262.3` 验证。
+由 `262.3` 继续验证。
+
+`262.3` 已在同日完成可恢复事件层：每个事件以连续序号命名的独立 canonical JSON 文件提交，经临时
+文件 `fsync` 后原子替换；独占 writer lease、expected-lineage、幂等键、parent hash、run lineage 与
+terminal seal 共同阻断并发覆盖、重复副作用、断链和终态追加。journal 可在验证全部已提交字节后选择
+checkpoint、确定性 replay，并创建首事件绑定不可变父 checkpoint 的新 run；非终态 fork 必须显式
+批准。故障注入覆盖 pending/event/seal 间断、stale writer、corruption 与 crash/resume，事件全信封在
+持久化前拒绝 secret-like 内容和直接 email 标识。33 个 focused/fault/property tests、临时文件系统
+smoke、811-test regression 及全量 Ruff/Mypy 均通过；`journal.py` 行覆盖率为 89%。该实现仍未接入
+Competition、Campaign、Sprint 或 AuditLog，旧状态文件继续权威，下一切片由 `262.4` 定义
+`HarnessSpec` 与 episode package。

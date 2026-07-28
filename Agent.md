@@ -64,6 +64,49 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-28 15:16:37 +08:00 - Codex - Task 262.3 atomic event journal, replay, and fork
+
+- Request: Continue the evidence-backed vNext refactor sequentially by adding durable event history, deterministic recovery/replay, and immutable-parent fork semantics before introducing a harness or migrating any current service.
+- Files changed:
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/kernel/contracts.py`
+  - `src/autoresearch/kernel/journal.py`
+  - `tests/unit/kernel/test_journal.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-3-atomic-event-journal.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added a provider-neutral, directory-backed `EventJournal` using the standard library and task `262.2` contracts. Each committed event is a separate canonical immutable file named by a ten-digit contiguous sequence instead of a risky in-place JSONL append.
+  - Added content-addressed journal metadata, an exclusive `O_EXCL` writer lease, optional expected-lineage compare-and-append, pending-file `fsync`, same-directory atomic replacement, and directory `fsync` where the platform exposes it.
+  - Every snapshot validates canonical bytes, Pydantic schema, event content hash, filename/sequence continuity, run identity, unique event/idempotency identity, parent ID/hash chain, terminal placement, folded run lineage, and terminal seal. Non-canonical, partial, malformed, tampered, missing, or unexpected records fail closed.
+  - Added exact idempotent retry: a previously committed event with the same key/hash is returned without repeating a side effect, while changed content under that key is rejected. Stale expected lineage, concurrent writers, broken parents, terminal appends, and a fork child that reuses its parent run ID are rejected.
+  - Added deterministic terminal seals and explicit recovery. A pending-only interrupted write is discarded under the lease; an event committed before interruption is reused on retry; a terminal event committed before its seal receives the same seal during recovery.
+  - Added validated checkpoint selection, reducer-based deterministic replay, and child journals anchored to an immutable parent checkpoint. A non-terminal fork requires an explicit policy flag and parent history is never rewritten.
+  - Scanned the complete event envelope before persistence for sensitive field names, email identifiers, bearer credentials, API-key-like values, and private keys. Non-sensitive token/cost metrics remain allowed.
+  - Exported the journal API through `autoresearch.kernel`, marked only task `262.3` complete, and recorded its frozen protocol and evidence in the Obsidian Vault.
+  - Preserved the strangler boundary: Competition, Campaign, Sprint, EvidenceGraph, AuditLog, dependencies, and all existing persisted service/scientific files are unchanged and remain authoritative.
+- Verification:
+  - Final focused `poetry run pytest tests/unit/kernel/test_journal.py -q`: passed 33 unit, fault-injection, and Hypothesis property tests; `src/autoresearch/kernel/journal.py` reached 89% line coverage.
+  - The focused suite covers create/open, canonical metadata, contiguous append, idempotent retry/conflict, stale lineage/sequence, run/parent/event-ID rejection, full-envelope sensitive scanning, active/dead writer leases, pending/event/seal interruption, explicit recovery, partial/non-canonical/hash corruption, filename gaps, metadata/seal tampering, terminal append, replay/checkpoint prefixes, terminal and explicitly approved non-terminal forks, anchor enforcement, and property-generated reopen/replay/checkpoint equivalence.
+  - Focused `poetry run ruff check src/autoresearch/kernel tests/unit/kernel`: passed.
+  - Focused `poetry run mypy src/autoresearch/kernel`: passed with no issues in 3 source files.
+  - Temporary-filesystem smoke through Poetry created a journal, atomically appended and sealed one event, reopened it, validated its lineage/seal, and replayed it; output was `ok events=1 lineage=5790e1826e4a261031934d137eaaff32eb5e9ea74414776ac2c465ae7b612844 sealed=True`.
+  - Full `poetry run pytest -q`: passed with 811 tests and 5 opt-in live tests skipped; total repository line coverage was 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 138 source files.
+  - `git diff --check` and task/plan/Vault link consistency checks passed before the focused commit.
+  - Initial fixture and mechanical lint diagnostics are recorded in resolved problem `P-20260728-026`.
+  - No external data source, model, graph runtime, or provider is part of this local persistence slice, so an opt-in external live smoke was not applicable.
+- Problems:
+  - Added and resolved `P-20260728-026` for the initial idempotency/lease-time test-fixture failures and Ruff normalization findings.
+  - Updated open `P-20260728-024`: the durable event spine now exists, but duplicate service control planes remain until tasks `262.4`—`262.8` complete harness/loop/projection/export and parity-gated migration.
+- Follow-up:
+  - Implement task `262.4` in a separate commit: provider-neutral `HarnessSpec`, bounded task/context/model/tool/memory/state/permission/verification/observability/failure/cost/intervention/evaluation policies, truthful blocked/failed events, and replayable episode packages.
+
 ### 2026-07-28 14:36:25 +08:00 - Codex - Task 262.2 canonical event and four-plane graph contracts
 
 - Request: Begin implementation only after the vNext refactor plan, using the first minimal slice to establish a provider-neutral event and graph language without changing existing research services.

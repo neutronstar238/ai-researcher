@@ -1012,7 +1012,7 @@ idempotency 和 serialization 的 characterization tests，再单独迁移依赖
 | 262.9 | task/trial/trajectory/outcome eval、OTel、Agentic security fault matrix | promotion 同时满足 outcome、evidence、security、cost 和重复试验门 |
 | 262.10 | LangGraph/LangChain 升级、兼容窗口、旧路径弃用、rollback rehearsal | 两个真实 vertical run、全量质量门、独立复现与回滚演练通过 |
 
-### 26.3 首个实现切片：262.2
+### 26.3 已完成的内核切片：262.2—262.3
 
 `262.2` 只新增纯 Pydantic/标准库契约和测试，不修改现有服务写路径。最小交付包括：
 
@@ -1024,7 +1024,16 @@ idempotency 和 serialization 的 characterization tests，再单独迁移依赖
   round-trip 与 tamper detection；
 - JSON Schema 与 deterministic serialization 测试。
 
-完成 `262.2` 后再实现 journal；不得在此切片顺手改 Campaign、EvidenceGraph 或依赖版本。
+`262.3` 在上述契约上增加纯本地 journal，仍不修改 Campaign、EvidenceGraph 或依赖版本。其磁盘
+协议使用 `metadata.json`、连续序号事件文件、独占 writer lease、pending 临时目录和确定性
+`terminal-seal.json`。提交路径先写新临时文件并 `fsync`，再在同目录原子替换；读取路径逐文件验证
+canonical bytes、schema、event hash、sequence、parent hash、幂等键、lineage 与 terminal seal。
+
+recovery 只在持有 lease 时丢弃未提交 pending 文件；若 terminal event 已提交而 seal 尚未写入，则从
+已验证 lineage 重建同一 seal。checkpoint/replay 只消费验证后的 prefix；fork 只在新目录创建新 run，
+首事件必须引用冻结的父 checkpoint，非终态 fork 需要显式 policy。敏感扫描在任何写入前覆盖完整事件
+信封。33 个 focused/fault/property tests、临时文件系统 smoke、811-test regression 和全量
+Ruff/Mypy 已通过。旧服务继续权威，shadow adoption 留给 `262.8`。
 
 ### 26.4 迁移与回滚
 
@@ -1057,7 +1066,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 
 - **K1（契约，2026-07-28 已通过）**：262.2 的 31 个 focused/property tests、778-test
   regression、全量 Ruff/Mypy 和 schema/import smoke 通过；旧服务、依赖和持久结果零变化。
-- **K2（可恢复事件）**：262.3 通过，可确定性 replay/fork。
+- **K2（可恢复事件，2026-07-28 已通过）**：262.3 的 33 个 focused/fault/property tests、
+  临时文件系统 smoke、811-test regression 和全量 Ruff/Mypy 通过；可确定性 replay/fork，旧服务
+  写路径零变化。
 - **H1/L1（可控执行）**：262.4—262.5 通过，一个开发 fixture 在统一 Harness/Loop 上完成。
 - **G1/O1（可交换证据）**：262.6—262.7 通过，一个真实 round 导出标准 provenance/research object。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。

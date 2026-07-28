@@ -433,7 +433,7 @@ def canonical_sha256(value: Any) -> str:
 
 
 def _ensure_json_value(value: object, *, path: str) -> None:
-    if value is None or isinstance(value, (str, bool, int)):
+    if value is None or isinstance(value, str | bool | int):
         return
     if isinstance(value, float):
         if not math.isfinite(value):

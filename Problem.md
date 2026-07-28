@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260728-026 - Initial journal checks exposed test-fixture timing and mechanical lint defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-28 15:00:00 +08:00
+- Source: Task `262.3` focused journal, fault-injection, property, and quality verification.
+- Symptom: The first focused journal run passed 27 of 30 tests. One changed-content idempotency fixture inherited the already-committed event as its parent while forcing sequence one, so the contract rejected the fixture before the journal could test the key conflict. Two writer-lease fixtures used a fixed UTC time that was still in the future relative to the wall clock, so the intended alive/dead-process branches were not reached. Focused Ruff later reported equivalent union-type `isinstance` modernization in `contracts.py` and `journal.py`, followed by import ordering after Hypothesis coverage was added. The first documentation consistency script also assumed that the dependency graph code block was a top-level JSON array instead of an object containing `waves`; its corrected rerun then requested a literal `EventJournal` class name that the initial Vault prose had described only generically.
+- Impact: The failed commands delayed the verification gate but did not expose a committed journal defect, change a legacy state file, or produce a scientific result.
+- Evidence: The initial run reported exactly three fixture failures and 27 passes. After constructing the conflicting sequence-one event without a parent and making lease times relative to the current clock, all 30 tests passed. After full-envelope and property coverage were added, the final focused suite passed 33 tests. The first consistency probe reported `dependency graph JSON block not found`; the second reported `required term missing: EventJournal`.
+- Root cause: The generic next-event helper correctly inferred the current parent but was inappropriate for constructing deliberately conflicting historical content; fixed absolute test time crossed the current wall-clock boundary; new imports and equivalent type checks were not yet in Ruff's canonical form; the ad hoc documentation probe did not initially match the repository's actual dependency-graph wrapper or the Vault note's generic wording.
+- Workaround: None remains necessary.
+- Next action: Keep malformed-event fixtures independent of helpers that infer current journal state, and use relative times for lease-age tests.
+- Linked tasks: `262.3`.
+- Resolution: Built the conflicting event directly, used five-minute-old lease timestamps and a large threshold for the young-lease branch, adopted union-type `isinstance` syntax, normalized imports, corrected the probe to parse the JSON object and `waves`, named `EventJournal` explicitly in the Vault note, and reran all focused and broad gates.
+- Verification: 33 focused unit/fault/property tests passed with 89% `journal.py` line coverage; temporary-filesystem smoke passed; 811 tests passed and 5 opt-in live tests skipped; full Ruff passed; Mypy passed for 138 source files; the final consistency probe parsed 186 waves, found task `262.3` in wave 178, and verified the Vault note and required result terms.
+
 ### P-20260728-025 - Initial kernel checks used an incomplete active-Python environment and exposed mechanical lint defects
 
 - Status: Resolved
@@ -67,10 +83,10 @@ update a factual problem entry below.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete tasks `262.3` through `262.8`: append-only journal, HarnessSpec, LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
+- Next action: Complete tasks `262.4` through `262.8`: HarnessSpec, LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
-- Resolution: Task `262.1` freezes the migration architecture and rollback gates, and task `262.2` supplies the shared event/graph language without changing legacy behavior. The underlying duplication remains open until parity-gated migration completes.
-- Verification: Planning consistency, dependency JSON, source/link audit, and the focused task `262.1` commit are recorded in `Agent.md`.
+- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, and task `262.3` supplies atomic lineage, recovery, replay, and fork without changing legacy behavior. The underlying duplication remains open until parity-gated migration completes.
+- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.3` passed 33 focused tests, temporary-filesystem smoke, an 811-test regression, Ruff, and Mypy.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 
