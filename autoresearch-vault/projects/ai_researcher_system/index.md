@@ -20,6 +20,7 @@ validation, review, or paper-build artifacts.
 - [[projects/ai_researcher_system/progress/task-262-2-kernel-contracts|Task 262.2 canonical event and four-plane graph contracts]] — strict content-addressed run-event and graph schemas, explicit control-loop boundaries, deterministic JSON Schema export, and zero legacy-service behavior change.
 - [[projects/ai_researcher_system/progress/task-262-3-atomic-event-journal|Task 262.3 atomic event journal, replay, and fork]] — contiguous immutable event files, lineage and terminal seals, idempotent crash recovery, deterministic replay/checkpoint/fork, and zero legacy-service write-path change.
 - [[projects/ai_researcher_system/progress/task-262-4-bounded-harness|Task 262.4 bounded HarnessSpec and episode packages]] — versioned execution policies, truthful blocked/failed/negative-result semantics, sealed content-addressed episodes, deterministic fixtures, and a verified local Qwen adapter.
+- [[projects/ai_researcher_system/progress/task-262-5-durable-control-graph|Task 262.5 durable LoopSpec and Control Graph]] — frozen loop topology and policy, journal-only replay, idempotent crash recovery, explicit approval/retry/compensation/pivot/escalation/holdout semantics, LangGraph characterization, and a sealed Harness-to-Control-Graph development vertical.
 
 ## Current Competition Evidence
 

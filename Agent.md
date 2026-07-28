@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 00:10:15 +08:00 - Codex - Task 262.5 durable LoopSpec and Control Graph
+
+- Request: Continue the evidence-backed vNext upgrade by implementing the next checked task as a frozen, recoverable LoopSpec/Control Graph with explicit approval, retry, compensation, pivot, escalation, holdout, and LangGraph adapter boundaries, then prove one Harness-to-Control-Graph development vertical before any service migration or dependency upgrade.
+- Files changed:
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/kernel/loop.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/runtime/loop_langgraph.py`
+  - `tests/unit/kernel/test_control_graph.py`
+  - `tests/unit/kernel/test_loop_harness_vertical.py`
+  - `tests/unit/runtime/test_loop_langgraph.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-5-durable-control-graph.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added strict versioned contracts for loop nodes, edges, guards, resource and retry budgets, permissions, approvals, holdout visibility, terminal states, and non-executable next-graph proposals. `LoopSpec` and `LoopRunSnapshot` carry canonical content hashes and reject nested mutation.
+  - Added a deterministic `ControlGraphRuntime` whose state is derived only from the atomic `EventJournal`. It persists a stable node idempotency key before execution, reuses it after a crash, recovers terminal seals, rejects semantically rewritten replay state, and records explicit approval/retry/compensation/stop/pivot/escalation transitions.
+  - Enforced scientific and authority boundaries: negative-result pivots require a changed mechanism family; revealed holdouts block later adaptive nodes; model proposals cannot replace the frozen current graph, compute a scientific gate, expand permissions, or authorize release; compensation requires a committed side effect.
+  - Added `loop_result_from_episode()` so one verified content-addressed Harness episode projects its truthful environment outcome, final artifact references, normalized costs, lineage, and seal into provider-neutral loop semantics without treating model prose as a scientific result.
+  - Added a thin `LangGraphControlAdapter` behind the canonical domain runtime and a content-addressed characterization report. Installed LangGraph 0.2.76/LangChain Core 0.2.43 checkpoint/resume, static/dynamic interrupt, child subgraph, parallel-superstep, idempotency, and JSON-state behavior passed without changing dependency versions.
+  - Preserved the strangler boundary: Competition, Campaign, Sprint, EvidenceGraph, AuditLog, existing scientific artifacts, and legacy state files remain authoritative and unchanged.
+- Verification:
+  - Focused `poetry run pytest tests/unit/kernel/test_control_graph.py tests/unit/kernel/test_loop_harness_vertical.py tests/unit/runtime/test_loop_langgraph.py -q`: passed 24 tests in 15.73 seconds; `loop.py` reached 86% and `runtime/loop_langgraph.py` 97% line coverage.
+  - Legacy/new collection `poetry run pytest tests/unit/experiments/test_loop.py tests/unit/kernel/test_control_graph.py tests/unit/kernel/test_loop_harness_vertical.py tests/unit/runtime/test_loop_langgraph.py -q`: passed 32 tests in 14.17 seconds.
+  - Focused Ruff and source-inclusive Mypy passed after import, `JsonValue`, optional-seal, and installed-LangGraph boundary fixes.
+  - Manual PowerShell here-string piped to `poetry run python -` executed the production `HarnessRunner -> loop_result_from_episode -> ControlGraphRuntime -> characterize_installed_langgraph` vertical under `runs/manual-live/task2625-control-vertical-20260728/`. It produced episode hash `0665caa73930a6b89533549e8b207742773b7116742e354333aa92a132eb98cc`, LoopSpec hash `904ec34c037b9089041ec83cefea565a178622437665745f9e6e1b8625c887cb`, successful snapshot hash `a3a1c3ee1763e2f956ff9c070ad94b73a73cafcd1d46c573cf01a8c4027fa0a9`, independently sealed 2-event/6-event journals, and LangGraph characterization hash `92983004c099b14799cd4102b644072013016541ae3da659e7380161b448fb3e`.
+  - Full `poetry run pytest tests/smoke tests/unit -q`: passed with 848 tests and 6 opt-in live tests skipped in 80.17 seconds; total repository line coverage was 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 142 source files.
+  - Final documentation/task dependency consistency and `git diff --check` were rerun before the focused commit.
+- Problems:
+  - Added and resolved `P-20260728-029` for initial graph API, retry topology, edge-guard, fixture, import/type, installed-LangGraph boundary, and duplicate pytest-module-name findings.
+  - Updated open `P-20260728-024`: the shared durable Control Graph now exists, but legacy service control-plane duplication remains until tasks `262.6`—`262.8` complete provenance/export projections and parity-gated migration.
+- Follow-up:
+  - Implement task `262.6` in a separate commit: W3C PROV-aligned evidence v2, EvidenceGraph v1 compatibility projection, and source-anchored Obsidian Vault notes, demonstrated on one real campaign round without changing its scientific endpoint.
+
 ### 2026-07-28 23:37:18 +08:00 - Codex - Task 262.4 bounded HarnessSpec and episode packages
 
 - Request: Continue the evidence-backed vNext refactor by adding a provider-neutral, policy-bounded Harness and truthful episode packages, including a deterministic fixture and one real configured local-Qwen path, before implementing multi-node loop control.

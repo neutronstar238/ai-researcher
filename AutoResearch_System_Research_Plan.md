@@ -832,3 +832,15 @@ grader/configuration 错误进入 `failed`，执行有效但未过冻结 grader 
 focused tests、真实本地 `qwen3.5-sprint:9b-8k` opt-in smoke、824-test regression、全量 Ruff 与
 140-file Mypy 均通过。该 smoke 只证明 provider adapter 与 sealed episode，不是模型质量或科研结果；
 多节点 retry/pivot/resume 必须由 `262.5` 的 LoopSpec/Control Graph 实现，不能藏进 Harness。
+
+`262.5` 随后完成持久 Control Graph。content-addressed `LoopSpec` 显式冻结 node、edge、guard、预算、
+retry、approval、compensation、stop、pivot、escalation、holdout 可见性与 terminal status；确定性
+`ControlGraphRuntime` 只从 `EventJournal` 回放状态，在执行副作用前持久化稳定 idempotency key，并在
+terminal event 与 seal 之间崩溃时恢复同一终态。模型只能提交下一 graph version 的非执行提案，不能
+改写当前图、计算 scientific gate、扩权或批准发布。薄 `LangGraphControlAdapter` 位于 domain contract
+之外；在不升级依赖的情况下，已冻结已安装 LangGraph 0.2.76/LangChain Core 0.2.43 的 checkpoint/
+resume、静态与动态 interrupt、subgraph、parallel superstep、幂等和 JSON serialization 行为。一个
+development vertical 将 sealed `EpisodePackage` 投影为 provider-neutral node result，并生成独立封印
+的 Harness 与 Control Graph journals；这只证明控制/恢复链，不是科研结果或旧服务 migration。24 个
+focused tests、848-test regression、全量 Ruff 与 142-file Mypy 均通过；`262.6` 将在此 event spine
+上增加 W3C PROV-aligned evidence v2 与 source-anchored Vault projection。

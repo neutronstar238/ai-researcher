@@ -1012,7 +1012,7 @@ idempotency 和 serialization 的 characterization tests，再单独迁移依赖
 | 262.9 | task/trial/trajectory/outcome eval、OTel、Agentic security fault matrix | promotion 同时满足 outcome、evidence、security、cost 和重复试验门 |
 | 262.10 | LangGraph/LangChain 升级、兼容窗口、旧路径弃用、rollback rehearsal | 两个真实 vertical run、全量质量门、独立复现与回滚演练通过 |
 
-### 26.3 已完成的内核切片：262.2—262.4
+### 26.3 已完成的内核切片：262.2—262.5
 
 `262.2` 只新增纯 Pydantic/标准库契约和测试，不修改现有服务写路径。最小交付包括：
 
@@ -1045,6 +1045,21 @@ outcome、grader、cost、intervention、approval、failure、tool call、artifa
 OpenAI-compatible client 共用同一 domain contract，本地 `qwen3.5-sprint:9b-8k` live smoke 已产生
 sealed success episode。31 个 focused tests、1 个真实 live test、824-test regression、全量 Ruff
 与 140-file Mypy 已通过；旧服务、依赖和已有状态继续不变。
+
+`262.5` 在同一 journal contract 上增加 content-addressed `LoopSpec`、确定性
+`ControlGraphRuntime` 与 content-addressed `LoopRunSnapshot`。node/edge/guard、预算、retry、
+approval、compensation、stop/pivot/escalation、holdout visibility 和 terminal status 全部显式
+版本化；node side effect 在执行前获得并持久化稳定 idempotency key，resume 只回放 journal，terminal
+event 后 seal 前崩溃可重建同一 seal。模型的下一图提案只进入记录，不能替换冻结图、计算 scientific
+gate、扩展 permission 或批准 release。
+
+薄 `LangGraphControlAdapter` 只驱动 domain runtime，不能成为第二状态源。当前锁定的 LangGraph
+0.2.76/LangChain Core 0.2.43 已通过 checkpoint/resume、static/dynamic interrupt、subgraph、
+parallel superstep、idempotency 和 JSON serialization characterization，未升级依赖。一个保留的
+development vertical 通过 verified `EpisodePackage` 把 Harness 接入 Control Graph，产生 2-event
+sealed episode journal、6-event sealed loop journal 和 content-addressed success snapshot。24 个
+focused tests、32-test legacy/new collection compatibility matrix、848-test regression、全量 Ruff
+与 142-file Mypy 已通过。Competition、Campaign、Sprint 仍由旧路径权威执行，cutover 留给 `262.8`。
 
 ### 26.4 迁移与回滚
 
@@ -1082,7 +1097,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
   写路径零变化。
 - **H1（有界 Harness，2026-07-28 已通过）**：262.4 的版本化 policy、sealed episode、
   deterministic fixture、真实本地 Qwen smoke、824-test regression 与全量质量门通过。
-- **L1（持久 Loop）**：262.5 通过，一个开发 fixture 在统一 Harness/Control Graph 上完成。
+- **L1（持久 Loop，2026-07-29 已通过）**：262.5 的冻结 LoopSpec、journal-only replay、
+  idempotent recovery、approval/retry/compensation/pivot/escalation/holdout fault matrix 与
+  LangGraph characterization 通过；一个开发 fixture 已在统一 Harness/Control Graph 上完成并双重封印。
 - **G1/O1（可交换证据）**：262.6—262.7 通过，一个真实 round 导出标准 provenance/research object。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。

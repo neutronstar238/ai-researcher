@@ -28,6 +28,12 @@ from .heartbeat import (
     write_runtime_heartbeat,
     write_runtime_heartbeat_report,
 )
+from .loop_langgraph import (
+    LangGraphCharacterizationReport,
+    LangGraphControlAdapter,
+    adapter_snapshot,
+    characterize_installed_langgraph,
+)
 from .sessions import (
     AgentSession,
     AgentSessionClaim,
@@ -50,6 +56,8 @@ __all__ = [
     "DEFAULT_HEARTBEAT_STALE_AFTER_SECONDS",
     "DEFAULT_HEARTBEAT_STALL_REPETITIONS",
     "HEARTBEAT_EVIDENCE_POLICY",
+    "LangGraphCharacterizationReport",
+    "LangGraphControlAdapter",
     "RuntimeActionRisk",
     "RuntimeApprovalDecision",
     "RuntimeApprovalError",
@@ -62,6 +70,8 @@ __all__ = [
     "RuntimeHeartbeatStatus",
     "RuntimePermissionMode",
     "approve_runtime_request",
+    "adapter_snapshot",
+    "characterize_installed_langgraph",
     "claim_agent_session",
     "ensure_runtime_approval",
     "evaluate_runtime_heartbeats",

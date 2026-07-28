@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260728-029 - Initial Control Graph checks exposed contract, typing, and pytest collection defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-28 23:45:00 +08:00
+- Source: Task `262.5` LoopSpec, durable Control Graph, LangGraph adapter, and vertical verification.
+- Symptom: Initial adapter checks reported one unused argument and 16 Mypy errors at LangGraph `RunnableConfig` and union-return boundaries. The first Control Graph run passed 13 of 17 tests: it called a nonexistent graph-hash attribute, represented retry as a forbidden self-loop, allowed a broad success edge to consume a security failure, and used an imprecisely typed proposal fixture. Later combined checks exposed missing outcome guards on three approval/adapter edges, import ordering, and three bridge/test typing errors. The first broad pytest collection then confused the new `tests/unit/kernel/test_loop.py` with the pre-existing `tests/unit/experiments/test_loop.py`; an isolated Mypy invocation over only the renamed test also lacked source-package context.
+- Impact: Focused and broad gates were invalid until every diagnostic was fixed. No task was checked, legacy writer changed, dependency upgraded, graph promoted, or scientific output produced during the failed attempts.
+- Evidence: The first loop run reported 4 failures and 13 passes; the first combined rerun reported 3 fixture failures; focused bridge Mypy reported 3 errors; the first broad suite stopped during collection with an `import file mismatch`. Ruff and source Mypy otherwise passed, and the final broad run collected 854 items successfully.
+- Root cause: The initial implementation mixed the canonical `GraphSnapshot.content_hash()` API with a nonexistent convenience attribute, attempted to hide a repair cycle inside a self-edge, did not initially require outcome guards on every non-start `NEXT` edge, and needed explicit types/casts at the installed LangGraph 0.2 boundary. Pytest's non-package module discovery also requires globally unique test basenames in this repository.
+- Workaround: None remains necessary.
+- Next action: Keep the explicit repair-node topology, outcome-guard invariant, legacy/new co-collection matrix, frozen LangGraph characterization, and source-inclusive Mypy command in future runtime upgrades.
+- Linked tasks: `262.5`, `262.10`.
+- Resolution: Used `GraphSnapshot.content_hash()`, modeled retry through an explicit repair node and cycle boundary, strengthened edge invariants, made adapter boundary types explicit, fixed fixtures/imports/JSON-value typing, renamed the new module to `test_control_graph.py`, and reran focused plus broad gates.
+- Verification: The final focused new-runtime matrix passed 24 tests; a 32-test legacy/new loop collection matrix passed; the development vertical completed and sealed both journals; 848 tests passed with 6 opt-in live tests skipped; full Ruff passed; Mypy passed for 142 source files.
+
 ### P-20260728-028 - Live-model and broad-test verification hit transient external limits
 
 - Status: Resolved
@@ -115,10 +131,10 @@ update a factual problem entry below.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete tasks `262.5` through `262.8`: LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
+- Next action: Complete tasks `262.6` through `262.8`: provenance/Vault projections, Open Science export, and parity-gated vertical migration.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
-- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, and task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics without changing legacy behavior. The underlying duplication remains open until parity-gated migration completes.
-- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.4` passed 31 focused tests, a real local-Qwen smoke, an 824-test regression, Ruff, and Mypy.
+- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics, and task `262.5` supplies the shared durable Control Graph plus a characterized LangGraph boundary. The underlying legacy-service duplication remains open until parity-gated migration completes.
+- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.5` passed 24 focused tests, a persisted Harness/Control Graph development vertical, an 848-test regression, Ruff, and Mypy.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 
