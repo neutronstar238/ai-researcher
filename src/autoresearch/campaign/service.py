@@ -7,10 +7,17 @@ import re
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import Literal, Protocol, TypeVar
 
 from pydantic import BaseModel
 
+from autoresearch.campaign.migration import (
+    CampaignMigrationCoordinator,
+    CampaignMigrationError,
+    CampaignMigrationMode,
+    resolve_campaign_formal_run_id,
+    resolve_campaign_migration_mode,
+)
 from autoresearch.campaign.models import (
     CampaignManifest,
     CampaignOutcome,
@@ -136,15 +143,38 @@ class AutonomousResearchCampaign:
         output_root: Path | str = Path("runs/campaigns"),
         vault_root: Path | str = Path("autoresearch-vault"),
         clock: Callable[[], datetime] | None = None,
+        migration_mode: CampaignMigrationMode | str | None = None,
+        migration_root: Path | str | None = None,
+        migration_formal_run_id: str | None = None,
     ) -> None:
         self.adapter = adapter
         self.output_root = Path(output_root).resolve()
         self.vault_root = Path(vault_root).resolve()
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.migration_mode = resolve_campaign_migration_mode(migration_mode)
+        formal_run_id = resolve_campaign_formal_run_id(migration_formal_run_id)
+        if self.migration_mode is CampaignMigrationMode.LEGACY:
+            if formal_run_id is not None:
+                raise CampaignMigrationError(
+                    "formal Campaign runs require shadow migration mode"
+                )
+            self._migration: CampaignMigrationCoordinator | None = None
+        else:
+            root = (
+                Path(migration_root)
+                if migration_root is not None
+                else self.output_root / ".vnext-migration" / "campaign"
+            )
+            self._migration = CampaignMigrationCoordinator(
+                root=root,
+                mode=self.migration_mode,
+                formal_run_id=formal_run_id,
+            )
 
     def run(self, spec: CampaignSpec) -> CampaignResult:
         """Start a new campaign or idempotently resume the same campaign ID."""
 
+        self._assert_migration_mode_allowed()
         _validate_path_safe_id(spec.campaign_id, "campaign_id")
         _validate_path_safe_id(spec.project_id, "project_id")
         campaign_dir = self.output_root / spec.campaign_id
@@ -152,21 +182,36 @@ class AutonomousResearchCampaign:
         if manifest_path.exists():
             return self.resume(campaign_dir)
 
-        campaign_dir.mkdir(parents=True, exist_ok=False)
-        spec_path = _write_json_model(campaign_dir / "campaign-spec.json", spec)
-        manifest = CampaignManifest(
-            campaign_id=spec.campaign_id,
-            project_id=spec.project_id,
-            spec_hash=data_hash(spec),
-            lineage_hash=_lineage_hash(spec.root_result_hash, ()),
-            artifact_paths={"campaign_spec": spec_path.name},
+        try:
+            campaign_dir.mkdir(parents=True, exist_ok=False)
+            spec_path = _write_json_model(campaign_dir / "campaign-spec.json", spec)
+            manifest = CampaignManifest(
+                campaign_id=spec.campaign_id,
+                project_id=spec.project_id,
+                spec_hash=data_hash(spec),
+                lineage_hash=_lineage_hash(spec.root_result_hash, ()),
+                artifact_paths={"campaign_spec": spec_path.name},
+            )
+            manifest = _write_campaign_manifest(manifest_path, manifest, self.clock())
+            result = self._drive(spec, campaign_dir, manifest)
+        except Exception as exc:
+            self._record_migration_failure(
+                campaign_dir=campaign_dir,
+                campaign_id=spec.campaign_id,
+                invocation_kind="run",
+                error=exc,
+            )
+            raise
+        return self._record_migration_result(
+            campaign_dir=campaign_dir,
+            result=result,
+            invocation_kind="run",
         )
-        manifest = _write_campaign_manifest(manifest_path, manifest, self.clock())
-        return self._drive(spec, campaign_dir, manifest)
 
     def resume(self, campaign_dir: Path | str) -> CampaignResult:
         """Resume from the last verified stage without repeating completed stages."""
 
+        self._assert_migration_mode_allowed()
         resolved = Path(campaign_dir).resolve()
         if resolved.is_file():
             resolved = resolved.parent
@@ -178,8 +223,23 @@ class AutonomousResearchCampaign:
             raise CampaignIntegrityError("campaign spec hash does not match manifest")
         self._validate_lineage(resolved, spec, manifest)
         if manifest.outcome is not CampaignOutcome.RUNNING:
-            return _campaign_result(resolved, manifest)
-        return self._drive(spec, resolved, manifest)
+            result = _campaign_result(resolved, manifest)
+        else:
+            try:
+                result = self._drive(spec, resolved, manifest)
+            except Exception as exc:
+                self._record_migration_failure(
+                    campaign_dir=resolved,
+                    campaign_id=spec.campaign_id,
+                    invocation_kind="resume",
+                    error=exc,
+                )
+                raise
+        return self._record_migration_result(
+            campaign_dir=resolved,
+            result=result,
+            invocation_kind="resume",
+        )
 
     def status(self, campaign_dir: Path | str) -> CampaignResult:
         """Read and validate status without advancing the campaign."""
@@ -193,6 +253,45 @@ class AutonomousResearchCampaign:
             raise CampaignIntegrityError("campaign spec hash does not match manifest")
         self._validate_lineage(resolved, spec, manifest)
         return _campaign_result(resolved, manifest)
+
+    def _assert_migration_mode_allowed(self) -> None:
+        if self._migration is not None:
+            self._migration.assert_mode_allowed()
+
+    def _record_migration_result(
+        self,
+        *,
+        campaign_dir: Path,
+        result: CampaignResult,
+        invocation_kind: Literal["run", "resume"],
+    ) -> CampaignResult:
+        if self._migration is None:
+            return result
+        return self._migration.record_result(
+            campaign_dir=campaign_dir,
+            result=result,
+            invocation_kind=invocation_kind,
+        )
+
+    def _record_migration_failure(
+        self,
+        *,
+        campaign_dir: Path,
+        campaign_id: str,
+        invocation_kind: Literal["run", "resume"],
+        error: Exception,
+    ) -> None:
+        if self._migration is None:
+            return
+        manifest_path = campaign_dir / "campaign-manifest.json"
+        if not manifest_path.is_file():
+            return
+        self._migration.record_failure(
+            campaign_dir=campaign_dir,
+            campaign_id=campaign_id,
+            invocation_kind=invocation_kind,
+            error=error,
+        )
 
     def _drive(
         self,

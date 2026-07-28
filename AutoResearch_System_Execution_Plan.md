@@ -1120,8 +1120,21 @@ access-blocked、failed-after-plan、blocked-then-resumed 和 terminal-idempoten
 ledger 中已有两个不同 formal ID 和 legacy run ID 的完整等价 shadow vertical，并重验报告 hash、
 event lineage、seal、projection 与 graph；旧 compatibility manifest/artifact writer 和 reader
 仍保留。真实本地 fixture 的两个 formal run、一个 vNext-authority run 和一次 legacy rollback
-全部通过，且明确不代表官方 MDBench Gate A。下一提交只迁移 Campaign，不把 Competition 迁移与
-Campaign/Sprint 或依赖升级批量合并。
+全部通过，且明确不代表官方 MDBench Gate A。
+
+`262.8.2` 随后按同一协议完成 Campaign，但重新冻结 Campaign 自己的语义而不复用 Competition
+evidence。默认 `legacy` 模式零迁移写入；`shadow`/`vnext` 为每个不同 observation 记录所有持久化
+stage、finalized round、aggregate/per-round contribution gate、artifact、终态、intervention 与
+digest-only failure，封印 journal 并生成无环 Control Graph。失败后 resume 以绑定旧失败 seal 的
+child journal 继续；不变终态只重验原 lineage 并产生 idempotency report。
+
+Campaign promotion 在任何科研执行前要求两个不同 formal ID 和 Campaign ID、完整两轮实验、最终
+`CONTRIBUTION_READY` 且七项 parity 全通过，并重新验证 formal report hash、journal lineage/seal、
+projection、source fingerprint、graph 及全部 legacy/Vault artifact。两个 formal shadow Campaign、
+一个 vNext-authority Campaign 与 legacy rollback 已在 generated local fixture 上通过；该 fixture
+只证明迁移，不是官方 benchmark 或 publication-ready result。当前 Campaign executor 不生成
+`BLOCKED`，冻结 blocked case 只验证旧 schema/reader 的 hash-valid compatibility state。下一提交只
+迁移 Sprint；Competition/Campaign compatibility writer、依赖版本与 submission authority 仍不变。
 
 ### 26.5 验证命令层级
 
@@ -1157,7 +1170,10 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
   保持审批关闭，G1 的内部 provenance bundle 未被冒充为公开 RO-Crate。
 - **M1a（Competition 迁移，2026-07-29 已通过）**：262.8.1 的六类 characterization、
   逐项 parity、两个 formal shadow vertical、vNext authority vertical 与 rollback 已通过；旧
-  compatibility writer/reader 仍保留，Campaign/Sprint 尚未计入 M1。
+  compatibility writer/reader 仍保留。
+- **M1b（Campaign 迁移，2026-07-29 已通过）**：262.8.2 的 Campaign-specific 六类
+  characterization、stage/round parity、两个 formal shadow vertical、vNext authority vertical
+  与 rollback 已通过；旧 compatibility writer/reader 仍保留，Sprint 尚未计入 M1。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 

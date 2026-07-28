@@ -900,5 +900,22 @@ promotion ledger 还重新校验 parity 文件 hash、journal seal、Control Gra
 closed。真实本地 characterization 已完成两个 formal shadow vertical、一个 vNext-authority
 vertical 和一次切回 legacy 的 rollback；返回 endpoint、投影、文件与封印 lineage 保持一致。
 这些 run 只覆盖 generated characterization fixture，不是官方 MDBench Gate A。旧 compatibility
-writer 和 reader 至少保留一个版本窗口；Campaign 与 Sprint 仍未迁移，继续由 `262.8.2`、
-`262.8.3` 按相同门控顺序处理。
+writer 和 reader 至少保留一个版本窗口。
+
+`262.8.2` 已于同日完成 Campaign 纵向迁移。默认
+`AUTORESEARCH_CAMPAIGN_MIGRATION_MODE=legacy` 不产生迁移副作用，原 Campaign scientific executor、
+round manifest、研究/失败/循环报告、artifact、reader 与 writer 保持不变。显式 `shadow`/`vnext`
+模式把每个不同的 Campaign observation 逐 stage、逐 finalized round 写入独立封印 journal 与无环
+Control Graph，再比较 event history、终态、scientific endpoint、aggregate/per-round contribution
+gate、artifact hash、脱敏 failure semantics 和 intervention count 七类 parity。失败记录最后一个有效
+legacy stage，只保留异常类型与 message SHA-256；后续恢复使用绑定失败 seal 的子 journal，未变化终态
+只产生 idempotency report。
+
+Campaign 的正式 promotion 要求两个不同 formal ID、不同 Campaign ID、完整两轮实验且最终
+`CONTRIBUTION_READY` 的 shadow run；ledger 在任何 vNext 科研执行前重新验证 report hash、journal
+lineage/seal、projection、source fingerprint 与 graph，篡改或缺失 Vault/legacy artifact 均 fail
+closed。真实本地 characterization 已完成两个 formal shadow Campaign、一个 projection-authority
+Campaign 和一次 legacy rollback，生命周期、投影、文件与 journal 均保持一致。完整 fixture 是本地
+generated migration fixture，不是官方 benchmark 或可投稿科研结果；`BLOCKED` corpus 项只冻结旧
+schema/reader 能接受的 hash-valid 状态，当前 executor 本身不生成该终态。Competition 与 Campaign
+compatibility writer 均至少保留一个版本窗口；Sprint 仍由 `262.8.3` 单独迁移。

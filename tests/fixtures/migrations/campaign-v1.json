@@ -1,0 +1,180 @@
+{
+  "cases": [
+    {
+      "case_id": "complete",
+      "expected": {
+        "completed_round_count": 2,
+        "emitted_gate_count": 2,
+        "event_types": [
+          "campaign.lifecycle.started",
+          "campaign.stage.observe.observed",
+          "campaign.stage.diagnose.observed",
+          "campaign.stage.propose.observed",
+          "campaign.stage.screen.observed",
+          "campaign.stage.preregister.observed",
+          "campaign.stage.develop.observed",
+          "campaign.stage.freeze.observed",
+          "campaign.stage.unseen_evaluate.observed",
+          "campaign.stage.adjudicate.observed",
+          "campaign.stage.report.observed",
+          "campaign.round.finalized",
+          "campaign.stage.observe.observed",
+          "campaign.stage.diagnose.observed",
+          "campaign.stage.propose.observed",
+          "campaign.stage.screen.observed",
+          "campaign.stage.preregister.observed",
+          "campaign.stage.develop.observed",
+          "campaign.stage.freeze.observed",
+          "campaign.stage.unseen_evaluate.observed",
+          "campaign.stage.adjudicate.observed",
+          "campaign.stage.report.observed",
+          "campaign.round.finalized",
+          "campaign.lifecycle.terminal"
+        ],
+        "experimental_round_count": 2,
+        "failed_gate_count": 1,
+        "human_intervention_count": 0,
+        "legacy_outcome": "contribution_ready",
+        "passed_gate_count": 1,
+        "required_artifact_roles": [
+          "campaign_manifest",
+          "campaign_spec",
+          "round_001_contribution_gate",
+          "round_001_manifest",
+          "round_001_round_decision",
+          "round_001_unseen_evaluation",
+          "round_001_vault_note",
+          "round_002_contribution_gate",
+          "round_002_manifest",
+          "round_002_round_decision",
+          "round_002_unseen_evaluation",
+          "round_002_vault_note"
+        ],
+        "terminal_status": "succeeded"
+      },
+      "trigger": "two-round generated migration fixture with a positive second contribution gate"
+    },
+    {
+      "case_id": "negative-result",
+      "expected": {
+        "completed_round_count": 2,
+        "emitted_gate_count": 2,
+        "event_types": [
+          "campaign.lifecycle.started",
+          "campaign.stage.observe.observed",
+          "campaign.stage.diagnose.observed",
+          "campaign.stage.propose.observed",
+          "campaign.stage.screen.observed",
+          "campaign.stage.preregister.observed",
+          "campaign.stage.develop.observed",
+          "campaign.stage.freeze.observed",
+          "campaign.stage.unseen_evaluate.observed",
+          "campaign.stage.adjudicate.observed",
+          "campaign.stage.report.observed",
+          "campaign.round.finalized",
+          "campaign.stage.observe.observed",
+          "campaign.stage.diagnose.observed",
+          "campaign.stage.propose.observed",
+          "campaign.stage.screen.observed",
+          "campaign.stage.preregister.observed",
+          "campaign.stage.develop.observed",
+          "campaign.stage.freeze.observed",
+          "campaign.stage.unseen_evaluate.observed",
+          "campaign.stage.adjudicate.observed",
+          "campaign.stage.report.observed",
+          "campaign.round.finalized",
+          "campaign.lifecycle.terminal"
+        ],
+        "experimental_round_count": 2,
+        "failed_gate_count": 2,
+        "human_intervention_count": 0,
+        "legacy_outcome": "stopped",
+        "passed_gate_count": 0,
+        "required_artifact_roles": [
+          "campaign_manifest",
+          "campaign_spec",
+          "round_001_contribution_gate",
+          "round_001_manifest",
+          "round_001_round_decision",
+          "round_002_contribution_gate",
+          "round_002_manifest",
+          "round_002_round_decision"
+        ],
+        "terminal_status": "negative_result"
+      },
+      "trigger": "all reserved designs finish but the generated fixture contribution gate remains negative"
+    },
+    {
+      "case_id": "blocked",
+      "expected": {
+        "completed_round_count": 0,
+        "emitted_gate_count": 0,
+        "event_types": [
+          "campaign.lifecycle.started",
+          "campaign.lifecycle.terminal"
+        ],
+        "experimental_round_count": 0,
+        "human_intervention_count": 0,
+        "legacy_outcome": "blocked",
+        "required_artifact_roles": [
+          "campaign_manifest",
+          "campaign_spec"
+        ],
+        "terminal_status": "blocked"
+      },
+      "trigger": "a hash-valid retained compatibility manifest already records CampaignOutcome.BLOCKED"
+    },
+    {
+      "case_id": "failed",
+      "expected": {
+        "completed_round_count": 0,
+        "emitted_gate_count": 0,
+        "error_type": "RuntimeError",
+        "event_types": [
+          "campaign.lifecycle.started",
+          "campaign.stage.observe.observed",
+          "campaign.stage.diagnose.observed",
+          "campaign.stage.propose.observed",
+          "campaign.lifecycle.terminal"
+        ],
+        "experimental_round_count": 0,
+        "human_intervention_count": 0,
+        "legacy_outcome": "running",
+        "persisted_stage": "propose",
+        "required_artifact_roles": [
+          "campaign_manifest",
+          "campaign_spec",
+          "round_001_failure_diagnosis",
+          "round_001_manifest",
+          "round_001_observation"
+        ],
+        "terminal_status": "failed"
+      },
+      "trigger": "the scientific adapter raises after diagnosis is hash-bound at the proposal checkpoint"
+    },
+    {
+      "case_id": "resumed",
+      "expected": {
+        "completed_round_count": 2,
+        "experimental_round_count": 2,
+        "forked_from_failed_invocation": true,
+        "human_intervention_count": 0,
+        "invocation_kind": "resume",
+        "legacy_outcome": "contribution_ready",
+        "terminal_status": "succeeded"
+      },
+      "trigger": "a healthy adapter resumes the exact failed proposal checkpoint without replaying completed stages"
+    },
+    {
+      "case_id": "terminal-idempotent",
+      "expected": {
+        "journal_lineage_unchanged": true,
+        "manifest_hash_unchanged": true,
+        "new_invocation_created": false
+      },
+      "trigger": "resume an unchanged terminal Campaign observation"
+    }
+  ],
+  "schema_version": 1,
+  "service": "campaign"
+}

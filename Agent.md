@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 01:59:33 +08:00 - Codex - Task 262.8.2 Campaign vertical migration
+
+- Request: Continue task `262.8` in service order by migrating Campaign as its own complete strangler vertical: freeze Campaign-specific lifecycle outcomes, shadow every persisted stage and round, prove legacy/vNext parity, require two independent formal Campaigns before cutover, retain compatibility state, and rehearse rollback without changing scientific semantics.
+- Files changed:
+  - `src/autoresearch/campaign/migration.py`
+  - `src/autoresearch/campaign/service.py`
+  - `src/autoresearch/campaign/__init__.py`
+  - `tests/fixtures/migrations/campaign-v1.json`
+  - `tests/unit/campaign/test_campaign_migration.py`
+  - `tests/smoke/test_campaign_migration_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-8-2-campaign-migration.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Froze a Campaign-specific corpus for complete, negative-result, retained-blocked, failed, failed-then-resumed, and unchanged-terminal-idempotent behavior. The blocked entry truthfully characterizes a hash-valid state supported by the legacy schema/reader; the current Campaign executor does not itself generate that outcome.
+  - Added a default-off adapter behind `AUTORESEARCH_CAMPAIGN_MIGRATION_MODE=legacy|shadow|vnext`. Default legacy mode has zero migration side effects and preserves the existing executor, manifests, research/failure/loop reports, artifacts, Vault writes, reader, writer, and return contract.
+  - In shadow/vNext modes, every distinct observation becomes an independently sealed `EventJournal` and acyclic Control Graph. Events preserve every persisted Campaign stage, finalized round, terminal snapshot, contribution gate, artifact binding, and intervention count.
+  - Added seven parity checks covering event history, terminal state, scientific endpoint, aggregate/per-round gates, complete artifact inventory/hash, digest-only failure semantics, and access/human intervention counts. Reports are revalidated against journal bytes, event count, lineage, seal, projection, source fingerprint, Control Graph, and formal-report hashes.
+  - Preserved failure and recovery truth: an exception retains the last valid legacy stage and records only its type plus message SHA-256; a later resume creates a child journal anchored to the failed terminal seal. An unchanged terminal fingerprint produces an idempotency report without appending past the seal or creating another invocation.
+  - Added fail-closed promotion requiring two distinct formal IDs and Campaign IDs, each a complete non-failed two-round `CONTRIBUTION_READY` shadow Campaign with all declared artifacts present. vNext validates the ledger before starting scientific work and returns the journal-derived projection as lifecycle authority.
+  - Ran two formal shadow Campaigns, one vNext-authority Campaign, and a rollback on a generated local characterization fixture. This proves migration behavior only; it is not an official benchmark or publication-ready result, and no dependency, revealed panel, threshold, release permission, or submission state changed.
+- Verification:
+  - Focused `poetry run python -m pytest tests/unit/campaign/test_campaign_migration.py -q`: passed 7 tests.
+  - Campaign compatibility `poetry run python -m pytest tests/unit/campaign -q`: passed all 35 tests.
+  - Default focused/smoke `poetry run python -m pytest tests/unit/campaign/test_campaign_migration.py tests/smoke/test_campaign_migration_live.py -q`: passed 7 tests with 1 opt-in smoke skipped.
+  - Real local `$env:AUTORESEARCH_CAMPAIGN_MIGRATION_LIVE='1'; $env:AUTORESEARCH_CAMPAIGN_MIGRATION_OUTPUT='runs/manual-live/task262-campaign-migration-v1'; poetry run python -m pytest tests/smoke/test_campaign_migration_live.py -q`: passed 1 test in 11.63 seconds. The output is ignored by the repository.
+  - Formal Campaign 1 produced source fingerprint `817546eb1d1c40a402dfdfe411369861ac8d2643a23ecee9266d1e8c2c4b0eb3`, lineage `5f9e22547dc5cac13e9ea2f059c1389606ced372ccadc131e17ee7d9d10e1a68`, and seal `e1b7a37f64cd078a37d39cfc0a3e8d92ba8331aad9250eb386abaa2eab1d0564`.
+  - Formal Campaign 2 produced source fingerprint `6910ed3de9b4a8b2a172a081f56a2a1a07db0a1b59b3ad3dc7b90c5cca37b9e7`, lineage `c79a79e823804c09cc1e8d77321add8bfd35d017598e9ab65a67441507e8d732`, and seal `01652700ab784e5f4206b2af8412125af8c3f25a851643927536b62faca137c3`.
+  - The vNext-authority Campaign produced source fingerprint `c3849eeb2f951d0f7b9f643f9d52742df75f0c08942f48c71c5dde66a70bb355`, lineage `09e83935bfc86f45c959d21cea7466791dfbad7ba02190a8ca7043c6a34e0c88`, and seal `ebccb674f9a140d6040132444dc56fa7e36c8398a97e7eaa42087c104586aac4`; rollback reported equal lifecycle result, equal projection, unchanged journal, and preserved compatibility files.
+  - Cross-service `poetry run python -m pytest tests/unit/campaign/test_campaign_migration.py tests/unit/competition/test_migration.py -q`: passed 14 tests.
+  - Full `poetry run python -m pytest tests -q`: collected 908 items and passed 898 tests with 10 opt-in tests skipped in 118.90 seconds; repository line coverage was 87%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 148 source files.
+  - Documentation/task/Vault consistency, `git diff --check`, staged-file review, and ignored-output checks are rerun before the focused commit.
+- Problems:
+  - Added and resolved `P-20260729-033` for the initial unused import, incompatible loop-variable retyping, and duplicate pytest module basename.
+  - Updated open `P-20260728-024`: Competition and Campaign now have parity-gated vNext lifecycle authority and rollback; Sprint and the intentionally retained compatibility writers remain.
+- Follow-up:
+  - Implement `262.8.3` as a separate focused commit. Re-freeze Sprint's topic-selection, experiment, inference, manuscript, review, failure, resume, and terminal semantics; do not reuse Competition or Campaign evidence to waive Sprint gates.
+
 ### 2026-07-29 01:40:42 +08:00 - Codex - Task 262.8.1 Competition vertical migration
 
 - Request: Continue task `262.8` in the required service order by migrating Competition as one complete strangler vertical: freeze six legacy outcomes, shadow-write vNext events and projections, prove old/new parity, require two formal runs before cutover, retain compatibility state, and rehearse rollback without rerunning or reinterpreting a revealed scientific panel.

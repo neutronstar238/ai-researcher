@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-033 - Campaign migration bring-up exposed lint, typing, and pytest module-name defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 01:50:00 +08:00
+- Source: Task `262.8.2` Campaign characterization, stage/round parity, formal promotion, and rollback verification.
+- Symptom: Focused Ruff initially rejected an unused `RoundOutcome` import. Focused Mypy then found that a loop variable reused a name previously typed as `str`, causing a `str`/`Path` retyping error. After the implementation and focused tests passed, the first full pytest collection confused the new `tests/unit/campaign/test_migration.py` with Competition's existing test of the same basename because those directories are not Python packages.
+- Impact: The failed commands could not count as completion evidence. No task was checked, scientific result changed, dependency upgraded, legacy artifact removed, or vNext authority promoted during the failed attempts.
+- Evidence: Ruff reported the unused import; Mypy reported the incompatible assignment at the artifact-validation loop; pytest stopped during collection with an import-file mismatch. After the mechanical fixes and globally unique test rename, the full suite collected 908 tests and completed with 898 passed and 10 opt-in tests skipped.
+- Root cause: The first implementation retained one unused contract import, reused a variable name across incompatible types, and assumed pytest would namespace duplicate test basenames by directory even though this repository's non-package discovery imports them as top-level modules.
+- Workaround: None remains necessary.
+- Next action: Keep migration test basenames globally unique, preserve source-inclusive Mypy checks, and run a cross-service collection check before the next full Sprint migration regression.
+- Linked tasks: `262.8.2`, `262.8.3`.
+- Resolution: Removed the unused import, gave the artifact path loop a distinct typed name, renamed the Campaign module to `test_campaign_migration.py`, and reran focused, cross-service, full regression, Ruff, and Mypy gates.
+- Verification: Seven Campaign migration tests, all 35 Campaign unit tests, a 14-test Campaign/Competition migration collection, the real two-formal-run/cutover/rollback smoke, 898-test full regression, full Ruff, and 148-file Mypy passed.
+
 ### P-20260729-032 - Competition migration bring-up exposed environment and JSON-sequence compatibility defects
 
 - Status: Resolved
@@ -174,15 +190,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-28 14:00:00 +08:00
 - Source: Task `262.1` repository audit and cross-search of current graph, harness, loop, provenance, and Open Science practice.
-- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `campaign/service.py` and `campaign/sprint.py` still own separate persistence, resume, transition, and terminal-state semantics. Competition now has a parity-gated vNext lifecycle adapter, but its legacy compatibility writer remains intentionally retained for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
+- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `campaign/sprint.py` still owns a separate persistence, resume, transition, and terminal-state implementation. Competition and Campaign now have parity-gated vNext lifecycle adapters, but both legacy compatibility writers remain intentionally retained for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
 - Impact: Equivalent pause/resume/fail/approve behavior must be proven repeatedly; future changes can produce different terminal states or evidence meaning across services. A paper artifact may be hash-bound while still lacking an interoperable answer to who or what generated it from which inputs and decision.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete task `262.8.2` and `262.8.3`: parity-gated vertical migration of Campaign and Sprint, then retire compatibility writers only after their own formal gates and the documented release window.
-- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`.
-- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Task `262.8.1` adds Competition's six-case characterization, standard-event/Control-Graph shadow projection, two-formal-run promotion gate, vNext authority flag, and rollback proof while retaining compatibility files. The underlying Campaign/Sprint duplication and the temporary Competition compatibility writer remain open until the rest of task `262.8` and the release window complete.
-- Verification: In addition to the earlier kernel/evidence/Open Science gates, task `262.8.1` passed seven deterministic migration tests, all 61 Competition tests, and a durable local run with two formal shadow verticals, one vNext authority vertical, and a successful legacy rollback. Full repository gates are recorded in `Agent.md`.
+- Next action: Complete task `262.8.3`: independently characterize and parity-migrate Sprint, then retire compatibility writers only after the documented release window and task `262.10` release gates.
+- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`, `262.8.2`, `262.8.3`.
+- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` and `262.8.2` add service-specific six-case characterization, standard-event/Control-Graph shadow projection, two-formal-run promotion gates, reversible vNext authority, and rollback proofs for Competition and Campaign while retaining compatibility files. Sprint's duplicate control plane and the temporary compatibility writers remain open until `262.8.3` and the release window complete.
+- Verification: In addition to the earlier kernel/evidence/Open Science gates, Competition passed seven deterministic migration tests, all 61 Competition tests, and its two-formal-run/cutover/rollback vertical. Campaign passed seven deterministic migration tests, all 35 Campaign tests, and its own two-formal-run/cutover/rollback vertical. The combined Campaign/Competition migration collection and full repository gates are recorded in `Agent.md`.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 
