@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -19,6 +19,13 @@ from autoresearch.competition.manifest import (
     write_json_model,
 )
 from autoresearch.competition.mdbench import MDBenchAdapter
+from autoresearch.competition.migration import (
+    CompetitionMigrationCoordinator,
+    CompetitionMigrationError,
+    CompetitionMigrationMode,
+    resolve_competition_formal_run_id,
+    resolve_competition_migration_mode,
+)
 from autoresearch.competition.models import (
     AccessKind,
     AccessRequest,
@@ -60,6 +67,9 @@ class ResearchCycleService:
         vault_root: Path | str = Path("autoresearch-vault"),
         capability_grant: CapabilityGrant | None = None,
         adapter: MDBenchAdapter | None = None,
+        migration_mode: CompetitionMigrationMode | str | None = None,
+        migration_root: Path | str | None = None,
+        migration_formal_run_id: str | None = None,
     ) -> None:
         self.output_root = Path(output_root).resolve()
         self.vault_root = Path(vault_root).resolve()
@@ -67,30 +77,65 @@ class ResearchCycleService:
         self.adapter = adapter or MDBenchAdapter()
         self.selector = TopicSelectionEngine()
         self.compiler = PlanCompiler()
+        self.migration_mode = resolve_competition_migration_mode(migration_mode)
+        formal_run_id = resolve_competition_formal_run_id(migration_formal_run_id)
+        if self.migration_mode is CompetitionMigrationMode.LEGACY:
+            if formal_run_id is not None:
+                raise CompetitionMigrationError(
+                    "formal Competition runs require shadow migration mode"
+                )
+            self._migration: CompetitionMigrationCoordinator | None = None
+        else:
+            root = (
+                Path(migration_root)
+                if migration_root is not None
+                else self.output_root / ".vnext-migration" / "competition"
+            )
+            self._migration = CompetitionMigrationCoordinator(
+                root=root,
+                mode=self.migration_mode,
+                formal_run_id=formal_run_id,
+            )
 
     def run(self, spec: CompetitionRunSpec) -> CycleResult:
         """Start a new cycle, or idempotently resume the same run ID."""
 
+        self._assert_migration_mode_allowed()
         _validate_run_id(spec.run_id)
         cycle_dir = self.output_root / spec.run_id
         manifest_path = cycle_dir / "cycle-manifest.json"
         if manifest_path.exists():
             return self.resume(cycle_dir)
 
-        cycle_dir.mkdir(parents=True, exist_ok=True)
-        spec_path = write_json_model(cycle_dir / "competition-run-spec.json", spec)
-        manifest = CycleManifest(
-            run_id=spec.run_id,
-            project_id=spec.project_id,
-            spec_hash=canonical_model_hash(spec),
-            artifact_paths={"run_spec": spec_path.as_posix()},
+        try:
+            cycle_dir.mkdir(parents=True, exist_ok=True)
+            spec_path = write_json_model(cycle_dir / "competition-run-spec.json", spec)
+            manifest = CycleManifest(
+                run_id=spec.run_id,
+                project_id=spec.project_id,
+                spec_hash=canonical_model_hash(spec),
+                artifact_paths={"run_spec": spec_path.as_posix()},
+            )
+            manifest = write_cycle_manifest(manifest_path, manifest)
+            result = self._continue(spec, cycle_dir, manifest)
+        except Exception as exc:
+            self._record_migration_failure(
+                cycle_dir=cycle_dir,
+                run_id=spec.run_id,
+                invocation_kind="run",
+                error=exc,
+            )
+            raise
+        return self._record_migration_result(
+            cycle_dir=cycle_dir,
+            result=result,
+            invocation_kind="run",
         )
-        manifest = write_cycle_manifest(manifest_path, manifest)
-        return self._continue(spec, cycle_dir, manifest)
 
     def resume(self, cycle_dir: Path | str) -> CycleResult:
         """Resume from the last persisted stage without rerunning completed seeds."""
 
+        self._assert_migration_mode_allowed()
         resolved = Path(cycle_dir)
         if resolved.is_file():
             resolved = resolved.parent
@@ -101,8 +146,62 @@ class ResearchCycleService:
         if manifest.spec_hash != canonical_model_hash(spec):
             raise ValueError("competition run spec hash does not match cycle manifest")
         if manifest.stage is CycleStage.COMPLETE:
-            return _cycle_result(resolved, manifest)
-        return self._continue(spec, resolved, manifest)
+            result = _cycle_result(resolved, manifest)
+        else:
+            try:
+                result = self._continue(spec, resolved, manifest)
+            except Exception as exc:
+                self._record_migration_failure(
+                    cycle_dir=resolved,
+                    run_id=spec.run_id,
+                    invocation_kind="resume",
+                    error=exc,
+                )
+                raise
+        return self._record_migration_result(
+            cycle_dir=resolved,
+            result=result,
+            invocation_kind="resume",
+        )
+
+    def _assert_migration_mode_allowed(self) -> None:
+        if self._migration is not None:
+            self._migration.assert_mode_allowed()
+
+    def _record_migration_result(
+        self,
+        *,
+        cycle_dir: Path,
+        result: CycleResult,
+        invocation_kind: Literal["run", "resume"],
+    ) -> CycleResult:
+        if self._migration is None:
+            return result
+        return self._migration.record_result(
+            cycle_dir=cycle_dir,
+            result=result,
+            invocation_kind=invocation_kind,
+        )
+
+    def _record_migration_failure(
+        self,
+        *,
+        cycle_dir: Path,
+        run_id: str,
+        invocation_kind: Literal["run", "resume"],
+        error: Exception,
+    ) -> None:
+        if self._migration is None:
+            return
+        manifest_path = cycle_dir / "cycle-manifest.json"
+        if not manifest_path.is_file():
+            return
+        self._migration.record_failure(
+            cycle_dir=cycle_dir,
+            run_id=run_id,
+            invocation_kind=invocation_kind,
+            error=error,
+        )
 
     def export(self, cycle_dir: Path | str, output_dir: Path | str) -> Path:
         """Export required competition fields without bypassing the release gate."""

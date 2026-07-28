@@ -1,0 +1,148 @@
+{
+  "cases": [
+    {
+      "case_id": "complete",
+      "expected": {
+        "access_request_count": 0,
+        "attempt_count": 3,
+        "event_types": [
+          "competition.lifecycle.started",
+          "competition.topic.selection_observed",
+          "competition.topic.selected",
+          "competition.hypothesis.defined",
+          "competition.plan.compiled",
+          "competition.attempt.observed",
+          "competition.attempt.observed",
+          "competition.attempt.observed",
+          "competition.evidence_gate.observed",
+          "competition.lifecycle.terminal"
+        ],
+        "gate_emitted": true,
+        "gate_passed": true,
+        "human_intervention_count": 0,
+        "legacy_outcome": "development_smoke_passed",
+        "release_allowed": false,
+        "required_artifact_roles": [
+          "attempt_seed_11",
+          "attempt_seed_23",
+          "attempt_seed_37",
+          "cycle_manifest",
+          "cycle_summary",
+          "evidence_gate",
+          "experiment_protocol",
+          "hypothesis",
+          "run_spec",
+          "selected_topic",
+          "topic_candidates",
+          "topic_selection",
+          "vault_note"
+        ],
+        "terminal_status": "succeeded"
+      },
+      "trigger": "default deterministic characterization run"
+    },
+    {
+      "case_id": "negative-result",
+      "expected": {
+        "access_request_count": 0,
+        "attempt_count": 0,
+        "event_types": [
+          "competition.lifecycle.started",
+          "competition.topic.selection_observed",
+          "competition.lifecycle.terminal"
+        ],
+        "gate_emitted": false,
+        "human_intervention_count": 0,
+        "legacy_outcome": "negative_result",
+        "required_artifact_roles": [
+          "cycle_manifest",
+          "negative_result",
+          "run_spec",
+          "topic_candidates",
+          "topic_selection"
+        ],
+        "terminal_status": "negative_result"
+      },
+      "trigger": "all executable feasibility probes return negative evidence"
+    },
+    {
+      "case_id": "blocked",
+      "expected": {
+        "access_request_count": 1,
+        "attempt_count": 0,
+        "event_types": [
+          "competition.lifecycle.started",
+          "competition.lifecycle.terminal"
+        ],
+        "gate_emitted": false,
+        "human_intervention_count": 0,
+        "legacy_outcome": "access_required",
+        "required_artifact_role_prefixes": [
+          "access_request_"
+        ],
+        "required_artifact_roles": [
+          "cycle_manifest",
+          "run_spec"
+        ],
+        "terminal_status": "blocked"
+      },
+      "trigger": "referenced CapabilityGrant is absent"
+    },
+    {
+      "case_id": "failed",
+      "expected": {
+        "access_request_count": 0,
+        "attempt_count": 0,
+        "error_type": "RuntimeError",
+        "event_types": [
+          "competition.lifecycle.started",
+          "competition.topic.selection_observed",
+          "competition.topic.selected",
+          "competition.hypothesis.defined",
+          "competition.plan.compiled",
+          "competition.lifecycle.terminal"
+        ],
+        "gate_emitted": false,
+        "human_intervention_count": 0,
+        "legacy_outcome": "running",
+        "persisted_stage": "plan_compiled",
+        "required_artifact_roles": [
+          "cycle_manifest",
+          "experiment_protocol",
+          "hypothesis",
+          "run_spec",
+          "selected_topic",
+          "topic_candidates",
+          "topic_selection"
+        ],
+        "terminal_status": "failed"
+      },
+      "trigger": "experiment adapter raises after the frozen plan is persisted"
+    },
+    {
+      "case_id": "resumed",
+      "expected": {
+        "access_request_count": 1,
+        "attempt_count": 3,
+        "forked_from_blocked_invocation": true,
+        "gate_emitted": true,
+        "human_intervention_count": 0,
+        "invocation_kind": "resume",
+        "legacy_outcome": "development_smoke_passed",
+        "terminal_status": "succeeded"
+      },
+      "trigger": "the exact requested CapabilityGrant is later supplied"
+    },
+    {
+      "case_id": "terminal-idempotent",
+      "expected": {
+        "journal_lineage_unchanged": true,
+        "manifest_hash_unchanged": true,
+        "new_invocation_created": false
+      },
+      "trigger": "resume an unchanged complete or access-blocked terminal observation"
+    }
+  ],
+  "schema_version": 1,
+  "service": "competition"
+}

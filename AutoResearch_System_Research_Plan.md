@@ -885,3 +885,20 @@ scope-matched 人工批准、显式 public artifact、许可与源文件敏感�
 推荐层只保留“本地 workflow 文件应使用 HTTP ID”的两个重复 advisory，因为把已打包文件改成远程
 资源会破坏 RO-Crate 数据实体语义。该任务没有替换旧 reproducibility package、修改科研结果、升级
 依赖或执行公开发布；旧服务迁移仍属于 `262.8`。
+
+`262.8.1` 已于 2026-07-29 完成第一个服务纵向迁移。Competition 保留原科学执行核心、
+`cycle-manifest.json`、全部既有 artifact 和 reader；默认 `legacy` 模式不产生迁移副作用。
+`shadow` 模式把每个不同的旧终态投影到独立封印的标准事件 journal 与无环 Control Graph，并逐项比较
+event、终态、scientific endpoint、evidence gate、artifact hash、脱敏 failure semantics 及访问/人工
+干预次数。`ACCESS_REQUIRED` 仍是可恢复 blocked，后续恢复使用绑定前一封印 checkpoint 的子 journal；
+旧终态未变化时只生成 idempotency observation，不追加第二条 lineage。实验异常保留最后有效 manifest
+阶段并映射为 failed，不会被误写成 scientific negative result。
+
+`AUTORESEARCH_COMPETITION_MIGRATION_MODE=legacy|shadow|vnext` 是可逆 authority flag。`vnext`
+在任何科研执行开始前验证两个不同 run ID、不同 formal ID、完整成功且 parity 等价的 shadow run；
+promotion ledger 还重新校验 parity 文件 hash、journal seal、Control Graph 与投影，篡改即 fail
+closed。真实本地 characterization 已完成两个 formal shadow vertical、一个 vNext-authority
+vertical 和一次切回 legacy 的 rollback；返回 endpoint、投影、文件与封印 lineage 保持一致。
+这些 run 只覆盖 generated characterization fixture，不是官方 MDBench Gate A。旧 compatibility
+writer 和 reader 至少保留一个版本窗口；Campaign 与 Sprint 仍未迁移，继续由 `262.8.2`、
+`262.8.3` 按相同门控顺序处理。

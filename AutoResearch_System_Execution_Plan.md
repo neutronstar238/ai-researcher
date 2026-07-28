@@ -1110,6 +1110,19 @@ focused tests、1 个真实 smoke、866-test regression、全量 Ruff 与 146-fi
 任何 mismatch 都回滚 feature flag，并在 `Problem.md` 记录 old/new event、终态、artifact 与 gate 差异。
 禁止用重跑已揭示 scientific panel、改变阈值或重解释历史结果来制造等价。
 
+`262.8.1` 已按上述四步完成 Competition 切片。冻结 corpus 覆盖 complete、negative-result、
+access-blocked、failed-after-plan、blocked-then-resumed 和 terminal-idempotent 六类语义；默认
+`legacy` 路径零迁移写入。显式 `shadow`/`vnext` 模式为每个不同 source fingerprint 创建一个封印
+`EventJournal` 和一个 acyclic Control Graph，并生成七项 parity checks。恢复调用以 fork anchor
+连接前一个 blocked seal，未变化终态不新建 invocation。
+
+切换由 `AUTORESEARCH_COMPETITION_MIGRATION_MODE` 控制。`vnext` 在运行科学代码前要求 promotion
+ledger 中已有两个不同 formal ID 和 legacy run ID 的完整等价 shadow vertical，并重验报告 hash、
+event lineage、seal、projection 与 graph；旧 compatibility manifest/artifact writer 和 reader
+仍保留。真实本地 fixture 的两个 formal run、一个 vNext-authority run 和一次 legacy rollback
+全部通过，且明确不代表官方 MDBench Gate A。下一提交只迁移 Campaign，不把 Competition 迁移与
+Campaign/Sprint 或依赖升级批量合并。
+
 ### 26.5 验证命令层级
 
 每个子任务先运行新增模块和 characterization 的 focused tests，再运行：
@@ -1142,6 +1155,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 - **O1（开放科研对象，2026-07-29 已通过）**：262.7 的真实负结果 round 已导出为经 profile、
   许可、隐私、hash 和独立 assertion replay 验证的 internal/review research objects；public view
   保持审批关闭，G1 的内部 provenance bundle 未被冒充为公开 RO-Crate。
+- **M1a（Competition 迁移，2026-07-29 已通过）**：262.8.1 的六类 characterization、
+  逐项 parity、两个 formal shadow vertical、vNext authority vertical 与 rollback 已通过；旧
+  compatibility writer/reader 仍保留，Campaign/Sprint 尚未计入 M1。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 

@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-032 - Competition migration bring-up exposed environment and JSON-sequence compatibility defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 02:00:00 +08:00
+- Source: Task `262.8.1` Competition characterization, shadow journal, formal promotion, and rollback verification.
+- Symptom: The first ad hoc shadow-run command used the active Python interpreter without the repository `src/` layout and failed to import `autoresearch`. The first Poetry shadow run completed the legacy scientific path but the parity adapter passed a Python tuple to the kernel canonical hasher, which intentionally accepts only JSON values. The first focused pytest collection then imported `typing.Never`, which is unavailable on the supported Python 3.10 runtime.
+- Impact: None of those attempts counted as migration evidence. The first Poetry run had written only to a unique temporary directory outside the repository; no tracked artifact, official scientific panel, threshold, dependency, legacy production run, or external system was changed.
+- Evidence: The direct interpreter raised `ModuleNotFoundError`; the first parity comparison raised `ValueError: $ contains non-JSON value of type tuple`; the first test collection raised `ImportError: cannot import name 'Never' from 'typing'`. Corrected focused runs, all Competition tests, and the durable opt-in vertical subsequently passed.
+- Root cause: The exploratory command did not use the project-managed environment, the adapter compared an immutable Python sequence before normalizing it to a JSON array, and the test annotation assumed a newer standard-library typing surface than Python 3.10.
+- Workaround: None remains necessary.
+- Next action: Use `poetry run` for source-layout checks, normalize all parity material to JSON before canonical hashing, and retain Python 3.10 in migration characterization until task `262.10` explicitly changes the compatibility boundary.
+- Linked tasks: `262.8.1`, `262.10`.
+- Resolution: Re-ran the smoke through Poetry, added `_json_sha256()` normalization before canonical comparison, and replaced `Never` with Python-3.10-compatible `NoReturn`. Later validation also rechecks parity reports against their journals, seals, projections, graphs, and formal report hashes.
+- Verification: Seven deterministic migration tests, 61 Competition tests, and the opt-in two-formal-run/cutover/rollback vertical passed. Full regression, Ruff, Mypy, and diff checks are recorded in `Agent.md`.
+
 ### P-20260729-031 - Open Science bring-up exposed import, fixture, and validator compatibility limits
 
 - Status: Mitigated
@@ -158,15 +174,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-28 14:00:00 +08:00
 - Source: Task `262.1` repository audit and cross-search of current graph, harness, loop, provenance, and Open Science practice.
-- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `competition/service.py`, `campaign/service.py`, and `campaign/sprint.py` each own separate persistence, resume, transition, and terminal-state semantics. `observability/audit.py` has append-only JSONL events without sequence or parent hashes, and `evidence/graph.py` links claims to sources/artifacts without generating Activity, responsible Agent, derivation, counterevidence, version, or valid-time semantics.
+- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `campaign/service.py` and `campaign/sprint.py` still own separate persistence, resume, transition, and terminal-state semantics. Competition now has a parity-gated vNext lifecycle adapter, but its legacy compatibility writer remains intentionally retained for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
 - Impact: Equivalent pause/resume/fail/approve behavior must be proven repeatedly; future changes can produce different terminal states or evidence meaning across services. A paper artifact may be hash-bound while still lacking an interoperable answer to who or what generated it from which inputs and decision.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete task `262.8`: parity-gated vertical migration of Competition, Campaign, and Sprint.
-- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
-- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics, task `262.5` supplies the shared durable Control Graph plus a characterized LangGraph boundary, task `262.6` supplies W3C PROV-aligned evidence plus approval-gated Vault projections, and task `262.7` supplies validated approval-gated Open Science projections. The underlying legacy-service duplication remains open until parity-gated migration completes.
-- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.6` passed 9 focused provenance tests, a deterministic campaign integration, a real-round tamper-blocking query, an 858-test regression, Ruff, and Mypy; task `262.7` passed 8 Open Science tests, a real-round export/reproduction smoke, four required external profiles, official CFF/SPDX schema validation, an 866-test regression, Ruff, and Mypy.
+- Next action: Complete task `262.8.2` and `262.8.3`: parity-gated vertical migration of Campaign and Sprint, then retire compatibility writers only after their own formal gates and the documented release window.
+- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`.
+- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Task `262.8.1` adds Competition's six-case characterization, standard-event/Control-Graph shadow projection, two-formal-run promotion gate, vNext authority flag, and rollback proof while retaining compatibility files. The underlying Campaign/Sprint duplication and the temporary Competition compatibility writer remain open until the rest of task `262.8` and the release window complete.
+- Verification: In addition to the earlier kernel/evidence/Open Science gates, task `262.8.1` passed seven deterministic migration tests, all 61 Competition tests, and a durable local run with two formal shadow verticals, one vNext authority vertical, and a successful legacy rollback. Full repository gates are recorded in `Agent.md`.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

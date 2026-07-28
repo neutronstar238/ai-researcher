@@ -64,6 +64,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 01:40:42 +08:00 - Codex - Task 262.8.1 Competition vertical migration
+
+- Request: Continue task `262.8` in the required service order by migrating Competition as one complete strangler vertical: freeze six legacy outcomes, shadow-write vNext events and projections, prove old/new parity, require two formal runs before cutover, retain compatibility state, and rehearse rollback without rerunning or reinterpreting a revealed scientific panel.
+- Files changed:
+  - `src/autoresearch/competition/migration.py`
+  - `src/autoresearch/competition/service.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `tests/fixtures/migrations/competition-v1.json`
+  - `tests/unit/competition/test_migration.py`
+  - `tests/smoke/test_competition_migration_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-8-1-competition-migration.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Froze a versioned Competition characterization corpus for complete, feasibility negative-result, access-blocked, failed-after-plan, blocked-then-resumed, and unchanged-terminal-idempotent behavior.
+  - Added a default-off strangler adapter behind `AUTORESEARCH_COMPETITION_MIGRATION_MODE=legacy|shadow|vnext`. Default legacy mode retains byte/layout behavior and creates no migration artifacts. The existing scientific engine, manifest, evidence gate, artifacts, Vault note, CLI reader, and compatibility writer remain in place.
+  - In shadow/vNext modes, each distinct legacy terminal observation becomes an independently sealed `EventJournal` plus acyclic Control Graph. The adapter records topic selection, topic, hypothesis, plan, attempts, gate, artifact hashes, endpoint, interventions, and redacted exception identity; it never persists raw exception text.
+  - Preserved the legacy blocked/resume distinction by making the resumed invocation a child journal anchored to the prior blocked terminal checkpoint. An unchanged blocked or complete fingerprint revalidates the old journal and emits an idempotency observation without appending past a seal or creating another invocation.
+  - Added seven explicit parity checks for event semantics, terminal state, scientific endpoint, gate, artifact inventory/hash, failure semantics, and access/human intervention counts. Every report is reread against its journal bytes, lineage, seal, projected endpoint, source fingerprint, and Control Graph.
+  - Added a cross-run promotion ledger. vNext authority is rejected before scientific work until two different formal IDs and legacy run IDs have produced complete equivalent shadow reports. Formal evidence is bound by report and seal hashes; tampering blocks cutover.
+  - Added rollback verification from one vNext-authority vertical to the retained legacy reader. The compatibility files, lifecycle result, projection, journal lineage, and seal all remained unchanged.
+  - Ran three complete local verticals only on the existing generated logistic-system characterization fixture: two formal shadow runs and one vNext-authority run. This is migration evidence, not official MDBench Gate A, and no revealed official panel, threshold, dependency, release permission, or submission state changed.
+- Verification:
+  - Focused `poetry run python -m pytest tests/unit/competition/test_migration.py tests/smoke/test_competition_migration_live.py -q`: passed 7 deterministic tests with the opt-in smoke skipped by default.
+  - Competition compatibility `poetry run python -m pytest tests/unit/competition -q`: passed all 61 tests in 33.37 seconds.
+  - Real local `$env:AUTORESEARCH_COMPETITION_MIGRATION_LIVE='1'; $env:AUTORESEARCH_COMPETITION_MIGRATION_OUTPUT='runs/manual-live/task262-competition-migration-v1'; poetry run python -m pytest tests/smoke/test_competition_migration_live.py -q`: passed 1 test in 14.05 seconds. It produced two distinct formal shadow reports, one vNext-authority report, a promotion ledger, a rollback report, and `smoke-summary.json` under the ignored output directory.
+  - Formal run 1 sealed lineage `6ea971dea552a0c518fb5dfaaa50de3fbb5576a38cc3b2d8b01006b8c6d54cfb` with seal `9ea12c7db4d7ebc09c47b88e3fde10a1144535332163847462e249f22cc69bea`; formal run 2 sealed lineage `7bd676c919de2fada851f489078524b82a40f262da01b6f5892600d971d918d9` with seal `c97312525d296df4d01611c02be8a01c9ab1a3956ef1b8060fb0134b4e4235ea`.
+  - The vNext-authority run sealed lineage `511065dbfd129fb8625e1325962d26c2e5e9768e735d9f25b456bf276401bd13` with seal `42ee10bba0b8543e609a47a73e68c52e95ae5f842f6f5e383e97de0f87e8192a`; rollback reported equal lifecycle result, equal projection, unchanged journal, and preserved compatibility files.
+  - Full `poetry run pytest tests/smoke tests/unit -q`: collected 882 items and passed 873 tests with 9 opt-in live tests skipped in 97.60 seconds; repository line coverage remained 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 147 source files.
+  - `git diff --check`, task/Vault/index consistency check, ignored-output check, and worktree/status review passed before staging.
+- Problems:
+  - Added and resolved `P-20260729-032` for the initial non-Poetry import probe, tuple-to-JSON canonical hash boundary, and Python 3.10 `typing.Never` incompatibility.
+  - Updated open `P-20260728-024`: Competition now has parity-gated vNext lifecycle authority and rollback, while Campaign/Sprint control planes and the intentionally retained Competition compatibility writer remain.
+- Follow-up:
+  - Implement `262.8.2` as a separate focused commit for Campaign. Re-freeze Campaign's own six outcomes, run its own two formal verticals and rollback, and do not reuse Competition evidence to waive Campaign parity or cutover gates.
+
 ### 2026-07-29 01:12:30 +08:00 - Codex - Task 262.7 validated Open Science research objects
 
 - Request: Continue the evidence-first vNext upgrade in sequence by exporting validated Open Science research objects over provenance v2, preserving the existing reproducibility package and legacy writers, separating internal/review/public views, and proving profile, privacy, identifier/license/contribution, supply-chain, and clean-directory reproduction gates on one existing real negative-result round.
