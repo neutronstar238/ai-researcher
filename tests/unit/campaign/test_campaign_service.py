@@ -32,6 +32,10 @@ from autoresearch.campaign import (
     load_campaign_manifest,
     load_round_manifest,
 )
+from autoresearch.evidence import (
+    build_campaign_round_provenance,
+    project_evidence_v1,
+)
 from autoresearch.schemas import data_hash
 
 NOW = datetime(2026, 7, 23, 12, 0, tzinfo=timezone.utc)
@@ -343,6 +347,39 @@ def test_campaign_runs_negative_to_new_hypothesis_to_paper_gate(
     assert resumed == result
     assert adapter.calls == calls_before_resume
     assert service.status(campaign_dir) == result
+
+
+def test_completed_round_projects_to_provenance_v2_with_v1_compatibility(
+    tmp_path: Path,
+) -> None:
+    service = AutonomousResearchCampaign(
+        adapter=ScriptedCampaignAdapter(),
+        output_root=tmp_path / "runs",
+        vault_root=tmp_path / "vault",
+        clock=lambda: NOW,
+    )
+    result = service.run(_spec())
+
+    projection = build_campaign_round_provenance(
+        Path(result.campaign_dir),
+        "round-001",
+    )
+    trace = projection.bundle.require_claim_trace(projection.core_claim_id)
+    legacy = project_evidence_v1(projection.bundle)
+    legacy.require_core_claim_coverage([projection.core_claim_id])
+
+    assert trace.evidence_ids == [
+        "evidence.task260-two-round-campaign.round-001.failed-gate"
+    ]
+    assert {
+        "agent.task260-two-round-campaign.round-001.adjudicator",
+        "agent.task260-two-round-campaign.round-001.official-executor",
+    }.issubset(trace.agent_ids)
+    assert trace.decision_ids == [
+        "decision.task260-two-round-campaign.round-001.next-round"
+    ]
+    assert legacy.claims[projection.core_claim_id].status.value == "supported"
+    assert projection.bundle.metadata["private_paths_included"] is False
 
 
 def test_campaign_rejects_current_unseen_reference_in_proposal(tmp_path: Path) -> None:

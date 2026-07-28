@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-030 - Initial provenance-v2 checks exposed naming, import, and causal-time defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 00:20:00 +08:00
+- Source: Task `262.6` W3C PROV-aligned evidence v2, EvidenceGraph compatibility, campaign adapter, and Vault projection.
+- Symptom: The first focused Mypy check found that three proposed `content_hash` data fields shadowed the inherited `KernelContract.content_hash()` method and that one validation helper returned `Any`. The first deterministic campaign test then failed during collection because eager package exports created a partial `autoresearch.campaign` import cycle. After direct module imports removed the cycle, the generated fixture exposed a decision Activity whose persisted decision timestamp followed its constant-clock round completion, and an adjudication stage timestamp that preceded the completed scientific result. Focused Ruff later requested canonical import ordering. Two context-sensitive `apply_patch` attempts also failed without changing files.
+- Impact: Focused verification was invalid until the contract names, import boundary, and causal-time normalization were corrected. No task was checked, legacy writer changed, dependency upgraded, scientific experiment rerun, or public artifact released during the failed attempts.
+- Evidence: Initial Mypy reported four errors; the campaign test first stopped with a partial-module `ImportError`, then failed one Activity interval validator. Each corrected rerun passed. The final deterministic campaign test and real-round smoke both produced complete traces, and full regression collected 865 items successfully.
+- Root cause: `KernelContract` already reserves `content_hash()` for whole-contract hashing; a public package-level campaign import was unsafe while Campaign imported reports that import EvidenceGraph; and a deterministic test clock may legitimately produce coarse manifest transition timestamps that are earlier than artifact-owned scientific timestamps.
+- Workaround: None remains necessary.
+- Next action: Keep `content_digest` for artifact bytes, direct campaign module imports for the projection adapter, and artifact-owned timestamps as the causal lower bound when normalizing projection Activities.
+- Linked tasks: `262.6`, `262.7`, `262.8`.
+- Resolution: Renamed record fields to `content_digest`, made the validation return type explicit, imported campaign contracts/service directly, normalized adjudication and round-end bounds without changing source records, made proposal-agent identity provider-neutral, and applied Ruff ordering.
+- Verification: 9 focused unit tests, one deterministic campaign integration, a 43-test compatibility matrix, one real-round opt-in smoke, 858-test full regression, full Ruff, and 145-file Mypy passed.
+
 ### P-20260728-029 - Initial Control Graph checks exposed contract, typing, and pytest collection defects
 
 - Status: Resolved
@@ -131,10 +147,10 @@ update a factual problem entry below.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete tasks `262.6` through `262.8`: provenance/Vault projections, Open Science export, and parity-gated vertical migration.
+- Next action: Complete tasks `262.7` and `262.8`: validated Open Science export and parity-gated vertical migration.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
-- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics, and task `262.5` supplies the shared durable Control Graph plus a characterized LangGraph boundary. The underlying legacy-service duplication remains open until parity-gated migration completes.
-- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.5` passed 24 focused tests, a persisted Harness/Control Graph development vertical, an 848-test regression, Ruff, and Mypy.
+- Resolution: Task `262.1` freezes the migration architecture and rollback gates, task `262.2` supplies the shared event/graph language, task `262.3` supplies atomic lineage/recovery/replay/fork, task `262.4` supplies a provider-neutral bounded Harness and sealed episode semantics, task `262.5` supplies the shared durable Control Graph plus a characterized LangGraph boundary, and task `262.6` supplies W3C PROV-aligned evidence plus approval-gated Vault projections. The underlying legacy-service duplication remains open until parity-gated migration completes.
+- Verification: Planning consistency and the task `262.1` source/link audit are recorded in `Agent.md`; task `262.6` passed 9 focused provenance tests, a deterministic campaign integration, a real-round tamper-blocking query, an 858-test regression, Ruff, and Mypy.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

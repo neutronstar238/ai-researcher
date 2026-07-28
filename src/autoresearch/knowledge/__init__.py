@@ -16,6 +16,11 @@ from .project_permissions import (
     ProjectRole,
     permissions_for_role,
 )
+from .provenance import (
+    VaultProjectionError,
+    VaultProjectionResult,
+    project_provenance_to_vault,
+)
 from .skills import (
     ExternalSkillCandidate,
     ExternalSkillWatchlist,
@@ -87,6 +92,8 @@ __all__ = [
     "SuccessfulPatternExample",
     "VersionedFileStore",
     "VaultLayout",
+    "VaultProjectionError",
+    "VaultProjectionResult",
     "VersionSnapshot",
     "create_obsidian_vault_assets",
     "audit_skill_polish_candidate",
@@ -97,6 +104,7 @@ __all__ = [
     "extract_wiki_links",
     "extract_reusable_skill_card",
     "permissions_for_role",
+    "project_provenance_to_vault",
     "rollback_knowledge_entry",
     "rollback_strategy_card",
     "retrieve_relevant_skills",

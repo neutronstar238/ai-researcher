@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 00:35:11 +08:00 - Codex - Task 262.6 W3C PROV-aligned evidence v2 and Vault projections
+
+- Request: Continue the evidence-backed vNext upgrade in sequence by implementing W3C PROV-aligned provenance/evidence v2, preserving EvidenceGraph v1 readers, projecting only approved source-anchored records into Obsidian, and proving a tamper-blocking causal query over one existing real campaign round before any Open Science export or service migration.
+- Files changed:
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/kernel/provenance.py`
+  - `src/autoresearch/evidence/__init__.py`
+  - `src/autoresearch/evidence/provenance.py`
+  - `src/autoresearch/knowledge/__init__.py`
+  - `src/autoresearch/knowledge/provenance.py`
+  - `tests/unit/kernel/test_provenance_v2.py`
+  - `tests/unit/campaign/test_campaign_service.py`
+  - `tests/smoke/test_provenance_real_round.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-6-prov-evidence-v2.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added strict provider-neutral contracts for Entity, Activity, Agent, Plan, qualified Usage/Generation/Derivation/Association, SourceSnapshot, Claim, support/limit Evidence, Counterevidence, Validation, Decision, ToolInvocation, and digest-only ModelInteractionDigest. All records carry stable IDs, versions, UTC valid time, optional invalidation/supersession, and event references.
+  - Added canonical bundle creation, sorting, JSON Schema export, persistence, round-trip verification, nested-tamper detection, global ID/reference validation, qualified-relation time checks, source/hash responsibility checks, revision rules, and current validation history resolution.
+  - Added a fail-closed core-claim query that verifies source snapshot and inputs, generating/upstream Activities, frozen code/software or deterministic-policy Agents, artifacts and their generations, current passing validation, and a validation-grounded generated decision artifact.
+  - Kept `EvidenceGraph` v1 unchanged and added a compatibility projection. `supports` remains supportive; `contradicts` and `limits` project as non-supporting evidence while existing coverage gates continue to operate.
+  - Added an explicit-approval Vault projector for literature, hypotheses, failures, skills, strategies, experiment records, evidence, and decisions. Notes include wiki-links, source refs, event/run IDs, artifact digests, confidence, version/validity/invalidation, supersession, and validation history; unknown or unapproved records fail closed.
+  - Added a generic validated Campaign adapter and deterministic generated-campaign integration. It verifies the whole campaign directory and every selected artifact's domain hash, normalizes projection time using artifact-owned causal bounds, chooses proposal/executor identities without vendor-specific keys, and excludes absolute private paths.
+  - Ran the real opt-in query against existing `task260-autonomous-ccfb-v1/round-001` without rerunning science or calling a model. Bundle hash `a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782` resolves the negative core claim through frozen protocol/code, unseen evaluation, deterministic gate, validation, and `next_round` decision; it preserves contradictory/limiting evidence for the original positive hypothesis, writes 12 approved isolated Vault notes, and blocks both nested tampering and a removed gate generation.
+  - Preserved the strangler boundary: legacy Campaign/Competition/Sprint writers, EvidenceGraph v1, scientific endpoints, dependency versions, public export, release, and submission authority remain unchanged.
+- Verification:
+  - Focused `poetry run pytest tests/unit/kernel/test_provenance_v2.py -q`: passed 9 tests; the test set covers canonical ordering/hash/round trip, complete trace, persisted and nested tamper, required-node removal, orphan/time rejection, revision/invalidation, latest validation history, digest-only model interaction, agent typing, v1 direction compatibility, explicit Vault approval, all requested knowledge record mappings, wiki links, and stable IDs/JSON Schemas.
+  - Deterministic campaign `poetry run pytest tests/unit/campaign/test_campaign_service.py::test_completed_round_projects_to_provenance_v2_with_v1_compatibility -q`: passed; the generated negative first round projected through the provider-neutral builder and existing v1 coverage gate.
+  - Compatibility `poetry run pytest tests/unit/kernel/test_provenance_v2.py tests/unit/evidence/test_graph.py tests/unit/campaign/test_campaign_service.py tests/unit/knowledge/test_entries.py tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py tests/smoke/test_provenance_real_round.py -q`: passed 43 tests with 1 real smoke skipped by default; `kernel/provenance.py` reached 93% line coverage in this matrix.
+  - Real `$env:AUTORESEARCH_PROVENANCE_REAL_ROUND='1'; $env:AUTORESEARCH_PROVENANCE_CAMPAIGN='runs/manual-live/task260-autonomous-ccfb-v1'; $env:AUTORESEARCH_PROVENANCE_OUTPUT='runs/manual-live/task2626-provenance-v2-20260729'; poetry run pytest tests/smoke/test_provenance_real_round.py -q`: passed 1 test. The output includes `provenance-bundle.json`, `claim-trace.json`, `evidence-v1-compatibility.json`, `smoke-summary.json`, and an isolated Vault projection; `tamper_blocked`, `missing_generation_blocked`, and `private_paths_included=false` were asserted.
+  - Full `poetry run pytest tests/smoke tests/unit -q`: passed 858 tests with 7 opt-in live tests skipped in 83.03 seconds; repository line coverage was 86%.
+  - Full `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src/autoresearch`: passed with no issues in 145 source files.
+  - Focused source/test Mypy, focused Ruff, `git diff --check`, task/Vault link consistency, and final staged checks were rerun before commit.
+- Problems:
+  - Added and resolved `P-20260729-030` for initial `content_hash` method/field collision, return typing, package import cycle, coarse-clock causal interval, provider-key assumption, import-order, and context-sensitive patch findings.
+  - Updated open `P-20260728-024`: provenance/evidence and Vault semantics are now shared and verified, but duplicate legacy control/write planes remain until task `262.8` completes parity-gated migration.
+- Follow-up:
+  - Implement task `262.7` in a separate commit: export validated RO-Crate/Workflow Run/PROV research objects with software/data/workflow/environment/contribution/citation/license/SBOM/build metadata, three visibility views, sensitive-data and approval gates, profile validators, and independent clean-directory reproduction. Do not describe interoperability as scientific reproduction or make the internal v2 bundle public by default.
+
 ### 2026-07-29 00:10:15 +08:00 - Codex - Task 262.5 durable LoopSpec and Control Graph
 
 - Request: Continue the evidence-backed vNext upgrade by implementing the next checked task as a frozen, recoverable LoopSpec/Control Graph with explicit approval, retry, compensation, pivot, escalation, holdout, and LangGraph adapter boundaries, then prove one Harness-to-Control-Graph development vertical before any service migration or dependency upgrade.

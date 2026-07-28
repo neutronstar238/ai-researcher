@@ -844,3 +844,22 @@ development vertical 将 sealed `EpisodePackage` 投影为 provider-neutral node
 的 Harness 与 Control Graph journals；这只证明控制/恢复链，不是科研结果或旧服务 migration。24 个
 focused tests、848-test regression、全量 Ruff 与 142-file Mypy 均通过；`262.6` 将在此 event spine
 上增加 W3C PROV-aligned evidence v2 与 source-anchored Vault projection。
+
+`262.6` 已于 2026-07-29 完成可交换证据内核的第一半。新的 content-addressed
+`ProvenanceBundle` 以 W3C PROV 的 Entity、Activity、Agent、Usage、Generation、Derivation、
+Association 与 Plan 为基础，并加入 Claim、support/contradict/limit Evidence、Counterevidence、
+Validation、Decision、ToolInvocation 和只保存摘要哈希的 model interaction。每条记录都有稳定 ID、
+UTC valid time、version、invalidation、supersession 与 event refs；bundle 在读取和查询时验证引用、
+时序、责任、source snapshot、生成关系和 canonical hash。`require_claim_trace()` 只有在来源/输入、
+生成活动、冻结代码或策略 Agent、产物、当前有效验证与生成的决策产物全部存在时才返回，任何嵌套篡改
+或关键 generation 缺失都会 fail closed。
+
+现有 `EvidenceGraph` v1 实现未改变；v2 可把当前有效记录投影为 v1 reader 所需的 claim/source/
+artifact/evidence 结构，其中只有 `supports` 映射为 `supports_claim=true`。Vault 投影使用显式批准
+allow-list，能把文献、假设、失败、技能、策略、实验记录、证据和决策写成带 wiki-link、event ID、
+artifact hash、confidence、validity 与 supersession 的 Markdown。真实
+`task260-autonomous-ccfb-v1/round-001` 已在不重跑科学实验的情况下形成
+`a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782` bundle：核心负结果从冻结协议
+和代码，经 unseen evaluation、确定性 contribution gate 与当前验证到 `next_round` 决策；原正向
+假设同时保留 contradictory 和 limiting evidence。该任务没有改变历史 endpoint、旧 writer、依赖、
+公开导出或投稿权限；RO-Crate/JSON-LD 与公开视图仍属于 `262.7`。

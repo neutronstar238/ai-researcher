@@ -11,10 +11,16 @@ from .graph import (
     EvidenceTrace,
     SourceNode,
 )
+from .provenance import (
+    CampaignRoundProvenance,
+    build_campaign_round_provenance,
+    project_evidence_v1,
+)
 
 __all__ = [
     "ClaimNode",
     "ClaimStatus",
+    "CampaignRoundProvenance",
     "EvidenceArtifact",
     "EvidenceCoverageError",
     "EvidenceGraph",
@@ -22,4 +28,6 @@ __all__ = [
     "EvidenceNode",
     "EvidenceTrace",
     "SourceNode",
+    "build_campaign_round_provenance",
+    "project_evidence_v1",
 ]

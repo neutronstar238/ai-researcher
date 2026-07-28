@@ -1012,7 +1012,7 @@ idempotency 和 serialization 的 characterization tests，再单独迁移依赖
 | 262.9 | task/trial/trajectory/outcome eval、OTel、Agentic security fault matrix | promotion 同时满足 outcome、evidence、security、cost 和重复试验门 |
 | 262.10 | LangGraph/LangChain 升级、兼容窗口、旧路径弃用、rollback rehearsal | 两个真实 vertical run、全量质量门、独立复现与回滚演练通过 |
 
-### 26.3 已完成的内核切片：262.2—262.5
+### 26.3 已完成的内核切片：262.2—262.6
 
 `262.2` 只新增纯 Pydantic/标准库契约和测试，不修改现有服务写路径。最小交付包括：
 
@@ -1061,6 +1061,23 @@ sealed episode journal、6-event sealed loop journal 和 content-addressed succe
 focused tests、32-test legacy/new collection compatibility matrix、848-test regression、全量 Ruff
 与 142-file Mypy 已通过。Competition、Campaign、Sprint 仍由旧路径权威执行，cutover 留给 `262.8`。
 
+`262.6` 增加 content-addressed `ProvenanceBundle` 与显式的 Entity/Activity/Agent、
+Usage/Generation/Derivation/Association/Plan、Claim/Evidence/Counterevidence、Validation/Decision、
+ToolInvocation 和 digest-only model-interaction contracts。bundle 对稳定 ID、UTC valid time、version、
+revision/invalidation、引用、source snapshot、生成活动、责任 Agent 与 canonical hash fail closed；
+`require_claim_trace()` 必须同时解析 source/input、activity、冻结 code/software 或 deterministic
+policy Agent、artifact、当前 validation 和生成的 decision artifact。旧 `EvidenceGraph` v1 未改写，
+而由兼容投影继续服务现有 reader。Vault 投影必须收到显式批准 ID，只生成带 wiki-link、event ID、
+artifact hash、confidence、validity 和 supersession 的 source-anchored Markdown。
+
+确定性 campaign fixture、v1/Vault compatibility matrix 与真实
+`task260-autonomous-ccfb-v1/round-001` 查询均已通过。真实 smoke 只验证既有 frozen artifacts，没有
+重跑或重解释科学实验；它生成 bundle hash
+`a2e54556b3f6e242deeaff3d7c87400ae23e701ef034983fb6964a3c2df4c782`，阻断嵌套篡改和缺失 gate
+generation，并在隔离 Vault 中写入 12 条批准投影。全量 858 tests、7 skips、86% coverage、Ruff 与
+145-file Mypy 通过。Open Science research-object export、许可/隐私/public views 仍由 `262.7`
+负责，旧服务迁移仍由 `262.8` 负责。
+
 ### 26.4 迁移与回滚
 
 每个旧服务按四步迁移：
@@ -1100,7 +1117,10 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 - **L1（持久 Loop，2026-07-29 已通过）**：262.5 的冻结 LoopSpec、journal-only replay、
   idempotent recovery、approval/retry/compensation/pivot/escalation/holdout fault matrix 与
   LangGraph characterization 通过；一个开发 fixture 已在统一 Harness/Control Graph 上完成并双重封印。
-- **G1/O1（可交换证据）**：262.6—262.7 通过，一个真实 round 导出标准 provenance/research object。
+- **G1（证据图，2026-07-29 已通过）**：262.6 的 W3C PROV-aligned bundle、EvidenceGraph v1
+  compatibility、批准制 Vault projection、真实 round 查询与篡改阻断通过。
+- **O1（开放科研对象）**：262.7 通过，一个真实 round 导出经 profile/许可/隐私门验证的 research
+  object；不得把 G1 的内部 provenance bundle 冒充公开 RO-Crate。
 - **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 
