@@ -1055,7 +1055,8 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 
 ### 26.6 里程碑
 
-- **K1（契约）**：262.2 通过，旧行为零变化。
+- **K1（契约，2026-07-28 已通过）**：262.2 的 31 个 focused/property tests、778-test
+  regression、全量 Ruff/Mypy 和 schema/import smoke 通过；旧服务、依赖和持久结果零变化。
 - **K2（可恢复事件）**：262.3 通过，可确定性 replay/fork。
 - **H1/L1（可控执行）**：262.4—262.5 通过，一个开发 fixture 在统一 Harness/Loop 上完成。
 - **G1/O1（可交换证据）**：262.6—262.7 通过，一个真实 round 导出标准 provenance/research object。

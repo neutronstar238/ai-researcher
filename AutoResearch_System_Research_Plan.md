@@ -803,3 +803,10 @@ vNext 的核心可证伪假设是：统一事件与图契约能在不改变现�
 HarnessSpec、LoopSpec/Control Graph、PROV/Vault 投影、Open Science 导出、纵向服务迁移与安全评测。
 LangGraph 主版本升级、图数据库和旧状态机弃用都延后到 characterization 与两个真实 vertical run
 通过之后。
+
+`262.2` 已在 2026-07-28 完成第一项可证伪实现：`autoresearch.kernel` 提供严格的 v1 `RunEvent`、
+`EventActor` 与四平面 `GraphNode/GraphEdge/GraphSnapshot`。事件内容经 UTC/JSON 规范化后计算并验证
+canonical SHA-256；图快照拒绝重复、悬空、跨平面、自环和未显式标记的控制循环，并稳定导出 JSON
+Schema。31 个 focused/property tests 覆盖全部 contract 代码，全量回归通过。该任务没有写 journal、
+没有迁移旧服务，也没有改变依赖或历史结果；链连续性、原子持久化、敏感字段拒绝、replay 与 fork
+仍由 `262.3` 验证。

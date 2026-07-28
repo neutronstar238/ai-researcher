@@ -17,6 +17,7 @@ validation, review, or paper-build artifacts.
 ## Current Architecture Evidence
 
 - [[exploration/graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]] — task 262.1 cross-search, repository gap audit, four-plane graph architecture, phased migration gates, rollback strategy, and source registry.
+- [[projects/ai_researcher_system/progress/task-262-2-kernel-contracts|Task 262.2 canonical event and four-plane graph contracts]] — strict content-addressed run-event and graph schemas, explicit control-loop boundaries, deterministic JSON Schema export, and zero legacy-service behavior change.
 
 ## Current Competition Evidence
 

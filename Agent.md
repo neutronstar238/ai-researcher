@@ -64,6 +64,45 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-28 14:36:25 +08:00 - Codex - Task 262.2 canonical event and four-plane graph contracts
+
+- Request: Begin implementation only after the vNext refactor plan, using the first minimal slice to establish a provider-neutral event and graph language without changing existing research services.
+- Files changed:
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/kernel/contracts.py`
+  - `tests/unit/kernel/test_contracts.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-2-kernel-contracts.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Added the runtime- and provider-neutral `autoresearch.kernel` package using only Pydantic and the standard library; no LangGraph, Agent SDK, model provider, tool provider, or persistence type enters the contracts.
+  - Added four isolated `GraphPlane` values (`control`, `provenance`, `knowledge`, and `evaluation_policy`) plus strict `GraphNode`, `GraphEdge`, and versioned `GraphSnapshot` models.
+  - Graph snapshots normalize unordered node/edge sets, reject duplicate IDs, dangling endpoints, node/edge plane mismatches, self-loops, non-JSON metadata, and ambiguous control cycles. Control graphs must choose `acyclic` or `explicit_boundaries`; removing every explicit boundary must leave a DAG.
+  - Added typed `EventActor` responsibility and strict v1 `RunEvent` envelopes with event/run/task identity, positive sequence, UTC time, event type/status/action, parent identity/hash, cross-run fork identity, sorted artifact reference sets, decision/approval refs, idempotency key, JSON payload, and canonical SHA-256.
+  - Event creation validates normalized content before hashing. Loading altered content fails Pydantic validation, and `verify_integrity()` detects nested in-memory mutation before persistence. Sequence one has no parent unless it explicitly forks a different run; later events require a parent.
+  - Added canonical JSON/SHA-256 helpers and deterministic JSON Schema export for the five public contracts. Mapping order, node/edge insertion order, artifact-reference order, and payload-key insertion order do not change the resulting canonical digest.
+  - Kept the slice deliberately isolated: Campaign, Sprint, Competition, EvidenceGraph, AuditLog, dependencies, CLI, and all persisted scientific results are unchanged. Journal continuity, atomic writes, terminal seals, redaction, replay, and fork execution remain task `262.3`.
+  - Marked only task `262.2` complete, synchronized the research/execution plans, and wrote a source-linked Vault progress note.
+- Verification:
+  - `python -m pytest tests\unit\kernel\test_contracts.py -q`: final run passed 31 tests; `src/autoresearch/kernel/contracts.py` reached 100% line coverage. Tests include Hypothesis property coverage for canonical hash independence from payload insertion order.
+  - The focused suite verifies event round-trip/hash, load-time and in-memory tamper detection, UTC, parent/fork rules, duplicate artifacts, JSON/finite-number rules, graph round-trip/hash, set normalization, duplicate/dangling/cross-plane/self-loop failures, acyclic/explicit-cycle policy, non-control cycle behavior, and deterministic schema export.
+  - `python -m pytest tests -q`: passed with 778 passed and 5 opt-in live tests skipped; the only warning is the existing LangGraph serializer pending-deprecation warning.
+  - `python -m ruff check src tests`: passed.
+  - `poetry run mypy src\autoresearch`: passed with no issues in 137 source files.
+  - `poetry run python -c "from autoresearch.kernel import RunEvent, GraphSnapshot, contract_json_schemas; ..."`: imported both public contracts and exported all five schemas.
+  - A source-layout smoke with explicit `PYTHONPATH=src` exported schemas in the stable order `EventActor,GraphNode,GraphEdge,GraphSnapshot,RunEvent`, produced 9,342 canonical schema JSON bytes at that implementation point, and confirmed `additionalProperties=false`.
+  - Initial Ruff/Mypy/import diagnostics and their corrections are recorded in resolved problem `P-20260728-025`.
+  - No external data source or model integration is part of this pure contract slice, so an opt-in live network/model smoke was not applicable.
+- Problems:
+  - Added and resolved `P-20260728-025` for initial mechanical lint findings, the bare source-layout import requirement, and use of a global interpreter without the declared `types-requests` stub.
+  - Updated open `P-20260728-024`: task `262.2` establishes shared semantics, but duplicate control planes remain until tasks `262.3`—`262.8` complete persistence and parity-gated migration.
+- Follow-up:
+  - Implement task `262.3` in a separate commit: atomic append, contiguous sequence, idempotency, parent-chain validation, terminal seal, replay, cross-run fork, corruption/concurrency faults, and sensitive-field rejection while every legacy state file remains authoritative.
+
 ### 2026-07-28 14:22:27 +08:00 - Codex - Task 262.1 evidence-backed vNext refactor plan
 
 - Request: Cross-search the current technology landscape, produce a comprehensive refactor plan for Graph Engineering, Harness Engineering, Loop Engineering, Open Science, and related capabilities, then begin implementation only after the plan is frozen.
