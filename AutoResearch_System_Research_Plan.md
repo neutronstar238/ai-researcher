@@ -937,3 +937,35 @@ ID。真实 adoption smoke 没有重跑模型、文献、实验、论文或投�
 legacy rollback。结果、投影、journal seal 与 compatibility files 均保持一致，迁移 JSON 不含私有
 绝对路径。Competition、Campaign、Sprint writer 和旧 reader 仍保留到 `262.10` 的兼容窗口；依赖、
 Gate B、公开发布与外部投稿权限均未改变。
+
+`262.9` 在上述迁移层之上补齐统一评测、可观测性和 Agentic 安全门。交叉检索基线记录于
+`autoresearch-vault/exploration/unified-evaluation-observability-security-2026.md`，覆盖 Inspect AI、
+ScienceAgentBench、CORE-Bench、MLE-bench、AgentDojo、METR、OWASP Agentic Top 10、NIST AI
+600-1/100-2、OpenTelemetry GenAI 与 grader/holdout 污染研究。设计冻结两条不可互相替代的结论：
+系统协议/重放/权限是否可靠，以及科学结果是否有匹配证据；经过验证的科学阴性结果可以是成功研究
+trial，流程成功但证据不匹配必须失败，`unknown` 一律 fail closed。
+
+统一评测报告把 task、trial、trajectory、outcome、rubric、grader、uncertainty、cost、failure
+slice、promotion 和 rollback 组成内容寻址记录。五个本地 regression 维度分别验证 protocol、
+evidence、scientific core、replay 和 holdout；十类确定性 fault 覆盖 goal hijack、tool misuse、
+identity/privilege、supply chain、unexpected code、memory poisoning、runaway loop、evaluator bias、
+holdout leakage 与 evidence mismatch。硬门不可由平均分补偿，重复 trial 必须来自不同 episode
+evidence，报告会重算 trial verdict、Wilson 区间、回归/fault 结果和 promotion 决策，伪造嵌套结果
+或候选生效后缺少 rollback target 均被拒绝。
+
+可观测层固定 OpenTelemetry core Semantic Conventions 1.43.0、GenAI 独立仓库提交
+`d74a9bbc419c67dd78ea4fcc26280381ef0bb9db` 与 OTLP 1.11.0。它只在本地写原子、
+内容寻址的 OTLP JSONL，默认只导出低基数 span、摘要、字段数和 `redacted=true`；prompt、
+response、tool argument/result 与 grader explanation 不进入 OTLP。原文只有在显式 grant 未过期、
+scope hash 匹配且目标是独立本地目录时才写入旁路产物。Event Journal、episode 和 provenance
+仍是科研事实来源，OTel 只用于诊断。
+
+首次 opt-in adoption smoke 只读采用两个既有真实、已完成的 Sprint 阴性结果，没有重跑模型、检索、
+实验、论文或投稿。五维 regression、十类 fault、安全/成本/重复门全部通过，promotion 为
+`promote`；统一评测、fault matrix、regression 与 OTLP 摘要 hash 分别为
+`b5e21a0a93e1b3caa96f4a5f5bf7ec637a09bf97305d39e9d26164324ea6d1ee`、
+`53f182bb856d702b5ee1bd90ec5384369ee43e6dc0910f2e15419cd972560f73`、
+`c2a466d01aa703d5c62a8eb47131aec0dbcc95bd424033507f67b540f14ba33c` 和
+`86236e468ad1a3dce58acbb02ae8054a857aee45b53f8d5becec43bb2c171e85`，且 raw payload
+未持久化。外部昂贵 benchmark、依赖升级、legacy writer 删除、Gate B 和公开/投稿权限仍保持关闭；
+这些属于后续显式任务和人工审批。

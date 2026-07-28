@@ -26,6 +26,7 @@ validation, review, or paper-build artifacts.
 - [[projects/ai_researcher_system/progress/task-262-8-1-competition-migration|Task 262.8.1 Competition vertical migration]] — six frozen terminal/recovery behaviors, sealed standard-event and Control Graph projections, parity-gated shadow mode, two formal verticals, reversible vNext authority, and retained legacy compatibility state.
 - [[projects/ai_researcher_system/progress/task-262-8-2-campaign-migration|Task 262.8.2 Campaign vertical migration]] — stage/round event projection, Campaign-specific gate and failure parity, sealed recovery forks, two formal Campaigns, reversible vNext authority, and retained legacy state.
 - [[projects/ai_researcher_system/progress/task-262-8-3-sprint-migration|Task 262.8.3 Sprint vertical migration]] — Sprint-specific lifecycle parity, correct negative-result/block/failure separation, two persisted real negative-result formal observations, reversible vNext authority, and retained legacy state.
+- [[projects/ai_researcher_system/progress/task-262-9-unified-evaluation-security|Task 262.9 unified evaluation, observability, and Agentic security gates]] — content-addressed system/science evaluation, five bounded regressions, ten deterministic Agentic faults, repeated-trial and rollback gates, redacted local OTLP, and real persisted-evidence adoption.
 
 ## Current Competition Evidence
 

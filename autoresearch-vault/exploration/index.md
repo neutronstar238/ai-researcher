@@ -3,6 +3,19 @@
 ## architecture
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+- [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
+
+## agent evaluation
+
+- [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
+
+## agentic security
+
+- [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
+
+## opentelemetry
+
+- [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
 
 ## graph engineering
 

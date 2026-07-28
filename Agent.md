@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 03:02:19 +08:00 - Codex - Task 262.9 unified evaluation, observability, and Agentic security gates
+
+- Request: Continue the evidence-first vNext refactor with one shared evaluation model, bounded local regressions, repeated-trial promotion/rollback decisions, Agentic security faults, and local redacted OpenTelemetry, after first cross-searching current official and research sources.
+- Files changed:
+  - `src/autoresearch/kernel/evaluation.py`
+  - `src/autoresearch/kernel/__init__.py`
+  - `src/autoresearch/observability/otel_genai.py`
+  - `src/autoresearch/observability/__init__.py`
+  - `tests/unit/kernel/test_evaluation.py`
+  - `tests/unit/observability/test_otel_genai.py`
+  - `tests/smoke/test_unified_evaluation_live.py`
+  - `autoresearch-vault/exploration/unified-evaluation-observability-security-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-9-unified-evaluation-security.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Cross-searched Inspect AI, ScienceAgentBench, CORE-Bench, MLE-bench, AgentDojo, METR, OWASP Agentic Top 10 2026, NIST AI 600-1/100-2 E2025, OpenTelemetry core/GenAI/OTLP, AgentTelemetry, grader-bias, outcome-evidence, and search-time contamination work. Froze the resulting contracts and source registry in the Vault before closing implementation.
+  - Added strict content-addressed records for task, repeated trial, trajectory, outcome, rubric, grader, uncertainty, cost, failure slice, regression, security fault, promotion, rollback, and the unified report. Evaluation keeps system reliability independent from scientific validity, accepts a fully verified negative result, and fails closed on unknown or internally inconsistent evidence.
+  - Added deterministic recomputation of trial/report verdicts, Wilson uncertainty, regression/fault outcomes, and promotion decisions. Two repeats must use different episode evidence; required hard gates cannot be compensated by an average score; a failing active candidate must name a frozen rollback target.
+  - Added five local regression dimensions: protocol match, evidence match, scientific core, replay fidelity, and holdout integrity. Added ten fault cases: goal hijack, tool misuse, identity/privilege abuse, supply-chain mismatch, unexpected code, memory poisoning, runaway loop, evaluator bias, holdout leakage, and evidence mismatch. Expensive external suites remain explicit opt-ins.
+  - Added a local-only atomic OTLP 1.11.0 JSONL exporter pinned to core Semantic Conventions 1.43.0 and GenAI commit `d74a9bbc419c67dd78ea4fcc26280381ef0bb9db`. OTLP never contains prompt/response/tool/grader bodies, sensitive metadata is hashed, and optional raw content requires an unexpired scope-bound grant plus a separate local root.
+  - Ran one read-only adoption smoke over the two existing completed real negative-result Sprints from task 261. The smoke did not rerun models, search, experiments, manuscripts, paper builds, or submission; it promoted only after all five regression dimensions, ten fault cases, cost/security/evidence gates, and two independent trials passed. Raw sensitive content was not persisted.
+  - Kept Competition/Campaign/Sprint legacy writers, the old audit path, current dependencies, Gate B, public release, unrestricted execution, and submission authority unchanged for task `262.10`.
+- Verification:
+  - Focused `poetry run python -m pytest tests/unit/kernel/test_evaluation.py tests/unit/observability/test_otel_genai.py tests/smoke/test_unified_evaluation_live.py -q`: collected 30 items; 29 passed and the opt-in smoke skipped by default in 8.83 seconds. Evaluation module line coverage was 92%; OTel exporter coverage was 90%.
+  - Real local `$env:AUTORESEARCH_UNIFIED_EVALUATION_LIVE='1'; $env:AUTORESEARCH_UNIFIED_EVALUATION_OUTPUT='E:\AIResearch\runs\manual-live\task262-unified-evaluation-live-v1'; poetry run python -m pytest tests/smoke/test_unified_evaluation_live.py -q`: passed 1 test. The persisted summary records decision `promote`, two verified-negative trials, no raw artifact, and source fingerprints `0e9477262ad603d10c422c0c962ef5e962007465cf3c1675f8f08cbc63c18253` and `81a3c70c1d8a34e92d099c40c3b1d7508f4ff76897c59d029a52f35cd2c667cf`.
+  - The real evaluation report, fault matrix, five-dimensional regression, and redacted OTLP hashes were `b5e21a0a93e1b3caa96f4a5f5bf7ec637a09bf97305d39e9d26164324ea6d1ee`, `53f182bb856d702b5ee1bd90ec5384369ee43e6dc0910f2e15419cd972560f73`, `c2a466d01aa703d5c62a8eb47131aec0dbcc95bd424033507f67b540f14ba33c`, and `86236e468ad1a3dce58acbb02ae8054a857aee45b53f8d5becec43bb2c171e85`.
+  - Full `poetry run python -m pytest -q`: collected 946 items and passed 934 tests with 12 opt-in tests skipped in 126.46 seconds; repository line coverage was 87%.
+  - Full product/test `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src`: passed with no issues in 151 source files.
+  - Documentation/task/Vault consistency, `git diff --check`, ignored-output checks, and staged-file review are rerun immediately before the focused commit.
+- Problems:
+  - Added resolved `P-20260729-037` for nested model hashing, typing/lint bring-up, validate-before-raw-write ordering, repeated-evidence, and forged nested-result defects found before completion.
+  - Added mitigated `P-20260729-036` for a stale local Git proxy; the immutable OpenTelemetry GenAI commit and raw definitions were verified through official GitHub web sources.
+  - Updated open `P-20260728-024`: shared evaluation/security/OTel now exist, leaving only the compatibility-writer, shallow workflow/audit, dependency, reproduction, and release boundary for `262.10`.
+  - Existing open `P-20260729-035` still tracks pre-existing all-repository Ruff debt outside the declared `src tests` product gate.
+- Follow-up:
+  - Implement task `262.10` as a separate focused commit: characterize and upgrade runtime dependencies, close the retained compatibility/audit paths only after formal vertical and rollback proof, publish the migration/support policy, run independent reproduction, and keep release/submission authority human-gated.
+
 ### 2026-07-29 02:26:25 +08:00 - Codex - Task 262.8.3 Sprint vertical migration
 
 - Request: Complete task `262.8` by independently migrating Sprint as the third strangler vertical: freeze Sprint-specific lifecycle meanings, shadow its full autonomy/scientific/paper lifecycle, prove seven-dimensional parity, admit verified negative results as formal migration evidence, require two formal observations before vNext authority, and rehearse rollback while preserving all legacy science and compatibility state.

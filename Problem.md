@@ -40,6 +40,36 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-037 - Unified evaluation bring-up exposed nested-result and observability safety defects
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-29 02:40:00 +08:00
+- Source: Task `262.9` unified evaluation, regression/fault matrix, and redacted OpenTelemetry implementation.
+- Symptom: The first evaluation test run failed 8 cases because canonical hashing was given lists containing Pydantic models rather than their serialized records. Initial OTel quality checks also reported 2 Ruff findings and 9 Mypy errors around import order, collection typing, and JSON attribute narrowing. Adversarial review then found that an invalid OTLP tree could be rejected after an optional raw artifact had already been written, and that caller-supplied regression/fault result objects needed deterministic recomputation before promotion.
+- Impact: The failed and incomplete checks could not count as completion evidence. The prevalidation ordering could have left a local sensitive side artifact for a telemetry export that ultimately failed, while unchecked nested results could have let a caller present inconsistent gate evidence. No production run, legacy record, scientific result, dependency, publication setting, or external system changed.
+- Evidence: The first evaluation traceback ended at canonical JSON serialization of nested `BaseModel` objects. Ruff/Mypy diagnostics were confined to the two new modules. New negative tests now forge regression/fault results, reuse episode evidence, and combine an invalid tree with an enabled raw-content grant.
+- Root cause: The initial content-addressing helper assumed already-serialized children; the new exporter mixed typed JSON values without enough narrowing; and side-artifact materialization was ordered before full OTLP graph validation.
+- Workaround: None remains necessary.
+- Next action: Preserve serialize-before-hash and validate-before-write ordering in future evaluator/exporter extensions; keep all promotion inputs subject to deterministic recomputation.
+- Linked tasks: `262.9`, `262.10`.
+- Resolution: Canonically dumped nested records before hashing, tightened JSON/attribute typing, prevalidated the complete OTLP payload before any optional raw write, required distinct episode evidence, and recomputed regression, fault, uncertainty, trial, and promotion semantics.
+- Verification: The final focused matrix collected 30 items: 21 evaluation tests and 8 OTel tests passed, with the opt-in live smoke skipped by default. A separate real persisted-evidence smoke passed with raw-content persistence disabled. Full regression passed with 934 tests and 12 opt-in tests skipped at 87% coverage; `ruff check src tests` and 151-file Mypy passed.
+
+### P-20260729-036 - Direct GitHub commit lookup was blocked by a stale local proxy
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-29 02:30:00 +08:00
+- Source: Task `262.9` OpenTelemetry GenAI semantic-convention version freeze.
+- Symptom: `git ls-remote` against the official OpenTelemetry semantic-conventions GitHub repository failed because local Git attempted to connect through `127.0.0.1` and the proxy endpoint was unavailable.
+- Impact: Direct Git transport could not supply the current upstream commit during this session. No repository file, dependency, credential, or remote branch was modified.
+- Evidence: Git reported that it could not connect to the configured `127.0.0.1` proxy. The official GitHub web commit page and raw repository sources remained reachable and identified commit `d74a9bbc419c67dd78ea4fcc26280381ef0bb9db` dated 2026-07-28.
+- Root cause: A machine-level Git/network proxy route is configured for a local proxy process that was not serving the request.
+- Workaround: Verified the exact commit, GenAI event/span definitions, development status, and missing schema URL through official GitHub web/raw pages and pinned that immutable commit in code and tests.
+- Next action: Repair or remove the stale Git proxy configuration before a future task needs Git-protocol access; continue requiring official immutable source verification.
+- Linked tasks: `262.9`, `262.10`.
+
 ### P-20260729-035 - Repository-wide Ruff includes pre-existing deploy and helper-script debt
 
 - Status: Open
@@ -225,10 +255,10 @@ update a factual problem entry below.
 - Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. Tasks `262.8.1`—`262.8.3` subsequently proved service-specific event/endpoint/gate/artifact/failure/intervention parity, formal promotion, vNext authority, and rollback without deleting the old writers. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Use task `262.9` to unify evaluation/observability/security gates, then retire duplicate compatibility and audit write paths only after the documented window and task `262.10` dependency/release gates.
-- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`, `262.8.2`, `262.8.3`.
-- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` through `262.8.3` add service-specific six-case characterization, standard-event/Control-Graph shadow projection, two-formal-observation promotion gates, reversible vNext authority, and rollback proofs for Competition, Campaign, and Sprint while retaining compatibility files. The remaining open scope is the duplicate legacy writer window, shallow workflow scaffold, and non-hash-chained `AuditLog`; those require `262.9`/`262.10`, not retrospective deletion in M1.
-- Verification: In addition to the earlier kernel/evidence/Open Science gates, Competition passed its seven migration tests, 61-service-test suite, and formal/cutover/rollback vertical; Campaign passed its seven migration tests, 35-service-test suite, and independent formal/cutover/rollback vertical; Sprint passed its seven migration tests, 42-test Campaign collection, two persisted real negative-result formal observations, vNext blocked projection, and rollback. The resulting full regression passed 905 tests with 11 opt-in tests skipped, while `ruff check src tests` and 149-file Mypy passed.
+- Next action: Task `262.9` has supplied the shared evaluation, observability, and security gates. Use task `262.10` to close the documented compatibility window, characterize dependency/state migration, replace the shallow audit path, run independent reproduction and rollback rehearsal, and only then retire duplicate writers.
+- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`, `262.8.2`, `262.8.3`, `262.9`, `262.10`.
+- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` through `262.8.3` add service-specific characterization, standard-event/Control-Graph shadow projection, formal promotion gates, reversible vNext authority, and rollback proofs for Competition, Campaign, and Sprint while retaining compatibility files. Task `262.9` adds content-addressed system/science evaluation, five bounded regressions, ten Agentic fault gates, independent repeats, rollback decisions, and redacted local OTLP. The remaining open scope is now limited to the duplicate legacy writer window, shallow workflow/audit paths, dependency migration, and release boundary owned by `262.10`.
+- Verification: In addition to the earlier kernel/evidence/Open Science and migration gates, task `262.9` passed 21 evaluation and 8 OTel focused tests plus one opt-in adoption smoke over two persisted real negative-result Sprints; the smoke promoted only after five regression dimensions and ten fault cases passed and emitted no raw payload. The resulting full regression passed 934 tests with 12 opt-in tests skipped at 87% coverage, while `ruff check src tests` and 151-file Mypy passed.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

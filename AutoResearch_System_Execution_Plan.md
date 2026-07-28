@@ -1153,6 +1153,31 @@ opt-in adoption smoke 只读采用现有 `task261-bounded-autonomous-clean-v1/v2
 私有绝对路径。Competition、Campaign、Sprint 均已通过 M1，但三个 legacy writer/reader 继续保留到
 `262.10`；本切片没有升级依赖、删除旧状态、重解释科学结果或解锁发布/投稿。
 
+`262.9` 在 M1 的三条可逆迁移路径之后增加一个共享、provider-neutral 的 evaluation plane。
+`EvaluationTaskRecord` 冻结 protocol、holdout 和外部 benchmark opt-in；每个 trial 只引用已封印
+episode/trajectory、环境 outcome、rubric/grader、cost 和 failure slice。报告分别计算 system
+verdict 与 scientific verdict，不把科学阴性结果改写成运行失败，也不让一次最佳结果掩盖重复性。
+所有嵌套结果在 promotion 前重新验证 canonical hash、validator 结论、独立 episode、grader
+独立性、Wilson 区间和 rollback 条件。
+
+本地门分两组执行：五维 regression 覆盖 protocol match、evidence match、scientific core、
+replay fidelity、holdout integrity；十类 fault matrix 覆盖 goal hijack、tool misuse、
+identity/privilege、supply chain、unexpected code、memory poisoning、runaway loop、evaluator bias、
+holdout leakage 和 evidence mismatch。任何 required case 缺失、`unknown`、成本未知/超限、
+holdout 泄漏、grader bias 或 evidence mismatch 都是不可补偿的硬失败。外部
+ScienceAgentBench/CORE-Bench/MLE-bench/AgentDojo/METR 类长任务默认禁用，只能显式 opt in。
+
+OpenTelemetry 导出器固定 core semconv 1.43.0、GenAI semconv 提交
+`d74a9bbc419c67dd78ea4fcc26280381ef0bb9db` 和 OTLP 1.11.0，只允许本地原子 JSONL。
+OTLP 永不写 prompt、response、tool argument/result 或 grader explanation 原文；敏感 metadata
+摘要化。原文旁路必须有 scope-bound、带过期时间的显式 grant，并写入独立本地 root。首次 adoption
+smoke 只读采用两个既有真实负结果 Sprint，五维 regression、十类 fault 和全部 promotion 门通过，
+评测/fault/regression/OTLP hash 分别为 `b5e21a0a93e1b3caa96f4a5f5bf7ec637a09bf97305d39e9d26164324ea6d1ee`、
+`53f182bb856d702b5ee1bd90ec5384369ee43e6dc0910f2e15419cd972560f73`、
+`c2a466d01aa703d5c62a8eb47131aec0dbcc95bd424033507f67b540f14ba33c` 和
+`86236e468ad1a3dce58acbb02ae8054a857aee45b53f8d5becec43bb2c171e85`；没有重跑科研过程或保存
+raw payload。
+
 ### 26.5 验证命令层级
 
 每个子任务先运行新增模块和 characterization 的 focused tests，再运行：
@@ -1196,6 +1221,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
   vNext-authority blocked projection 与 rollback 已通过；没有重跑或重解释既有科研执行。
 - **M1（迁移，2026-07-29 已通过）**：262.8 通过，Competition、Campaign、Sprint 均完成
   可逆等价迁移；legacy writer/reader 保留到 262.10 的兼容窗口。
+- **E1（统一评测与安全门，2026-07-29 已通过）**：262.9 的内容寻址评测报告、五维本地
+  regression、十类 Agentic fault、独立重复门、科学/系统双结论、默认脱敏本地 OTLP 和真实持久化
+  证据 adoption smoke 通过；昂贵外部 benchmark、raw payload 和发布权限仍默认关闭。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 
 这些里程碑提升的是可审计性、可恢复性、互操作性和科研因果完整性，不自动升级
