@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260728-024 - Duplicate control planes and shallow graph semantics can diverge
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-28 14:00:00 +08:00
+- Source: Task `262.1` repository audit and cross-search of current graph, harness, loop, provenance, and Open Science practice.
+- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `competition/service.py`, `campaign/service.py`, and `campaign/sprint.py` each own separate persistence, resume, transition, and terminal-state semantics. `observability/audit.py` has append-only JSONL events without sequence or parent hashes, and `evidence/graph.py` links claims to sources/artifacts without generating Activity, responsible Agent, derivation, counterevidence, version, or valid-time semantics.
+- Impact: Equivalent pause/resume/fail/approve behavior must be proven repeatedly; future changes can produce different terminal states or evidence meaning across services. A paper artifact may be hash-bound while still lacking an interoperable answer to who or what generated it from which inputs and decision.
+- Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
+- Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
+- Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
+- Next action: Complete tasks `262.2` through `262.8`: canonical contracts, append-only journal, HarnessSpec, LoopSpec/Control Graph, provenance/Vault projections, Open Science export, and parity-gated vertical migration.
+- Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`.
+- Resolution: Task `262.1` freezes the migration architecture and rollback gates; the underlying duplication remains open until parity-gated migration completes.
+- Verification: Planning consistency, dependency JSON, source/link audit, and the focused task `262.1` commit are recorded in `Agent.md`.
+
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 
 - Status: Resolved

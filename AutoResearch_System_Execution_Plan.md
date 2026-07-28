@@ -968,3 +968,99 @@ artifact，不是 CCF-B 就绪论文。
 哈希，再使用新独立任务面板裁决。论文阶段必须为每个 named prior work 和重要方法/实验声明绑定
 文献或执行证据。只有该完整因果链成立，才可升级“模型在预置程序中选题”为“模型产生并执行了
 新机制”；任何失败保留为报告并进入下一轮，绝不通过改提示、改论文或降门槛制造成功。
+
+---
+
+## 26. vNext 渐进重构执行计划
+
+### 26.1 执行策略
+
+本轮不做框架替换式重写。现有 Competition、Campaign、Sprint、EvidenceGraph、AuditLog、
+Obsidian Vault、科研负结果和审批门继续工作；新内核先以无调用方的领域契约落地，然后经历
+shadow-write、characterization 对比、单 vertical slice 切换和逐服务迁移。
+
+执行顺序固定为：
+
+```text
+contracts
+  -> append-only journal / replay / fork
+  -> HarnessSpec and episode package
+  -> LoopSpec and durable Control Graph
+  -> provenance/evidence and Vault projections
+  -> Open Science exporters
+  -> Competition / Campaign / Sprint migration
+  -> evaluation, security, dependency upgrade, deprecation
+```
+
+所有领域 schema 位于供应商中立的 `autoresearch.kernel`。LangGraph 首先只是 runtime adapter，
+不得把其 checkpoint 类型、Agent SDK 类型或模型供应商类型写入科研事件和 Vault。当前
+LangGraph/LangChain `^0.2.0` 不直接升级；先冻结 resume、interrupt、subgraph、parallel、
+idempotency 和 serialization 的 characterization tests，再单独迁移依赖。
+
+### 26.2 任务与验收门
+
+| 任务 | 交付 | 硬门 |
+|---|---|---|
+| 262.1 | 交叉检索、差距矩阵、架构决策、任务拆分 | 计划/任务/问题日志一致，引用和 dependency JSON 可验证 |
+| 262.2 | `RunEvent` 与四平面 Graph contracts、canonical hash、JSON Schema | 重复/悬空/跨平面/tamper 非法输入 fail closed；全量回归零行为变化 |
+| 262.3 | 原子 journal、sequence、幂等、hash-chain、terminal seal、replay/fork | 故障注入、并发、断链、重复副作用和终态追加测试通过 |
+| 262.4 | HarnessSpec、provider/tool/context/memory/verification policy、episode package | mock 与 opt-in live smoke；预算、权限、invalid schema 和模型不可用保留真实终态 |
+| 262.5 | LoopSpec、Control Graph、approval/retry/compensation/stop/pivot/resume | 崩溃恢复、人工拒绝、预算耗尽、负结果转向和 holdout 阻断通过 |
+| 262.6 | W3C PROV/PROV-AGENT/Evidence v2 与 Vault 投影 | 一个真实 round 的 agent/activity/entity/claim 全链查询与篡改阻断通过 |
+| 262.7 | RO-Crate/Workflow Run/PROV、CodeMeta/CFF/CRediT/SPDX/SLSA 导出 | profile、离线复现、许可/贡献一致性和敏感信息扫描通过 |
+| 262.8 | Competition、Campaign、Sprint 逐一迁移 | 旧/新 endpoint、gate、artifact、failure 一致，旧 scientific hash 不变 |
+| 262.9 | task/trial/trajectory/outcome eval、OTel、Agentic security fault matrix | promotion 同时满足 outcome、evidence、security、cost 和重复试验门 |
+| 262.10 | LangGraph/LangChain 升级、兼容窗口、旧路径弃用、rollback rehearsal | 两个真实 vertical run、全量质量门、独立复现与回滚演练通过 |
+
+### 26.3 首个实现切片：262.2
+
+`262.2` 只新增纯 Pydantic/标准库契约和测试，不修改现有服务写路径。最小交付包括：
+
+- `GraphPlane`：`control`、`provenance`、`knowledge`、`evaluation_policy`；
+- `GraphNode`、`GraphEdge`、`GraphSnapshot`：稳定 ID、类型、plane、属性和引用完整性；
+- `RunEvent`：schema version、run/task/event ID、UTC 时间、sequence、actor、type/status/action、
+  parent ID/hash、artifact refs、decision/approval、idempotency key、payload 和 canonical hash；
+- validators：JSON 可序列化、UTC、唯一 ID、端点存在、边与节点同平面、控制自环/环策略、hash
+  round-trip 与 tamper detection；
+- JSON Schema 与 deterministic serialization 测试。
+
+完成 `262.2` 后再实现 journal；不得在此切片顺手改 Campaign、EvidenceGraph 或依赖版本。
+
+### 26.4 迁移与回滚
+
+每个旧服务按四步迁移：
+
+1. **characterize**：冻结成功、负结果、blocked、failed、resume 与 terminal-idempotent fixture。
+2. **shadow**：旧路径仍执行，新路径只记录标准事件和投影；逐事件/逐终态比较。
+3. **vertical cutover**：feature flag 只切换一个完整流程，旧状态文件仍保留。
+4. **promote/deprecate**：连续两个正式 run 等价后才停止旧写路径；兼容 reader 保留一个版本窗口。
+
+任何 mismatch 都回滚 feature flag，并在 `Problem.md` 记录 old/new event、终态、artifact 与 gate 差异。
+禁止用重跑已揭示 scientific panel、改变阈值或重解释历史结果来制造等价。
+
+### 26.5 验证命令层级
+
+每个子任务先运行新增模块和 characterization 的 focused tests，再运行：
+
+```powershell
+python -m pytest tests -q
+python -m ruff check src tests
+python -m mypy src\autoresearch
+git diff --check
+```
+
+涉及 provider、外部数据、RO-Crate validator 或真实 runtime adapter 的任务必须另加 opt-in live smoke；
+mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secret 只从用户提供的 `.env` 读取，不写入
+事件、Vault、日志或仓库。
+
+### 26.6 里程碑
+
+- **K1（契约）**：262.2 通过，旧行为零变化。
+- **K2（可恢复事件）**：262.3 通过，可确定性 replay/fork。
+- **H1/L1（可控执行）**：262.4—262.5 通过，一个开发 fixture 在统一 Harness/Loop 上完成。
+- **G1/O1（可交换证据）**：262.6—262.7 通过，一个真实 round 导出标准 provenance/research object。
+- **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
+- **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
+
+这些里程碑提升的是可审计性、可恢复性、互操作性和科研因果完整性，不自动升级
+`bounded_autonomous` 为开放式自主科学，也不解锁 Gate B、公开发布或外部投稿。

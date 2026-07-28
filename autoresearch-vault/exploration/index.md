@@ -1,5 +1,25 @@
 # Topic Index
 
+## architecture
+
+- [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+
+## graph engineering
+
+- [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+
+## harness engineering
+
+- [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+
+## loop engineering
+
+- [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+
+## open science
+
+- [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+
 ## adjacent work
 
 - [[progress_task_87_1_similarity_token_overlap_classifier|Task 87.1 similarity token-overlap classifier]]

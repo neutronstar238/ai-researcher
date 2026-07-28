@@ -14,6 +14,10 @@ This project area tracks repository-level self-evolution evidence for AI-Researc
 Claims made from this project area must remain traceable to retrieval, experiment,
 validation, review, or paper-build artifacts.
 
+## Current Architecture Evidence
+
+- [[exploration/graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]] — task 262.1 cross-search, repository gap audit, four-plane graph architecture, phased migration gates, rollback strategy, and source registry.
+
 ## Current Competition Evidence
 
 - [[projects/ai_researcher_system/progress/task-259-7-3-2-recovery-negative-adjudication|Task 259.7.3.2 recovery negative adjudication]] — the sealed 252-cell recovery completed and reproduced without human intervention, failed the noisy cross-system confidence gate, stopped the mechanism family, and kept Gate B closed.

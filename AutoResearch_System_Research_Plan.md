@@ -734,3 +734,72 @@ clean-v2 正式运行从空目录一次完成。Qwen 选择 `C003` 与
 结果共享可验证因果哈希，才允许把 `open_ended_experiment_code_generation` 置为 true。同时加入
 逐项 claim-evidence 与 named-work 引用门；提示词修改、论文重写、门槛降低或在已揭示十任务
 面板上重跑都不算新的科研迭代。
+
+---
+
+## 19. 2026-07-28 vNext 架构升级：Graph、Harness、Loop 与 Open Science
+
+### 19.1 研究判断
+
+对 2025—2026 年原始论文、官方运行时文档与开放科学规范的交叉检索表明，AutoResearch 当前的
+主要问题不是功能缺失，而是语义碎片化：`agents/workflow.py`、competition、campaign、sprint、
+audit、evidence graph 与 Obsidian Vault 分别实现了部分图、循环、恢复、证据与记忆能力，却没有
+共享的事件、节点、边、决策、审批、产物和终态契约。继续在每个服务内增加状态机只会扩大验证面。
+
+vNext 因此采用“一条内容寻址事件脊柱、四个独立图平面”的架构：
+
+1. Control Graph 表达执行依赖、并行、预算、审批、重试、补偿、停止、恢复和 fork。
+2. Provenance & Evidence Graph 以 W3C PROV 的 Entity、Activity、Agent 为基础，扩展 claim、
+   counterevidence、decision、validation、model/tool interaction 与 artifact。
+3. Knowledge & Context Graph 组织来源锚定的论文、概念、方法、数据、假设、失败、技能和策略。
+4. Evaluation & Policy Graph 组织 task、trial、trajectory、outcome、rubric、grader、权限、
+   promotion、shadow 与 rollback。
+
+四个平面引用稳定 ID，但不得合并为单一“万能图”。Control Graph 需要终止与恢复约束，Evidence
+Graph 需要方向和验证状态，Knowledge Graph 允许不完整和时效变化，Policy Graph 必须 fail closed。
+完整论证、差距矩阵、反方审查与来源登记保存在
+`autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`。
+
+### 19.2 Vault 与运行历史的双层真相
+
+`autoresearch-vault/` 继续是权限化项目记忆和人类可审阅知识的 canonical substrate。文献笔记、
+假设、失败、技能、策略、项目状态与决策说明必须进入 Vault。新的 append-only event journal 只作为
+“一次运行实际发生了什么”的 canonical runtime history；它通过顺序、父哈希、actor、输入/输出
+artifact、decision 和 approval 生成机器可重放的事实链。
+
+运行事件可以生成 Vault 投影，但不能覆盖人工审阅；Vault 中可执行的任务或策略必须反向引用事件与
+产物哈希。哈希只提供 tamper evidence，不证明外部事实或科学结论正确，真实性仍由 source snapshot、
+真实执行、独立复现、统计门和人类责任建立。
+
+### 19.3 Harness 与 Loop 的研究契约
+
+Harness 不再等同于 prompt。它必须版本化任务说明、上下文选择、模型策略、工具与 sandbox、项目记忆、
+任务状态、权限、验证、可观察性、失败归因、费用和干预记录。每次 harness 修改都要声明预测、作用范围
+和回滚点，并由后续 task-level outcome 验证，不能只比较最终文本。
+
+Loop 必须声明状态、允许转移、幂等键、前置条件、输出证据、预算、停止/转向/升级规则和 holdout
+可见性。模型可以提出候选，确定性代码拥有统计、门、权限、外部发布和结果解释边界。一次冻结执行中
+不得静默修改图；开放探索通过生成带 parent hash 的下一图版本实现。
+
+### 19.4 Open Science 互操作目标
+
+现有 reproducibility package 和 hash manifest 保留，并逐步附加 RO-Crate 1.3、
+Workflow/Provenance Run RO-Crate 0.5 与 W3C PROV JSON-LD。软件、数据、workflow、环境、贡献、
+引用、许可与供应链分别对齐 FAIR4RS、CodeMeta、CITATION.cff、CRediT、DataCite、SWHID、SPDX
+和 SLSA provenance。OpenTelemetry GenAI 只作为脱敏、默认本地的可观察性导出。
+
+开放遵循 “as open as possible, as closed as necessary”。内部完整包、审稿/复现包和公开包采用不同
+视图；任何公开数据、私有来源、模型轨迹或外部投稿仍需要许可、隐私检查和人类批准。标准合规只证明
+可交换性，不等同于结果已复现或论文可录用。
+
+### 19.5 验证假设
+
+vNext 的核心可证伪假设是：统一事件与图契约能在不改变现有 scientific endpoint 的情况下，减少重复
+恢复逻辑，使一个真实 campaign round 可回答“谁在何时用什么输入、代码与策略生成了哪项结果，并支持
+或反驳哪条声明”。如果 shadow-write 与旧路径的终态、gate、artifact 或 failure 语义不一致，新内核
+不得 promotion。
+
+任务 `262.1` 冻结本计划；`262.2` 从零行为变化的事件与图契约开始。随后依次实现 journal/replay、
+HarnessSpec、LoopSpec/Control Graph、PROV/Vault 投影、Open Science 导出、纵向服务迁移与安全评测。
+LangGraph 主版本升级、图数据库和旧状态机弃用都延后到 characterization 与两个真实 vertical run
+通过之后。

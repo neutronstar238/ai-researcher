@@ -3261,6 +3261,70 @@ A task can be checked only when all applicable items are true:
     - Add a manuscript claim-evidence audit that binds every named prior work and material method/experiment statement to the frozen literature or execution graph. Require adequate adjacent-work coverage and source-backed figure descriptions before any submission-readiness verdict.
     - Use a newly frozen independent task panel for confirmatory inference, produce a new round report and paper version automatically, and keep negative results and external-submission approval rules unchanged.
 
+- [ ] 262. Unify Graph, Harness, Loop, provenance, and Open Science semantics
+  - [x] 262.1 Freeze the evidence-backed vNext refactor plan
+    - Cross-search primary standards, official runtime/evaluation documentation, published work, and clearly labelled 2025—2026 preprints for Graph Engineering, Harness Engineering, Loop Engineering, scientific-agent evaluation, provenance, and Open Science.
+    - Audit the current workflow, competition, campaign, sprint, audit, evidence graph, provenance helpers, Vault, dependency versions, tests, and safety gates before selecting an architecture.
+    - Freeze one append-only content-addressed event spine plus separate control, provenance/evidence, knowledge/context, and evaluation/policy graph planes. Keep `autoresearch-vault/` as the canonical permissioned project-memory substrate and the event journal as the canonical per-run history.
+    - Select a strangler migration with characterization, shadow-write, one vertical cutover, promotion, and rollback. Defer graph databases, distributed control planes, LangGraph major-version upgrades, and legacy-path deletion until explicit parity gates pass.
+    - _Outcome: `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md` records the frozen questions, 28-source registry, repository gap matrix, target architecture, adversarial review, phased gates, rollback strategy, and success metrics. The research and execution plans are synchronized without changing runtime behavior._
+    - _Verify: Markdown path/link/source audit, task dependency JSON parse, task/plan/problem-log consistency scan, `git diff --check`, and clean focused commit; exact commands are recorded in `Agent.md`._
+  - [ ] 262.2 Add canonical run-event and four-plane graph contracts
+    - Add a provider- and runtime-neutral `autoresearch.kernel` package using only Pydantic and the standard library.
+    - Define `GraphPlane` values for control, provenance, knowledge, and evaluation-policy; define strict `GraphNode`, `GraphEdge`, and `GraphSnapshot` contracts with stable IDs, typed relations, serializable attributes, and schema versions.
+    - Define a strict `RunEvent` envelope with run/task/event identity, monotonically positive sequence, UTC occurrence time, actor, event type, status, action, parent identity/hash, input/output artifact references, decision/approval references, idempotency key, serializable payload, and a canonical SHA-256 content hash.
+    - Validate duplicate IDs, dangling endpoints, cross-plane edges, invalid self-loops/cycles under the declared control policy, non-JSON payloads, non-UTC times, parent-field mismatches, and hash tampering. Export deterministic JSON Schema and round-trip serialization.
+    - Do not modify Campaign, Sprint, EvidenceGraph, AuditLog, dependencies, or existing persisted results in this task.
+    - _Verify: focused unit and property tests, deterministic hash/schema fixtures, full pytest/Ruff/Mypy, `git diff --check`, Agent/Problem updates, and one focused commit._
+  - [ ] 262.3 Add the atomic append-only event journal, replay, and fork
+    - Persist events with atomic writes, monotonically contiguous sequence numbers, idempotency keys, parent hashes, terminal seals, and a lineage hash.
+    - Support integrity validation, deterministic replay, checkpoint selection, and a new fork whose first event references the immutable parent checkpoint without rewriting parent history.
+    - Reject concurrent writer conflicts, duplicate side effects, broken chains, non-terminal forks without an explicit policy, terminal appends, partial records, malformed schemas, secrets, and direct personal identifiers.
+    - Fault-inject interrupted writes, duplicate submission, stale writers, corruption, crash/resume, replay, and fork; retain the existing service state files during shadow adoption.
+    - _Verify: focused journal/fault/property tests, filesystem smoke, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.4 Add HarnessSpec, bounded execution policies, and episode packages
+    - Version task, context, model, tool, memory, state, permission, verification, observability, failure-attribution, cost, entropy/intervention, and evaluation policies without embedding a model-vendor SDK type.
+    - Emit an episode package that distinguishes task, trials, full trajectory, final environment outcome, graders, costs, interventions, approvals, failures, and produced artifacts.
+    - Adapt one deterministic fixture and the configured local OpenAI-compatible Qwen path. Missing models, invalid structured responses, exhausted budgets, denied permissions, and tool failures must become truthful blocked/failed events, never synthetic scientific results.
+    - Add an opt-in live provider smoke when credentials or a local endpoint are required; keep secrets out of journal, Vault, fixtures, and logs.
+    - _Verify: mock and live-smoke evidence where applicable, policy/failure tests, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.5 Add LoopSpec and a durable Control Graph runtime
+    - Express the research loop as versioned nodes, edges, guards, budgets, retries, approvals, compensation, stop/pivot/escalation rules, holdout visibility, and terminal states.
+    - Implement deterministic execution semantics first, then a LangGraph adapter behind the domain contract. Characterize checkpoint, interrupt, subgraph, parallel-superstep, idempotency, and serialization behavior before any dependency upgrade.
+    - Prove crash recovery, side-effect idempotency, budget exhaustion, human rejection, negative-result pivot, mechanism-family change, and revealed-holdout blocking.
+    - Permit a model to propose a next graph version but never to mutate the frozen current graph, compute a scientific gate, expand permissions, or authorize release.
+    - _Verify: lifecycle/property/fault tests, one development vertical run, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.6 Add W3C PROV-aligned evidence v2 and source-anchored Vault projections
+    - Model Entity, Activity, Agent, Usage, Generation, Derivation, Association, Plan, Claim, Evidence, Counterevidence, Decision, Validation, ToolInvocation, and model-interaction digests with stable IDs and valid-time/version metadata.
+    - Preserve an EvidenceGraph v1 compatibility projection while adding support/contradict/limit directions, source snapshots, generating activities, responsible agents, revisions, invalidations, and validation history.
+    - Project approved literature, hypotheses, failures, skills, strategies, experiment records, and decisions into human-readable Obsidian notes with wiki-links, event IDs, artifact hashes, confidence, validity, and supersession.
+    - Demonstrate on one real campaign round that a core claim can be traced through source/input, activity, code/model agent, artifact, validation, and decision; tampering or removing a required node must block the claim.
+    - _Verify: PROV/evidence/Vault tests, compatibility tests, real-round query smoke, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.7 Export validated Open Science research objects
+    - Export RO-Crate 1.3 plus Workflow/Provenance Run RO-Crate 0.5 JSON-LD without replacing the existing reproducibility package layout.
+    - Align software, data, workflow, environment, contribution, citation, identifier, license, SBOM, and build provenance with FAIR4RS, CodeMeta, CITATION.cff, CRediT, DataCite, SWHID, SPDX 3.0, and SLSA.
+    - Maintain separate internal-complete, review/reproduction, and public views. Apply license, privacy, secret, private-path, and publication-approval gates before any public view is produced.
+    - Run profile validators and an independent clean-directory reproduction; do not describe metadata interoperability as scientific reproduction.
+    - _Verify: validator outputs, sensitive-data scan, identifier/license/contribution consistency, independent reproduction, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.8 Migrate Competition, Campaign, and Sprint as vertical slices
+    - Freeze characterization corpora for complete, negative-result, blocked, failed, resumed, and terminal-idempotent outcomes in each service.
+    - For each service in order, shadow-write standard events and projections while the legacy path remains authoritative; compare events, terminal state, scientific endpoint, gate, artifacts, failure semantics, and intervention counts.
+    - Cut over only one complete vertical slice at a time behind a reversible feature flag. Preserve legacy readers and state files for one compatibility window.
+    - Require two equivalent formal runs before disabling a legacy writer; never re-run, reinterpret, or tune against a revealed scientific panel to create parity.
+    - _Verify: characterization and parity reports, two formal vertical runs, rollback exercise, full quality gates, Agent/Problem updates, and one focused commit per migrated service._
+  - [ ] 262.9 Add unified evaluation, observability, and Agentic security gates
+    - Standardize task, trial, trajectory, outcome, rubric, grader, uncertainty, cost, failure slice, promotion, and rollback records.
+    - Add a local-by-default, redacted OpenTelemetry GenAI exporter and preserve raw sensitive payloads only in explicitly permissioned local artifacts.
+    - Add goal-hijack, tool-misuse, identity/privilege, supply-chain, unexpected-code, memory-poisoning, runaway-loop, evaluator-bias, holdout-leakage, and evidence-mismatch fault cases informed by OWASP/NIST and scientific-agent benchmark failures.
+    - Build a bounded local regression set for protocol match, evidence match, scientific core, replay fidelity, and holdout integrity; keep expensive external benchmark suites opt-in.
+    - _Verify: security/fault/eval matrix, repeated trials, OTel redaction test, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 262.10 Upgrade runtime dependencies and release the vNext compatibility boundary
+    - Upgrade LangGraph/LangChain only under frozen checkpoint, interrupt, subgraph, parallel, idempotency, and serialization characterization tests; document every persisted-state migration.
+    - Remove duplicate state-machine and audit/evidence write paths only after two formal vertical runs and rollback rehearsal pass.
+    - Publish a compatibility/migration guide, retained reader window, schema support policy, rollback targets, and truthful capability matrix.
+    - Keep unrestricted execution, public release, external submission, and safety-policy evolution behind explicit human approval.
+    - _Verify: dependency lock audit, full tests/Ruff/Mypy, two opt-in real runtime smokes, independent reproduction, rollback rehearsal, docs/link checks, Agent/Problem updates, and one focused commit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -4009,6 +4073,46 @@ A task can be checked only when all applicable items are true:
     {
       "id": 175,
       "tasks": ["261.2"]
+    },
+    {
+      "id": 176,
+      "tasks": ["262.1"]
+    },
+    {
+      "id": 177,
+      "tasks": ["262.2"]
+    },
+    {
+      "id": 178,
+      "tasks": ["262.3"]
+    },
+    {
+      "id": 179,
+      "tasks": ["262.4"]
+    },
+    {
+      "id": 180,
+      "tasks": ["262.5"]
+    },
+    {
+      "id": 181,
+      "tasks": ["262.6"]
+    },
+    {
+      "id": 182,
+      "tasks": ["262.7"]
+    },
+    {
+      "id": 183,
+      "tasks": ["262.8"]
+    },
+    {
+      "id": 184,
+      "tasks": ["262.9"]
+    },
+    {
+      "id": 185,
+      "tasks": ["262.10"]
     }
   ]
 }

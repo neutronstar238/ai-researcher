@@ -64,6 +64,37 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-28 14:22:27 +08:00 - Codex - Task 262.1 evidence-backed vNext refactor plan
+
+- Request: Cross-search the current technology landscape, produce a comprehensive refactor plan for Graph Engineering, Harness Engineering, Loop Engineering, Open Science, and related capabilities, then begin implementation only after the plan is frozen.
+- Files changed:
+  - `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Froze three research questions and cross-checked 28 primary or first-party sources spanning durable graph runtimes, graph execution research, harness design/evolution, Agent evaluation, MCP tasks, W3C PROV, PROV-AGENT, RO-Crate/Workflow Run RO-Crate, FAIR4RS, metadata/supply-chain standards, and 2025—2026 scientific-Agent benchmarks.
+  - Audited the repository's real control and evidence paths rather than treating the presence of LangGraph or an `EvidenceGraph` class as architectural completion. The audit found a fixed workflow scaffold, three separate production control planes, an unsequenced audit log, a shallow claim/source/artifact graph, and a deliberately old LangGraph/LangChain dependency boundary.
+  - Selected one append-only content-addressed event spine with separate control, provenance/evidence, knowledge/context, and evaluation/policy graph planes. Kept the Obsidian Vault as canonical permissioned project memory and separated it from the canonical per-run event history.
+  - Defined a ten-subtask strangler migration: domain contracts, journal/replay/fork, HarnessSpec, LoopSpec/Control Graph, PROV/Vault projections, Open Science export, vertical service migration, evaluation/security, then dependency upgrade/deprecation.
+  - Added explicit characterization, shadow-write, parity, two-formal-run, privacy/license, holdout, human-approval, and rollback gates. Deferred graph databases, distributed control planes, a LangGraph major upgrade, legacy deletion, unrestricted execution, public release, and external submission.
+  - Marked only planning subtask `262.1` complete. Parent task `262` and implementation tasks `262.2`—`262.10` remain unchecked; the first implementation slice is a provider-neutral Pydantic event/graph contract with zero current-service behavior change.
+- Verification:
+  - Primary-source verification: opened and checked official LangGraph, MCP, Inspect, OpenTelemetry, W3C PROV, RO-Crate/Workflow Run RO-Crate, SLSA, NIST/OWASP, Anthropic/OpenAI engineering/evaluation pages and the cited arXiv title/author/abstract records on 2026-07-28. Preprints are labelled as such and are not presented as standards.
+  - PowerShell dependency-graph audit extracted the `Task Dependency Graph` JSON block with `ConvertFrom-Json`: passed with 186 waves and final wave `262.10`; waves 176—185 map exactly to tasks `262.1`—`262.10`.
+  - PowerShell local-path/source audit: all seven required plan/Vault/task/problem paths exist; the source registry is sequential from `S01` through `S28`; all eight required architecture terms are present.
+  - Task/plan/problem consistency scan: `262.1`, `262.2`, the four graph planes, `P-20260728-024`, Vault memory, runtime history, RO-Crate, and W3C PROV are present in their required documents.
+  - `git diff --check`: passed. The first cached check found one trailing blank line at the new report's EOF; it was removed before the amended task commit, and the final cached/worktree checks passed. Git emitted only the pre-existing warning that `autoresearch-vault/exploration/index.md` will be normalized from CRLF to LF when touched.
+  - No runtime code or dependency changed, so code tests and live model/data smoke tests were not applicable to this docs-only planning subtask.
+- Problems:
+  - Added `P-20260728-024` (Open, High): duplicate control planes and shallow graph semantics can diverge until tasks `262.2`—`262.8` complete parity-gated migration.
+- Follow-up:
+  - Implement task `262.2` as the first minimal kernel slice, run focused/property plus full quality gates, update the logs, and create a separate focused commit before touching journal persistence or any legacy service.
+
 ### 2026-07-24 02:33:27 +08:00 - Codex - Task 261.1 truthful bounded-autonomy sprint
 
 - Request: Continue the August 15 sprint by making topic selection, selected-program execution, task-level adjudication, manuscript generation, and PDF compilation occur automatically inside one auditable run, while answering truthfully whether the result was independently originated and how innovative it is.
