@@ -1,0 +1,67 @@
+{
+  "schema_version": "sprint-migration-characterization-v1",
+  "service": "sprint",
+  "migration_task_id": "262.8.3",
+  "scientific_boundary": {
+    "complete_fixture_kind": "generated_local_characterization",
+    "official_benchmark_result": false,
+    "publication_ready_result": false,
+    "negative_result_is_completed": true
+  },
+  "cases": {
+    "complete": {
+      "trigger": "generated deterministic Sprint with a passing task-level endpoint",
+      "legacy_outcome": "completed",
+      "legacy_stage": "complete",
+      "terminal_status": "succeeded",
+      "scientific_endpoint": "task_level_gate_passed",
+      "failure_category": null
+    },
+    "negative_result": {
+      "trigger": "generated deterministic Sprint whose frozen task-level interval does not pass",
+      "legacy_outcome": "completed",
+      "legacy_stage": "complete",
+      "terminal_status": "negative_result",
+      "scientific_endpoint": "negative_result",
+      "failure_category": null
+    },
+    "blocked": {
+      "trigger": "both local topic-selection attempts are unavailable",
+      "legacy_outcome": "blocked",
+      "legacy_stage": "topic_selection",
+      "terminal_status": "blocked",
+      "scientific_endpoint": "blocked",
+      "failure_category": "legacy_block"
+    },
+    "failed": {
+      "trigger": "a bound Route A input changes before resume and the integrity exception escapes",
+      "legacy_outcome": "blocked",
+      "legacy_stage": "topic_selection",
+      "terminal_status": "failed",
+      "scientific_endpoint_prefix": "failed:",
+      "failure_category": "legacy_exception"
+    },
+    "resumed": {
+      "trigger": "the local topic model becomes available after a blocked observation",
+      "parent_terminal_status": "blocked",
+      "child_legacy_outcome": "completed",
+      "child_journal_fork_required": true,
+      "scientific_calls_are_not_repeated": true
+    },
+    "terminal_idempotent": {
+      "trigger": "the same logical completed Sprint is observed again",
+      "new_invocation_count": 0,
+      "journal_event_count_unchanged": true,
+      "semantic_manifest_ignores_only_updated_at_and_manifest_hash": true
+    }
+  },
+  "parity_dimensions": [
+    "events",
+    "terminal_state",
+    "scientific_endpoint",
+    "gate",
+    "artifacts",
+    "failure_semantics",
+    "intervention_counts"
+  ]
+}

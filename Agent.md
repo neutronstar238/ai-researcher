@@ -64,6 +64,54 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 02:26:25 +08:00 - Codex - Task 262.8.3 Sprint vertical migration
+
+- Request: Complete task `262.8` by independently migrating Sprint as the third strangler vertical: freeze Sprint-specific lifecycle meanings, shadow its full autonomy/scientific/paper lifecycle, prove seven-dimensional parity, admit verified negative results as formal migration evidence, require two formal observations before vNext authority, and rehearse rollback while preserving all legacy science and compatibility state.
+- Files changed:
+  - `src/autoresearch/campaign/sprint_migration.py`
+  - `src/autoresearch/campaign/sprint.py`
+  - `src/autoresearch/campaign/__init__.py`
+  - `tests/fixtures/migrations/sprint-v1.json`
+  - `tests/sprint_migration_support.py`
+  - `tests/unit/campaign/test_sprint_migration.py`
+  - `tests/smoke/test_sprint_migration_live.py`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-8-3-sprint-migration.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - Froze Sprint's own complete, scientific-negative-result, blocked, escaped-integrity-failure, blocked-then-resumed, and unchanged-terminal-idempotent semantics. A negative task-level result remains a completed Sprint; a caught runtime error remains resumable blocked; an exception escaping the legacy preflight becomes digest-only failed without rewriting the last persisted legacy stage/outcome.
+  - Added a default-off adapter behind `AUTORESEARCH_SPRINT_MIGRATION_MODE=legacy|shadow|vnext` plus optional formal-run IDs. Default legacy mode creates no migration files and keeps the exact existing topic, experiment, inference, manuscript, paper, audit, Vault, manifest, ledger, artifact, reader, writer, and return paths.
+  - Projected every persisted legacy autonomy event plus start/terminal semantics into an independently sealed `EventJournal` and acyclic Control Graph. The adapter binds logical artifact paths, actual/expected digests, task/paper/autonomy/submission gates, result paths, scientific endpoint, failure identity, and intervention counts without persisting raw notes, raw exception/block text, model bodies, or absolute private paths.
+  - Added seven parity dimensions for events, terminal state, scientific endpoint, gate, artifacts, failure semantics, and interventions. Reports are independently reread against expected semantics, journal bytes/count/lineage/seal, projection, source fingerprint, Control Graph, compatibility files, and formal report hashes.
+  - Preserved recovery and idempotency: a resumed blocked/failed Sprint creates a child journal anchored to the prior terminal seal; an unchanged logical terminal fingerprint validates the existing report and writes only an idempotency observation. Volatile manifest timestamp/hash and raw failure text do not fabricate a new scientific invocation.
+  - Added fail-closed promotion requiring two distinct formal IDs and Sprint IDs. Either a passing task-level endpoint or a scientific negative result can qualify, but only when the Sprint is complete, paper and bounded-autonomy gates pass, required legacy/Route A/config/paper/audit/Vault artifacts exist, no post-start manual research decision or fallback occurred, and external submission remains false.
+  - Ran a read-only opt-in adoption smoke over three existing real persisted Sprints. `clean-v1` and `clean-v2` supplied two formal negative-result observations without rerunning models, literature, experiments, manuscripts, paper builds, or submission. The existing blocked `live-v1` state then exercised vNext projection and legacy rollback with equal result/projection, unchanged journal, retained compatibility files, and no private path in migration JSON.
+  - Closed task `262.8` and milestone M1 only after Competition, Campaign, and Sprint all passed their own characterization, formal-promotion, authority, and rollback gates. Legacy writers/readers and dependencies remain intentionally retained for task `262.10`.
+- Verification:
+  - Focused `poetry run python -m pytest tests/unit/campaign/test_sprint_migration.py -q`: passed all 7 deterministic tests in 13.36 seconds after the bring-up defects recorded in `P-20260729-034` were fixed.
+  - Legacy/Sprint compatibility `poetry run python -m pytest tests/unit/campaign/test_autonomous_sprint.py tests/unit/campaign/test_sprint_migration.py -q`: passed all 11 tests in 14.42 seconds.
+  - Campaign-wide `poetry run python -m pytest tests/unit/campaign -q`: passed all 42 tests in 34.60 seconds.
+  - Default `poetry run python -m pytest tests/smoke/test_sprint_migration_live.py -q`: collected the smoke and skipped it because the opt-in flag was absent.
+  - Real local `$env:AUTORESEARCH_SPRINT_MIGRATION_LIVE='1'; $env:AUTORESEARCH_SPRINT_MIGRATION_OUTPUT='E:\AIResearch\runs\manual-live\task262-sprint-migration-live-v1'; poetry run python -m pytest tests/smoke/test_sprint_migration_live.py -q`: passed 1 test in 8.72 seconds. The ignored output summary SHA-256 is `2c43c101ae8212f5860ebdf01f3f765ca6d2857f0620aefb9bc30cee30488599`.
+  - Formal negative-result Sprint 1 produced source fingerprint `0e9477262ad603d10c422c0c962ef5e962007465cf3c1675f8f08cbc63c18253`, lineage `f6cd3dbe8e333a0eaec1682b683862a0aa2b48a70804cc9ab139de0d27384d08`, and seal `4acf078e79fbc6bf88123e72e9a2e3a0ca442a5f8a524f45759a49d87e1fe519`.
+  - Formal negative-result Sprint 2 produced source fingerprint `81a3c70c1d8a34e92d099c40c3b1d7508f4ff76897c59d029a52f35cd2c667cf`, lineage `2ce5316fc8de29d23843ab5e0f514f114bd98ee9cdd5b00b324b99aeac9879bc`, and seal `5e40771aaf6b959a8246e6e7d2da0ba8bb4e6bedb93be3d32ca44012770ecbd9`.
+  - The vNext-authority blocked projection produced source fingerprint `59e812a02014b0a463df456d23cb5d2a29ce1c721da30eb3119402d8ac241faa`, lineage `ebb88bb55667314f8c2794e044e1b8351d6c4f90b5aee61ad711658cc321b23e`, and seal `5933935189364c95d598bf6f814614791e3cbea5e0b090f1e39c577c23ab4fbf`; rollback reported equal result/projection, unchanged journal, and preserved compatibility files.
+  - Full `poetry run python -m pytest -q`: collected 916 items and passed 905 tests with 11 opt-in tests skipped in 124.48 seconds; repository line coverage was 87%.
+  - Full product/test `poetry run ruff check src tests`: passed.
+  - Full `poetry run mypy src`: passed with no issues in 149 source files.
+  - Extra `poetry run ruff check .`: reported 21 pre-existing out-of-scope findings in `deploy/experiments/mdbench/runner.py` and `scripts/check.py`; the honest wider-tree debt is recorded as open `P-20260729-035`, and neither file was changed.
+  - Documentation/task/Vault consistency, `git diff --check`, ignored-output checks, and staged-file review are rerun immediately before the focused commit.
+- Problems:
+  - Added and resolved `P-20260729-034` for expected/projected artifact ordering and escaped-exception terminal-precedence defects found during focused bring-up.
+  - Added open `P-20260729-035` for pre-existing all-repository Ruff debt outside `src/tests`; the declared product/test Ruff gate passes.
+  - Updated open `P-20260728-024`: Competition, Campaign, and Sprint now have parity-gated vNext lifecycle authority and rollback, while intentionally retained compatibility writers and the shallow `AuditLog` remain until `262.9`/`262.10`.
+- Follow-up:
+  - Begin task `262.9` as a separate focused commit: unify evaluation/observability/security records and add bounded Agentic fault cases without upgrading dependencies or removing compatibility writers.
+
 ### 2026-07-29 01:59:33 +08:00 - Codex - Task 262.8.2 Campaign vertical migration
 
 - Request: Continue task `262.8` in service order by migrating Campaign as its own complete strangler vertical: freeze Campaign-specific lifecycle outcomes, shadow every persisted stage and round, prove legacy/vNext parity, require two independent formal Campaigns before cutover, retain compatibility state, and rehearse rollback without changing scientific semantics.

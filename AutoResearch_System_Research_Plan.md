@@ -918,4 +918,22 @@ closed。真实本地 characterization 已完成两个 formal shadow Campaign、
 Campaign 和一次 legacy rollback，生命周期、投影、文件与 journal 均保持一致。完整 fixture 是本地
 generated migration fixture，不是官方 benchmark 或可投稿科研结果；`BLOCKED` corpus 项只冻结旧
 schema/reader 能接受的 hash-valid 状态，当前 executor 本身不生成该终态。Competition 与 Campaign
-compatibility writer 均至少保留一个版本窗口；Sprint 仍由 `262.8.3` 单独迁移。
+compatibility writer 均至少保留一个版本窗口。
+
+`262.8.3` 随后完成 Sprint 纵向迁移并关闭 M1。默认
+`AUTORESEARCH_SPRINT_MIGRATION_MODE=legacy` 继续走原 topic selection、experiment、task-level
+adjudication、manuscript、paper build、autonomy audit、Vault 与 status reader，不生成迁移文件。
+显式 `shadow`/`vnext` 模式把既有 `AutonomyEvent`、artifact binding、scientific endpoint、paper/
+autonomy gate、intervention 和终态投影到独立封印 journal 与无环 Control Graph，再逐项比较 event、
+terminal、endpoint、gate、artifact、failure 和 intervention 七类语义。恢复从前一 blocked/failed
+seal 创建 child journal；相同逻辑终态只写 idempotency observation，不向已封印 lineage 追加事件。
+
+Sprint 的科学阴性结果仍是 `COMPLETED/COMPLETE`，不是运行失败。被旧执行器捕获的问题仍是可恢复
+`BLOCKED`；在旧 try 边界之前逃逸的完整性异常只在迁移投影中记录异常类型和消息 SHA-256，并保留
+最后有效 legacy outcome/stage。正式 promotion 可以接受正向 task-level gate 或经过完整论文、自治、
+artifact、零 fallback、零运行后人工科研决策验证的负结果，但必须来自两个不同 formal ID 和 Sprint
+ID。真实 adoption smoke 没有重跑模型、文献、实验、论文或投稿：它只读采用两个现有完成的真实负
+结果 Sprint 作为 formal shadow evidence，再以一个现有 blocked Sprint 验证 vNext authority 和
+legacy rollback。结果、投影、journal seal 与 compatibility files 均保持一致，迁移 JSON 不含私有
+绝对路径。Competition、Campaign、Sprint writer 和旧 reader 仍保留到 `262.10` 的兼容窗口；依赖、
+Gate B、公开发布与外部投稿权限均未改变。

@@ -33,6 +33,13 @@ from urllib.parse import urlparse
 from pydantic import Field, ValidationError, model_validator
 
 from autoresearch.campaign.models import StrictCampaignModel
+from autoresearch.campaign.sprint_migration import (
+    SprintMigrationCoordinator,
+    SprintMigrationError,
+    SprintMigrationMode,
+    resolve_sprint_formal_run_id,
+    resolve_sprint_migration_mode,
+)
 from autoresearch.campaign.systems import (
     SystemsBenchmarkResult,
     SystemsCellResult,
@@ -513,6 +520,9 @@ class AutonomousResearchSprint:
         systems_run: SystemsRun | None = None,
         paper_build: PaperBuild = build_latex_paper_from_markdown,
         figure_build: FigureBuild = generate_metric_bar_figure,
+        migration_mode: SprintMigrationMode | str | None = None,
+        migration_root: Path | str | None = None,
+        migration_formal_run_id: str | None = None,
     ) -> None:
         self.output_root = Path(output_root).resolve()
         self.vault_root = Path(vault_root).resolve()
@@ -523,10 +533,31 @@ class AutonomousResearchSprint:
         self.systems_run = systems_run or self._run_systems_without_reasoning
         self.paper_build = paper_build
         self.figure_build = figure_build
+        self.migration_mode = resolve_sprint_migration_mode(migration_mode)
+        formal_run_id = resolve_sprint_formal_run_id(migration_formal_run_id)
+        if self.migration_mode is SprintMigrationMode.LEGACY:
+            if formal_run_id is not None:
+                raise SprintMigrationError(
+                    "formal Sprint runs require shadow migration mode"
+                )
+            self._migration: SprintMigrationCoordinator | None = None
+        else:
+            root = (
+                Path(migration_root)
+                if migration_root is not None
+                else self.output_root / ".vnext-migration" / "sprint"
+            )
+            self._migration = SprintMigrationCoordinator(
+                root=root,
+                mode=self.migration_mode,
+                formal_run_id=formal_run_id,
+                vault_root=self.vault_root,
+            )
 
     def run(self, spec: SprintSpec) -> SprintResult:
         """Start or idempotently resume one sprint."""
 
+        self._assert_migration_mode_allowed()
         sprint_dir = self.output_root / spec.sprint_id
         spec_path = sprint_dir / "sprint-spec.json"
         if spec_path.is_file():
@@ -544,58 +575,94 @@ class AutonomousResearchSprint:
             if persisted_boundary != requested_boundary:
                 raise ValueError("existing sprint ID belongs to a different spec")
             return self.resume(sprint_dir)
-        if sprint_dir.exists() and any(sprint_dir.iterdir()):
-            raise ValueError("sprint directory exists without a valid spec")
-        sprint_dir.mkdir(parents=True, exist_ok=True)
-        write_json_model(spec_path, spec)
-        ledger = _stamp_ledger(AutonomyLedger(sprint_id=spec.sprint_id, events=()))
-        write_json_model(sprint_dir / "autonomy-ledger.json", ledger)
-        manifest = SprintManifest(
-            sprint_id=spec.sprint_id,
-            spec_hash=data_hash(spec),
-            stage=SprintStage.LITERATURE,
-            outcome=SprintOutcome.RUNNING,
-            artifact_paths={"spec": spec_path.as_posix()},
-            artifact_sha256={"spec": file_hash(spec_path)},
-            updated_at=datetime.now(timezone.utc),
+        try:
+            if sprint_dir.exists() and any(sprint_dir.iterdir()):
+                raise ValueError("sprint directory exists without a valid spec")
+            sprint_dir.mkdir(parents=True, exist_ok=True)
+            write_json_model(spec_path, spec)
+            ledger = _stamp_ledger(
+                AutonomyLedger(sprint_id=spec.sprint_id, events=())
+            )
+            write_json_model(sprint_dir / "autonomy-ledger.json", ledger)
+            manifest = SprintManifest(
+                sprint_id=spec.sprint_id,
+                spec_hash=data_hash(spec),
+                stage=SprintStage.LITERATURE,
+                outcome=SprintOutcome.RUNNING,
+                artifact_paths={"spec": spec_path.as_posix()},
+                artifact_sha256={"spec": file_hash(spec_path)},
+                updated_at=datetime.now(timezone.utc),
+            )
+            _write_manifest(sprint_dir / "sprint-manifest.json", manifest)
+            self._append_event(
+                sprint_dir,
+                stage=SprintStage.LITERATURE,
+                action="freeze_high_level_brief_and_runtime_boundary",
+                origin=DecisionOrigin.OPERATOR_PRELAUNCH,
+                pre_start=True,
+                research_decision=True,
+                fallback_used=False,
+                input_hashes={},
+                output_hashes={"spec": data_hash(spec)},
+                note=(
+                    "The operator supplied the high-level brief, deadline, local-compute "
+                    "boundary, and imported Route A evidence before autonomous runtime."
+                ),
+            )
+            self._append_event(
+                sprint_dir,
+                stage=SprintStage.LITERATURE,
+                action="expose_installed_research_program_catalog",
+                origin=DecisionOrigin.CODE_TEMPLATE,
+                pre_start=True,
+                research_decision=True,
+                fallback_used=False,
+                input_hashes={"spec": data_hash(spec)},
+                output_hashes={"program_catalog": _program_catalog_hash()},
+                note=(
+                    "The executable program catalogue is code-authored and therefore "
+                    "bounds topic autonomy."
+                ),
+            )
+            result = self._resume_legacy(sprint_dir)
+        except Exception as exc:
+            self._record_migration_failure(
+                sprint_dir=sprint_dir,
+                sprint_id=spec.sprint_id,
+                invocation_kind="run",
+                error=exc,
+            )
+            raise
+        return self._record_migration_result(
+            sprint_dir=sprint_dir,
+            result=result,
+            invocation_kind="run",
         )
-        _write_manifest(sprint_dir / "sprint-manifest.json", manifest)
-        self._append_event(
-            sprint_dir,
-            stage=SprintStage.LITERATURE,
-            action="freeze_high_level_brief_and_runtime_boundary",
-            origin=DecisionOrigin.OPERATOR_PRELAUNCH,
-            pre_start=True,
-            research_decision=True,
-            fallback_used=False,
-            input_hashes={},
-            output_hashes={"spec": data_hash(spec)},
-            note=(
-                "The operator supplied the high-level brief, deadline, local-compute "
-                "boundary, and imported Route A evidence before autonomous runtime."
-            ),
-        )
-        self._append_event(
-            sprint_dir,
-            stage=SprintStage.LITERATURE,
-            action="expose_installed_research_program_catalog",
-            origin=DecisionOrigin.CODE_TEMPLATE,
-            pre_start=True,
-            research_decision=True,
-            fallback_used=False,
-            input_hashes={"spec": data_hash(spec)},
-            output_hashes={"program_catalog": _program_catalog_hash()},
-            note=(
-                "The executable program catalogue is code-authored and therefore bounds "
-                "topic autonomy."
-            ),
-        )
-        return self.resume(sprint_dir)
 
     def resume(self, sprint_dir: Path | str) -> SprintResult:
         """Resume without rerunning completed stages."""
 
         root = Path(sprint_dir).resolve()
+        self._assert_migration_mode_allowed()
+        try:
+            result = self._resume_legacy(root)
+        except Exception as exc:
+            self._record_migration_failure(
+                sprint_dir=root,
+                sprint_id=root.name,
+                invocation_kind="resume",
+                error=exc,
+            )
+            raise
+        return self._record_migration_result(
+            sprint_dir=root,
+            result=result,
+            invocation_kind="resume",
+        )
+
+    def _resume_legacy(self, root: Path) -> SprintResult:
+        """Execute the unchanged legacy resume path."""
+
         spec = _load_and_verify_spec(root)
         _load_manifest(root / "sprint-manifest.json", spec=spec)
         _load_ledger(root / "autonomy-ledger.json", sprint_id=spec.sprint_id)
@@ -664,6 +731,49 @@ class AutonomousResearchSprint:
             ValueError,
         ) as exc:
             return self._block(root, spec, f"{type(exc).__name__}: {exc}")
+
+    def _assert_migration_mode_allowed(self) -> None:
+        if self._migration is not None:
+            self._migration.assert_mode_allowed()
+
+    def _record_migration_result(
+        self,
+        *,
+        sprint_dir: Path,
+        result: SprintResult,
+        invocation_kind: Literal["run", "resume"],
+    ) -> SprintResult:
+        if self._migration is None:
+            return result
+        return self._migration.record_result(
+            sprint_dir=sprint_dir,
+            result=result,
+            invocation_kind=invocation_kind,
+        )
+
+    def _record_migration_failure(
+        self,
+        *,
+        sprint_dir: Path,
+        sprint_id: str,
+        invocation_kind: Literal["run", "resume"],
+        error: Exception,
+    ) -> None:
+        if self._migration is None:
+            return
+        required = (
+            sprint_dir / "sprint-spec.json",
+            sprint_dir / "sprint-manifest.json",
+            sprint_dir / "autonomy-ledger.json",
+        )
+        if not all(path.is_file() for path in required):
+            return
+        self._migration.record_failure(
+            sprint_dir=sprint_dir,
+            sprint_id=sprint_id,
+            invocation_kind=invocation_kind,
+            error=error,
+        )
 
     def status(self, sprint_dir: Path | str) -> SprintResult:
         """Validate persisted hashes and return status without advancing work."""

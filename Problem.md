@@ -40,6 +40,36 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-035 - Repository-wide Ruff includes pre-existing deploy and helper-script debt
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-07-29 02:18:00 +08:00
+- Source: Extra repository-wide quality audit during task `262.8.3`.
+- Symptom: `poetry run ruff check .` reports 21 findings in `deploy/experiments/mdbench/runner.py` and `scripts/check.py`: an unused import, old percent-format expressions, `zip()` calls without `strict=`, an old tuple-style `isinstance`, and one unsorted import block.
+- Impact: A lint invocation over every tracked Python surface is not currently green. The findings are outside the Sprint migration, do not affect its runtime or tests, and were not changed opportunistically in the focused migration commit. The declared product/test gate `poetry run ruff check src tests` passes.
+- Evidence: Ruff returned exit code 1 with 20 findings in the MDBench deployment runner and one in `scripts/check.py`. Git history shows those files predate the current migration (`c7881f7`, task 260.3), and neither appears in the task `262.8.3` worktree diff.
+- Root cause: The repository's operational/deployment scripts are outside the historically used `src tests` Ruff command and contain style that newer/current Ruff rules reject.
+- Workaround: Keep using the documented `src tests` quality gate for focused tasks and report the wider audit honestly.
+- Next action: Fix the two files in a dedicated maintenance or release-hardening change, run their relevant deployment/helper tests, then add an explicit all-repository Ruff gate if that scope is intended.
+- Linked tasks: `262.8.3`, `262.10`.
+
+### P-20260729-034 - Sprint migration bring-up exposed event-order and terminal-precedence defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 02:05:00 +08:00
+- Source: Task `262.8.3` Sprint characterization, lifecycle parity, formal promotion, and rollback verification.
+- Symptom: The first focused migration run passed 2 tests and failed 5 because expected start-event artifact roles retained insertion order while the journal projection normalized the same roles lexicographically. After that fix, 6 tests passed and the escaped-integrity-error case failed because validation treated every persisted legacy `BLOCKED` outcome as migration terminal `blocked`, even when an exception escaped the legacy preflight and correctly projected as `failed`.
+- Impact: Neither failed run counted as completion evidence. No formal promotion, scientific result, dependency, legacy writer, persisted production Sprint, or task checkbox changed during bring-up.
+- Evidence: The first pytest diff showed only `["spec", "autonomy_ledger"]` versus `["autonomy_ledger", "spec"]`. The second failure showed legacy outcome/stage `blocked/topic_selection`, failure category `legacy_exception`, and projected terminal `failed`. The corrected seven-case focused suite, Campaign/Sprint collection, real adoption smoke, and full regression all passed.
+- Root cause: Expected event normalization and journal extraction used different artifact-role ordering, and the lifecycle validator gave the persisted legacy outcome precedence over the more specific escaped-exception category.
+- Workaround: None remains necessary.
+- Next action: Reuse canonical sorting for all set-like event fields and evaluate explicit failure category before coarse persisted outcome in later lifecycle adapters.
+- Linked tasks: `262.8.3`, `262.9`.
+- Resolution: Sorted expected existing artifact roles and limited the `blocked` terminal invariant to no-failure or `legacy_block` observations. `legacy_exception` now remains a digest-only failed terminal while preserving the last legacy manifest state.
+- Verification: Seven focused migration tests, all 42 Campaign tests, one opt-in real-evidence adoption/cutover/rollback smoke, 905-test full regression, `ruff check src tests`, and 149-file Mypy passed.
+
 ### P-20260729-033 - Campaign migration bring-up exposed lint, typing, and pytest module-name defects
 
 - Status: Resolved
@@ -190,15 +220,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-28 14:00:00 +08:00
 - Source: Task `262.1` repository audit and cross-search of current graph, harness, loop, provenance, and Open Science practice.
-- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while `campaign/sprint.py` still owns a separate persistence, resume, transition, and terminal-state implementation. Competition and Campaign now have parity-gated vNext lifecycle adapters, but both legacy compatibility writers remain intentionally retained for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
+- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while Competition, Campaign, and Sprint now each have parity-gated vNext lifecycle adapters over their still-retained legacy persistence, resume, transition, and terminal-state implementations. All three compatibility writers remain intentionally active for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
 - Impact: Equivalent pause/resume/fail/approve behavior must be proven repeatedly; future changes can produce different terminal states or evidence meaning across services. A paper artifact may be hash-bound while still lacking an interoperable answer to who or what generated it from which inputs and decision.
-- Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
+- Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. Tasks `262.8.1`—`262.8.3` subsequently proved service-specific event/endpoint/gate/artifact/failure/intervention parity, formal promotion, vNext authority, and rollback without deleting the old writers. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
 - Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Complete task `262.8.3`: independently characterize and parity-migrate Sprint, then retire compatibility writers only after the documented release window and task `262.10` release gates.
+- Next action: Use task `262.9` to unify evaluation/observability/security gates, then retire duplicate compatibility and audit write paths only after the documented window and task `262.10` dependency/release gates.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`, `262.8.2`, `262.8.3`.
-- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` and `262.8.2` add service-specific six-case characterization, standard-event/Control-Graph shadow projection, two-formal-run promotion gates, reversible vNext authority, and rollback proofs for Competition and Campaign while retaining compatibility files. Sprint's duplicate control plane and the temporary compatibility writers remain open until `262.8.3` and the release window complete.
-- Verification: In addition to the earlier kernel/evidence/Open Science gates, Competition passed seven deterministic migration tests, all 61 Competition tests, and its two-formal-run/cutover/rollback vertical. Campaign passed seven deterministic migration tests, all 35 Campaign tests, and its own two-formal-run/cutover/rollback vertical. The combined Campaign/Competition migration collection and full repository gates are recorded in `Agent.md`.
+- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` through `262.8.3` add service-specific six-case characterization, standard-event/Control-Graph shadow projection, two-formal-observation promotion gates, reversible vNext authority, and rollback proofs for Competition, Campaign, and Sprint while retaining compatibility files. The remaining open scope is the duplicate legacy writer window, shallow workflow scaffold, and non-hash-chained `AuditLog`; those require `262.9`/`262.10`, not retrospective deletion in M1.
+- Verification: In addition to the earlier kernel/evidence/Open Science gates, Competition passed its seven migration tests, 61-service-test suite, and formal/cutover/rollback vertical; Campaign passed its seven migration tests, 35-service-test suite, and independent formal/cutover/rollback vertical; Sprint passed its seven migration tests, 42-test Campaign collection, two persisted real negative-result formal observations, vNext blocked projection, and rollback. The resulting full regression passed 905 tests with 11 opt-in tests skipped, while `ruff check src tests` and 149-file Mypy passed.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

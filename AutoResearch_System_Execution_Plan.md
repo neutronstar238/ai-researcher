@@ -1136,6 +1136,23 @@ projection、source fingerprint、graph 及全部 legacy/Vault artifact。两个
 `BLOCKED`，冻结 blocked case 只验证旧 schema/reader 的 hash-valid compatibility state。下一提交只
 迁移 Sprint；Competition/Campaign compatibility writer、依赖版本与 submission authority 仍不变。
 
+`262.8.3` 已按相同协议完成 Sprint，但重新冻结 Sprint 自己的 complete、negative-result、blocked、
+failed、resumed 与 terminal-idempotent 语义。默认 `legacy` 模式零迁移写入；`shadow`/`vnext` 将每个
+既有 autonomy event、topic/experiment/inference/manuscript/paper/audit stage、artifact、gate、
+intervention 与终态写入封印 journal 和无环 Control Graph，并在 event、terminal、scientific
+endpoint、gate、artifact、failure、intervention 七个维度 fail closed。恢复调用 fork 前一
+blocked/failed seal；相同 source fingerprint 只产生 idempotency report。逻辑 manifest fingerprint
+只排除 `updated_at`、`manifest_hash` 与原始 failure 文本，避免把时间戳重写误当新科研调用。
+
+切换由 `AUTORESEARCH_SPRINT_MIGRATION_MODE` 控制。两个不同 formal ID/Sprint ID 的完整 shadow
+Sprint 才能打开 vNext；科学负结果可以成为正式迁移证据，但必须同时满足论文编译/质量、bounded
+autonomy 必需检查、完整 artifact/Vault note、零 fallback、零运行后人工科研决策和禁止外部投稿。
+opt-in adoption smoke 只读采用现有 `task261-bounded-autonomous-clean-v1/v2` 两个完成负结果，未重跑
+模型、文献、实验或论文；随后以现有 `task261-bounded-autonomous-live-v1` blocked 状态验证 vNext
+投影与 legacy rollback。返回值和投影相等、journal 不变、compatibility files 保留、迁移 JSON 无
+私有绝对路径。Competition、Campaign、Sprint 均已通过 M1，但三个 legacy writer/reader 继续保留到
+`262.10`；本切片没有升级依赖、删除旧状态、重解释科学结果或解锁发布/投稿。
+
 ### 26.5 验证命令层级
 
 每个子任务先运行新增模块和 characterization 的 focused tests，再运行：
@@ -1173,8 +1190,12 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
   compatibility writer/reader 仍保留。
 - **M1b（Campaign 迁移，2026-07-29 已通过）**：262.8.2 的 Campaign-specific 六类
   characterization、stage/round parity、两个 formal shadow vertical、vNext authority vertical
-  与 rollback 已通过；旧 compatibility writer/reader 仍保留，Sprint 尚未计入 M1。
-- **M1（迁移）**：262.8 通过，三个旧服务均完成等价迁移。
+  与 rollback 已通过；旧 compatibility writer/reader 仍保留。
+- **M1c（Sprint 迁移，2026-07-29 已通过）**：262.8.3 的 Sprint-specific 六类
+  characterization、全 lifecycle parity、两个真实负结果 formal shadow observation、一个
+  vNext-authority blocked projection 与 rollback 已通过；没有重跑或重解释既有科研执行。
+- **M1（迁移，2026-07-29 已通过）**：262.8 通过，Competition、Campaign、Sprint 均完成
+  可逆等价迁移；legacy writer/reader 保留到 262.10 的兼容窗口。
 - **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
 
 这些里程碑提升的是可审计性、可恢复性、互操作性和科研因果完整性，不自动升级
