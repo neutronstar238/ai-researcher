@@ -969,3 +969,25 @@ scope hash 匹配且目标是独立本地目录时才写入旁路产物。Event 
 `86236e468ad1a3dce58acbb02ae8054a857aee45b53f8d5becec43bb2c171e85`，且 raw payload
 未持久化。外部昂贵 benchmark、依赖升级、legacy writer 删除、Gate B 和公开/投稿权限仍保持关闭；
 这些属于后续显式任务和人工审批。
+
+`262.10` 随后在冻结行为门下完成 LangGraph/LangChain 1.x 升级并关闭内部 R1 兼容边界。依赖精确
+固定为 LangGraph 1.2.10、LangChain 1.3.14、Core 1.5.2 及其 checkpoint/SDK/prebuilt/LangSmith
+传递版本；锁文件、安装环境和行为报告同时匹配才通过。0.2 基线与 1.x 目标分别产生
+`92983004c099b14799cd4102b644072013016541ae3da659e7380161b448fb3e` 和
+`dd62c3faef638b905755dbc26f6761957e5657175de7a3b641b6e5c718ebebd3`，七项 checkpoint、
+interrupt、subgraph、parallel、幂等和序列化行为均保持。运行时只使用严格、无 pickle fallback 的
+内存 checkpoint；仓库没有持久化 LangGraph checkpoint，因此没有静默重写旧 checkpoint，durable
+domain truth 仍是 Event Journal。
+
+审计主写路径从浅 JSONL 收敛到原子、连续、哈希链 Event Journal。已有 JSONL 只读导入且原文件不
+改变；显式 rollback export 可以生成一个新的验证后 JSONL 快照，但不恢复持续双写。早期线性
+`ResearchWorkflow` 标记为兼容期弃用。Competition、Campaign、Sprint 和 EvidenceGraph v1
+writer/reader 则因科学执行器或活跃 reader 仍依赖而保留，避免把 Sprint lifecycle 证据错误外推为
+所有科学写语义已迁移。schema 政策是 writer 只写 current、reader 读 current + one prior，命名窗口
+为 `vnext-plus-one-release`，历史研究产物不做 bulk rewrite。
+
+R1 用全新输出目录重跑两个正式 Sprint adoption vertical 和一次 vNext→legacy rollback，再由第二个
+opt-in smoke 审计锁、重放两条 journal、运行升级后 characterization，并在独立 `python -I` 干净目录
+中无网络复现 canonical evidence。最终 release report hash 为
+`acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`。该报告只表示内部兼容边界
+通过；无限制执行、公开发布、外部投稿、安全策略自修改仍全部为 `false` 且必须显式人工批准。

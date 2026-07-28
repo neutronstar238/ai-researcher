@@ -10,7 +10,6 @@ import argparse
 import hashlib
 import itertools
 import json
-import os
 import resource
 import signal
 import sys
@@ -59,7 +58,7 @@ def _file_hash(path):
 def _write_payload(path, payload):
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_name(".%s.tmp" % destination.name)
+    temporary = destination.with_name(f".{destination.name}.tmp")
     temporary.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
         encoding="utf-8",
@@ -113,8 +112,8 @@ def _split_data(data, split):
         raise ValueError("MDBench NPZ time/state/derivative shapes are inconsistent")
     pieces = {}
     for name in ("train", "validation", "test"):
-        start = split["%s_start" % name]
-        end = split["%s_end" % name]
+        start = split[f"{name}_start"]
+        end = split[f"{name}_end"]
         pieces[name] = {
             "t": t[start:end],
             "u": _time_slice(u, start, end, time_axis),
@@ -170,7 +169,7 @@ def _baseline_configs(method, data_type):
         common["derivative_order"] = parameters["pde_derivative_order"]
     keys = list(common)
     for values in itertools.product(*(common[key] for key in keys)):
-        yield dict(zip(keys, values))
+        yield dict(zip(keys, values, strict=False))
 
 
 def _new_baseline_model(data_type, config, dimension, spatial_grids, cpu_cores):
@@ -198,7 +197,7 @@ def _extract_pysindy_coefficients(model, dimension):
     targets = []
     for target_index in range(dimension):
         terms = []
-        for feature, coefficient in zip(feature_names, matrix[target_index]):
+        for feature, coefficient in zip(feature_names, matrix[target_index], strict=False):
             if abs(float(coefficient)) > 1e-10:
                 terms.append({"feature": feature, "coefficient": float(coefficient)})
         targets.append({"target": "u%d_t" % target_index, "terms": terms})
@@ -236,9 +235,9 @@ def _run_sparse_baseline(spec, pieces, spatial_grids, time_axis):
             if best is None or candidate[:3] > best[:3]:
                 best = candidate
         except Exception as exc:  # one bounded hyperparameter candidate may fail
-            errors.append("%s: %s" % (config, exc))
+            errors.append(f"{config}: {exc}")
     if best is None:
-        raise RuntimeError("every frozen sparse configuration failed: %s" % errors[-3:])
+        raise RuntimeError(f"every frozen sparse configuration failed: {errors[-3:]}")
     selected = best[3]
     final_dot = _finite_difference(
         train_validation["u"], train_validation["t"], time_axis
@@ -342,7 +341,7 @@ def _pde_library(states, x, degree, derivative_order):
             products = polynomial[:, poly_index : poly_index + 1] * derivative_matrix
             columns.append(products)
             names.extend(
-                ["(%s)*(%s)" % (poly_name, derivative_name) for derivative_name in derivative_names]
+                [f"({poly_name})*({derivative_name})" for derivative_name in derivative_names]
             )
     return np.concatenate(columns, axis=1), names
 
@@ -424,7 +423,7 @@ def _coefficient_payload(coefficients, feature_names):
     for target_index, row in enumerate(coefficients):
         terms = [
             {"feature": feature, "coefficient": float(coefficient)}
-            for feature, coefficient in zip(feature_names, row)
+            for feature, coefficient in zip(feature_names, row, strict=False)
             if abs(float(coefficient)) > 1e-10
         ]
         targets.append({"target": "u%d_t" % target_index, "terms": terms})
@@ -435,9 +434,9 @@ def _equation_text(coefficients, feature_names):
     equations = []
     for target_index, row in enumerate(coefficients):
         terms = []
-        for feature, coefficient in zip(feature_names, row):
+        for feature, coefficient in zip(feature_names, row, strict=False):
             if abs(float(coefficient)) > 1e-10:
-                terms.append("%+.12g*(%s)" % (float(coefficient), feature))
+                terms.append(f"{float(coefficient):+.12g}*({feature})")
         rhs = " ".join(terms) if terms else "0"
         equations.append("u%d_t = %s" % (target_index, rhs))
     return "\n".join(equations)
@@ -446,7 +445,7 @@ def _equation_text(coefficients, feature_names):
 def _model_complexity(coefficients, feature_names):
     complexity = 0
     for row in coefficients:
-        for feature, coefficient in zip(feature_names, row):
+        for feature, coefficient in zip(feature_names, row, strict=False):
             if abs(float(coefficient)) > 1e-10:
                 complexity += 2 + feature.count("*") + feature.count("^")
     return int(complexity)
@@ -462,8 +461,8 @@ def _weak_library_functions(degree):
     ]
     function_names = [
         lambda x: x,
-        lambda x, y: "%s*%s" % (x, y),
-        lambda x, y, z: "%s*%s*%s" % (x, y, z),
+        lambda x, y: f"{x}*{y}",
+        lambda x, y, z: f"{x}*{y}*{z}",
     ]
     return functions[: int(degree)], function_names[: int(degree)]
 
@@ -680,11 +679,10 @@ def _run_weak_stability_candidate(spec, pieces, spatial_grids, _time_axis):
                     best = key
         except Exception as exc:
             errors.append(
-                "degree=%s derivative_order=%s: %s"
-                % (degree, derivative_order, exc)
+                f"degree={degree} derivative_order={derivative_order}: {exc}"
             )
     if best is None:
-        raise RuntimeError("every frozen weak-form configuration failed: %s" % errors[-3:])
+        raise RuntimeError(f"every frozen weak-form configuration failed: {errors[-3:]}")
     validation_nmse, _complexity, degree, derivative_order, threshold = best
     train_validation = pieces["train_validation"]
     final_projection_seed = _weak_projection_seed(
@@ -1540,7 +1538,7 @@ def _trajectory_nmse(predictor, t_test, u_test):
 def _json_safe(value):
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return [_json_safe(item) for item in value]
     if isinstance(value, np.generic):
         return value.item()
@@ -1623,7 +1621,7 @@ def run(spec_path, data_path, output_path):
         elif method_id == "operon_gp":
             result = _run_operon(spec, pieces, spatial_grids, time_axis)
         else:
-            raise ValueError("unsupported frozen method: %s" % method_id)
+            raise ValueError(f"unsupported frozen method: {method_id}")
         payload.update(result)
         payload.update(
             {
@@ -1639,7 +1637,7 @@ def run(spec_path, data_path, output_path):
         payload.update(
             {
                 "status": "failed",
-                "failure_reason": "%s: %s" % (type(exc).__name__, exc),
+                "failure_reason": f"{type(exc).__name__}: {exc}",
             }
         )
     finally:

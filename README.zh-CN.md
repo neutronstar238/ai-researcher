@@ -597,7 +597,7 @@ LightAgent 风格的启发只进入轻量编排和诊断路径：显式步骤依
 常用检查：
 
 ```bash
-python -m ruff check src tests
+python -m ruff check .
 python -m mypy src/autoresearch
 python -m pytest tests/smoke tests/unit -q
 ```
@@ -608,6 +608,7 @@ python -m pytest tests/smoke tests/unit -q
 - [实施计划](AutoResearch_System_Execution_Plan.md)
 - [实现任务](.kiro/specs/auto-research-system/tasks.md)
 - [发布门禁清单](docs/release-gate.md)
+- [vNext 兼容与迁移指南](docs/vnext-compatibility-migration.md)
 - [Agent 改动日志](Agent.md)
 - [问题日志](Problem.md)
 - [第三方声明](THIRD_PARTY_NOTICES.md)

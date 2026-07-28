@@ -1178,6 +1178,31 @@ smoke 只读采用两个既有真实负结果 Sprint，五维 regression、十�
 `86236e468ad1a3dce58acbb02ae8054a857aee45b53f8d5becec43bb2c171e85`；没有重跑科研过程或保存
 raw payload。
 
+`262.10` 在冻结兼容测试下把 LangGraph 0.2.76/LangChain 0.2.17/Core 0.2.43 升级为
+LangGraph 1.2.10/LangChain 1.3.14/Core 1.5.2，并精确审计 checkpoint 4.1.1、prebuilt 1.1.0、
+SDK 0.4.2 与 LangSmith 0.10.11。`DependencyLockAudit` 同时比较必需、锁定和安装版本并绑定
+`poetry.lock` SHA-256；`VNextReleaseReport` 再把旧/新 characterization、两个不同 formal
+vertical、rollback、独立复现、兼容路径、schema 窗口、能力矩阵和人工审批边界组成内容寻址 R1
+决策。任何 hash/version/result 漂移、证据复用、reader 提前删除、兼容决策变化或受保护权限打开都
+fail closed。
+
+LangGraph 1.x 的 checkpoint/resume、static/dynamic interrupt、subgraph、parallel superstep、
+resume idempotency 和 JSON serialization 均通过；MemorySaver 明确禁用 pickle fallback 和自定义
+module allowlist。当前没有持久化 LangGraph checkpointer，旧线性 workflow JSON checkpoint 不做
+批量迁移且进入弃用兼容窗口。浅 `AuditLog` 的 JSONL 主 writer 被替换为 canonical Event Journal，
+首次写入时只读导入旧 JSONL 并保持源文件不变；显式 export 支持隔离 rollback consumer。Competition、
+Campaign、Sprint 与 EvidenceGraph v1 writer/reader 因仍承载科学执行或活跃 reader 语义而保留，
+schema 政策固定为 current writer / current-plus-one reader。
+
+两个 fresh opt-in smoke 在新目录重新采用两个不同真实负结果 Sprint、验证 sealed journal/parity、
+执行 vNext→legacy rollback、审计依赖、重跑 LangGraph characterization，并由独立 `python -I`
+干净进程无网络复现 canonical evidence。dependency audit、rollback 和最终 R1 report hash 分别为
+`2e31dccf9c69af830bc0dfb8337085138ec633357e525ae0aa401b15af9a6fab`、
+`9d456335a4e2218fdc95baaafec801d118c39cc4b3fd09f0a512d564d1a7e01f` 和
+`acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`。全量 946 tests、
+13 skips、87% coverage、152-file Mypy 与 repository-wide Ruff 通过；公开发布、投稿、无限制执行
+和安全策略自修改仍关闭。
+
 ### 26.5 验证命令层级
 
 每个子任务先运行新增模块和 characterization 的 focused tests，再运行：
@@ -1224,7 +1249,9 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 - **E1（统一评测与安全门，2026-07-29 已通过）**：262.9 的内容寻址评测报告、五维本地
   regression、十类 Agentic fault、独立重复门、科学/系统双结论、默认脱敏本地 OTLP 和真实持久化
   证据 adoption smoke 通过；昂贵外部 benchmark、raw payload 和发布权限仍默认关闭。
-- **R1（发布）**：262.9—262.10 通过，依赖升级、两次真实 vertical run 和 rollback rehearsal 完成。
+- **R1（内部兼容发布，2026-07-29 已通过）**：262.9—262.10 的精确依赖/行为冻结、两次真实
+  vertical、独立干净进程复现、rollback rehearsal、current-plus-one reader 窗口和机器化能力矩阵
+  通过；公开发布、投稿、无限制执行与安全策略修改权限未解锁。
 
 这些里程碑提升的是可审计性、可恢复性、互操作性和科研因果完整性，不自动升级
 `bounded_autonomous` 为开放式自主科学，也不解锁 Gate B、公开发布或外部投稿。

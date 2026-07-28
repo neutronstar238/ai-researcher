@@ -9,6 +9,8 @@ Use this checklist before tagging a release, publishing a demo, or claiming a wo
 - Security checks pass for the changed surface. At minimum, review permissions, sandbox boundaries, secrets handling, generated artifacts, and publication paths.
 - Documentation is updated in `README.md`, `README.zh-CN.md`, `Agent.md`, `Problem.md`, and task-specific docs where relevant.
 - Migrations are reversible or have a documented rollback path. This includes schema changes, Obsidian vault layout changes, and persisted JSON/JSONL formats.
+- vNext runtime changes also pass the exact dependency lock audit, frozen graph-runtime characterization, two distinct formal verticals, rollback rehearsal, independent clean-process reproduction, and the compatibility decisions in [vnext-compatibility-migration.md](vnext-compatibility-migration.md).
+- An internal vNext compatibility boundary never grants unrestricted execution, public release, external submission, or safety-policy self-modification; each remains an explicit human-approved action.
 - Changelog or release notes are complete for user-visible changes.
 - Automated research-cycle release claims require a physical evidence gate: cycle summary, live literature/similarity evidence, first run record, reproduction rerun record, reproduction validation report, publication audit, paper-build JSON, and compiled PDF must exist and pass the relevant gate.
 - Publication-level claims require file-backed method innovation evidence, not only baseline reproduction or a paper-shaped report.
@@ -25,6 +27,8 @@ Use this checklist before tagging a release, publishing a demo, or claiming a wo
 - 变更范围内的安全检查通过，至少覆盖权限、沙箱边界、密钥处理、生成产物和对外发布路径。
 - 已更新 `README.md`、`README.zh-CN.md`、`Agent.md`、`Problem.md` 以及相关任务文档。
 - migration 可逆，或有明确回滚路径；这包括 schema、Obsidian vault 目录结构、持久化 JSON/JSONL 格式。
+- vNext runtime 变更还必须通过精确依赖锁审计、冻结图运行时 characterization、两个不同正式 vertical、回滚演练、独立干净进程复现，以及 [vnext-compatibility-migration.md](vnext-compatibility-migration.md) 中的兼容路径决策。
+- 内部 vNext 兼容边界不会授予无限制执行、公开发布、外部投稿或安全策略自修改权限；这些动作仍分别需要明确人工批准。
 - 面向用户的变更已经写入 changelog 或 release notes。
 - 自动科研循环的发布声明必须通过物理 evidence gate：cycle summary、真实文献/相似工作证据、第一次 run record、复现实验 rerun record、复现实验 validation report、publication audit、paper-build JSON 和编译后的 PDF 都必须存在并通过对应门禁。
 - 发表级声明必须有文件支撑的方法创新证据，不能只靠 baseline reproduction 或论文格式完整的报告。

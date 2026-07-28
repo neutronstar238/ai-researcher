@@ -1,4 +1,4 @@
-"""Frozen LangGraph 0.2 behavior and canonical Control Graph adapter tests."""
+"""Frozen LangGraph 1.x behavior and canonical Control Graph adapter tests."""
 
 from __future__ import annotations
 
@@ -37,8 +37,9 @@ from autoresearch.runtime import (
 )
 
 NOW = datetime(2026, 7, 28, 17, 0, tzinfo=timezone.utc)
-EXPECTED_LANGGRAPH_VERSION = "0.2.76"
-EXPECTED_LANGCHAIN_CORE_VERSION = "0.2.43"
+EXPECTED_LANGGRAPH_VERSION = "1.2.10"
+EXPECTED_LANGCHAIN_CORE_VERSION = "1.5.2"
+EXPECTED_CHARACTERIZATION_HASH = "dd62c3faef638b905755dbc26f6761957e5657175de7a3b641b6e5c718ebebd3"
 
 
 def _edge(edge_id: str, source: str, target: str) -> LoopEdgeSpec:
@@ -158,10 +159,9 @@ def test_installed_langgraph_characterization_is_frozen_and_content_addressed() 
 
     assert report.langgraph_version == EXPECTED_LANGGRAPH_VERSION
     assert report.langchain_core_version == EXPECTED_LANGCHAIN_CORE_VERSION
+    assert report.report_hash == EXPECTED_CHARACTERIZATION_HASH
     assert report.all_passed is True
-    loaded = LangGraphCharacterizationReport.model_validate_json(
-        report.model_dump_json()
-    )
+    loaded = LangGraphCharacterizationReport.model_validate_json(report.model_dump_json())
     assert loaded == report
     assert loaded.calculated_hash() == loaded.report_hash
 
@@ -182,9 +182,7 @@ def test_adapter_static_interrupt_does_not_run_domain_until_resumed(
     assert tuple(checkpoint.next) == ("drive",)
     assert runtime.journal.snapshot().events == []
 
-    continued = adapter.continue_from_checkpoint(
-        thread_id="thread.static_interrupt"
-    )
+    continued = adapter.continue_from_checkpoint(thread_id="thread.static_interrupt")
     snapshot = adapter_snapshot(continued)
     assert snapshot.state.status == LoopRunStatus.SUCCEEDED
     assert snapshot.seal_hash is not None
@@ -211,9 +209,7 @@ def test_adapter_submits_domain_resume_without_replacing_journal_state(
     assert first.state.status == LoopRunStatus.PAUSED
     assert first.seal_hash is None
 
-    resumed = adapter_snapshot(
-        adapter.resume(thread_id="thread.domain_resume")
-    )
+    resumed = adapter_snapshot(adapter.resume(thread_id="thread.domain_resume"))
     canonical = runtime.snapshot()
     assert resumed.state.status == LoopRunStatus.SUCCEEDED
     assert resumed.snapshot_hash == canonical.snapshot_hash

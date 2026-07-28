@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Hashable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -118,9 +119,15 @@ class WorkflowCheckpointStore:
 
 
 class ResearchWorkflow:
-    """Stateful research workflow backed by LangGraph."""
+    """Compatibility-only linear workflow retained for one reader window."""
 
     def __init__(self, checkpoint_store: WorkflowCheckpointStore) -> None:
+        warnings.warn(
+            "ResearchWorkflow is deprecated compatibility scaffolding; "
+            "new durable runs must use ControlGraphRuntime",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.checkpoint_store = checkpoint_store
         self._graph = self._build_graph()
 

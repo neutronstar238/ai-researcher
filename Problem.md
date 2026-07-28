@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-039 - Poetry lock passes with legacy metadata deprecation notices
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-29 03:30:00 +08:00
+- Source: Task `262.10` dependency-lock and packaging audit.
+- Symptom: `poetry check --lock` exits successfully but warns that project name, version, description, readme, license, authors, and console-script metadata should move from legacy `[tool.poetry]` keys to PEP 621 `[project]` keys.
+- Impact: The exact dependency solution, package imports, CLI entry point, tests, lock audit, and vNext release report all pass. A future Poetry version may eventually remove the legacy metadata form, so leaving the notices undocumented could surprise the next release task.
+- Evidence: The terminal result contains only metadata deprecation warnings and exit code 0. Lock SHA-256 `9e1894adecae09877114222fded4251113618dd9fe967668201153559573bbad` matches the installed graph stack and the content-addressed dependency audit.
+- Root cause: The repository predates Poetry's current PEP 621-first metadata guidance.
+- Workaround: Continue using the verified lock and existing metadata for R1.
+- Next action: Migrate packaging metadata in a dedicated task with wheel/sdist metadata, editable install, CLI entry-point, lock-content-hash, and full regression checks; do not combine it with a runtime dependency change.
+- Linked tasks: `262.10`.
+- Resolution: Runtime dependency verification is complete; only the non-blocking packaging-metadata modernization remains.
+- Verification: `poetry check --lock` returned 0; exact dependency audit, two opt-in smokes, 946-test regression, repository-wide Ruff, and 152-file Mypy passed.
+
+### P-20260729-038 - LangGraph 1.x and audit-journal bring-up exposed stale compatibility expectations
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 03:10:00 +08:00
+- Source: Task `262.10` dependency upgrade, frozen LangGraph characterization, and canonical audit-writer migration.
+- Symptom: The first post-upgrade runtime matrix passed behavior execution but one assertion still expected LangGraph 0.2.76. LangGraph 1.x typed stubs then reported four `StateGraph.add_node` overload mismatches at bound/local callables, and the old Mypy ignore became unused. After the audit writer moved from JSONL to the Event Journal, one rollback test still asserted that `audit.jsonl` must be created. The first context patch for that assertion missed an intervening blank line and made no change.
+- Impact: None of those attempts counted as completion evidence. No scientific state, public artifact, external system, or historical audit JSONL was modified. The failures exposed exactly the compatibility expectations that task `262.10` was required to update.
+- Evidence: The initial focused runtime run had 4 passes and 1 stale-version failure; focused Mypy reported 4 overload errors; the broader 53-item matrix had 52 passes and one legacy-path assertion failure.
+- Root cause: Tests and typing suppressions described the old dependency/writer boundary rather than the newly characterized LangGraph 1.x and Event Journal interfaces.
+- Workaround: None remains necessary.
+- Next action: Keep the target characterization hash, strict serializer, v1 typed boundary casts, journal-only audit assertion, and explicit JSONL rollback export in the regression matrix.
+- Linked tasks: `262.10`.
+- Resolution: Updated the exact version/hash expectation, used narrow `Any` casts only at the third-party graph registration boundary, removed the obsolete import ignore, updated rollback/audit tests to the canonical journal, and added legacy import, export, UTC, and tamper cases.
+- Verification: The final focused runtime/audit/workflow matrix passed 32 tests; full regression passed 946 tests with 13 opt-in tests skipped, and Mypy passed all 152 source files.
+
 ### P-20260729-037 - Unified evaluation bring-up exposed nested-result and observability safety defects
 
 - Status: Resolved
@@ -72,17 +104,19 @@ update a factual problem entry below.
 
 ### P-20260729-035 - Repository-wide Ruff includes pre-existing deploy and helper-script debt
 
-- Status: Open
+- Status: Resolved
 - Severity: Low
 - Discovered: 2026-07-29 02:18:00 +08:00
 - Source: Extra repository-wide quality audit during task `262.8.3`.
 - Symptom: `poetry run ruff check .` reports 21 findings in `deploy/experiments/mdbench/runner.py` and `scripts/check.py`: an unused import, old percent-format expressions, `zip()` calls without `strict=`, an old tuple-style `isinstance`, and one unsorted import block.
-- Impact: A lint invocation over every tracked Python surface is not currently green. The findings are outside the Sprint migration, do not affect its runtime or tests, and were not changed opportunistically in the focused migration commit. The declared product/test gate `poetry run ruff check src tests` passes.
+- Impact: Before task `262.10`, a lint invocation over every tracked Python surface was not green. The findings were outside the Sprint migration and did not affect its runtime or tests, so they were preserved for the explicit release-hardening boundary.
 - Evidence: Ruff returned exit code 1 with 20 findings in the MDBench deployment runner and one in `scripts/check.py`. Git history shows those files predate the current migration (`c7881f7`, task 260.3), and neither appears in the task `262.8.3` worktree diff.
 - Root cause: The repository's operational/deployment scripts are outside the historically used `src tests` Ruff command and contain style that newer/current Ruff rules reject.
-- Workaround: Keep using the documented `src tests` quality gate for focused tasks and report the wider audit honestly.
-- Next action: Fix the two files in a dedicated maintenance or release-hardening change, run their relevant deployment/helper tests, then add an explicit all-repository Ruff gate if that scope is intended.
+- Workaround: None remains necessary.
+- Next action: Keep `scripts/check.py` on `ruff check .` so deployment and helper scripts remain inside the normal release gate.
 - Linked tasks: `262.8.3`, `262.10`.
+- Resolution: Task `262.10` applied Ruff's semantics-preserving modernization to the frozen MDBench container runner, removed the unused import, made every `zip()` truncation choice explicit with `strict=False`, normalized formatting/type syntax, and promoted the helper gate from `ruff check src tests` to `ruff check .`.
+- Verification: `poetry run ruff check .` passes. The complete 946-test regression and 152-file Mypy gate also pass after the deployment/helper changes.
 
 ### P-20260729-034 - Sprint migration bring-up exposed event-order and terminal-precedence defects
 
@@ -246,19 +280,19 @@ update a factual problem entry below.
 
 ### P-20260728-024 - Duplicate control planes and shallow graph semantics can diverge
 
-- Status: Open
-- Severity: High
+- Status: Mitigated
+- Severity: Medium
 - Discovered: 2026-07-28 14:00:00 +08:00
 - Source: Task `262.1` repository audit and cross-search of current graph, harness, loop, provenance, and Open Science practice.
-- Symptom: `agents/workflow.py` exposes a fixed linear LangGraph that does not execute the real research stages, while Competition, Campaign, and Sprint now each have parity-gated vNext lifecycle adapters over their still-retained legacy persistence, resume, transition, and terminal-state implementations. All three compatibility writers remain intentionally active for one release window. `observability/audit.py` still has append-only JSONL events without sequence or parent hashes.
-- Impact: Equivalent pause/resume/fail/approve behavior must be proven repeatedly; future changes can produce different terminal states or evidence meaning across services. A paper artifact may be hash-bound while still lacking an interoperable answer to who or what generated it from which inputs and decision.
-- Evidence: Task `262.1` inspected the named modules and found three production control planes plus the workflow scaffold. Tasks `262.8.1`—`262.8.3` subsequently proved service-specific event/endpoint/gate/artifact/failure/intervention parity, formal promotion, vNext authority, and rollback without deleting the old writers. `pyproject.toml` still pins LangGraph/LangChain `^0.2.0`, while current official LangGraph documentation describes durable checkpoint, pending-write, interrupt, replay, fork, and subgraph behavior not used by `agents/workflow.py`. The gap matrix and source registry are in `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`.
+- Symptom: `agents/workflow.py` remains a fixed linear compatibility scaffold, while Competition, Campaign, and Sprint retain their scientific-engine state writers underneath parity-gated vNext lifecycle adapters. EvidenceGraph v1 also remains for active readers. The shallow audit JSONL writer and old dependency boundary have now been removed, but deleting the remaining paths would still overstate the migration evidence.
+- Impact: Remaining duplicate scientific state surfaces can still diverge if later changes bypass their parity, schema-window, or rollback gates. The risk is bounded by default-off migration modes, sealed projections, one named compatibility window, machine-checked path decisions, and explicit retention rather than silent deletion.
+- Evidence: Tasks `262.8.1`—`262.8.3` proved service-specific event/endpoint/gate/artifact/failure/intervention parity, formal promotion, vNext authority, and rollback. Task `262.10` upgraded and characterized LangGraph 1.2.10, deprecated the linear workflow, replaced audit JSONL writes with the canonical Event Journal, and emitted passing compatibility report `acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`. The report deliberately retains the scientific writers and EvidenceGraph v1.
 - Root cause: Capabilities were added task by task to the service that needed them before a shared provider-neutral event, graph, harness, and loop contract existed.
-- Workaround: Keep existing services authoritative and immutable for historical runs. Add the vNext kernel through characterization and shadow-write; do not delete, reinterpret, or bulk-rewrite current state or scientific artifacts.
-- Next action: Task `262.9` has supplied the shared evaluation, observability, and security gates. Use task `262.10` to close the documented compatibility window, characterize dependency/state migration, replace the shallow audit path, run independent reproduction and rollback rehearsal, and only then retire duplicate writers.
+- Workaround: Keep the retained paths inside `vnext-plus-one-release`, continue validating parity and rollback, and never reinterpret or bulk-rewrite historical scientific artifacts.
+- Next action: A later dedicated service-engine migration must audit real writer/reader call sites, migrate one scientific write contract at a time, repeat two formal verticals and rollback, and then explicitly decide whether each retained path can be removed.
 - Linked tasks: `262.1`, `262.2`, `262.3`, `262.4`, `262.5`, `262.6`, `262.7`, `262.8`, `262.8.1`, `262.8.2`, `262.8.3`, `262.9`, `262.10`.
-- Resolution: Tasks `262.1` through `262.7` supply the frozen architecture, event journal, Harness, Control Graph, provenance/evidence, and Open Science layers. Tasks `262.8.1` through `262.8.3` add service-specific characterization, standard-event/Control-Graph shadow projection, formal promotion gates, reversible vNext authority, and rollback proofs for Competition, Campaign, and Sprint while retaining compatibility files. Task `262.9` adds content-addressed system/science evaluation, five bounded regressions, ten Agentic fault gates, independent repeats, rollback decisions, and redacted local OTLP. The remaining open scope is now limited to the duplicate legacy writer window, shallow workflow/audit paths, dependency migration, and release boundary owned by `262.10`.
-- Verification: In addition to the earlier kernel/evidence/Open Science and migration gates, task `262.9` passed 21 evaluation and 8 OTel focused tests plus one opt-in adoption smoke over two persisted real negative-result Sprints; the smoke promoted only after five regression dimensions and ten fault cases passed and emitted no raw payload. The resulting full regression passed 934 tests with 12 opt-in tests skipped at 87% coverage, while `ruff check src tests` and 151-file Mypy passed.
+- Resolution: The shared architecture, journal, Harness, Control Graph, provenance/Open Science, three parity-gated service adapters, evaluation/security plane, LangGraph 1.x boundary, canonical audit writer, retained-reader policy, and machine-verifiable R1 decision are complete. The original uncontrolled-divergence problem is mitigated; only explicitly listed compatibility paths remain, with removal deferred because current evidence does not justify it.
+- Verification: Two fresh formal Sprint observations, a vNext-to-legacy rollback, isolated reproduction, exact lock audit, upgraded runtime characterization, 946-test regression, repository-wide Ruff, and 152-file Mypy passed. The compatibility report rejects reader removal, path-decision drift, or protected-permission activation.
 
 ### P-20260724-020 - Full-context local Qwen spilled to CPU and timed out
 

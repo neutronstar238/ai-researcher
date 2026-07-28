@@ -10,9 +10,10 @@ packages = [{include = "autoresearch", from = "src"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 # Agent framework
-langgraph = "^0.2.0"
-langchain = "^0.2.0"
-langchain-core = "^0.2.0"
+# Exact LTS-line pins: upgrades require the frozen runtime characterization gate.
+langgraph = "1.2.10"
+langchain = "1.3.14"
+langchain-core = "1.5.2"
 
 # Configuration management
 pyyaml = "^6.0"
@@ -123,13 +124,6 @@ warn_unused_ignores = true
 warn_no_return = true
 follow_imports = "normal"
 strict_optional = true
-
-[[tool.mypy.overrides]]
-module = [
-    "langgraph.*",
-    "langchain.*",
-]
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

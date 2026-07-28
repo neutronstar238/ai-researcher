@@ -37,7 +37,7 @@ def test_versioned_file_store_rolls_back_config(tmp_path: Path) -> None:
     assert (tmp_path / relative_path).read_text(encoding="utf-8") == "model: small\n"
 
 
-def test_rollback_writes_audit_event_to_jsonl(tmp_path: Path) -> None:
+def test_rollback_writes_audit_event_to_canonical_journal(tmp_path: Path) -> None:
     store = VersionedFileStore(tmp_path)
     audit_log = AuditLog(tmp_path / "audit" / "audit.jsonl")
     relative_path = "configs/system.yaml"
@@ -59,7 +59,8 @@ def test_rollback_writes_audit_event_to_jsonl(tmp_path: Path) -> None:
 
     events = audit_log.read_all()
 
-    assert audit_log.path.exists()
+    assert audit_log.journal_root.is_dir()
+    assert not audit_log.path.exists()
     assert len(events) == 1
     assert events[0].event_type is AuditEventType.ROLLBACK
     assert events[0].actor == "rollback-agent"

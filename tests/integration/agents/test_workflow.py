@@ -1,3 +1,5 @@
+import pytest
+
 from autoresearch.agents import (
     ResearchWorkflow,
     ResearchWorkflowStage,
@@ -7,7 +9,8 @@ from autoresearch.agents import (
 
 def test_langgraph_workflow_pauses_and_resumes_from_checkpoint(tmp_path):
     store = WorkflowCheckpointStore(tmp_path)
-    workflow = ResearchWorkflow(store)
+    with pytest.warns(DeprecationWarning, match="ControlGraphRuntime"):
+        workflow = ResearchWorkflow(store)
 
     paused_state = workflow.start(
         project_id="autoresearch-system",

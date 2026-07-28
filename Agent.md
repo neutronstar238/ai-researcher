@@ -64,6 +64,61 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 03:30:22 +08:00 - Codex - Task 262.10 vNext runtime upgrade and compatibility release boundary
+
+- Request: Complete the evidence-first vNext refactor after cross-searching current Graph Engineering, Harness Engineering, Loop Engineering, Agentic evaluation/security, and Open Science sources: characterize and upgrade the graph runtime, retire only proved duplicate write paths, preserve rollback/read compatibility, independently reproduce the release evidence, and keep protected actions human-gated.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `README.md`
+  - `README.zh-CN.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-262-10-vnext-release-boundary.md`
+  - `deploy/experiments/mdbench/runner.py`
+  - `docs/release-gate.md`
+  - `docs/vnext-compatibility-migration.md`
+  - `poetry.lock`
+  - `pyproject.toml`
+  - `scripts/check.py`
+  - `src/autoresearch/agents/workflow.py`
+  - `src/autoresearch/observability/audit.py`
+  - `src/autoresearch/runtime/__init__.py`
+  - `src/autoresearch/runtime/loop_langgraph.py`
+  - `src/autoresearch/runtime/release.py`
+  - `tests/integration/agents/test_workflow.py`
+  - `tests/smoke/test_vnext_release_live.py`
+  - `tests/unit/knowledge/test_rollback.py`
+  - `tests/unit/observability/test_audit.py`
+  - `tests/unit/runtime/test_loop_langgraph.py`
+  - `tests/unit/runtime/test_vnext_release.py`
+  - `Agent.md`
+- Summary:
+  - Characterized the frozen LangGraph 0.2.76/LangChain 0.2.17/Core 0.2.43 adapter, then upgraded to exact LangGraph 1.2.10/LangChain 1.3.14/Core 1.5.2 pins and audited graph-stack transitives. Checkpoint/resume, static and dynamic interrupt, subgraph, parallel-superstep, resume idempotency, and JSON serialization still pass; the adapter now uses a strict no-pickle `JsonPlusSerializer`.
+  - Added a content-addressed R1 release report that fails closed on lock or behavior drift, fewer than two distinct formal persisted runs, reused source evidence, invalid journal/parity evidence, failed rollback, failed isolated reproduction, compatibility-decision drift, premature reader removal, capability drift, or an opened protected-action boundary.
+  - Moved new audit writes to the canonical atomic Event Journal. Existing `audit.jsonl` records are validated and imported read-only, never overwritten or dual-written, and an explicit validated rollback snapshot can be exported to a separate operator-selected path.
+  - Deprecated the shallow linear Agent workflow, but retained its compatibility checkpoint reader/writer. Competition, Campaign, Sprint, and EvidenceGraph v1 paths also remain because the two formal Sprint runs prove the Sprint lifecycle boundary and audit retirement, not deletion of all legacy scientific semantics.
+  - Published the exact migration inventory, current-plus-one reader policy (`vnext-plus-one-release`), schema rules, rollback targets, truthful capability matrix, and verification commands. Public release, external submission, unrestricted execution, and safety-policy self-modification remain disabled and human-gated.
+  - Expanded the repository quality gate from `ruff check src tests` to `ruff check .` and fixed the pre-existing deploy/helper lint debt needed to make that gate real.
+- Verification:
+  - Pre-upgrade characterization SHA-256: `92983004c099b14799cd4102b644072013016541ae3da659e7380161b448fb3e`; post-upgrade characterization SHA-256: `dd62c3faef638b905755dbc26f6761957e5657175de7a3b641b6e5c718ebebd3`.
+  - `poetry update langgraph langchain langchain-core`: succeeded; `poetry.lock` SHA-256 is `9e1894adecae09877114222fded4251113618dd9fe967668201153559573bbad`, and the dependency-audit SHA-256 is `2e31dccf9c69af830bc0dfb8337085138ec633357e525ae0aa401b15af9a6fab`.
+  - Focused `poetry run python -m pytest tests/unit/runtime/test_loop_langgraph.py tests/unit/runtime/test_vnext_release.py tests/unit/observability/test_audit.py tests/unit/knowledge/test_rollback.py tests/integration/agents/test_workflow.py -q`: passed 32 tests.
+  - Real local Sprint adoption `$env:AUTORESEARCH_SPRINT_MIGRATION_LIVE='1'; $env:AUTORESEARCH_SPRINT_MIGRATION_OUTPUT='E:\AIResearch\runs\manual-live\task262-sprint-migration-release-live-v1'; poetry run python -m pytest tests/smoke/test_sprint_migration_live.py -q`: passed 1 test in 13.46 seconds. It verified two distinct persisted negative-result Sprints, independent sealed journal lineages and parity reports, and rollback SHA-256 `9d456335a4e2218fdc95baaafec801d118c39cc4b3fd09f0a512d564d1a7e01f`.
+  - Real local R1 reproduction `$env:AUTORESEARCH_VNEXT_RELEASE_LIVE='1'; $env:AUTORESEARCH_VNEXT_RELEASE_MIGRATION_ROOT='E:\AIResearch\runs\manual-live\task262-sprint-migration-release-live-v1\migration'; $env:AUTORESEARCH_VNEXT_RELEASE_OUTPUT='E:\AIResearch\runs\manual-live\task262-vnext-release-live-v1'; poetry run python -m pytest tests/smoke/test_vnext_release_live.py -q`: passed 1 test in 15.40 seconds. The isolated `python -I` reproduction SHA-256 is `44136e7f210185516f652e18efca7029f7b338ba426dfe4ca03748671e96eb33`; the final release-report SHA-256 is `acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`.
+  - Full `poetry run python -m pytest -q`: passed 946 tests with 13 opt-in tests skipped in 128.88 seconds; repository line coverage was 87%.
+  - Final `poetry check --lock`: passed with only the separately logged PEP 621 metadata deprecation notices. Final `poetry run ruff check .`: passed. Final `poetry run mypy src/autoresearch`: passed with no issues in 152 source files.
+  - Final `poetry run python -m pytest tests/unit/knowledge/test_links.py -q`: passed 3 tests. The first staged `git diff --cached --check` identified three Markdown hard-break trailing spaces in the new guide; they were replaced with explicit blank lines, and the final check passed with only Git's existing informational LF-to-CRLF warning for `pyproject.toml`.
+- Problems:
+  - Added and resolved `P-20260729-038` for stale version expectations, incomplete third-party typing, strict serializer adaptation, and the obsolete audit JSONL assertion found during bring-up.
+  - Added and mitigated `P-20260729-039`; the lock is valid, but Poetry still warns that legacy package metadata should move fully to PEP 621 in a separate focused maintenance task.
+  - Resolved `P-20260729-035` by making the all-repository Ruff gate pass.
+  - Narrowed `P-20260728-024` to the compatibility readers and scientific writers intentionally retained beyond R1.
+- Follow-up:
+  - Do not remove retained Competition/Campaign/Sprint/EvidenceGraph or Agent workflow compatibility paths until a later focused task proves their actual writer/reader semantics with usage audit, migration fixture, two distinct formal runs, rollback rehearsal, and the full R1 gates.
+  - Modernize Poetry metadata to PEP 621 under `P-20260729-039`; this is not a runtime or lock-integrity blocker.
+
 ### 2026-07-29 03:02:19 +08:00 - Codex - Task 262.9 unified evaluation, observability, and Agentic security gates
 
 - Request: Continue the evidence-first vNext refactor with one shared evaluation model, bounded local regressions, repeated-trial promotion/rollback decisions, Agentic security faults, and local redacted OpenTelemetry, after first cross-searching current official and research sources.

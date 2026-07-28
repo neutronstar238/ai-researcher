@@ -5,9 +5,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
-
 COMMANDS = [
-    ["poetry", "run", "ruff", "check", "src", "tests"],
+    ["poetry", "run", "ruff", "check", "."],
     ["poetry", "run", "mypy", "src"],
     ["poetry", "run", "pytest", "tests/smoke", "tests/unit"],
 ]

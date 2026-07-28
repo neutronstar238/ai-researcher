@@ -27,6 +27,7 @@ validation, review, or paper-build artifacts.
 - [[projects/ai_researcher_system/progress/task-262-8-2-campaign-migration|Task 262.8.2 Campaign vertical migration]] — stage/round event projection, Campaign-specific gate and failure parity, sealed recovery forks, two formal Campaigns, reversible vNext authority, and retained legacy state.
 - [[projects/ai_researcher_system/progress/task-262-8-3-sprint-migration|Task 262.8.3 Sprint vertical migration]] — Sprint-specific lifecycle parity, correct negative-result/block/failure separation, two persisted real negative-result formal observations, reversible vNext authority, and retained legacy state.
 - [[projects/ai_researcher_system/progress/task-262-9-unified-evaluation-security|Task 262.9 unified evaluation, observability, and Agentic security gates]] — content-addressed system/science evaluation, five bounded regressions, ten deterministic Agentic faults, repeated-trial and rollback gates, redacted local OTLP, and real persisted-evidence adoption.
+- [[projects/ai_researcher_system/progress/task-262-10-vnext-release-boundary|Task 262.10 vNext runtime and compatibility release boundary]] — exact LangGraph 1.x dependency/behavior freeze, canonical audit-journal cutover, retained reader policy, two fresh formal verticals, rollback rehearsal, isolated reproduction, and human-gated external actions.
 
 ## Current Competition Evidence
 

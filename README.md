@@ -829,7 +829,7 @@ Before changing code, read [AGENTS.md](AGENTS.md). The current executable plan i
 Useful checks:
 
 ```bash
-python -m ruff check src tests
+python -m ruff check .
 python -m mypy src/autoresearch
 python -m pytest tests/smoke tests/unit -q
 ```
@@ -840,6 +840,7 @@ python -m pytest tests/smoke tests/unit -q
 - [Execution Plan](AutoResearch_System_Execution_Plan.md)
 - [Implementation Tasks](.kiro/specs/auto-research-system/tasks.md)
 - [Release Gate Checklist](docs/release-gate.md)
+- [vNext Compatibility and Migration Guide](docs/vnext-compatibility-migration.md)
 - [Agent Change Log](Agent.md)
 - [Problem Log](Problem.md)
 - [Third-Party Notices](THIRD_PARTY_NOTICES.md)

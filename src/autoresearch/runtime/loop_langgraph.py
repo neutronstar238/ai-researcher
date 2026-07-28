@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from pydantic import model_validator
@@ -77,9 +78,7 @@ class LangGraphCharacterizationReport(_LangGraphCharacterizationContent):
     def calculated_hash(self) -> str:
         """Calculate the report digest without ``report_hash``."""
 
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"report_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"report_hash"}))
 
     @property
     def all_passed(self) -> bool:
@@ -111,11 +110,11 @@ class LangGraphControlAdapter:
     ) -> None:
         self.runtime = runtime
         graph = StateGraph(LangGraphAdapterPayload)
-        graph.add_node("drive", self._drive)
+        graph.add_node("drive", cast(Any, self._drive))
         graph.add_edge(START, "drive")
         graph.add_edge("drive", END)
         self.graph = graph.compile(
-            checkpointer=checkpointer or MemorySaver(),
+            checkpointer=checkpointer or _strict_memory_saver(),
             interrupt_before=["drive"] if interrupt_before_drive else None,
             interrupt_after=["drive"] if interrupt_after_drive else None,
             name="autoresearch_control_adapter",
@@ -181,9 +180,7 @@ class LangGraphControlAdapter:
             snapshot = self.runtime.start(LoopStartRequest.model_validate(raw_request))
         elif operation == "resume":
             raw_request = payload.get("resume_request", {})
-            snapshot = self.runtime.resume(
-                LoopResumeRequest.model_validate(raw_request)
-            )
+            snapshot = self.runtime.resume(LoopResumeRequest.model_validate(raw_request))
         else:
             raise ValueError(f"unsupported LangGraph adapter operation: {operation}")
         snapshot.verify_integrity()
@@ -242,13 +239,11 @@ def _characterize_checkpoint_and_interrupt() -> tuple[bool, bool, bool, bool]:
     builder.add_edge("first", "second")
     builder.add_edge("second", END)
     graph = builder.compile(
-        checkpointer=MemorySaver(),
+        checkpointer=_strict_memory_saver(),
         interrupt_after=["first"],
         name="autoresearch_checkpoint_characterization",
     )
-    config: RunnableConfig = {
-        "configurable": {"thread_id": "characterize-checkpoint"}
-    }
+    config: RunnableConfig = {"configurable": {"thread_id": "characterize-checkpoint"}}
     first_output = graph.invoke({"count": 0, "trace": []}, config)
     checkpoint = graph.get_state(config)
     final_output = graph.invoke(None, config)
@@ -291,16 +286,14 @@ def _characterize_dynamic_interrupt() -> bool:
         }
 
     builder = StateGraph(_CharacterizationState)
-    builder.add_node("approval", approval_node)
+    builder.add_node("approval", cast(Any, approval_node))
     builder.add_edge(START, "approval")
     builder.add_edge("approval", END)
     graph = builder.compile(
-        checkpointer=MemorySaver(),
+        checkpointer=_strict_memory_saver(),
         name="autoresearch_dynamic_interrupt_characterization",
     )
-    config: RunnableConfig = {
-        "configurable": {"thread_id": "characterize-dynamic-interrupt"}
-    }
+    config: RunnableConfig = {"configurable": {"thread_id": "characterize-dynamic-interrupt"}}
     paused = graph.invoke({"trace": []}, config)
     checkpoint = graph.get_state(config)
     resumed = graph.invoke(Command(resume=False), config)
@@ -327,7 +320,7 @@ def _characterize_subgraph() -> bool:
     parent.add_edge("subgraph", "after")
     parent.add_edge("after", END)
     graph = parent.compile(
-        checkpointer=MemorySaver(),
+        checkpointer=_strict_memory_saver(),
         name="autoresearch_subgraph_characterization",
     )
     output = graph.invoke(
@@ -349,16 +342,14 @@ def _characterize_parallel_superstep() -> bool:
         return {"trace": ["b"]}
 
     builder = StateGraph(_CharacterizationState)
-    builder.add_node("a", branch_a)
-    builder.add_node("b", branch_b)
+    builder.add_node("a", cast(Any, branch_a))
+    builder.add_node("b", cast(Any, branch_b))
     builder.add_node("join", lambda _state: {"trace": ["join"]})
     builder.add_edge(START, "a")
     builder.add_edge(START, "b")
     builder.add_edge(["a", "b"], "join")
     builder.add_edge("join", END)
-    output = builder.compile(
-        name="autoresearch_parallel_characterization"
-    ).invoke({"trace": []})
+    output = builder.compile(name="autoresearch_parallel_characterization").invoke({"trace": []})
     return calls == ["a", "b"] and output.get("trace") == ["a", "b", "join"]
 
 
@@ -371,3 +362,15 @@ def adapter_snapshot(payload: LangGraphAdapterPayload) -> LoopRunSnapshot:
     snapshot = LoopRunSnapshot.model_validate(raw)
     snapshot.verify_integrity()
     return snapshot
+
+
+def _strict_memory_saver() -> MemorySaver:
+    """Use an explicit JSON-safe serializer allowlist for local checkpoints."""
+
+    return MemorySaver(
+        serde=JsonPlusSerializer(
+            pickle_fallback=False,
+            allowed_json_modules=(),
+            allowed_msgpack_modules=(),
+        )
+    )
