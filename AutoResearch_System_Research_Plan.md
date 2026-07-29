@@ -800,6 +800,33 @@ Event Journal、provenance-v2、evaluation/security、干净目录独立重算�
 阈值或源码。Task 261.2.4 只能忠实构建负结果论文与 claim-evidence audit；任何后续机制改进都
 必须重新进入开发筛选并冻结新的独立确认面板。外部投稿授权仍为 false。
 
+Task 261.2.4 已把该不可改写的负 endpoint 建成
+`runs/manual-live/task2612-mechanism-paper-live-v1/`，并在独立空目录
+`runs/manual-live/task2612-mechanism-paper-reproduction-live-v1/` 完成第二次构建。论文不是自由
+改写的模型长文：51 个 material paragraphs 全部登记为 named prior work、method、experiment、
+result、limitation 或 figure description，解析到 26 个类型化证据记录和 77 条支持边；逐段
+exact-occurrence、evidence-kind、artifact hash 与 frozen-source entailment 均通过，没有未登记
+材料段落或 unsupported claim。
+
+14 个冻结的一手/官方来源均在正文中各有 named-work claim、inline source token 和 reference
+条目；live reachability 再检查得到 14 个 HTTP 200 且每个响应至少 1,000 bytes。四类相邻工作
+覆盖为 selective factuality 4、scientific-agent evaluation 3、generated-code security 3、
+claim-evidence alignment 5。五张图和一张六任务表均由冻结 JSON 或结果合同生成，caption、正文
+描述、文件 digest、任务计数与 endpoint metric 一致。
+
+主稿与独立重建的 24 个确定性 source artifacts 全部逐文件相同，并各自编译成 13 页 PDF。主稿
+2,512 words、16 个 technical terms、5 figures、1 table、14 references、0 overfull boxes；逐页
+PNG 视觉检查未发现裁切、重叠、不可读图表或未解析引用。paper package、manuscript 和 PDF hashes
+分别为 `462c428dc1c863407042ae48ad1cb2245a942ba0af93744a0022804eeb26bcc8`、
+`c33b915bb762a4d3d1dabe44bf4be5a13fc100d1ad63d6c45e3e6b67fd964b30` 和
+`e3d2ae122d096e960ae78bac5d045974399790c175190740599278cf2b38e22e`。
+
+最终 paper audit 忠实保留 `negative_result`：unsupported-risk 门通过并不能抵消 coverage
+`0.5833 < 0.60`。`scientific_submission_gate`、`authorship_review`、`license_review` 和
+`explicit_human_approval` 明确失败，因此 positive contribution、submission readiness 与
+external submission 全为 false。Task 261.2 至此完成的是一条可复核的负结果科研因果链，而不是
+投稿许可；任何新机制必须开启新的开发分区和独立确认面板。
+
 ---
 
 ## 19. 2026-07-28 vNext 架构升级：Graph、Harness、Loop 与 Open Science

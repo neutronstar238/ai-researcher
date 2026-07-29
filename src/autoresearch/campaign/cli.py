@@ -30,6 +30,11 @@ from autoresearch.campaign.mechanism_development import (
     load_mechanism_development,
     run_task2612_mechanism_development,
 )
+from autoresearch.campaign.mechanism_paper import (
+    MechanismPaperBuildResult,
+    build_task2612_child_paper,
+    load_task2612_child_paper,
+)
 from autoresearch.campaign.models import (
     CampaignPolicy,
     CampaignRoundDesign,
@@ -697,6 +702,85 @@ def campaign_mechanism_confirmatory_status(
         raise typer.Exit(code=2) from exc
 
 
+@campaign_app.command("mechanism-paper-build")
+def campaign_mechanism_paper_build(
+    foundation_dir: Annotated[
+        Path,
+        typer.Option(
+            "--foundation-dir",
+            help="Hash-valid task 261.2.1 foundation directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-foundation-live-v3"),
+    confirmatory_dir: Annotated[
+        Path,
+        typer.Option(
+            "--confirmatory-dir",
+            help="Terminal task 261.2.3 confirmatory directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-confirmatory-live-v1"),
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Absent or empty task 261.2.4 paper-package directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-paper-live-v1"),
+    reproduction_dir: Annotated[
+        Path,
+        typer.Option(
+            "--reproduction-dir",
+            help="Absent or empty independent paper-rebuild directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-paper-reproduction-live-v1"),
+    compile_pdf: Annotated[
+        bool,
+        typer.Option(
+            "--compile/--no-compile",
+            help="Compile and quality-check primary and independently rebuilt PDFs.",
+        ),
+    ] = True,
+    live_sources: Annotated[
+        bool,
+        typer.Option(
+            "--live-sources/--frozen-source-snapshot",
+            help="Recheck all fourteen frozen source URLs during this build.",
+        ),
+    ] = False,
+) -> None:
+    """Build the evidence-bound negative-result child paper and audit."""
+
+    try:
+        result = build_task2612_child_paper(
+            foundation_dir=foundation_dir,
+            confirmatory_dir=confirmatory_dir,
+            output_dir=output_dir,
+            reproduction_dir=reproduction_dir,
+            compile_pdf=compile_pdf,
+            live_source_check=live_sources,
+        )
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_paper_build: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_mechanism_paper(result)
+
+
+@campaign_app.command("mechanism-paper-status")
+def campaign_mechanism_paper_status(
+    output_dir: Annotated[
+        Path,
+        typer.Argument(help="Terminal task 261.2.4 paper-package directory."),
+    ],
+) -> None:
+    """Verify the full child-paper artifact index and semantic audits."""
+
+    try:
+        result = load_task2612_child_paper(output_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_paper_status: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_mechanism_paper(result)
+
+
 def _development_campaign_spec(
     *,
     campaign_id: str,
@@ -916,6 +1000,22 @@ def _echo_mechanism_confirmatory(
     typer.echo(f"rollback_report_hash={result.rollback_report_hash}")
     typer.echo("confirmatory_results_revealed=true")
     typer.echo("scientific_result_created=true")
+    typer.echo("external_submission_authorized=false")
+
+
+def _echo_mechanism_paper(result: MechanismPaperBuildResult) -> None:
+    typer.echo(f"package_dir={result.package_dir}")
+    typer.echo(f"status={result.status.value}")
+    typer.echo(f"manifest_hash={result.manifest_hash}")
+    typer.echo(f"endpoint_hash={result.endpoint_hash}")
+    typer.echo(f"manuscript_path={result.manuscript_path}")
+    typer.echo(f"pdf_path={result.pdf_path}")
+    typer.echo(f"paper_quality_passed={str(result.paper_quality_passed).lower()}")
+    typer.echo(
+        "claim_coverage_complete="
+        f"{str(result.claim_coverage_complete).lower()}"
+    )
+    typer.echo("submission_readiness_granted=false")
     typer.echo("external_submission_authorized=false")
 
 

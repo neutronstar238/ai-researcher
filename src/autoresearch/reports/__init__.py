@@ -37,7 +37,12 @@ from .evolution import (
     StrategyEvolutionReportContext,
     generate_strategy_evolution_report,
 )
-from .figures import FigureArtifact, FigureGenerationError, generate_metric_bar_figure
+from .figures import (
+    FigureArtifact,
+    FigureGenerationError,
+    generate_flow_diagram_figure,
+    generate_metric_bar_figure,
+)
 from .generator import ReportContext, generate_markdown_report
 from .latex import (
     LatexCompilationError,
@@ -251,6 +256,7 @@ __all__ = [
     "generate_ablation_table",
     "generate_strategy_promotion_audit_review",
     "generate_strategy_evolution_report",
+    "generate_flow_diagram_figure",
     "generate_metric_bar_figure",
     "generate_method_comparison_table",
     "generate_latex_skeleton",

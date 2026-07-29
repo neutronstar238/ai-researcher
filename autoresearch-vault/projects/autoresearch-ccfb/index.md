@@ -39,6 +39,9 @@ External submission remains human-gated.
 - [[task-261-2-3-confirmatory-adjudication|Task 261.2.3 confirmatory adjudication]] —
   records the one-shot six-task Control Graph, provenance-v2, independent reproduction, rollback,
   and the retained negative endpoint: unsupported risk passed, but coverage `0.5833 < 0.60`.
+- [[task-261-2-4-child-paper-claim-audit|Task 261.2.4 child paper and claim audit]] —
+  records the 51/51 typed claim-evidence audit, 14-source live citation audit, 5 source-backed
+  figures, six-task table, independently rebuilt 13-page PDF, and fail-closed submission gates.
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 evidence survey]] —
   selective factuality, scientific-Agent evaluation, generated-code security, and
   claim-evidence synthesis for the next model-generated mechanism.
@@ -49,3 +52,6 @@ External submission remains human-gated.
 - Final local confirmatory evidence:
   `runs/manual-live/task2612-mechanism-confirmatory-live-v1/`; scientific result is negative and
   external submission remains false.
+- Final local child-paper evidence:
+  `runs/manual-live/task2612-mechanism-paper-live-v1/`; the negative verdict is unchanged,
+  submission readiness is false, and external submission remains false.

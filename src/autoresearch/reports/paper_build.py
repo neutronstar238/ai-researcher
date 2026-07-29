@@ -894,6 +894,7 @@ def _markdown_table_to_latex_lines(block: list[str]) -> list[str]:
         r"\begin{table}[t]",
         r"\centering",
         r"\small",
+        r"\setlength{\tabcolsep}{3pt}",
         r"\caption{Source-backed data table}",
         rf"\begin{{tabular}}{{{_table_column_spec(column_count)}}}",
         r"\hline",
@@ -911,7 +912,7 @@ def _markdown_table_to_latex_lines(block: list[str]) -> list[str]:
 
 
 def _table_column_spec(column_count: int) -> str:
-    width = "0.28" if column_count <= 3 else f"{0.92 / max(column_count, 1):.2f}"
+    width = "0.28" if column_count <= 3 else f"{0.80 / max(column_count, 1):.2f}"
     return "|" + "|".join([rf"p{{{width}\linewidth}}"] * max(column_count, 1)) + "|"
 
 

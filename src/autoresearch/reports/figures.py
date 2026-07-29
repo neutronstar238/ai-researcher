@@ -20,6 +20,14 @@ BAR_COLOR = (39, 101, 162)
 AXIS_COLOR = (35, 35, 35)
 GRID_COLOR = (225, 225, 225)
 BACKGROUND_COLOR = (255, 255, 255)
+FLOW_COLORS = (
+    (86, 180, 233),
+    (0, 158, 115),
+    (240, 228, 66),
+    (230, 159, 0),
+    (204, 121, 167),
+    (213, 94, 0),
+)
 ROW_LABEL_SIZE = 10
 VALUE_LABEL_SIZE = 9
 KNOWN_METRIC_ORDER = (
@@ -120,6 +128,55 @@ def generate_metric_bar_figure(
     return artifact
 
 
+def generate_flow_diagram_figure(
+    diagram_source: Path | str,
+    output_dir: Path | str,
+    *,
+    title: str = "Evidence Flow",
+    figure_id: str = "evidence-flow",
+) -> FigureArtifact:
+    """Generate a deterministic, source-backed horizontal flow diagram."""
+
+    source_path = Path(diagram_source).resolve()
+    stages = _load_flow_stages(source_path)
+    output_path = Path(output_dir).resolve()
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    slug = _slugify(figure_id)
+    pdf_path = output_path / f"{slug}.pdf"
+    png_path = output_path / f"{slug}.png"
+    metadata_path = output_path / f"{slug}.metadata.json"
+    _write_flow_pdf(pdf_path, title, stages)
+    _write_flow_png(png_path, stages)
+
+    artifact = FigureArtifact(
+        title=title,
+        source_path=source_path.as_posix(),
+        pdf_path=pdf_path.as_posix(),
+        png_path=png_path.as_posix(),
+        metadata_path=metadata_path.as_posix(),
+        metric_names=tuple(stage["id"] for stage in stages),
+    )
+    metadata = {
+        "figure": artifact.to_dict(),
+        "figure_type": "flow_diagram",
+        "source_path": source_path.as_posix(),
+        "stages": stages,
+        "style": {
+            "name": "autoresearch-flow",
+            "orientation": "horizontal",
+            "width": FIGURE_WIDTH,
+            "height": FIGURE_HEIGHT,
+            "palette": [list(color) for color in FLOW_COLORS],
+        },
+    }
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return artifact
+
+
 def _load_metrics(source_path: Path) -> dict[str, float]:
     if not source_path.exists():
         msg = f"metrics source file is missing: {source_path.as_posix()}"
@@ -143,6 +200,154 @@ def _load_metrics(source_path: Path) -> dict[str, float]:
         msg = "metrics source does not contain numeric metrics"
         raise FigureGenerationError(msg)
     return metrics
+
+
+def _load_flow_stages(source_path: Path) -> list[dict[str, str]]:
+    if not source_path.exists():
+        msg = f"flow source file is missing: {source_path.as_posix()}"
+        raise FigureGenerationError(msg)
+    try:
+        payload = json.loads(source_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        msg = f"flow source file is not valid JSON: {source_path.as_posix()}"
+        raise FigureGenerationError(msg) from exc
+    stages_value = payload.get("stages") if isinstance(payload, dict) else None
+    if not isinstance(stages_value, list) or not 2 <= len(stages_value) <= 6:
+        raise FigureGenerationError("flow source must contain two to six stages")
+    stages: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    for value in stages_value:
+        if not isinstance(value, dict):
+            raise FigureGenerationError("flow stages must be JSON objects")
+        stage_id = value.get("id")
+        label = value.get("label")
+        detail = value.get("detail", "")
+        if (
+            not isinstance(stage_id, str)
+            or not stage_id.strip()
+            or not isinstance(label, str)
+            or not label.strip()
+            or not isinstance(detail, str)
+        ):
+            raise FigureGenerationError("flow stages require text id, label, and detail")
+        normalized_id = stage_id.strip()
+        if normalized_id in seen_ids:
+            raise FigureGenerationError("flow stage IDs must be unique")
+        if len(label.strip()) > 48 or len(detail.strip()) > 72:
+            raise FigureGenerationError("flow stage labels or details are too long")
+        seen_ids.add(normalized_id)
+        stages.append(
+            {
+                "id": normalized_id,
+                "label": label.strip(),
+                "detail": detail.strip(),
+            }
+        )
+    return stages
+
+
+def _write_flow_pdf(
+    path: Path,
+    title: str,
+    stages: list[dict[str, str]],
+) -> None:
+    left = 28.0
+    right = 28.0
+    gap = 18.0
+    box_width = (FIGURE_WIDTH - left - right - gap * (len(stages) - 1)) / len(stages)
+    box_height = 126.0
+    box_y = 156.0
+    lines = [
+        _pdf_fill_color(BACKGROUND_COLOR),
+        f"0 0 {FIGURE_WIDTH} {FIGURE_HEIGHT} re f",
+        _pdf_fill_color(AXIS_COLOR),
+        _pdf_text(36, FIGURE_HEIGHT - 42, 17, title),
+    ]
+    for index, stage in enumerate(stages):
+        x = left + index * (box_width + gap)
+        color = FLOW_COLORS[index % len(FLOW_COLORS)]
+        lines.extend(
+            [
+                _pdf_fill_color(color),
+                f"{x:.3f} {box_y:.3f} {box_width:.3f} {box_height:.3f} re f",
+                _pdf_stroke_color(AXIS_COLOR),
+                "1 w",
+                f"{x:.3f} {box_y:.3f} {box_width:.3f} {box_height:.3f} re S",
+                _pdf_fill_color(AXIS_COLOR),
+            ]
+        )
+        text_lines = [
+            *_wrap_flow_text(stage["label"], width=17),
+            *_wrap_flow_text(stage["detail"], width=20),
+        ]
+        text_y = box_y + box_height - 30
+        for line_index, text_value in enumerate(text_lines[:5]):
+            size = 10 if line_index < 2 else 8
+            lines.append(_pdf_text(x + 8, text_y, size, text_value))
+            text_y -= 19 if line_index < 2 else 15
+        if index < len(stages) - 1:
+            start_x = x + box_width
+            end_x = start_x + gap - 4
+            arrow_y = box_y + box_height / 2
+            lines.extend(
+                [
+                    _pdf_stroke_color(AXIS_COLOR),
+                    "1.5 w",
+                    f"{start_x + 2:.3f} {arrow_y:.3f} m {end_x:.3f} {arrow_y:.3f} l S",
+                    _pdf_fill_color(AXIS_COLOR),
+                    (
+                        f"{end_x:.3f} {arrow_y:.3f} m "
+                        f"{end_x - 6:.3f} {arrow_y + 4:.3f} l "
+                        f"{end_x - 6:.3f} {arrow_y - 4:.3f} l h f"
+                    ),
+                ]
+            )
+    _write_pdf(path, "\n".join(lines))
+
+
+def _write_flow_png(path: Path, stages: list[dict[str, str]]) -> None:
+    pixels = bytearray(BACKGROUND_COLOR * (FIGURE_WIDTH * FIGURE_HEIGHT))
+    left = 28
+    right = 28
+    gap = 18
+    box_width = round(
+        (FIGURE_WIDTH - left - right - gap * (len(stages) - 1)) / len(stages)
+    )
+    box_height = 126
+    box_y = _png_y(156 + box_height)
+    for index, _stage in enumerate(stages):
+        x = left + index * (box_width + gap)
+        color = FLOW_COLORS[index % len(FLOW_COLORS)]
+        _draw_rect(pixels, x, box_y, box_width, box_height, color)
+        _draw_rect(pixels, x, box_y, box_width, 2, AXIS_COLOR)
+        _draw_rect(pixels, x, box_y + box_height - 2, box_width, 2, AXIS_COLOR)
+        _draw_rect(pixels, x, box_y, 2, box_height, AXIS_COLOR)
+        _draw_rect(pixels, x + box_width - 2, box_y, 2, box_height, AXIS_COLOR)
+        if index < len(stages) - 1:
+            arrow_x = x + box_width + 2
+            arrow_y = box_y + box_height // 2
+            _draw_rect(pixels, arrow_x, arrow_y, max(gap - 5, 1), 2, AXIS_COLOR)
+            _draw_rect(pixels, arrow_x + gap - 7, arrow_y - 3, 2, 8, AXIS_COLOR)
+    _write_png(path, FIGURE_WIDTH, FIGURE_HEIGHT, pixels)
+
+
+def _wrap_flow_text(text: str, *, width: int) -> list[str]:
+    if not text:
+        return []
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = word if not current else f"{current} {word}"
+        if len(candidate) <= width:
+            current = candidate
+            continue
+        if current:
+            lines.append(current)
+        current = word[:width]
+    if current:
+        lines.append(current)
+    return lines
 
 
 def _write_metric_pdf(

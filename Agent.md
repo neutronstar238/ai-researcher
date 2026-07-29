@@ -64,6 +64,57 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 14:06:00 +08:00 - Codex - Task 261.2.4 child paper and claim-evidence audit
+
+- Request: Complete task `261.2.4` and the parent task `261.2`: build a new child report, full manuscript, source-backed figures/table, and PDF from the frozen negative endpoint; audit every material and named-work claim; independently reproduce the paper; and keep publication actions human-gated.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task-261-2-4-child-paper-claim-audit.md`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/mechanism_paper.py`
+  - `src/autoresearch/reports/__init__.py`
+  - `src/autoresearch/reports/figures.py`
+  - `src/autoresearch/reports/paper_build.py`
+  - `tests/smoke/test_mechanism_paper_live.py`
+  - `tests/unit/campaign/test_mechanism_paper.py`
+  - `tests/unit/reports/test_figures.py`
+  - `tests/unit/reports/test_paper_build.py`
+- Summary:
+  - Added a fail-closed `mechanism_paper` service whose only accepted scientific input is the hash-valid task `261.2.3` negative endpoint with sole failure `minimum_coverage_met`. The build copies the frozen foundation, endpoint, preregistration, generated source, provenance, security, reproduction, rollback, panel, and round-freeze evidence; a status reload verifies every indexed artifact and independently reconstructs the complete frozen causal chain and child round report.
+  - Added a full evidence-derived manuscript rather than an unconstrained model rewrite. It registers every one of 51 material paragraphs as named prior work, method, experiment, result, limitation, or figure description; 26 verified evidence records and 77 typed links cover all requirements. Exact rendered occurrence, evidence resolution, required evidence kinds, source text, artifact digests, and unregistered-paragraph checks all pass.
+  - Added citation auditing for all 14 frozen primary/official sources. Every source has one named-work claim, inline source token, and reference entry; live reachability requires a 2xx/3xx response with at least 1,000 bytes and uses bounded retries. The final live run returned 14 HTTP 200 responses and preserves coverage across four evidence areas.
+  - Added reusable deterministic horizontal flow figures plus five paper displays and one task table generated from frozen JSON/task-result contracts. Figure/table audits bind files, captions, prose descriptions, task order, accepted/abstained counts, coverage, unsupported risk, and endpoint values. Wide Markdown tables now use compact column padding and bounded widths so the seven-column task table has zero overfull boxes.
+  - Added clean-directory paper reproduction. It independently rerenders the manuscript, data, PDF/PNG figures, table, claim/citation/display audits, and PDF; all 24 deterministic source artifacts match and both PDFs pass the same 13-page quality gate. PDFs are compiled independently, while nondeterministic PDF container bytes are not falsely required to match.
+  - Added `campaign mechanism-paper-build` and `mechanism-paper-status`, unit/tamper tests, and an opt-in live source/PDF smoke. Existing terminal packages load without writes even if build options request a fresh network check or compile; a reindexed frozen-endpoint mutation still fails semantic validation.
+  - The authoritative package is `runs/manual-live/task2612-mechanism-paper-live-v1/`; its manifest is `462c428dc1c863407042ae48ad1cb2245a942ba0af93744a0022804eeb26bcc8`, manuscript is `c33b915bb762a4d3d1dabe44bf4be5a13fc100d1ad63d6c45e3e6b67fd964b30`, and PDF is `e3d2ae122d096e960ae78bac5d045974399790c175190740599278cf2b38e22e`. The manuscript has 2,512 words, 16 technical terms, 5 figures, 1 table, 14 references, 13 pages, and zero overfull boxes.
+  - The final audit faithfully reports the immutable negative endpoint: unsupported risk passed, coverage `0.5833 < 0.60` failed. `scientific_submission_gate`, `authorship_review`, `license_review`, and `explicit_human_approval` remain false, so positive contribution, submission readiness, public release, and external submission are not granted.
+- Verification:
+  - `poetry run python -m pytest tests/unit/campaign/test_mechanism_paper.py tests/unit/reports/test_figures.py tests/unit/reports/test_paper_build.py -q --no-cov`: passed 17 claim/evidence, semantic reload, reindexed tamper, named-work citation, deterministic flow-figure, wide-table, and paper-build tests.
+  - `$env:AUTORESEARCH_MECHANISM_PAPER_LIVE='1'; poetry run python -m pytest tests/smoke/test_mechanism_paper_live.py -q --no-cov`: passed the one real live-source and dual-PDF smoke in 19.95 seconds.
+  - `poetry run airesearcher campaign mechanism-paper-build --help`: exited 0; `poetry run airesearcher campaign mechanism-paper-status runs/manual-live/task2612-mechanism-paper-live-v1`: revalidated the terminal artifact index and semantic audits, reporting paper quality and claim coverage true while both submission flags remained false.
+  - Authoritative inspection confirmed 14 substantive HTTP 200 sources, 51/51 registered material paragraphs, 5 figures, 1 table, 24/24 independently matched deterministic sources, and the four intentionally failed human/scientific submission gates.
+  - Direct bundled `pdftoppm.exe` rendered all 13 pages to PNG; every page was visually inspected with no clipping, overlap, malformed layout, unreadable display, or unresolved reference marker. Direct `pdfinfo.exe` reported a valid 13-page PDF, and bundled `pypdf` extracted 23,948 characters with the title, negative-result language, References, and zero `??` markers.
+  - First full `poetry run python -m pytest -q`: 981 passed, 17 skipped, and one new test failed because a compact-table assertion was attached to a no-table fixture. The assertion was moved to a real seven-column table regression; the 17-test focused matrix then passed.
+  - Final `poetry run python -m pytest -q`: passed 983 tests with 17 opt-in tests skipped in 148.27 seconds; repository line coverage was 87%.
+  - `poetry run ruff check .`: passed.
+  - `poetry run mypy src`: passed all 158 source files.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q --no-cov`: passed all Vault-link tests.
+  - `git diff --check`: passed with no whitespace errors.
+- Problems:
+  - Added and resolved `P-20260729-045` for pre-authoritative manifest normalization, order-independent entailment, manuscript-depth, wide-table, negative-fixture, and regression-placement defects.
+  - Added mitigated `P-20260729-046` for the bundled Poppler wrapper path mismatch; direct installed executables and bundled `pypdf` completed the required inspection.
+  - Updated resolved `P-20260729-044` because the child-package loader now preserves and revalidates the complete confirmatory causal chain.
+  - Resolved `P-20260724-022`: the real child paper now has complete typed claim, citation, and display audits, while remaining explicitly not submission-ready.
+  - Updated mitigated `P-20260724-023`: truthful paper auditing is complete, but bounded mechanism provenance is not unrestricted autonomous science.
+- Follow-up:
+  - Do not retune against the revealed six-task panel. Any new mechanism claim requires a new development partition and newly frozen independent confirmatory panel. Authorship, license, venue, public release, and external submission remain explicit human decisions.
+
 ### 2026-07-29 13:19:38 +08:00 - Codex - Task 261.2.3 independent confirmatory adjudication
 
 - Request: Continue the evidence-first system upgrade by completing task `261.2.3`: freeze the exact v12 mechanism, environment, statistical policy, stop rule, and untouched independent panel before reveal; execute it once under Harness/Control Graph; and retain a positive or negative endpoint with provenance, reproduction, and rollback evidence.

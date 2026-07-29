@@ -1012,10 +1012,26 @@ accept 为 1，点估计 `0.0357`、95% 区间 `[0.00, 0.10]`，风险门通过�
 provenance-v2 claim trace、Event Journal seal、独立干净目录重算和 pre-reveal rollback rehearsal
 全部通过；终态 220 个文件的再次运行为零变化幂等加载。外部投稿仍为 false。
 
-下一执行单元是 261.2.4：从上述负 endpoint 和完整因果链生成 child report、manuscript、
-figures/tables 与 PDF，并逐项验证 named work、方法、实验、结果、限制和 figure-description
-claims。论文不得把低残余风险偷换成总体成功，也不得弱化 coverage 失败；同一确认面板永久禁止
-调参。若未来继续改机制，必须另开新一轮开发集和独立确认面板。
+Task 261.2.4 已完成。`campaign mechanism-paper-build --live-sources` 从上述冻结因果链生成
+child round report、完整 manuscript、5 个 source-backed figures、1 个六任务表和 PDF；权威
+package 与独立重建目录分别为 `task2612-mechanism-paper-live-v1` 和
+`task2612-mechanism-paper-reproduction-live-v1`。终态 manifest
+`462c428dc1c863407042ae48ad1cb2245a942ba0af93744a0022804eeb26bcc8` 绑定 endpoint
+`d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d` 与 scientific projection
+`fed38ff7a08f12562eae1488bbc951561d3279d1e181f3b89a830e13d2ddf6f9`。
+
+生成器把 51 个材料段落登记为类型化 claims，并用 26 个 evidence records 和 77 条 links 覆盖
+全部 named work、方法、实验、结果、限制和 figure descriptions。14 个冻结来源的 live
+reachability、inline/reference/named-claim 三重覆盖以及四类 adjacent-work breadth 全部通过；
+5 图 1 表的来源、caption、正文引用和 endpoint 数值一致。独立构建逐文件匹配 24 个确定性 source
+artifacts；两份 PDF 均为 13 页，主稿含 2,512 words、14 references、0 overfull boxes，且完成
+13 页视觉检查。
+
+最终状态是 `negative_result_paper_built`，不是 positive contribution。paper audit 的
+`scientific_submission_gate`、`authorship_review`、`license_review` 和
+`explicit_human_approval` 仍为 false，因此 submission readiness 与 external submission
+继续为 false。同一确认面板永久禁止调参；若未来继续改机制，必须另开新一轮开发集和独立确认面板。
+Task 261.2 的工程闭环至此完成。
 
 ---
 

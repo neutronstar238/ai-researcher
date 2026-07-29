@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-046 - Bundled Poppler command wrappers used stale paths during PDF inspection
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-29 13:53:00 +08:00
+- Source: Task `261.2.4` full-page PDF rendering and text inspection.
+- Symptom: The bundled `pdftoppm.cmd` and `pdfinfo.cmd` wrappers delegated to a nonexistent `native\poppler\bin` path even though the working executables were installed under `native\poppler\Library\bin`; the bundle did not include `pdftotext.exe`.
+- Impact: The first optional rendering and text-extraction commands failed. The authoritative PDF and paper package were already complete and unchanged; visual and text inspection continued through the installed direct executables and bundled Python `pypdf`.
+- Evidence: Direct `pdftoppm.exe` rendered all 13 pages, direct `pdfinfo.exe` reported a valid unencrypted 13-page letter PDF, and `pypdf` extracted 23,948 characters with the title, negative-result language, References section, and zero unresolved `??` markers.
+- Root cause: The desktop runtime wrapper layout did not match the installed Poppler directory, and the runtime ships a limited Poppler executable set.
+- Workaround: Resolve and invoke `native\poppler\Library\bin\pdftoppm.exe` and `pdfinfo.exe` directly; use bundled `pypdf` for text extraction.
+- Next action: Keep the fallback documented in task verification; the Codex runtime package, not this repository, must repair or regenerate its wrapper paths.
+- Linked tasks: `261.2.4`.
+- Resolution: The task-level PDF inspection is complete; the external wrapper packaging issue remains mitigated by direct executable discovery.
+- Verification: Thirteen nonempty page PNGs were rendered and visually inspected, and independent Python text extraction passed the expected-content checks.
+
+### P-20260729-045 - Child-paper bring-up exposed manifest, entailment, fixture, and layout defects
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-29 13:25:00 +08:00
+- Source: Task `261.2.4` deterministic package builds, semantic reloads, paper-quality checks, and full regression.
+- Symptom: Superseded diagnostic builds first hashed raw `datetime` values, then mixed normalized and model-form manifest payloads, and initially recomputed claim entailment in an order-dependent way. Early manuscripts were too short for the frozen paper gate and a seven-column task table produced overfull boxes. The first unit fixture used a generic mechanism expression that produced a positive endpoint even though this task accepts only the retained negative endpoint. The first full regression also placed a compact-table assertion in a manuscript fixture that contained no table.
+- Impact: All defects were found before the authoritative v1 paper package. If retained, they could make a valid package unloadable, let verification depend on JSON record order, underfill the scientific manuscript, emit a physically poor table, or test the wrong scientific input.
+- Evidence: Retained diagnostic directories v1-v8 record each pre-authoritative failure; v9 first passed physical quality. Focused pytest showed the accidental positive fixture and the misplaced no-table assertion. No diagnostic package is used as completion evidence.
+- Root cause: The initial package hash path had two serialization representations; semantic recomputation iterated unsorted evidence; manuscript quality was tested only after the first complete render; and the new tests reused a mechanism fixture whose scientific outcome was not fixed to the authoritative v12 behavior.
+- Workaround: None remains necessary.
+- Next action: Preserve negative-input, reindexed-tamper, exact claim-occurrence, wide-table, dual-build, and semantic-reload regressions in future paper generators.
+- Linked tasks: `261.2.4`, `261.2`.
+- Resolution: Normalize the manifest before hashing, sort all semantic inputs, recompute the frozen endpoint/manifest/preregistration/round-report chain on load, expand the evidence-bound prose without changing its claims, compact wide tables, use the authoritative v12 expression in the fixture, and test compact columns on an actual seven-column table.
+- Verification: Seventeen focused paper/figure/table tests passed; the live-source and dual-PDF smoke passed; the authoritative package loaded idempotently; both PDFs passed quality with zero overfull boxes; and the final full suite passed 983 tests with 17 opt-in tests skipped.
+
 ### P-20260729-044 - Confirmatory bring-up exposed hash typing, serialization, resume, and reproduction defects
 
 - Status: Resolved
@@ -51,10 +83,10 @@ update a factual problem entry below.
 - Evidence: Focused pytest traces identified the Git ID length check, JSON serialization errors, and running-state resume mismatch. The strengthened reproduction now reruns all six tasks in an initially empty directory, recomputes counts, bootstrap intervals, gates, failure codes, and outcome from frozen inputs, and matches the canonical scientific projection.
 - Root cause: The first implementation conflated source-control object IDs with content-artifact digests, assumed model-style datetime normalization for plain mappings, relied on `ControlGraphRuntime.start()` to resume an existing run despite its intentionally idempotent start semantics, and compared reproduction against a partially source-derived projection.
 - Workaround: None remains necessary.
-- Next action: Preserve the Git-ID, JSON-time, crash-after-side-effect, independent-projection, and endpoint-tamper regressions in task `261.2.4` and future confirmatory runners.
+- Next action: Preserve the Git-ID, JSON-time, crash-after-side-effect, independent-projection, and endpoint-tamper regressions now exercised by the task `261.2.4` frozen-chain loader and by future confirmatory runners.
 - Linked tasks: `261.2.3`, `261.2.4`.
 - Resolution: Accept 40- or 64-character hexadecimal repository IDs separately from SHA-256 artifact fields; serialize all mapping timestamps before canonical hashing; call `resume()` when idempotent `start()` returns a running snapshot; and independently rebuild the reproduction scientific projection.
-- Verification: Five focused confirmatory tests passed, including crash-after-side-effect without a second task execution; 96 related Campaign/Harness/Loop/Journal/provenance tests passed; the real one-shot v1 smoke passed; independent reproduction and rollback reports passed; and all 220 terminal files remained unchanged on idempotent reload.
+- Verification: Five focused confirmatory tests passed, including crash-after-side-effect without a second task execution; 96 related Campaign/Harness/Loop/Journal/provenance tests passed; the real one-shot v1 smoke passed; independent reproduction and rollback reports passed; all 220 terminal files remained unchanged on idempotent reload; and the task `261.2.4` loader revalidated the copied negative endpoint, confirmatory manifest, preregistration, reproduction report, and reconstructed child round report.
 
 ### P-20260729-043 - Live mechanism generation exposed transport, code-safety, and boundary-test defects
 
@@ -408,7 +440,7 @@ update a factual problem entry below.
 
 ### P-20260724-022 - Model-authored paper prose could overstate a failed gate and under-cite prior work
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-24 02:00:00 +08:00
 - Source: Task `261.1` clean-v1 and clean-v2 manuscript audits.
@@ -417,10 +449,10 @@ update a factual problem entry below.
 - Evidence: Clean-v1 conclusion generalized beyond CI support and omitted several bibliography bindings. Clean-v2 has no bare `[Lnnn]` tokens, its sole inline ID `L012` is present in References, and its deterministic conclusion states only that the frozen gate failed to establish the selected improvement. The clean-v2 paper-quality report nevertheless records `bibliography_item_count=1`; an independent TeX Live compile also reports the ACM accessibility warning that the metric image has no description. Visual inspection found readable two-column pages without clipping, but the final page has substantial unused space and only the single reference.
 - Root cause: Scientific result interpretation and citation completeness were initially delegated too broadly to a small local model. The physical paper gate checks document structure and reference syntax, not whether every named work and material method statement has adequate claim-level support.
 - Workaround: Use clean-v2 only as a bounded-autonomy negative artifact; do not use it as the August 15 submission paper or as evidence of high innovation.
-- Next action: Task `261.2.4` must apply the new typed audit to the actual child manuscript, distinguish deterministic Harness behavior from model-driven policy in every method statement, add source-backed figure descriptions, check final-page balance, and require adequate adjacent-work positioning before a submission-readiness verdict.
+- Next action: No code-side paper-audit defect remains for the task `261.2` child dossier. If publication is reconsidered, humans must separately settle authorship, licenses, venue format, scientific contribution, and explicit approval; a positive mechanism claim requires a new independent scientific round.
 - Linked tasks: `261.1`, `261.2`.
-- Resolution: Deterministic code owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. Task `261.2.1` defines typed evidence requirements for named work, method, experiment, result, limitation, and figure descriptions. Task `261.2.2` creates no child paper or submission-readiness verdict, so the remaining semantic audit is still open until those contracts are applied in `261.2.4`.
-- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Task `261.2.1` unit tests reject semantically incomplete claim requirements; the task `261.2.2` v12 manifest independently records `scientific_result_created=false` and `external_submission_authorized=false`.
+- Resolution: Deterministic code owns the child manuscript, Results/Limitations/Conclusion interpretation, citation normalization, figure/table generation, and final submission gates. Task `261.2.4` applies the typed requirements to the real child paper: every material paragraph is registered and checked against verified literature or execution/provenance evidence, while every named source and display is audited independently. The resulting paper remains explicitly not submission-ready.
+- Verification: The final child paper has 51/51 material claims covered by 26 evidence records and 77 supporting links; all 14 sources appear as named claims, inline tokens, and references; 5 figures and 1 table pass source/metric checks; both 13-page PDF builds pass quality; manifest `462c428dc1c863407042ae48ad1cb2245a942ba0af93744a0022804eeb26bcc8` retains the negative endpoint and keeps submission readiness and external submission false.
 
 ### P-20260724-023 - Open-ended mechanism provenance remains bounded and is not unrestricted science
 
@@ -433,10 +465,10 @@ update a factual problem entry below.
 - Evidence: Clean-v2 records `open_ended_experiment_code_generation=false`. The v12 child round records the narrow value true only after proposal, model program, exact generated source, review/test evidence, and development execution share a verified causal chain. The one-shot confirmatory endpoint is `d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d`: all six tasks executed successfully, unsupported risk passed, minimum coverage failed, and the terminal outcome is `negative_result`.
 - Root cause: Safe transition away from catalogue-only selection requires a restricted scientific program boundary and independent result-blind adjudication before broader autonomy claims are defensible.
 - Workaround: Keep the autonomy claim explicitly bounded to the model-authored structured mechanism and exact implementation. The compiler wrapper is fixed and non-scientific; protected actions, arbitrary execution, and external submission remain unavailable.
-- Next action: Task `261.2.4` must report the negative endpoint without weakening the coverage failure and separately audit manuscript claims, citations, figures, reproducibility, and approval status. Any later mechanism revision requires a new development and confirmatory panel.
+- Next action: Any later mechanism revision requires a new development partition and a newly frozen independent confirmatory panel. Broader topic, arbitrary-code/tool, and publication autonomy claims remain prohibited without new evidence and human review.
 - Linked tasks: `260.3`, `260.4`, `260.5`, `261.1`, `261.2`.
-- Resolution: Tasks `261.2.2` and `261.2.3` mitigate the catalogue-only limitation for one parent-bound structured mechanism and one independent one-shot adjudication. The broader issue remains open by design because the endpoint is negative and claim-level paper auditing is still task `261.2.4`.
-- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; v12 mechanism-development manifest is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`; confirmatory manifest is `3086eba1a11e7b98cd8cc5faeb3f5a0d140adf80c283a637ff9b7c52b4ba011c`; evaluation/security, independent reproduction, rollback, and Journal sealing passed while external submission remained false.
+- Resolution: Tasks `261.2.2` and `261.2.3` mitigate the catalogue-only limitation for one parent-bound structured mechanism and one independent one-shot adjudication. Task `261.2.4` closes the truthful-reporting gap with typed claim, citation, display, PDF, and reproduction audits. The broader autonomy issue remains open by design because the scientific endpoint is negative and the high-level brief, grammar, fixtures, permissions, and publication authority remain human-frozen.
+- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; v12 mechanism-development manifest is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`; confirmatory manifest is `3086eba1a11e7b98cd8cc5faeb3f5a0d140adf80c283a637ff9b7c52b4ba011c`; child-paper manifest is `462c428dc1c863407042ae48ad1cb2245a942ba0af93744a0022804eeb26bcc8`; evaluation/security, independent scientific and paper reproduction, rollback, Journal sealing, and 51/51 claim entailment passed while external submission remained false.
 
 ### P-20260723-014 - Single-cycle services could not autonomously turn a negative result into a new scientific round
 

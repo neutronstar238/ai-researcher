@@ -82,6 +82,31 @@ def test_build_latex_paper_from_markdown_writes_tex_and_vault_summary(
     assert "Missing source-backed figures" in vault_summary
 
 
+def test_build_latex_paper_compacts_wide_markdown_tables(tmp_path: Path) -> None:
+    source = tmp_path / "report.md"
+    source.write_text(
+        _complete_markdown().replace(
+            "## Results\nThe results section reports only validated metrics.",
+            "## Results\n"
+            "| Task | n | Accept | Abstain | Cov. | Unsup. | Try |\n"
+            "| --- | --- | --- | --- | --- | --- | --- |\n"
+            "| T1 | 8 | 4 | 4 | 0.500 | 0 | 1 |\n\n"
+            "The results section reports only validated metrics.",
+        ),
+        encoding="utf-8",
+    )
+
+    artifact = build_latex_paper_from_markdown(
+        source,
+        tmp_path / "paper",
+        compile_pdf=False,
+    )
+
+    tex = Path(artifact.tex_path).read_text(encoding="utf-8")
+    assert r"\setlength{\tabcolsep}{3pt}" in tex
+    assert tex.count(r"p{0.11\linewidth}") == 7
+
+
 def test_build_latex_paper_flags_pseudo_reference_labels(tmp_path: Path) -> None:
     source = tmp_path / "report.md"
     source.write_text(

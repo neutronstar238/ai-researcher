@@ -3,7 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from autoresearch.reports import FigureGenerationError, generate_metric_bar_figure
+from autoresearch.reports import (
+    FigureGenerationError,
+    generate_flow_diagram_figure,
+    generate_metric_bar_figure,
+)
 
 
 def test_generate_metric_bar_figure_writes_artifacts_and_records_source(
@@ -84,3 +88,71 @@ def test_generate_metric_bar_figure_rejects_source_without_numeric_metrics(
 
     with pytest.raises(FigureGenerationError, match="numeric metrics"):
         generate_metric_bar_figure(metrics_source, tmp_path / "figures")
+
+
+def test_generate_flow_diagram_figure_is_source_backed_and_readable(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "flow.json"
+    source.write_text(
+        json.dumps(
+            {
+                "stages": [
+                    {
+                        "id": "freeze",
+                        "label": "Frozen protocol",
+                        "detail": "Thresholds and code",
+                    },
+                    {
+                        "id": "execute",
+                        "label": "One-shot panel",
+                        "detail": "Six independent tasks",
+                    },
+                    {
+                        "id": "adjudicate",
+                        "label": "Negative endpoint",
+                        "detail": "Coverage below floor",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    artifact = generate_flow_diagram_figure(
+        source,
+        tmp_path / "figures",
+        title="Confirmatory Flow",
+        figure_id="confirmatory-flow",
+    )
+
+    pdf_bytes = Path(artifact.pdf_path).read_bytes()
+    metadata = json.loads(Path(artifact.metadata_path).read_text(encoding="utf-8"))
+    assert pdf_bytes.startswith(b"%PDF-1.4")
+    assert b"Frozen protocol" in pdf_bytes
+    assert b"Negative endpoint" in pdf_bytes
+    assert Path(artifact.png_path).read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert metadata["figure_type"] == "flow_diagram"
+    assert [stage["id"] for stage in metadata["stages"]] == [
+        "freeze",
+        "execute",
+        "adjudicate",
+    ]
+
+
+def test_generate_flow_diagram_rejects_duplicate_stage_ids(tmp_path: Path) -> None:
+    source = tmp_path / "flow.json"
+    source.write_text(
+        json.dumps(
+            {
+                "stages": [
+                    {"id": "same", "label": "First"},
+                    {"id": "same", "label": "Second"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FigureGenerationError, match="unique"):
+        generate_flow_diagram_figure(source, tmp_path / "figures")
