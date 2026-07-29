@@ -30,6 +30,9 @@ External submission remains human-gated.
 
 ## Task 261.2 mechanism round
 
+- [[task-261-parent-completion-audit|Task 261 parent completion audit]] — reconciles the
+  completed 261.1/261.2 evidence matrix, records the vNext integration boundary, and leaves all
+  scientific, publication, and external-action gates unchanged.
 - [[task-261-2-1-mechanism-foundation|Task 261.2.1 mechanism foundation]] — verifies the
   immutable clean-v2 negative parent, freezes the verified 14-source research brief, and adds
   parent/proposal/code/panel/claim contracts. No new mechanism result exists yet.

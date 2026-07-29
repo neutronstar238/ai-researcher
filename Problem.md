@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 14:09:45 +08:00
+- Source: Goal-level completion audit after task `261.2.4`.
+- Symptom: Tasks `261.1` and `261.2`, including all four `261.2.x` children, were checked and had recorded outcomes, but the parent task `261` still had an unchecked marker.
+- Impact: Runtime behavior and scientific evidence were unaffected, but the stale parent marker could mislead future agents into reopening a completed bounded-autonomy and manuscript-evidence program.
+- Evidence: Task `261.1` retains its one-command bounded-autonomy negative Sprint; tasks `261.2.1` through `261.2.4` retain the parent-bound foundation, model-generated executable mechanism, independent confirmatory negative endpoint, and fully audited child-paper package. The final package has 51/51 material claims linked to typed evidence and a clean independent rebuild while all publication approvals remain false.
+- Root cause: The task `261.2.4` handoff closed task `261.2` but did not propagate the completed state to its parent checkbox.
+- Workaround: None remains necessary.
+- Next action: Keep any new mechanism work outside task `261`; it requires a newly frozen development partition and independent confirmatory panel rather than reopening the revealed evidence.
+- Linked tasks: `261`, `261.1`, `261.2`, `261.2.1`, `261.2.2`, `261.2.3`, `261.2.4`.
+- Resolution: Reconciled the parent state against the child acceptance matrix and marked task `261` complete without changing code, scientific artifacts, verdicts, or approval gates.
+- Verification: Task hierarchy audit found no unchecked `261.x` child; the task-261 completion note links the immutable Sprint, mechanism, confirmatory, paper, and vNext integration evidence; repository task/Vault link checks and `git diff --check` passed.
+
 ### P-20260729-046 - Bundled Poppler command wrappers used stale paths during PDF inspection
 
 - Status: Mitigated

@@ -64,6 +64,29 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 14:09:45 +08:00 - Codex - Task 261 parent completion audit
+
+- Request: Audit the remaining work under the goal-level Graph/Harness/Loop/Open Science upgrade, distinguish intentionally gated scientific work from system refactoring, and close only a verified task-state gap.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task-261-parent-completion-audit.md`
+- Summary:
+  - Audited tasks `259`, `261`, and `262`. Task `262` and every `262.1`–`262.10` slice are complete with focused commits, real adoption evidence, R1 reproduction, and rollback. Tasks `259.5` and `259.6` remain intentionally unavailable because Gate A and its sealed recovery both ended as negative results with `gate_b_allowed=false`; no gate was weakened.
+  - Confirmed that task `261.1`, task `261.2`, and all four `261.2.x` children have immutable, verified outcomes. Corrected the stale parent checkbox for task `261`; no implementation, scientific result, run artifact, threshold, permission, public-release state, or external-submission state changed.
+  - Added a Vault completion matrix linking the bounded-autonomy Sprint, mechanism foundation/development, independent confirmatory endpoint, child-paper audit, and the vNext Graph/Harness/Loop/provenance/Open Science integration boundary.
+- Verification:
+  - `rg -n "^- \[[ x]\] 26[12]\." .kiro/specs/auto-research-system/tasks.md`: confirmed parent tasks `261` and `262` are checked.
+  - Task hierarchy script: confirmed task `261` has zero unchecked descendants and task `262` has zero unchecked descendants; task `259.5`/`259.6` remain visibly gated rather than being relabelled complete.
+  - `poetry run python -m pytest tests/unit/kernel tests/unit/runtime/test_vnext_release.py tests/unit/reports/test_open_science.py tests/unit/campaign/test_mechanism_paper.py tests/unit/knowledge/test_links.py -q --no-cov`: passed the current cross-area Graph/Harness/Loop/provenance/Open Science/release/paper/link regression.
+  - `git diff --check`: passed with no whitespace errors.
+- Problems:
+  - Added and resolved `P-20260729-047` for the stale task `261` parent marker.
+- Follow-up:
+  - None for the requested system-upgrade goal. Do not execute task `259.6` unless a future, newly preregistered Gate A passes; public release, unrestricted execution, and external submission remain explicit human decisions.
+
 ### 2026-07-29 14:06:00 +08:00 - Codex - Task 261.2.4 child paper and claim-evidence audit
 
 - Request: Complete task `261.2.4` and the parent task `261.2`: build a new child report, full manuscript, source-backed figures/table, and PDF from the frozen negative endpoint; audit every material and named-work claim; independently reproduce the paper; and keep publication actions human-gated.
