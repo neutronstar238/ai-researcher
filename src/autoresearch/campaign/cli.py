@@ -16,6 +16,14 @@ from autoresearch.campaign.mdbench import (
     MDBenchCampaignAdapter,
     audit_mdbench_holdout,
 )
+from autoresearch.campaign.mechanism_confirmatory import (
+    MechanismConfirmatoryManifest,
+    MechanismConfirmatoryStatus,
+    freeze_task2612_confirmatory,
+    load_mechanism_confirmatory,
+    load_mechanism_confirmatory_preregistration,
+    run_task2612_confirmatory,
+)
 from autoresearch.campaign.mechanism_development import (
     MechanismDevelopmentManifest,
     MechanismDevelopmentStatus,
@@ -601,6 +609,94 @@ def campaign_mechanism_status(
     _echo_mechanism_development(result)
 
 
+@campaign_app.command("mechanism-confirmatory-freeze")
+def campaign_mechanism_confirmatory_freeze(
+    development_dir: Annotated[
+        Path,
+        typer.Option(
+            "--development-dir",
+            help="Hash-valid ready task 261.2.2 development directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-development-live-v12"),
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Absent or empty task 261.2.3 confirmatory directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-confirmatory-live-v1"),
+    run_id: Annotated[
+        str,
+        typer.Option("--run-id", help="Stable task 261.2.3 run ID."),
+    ] = "task2612-mechanism-confirmatory-live-v1",
+) -> None:
+    """Freeze exact code, environment, statistics, and panel before reveal."""
+
+    try:
+        result = freeze_task2612_confirmatory(
+            development_dir=development_dir,
+            output_dir=output_dir,
+            run_id=run_id,
+        )
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_confirmatory_freeze: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"run_id={result.run_id}")
+    typer.echo(f"preregistration_hash={result.preregistration_hash}")
+    typer.echo(f"environment_hash={result.environment.environment_hash}")
+    typer.echo(f"control_spec_hash={result.control_spec_hash}")
+    typer.echo(f"generated_source_sha256={result.generated_source_sha256}")
+    typer.echo("confirmatory_results_revealed=false")
+    typer.echo("scientific_result_created=false")
+    typer.echo("external_submission_authorized=false")
+
+
+@campaign_app.command("mechanism-confirmatory-run")
+def campaign_mechanism_confirmatory_run(
+    output_dir: Annotated[
+        Path,
+        typer.Argument(help="Existing frozen task 261.2.3 directory."),
+    ],
+) -> None:
+    """Execute the frozen panel once and seal its scientific endpoint."""
+
+    try:
+        result = run_task2612_confirmatory(output_dir=output_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_confirmatory_run: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_mechanism_confirmatory(result)
+    if result.status is MechanismConfirmatoryStatus.VERIFICATION_FAILED:
+        raise typer.Exit(code=2)
+
+
+@campaign_app.command("mechanism-confirmatory-status")
+def campaign_mechanism_confirmatory_status(
+    output_dir: Annotated[
+        Path,
+        typer.Argument(help="Frozen or terminal task 261.2.3 directory."),
+    ],
+) -> None:
+    """Verify preregistration or every terminal confirmatory artifact."""
+
+    try:
+        if (output_dir / "confirmatory-manifest.json").is_file():
+            _echo_mechanism_confirmatory(
+                load_mechanism_confirmatory(output_dir)
+            )
+        else:
+            result = load_mechanism_confirmatory_preregistration(output_dir)
+            typer.echo(f"run_id={result.run_id}")
+            typer.echo("status=frozen_unrevealed")
+            typer.echo(f"preregistration_hash={result.preregistration_hash}")
+            typer.echo("confirmatory_results_revealed=false")
+            typer.echo("scientific_result_created=false")
+            typer.echo("external_submission_authorized=false")
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_confirmatory_status: {exc}")
+        raise typer.Exit(code=2) from exc
+
+
 def _development_campaign_spec(
     *,
     campaign_id: str,
@@ -800,6 +896,26 @@ def _echo_mechanism_development(result: MechanismDevelopmentManifest) -> None:
     typer.echo(f"development_screen_hash={result.development_screen_hash}")
     typer.echo("confirmatory_payload_executed=false")
     typer.echo("scientific_result_created=false")
+    typer.echo("external_submission_authorized=false")
+
+
+def _echo_mechanism_confirmatory(
+    result: MechanismConfirmatoryManifest,
+) -> None:
+    typer.echo(f"run_id={result.run_id}")
+    typer.echo(f"status={result.status.value}")
+    typer.echo(f"manifest_hash={result.manifest_hash}")
+    typer.echo(f"endpoint_hash={result.endpoint_hash}")
+    typer.echo(
+        f"scientific_projection_hash={result.scientific_projection_hash}"
+    )
+    typer.echo(f"scientific_outcome={result.scientific_outcome.value}")
+    typer.echo(f"journal_lineage_hash={result.journal_lineage_hash}")
+    typer.echo(f"provenance_bundle_hash={result.provenance_bundle_hash}")
+    typer.echo(f"reproduction_report_hash={result.reproduction_report_hash}")
+    typer.echo(f"rollback_report_hash={result.rollback_report_hash}")
+    typer.echo("confirmatory_results_revealed=true")
+    typer.echo("scientific_result_created=true")
     typer.echo("external_submission_authorized=false")
 
 

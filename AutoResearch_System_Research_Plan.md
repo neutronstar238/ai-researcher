@@ -778,6 +778,28 @@ false、external submission 为 false。v11 曾通过旧性质集却在闭区间
 模型诊断则因 `extreme_unsupported_abstains=false` 被性质门阻断；为避免反复采样直至成功，
 不再生成替代候选，v13 仅保留为 fail-closed 诊断证据。
 
+Task 261.2.3 已在任何确认结果出现前冻结 v12 的精确源码、依赖锁、Python 可执行文件、实现文件、
+环境、独立面板、任务级 bootstrap、coverage/unsupported-risk 门和单次停止规则。预注册、环境与
+Control Graph hashes 分别为
+`1e499a27da3bbba08be9f7a2e47de06c5c49d216c96230d46388971ad3659464`、
+`0198b9e7a8c13258d139ce4398162c6c272c491aa64ff3358aa63a06a67b1ea8` 和
+`fe2d9e96b264d86b5ae87602dce4628c72de49019d17a48344cba8051b7fab44`。三个开发任务与六个
+确认任务不仅 task ID 不重叠，source fingerprint 也各自唯一且分区互斥。
+
+权威一次性运行保存在
+`runs/manual-live/task2612-mechanism-confirmatory-live-v1/`。六项任务全部在无网络 Harness 中
+一次成功，共评估 48 条声明、接受 28 条、其中 1 条为 unsupported accept。未支持率
+`0.0357` 的任务级 bootstrap 95% 区间为 `[0.00, 0.10]`，满足冻结上限；coverage `0.5833`
+的区间为 `[0.4792, 0.6875]`，点估计低于冻结下限 `0.60`。因此唯一失败门是
+`minimum_coverage_met`，科学 endpoint 必须并已经封存为 `negative_result`，hash 为
+`d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d`。这一结果说明机制在该
+面板上控制了已接受声明的残余风险，却过度弃答，不能作为正贡献或投稿就绪证据。
+
+Event Journal、provenance-v2、evaluation/security、干净目录独立重算和非破坏 rollback 演练均
+通过；220 个终态文件的幂等复载没有新增、删除或改写文件。不得用已揭示的这六项任务修改表达式、
+阈值或源码。Task 261.2.4 只能忠实构建负结果论文与 claim-evidence audit；任何后续机制改进都
+必须重新进入开发筛选并冻结新的独立确认面板。外部投稿授权仍为 false。
+
 ---
 
 ## 19. 2026-07-28 vNext 架构升级：Graph、Harness、Loop 与 Open Science

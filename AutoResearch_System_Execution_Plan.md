@@ -996,11 +996,26 @@ coverage `0.75`，结论为 `advance_to_preregistration`。六项 confirmatory t
 模型输出虽满足结构 schema，却因极端无支持样本仍被接受而在 development 前被性质门阻断；
 该失败被保留，且不通过重复抽样替换权威候选。
 
-下一执行单元是 261.2.3：在任何确认执行前冻结 v12 的精确源码、程序、编译器、环境、指标、
-bootstrap 不确定性、coverage/abstention 门、停止规则和六项未揭示确认任务。确认面板只能在
-Harness/Control Graph 中执行一次；不得以同一面板调表达式、阈值或代码。只有完整保留失败与
-abstention、独立任务级裁决、事件/来源链、干净目录复现和 rollback 证据后，才允许创建正或负
-scientific endpoint。
+Task 261.2.3 已完成。`task2612-mechanism-confirmatory-live-v1` 在揭盲前冻结预注册
+`1e499a27da3bbba08be9f7a2e47de06c5c49d216c96230d46388971ad3659464`、环境
+`0198b9e7a8c13258d139ce4398162c6c272c491aa64ff3358aa63a06a67b1ea8`、Control Graph
+`fe2d9e96b264d86b5ae87602dce4628c72de49019d17a48344cba8051b7fab44`、精确 v12 源码、
+六项 source-fingerprint-disjoint 确认任务、20,000 次任务级 percentile bootstrap、coverage
+下限 `0.60`、unsupported-risk 上限 `0.10` 和每任务一次的停止规则。所有执行节点均只尝试一次，
+无网络、无 secret 环境键、无自适应变化。
+
+六项 Harness 任务全部执行成功，共接受 28/48 条声明并保留 20 次 abstention。unsupported
+accept 为 1，点估计 `0.0357`、95% 区间 `[0.00, 0.10]`，风险门通过；coverage 点估计
+`0.5833`、区间 `[0.4792, 0.6875]`，低于预注册下限。因此唯一失败门是
+`minimum_coverage_met`，终点为不可改写的 `negative_result`，endpoint hash
+`d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d`。evaluation/security、
+provenance-v2 claim trace、Event Journal seal、独立干净目录重算和 pre-reveal rollback rehearsal
+全部通过；终态 220 个文件的再次运行为零变化幂等加载。外部投稿仍为 false。
+
+下一执行单元是 261.2.4：从上述负 endpoint 和完整因果链生成 child report、manuscript、
+figures/tables 与 PDF，并逐项验证 named work、方法、实验、结果、限制和 figure-description
+claims。论文不得把低残余风险偷换成总体成功，也不得弱化 coverage 失败；同一确认面板永久禁止
+调参。若未来继续改机制，必须另开新一轮开发集和独立确认面板。
 
 ---
 

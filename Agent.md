@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 13:19:38 +08:00 - Codex - Task 261.2.3 independent confirmatory adjudication
+
+- Request: Continue the evidence-first system upgrade by completing task `261.2.3`: freeze the exact v12 mechanism, environment, statistical policy, stop rule, and untouched independent panel before reveal; execute it once under Harness/Control Graph; and retain a positive or negative endpoint with provenance, reproduction, and rollback evidence.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task-261-2-3-confirmatory-adjudication.md`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/mechanism_confirmatory.py`
+  - `tests/smoke/test_mechanism_confirmatory_live.py`
+  - `tests/unit/campaign/test_mechanism_confirmatory.py`
+- Summary:
+  - Added content-addressed contracts for the execution environment, preregistration, per-task result, immutable scientific endpoint, durable node receipt, independent reproduction, rollback rehearsal, evaluation/security verdict, and terminal manifest. Artifact SHA-256 fields remain distinct from 40/64-character repository object IDs, and every schema recomputes its own canonical hash on load.
+  - Added a preregistration freeze that consumes only the hash-valid v12 development manifest, copies and indexes the exact mechanism program/compiler serialization/source/code evidence/panel/task bundle, verifies both task-ID and source-fingerprint separation, and freezes the Poetry lock, Python executable, implementation files, OS, repository state, metric, 20,000-resample task-level bootstrap, coverage/risk thresholds, no-network policy, and one-attempt stop rule before result reveal.
+  - Added an immutable Control Graph from sealed start through reveal, six sequential one-shot Harness tasks, deterministic adjudication, and positive/negative terminals. It forbids adaptive graph changes, retries, unrestricted execution, networking, secret reads, release authorization, and external submission. Durable receipts plus explicit runtime resume preserve idempotency after a crash following a committed side effect.
+  - Added task-level result retention for successes, failures, and abstentions; a deterministic endpoint that independently derives counts, uncertainty intervals, gates, failure codes, and outcome; provenance-v2 claim/evidence/validation/decision/tool lineage; Event Journal terminal sealing; an evaluation/security report; initially empty-directory reproduction that independently recomputes every scientific field; and a non-destructive reconstruction of the sealed pre-reveal rollback state.
+  - Added `campaign mechanism-confirmatory-freeze`, `mechanism-confirmatory-run`, and `mechanism-confirmatory-status`. Status reads verify the complete frozen or terminal artifact index, and a terminal run performs a no-write idempotent load rather than executing the panel again.
+  - The authoritative run is `runs/manual-live/task2612-mechanism-confirmatory-live-v1/`. Preregistration, environment, Control Graph, and exact generated-source hashes are `1e499a27da3bbba08be9f7a2e47de06c5c49d216c96230d46388971ad3659464`, `0198b9e7a8c13258d139ce4398162c6c272c491aa64ff3358aa63a06a67b1ea8`, `fe2d9e96b264d86b5ae87602dce4628c72de49019d17a48344cba8051b7fab44`, and `7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`.
+  - All six tasks executed successfully once. The mechanism accepted 28/48 claims and retained 20 abstentions. Unsupported accepts were 1/28 (`0.0357`, task-bootstrap 95% interval `[0.00, 0.10]`), which passed the frozen risk ceiling. Coverage was 28/48 (`0.5833`, interval `[0.4792, 0.6875]`), below the frozen `0.60` floor. Therefore the sole scientific failure code is `minimum_coverage_met`, and the immutable endpoint is the honest `negative_result` `d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d`.
+  - Evaluation/security, provenance trace, Event Journal seal, independent reproduction, and rollback rehearsal all passed. A terminal CLI reload preserved all 220 file hashes exactly. Same-panel tuning, endpoint rewrite, release authorization, and external submission remain false.
+- Verification:
+  - `poetry run pytest tests/unit/campaign/test_mechanism_confirmatory.py -q`: passed 5 preregistration, disjoint-source, tamper, negative-endpoint, full-run, and crash-after-side-effect resume tests.
+  - `poetry run pytest tests/unit/campaign/test_mechanism_round.py tests/unit/campaign/test_mechanism_development.py tests/unit/campaign/test_mechanism_confirmatory.py tests/unit/kernel/test_loop_harness_vertical.py tests/unit/kernel/test_journal.py tests/unit/kernel/test_harness.py tests/unit/kernel/test_provenance_v2.py -q`: passed 96 related tests.
+  - All three new CLI help commands exited 0. Pre-reveal freeze/status reported `frozen_unrevealed`, result count 0, no endpoint, scientific result false, and external submission false.
+  - `$env:AUTORESEARCH_MECHANISM_CONFIRMATORY_LIVE='1'; poetry run python -m pytest tests/smoke/test_mechanism_confirmatory_live.py -q`: passed the single real one-shot local confirmatory smoke in 19.26 seconds and created the retained negative endpoint.
+  - Terminal artifact inspection confirmed six successful one-attempt task results, 48 claims, 28 accepts, one unsupported accept, the frozen bootstrap intervals and sole coverage failure, a sealed negative-result Journal, all-pass evaluation/security checks, matching independently reproduced scientific projection, and passing rollback rehearsal.
+  - A second `mechanism-confirmatory-run` hashed all terminal files before and after: 220 files before, 220 after, no changed or removed files, `idempotent=true`.
+  - `poetry run python -m pytest tests/smoke tests/unit -q`: passed 958 tests with 16 opt-in tests skipped in 133.01 seconds; repository line coverage was 86%.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q --no-cov`: passed all 3 Vault-link tests.
+  - Final focused default run passed 5 confirmatory unit tests and skipped the opt-in live smoke; repository-wide Ruff passed; Mypy passed all 157 source files; final CLI status revalidated the negative manifest; and `git diff --check` reported no whitespace error, only the existing CCF-B index CRLF normalization notice.
+  - The failed `poetry run pytest tests/smoke tests/unit -q` console-script collection is not counted: it reproduced the existing `P-20260729-041` import-path issue. The repository-standard `poetry run python -m pytest` command above passed.
+- Problems:
+  - Added and resolved `P-20260729-044` for Git-ID typing, mapping datetime serialization, explicit crash resume, and independently recomputed reproduction defects found before the real freeze.
+  - Updated resolved `P-20260729-043` so its next action preserves the revealed v12 panel and routes paper work to task `261.2.4`.
+  - Updated resolved `P-20260729-041` after the pytest console-script root-path issue recurred; the module entry point passed the full suite.
+  - Updated mitigated `P-20260724-023`: independent adjudication now exists, but its negative coverage result cannot support a positive contribution or broader autonomy claim.
+- Follow-up:
+  - Execute task `261.2.4` from the immutable negative endpoint. Build the child report/manuscript/figures/tables/PDF, bind every material and named-work claim to verified literature or execution evidence, state that unsupported risk passed while coverage failed, preserve all abstentions and limitations, and keep submission readiness and external submission false unless the later human-gated audit truly passes.
+
 ### 2026-07-29 12:45:34 +08:00 - Codex - Task 261.2.2 generated mechanism development screen
 
 - Request: Continue the evidence-first system upgrade by completing task `261.2.2`: have the configured local model diagnose the frozen clean-v2 failure, author one executable mechanism, pass generated-code security and Harness gates, and reveal only development evidence before any independent confirmatory result exists.

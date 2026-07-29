@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-044 - Confirmatory bring-up exposed hash typing, serialization, resume, and reproduction defects
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-29 12:50:00 +08:00
+- Source: Task `261.2.3` deterministic preregistration, one-shot execution, crash-resume, and reproduction tests.
+- Symptom: Initial focused tests rejected the real 40-character Git SHA-1 as though it were a 64-character artifact SHA-256; reveal and endpoint writers passed raw `datetime` objects through a mapping serialization path; a crash-resume wrapper called idempotent `start()` but did not explicitly continue the returned running snapshot; and the first reproduction projection reused source-endpoint gate values instead of independently deriving every scientific field.
+- Impact: These failures occurred only in temporary deterministic fixtures before the real v1 preregistration or reveal. Had they remained, a valid repository could not freeze, a reveal receipt or endpoint could fail serialization, a persisted post-side-effect run could remain running, or reproduction could overstate independence.
+- Evidence: Focused pytest traces identified the Git ID length check, JSON serialization errors, and running-state resume mismatch. The strengthened reproduction now reruns all six tasks in an initially empty directory, recomputes counts, bootstrap intervals, gates, failure codes, and outcome from frozen inputs, and matches the canonical scientific projection.
+- Root cause: The first implementation conflated source-control object IDs with content-artifact digests, assumed model-style datetime normalization for plain mappings, relied on `ControlGraphRuntime.start()` to resume an existing run despite its intentionally idempotent start semantics, and compared reproduction against a partially source-derived projection.
+- Workaround: None remains necessary.
+- Next action: Preserve the Git-ID, JSON-time, crash-after-side-effect, independent-projection, and endpoint-tamper regressions in task `261.2.4` and future confirmatory runners.
+- Linked tasks: `261.2.3`, `261.2.4`.
+- Resolution: Accept 40- or 64-character hexadecimal repository IDs separately from SHA-256 artifact fields; serialize all mapping timestamps before canonical hashing; call `resume()` when idempotent `start()` returns a running snapshot; and independently rebuild the reproduction scientific projection.
+- Verification: Five focused confirmatory tests passed, including crash-after-side-effect without a second task execution; 96 related Campaign/Harness/Loop/Journal/provenance tests passed; the real one-shot v1 smoke passed; independent reproduction and rollback reports passed; and all 220 terminal files remained unchanged on idempotent reload.
+
 ### P-20260729-043 - Live mechanism generation exposed transport, code-safety, and boundary-test defects
 
 - Status: Resolved
@@ -51,8 +67,8 @@ update a factual problem entry below.
 - Evidence: Every attempt directory is retained. The final v12 generated a structured expression program, passed exact-source static review, three unit probes, six property checks including closed numeric boundaries, a no-network Harness smoke, and all three development tasks. Its development screen accepted 18/24 claims, accepted zero unsupported claims, and recorded `advance_to_preregistration`. v13 recorded `extreme_unsupported_abstains=false`, no development directory, no round freeze, and no confirmatory or scientific result. A final-code replay of the frozen v12 source preflighted both `sandbox_runner.py` and `run.py`, used no network, and returned accept/abstain for the supported/unsupported probes.
 - Root cause: The local Ollama JSON-grammar subset is narrower than the local Pydantic schema; free-form source serialization was too brittle for the selected small local model; early validation duplicated one semantic constraint; the original property suite sampled realistic values without explicitly covering every closed-domain extreme; and the initial reviewed/actual entrypoint split lacked a second baseline preflight. v13 demonstrates expected provider output variability rather than an executor regression.
 - Workaround: None remains necessary for task `261.2.2`. Transport schemas omit unsupported length keywords while local validation keeps the hard bounds; the model now authors a restricted expression program compiled by a fixed non-scientific wrapper; every valid or invalid response is retained; code-side repair and scientific fallback remain forbidden; 0/1 boundary probes are mandatory; and both the actual wrapper and reviewed source are preflighted. v13 is retained rather than repeatedly resampling the model until another candidate passes.
-- Next action: Task `261.2.3` must freeze and execute the exact v12 mechanism without changing its expressions, thresholds, compiler, source, or confirmatory panel after reveal.
-- Linked tasks: `261.2.2`, `261.2.3`.
+- Next action: Preserve the exact v12 mechanism and revealed panel as immutable task `261.2.3` evidence. Task `261.2.4` must report the retained negative endpoint without same-panel changes and bind every material paper claim to verified literature or execution evidence.
+- Linked tasks: `261.2.2`, `261.2.3`, `261.2.4`.
 - Resolution: Added the structured-expression contract and compiler evidence, strict AST and exact-byte review, attempt-level artifacts, deterministic unit/property/adversarial tests, no-secret sandbox execution, the missing numeric-boundary probe, and dual-entrypoint executor preflight. Fixed the diagnostic test fixture's Windows environment, the pre-adapter Harness token budget, and the CLI invocation during bring-up without changing scientific evidence.
 - Verification: The authoritative v12 live smoke passed against `qwen3.5-sprint:9b-8k`; manifest hash is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`, source hash is `7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`, and property report hash is `9b769071a81b7d6bc45d588f2401f360dd1fccd1e57dfe6c918afaceb0b2e746`. The post-audit v13 smoke failed closed before development, and the frozen v12 final-code replay passed with episode hash `62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`. The final focused regression passed 35 tests with one opt-in smoke skipped.
 
@@ -77,16 +93,16 @@ update a factual problem entry below.
 - Status: Resolved
 - Severity: Low
 - Discovered: 2026-07-29 11:24:00 +08:00
-- Source: Task `261.2.1` focused Campaign and Vault-link verification.
+- Source: Tasks `261.2.1` and `261.2.3` focused and full Campaign verification.
 - Symptom: `poetry run pytest tests/unit/campaign ...` stopped during collection because the existing `test_sprint_migration.py` imports `tests.sprint_migration_support`, but the console-script entry point did not expose the repository root as an import location in this environment.
 - Impact: The failed collection did not test task behavior and could not count as verification. No source, artifact, dependency, or scientific result was changed.
-- Evidence: The traceback was `ModuleNotFoundError: No module named 'tests'`. The repository's current release records use `poetry run python -m pytest`; rerunning the same 57-item selection with that entry point collected successfully and passed 56 tests with the opt-in live smoke skipped.
+- Evidence: The traceback was `ModuleNotFoundError: No module named 'tests'`. The repository's current release records use `poetry run python -m pytest`; task `261.2.1` then passed its 56-test selection, and the same console-script issue recurred before task `261.2.3` freeze. Its corrected module invocation collected 974 tests and passed 958 with 16 opt-in tests skipped.
 - Root cause: Python module invocation and the installed pytest console script construct `sys.path` differently for the repository's non-package `tests` support module.
 - Workaround: Use the repository-standard `poetry run python -m pytest` invocation.
 - Next action: Keep verification commands on the module entry point while tests import shared helpers from the root `tests` namespace.
-- Linked tasks: `261.2.1`.
+- Linked tasks: `261.2.1`, `261.2.3`.
 - Resolution: Re-ran the identical focused selection through `python -m pytest`; no code change was required.
-- Verification: `poetry run python -m pytest tests/unit/campaign tests/unit/knowledge/test_links.py tests/smoke/test_mechanism_foundation_live.py -q` passed 56 tests and skipped the one opt-in smoke.
+- Verification: `poetry run python -m pytest tests/unit/campaign tests/unit/knowledge/test_links.py tests/smoke/test_mechanism_foundation_live.py -q` passed 56 tests and skipped one opt-in smoke; later `poetry run python -m pytest tests/smoke tests/unit -q` passed 958 tests and skipped 16 opt-in smokes for task `261.2.3`.
 
 ### P-20260729-040 - Mechanism-foundation bring-up exposed source-metadata and live-smoke versioning failures
 
@@ -412,15 +428,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-24 02:22:00 +08:00
 - Source: Task `261.1` autonomy audit of `task261-bounded-autonomous-clean-v2`.
-- Symptom: The clean-v2 Sprint independently selected only from a human-authored catalogue. Task `261.2.2` now proves one parent-bound model-authored structured mechanism and exact compiled implementation, but the high-level brief, evidence set, safety grammar, compiler wrapper, development/confirmatory fixtures, and approval boundaries remain human-frozen.
-- Impact: The evidence now supports a narrow claim that the local model authored and executed the scientific mechanism logic inside a constrained program. It still does not prove unrestricted topic invention, arbitrary code/tool autonomy, a confirmatory scientific effect, or a CCF-B-level original contribution.
-- Evidence: Clean-v2 records `open_ended_experiment_code_generation=false`. The v12 child round records `open_ended_experiment_code_generation=true` only after proposal, model program, exact generated source, review/test evidence, and development execution share a verified causal chain. The model-owned program hash is `e0b4d9b7ce3ea29a5fe370c5edec8f8ff1830a763cf7a034e41ef2cf4f60d57d`; confirmatory result count and scientific-result flags remain zero/false.
+- Symptom: The clean-v2 Sprint independently selected only from a human-authored catalogue. Task `261.2.2` proved one parent-bound model-authored structured mechanism and exact compiled implementation; task `261.2.3` then produced an independently adjudicated endpoint, but the high-level brief, evidence set, safety grammar, compiler wrapper, task fixtures, and approval boundaries remain human-frozen.
+- Impact: The evidence supports a narrow claim that the local model authored executable scientific mechanism logic and that the frozen mechanism was independently tested. The confirmatory result is negative because coverage `0.5833` missed the `0.60` floor, so it still does not prove unrestricted topic invention, arbitrary code/tool autonomy, a positive scientific effect, or a CCF-B-level original contribution.
+- Evidence: Clean-v2 records `open_ended_experiment_code_generation=false`. The v12 child round records the narrow value true only after proposal, model program, exact generated source, review/test evidence, and development execution share a verified causal chain. The one-shot confirmatory endpoint is `d449343654e28a4da877d0ab7a3bd07e334ac8cad310385996c635bacbae165d`: all six tasks executed successfully, unsupported risk passed, minimum coverage failed, and the terminal outcome is `negative_result`.
 - Root cause: Safe transition away from catalogue-only selection requires a restricted scientific program boundary and independent result-blind adjudication before broader autonomy claims are defensible.
 - Workaround: Keep the autonomy claim explicitly bounded to the model-authored structured mechanism and exact implementation. The compiler wrapper is fixed and non-scientific; protected actions, arbitrary execution, and external submission remain unavailable.
-- Next action: Complete task `261.2.3` without same-panel tuning, then assess only the resulting independent endpoint. Task `261.2.4` must separately audit manuscript claims and citations.
+- Next action: Task `261.2.4` must report the negative endpoint without weakening the coverage failure and separately audit manuscript claims, citations, figures, reproducibility, and approval status. Any later mechanism revision requires a new development and confirmatory panel.
 - Linked tasks: `260.3`, `260.4`, `260.5`, `261.1`, `261.2`.
-- Resolution: Task `261.2.2` mitigates the catalogue-only limitation for one parent-bound structured mechanism, but the broader issue remains open by design until independent confirmatory evidence and claim-level paper auditing exist.
-- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; v12 mechanism-development manifest hash is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`; development coverage is `0.75`, unsupported-accept rate is `0.0`, confirmatory results remain unrevealed, and no scientific result exists.
+- Resolution: Tasks `261.2.2` and `261.2.3` mitigate the catalogue-only limitation for one parent-bound structured mechanism and one independent one-shot adjudication. The broader issue remains open by design because the endpoint is negative and claim-level paper auditing is still task `261.2.4`.
+- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; v12 mechanism-development manifest is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`; confirmatory manifest is `3086eba1a11e7b98cd8cc5faeb3f5a0d140adf80c283a637ff9b7c52b4ba011c`; evaluation/security, independent reproduction, rollback, and Journal sealing passed while external submission remained false.
 
 ### P-20260723-014 - Single-cycle services could not autonomously turn a negative result into a new scientific round
 

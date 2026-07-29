@@ -35,12 +35,17 @@ External submission remains human-gated.
   parent/proposal/code/panel/claim contracts. No new mechanism result exists yet.
 - [[task-261-2-2-generated-mechanism-development|Task 261.2.2 generated mechanism development]]
   — records the model-authored structured mechanism, exact compiled source, security/test/Harness
-  evidence, and development-only advance decision. Confirmatory results remain sealed.
+  evidence, and development-only advance decision.
+- [[task-261-2-3-confirmatory-adjudication|Task 261.2.3 confirmatory adjudication]] —
+  records the one-shot six-task Control Graph, provenance-v2, independent reproduction, rollback,
+  and the retained negative endpoint: unsupported risk passed, but coverage `0.5833 < 0.60`.
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 evidence survey]] —
   selective factuality, scientific-Agent evaluation, generated-code security, and
   claim-evidence synthesis for the next model-generated mechanism.
 - Final local foundation:
   `runs/manual-live/task2612-mechanism-foundation-live-v3/`; external submission remains false.
 - Final local development evidence:
-  `runs/manual-live/task2612-mechanism-development-live-v12/`; scientific result and external
-  submission remain false.
+  `runs/manual-live/task2612-mechanism-development-live-v12/`.
+- Final local confirmatory evidence:
+  `runs/manual-live/task2612-mechanism-confirmatory-live-v1/`; scientific result is negative and
+  external submission remains false.
