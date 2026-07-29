@@ -3260,6 +3260,28 @@ A task can be checked only when all applicable items are true:
     - Replace catalogue-only selection with a bounded proposal-to-code path while retaining a safe executable fallback state of `blocked`, never a fallback scientific result. Do not set `open_ended_experiment_code_generation=true` until the generated mechanism and its exact executed code share a verified causal hash.
     - Add a manuscript claim-evidence audit that binds every named prior work and material method/experiment statement to the frozen literature or execution graph. Require adequate adjacent-work coverage and source-backed figure descriptions before any submission-readiness verdict.
     - Use a newly frozen independent task panel for confirmatory inference, produce a new round report and paper version automatically, and keep negative results and external-submission approval rules unchanged.
+    - [x] 261.2.1 Freeze the parent-bound research brief and causal contracts
+      - Verify the immutable clean-v2 manifest, negative endpoint, autonomy audit, topic selection, and revealed task set before admitting a child round.
+      - Cross-search selective factuality/abstention, scientific-agent evaluation, secure generated-code execution, and claim-evidence alignment from mainstream, critical, methodology, and adjacent-field perspectives; retain only verified primary or official sources.
+      - Add content-addressed contracts for the parent evidence, research brief, diagnosis, generated mechanism proposal/code evidence, disjoint development/confirmatory panels, round freeze, and claim-evidence requirements.
+      - Reject parent hash drift, a non-negative parent, forbidden prompt/paper/threshold-only changes, reused revealed tasks, overlapping panels, missing code review/tests, claim/evidence type mismatches, and any external-submission authorization.
+      - _Outcome: added a fail-closed, content-addressed mechanism-round contract layer bound to the formal `task261-bounded-autonomous-clean-v2` negative endpoint; froze a 14-source verified research brief across selective factuality, scientific-agent evaluation, generated-code security, and claim-evidence alignment; and retained diagnosis, proposal, generated code, development screening, confirmatory reveal, and child-paper creation as unexecuted downstream states. The final live foundation manifest is `0f5c41b408e4de442874a1f4ea2bef45eedbc6f4f6c42e4e31d25cea57e8b456`, its research brief is `9b9b492dcbb33e5d454f628ed06fe3982970fb8a79057f14f1dba0167dea45b0`, all 14 official source locators returned HTTP 200, and external submission remains false._
+      - _Verify: 11 deterministic mechanism-round unit tests; 56 focused Campaign/Vault-link tests with one opt-in test skipped; one separately timed opt-in live source/foundation smoke; repository-wide Ruff; Mypy across 153 source files; full regression with 957 tests passed, 14 opt-in tests skipped, and 87% line coverage; `git diff --check`; Agent/Problem updates; and one focused commit._
+    - [ ] 261.2.2 Generate, review, and development-screen one executable mechanism
+      - Let the configured provider-neutral local model produce a parent-bound diagnosis, a literature-referenced mechanism delta, and a constrained experiment implementation; no code-authored mechanism fallback may create a scientific result.
+      - Run static security review, unit/property tests, secret/network/path checks, and the generated code inside the bounded Harness/sandbox before any development result is accepted.
+      - Development may reveal only the frozen development partition; failure persists as `blocked` or a negative development decision without opening the confirmatory panel.
+      - _Verify: deterministic mocked tests, an opt-in live local-model/literature/code smoke, generated-code security adversaries, Harness episode evidence, and full quality gates._
+    - [ ] 261.2.3 Freeze and adjudicate a new independent confirmatory panel
+      - Freeze the exact executed code/environment hash, metric, uncertainty rule, abstention/coverage trade-off, stop rule, and untouched confirmatory panel before reveal.
+      - Run the panel once under the frozen Harness/Control Graph, retain every failure and abstention, adjudicate at the independent-task level, and block same-panel tuning or threshold changes.
+      - Emit a provenance-v2 bundle, Event Journal lineage, evaluation/security report, negative-or-positive scientific endpoint, and rollback/reproduction evidence.
+      - _Verify: disjoint-panel and tamper tests, one real confirmatory run, idempotent resume, independent clean-directory reproduction, and full quality gates._
+    - [ ] 261.2.4 Build the child paper and claim-evidence audit
+      - Generate the new round report, manuscript version, figures/tables, and PDF from the frozen child evidence without rewriting the scientific verdict.
+      - Require every named prior work and every material method, experiment, result, limitation, and figure-description claim to resolve to verified literature or execution/provenance evidence.
+      - Keep submission readiness and external submission false unless all scientific, citation, reproducibility, authorship, license, and explicit human-approval gates later pass.
+      - _Verify: claim-level coverage/entailment tests, citation and figure-description audit, paper build/visual inspection, independent reproduction, full quality gates, and one focused parent-task completion commit._
 
 - [x] 262. Unify Graph, Harness, Loop, provenance, and Open Science semantics
   - [x] 262.1 Freeze the evidence-backed vNext refactor plan

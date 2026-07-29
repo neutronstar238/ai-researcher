@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-041 - Direct pytest entry point omitted the repository root for Campaign collection
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 11:24:00 +08:00
+- Source: Task `261.2.1` focused Campaign and Vault-link verification.
+- Symptom: `poetry run pytest tests/unit/campaign ...` stopped during collection because the existing `test_sprint_migration.py` imports `tests.sprint_migration_support`, but the console-script entry point did not expose the repository root as an import location in this environment.
+- Impact: The failed collection did not test task behavior and could not count as verification. No source, artifact, dependency, or scientific result was changed.
+- Evidence: The traceback was `ModuleNotFoundError: No module named 'tests'`. The repository's current release records use `poetry run python -m pytest`; rerunning the same 57-item selection with that entry point collected successfully and passed 56 tests with the opt-in live smoke skipped.
+- Root cause: Python module invocation and the installed pytest console script construct `sys.path` differently for the repository's non-package `tests` support module.
+- Workaround: Use the repository-standard `poetry run python -m pytest` invocation.
+- Next action: Keep verification commands on the module entry point while tests import shared helpers from the root `tests` namespace.
+- Linked tasks: `261.2.1`.
+- Resolution: Re-ran the identical focused selection through `python -m pytest`; no code change was required.
+- Verification: `poetry run python -m pytest tests/unit/campaign tests/unit/knowledge/test_links.py tests/smoke/test_mechanism_foundation_live.py -q` passed 56 tests and skipped the one opt-in smoke.
+
+### P-20260729-040 - Mechanism-foundation bring-up exposed source-metadata and live-smoke versioning failures
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-29 10:20:00 +08:00
+- Source: Task `261.2.1` primary-source audit and opt-in live foundation smoke.
+- Symptom: The first live source probe failed with an arXiv TLS EOF. A later 14/14-reachable v1 foundation still contained title, author, venue, or locator mismatches for several real URLs. v2 corrected the substantive records but used non-canonical capitalization for the official `SCICOQA` title. The first combined unit/live v3 command then hit its 124-second outer timeout; its child pytest process completed later without writing an output directory, so the lost result could not count as evidence.
+- Impact: The failed TLS attempt, v1, v2, and the timed-out v3 attempt are not completion evidence. Treating URL reachability as metadata correctness would have contaminated the frozen research brief and every downstream proposal hash.
+- Evidence: Official Nature, NeurIPS, OpenReview, ACL Anthology, ICSE, NIST, and arXiv pages showed that ScienceAgentBench is ICLR 2025 with 20 authors, CORE-Bench is TMLR with author Nitya Nadgir, SecureVibeBench is ACL 2026, the secure-code evaluation title is `Rethinking the Evaluation of Secure Code Generation`, RIGOURATE has an ACL DOI, and `SCICOQA` uses the official capitalization. The final isolated v3 smoke returned 14 HTTP 200 observations and wrote a hash-valid foundation.
+- Root cause: Initial records were assembled from identifier-level search hits without a final field-by-field primary-page comparison; the first smoke proved only reachability. The combined verification command also gave the live network probe too little outer time for its declared retries.
+- Workaround: None remains necessary. Superseded and failed directories are retained rather than overwritten.
+- Next action: Keep the exact-metadata regression test and use a separately timed opt-in live command for future source refreshes. Task `261.2.2` must consume only the v3 brief hash.
+- Linked tasks: `261.2.1`, `261.2.2`.
+- Resolution: Corrected every affected record, added exact title/author/venue/locator assertions, restricted the live smoke to official hosts, and froze `task2612-mechanism-foundation-live-v3`.
+- Verification: Final v3 foundation manifest hash is `0f5c41b408e4de442874a1f4ea2bef45eedbc6f4f6c42e4e31d25cea57e8b456`; research brief hash is `9b9b492dcbb33e5d454f628ed06fe3982970fb8a79057f14f1dba0167dea45b0`; all 14 source observations returned HTTP 200; external submission is false.
+
 ### P-20260729-039 - Poetry lock passes with legacy metadata deprecation notices
 
 - Status: Mitigated
@@ -337,10 +369,10 @@ update a factual problem entry below.
 - Evidence: Clean-v1 conclusion generalized beyond CI support and omitted several bibliography bindings. Clean-v2 has no bare `[Lnnn]` tokens, its sole inline ID `L012` is present in References, and its deterministic conclusion states only that the frozen gate failed to establish the selected improvement. The clean-v2 paper-quality report nevertheless records `bibliography_item_count=1`; an independent TeX Live compile also reports the ACM accessibility warning that the metric image has no description. Visual inspection found readable two-column pages without clipping, but the final page has substantial unused space and only the single reference.
 - Root cause: Scientific result interpretation and citation completeness were initially delegated too broadly to a small local model. The physical paper gate checks document structure and reference syntax, not whether every named work and material method statement has adequate claim-level support.
 - Workaround: Use clean-v2 only as a bounded-autonomy negative artifact; do not use it as the August 15 submission paper or as evidence of high innovation.
-- Next action: Task `261.2` must add named-work and material-claim evidence coverage, distinguish the deterministic harness from actual model-driven policies in every method statement, add source-backed figure descriptions, check final-page balance, and require adequate adjacent-work positioning before a submission-readiness verdict.
+- Next action: Task `261.2.4` must apply the new typed audit to the actual child manuscript, distinguish deterministic Harness behavior from model-driven policy in every method statement, add source-backed figure descriptions, check final-page balance, and require adequate adjacent-work positioning before a submission-readiness verdict.
 - Linked tasks: `261.1`, `261.2`.
-- Resolution: Deterministic code now owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. The remaining semantic citation and harness-description gap is explicitly open for task `261.2`.
-- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Its scientific endpoint remains `passed=false`.
+- Resolution: Deterministic code owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. Task `261.2.1` now defines typed evidence requirements for named work, method, experiment, result, limitation, and figure descriptions, but the remaining semantic audit is open until those contracts are applied to a real child paper in `261.2.4`.
+- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Task `261.2.1` unit tests additionally reject semantically incomplete claim requirements and report unsupported claim IDs without granting submission readiness.
 
 ### P-20260724-023 - The sprint is bounded catalogue selection, not open-ended mechanism invention
 
@@ -353,10 +385,10 @@ update a factual problem entry below.
 - Evidence: The autonomy audit records one prelaunch operator research decision, zero post-start manual research decisions, zero local-model fallbacks, `route_a_generated_inside_same_sprint=false`, `open_ended_experiment_code_generation=false`, and final level `bounded_autonomous`.
 - Root cause: Task `261.1` intentionally used an installed executable catalogue so a model-selected topic always mapped to a safe, testable program; task 260's prior method choices were also imported rather than created inside this invocation.
 - Workaround: None. The audit and user-facing documentation prohibit stronger autonomy claims.
-- Next action: Implement task `261.2`: bind a new diagnosis and mechanism proposal to the clean-v2 negative endpoint, generate and review the executed code, freeze a new independent panel, and retain a blocked result unless proposal-code-execution hashes close the causal chain.
+- Next action: Implement task `261.2.2`: let the configured local model produce a parent-bound diagnosis and executable mechanism, review and test the exact generated bytes, and reveal only the development partition. Confirmatory freeze and execution remain `261.2.3`.
 - Linked tasks: `260.3`, `260.4`, `260.5`, `261.1`, `261.2`.
-- Resolution: Pending task `261.2`.
-- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; audit hash is `23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`.
+- Resolution: Pending task `261.2.2`. Task `261.2.1` closes only the parent/brief/causal-contract foundation and does not change the catalogue-only scientific status.
+- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; audit hash is `23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`; the new parent evidence hash is `6ae565f23c963514d0c0ac7891a81244171749ca18604bcf734d3c704da652d5`.
 
 ### P-20260723-014 - Single-cycle services could not autonomously turn a negative result into a new scientific round
 

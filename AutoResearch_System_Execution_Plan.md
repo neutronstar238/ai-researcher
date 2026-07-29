@@ -969,6 +969,21 @@ artifact，不是 CCF-B 就绪论文。
 文献或执行证据。只有该完整因果链成立，才可升级“模型在预置程序中选题”为“模型产生并执行了
 新机制”；任何失败保留为报告并进入下一轮，绝不通过改提示、改论文或降门槛制造成功。
 
+Task 261.2.1 已完成可执行前置冻结。最终
+`runs/manual-live/task2612-mechanism-foundation-live-v3/` 绑定 clean-v2 父证据、14-source
+research brief 和外部投稿 false；foundation manifest、parent evidence、research brief hashes
+分别为 `0f5c41b408e4de442874a1f4ea2bef45eedbc6f4f6c42e4e31d25cea57e8b456`、
+`6ae565f23c963514d0c0ac7891a81244171749ca18604bcf734d3c704da652d5` 和
+`9b9b492dcbb33e5d454f628ed06fe3982970fb8a79057f14f1dba0167dea45b0`。合同会 fail closed
+于父哈希漂移、非负父结果、非机制修改、已揭示任务复用、面板重叠、代码审查/测试缺失、
+reviewed/executed bytes 不一致、claim/evidence 类型缺失和外部投稿授权。
+
+下一执行单元是 261.2.2，而不是确认实验：配置化本地模型读取冻结 brief，生成一个 parent-bound
+诊断、文献支持的机制差异和受限可执行代码；静态安全、单测、性质测试、秘密/网络/路径检查及
+Harness sandbox smoke 全部通过后，才允许查看 development 分区。模型不可用、schema 不合规或
+代码失败时保留 blocked/negative-development 证据，不允许 code-authored fallback 产生科学结果，
+confirmatory 分区继续 sealed。
+
 ---
 
 ## 26. vNext 渐进重构执行计划

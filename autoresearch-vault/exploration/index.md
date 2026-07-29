@@ -5,6 +5,22 @@
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
 
+## selective factuality
+
+- [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
+
+## scientific agent evaluation
+
+- [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
+
+## generated-code security
+
+- [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
+
+## claim-evidence alignment
+
+- [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
+
 ## agent evaluation
 
 - [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]

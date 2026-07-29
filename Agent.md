@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 11:26:14 +08:00 - Codex - Task 261.2.1 parent-bound mechanism foundation
+
+- Request: Begin executing the evidence-backed system upgrade by completing the first bounded slice of task `261.2`: freeze the formal clean-v2 negative parent, cross-search the relevant science and engineering evidence, and make every later generated-mechanism claim pass a causal contract before it can become a result.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/exploration/task-261-2-generated-mechanism-evidence-survey-2026.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task-261-2-1-mechanism-foundation.md`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/mechanism_round.py`
+  - `tests/smoke/test_mechanism_foundation_live.py`
+  - `tests/unit/campaign/test_mechanism_round.py`
+- Summary:
+  - Added provider-neutral, content-addressed contracts for formal negative-parent evidence, a verified research brief, mechanism diagnosis, proposal and exact generated-code evidence, disjoint development/confirmatory panels, round freeze, and typed manuscript claim/evidence auditing. The contracts fail closed on parent drift, a non-negative parent, prompt/paper/threshold-only changes, revealed-task reuse, panel overlap, missing code review or tests, reviewed/executed byte drift, incomplete material-claim coverage, and external-submission authorization.
+  - Re-verified `task261-bounded-autonomous-clean-v2` and froze its manifest, endpoint, autonomy-audit, topic-selection, and ten revealed-task identities into a portable parent contract. No diagnosis, mechanism, generated code, development outcome, confirmatory reveal, child paper, or new scientific result was created in this task.
+  - Cross-searched and field-by-field verified 14 primary or official sources spanning selective factuality/abstention, scientific-agent evaluation, secure generated-code execution, and claim-evidence alignment. Added a Chinese Vault survey with frozen questions, methods, taxonomy, synthesis, candidate test design, adversarial limitations, open questions, and uniform source records.
+  - The final live foundation is `runs/manual-live/task2612-mechanism-foundation-live-v3/`: manifest hash `0f5c41b408e4de442874a1f4ea2bef45eedbc6f4f6c42e4e31d25cea57e8b456`, parent-evidence hash `6ae565f23c963514d0c0ac7891a81244171749ca18604bcf734d3c704da652d5`, research-brief hash `9b9b492dcbb33e5d454f628ed06fe3982970fb8a79057f14f1dba0167dea45b0`, 14/14 official locators reachable, and external submission false.
+  - Retained rather than overwrote the initial TLS-failed run, metadata-inaccurate v1, capitalization-superseded v2, and timed-out combined v3 attempt. None counts as completion evidence.
+- Verification:
+  - `poetry run python -m pytest tests/unit/campaign/test_mechanism_round.py -q`: passed all 11 deterministic contract, tamper, causal-chain, panel-separation, and claim-audit tests.
+  - `$env:AUTORESEARCH_MECHANISM_FOUNDATION_LIVE='1'; poetry run pytest tests/smoke/test_mechanism_foundation_live.py -q`: passed the isolated opt-in real-network smoke in 97.69 seconds and wrote the hash-valid v3 foundation after all 14 official source locators returned HTTP 200.
+  - `poetry run python -m pytest tests/unit/campaign tests/unit/knowledge/test_links.py tests/smoke/test_mechanism_foundation_live.py -q`: passed 56 tests and skipped the one opt-in smoke; this includes all Vault-link checks.
+  - `poetry run ruff check .`: passed the repository-wide lint gate.
+  - `poetry run mypy src/autoresearch`: passed all 153 source files with no issues.
+  - `poetry run python -m pytest -q`: passed 957 tests with 14 opt-in tests skipped in 139.79 seconds; repository line coverage was 87%.
+  - `git diff --check`: passed with no whitespace errors.
+  - Failed diagnostics are not counted as verification: the first live source probe hit an arXiv TLS EOF; v1/v2 failed the final metadata audit; one combined v3 command exceeded its 124-second outer timeout; and the direct `poetry run pytest` focused selector failed collection because it omitted the repository root. The corrected isolated live command and repository-standard `python -m pytest` selector passed.
+- Problems:
+  - Added and resolved `P-20260729-040` for TLS, exact source-metadata, immutable live-output versioning, and outer-timeout failures.
+  - Added and resolved `P-20260729-041` for the pytest console-script import-path failure.
+  - Updated `P-20260724-022`: typed claim/evidence contracts now exist, while application to the actual child paper remains task `261.2.4`.
+  - Updated `P-20260724-023`: the foundation does not upgrade catalogue-only autonomy; actual model-generated mechanism work remains task `261.2.2`.
+- Follow-up:
+  - Execute task `261.2.2` against only the frozen v3 brief: obtain a schema-valid parent-bound local-model diagnosis, proposal, and exact code; review and test those bytes inside the bounded Harness; reveal only the development partition; and retain `blocked` or a negative development decision on any failure without opening confirmatory evidence.
+
 ### 2026-07-29 03:30:22 +08:00 - Codex - Task 262.10 vNext runtime upgrade and compatibility release boundary
 
 - Request: Complete the evidence-first vNext refactor after cross-searching current Graph Engineering, Harness Engineering, Loop Engineering, Agentic evaluation/security, and Open Science sources: characterize and upgrade the graph runtime, retire only proved duplicate write paths, preserve rollback/read compatibility, independently reproduce the release evidence, and keep protected actions human-gated.

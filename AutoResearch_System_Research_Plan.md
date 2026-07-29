@@ -735,6 +735,21 @@ clean-v2 正式运行从空目录一次完成。Qwen 选择 `C003` 与
 逐项 claim-evidence 与 named-work 引用门；提示词修改、论文重写、门槛降低或在已揭示十任务
 面板上重跑都不算新的科研迭代。
 
+Task 261.2.1 已冻结这条新科研轮的证据基础，但尚未产生机制或结果。实现会重新验证 clean-v2
+manifest、负 endpoint、autonomy audit、topic selection 和 10 个已揭示任务，再生成可移植的
+parent evidence hash。交叉检索保留 14 个经正式页面核对的来源，覆盖选择性事实性/弃答、科研
+Agent 评价、生成代码安全和 claim-evidence 对齐；最终 research brief hash 为
+`9b9b492dcbb33e5d454f628ed06fe3982970fb8a79057f14f1dba0167dea45b0`。来源可达烟测 14/14
+通过，但“页面可达”不等于论文结论正确。
+
+新的内容寻址合同把 diagnosis、模型交互、proposal、精确生成代码字节、静态审查、单测/性质测试、
+Harness sandbox episode、development/confirmatory 分区、round freeze 和 typed manuscript claim
+串成可验证因果链。新面板不得复用父轮任务，开发与确认分区不得重叠，确认结果在 code freeze 前
+保持 sealed。只有 exact code 通过全部审查且 proposal/code/execution hashes 一致时，未来的 child
+freeze 才能记录 `open_ended_experiment_code_generation=true`；Task 261.2.1 自身没有创建该
+freeze。综述与反方审查保存在
+`autoresearch-vault/exploration/task-261-2-generated-mechanism-evidence-survey-2026.md`。
+
 ---
 
 ## 19. 2026-07-28 vNext 架构升级：Graph、Harness、Loop 与 Open Science
