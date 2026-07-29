@@ -64,6 +64,42 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 18:05:00 +08:00 - Codex - Task 263.2 research portfolio contracts
+
+- Request: Begin implementing the optimized research path after Task `263.1`, making publication-grade opportunity and portfolio prerequisites executable without weakening scientific or external-action gates.
+- Files changed:
+  - `src/autoresearch/research/portfolio.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_portfolio.py`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `263.2` hunk only; concurrent Task `264` changes are not owned or staged)
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-2-research-portfolio-contracts.md`
+- Summary:
+  - Added strict, provider-neutral, content-addressed contracts for verified sources, one-main-claim Research Question Certificates, objective primary metrics, prospective task-level power and heterogeneity evidence, disjoint development/confirmatory units, bounded budgets, nearest-work deltas, clean-room baseline reproduction plans/evidence, two-stage opportunities, diverse portfolio branches, ordered F0—F3 fidelity, and independent conjunctive assessments.
+  - `track_selection` can admit a track with verified evidence, objective evaluator, baseline smoke/plan, power, split, license/data/compute, and result-blind publication route. `novelty_search` additionally requires independent clean-room baseline reproduction within the frozen tolerance. No weighted score or LLM review can override a false hard gate.
+  - A portfolio exists only for an admitted novelty-search opportunity and must contain 8—16 branches, at least three mechanism families, at least one null/rule arm, unique branch evidence/deltas, non-increasing survivor counts, an exploration quota, bounded branch reservations, full branch retention, at most one confirmatory claim, and no sealed confirmatory visibility. Nested load-time and in-memory mutation are both rejected by canonical hashes.
+  - Exported 16 deterministic JSON Schemas with bundle SHA-256 `47cf6a3f5c0a2cd52dfaf5f6427dfbf71efde272671de74464a6aa0e84797629`. This slice does not call a model, use external data, run science, reveal a panel, build a paper, or authorize release/submission.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_portfolio.py -q --no-cov`: 16 passed, including one Hypothesis order-invariance property test.
+  - `poetry run python -m pytest tests/unit/research -q --no-cov`: 54 passed before the final integrity/power hardening additions; the final focused file passed separately.
+  - Schema/import smoke: exported 16 schemas and reproduced bundle SHA-256 `47cf6a3f5c0a2cd52dfaf5f6427dfbf71efde272671de74464a6aa0e84797629`.
+  - `poetry run python -m pytest tests -q`: 999 passed, 17 opt-in live tests skipped, 87% line coverage.
+  - `poetry run python -m ruff check src tests`: passed.
+  - `poetry run python -m mypy src/autoresearch`: passed across 159 source files.
+  - `git diff --check`: no Task `263.2` whitespace errors; it emitted only an unrelated `.gitignore` LF/CRLF warning from concurrent Task `264` work, recorded in `P-20260729-053`.
+  - No live external smoke applies because this task defines local contracts and makes no external model, literature, repository, dataset, or publication call. Task `263.3` owns the first live opportunity surface.
+- Problems:
+  - Updated open `P-20260729-048`: the contract layer is now implemented, while the real opportunity tournament and portfolio execution remain open.
+  - Added and resolved `P-20260729-051` for Pydantic's wrapped load-time integrity exception surface.
+  - Added and resolved `P-20260729-052` for explicit `zip(strict=False)` lint compliance.
+  - Added mitigated `P-20260729-053` to preserve concurrent Task `264`/`.gitignore` work and keep it out of this focused commit.
+- Follow-up:
+  - Execute Task `263.3` across at least three real tracks. Use deterministic fixtures plus live source/repository/data checks, and allow every track to fail. Do not create a novelty portfolio until the selected strong baseline has independent reproduction evidence.
+
 ### 2026-07-29 17:25:00 +08:00 - Codex - Task 263.1 publishability recovery plan
 
 - Request: Explain why the real automated-research chain still misses publication-grade scientific output, cross-search recent AI Scientist research, optimize the research path, and continue implementation without weakening the existing gates.

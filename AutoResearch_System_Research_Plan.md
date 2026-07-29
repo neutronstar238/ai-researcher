@@ -1132,3 +1132,19 @@ claim、成本、低/高保真校准和人工干预。只有这一搜索器在�
 人类继续负责选题价值、伦理/安全、许可、外部资源、作者责任、venue、新颖性解释和最终投稿。Task 263
 不开放无限制执行、云资源、公开发布或自动投稿，也不允许用已揭示 Task 259—261 panel 重新调参或
 制造新 holdout。
+
+`263.2` 已于 2026-07-29 完成上述前端合同切片。新的
+`ResearchQuestionCertificate` 把一个主 claim、文献截止日、primitives、assumptions、mechanism、
+nearest-work tension、falsifier、failure update、minimal test、客观 metric/meaningful effect、强
+baseline、null/control、ablation、prospective power、disjoint panel、budget 和结果盲
+publication endpoint 组成内容寻址记录。`ResearchOpportunity` 再绑定 verified source、nearest-work
+delta、objective evaluator、clean-room baseline plan/evidence 与 data/license/compute/source 状态。
+
+机会门明确分为 `track_selection` 和 `novelty_search`：前者允许有 baseline smoke 与复现计划的方向
+进入比较，后者必须额外拥有独立 clean-room、within-tolerance 的 baseline reproduction。任何 false
+check 都成为 blocker；weighted score 和 LLM override 永远为 false。只有 novelty-search assessment
+全通过，才能创建 8—16 branch、至少三个 mechanism family、至少一个 null/rule arm、F0—F3 有序
+fidelity、非递增 survivor、exploration quota、总预算和最多一个 confirmatory claim 的
+`PortfolioSpec`。nested/load-time 与 in-memory mutation 都由 canonical hash 阻断，sealed evidence、
+结果后改 route、external submission/public release 继续 fail closed。该任务没有运行真实文献、模型或
+科学实验；真实三 track opportunity tournament 属于 `263.3`。

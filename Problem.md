@@ -40,6 +40,54 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-053 - Concurrent desktop-client planning changed shared task and ignore files
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-29 17:55:00 +08:00
+- Source: Task `263.2` post-regression worktree audit.
+- Symptom: While Task `263.2` was running, the shared worktree gained an unrelated `/winapp/` ignore rule and a new Task `264` desktop-client plan/dependency entries. These changes were not produced by this task and were absent immediately after the focused Task `263.1` commit.
+- Impact: A whole-file stage of `.kiro/specs/auto-research-system/tasks.md` or `.gitignore` would mix unrelated desktop work into the Task `263.2` commit. The `.gitignore` line-ending state also emits an unrelated warning during `git diff --check`.
+- Evidence: `git diff -- .gitignore` shows only the new local Windows client rule; the task-file diff shows Task `264.1`—`264.6` and their wave assignments separately from the Task `263.2` completion hunk.
+- Root cause: Multiple tasks share the same filesystem and another task updated the repository concurrently.
+- Workaround: Preserve the concurrent changes, do not edit or revert them, leave `.gitignore` unstaged, and stage only the Task `263.2` task-file hunk plus its own code/docs/log files.
+- Next action: Recheck the index diff before committing Task `263.2`; the owner of Task `264` should log and commit its changes independently.
+- Linked tasks: `263.2`, `264`.
+- Resolution: Task `263.2` changes remain separable; no concurrent desktop file or ignore-rule content is being claimed by this task.
+- Verification: `git diff --cached -- .kiro/specs/auto-research-system/tasks.md` showed only the Task `263.2` checkbox/outcome hunk; cached name/status excluded `.gitignore`, while `git status --short` retained `.gitignore` and the Task `264` portions of `tasks.md` as unstaged user-owned work.
+
+### P-20260729-052 - Focused Ruff found an explicit-zip-strictness violation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 17:43:00 +08:00
+- Source: Task `263.2` focused lint/type check.
+- Symptom: Ruff reported `B905` for a `zip()` call that compares successive portfolio survivor counts without an explicit `strict=` argument.
+- Impact: Tests and Mypy passed, but the focused lint gate was not clean. Because the lint and type commands were initially chained and Mypy ran last, the aggregate shell exit was zero despite the visible Ruff failure.
+- Evidence: Ruff identified `src/autoresearch/research/portfolio.py` at the survivor monotonicity check.
+- Root cause: The initial implementation relied on the intentionally unequal `list`/`list[1:]` lengths without documenting that behavior to the linter.
+- Workaround: None remains necessary.
+- Next action: Keep quality commands separately visible or inspect all chained outputs; never infer that every sub-check passed solely from the last command's exit status.
+- Linked tasks: `263.2`.
+- Resolution: Added `strict=False` explicitly and reran focused Ruff and Mypy successfully; repository-wide Ruff later passed.
+- Verification: `poetry run python -m ruff check src tests` passed; `poetry run python -m mypy src/autoresearch` passed across 159 source files.
+
+### P-20260729-051 - Pydantic wraps integrity exceptions during model validation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 17:40:00 +08:00
+- Source: First Task `263.2` focused test run.
+- Symptom: Three tamper tests expected `PortfolioIntegrityError` to escape directly, while Pydantic correctly wrapped model-validator exceptions in its public `ValidationError` with the original integrity message.
+- Impact: The first focused run had 11 passing and 3 failing tests. Production fail-closed behavior was correct; only the test expectation used the wrong exception boundary.
+- Evidence: All three failures contained `research certificate_hash mismatch` or `research portfolio_hash mismatch` inside Pydantic `ValidationError`.
+- Root cause: The tests asserted the internal validator exception rather than Pydantic's documented load-time exception surface.
+- Workaround: Assert `ValidationError` plus the specific integrity-message substring for load-time tampering; retain direct `PortfolioIntegrityError` expectations for explicit `verify_integrity()` and in-memory assessment calls.
+- Next action: Apply the same distinction to later Task `263` loaders and assessment tests.
+- Linked tasks: `263.2`.
+- Resolution: Corrected the three expectations and added direct in-memory mutation tests; the final focused suite passed all 16 tests.
+- Verification: `poetry run python -m pytest tests/unit/research/test_portfolio.py -q --no-cov` passed with 16 tests.
+
 ### P-20260729-050 - Initial endpoint audit assumed a nonexistent aggregate wrapper
 
 - Status: Resolved
@@ -83,10 +131,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Complete Task `263.2` with fail-closed certificate/opportunity/portfolio contracts and deterministic tests, then run Task `263.3` across at least three tracks. No track may enter novelty search unless its verified sources, baseline reproduction plan, objective evaluator, independent units, power/sensitivity, disjoint panel, cost, license, and publication endpoint all pass.
+- Next action: Run Task `263.3` across at least three tracks and connect only passing evidence to the new contracts. No track may enter novelty search unless its verified sources, independently reproduced baseline, objective evaluator, independent units, power/sensitivity, disjoint panel, cost, license, and publication endpoint all pass.
 - Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`.
-- Resolution: Pending implementation and a real opportunity tournament; the diagnosis and recovery plan are frozen in `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`.
-- Verification: Task `263.1` revalidated the immutable local endpoints with machine assertions; confirmed all 36 report locators through a bounded HTTP pass plus individual primary-page recovery; parsed the 193-wave dependency graph through task `263.7`; passed three Vault-link tests, required-phrase/cross-link scans, and `git diff --check`. The problem remains open because the front-end contracts and real opportunity tournament begin in tasks `263.2` and `263.3`.
+- Resolution: Partially resolved by Task `263.2`: content-addressed one-claim certificates, two-stage conjunctive opportunities, baseline-reproduction evidence, and diverse bounded portfolios now fail closed. The problem remains open because existing candidate generators/selectors have not yet been replaced by a real Task `263.3` opportunity tournament or a Task `263.5` portfolio run.
+- Verification: Task `263.1` revalidated the immutable local endpoints, all 36 report locators, dependency graph, Vault links, and plan boundaries. Task `263.2` added 16 contract types and passed 16 focused tests, 999 full-suite tests with 17 opt-in skips at 87% coverage, repository-wide Ruff, and Mypy across 159 source files.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

@@ -1376,6 +1376,21 @@ JSON Schema、canonical hash、加载后重验、嵌套篡改、重复/重叠 ta
 功效缺失、未复现 baseline、confirmatory leakage、事后 publication route 切换和任何
 `external_submission_authorized=true` 都必须 fail closed。
 
+`263.2` 已完成。`src/autoresearch/research/portfolio.py` 提供 16 个严格合同/记录类型和确定性 JSON
+Schema；schema bundle SHA-256 为
+`47cf6a3f5c0a2cd52dfaf5f6427dfbf71efde272671de74464a6aa0e84797629`。`track_selection`
+允许 baseline smoke + reproduction plan，但 `novelty_search` 额外要求 clean-room、
+independent-runner、within-tolerance 的 reproduction evidence。Portfolio 只有在后者的全部合取门通过
+后才能构造，并强制 8—16 branches、三个 mechanism families、null/rule arm、唯一 branch evidence/
+delta、F0—F3、非递增 survivor、exploration quota、预算上界、完整 branch retention、单
+confirmatory claim 和 sealed-evidence 不可见。
+
+16 个 focused unit/property tests 覆盖 schema/hash/round-trip、输入顺序、disjoint panel、power count、
+nested/in-memory tamper、外部权限、机会阶段、source/baseline binding、diversity、null、budget、
+fidelity、blocked opportunity、sealed evidence 和结果后 route change。完整 999-test regression、
+17 个 opt-in skips、87% coverage、repository-wide Ruff 和 159-file Mypy 通过。该纯合同切片不访问外部
+来源，故没有适用的 live smoke；`263.3` 必须运行真实来源、仓库和数据机会审计。
+
 ### 27.4 263.3—263.6 实验设计边界
 
 机会 tournament 的至少三条 track 初始建议为：
@@ -1416,7 +1431,9 @@ git diff --check
 ### 27.6 里程碑
 
 - **P0（路径冻结）**：263.1 的本地端点审计、四视角交叉检索、反方审查、任务树和 Vault 报告通过。
-- **P1（前端合同）**：263.2 的 certificate/opportunity/portfolio 合取门和 fail-closed tests 通过。
+- **P1（前端合同，2026-07-29 已通过）**：263.2 的 16-contract schema bundle、certificate/
+  opportunity/portfolio 合取门、16 个 focused unit/property tests、999-test regression、全量
+  Ruff/Mypy 和 fail-closed scientific/external boundaries 通过。
 - **P2（机会与复现）**：263.3—263.4 至少一条 track 通过机会门及强 baseline clean-room reproduction；
   若全部失败，保留负机会报告并重新选题，不进入搜索。
 - **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
