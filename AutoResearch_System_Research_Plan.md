@@ -1083,3 +1083,52 @@ opt-in smoke 审计锁、重放两条 journal、运行升级后 characterization
 中无网络复现 canonical evidence。最终 release report hash 为
 `acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`。该报告只表示内部兼容边界
 通过；无限制执行、公开发布、外部投稿、安全策略自修改仍全部为 `false` 且必须显式人工批准。
+
+## 27. 从系统闭环转向可发表性恢复（Task 263）
+
+Task 259—261 的真实证据表明，AutoResearch 的运行、证据、复现和论文后端已经能够忠实产出；连续
+阴性结果主要来自科学前端，而不是输出器。Task 260 的系统论文包通过了确定性论文、证据、引用和独立
+复现检查，状态为 `ready_for_human_submission_review`；Task 259、Task 260 Route A 和 Task 261.2
+则分别在未改变阈值和已揭示 panel 的情况下保留了真实阴性结果。因此“真实不可产出”的准确表述是：
+系统不能稳定地产生通过独立科学贡献门的正向结果，而不是不能生成真实科研对象。
+
+2024—2026 年 AI Scientist、Co-Scientist、Robin、Virtual Lab、Agent Laboratory、CodeScientist、
+PaperBench、CORE-Bench、ScienceAgentBench、DiscoveryBench、BLADE、MLRC-Bench、MLE-bench、
+execution-grounded research、FunSearch、FirstResearch、MARS 与自动神经算子发现工作的交叉检索
+记录于
+`autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`。证据共同支持：
+
+1. 树搜索、锦标赛、archive、多样性和客观环境反馈优于单链自我反思；
+2. workshop 接收、代码可运行、LLM 创新分数或 narrative review 都不能推出主会/主刊可发表；
+3. 最强真实发现仍依赖专家设题、客观计算/湿实验反馈和人类责任边界；
+4. 既有论文复现成功率仍低，故 novelty search 必须以强基线 clean-room reproduction 为前置门；
+5. Open Science/provenance 能保真和复核，不能把未过阈值的效应改写为贡献。
+
+Task 263 把科研主循环改为：
+
+`Research Question Certificate → Opportunity Gate → Baseline Reproduction → Diverse Portfolio →`
+`Multi-fidelity Search → Frozen Confirmatory Test → Clean-room Replay → Human Publication Review`
+
+每个 Research Question Certificate 必须冻结 primitives、assumptions、mechanism、nearest-work
+tension、一个主 claim、falsifier、failure update、minimal decisive test、primary metric、最小有
+意义效应、强 baseline、null/control、ablation、独立单位、功效/敏感性、预算、开发/确认隔离和预注册
+publication endpoint。Opportunity Gate 是不可补偿的合取门；缺 verified adjacent work、可复现
+baseline、客观 evaluator、功效/区间方案、独立 panel、许可/数据/算力、至少三个机制族或 null arm 时，
+只能写负机会记录或转向。
+
+通过机会门后先复现强 baseline，再以 8—16 个候选、至少三个机制族构建受预算约束的 portfolio。
+F0—F3 多保真层依次检查合法性、最小可执行性、多任务开发信号和全保真 development
+replication/ablation；successive halving、MCTS 或 evolutionary operator 只能在冻结 survival rule
+下分配预算。所有淘汰分支、失败、成本和低/高保真校准必须保留，不能只报告 winner，也不能让共享
+memory 读取 sealed confirmatory evidence。
+
+首篇新增研究优先检验搜索策略本身：在相同预算、工具和客观 evaluator 下，比较 one-shot、linear
+self-loop、diversity-constrained portfolio 与 portfolio + cross-branch memory，并对 certificate、
+diversity、multi-fidelity、reviewer 和 memory 做因果消融。主 endpoint 是独立任务级
+confirmed scientific success，不是 LLM review score；secondary endpoints 包括复现、unsupported
+claim、成本、低/高保真校准和人工干预。只有这一搜索器在独立确认中成立后，才进入自动神经算子发现
+的外部复制与因果消融；Task 259 已揭示 Gate B 不因本计划重开。
+
+人类继续负责选题价值、伦理/安全、许可、外部资源、作者责任、venue、新颖性解释和最终投稿。Task 263
+不开放无限制执行、云资源、公开发布或自动投稿，也不允许用已揭示 Task 259—261 panel 重新调参或
+制造新 holdout。

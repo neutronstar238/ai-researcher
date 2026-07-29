@@ -40,6 +40,54 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-050 - Initial endpoint audit assumed a nonexistent aggregate wrapper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 17:18:00 +08:00
+- Source: Task `263.1` machine check of immutable Task `259`—`261` endpoints.
+- Symptom: The first read-only audit script looked for Task `260` development and unseen statistics under `aggregate`, but the persisted contracts store them directly under `metrics`; the script stopped with `KeyError: 'aggregate'`.
+- Impact: No repository or run artifact changed. The failed diagnostic did not validate the local endpoint matrix until corrected.
+- Evidence: Key enumeration showed Task `260` development/unseen objects have top-level `metrics`, while Task `259` recovery stores its comparison under `primary_comparison`.
+- Root cause: The ad hoc audit reused a guessed report shape instead of inspecting each persisted contract first.
+- Workaround: Enumerate immutable artifact keys before constructing cross-contract assertions.
+- Next action: Task `263.2` should use typed loaders for new certificate/opportunity/portfolio contracts rather than ad hoc JSON shape guesses.
+- Linked tasks: `263.1`, `263.2`.
+- Resolution: Corrected the read-only assertions to use `metrics` and `primary_comparison`; the audit then passed for the Task `260` paper gate and two Route A unseen negatives, Task `261.2` confirmatory negative, and Task `259` recovery Gate B closure.
+- Verification: The corrected script exited zero with `PASS local endpoint audit`.
+
+### P-20260729-049 - Concurrent live source check triggered transient publisher disconnects
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-29 17:05:00 +08:00
+- Source: Task `263.1` live reachability audit of the report source registry.
+- Symptom: A six-worker range-request checker reached 24 of 36 registered primary/official URLs, while 12 arXiv/PMLR requests failed with transient `RemoteDisconnected` or local `URLError` transport errors.
+- Impact: The first aggregate command exited non-zero and could not by itself satisfy the live-source gate. It did not change the report, source records, scientific evidence, or repository state.
+- Evidence: All Nature and ACL locators and a majority of arXiv/PMLR locators returned HTTP 200/206 in the bounded checker. The 12 failed locators were then opened individually through the browser research path; each resolved to the expected primary arXiv abstract or official PMLR paper, including ResearchAgent, CORE-Bench, MLE-bench, RE-Bench, POPPER, AI Scientist-v2, Kosmos, MARS, Arbor, EurekAgent, the neural-operator community paper, and MLAgentBench.
+- Root cause: The concurrent range requests caused intermittent remote connection closures/throttling; the failing set did not indicate missing papers.
+- Workaround: Use bounded concurrency for the first pass, then retry failed primary locators individually through the browser/open path and verify title/metadata rather than blindly rerunning a burst.
+- Next action: Reuse this two-stage source-audit pattern in Task `263.3`; do not require every publisher to support concurrent range requests.
+- Linked tasks: `263.1`, `263.3`.
+- Resolution: All 36 source locators were confirmed by the combined bounded HTTP and individual primary-page checks.
+- Verification: The first checker recorded `24/36 reachable`; individual primary-page opens resolved all remaining 12 with matching titles and metadata.
+
+### P-20260729-048 - Scientific front end commits too early to underpowered single-candidate paths
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-29 16:30:00 +08:00
+- Source: Task `263.1` local endpoint audit and four-perspective cross-search of AI Scientist systems, scientific-agent benchmarks, execution-grounded methods, and Open Science.
+- Symptom: AutoResearch can complete real experiments, preserve negative results, independently reproduce endpoints, audit claims, and build publication-formatted research objects, but new scientific mechanisms repeatedly pass development and fail unseen or confirmatory contribution gates. Candidate generation and selection still favor a small static set or one model-generated mechanism, then commit to confirmation without a prospective power/opportunity contract or a budget-matched portfolio.
+- Impact: Repeated engineering and paper work can be scientifically honest yet still have a low probability of producing a publishable contribution. More Agents, longer loops, reviewer scores, or manuscript polish can increase cost without fixing candidate diversity, baseline reliability, independent-unit count, selection bias, or confirmatory power.
+- Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
+- Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
+- Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
+- Next action: Complete Task `263.2` with fail-closed certificate/opportunity/portfolio contracts and deterministic tests, then run Task `263.3` across at least three tracks. No track may enter novelty search unless its verified sources, baseline reproduction plan, objective evaluator, independent units, power/sensitivity, disjoint panel, cost, license, and publication endpoint all pass.
+- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`.
+- Resolution: Pending implementation and a real opportunity tournament; the diagnosis and recovery plan are frozen in `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`.
+- Verification: Task `263.1` revalidated the immutable local endpoints with machine assertions; confirmed all 36 report locators through a bounded HTTP pass plus individual primary-page recovery; parsed the 193-wave dependency graph through task `263.7`; passed three Vault-link tests, required-phrase/cross-link scans, and `git diff --check`. The problem remains open because the front-end contracts and real opportunity tournament begin in tasks `263.2` and `263.3`.
+
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 
 - Status: Resolved

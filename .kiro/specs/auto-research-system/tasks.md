@@ -3388,6 +3388,51 @@ A task can be checked only when all applicable items are true:
     - _Outcome: upgraded the characterized adapter from LangGraph 0.2.76/LangChain 0.2.17/Core 0.2.43 to exact LangGraph 1.2.10/LangChain 1.3.14/Core 1.5.2 pins plus audited checkpoint/prebuilt/SDK/LangSmith transitive versions. The same checkpoint/resume, static/dynamic interrupt, subgraph, parallel-superstep, resume-idempotency, and JSON-serialization contract passes with strict no-pickle in-memory checkpoints; no persistent LangGraph checkpoint existed to rewrite. Added a content-addressed R1 report that fails closed on dependency, behavior, formal-run, rollback, reproduction, compatibility-path, capability, or permission drift. New audit events now have one canonical Event Journal writer; existing JSONL is read-only imported and can be explicitly exported to a separate rollback snapshot. The linear workflow is deprecated, while Competition/Campaign/Sprint/EvidenceGraph v1 paths remain for the declared current-plus-one reader window because their scientific/reader semantics are not yet safe to delete. Public release, external submission, unrestricted execution, and safety-policy self-modification remain disabled and human-gated._
     - _Verify result: exact lock/install audit passed with lock hash `9e1894adecae09877114222fded4251113618dd9fe967668201153559573bbad`; upgraded characterization hash is `dd62c3faef638b905755dbc26f6761957e5657175de7a3b641b6e5c718ebebd3`. A fresh Sprint smoke rebuilt two distinct real formal negative-result observations and passed vNext-to-legacy rollback. A second opt-in smoke reopened both sealed journals, reran the runtime characterization, independently reproduced canonical evidence in a clean `python -I` process without network, and emitted passing R1 report `acf73733022a59e3aaca2fd3b0dfd66fe88ba3c140a23a4a4a9a816715f9a638`. Full regression passed with 946 tests and 13 opt-in tests skipped at 87% coverage; repository-wide Ruff and 152-file Mypy passed._
 
+- [ ] 263. Recover publication-grade scientific search through replication-first portfolios
+  - [x] 263.1 Freeze the evidence-backed publishability recovery plan
+    - Audit the immutable Task 259—261 scientific endpoints and distinguish system/output readiness from scientific contribution and external-submission authority.
+    - Cross-search 2024—2026 AI Scientist systems, replication/scientific-analysis benchmarks, falsification/statistical methodology, execution-grounded search, and Open Science from at least four perspectives.
+    - Prefer peer-reviewed and official primary sources; label 2026 preprints and author self-evaluations, compare positive claims against independent benchmarks, and retain a self-adversarial limitations review.
+    - Freeze a replication-first path from Research Question Certificate and opportunity hard gates through strong-baseline reproduction, diverse portfolio search, multi-fidelity selection, untouched confirmatory evaluation, clean-room replay, and human publication review.
+    - Register tasks `263.2`—`263.7`, keep Task 259 Gate B closed, do not reinterpret revealed Task 259—261 panels, and keep public release/external submission false.
+    - _Verify: live primary/official source reachability and metadata audit; local endpoint inspection; report/source/cross-link checks; task dependency validation; `git diff --check`; Agent/Problem updates; one focused commit._
+    - _Outcome: froze a four-perspective, primary-source-backed diagnosis showing that the trusted execution/evidence/paper back end is not the current bottleneck: Task `260` is a real systems-paper candidate awaiting human novelty/authorship/license/venue review, while Tasks `259`, `260` Route A, and `261.2` are faithful scientific negatives. The accepted path now requires a Research Question Certificate, conjunctive opportunity gate, clean-room strong-baseline reproduction, 8—16 diverse branches across at least three mechanism families plus a null/rule arm, calibrated multi-fidelity survival, untouched confirmatory evidence, clean-room replay, and human publication review. Tasks `263.2`—`263.7` are sequentially registered; Gate B and all external actions remain closed._
+    - _Verify result: a bounded checker reached 24/36 report URLs and the 12 transient arXiv/PMLR failures were individually resolved to matching primary pages; the combined live audit therefore verified all 36 locators. A machine endpoint audit revalidated Task `260`'s `ready_for_human_submission_review`/submission-false state, both Route A unseen intervals crossing zero, Task `261.2` coverage `0.583333 < 0.60` and `not_ready` audit, and Task `259` recovery `gate_b_allowed=false`. The dependency graph parsed as 193 unique sequential waves through `263.7`; three Vault-link tests passed; required-phrase/cross-link scans and `git diff --check` passed. Transient source throttling and one corrected read-only JSON-shape assumption are recorded in `P-20260729-049` and `P-20260729-050`._
+  - [ ] 263.2 Add Research Question Certificate, opportunity, and portfolio contracts
+    - Add strict, provider-neutral, content-addressed schemas for one-main-claim Research Question Certificates, nearest-work/source evidence, baseline reproduction plans, power/sensitivity and disjoint-panel opportunity evidence, portfolio branches/fidelity stages, and hard-gate assessments.
+    - Require objective metrics, meaningful-effect thresholds, falsifiers, failure updates, strong baseline, null/control, ablations, independent units, prospective uncertainty, budget, license/data/compute availability, a result-blind publication endpoint, and immutable human/external-action boundaries.
+    - Require at least three mechanism families and one null/rule arm, frozen survival rules, full branch retention, explicit exploration quota, bounded total budget, at most one confirmatory claim, and no sealed evidence visibility.
+    - Reject nested hash drift, duplicated or overlapping development/confirmatory units, missing power/baseline reproduction, homogeneous portfolios, insufficient budget, post-result endpoint changes, LLM/self-review substitution for a hard gate, and external submission authorization.
+    - _Verify: focused unit/property/schema/hash/tamper/leakage/diversity/budget tests; full pytest/Ruff/Mypy; JSON Schema smoke; Agent/Problem updates; one focused commit._
+  - [ ] 263.3 Run a live opportunity tournament across at least three research tracks
+    - Compare AutoResearch search-policy causality, automated neural-operator discovery replication/ablation, and at least one low-cost objective discovery lane without hard-coding a winner.
+    - For every track, produce a time-cut nearest-work matrix, verified source bundle, license/data/compute audit, baseline execution smoke, independent-unit inventory, power/sensitivity analysis, development/confirmatory split, cost envelope, and preregistered publication endpoint.
+    - Permit all tracks to fail; do not enter novelty search when the opportunity conjunctive gate is false.
+    - _Verify: deterministic fixtures plus live source/repository/data smoke, content/hash audit, Vault projection, Agent/Problem updates, and one focused commit._
+  - [ ] 263.4 Reproduce the strongest baseline and preregister the search-policy causal study
+    - Rebuild the selected strong baseline in a clean environment and bind claim, source, code, data, environment, command, seed, raw prediction, metric, and tolerance evidence.
+    - Freeze budget-matched one-shot, linear self-loop, portfolio, and portfolio-plus-memory arms; certificate/diversity/multi-fidelity/reviewer/memory ablations; task suite; objective evaluator; nulls; independent units; prospective power; cost; stop rules; and untouched confirmatory panel before search results exist.
+    - Stop or convert to reproduction diagnosis if the baseline cannot be reproduced; do not build novelty on an unreliable baseline.
+    - _Verify: opt-in live baseline reproduction, clean-room replay, preregistration/source hash audit, leakage tests, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 263.5 Execute the budget-matched multi-branch development search
+    - Generate 8—16 candidates across at least three mechanism families plus a null/rule arm; retain every branch, failure, cost, intervention, and lineage.
+    - Run frozen F0 static, F1 minimal-execution, F2 multi-task, and F3 full-fidelity development stages with bounded successive halving/tree/evolutionary allocation and an explicit exploration quota.
+    - Compare all policy arms and causal ablations, measure low-to-high-fidelity calibration, and allow zero candidates to survive.
+    - Keep confirmatory evidence sealed and numerical outcomes deterministic; do not optimize on LLM reviewer score.
+    - _Verify: full development matrix, exact resume/idempotency, failure/cost/provenance audit, policy/ablation analysis, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 263.6 Execute untouched confirmatory evaluation and independent adjudication
+    - Freeze zero or one surviving main claim, exact implementation, evaluator, statistical policy, independent-unit panel, null/control, ablations, multiplicity handling, and reproduction tolerance before reveal.
+    - Use an independent runner that cannot read development trajectories; treat seeds as within-unit repeats, not independent scientific units.
+    - Preserve all primary, secondary, null, ablation, failure, OOD/temporal, cost, and intervention outcomes; compute the conjunctive endpoint in deterministic code.
+    - Retain a positive or credible negative endpoint without retuning the same panel or switching the publication route after results.
+    - _Verify: complete confirmatory matrix, leakage/tamper audit, prospective statistical checks, exact rerun and clean-room replay, full quality gates, Agent/Problem updates, and one focused commit._
+  - [ ] 263.7 Build the claim packet, paper, and Open Science research object
+    - Build the Executed Claim Packet, claim-evidence/counterevidence graph, complete branch and failure flow, manuscript, figures/tables, compiled PDF, environment lock, reproduction commands, and internal/review Open Science views.
+    - Require novelty, empirical validity, independent confirmation, reproducibility, evidence coverage, robustness/null controls, and independent human review as non-compensating gates.
+    - Produce a truthful negative paper only when its diagnostic contribution was preregistered and adequately powered; otherwise retain a research record rather than forcing a paper.
+    - Keep authorship, licenses, public release, venue choice, and external submission behind explicit human approval.
+    - _Verify: full claim/audit/reproduction/paper/Open Science gates, live sources, independent clean-directory rebuild, visual PDF inspection, Agent/Problem updates, and one focused commit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -4176,6 +4221,34 @@ A task can be checked only when all applicable items are true:
     {
       "id": 185,
       "tasks": ["262.10"]
+    },
+    {
+      "id": 186,
+      "tasks": ["263.1"]
+    },
+    {
+      "id": 187,
+      "tasks": ["263.2"]
+    },
+    {
+      "id": 188,
+      "tasks": ["263.3"]
+    },
+    {
+      "id": 189,
+      "tasks": ["263.4"]
+    },
+    {
+      "id": 190,
+      "tasks": ["263.5"]
+    },
+    {
+      "id": 191,
+      "tasks": ["263.6"]
+    },
+    {
+      "id": 192,
+      "tasks": ["263.7"]
     }
   ]
 }

@@ -1319,3 +1319,107 @@ mock 只能用于 CI，不能代替首次真实验证。真实 smoke 所需 secr
 
 这些里程碑提升的是可审计性、可恢复性、互操作性和科研因果完整性，不自动升级
 `bounded_autonomous` 为开放式自主科学，也不解锁 Gate B、公开发布或外部投稿。
+
+## 27. 可发表性恢复实施计划（Task 263）
+
+### 27.1 目标与判定原则
+
+Task 263 不再把“生成完整论文”作为主循环目标，而把最小产出单位定义为
+`Executed Claim Packet`：预注册假设、强 baseline/null、精确 intervention、代码/数据/环境、重复
+执行、效应与区间、失败记录、provenance 和独立 replay verdict。稿件只从通过验证的 claim packet
+生成只读视图。
+
+可发表性采用不可补偿合取门：
+
+```text
+Novelty
+AND empirical validity
+AND independent confirmatory evidence
+AND reproducibility
+AND evidence coverage
+AND robustness / null controls
+AND independent human review
+```
+
+LLM reviewer、idea score、总分、workshop 历史接收率、运行成功或 PDF 构建均不能替代其中任何一项。
+
+### 27.2 子任务顺序
+
+| Task | 实施内容 | 硬完成门 |
+|---|---|---|
+| 263.1 | 交叉检索 AI Scientist/benchmark/方法/Open Science；审计本地失败；冻结恢复路径 | primary/official 来源实时核验；任务、计划、Vault 与 Problem/Agent 同步 |
+| 263.2 | 增加 `ResearchQuestionCertificate`、`ResearchOpportunity`、`PortfolioSpec` 与合取门合同 | deterministic schema/hash/tamper/leakage/diversity/budget/publication-boundary tests；全量质量门 |
+| 263.3 | 对至少三条独立研究 track 运行真实 opportunity tournament | 每条有 nearest-work matrix、baseline smoke、power/sensitivity、cost、许可和 disjoint-panel 证据；可以全部不通过 |
+| 263.4 | 对胜出 track clean-room 复现强 baseline，并冻结搜索策略因果实验 | baseline claim/code/data/env/result 一致；task suite、预算、null、ablation、确认 panel 和 stop rule 在结果前冻结 |
+| 263.5 | 运行 budget-matched 多分支、多保真 development search | 至少 8 个候选、3 个机制族和 1 个 null/rule arm；全分支/失败/成本保留；低/高保真校准与因果 ablation 完整 |
+| 263.6 | 运行未揭示 panel 的独立确认与 clean-room replay | 无 leakage/事后改门；任务级效应、区间/功效、多重比较、null 和 reproduction 门由确定性代码裁决 |
+| 263.7 | 构建 claim audit、paper 和 Open Science research object | 合取门全通过或忠实阴性；公开发布、署名、许可、venue 与投稿仍需显式人类批准 |
+
+每个子任务单独验证、更新 `Agent.md`/`Problem.md` 并做 focused commit；父任务只有在所有子任务有真实
+端点后才能关闭。
+
+### 27.3 263.2 最小实现边界
+
+首个代码切片只增加 provider-neutral、内容寻址的前端科研合同，不调用模型、不运行科学实验，也不修改
+Competition/Campaign/Sprint 既有结果：
+
+- `ResearchQuestionCertificate` 冻结一个主 claim、mechanism、falsifier、failure update、minimal test、
+  metric/effect、baseline/null/ablation、power、budget、data split、source IDs 和 publication endpoint。
+- `ResearchOpportunity` 绑定 verified sources、nearest-work delta、baseline reproduction plan、数据/
+  许可/算力、独立单位和 disjoint development/confirmatory IDs。
+- `PortfolioSpec` 要求至少三个不同 mechanism families、一个 null/rule arm、分级 fidelity、总预算、
+  survival rule、全分支保留、无 sealed evidence visibility 和最多一个 confirmatory claim。
+- `OpportunityAssessment` 与 `PortfolioAssessment` 只输出逐项 hard gate 和 blockers；不使用加权平均，
+  不让模型或 Reviewer 自行把 false 改成 true。
+
+JSON Schema、canonical hash、加载后重验、嵌套篡改、重复/重叠 task、预算不足、候选同质、null 缺失、
+功效缺失、未复现 baseline、confirmatory leakage、事后 publication route 切换和任何
+`external_submission_authorized=true` 都必须 fail closed。
+
+### 27.4 263.3—263.6 实验设计边界
+
+机会 tournament 的至少三条 track 初始建议为：
+
+1. AutoResearch 搜索策略因果研究；
+2. 自动神经算子发现独立复制与角色/多保真消融；
+3. 一个低成本、客观 evaluator、许可清晰的算法或数据分析 discovery lane。
+
+选择发生在结果前，使用时间截断文献、nearest-work 差异、baseline reproduction feasibility、独立单位、
+功效、算力和 publication endpoint。Search-policy track 是当前第一优先，但可以在 opportunity hard
+gate 中被否决；不能硬编码成必选结果。
+
+开发搜索比较 budget-matched one-shot、linear self-loop、portfolio 和 portfolio + cross-branch
+memory。Generator、Implementer 与 Evaluator 权限分离；Evaluator 只读取预注册 rubric、执行产物和
+原始指标，不读取作者叙事。Portfolio 使用 F0 静态、F1 最小执行、F2 多任务开发、F3 全保真开发四级
+fidelity；每级 survival 数、探索 quota、预算和 stop rule 在执行前冻结。
+
+确认性执行只接受冻结 winner 或无 winner 结论。确认 runner 不读取 development trajectory；任务/系统/
+数据集才是独立单位，seed 只是单位内重复。随机/置换 null、强 baseline、关键 ablation、效应量与区间、
+必要的 alpha spending/FDR、OOD/temporal holdout 和 exact/within-tolerance reproduction 全部进入
+合取门。确认失败产生正式阴性 endpoint，不回流同一 panel 继续搜索。
+
+### 27.5 验证层级
+
+263.2 先运行 focused unit/property/schema tests，再运行：
+
+```powershell
+python -m pytest tests -q
+python -m ruff check src tests
+python -m mypy src\autoresearch
+git diff --check
+```
+
+263.3 以后凡涉及外部文献、代码仓库、数据、模型或 benchmark，必须同时保留 deterministic mock/fixture
+和一次 opt-in live smoke。需要 secret、付费模型或云 GPU 时必须停止并请求用户通过 `.env` 或显式资源
+批准提供，不得硬编码供应商或凭据。
+
+### 27.6 里程碑
+
+- **P0（路径冻结）**：263.1 的本地端点审计、四视角交叉检索、反方审查、任务树和 Vault 报告通过。
+- **P1（前端合同）**：263.2 的 certificate/opportunity/portfolio 合取门和 fail-closed tests 通过。
+- **P2（机会与复现）**：263.3—263.4 至少一条 track 通过机会门及强 baseline clean-room reproduction；
+  若全部失败，保留负机会报告并重新选题，不进入搜索。
+- **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
+- **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
+- **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类
+  新颖性/作者/许可/venue/投稿审查；系统本身仍不执行投稿。

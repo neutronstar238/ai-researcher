@@ -64,6 +64,36 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 17:25:00 +08:00 - Codex - Task 263.1 publishability recovery plan
+
+- Request: Explain why the real automated-research chain still misses publication-grade scientific output, cross-search recent AI Scientist research, optimize the research path, and continue implementation without weakening the existing gates.
+- Files changed:
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Used the `deep-research` workflow to freeze three questions, search four independent perspectives, compare promotional system claims against replication/scientific-analysis benchmarks, and run a self-adversarial review. The report distinguishes a real Task `260` systems-paper candidate awaiting human novelty/authorship/license/venue review from the faithful Task `259`, Task `260` Route A, and Task `261.2` scientific negatives.
+  - Diagnosed the main bottleneck as an underpowered, too-narrow scientific front end: static or single-candidate selection, no conjunctive opportunity/power gate, no mandatory strong-baseline reproduction before novelty, no budget-matched portfolio/multi-fidelity calibration, and no causal comparison of search policies. Manuscript, provenance, reproduction, and Open Science back-end work is necessary but cannot create an unseen effect.
+  - Froze `Certificate -> Opportunity -> Replication -> Portfolio -> Multi-fidelity -> Confirmatory -> Clean-room replay -> Human review`, registered tasks `263.2`—`263.7`, and chose the first new study as a budget-matched causal comparison of one-shot, linear self-loop, portfolio, and portfolio-plus-memory policies. Automated neural-operator discovery remains a later independent-replication track. Task `259` Gate B, public release, and external submission remain closed.
+- Verification:
+  - Local endpoint assertion script: passed Task `260` paper-package/pre-submission verdict `ready_for_human_submission_review` with every deterministic check true and submission false; confirmed both Route A development-positive/unseen-negative rounds; confirmed Task `261.2` coverage `0.583333 < 0.60`, only scientific failure `minimum_coverage_met`, paper verdict `not_ready`; confirmed Task `259` recovery `negative_result` and `gate_b_allowed=false`.
+  - Live source audit: the bounded six-worker checker returned HTTP 200/206 for 24/36 URLs and failed on 12 transient arXiv/PMLR connections; individual primary-page browser opens then resolved all remaining 12 with matching titles/metadata. Combined result: 36/36 locators verified. The initial non-zero command is recorded in `P-20260729-049`.
+  - Dependency graph parser: passed 193 unique, sorted waves and the sequential `263.1`—`263.7` chain through wave 192.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - Required-phrase and cross-link scan: passed for local endpoint boundaries, AI Scientist/benchmark evidence, replication-first path, contrarian review, task registration, and Gate B closure.
+  - `git diff --check`: passed with no whitespace errors before final log/task-state reconciliation.
+  - One initial read-only endpoint assertion used a nonexistent `aggregate` key and exited with `KeyError`; inspecting contract keys and switching to `metrics`/`primary_comparison` produced the passing audit. Recorded in `P-20260729-050`.
+- Problems:
+  - Added open `P-20260729-048` for the scientific-front-end candidate-width, baseline-reproduction, power, and portfolio-search gap.
+  - Added mitigated `P-20260729-049` for transient concurrent source-check disconnects.
+  - Added and resolved `P-20260729-050` for the corrected read-only endpoint audit shape assumption.
+- Follow-up:
+  - Implement task `263.2` as strict provider-neutral Research Question Certificate, opportunity, portfolio, and conjunctive assessment contracts with schema/hash/tamper/leakage/diversity/budget tests. Do not start a scientific track or revisit Gate B until the real task `263.3` opportunity tournament passes.
+
 ### 2026-07-29 14:09:45 +08:00 - Codex - Task 261 parent completion audit
 
 - Request: Audit the remaining work under the goal-level Graph/Harness/Loop/Open Science upgrade, distinguish intentionally gated scientific work from system refactoring, and close only a verified task-state gap.
