@@ -40,6 +40,118 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-060 - Two ad hoc Markdown inspections mishandled Windows text and PowerShell escaping
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 16:46:00 +08:00
+- Source: Task `263.3` post-render reader-structure audit.
+- Symptom: The first inspection searched only for LF separators in a PowerShell-loaded CRLF string; the second embedded a Markdown backtick inside a PowerShell double-quoted Python command, so PowerShell consumed the backtick as an escape. Both diagnostics reported zero rows despite the corrected artifact visibly containing three contiguous rows.
+- Impact: The focused unit test had already passed, but the two ad hoc commands did not independently verify the generated live artifact.
+- Evidence: Direct line inspection showed all three rows before the first detail heading; a line-ending-agnostic Python check using `chr(96)` then counted exactly three.
+- Root cause: The diagnostic commands did not account for Windows newline handling and PowerShell's backtick escape syntax.
+- Workaround: Use `Path.read_text()` plus `splitlines()` and construct literal Markdown backticks without shell interpolation.
+- Next action: Prefer repository tests or script files for nontrivial text-structure checks instead of nested shell quoting.
+- Linked tasks: `263.3`.
+- Resolution: Replaced the fragile checks with a newline-normalizing Python audit.
+- Verification: The corrected audit printed `PASS markdown summary rows=3`; the final focused and full suites also passed.
+
+### P-20260729-059 - Reader-facing tournament table interleaved track detail sections
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 16:43:00 +08:00
+- Source: Task `263.3` pre-commit manual inspection of the generated Markdown artifact.
+- Symptom: The renderer appended each track's detail section immediately after its table row, so the second and third track rows appeared after headings instead of contiguously inside the summary table.
+- Impact: JSON contracts, decisions, report hashes, and scientific gates were correct, but common Markdown readers could render the summary as a one-row table and obscure the cross-track comparison.
+- Evidence: The generated artifact showed `## track...` between the first and second summary rows; existing tests asserted labels but not table-row contiguity.
+- Root cause: Summary rows and detail rows shared one output list inside the per-track loop.
+- Workaround: None remains necessary.
+- Next action: Keep reader-structure assertions for future tournament fields and visually inspect publication-facing projections before release.
+- Linked tasks: `263.3`.
+- Resolution: Accumulated all summary rows first, emitted detail sections afterward, added a three-contiguous-row regression assertion, and regenerated the ignored live artifact through the application writer.
+- Verification: The focused suite passed; the report content hash remained `de4769b74098650a1ed7a7f92fdd853459f468d5a35e4b6d152f0169779bf0ff`, while the corrected Markdown SHA-256 became `773ea6d7e8c0f527cd9c16dc0b907eb1db5c826b6fcaf3aad04d1fdc13e099f3` and the regenerated manifest hash became `db810365f362de9fb06d541a7db1fc1634c1bed06d0f5b5b446e8b01a76ca932`.
+
+### P-20260729-058 - First full regression invocation used an insufficient tool timeout
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 16:35:00 +08:00
+- Source: Task `263.3` repository-wide verification.
+- Symptom: The first `poetry run python -m pytest tests -q` invocation was given a one-second tool timeout and was terminated after about five seconds with exit `124`, before pytest could produce a verdict.
+- Impact: That invocation provided no regression evidence and had to be rerun. It did not change source files, scientific artifacts, or external state.
+- Evidence: The tool reported `command timed out after 5044 milliseconds`; the same command subsequently completed normally.
+- Root cause: The command timeout was shorter than the established full-suite runtime.
+- Workaround: Use a bounded timeout that exceeds the known two-to-three-minute regression duration.
+- Next action: Keep long verification commands bounded but allocate enough time for a real verdict.
+- Linked tasks: `263.3`.
+- Resolution: Reran the exact full-suite command with a 15-minute ceiling.
+- Verification: The rerun completed in 148.53 seconds with 1011 passed, 18 opt-in tests skipped, and 87% line coverage.
+
+### P-20260729-057 - Initial opportunity-tournament lint and type checks exposed four narrow defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 16:19:00 +08:00
+- Source: Task `263.3` focused Ruff and Mypy checks.
+- Symptom: Ruff reported an import that should come from `collections.abc` and an unnecessary intermediate list before `set`; Mypy widened one ranking tuple's `Literal` field to `str` and lost the model type of a locally sorted entry collection.
+- Impact: Runtime tests passed, but the new module did not yet satisfy the repository lint/type gates.
+- Evidence: The focused commands identified only `src/autoresearch/research/opportunity_tournament.py`; no existing source file failed.
+- Root cause: The first implementation used a typing import/style that violated the repository rules and relied on local inference across tuple/sort transformations.
+- Workaround: None remains necessary.
+- Next action: Preserve explicit model/tuple annotations when extending the tournament ranking or adding new resource kinds.
+- Linked tasks: `263.3`.
+- Resolution: Moved the abstract collection import, simplified the set construction, and made the literal/model types explicit.
+- Verification: Focused Ruff and Mypy both passed after the changes; repository-wide gates are rerun before Task `263.3` is committed.
+
+### P-20260729-056 - Canonical timestamps and numeric normalization initially broke tournament round trips
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 16:14:00 +08:00
+- Source: First Task `263.3` focused unit run.
+- Symptom: Ten tests failed because create-time canonical hashes encoded UTC as `+00:00` while Pydantic reloads normalized it to `Z`; after timestamp repair, one remaining round-trip failed because JSON reloaded an integral cost as `int` while the in-memory model retained `float`.
+- Impact: The contracts rejected their own serialized artifacts even though tamper detection itself was working.
+- Evidence: Failures consistently reported tournament/entry/hash mismatches at reload or equality assertions, and no external state changed.
+- Root cause: The initial canonical serializer did not normalize semantically equivalent UTC and numeric representations before hashing.
+- Workaround: None remains necessary.
+- Next action: Reuse the tournament's `_jsonable` normalization for future content-addressed contracts and keep source/nested tamper tests.
+- Linked tasks: `263.3`.
+- Resolution: Canonicalized UTC datetimes to `Z`, normalized floating-point representations, and retained strict load-time and in-memory integrity checks.
+- Verification: The final focused opportunity-tournament suite passed all 12 tests, including source tamper, nested tamper, order invariance, write/load, and manifest verification.
+
+### P-20260729-055 - First baseline audit referenced the wrong campaign foundation module
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 15:58:00 +08:00
+- Source: Task `263.3` read-only inspection while constructing the local Task `260` baseline smoke.
+- Symptom: A diagnostic attempted to inspect `src/autoresearch/campaign/mechanism_foundation.py`, which does not exist; the relevant persisted foundation types are implemented in `mechanism_round.py`.
+- Impact: The first read-only lookup failed and did not establish the baseline command until the actual module and artifact path were located. No source or run artifact changed.
+- Evidence: The shell returned a missing-path error; repository search located the types and the immutable 210-cell Task `260` artifact.
+- Root cause: The ad hoc lookup inferred a filename from the contract name rather than searching the repository first.
+- Workaround: Use `rg` over symbol names and inspect the persisted artifact schema before writing a baseline assertion.
+- Next action: Task `263.4` should use typed loaders or a frozen adapter for the clean-room baseline instead of inferred module paths.
+- Linked tasks: `260`, `263.3`, `263.4`.
+- Resolution: Rebound the smoke to the actual Task `260` persisted system report and a non-shell Python assertion.
+- Verification: The opt-in live tournament revalidated that the baseline is completed, contains 210 cells, passes its gate, and has no external action authorized.
+
+### P-20260729-054 - Initial GitHub metadata burst exceeded the bounded live-audit timeout
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 15:50:00 +08:00
+- Source: Task `263.3` first live repository/license reconnaissance.
+- Symptom: A PowerShell loop over GitHub API endpoints timed out after 120 seconds with partial metadata; the partial response already showed that POPPER's repository license field was null.
+- Impact: The first aggregate command could not prove the complete live resource gate. It did not alter repository files or execute third-party code.
+- Evidence: The command exited `124`; the later bounded live smoke reached all 11 literature and 9 resource endpoints and reproduced the POPPER null-license result.
+- Root cause: The exploratory loop lacked per-resource bounded reads and deterministic retry handling.
+- Workaround: Probe one bounded response sample per resource with an explicit byte cap, timeout, expected markers, and captured status/hash.
+- Next action: Reuse `probe_web_resource` for Task `263.4` data/evaluator/license preflight and fail closed on an unreachable or ambiguous license.
+- Linked tasks: `263.3`, `263.4`.
+- Resolution: Replaced the burst with bounded typed probes and a separate executable baseline-smoke contract.
+- Verification: The opt-in live smoke passed in 239.04 seconds with 11/11 primary literature sources and 9/9 repository/data/license resources reached.
+
 ### P-20260729-053 - Concurrent desktop-client planning changed shared task and ignore files
 
 - Status: Mitigated
@@ -131,10 +243,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Run Task `263.3` across at least three tracks and connect only passing evidence to the new contracts. No track may enter novelty search unless its verified sources, independently reproduced baseline, objective evaluator, independent units, power/sensitivity, disjoint panel, cost, license, and publication endpoint all pass.
-- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`.
-- Resolution: Partially resolved by Task `263.2`: content-addressed one-claim certificates, two-stage conjunctive opportunities, baseline-reproduction evidence, and diverse bounded portfolios now fail closed. The problem remains open because existing candidate generators/selectors have not yet been replaced by a real Task `263.3` opportunity tournament or a Task `263.5` portfolio run.
-- Verification: Task `263.1` revalidated the immutable local endpoints, all 36 report locators, dependency graph, Vault links, and plan boundaries. Task `263.2` added 16 contract types and passed 16 focused tests, 999 full-suite tests with 17 opt-in skips at 87% coverage, repository-wide Ruff, and Mypy across 159 source files.
+- Next action: Run Task `263.4` only for `track.search-policy-causality`: independently reproduce the strong baseline, prove deterministic evaluators and complete data/license availability for the selected units, review the prospective variance/power assumptions, and freeze the budget-matched causal study before any development result is read. Any failure must convert the lane to reproduction diagnosis.
+- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`.
+- Resolution: Partially resolved by Tasks `263.2` and `263.3`: content-addressed front-end contracts now fail closed, and a real three-track tournament admitted only search-policy causality to baseline reproduction. Neural-operator compute and sequential-falsification license/baseline failures are retained as negative opportunities. The problem remains open until Task `263.4` reproduces the selected baseline and Task `263.5` replaces single-candidate search with a real bounded portfolio.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts and passed its full quality gates. Task `263.3` then reached 11/11 primary literature sources and 9/9 repository/data/license endpoints, revalidated the 210-cell Task `260` baseline, froze 12 confirmation units per track, selected exactly one track without a weighted score or hard-coded winner, and kept novelty search, confirmation reveal, release, and submission false.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

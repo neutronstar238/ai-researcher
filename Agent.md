@@ -64,6 +64,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 16:40:00 +08:00 - Codex - Task 263.3 live opportunity tournament
+
+- Request: Continue the publication-grade recovery path by testing multiple real research opportunities against AI Scientist, scientific-agent benchmark, method, resource, and Open Science evidence before any novelty search.
+- Files changed:
+  - `src/autoresearch/research/opportunity_tournament.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_opportunity_tournament.py`
+  - `tests/smoke/test_opportunity_tournament_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `263.3` hunk only; concurrent Task `264` changes remain user-owned and unstaged)
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-3-live-opportunity-tournament.md`
+- Summary:
+  - Added eight strict, provider-neutral, content-addressed tournament contracts for bounded HTTP resource probes, non-shell baseline command smokes, prospective normal-approximation power/sensitivity, data/license/compute audits, conjunctive assessments, deterministic no-weight ranking, report rendering/loading, and artifact manifests.
+  - Ran one real opportunity tournament across search-policy causality, automated neural-operator replication, and sequential falsification. It reached 11/11 primary literature sources and 9/9 repository/data/license endpoints and revalidated the immutable 210-cell Task `260` system baseline.
+  - Admitted only `track.search-policy-causality` to Task `263.4` clean-room baseline reproduction. Neural-operator replication failed the baseline/compute gates because the local 8151 MiB laptop GPU does not satisfy the released 16 GiB/RTX 4080-class preflight. Sequential falsification failed the baseline/license gates because the POPPER repository exposes no identifiable software license; its code was not executed.
+  - Each track prospectively froze 12 confirmatory units and achieved assumed-design sensitivity `0.822982`. This is explicitly recorded as an assumption-based design calculation, not empirical power, novelty, or a scientific contribution. The selected track must still prove its evaluator, data/license, variance assumptions, and strong baseline in Task `263.4`.
+  - Preserved the valid all-fail outcome and prohibited weighted/LLM gate overrides, novelty search, confirmatory evidence reveal, paid-model/cloud-GPU use, public release, and external submission. The final report hash is `de4769b74098650a1ed7a7f92fdd853459f468d5a35e4b6d152f0169779bf0ff`; manifest hash is `db810365f362de9fb06d541a7db1fc1634c1bed06d0f5b5b446e8b01a76ca932`.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_opportunity_tournament.py -q --no-cov`: 12 passed, covering all-fail/one-pass decisions, order invariance, time cut, insufficient power, source/nested tamper, bounded probes, non-shell commands, round trips, manifests, and schemas.
+  - Schema smoke: exported eight deterministic schemas with bundle SHA-256 `5609a30f5d4c9900aa8e500bcb61f4f222e7e3de553a9c81ca996239cfffe5d0`.
+  - `$env:AUTORESEARCH_OPPORTUNITY_TOURNAMENT_LIVE='1'; poetry run python -m pytest tests/smoke/test_opportunity_tournament_live.py -q --no-cov`: 1 passed in 239.04 seconds; 11/11 literature and 9/9 resource probes reached, and the 210-cell baseline assertion passed.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - Generated Markdown audit: three track-summary rows are contiguous before the first detail heading.
+  - `poetry run python -m pytest tests -q`: 1011 passed, 18 opt-in live tests skipped, 87% line coverage.
+  - `poetry run python -m ruff check src tests`: passed.
+  - `poetry run python -m mypy src/autoresearch`: passed across 160 source files.
+  - `git diff --check`: no Task `263.3` whitespace errors; only the unrelated concurrent `.gitignore` LF/CRLF warning recorded in `P-20260729-053`.
+- Problems:
+  - Updated open `P-20260729-048`: the real tournament now narrows the next gate to one track, while clean-room reproduction and portfolio execution remain open.
+  - Added and resolved `P-20260729-054` through `P-20260729-060` for the initial GitHub timeout, inferred module path, canonical hash normalization, lint/type defects, under-allocated first regression timeout, reader-facing Markdown table ordering, and two corrected Windows/shell inspection assumptions.
+  - Preserved mitigated `P-20260729-053`; concurrent Task `264` and `.gitignore` changes are not owned by this task.
+- Follow-up:
+  - Task `263.4`: independently reproduce `track.search-policy-causality`, verify deterministic non-visual evaluators and complete data/license access for the frozen units, review variance/power assumptions, and preregister the budget-matched causal study before reading development results. Convert to a reproduction diagnosis on any failure.
+
 ### 2026-07-29 18:05:00 +08:00 - Codex - Task 263.2 research portfolio contracts
 
 - Request: Begin implementing the optimized research path after Task `263.1`, making publication-grade opportunity and portfolio prerequisites executable without weakening scientific or external-action gates.

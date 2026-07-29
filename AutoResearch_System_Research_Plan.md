@@ -1148,3 +1148,24 @@ fidelity、非递增 survivor、exploration quota、总预算和最多一个 con
 `PortfolioSpec`。nested/load-time 与 in-memory mutation 都由 canonical hash 阻断，sealed evidence、
 结果后改 route、external submission/public release 继续 fail closed。该任务没有运行真实文献、模型或
 科学实验；真实三 track opportunity tournament 属于 `263.3`。
+
+`263.3` 已于 2026-07-29 完成真实机会赛。新
+`opportunity_tournament.py` 将 Task 263.2 的机会合同绑定到有界 HTTP source/repository/data/license
+probe、可执行 baseline smoke、prospective power/sensitivity、许可/数据/算力审计和不使用加权分数的
+确定性排序。真实轮核验 11/11 个论文主来源、9/9 个资源端点，并重新读取和校验 Task 260 的 210-cell
+系统基线；没有调用付费模型、下载确认数据、租用云 GPU 或授权外部动作。
+
+三条 track 只有 `track.search-policy-causality` 通过 `track_selection`，因此它只获得进入 `263.4`
+clean-room baseline reproduction 的资格。`track.neural-operator-replication` 的 MIT 代码和结果可达，
+但官方完整 campaign 预计需 RTX 4080 级 GPU 约两天；本机 RTX 5060 Laptop 仅 8151 MiB，PyTorch/
+显存预检失败，故由 `baseline_smoke_passed=false AND compute_feasible=false` 阻断。
+`track.sequential-falsification` 的 POPPER 论文和 DiscoveryBench 数据可达，但 POPPER GitHub
+元数据/仓库树没有可识别软件许可证，故代码未执行，并由
+`baseline_smoke_passed=false AND license_clear=false` 阻断。两条方向保留为带证据的负机会记录，不被
+“低成本”或“论文已发表”补偿过门。
+
+三条 track 均冻结 12 个独立确认单位和前瞻敏感性表；在各自预设单位标准差下，最小有意义效应对应
+normal-approximation power `0.822982`。该数值是结果前的设计敏感性，不是经验功效或贡献证据。
+`263.4` 必须在不读取确认结果的条件下复现 search-policy 强基线、核对所选 ScienceAgentBench
+任务的确定性 evaluator/许可证/数据可取得性并审查方差假设；若失败则把赛道转为 reproduction
+diagnosis，不进入 novelty search。

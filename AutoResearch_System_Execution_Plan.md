@@ -1403,6 +1403,24 @@ fidelity、blocked opportunity、sealed evidence 和结果后 route change。完
 功效、算力和 publication endpoint。Search-policy track 是当前第一优先，但可以在 opportunity hard
 gate 中被否决；不能硬编码成必选结果。
 
+`263.3` 已完成一次不硬编码 winner 的真实 opportunity tournament。新增 8 个内容寻址合同，把
+Task 263.2 的机会合同绑定到 source/repository/data/license probes、baseline execution smoke、
+prospective power/sensitivity、资源可行性和无加权总分的确定性排序。live smoke 核验 11/11 个论文
+主来源、9/9 个仓库/数据/许可端点，并重新执行 Task 260 的 210-cell 系统基线断言。
+
+| Track | Gate | Baseline smoke | Data | License | Compute | Prospective power | 决策 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `track.search-policy-causality` | true | true | true | true | true | 0.822982 | 仅进入 263.4 clean-room baseline reproduction |
+| `track.neural-operator-replication` | false | false | true | true | false | 0.822982 | 本机 8 GB 级 GPU 不满足发布方 16 GiB/RTX 4080 级预检与约两天完整 campaign |
+| `track.sequential-falsification` | false | false | true | false | true | 0.822982 | POPPER 公开仓库未识别到软件许可证，baseline 按 fail-closed 未执行 |
+
+三条 track 均冻结 12 个确认单位；`0.822982` 只是给定预设单位标准差时的结果前设计敏感性，不是经验
+功效或贡献证据。报告 hash 为
+`de4769b74098650a1ed7a7f92fdd853459f468d5a35e4b6d152f0169779bf0ff`，manifest hash 为
+`db810365f362de9fb06d541a7db1fc1634c1bed06d0f5b5b446e8b01a76ca932`，8-schema bundle hash 为
+`5609a30f5d4c9900aa8e500bcb61f4f222e7e3de553a9c81ca996239cfffe5d0`。该轮没有进入 novelty search、
+揭示确认结果、调用付费模型、租用云 GPU、公开发布或授权投稿。
+
 开发搜索比较 budget-matched one-shot、linear self-loop、portfolio 和 portfolio + cross-branch
 memory。Generator、Implementer 与 Evaluator 权限分离；Evaluator 只读取预注册 rubric、执行产物和
 原始指标，不读取作者叙事。Portfolio 使用 F0 静态、F1 最小执行、F2 多任务开发、F3 全保真开发四级
@@ -1434,8 +1452,9 @@ git diff --check
 - **P1（前端合同，2026-07-29 已通过）**：263.2 的 16-contract schema bundle、certificate/
   opportunity/portfolio 合取门、16 个 focused unit/property tests、999-test regression、全量
   Ruff/Mypy 和 fail-closed scientific/external boundaries 通过。
-- **P2（机会与复现）**：263.3—263.4 至少一条 track 通过机会门及强 baseline clean-room reproduction；
-  若全部失败，保留负机会报告并重新选题，不进入搜索。
+- **P2（机会与复现，部分通过）**：263.3 已从三条 track 中只允许 search-policy track 进入下一门，
+  并保留两条带证据的负机会记录；263.4 仍须完成强 baseline clean-room reproduction、evaluator/
+  数据/许可复核和方差假设审查。任一项失败都转为 reproduction diagnosis，不进入搜索。
 - **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
 - **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
 - **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类
