@@ -750,6 +750,34 @@ freeze 才能记录 `open_ended_experiment_code_generation=true`；Task 261.2.1 
 freeze。综述与反方审查保存在
 `autoresearch-vault/exploration/task-261-2-generated-mechanism-evidence-survey-2026.md`。
 
+Task 261.2.2 已把上述合同落成一次真实、受限且可追溯的机制开发。最终本地模型
+`qwen3.5-sprint:9b-8k` 生成 `Multi-Signal Degradation Gate with Source Counting`：模型拥有
+五信号风险表达式、接受表达式和 reason codes，固定的 `safe-expression-compiler-v1` 只提供
+JSONL I/O、逐项循环和输出序列化，不提供权重、阈值或科学判断，也不在失败时修补代码或制造
+fallback 结果。这里的 `open_ended_experiment_code_generation=true` 仅表示模型机制程序、
+精确编译源码和执行证据形成了完整因果链，不表示任意语言代码、无限制工具使用或独立选题。
+
+权威证据保存在 `runs/manual-live/task2612-mechanism-development-live-v12/`。manifest、proposal、
+mechanism program、generated source、generated-code evidence、round freeze 和 development
+screen hashes 分别为
+`55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`、
+`550515c2838b45f37b7536837e5afbafced123a03f5c176e73eaa93f6f782f2e`、
+`e0b4d9b7ce3ea29a5fe370c5edec8f8ff1830a763cf7a034e41ef2cf4f60d57d`、
+`7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`、
+`10102c8a087ee2604e4fc3f27c1a87988bab4032da8c080db9204c73a8f8d439`、
+`9db3ade055f721bcc54f6330843b7431354442b1403e9ad04ab19ec0f035424d` 和
+`a3e11132d6e48950a927e062a590b1943e09644e0f72d5312635afd64cfc16fc`。
+精确源码通过静态安全、单元、性质、秘密/网络/路径和 Harness gates；开发集接受 18/24 条声明，
+coverage 为 `0.75`，unsupported-accept rate 为 `0.0`，因此只进入
+`advance_to_preregistration`。确认结果仍未揭示、确认结果工件数为 0、scientific result 为
+false、external submission 为 false。v11 曾通过旧性质集却在闭区间数值边界发生除零，因此新增
+0/1 边界探针后被 v12 取代；v1-v11 全部作为失败或被取代证据保留。
+最终执行器审计又要求实际启动包装器与受审机制源码同时通过基线预检；冻结 v12 源码在该最终
+路径上的 replay episode hash 为
+`62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`。一次新的 v13
+模型诊断则因 `extreme_unsupported_abstains=false` 被性质门阻断；为避免反复采样直至成功，
+不再生成替代候选，v13 仅保留为 fail-closed 诊断证据。
+
 ---
 
 ## 19. 2026-07-28 vNext 架构升级：Graph、Harness、Loop 与 Open Science

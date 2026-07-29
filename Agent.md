@@ -64,6 +64,54 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-29 12:45:34 +08:00 - Codex - Task 261.2.2 generated mechanism development screen
+
+- Request: Continue the evidence-first system upgrade by completing task `261.2.2`: have the configured local model diagnose the frozen clean-v2 failure, author one executable mechanism, pass generated-code security and Harness gates, and reveal only development evidence before any independent confirmatory result exists.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/index.md`
+  - `autoresearch-vault/projects/autoresearch-ccfb/progress/task-261-2-2-generated-mechanism-development.md`
+  - `src/autoresearch/campaign/__init__.py`
+  - `src/autoresearch/campaign/cli.py`
+  - `src/autoresearch/campaign/mechanism_benchmark.py`
+  - `src/autoresearch/campaign/mechanism_development.py`
+  - `src/autoresearch/campaign/mechanism_sandbox.py`
+  - `src/autoresearch/experiments/executor.py`
+  - `tests/smoke/test_mechanism_development_live.py`
+  - `tests/unit/campaign/test_mechanism_development.py`
+  - `tests/unit/experiments/test_executor.py`
+- Summary:
+  - Added a provider-neutral, two-attempt diagnosis/proposal pipeline bound to the task `261.2.1` parent and 14-source brief. Every valid or invalid model response is retained with provider/model/input/response hashes and no credential value. Unsupported Ollama grammar caps are removed only from the transport schema while local Pydantic length and causal validation remain fail closed.
+  - Replaced brittle free-form source transport with a model-authored `structured_expression_v1` program. The restricted AST requires all five evidence signals, a composite risk score, source-count-aware acceptance, deterministic path-safe reason codes, and only numeric/boolean operators plus `min`, `max`, and `abs`. `safe-expression-compiler-v1` provides fixed JSONL I/O, iteration, clamping, and serialization only; it provides no scientific weights, thresholds, repair, or fallback result.
+  - Added three frozen development tasks and six disjoint confirmatory tasks, excluding all ten revealed parent tasks. The model receives only counts, hashes, gate thresholds, and the verified literature brief; no task payload or evaluator label enters its prompts. Confirmatory execution/result flags are schema-fixed false/zero during this task.
+  - Added exact-byte static review, generated-source unit and property probes, closed 0/1 numeric boundaries, degradation and unsupported-extreme checks, explicit no-secret subprocess environments, Python isolation-argument allowlisting, an audit-hook no-network/path sandbox, and one-process Harness/Event Journal episode evidence. The shared executor now preflights both a distinct actual trusted wrapper and the reviewed generated entrypoint so the wrapper split cannot bypass baseline security checks.
+  - Added `campaign mechanism-develop` and hash-verifying `mechanism-status` commands. Blocked runs exit 2, negative development exits 3, and ready development exits normally; none can authorize external submission.
+  - The authoritative local run is `runs/manual-live/task2612-mechanism-development-live-v12/`. Local `qwen3.5-sprint:9b-8k` authored `Multi-Signal Degradation Gate with Source Counting`; manifest, proposal, program, exact source, code-evidence, round-freeze, and screen hashes are `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`, `550515c2838b45f37b7536837e5afbafced123a03f5c176e73eaa93f6f782f2e`, `e0b4d9b7ce3ea29a5fe370c5edec8f8ff1830a763cf7a034e41ef2cf4f60d57d`, `7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`, `10102c8a087ee2604e4fc3f27c1a87988bab4032da8c080db9204c73a8f8d439`, `9db3ade055f721bcc54f6330843b7431354442b1403e9ad04ab19ec0f035424d`, and `a3e11132d6e48950a927e062a590b1943e09644e0f72d5312635afd64cfc16fc`.
+  - v12 accepted 18/24 development claims with coverage `0.75` and unsupported-accept rate `0.0`, yielding only `advance_to_preregistration`. Confirmatory results were not revealed or executed, confirmatory result artifact count is 0, scientific result is false, and external submission is false. Its narrow `open_ended_experiment_code_generation=true` records the model-program/source/execution causal chain, not unrestricted code, tools, topic invention, or a confirmatory result.
+  - Retained v1-v11 bring-up failures. In particular, v11 passed an earlier suite but failed a newly added closed-domain division-by-zero probe and was superseded. After the final executor audit, a fresh v13 model response was structurally valid but failed `extreme_unsupported_abstains`; it was preserved as blocked evidence and not followed by repeated model sampling. The frozen v12 source then passed the final dual-entrypoint Harness replay with episode hash `62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`.
+- Verification:
+  - `poetry run python -m pytest tests/unit/campaign/test_mechanism_round.py tests/unit/campaign/test_mechanism_development.py tests/unit/experiments/test_executor.py tests/smoke/test_mechanism_development_live.py -q --no-cov`: passed 35 deterministic, adversarial, executor, causal-chain, exact-byte, boundary, negative/blocked, and tamper tests; skipped the one opt-in live smoke.
+  - `$env:AUTORESEARCH_MECHANISM_DEVELOPMENT_LIVE='1'; $env:AUTORESEARCH_MECHANISM_DEVELOPMENT_OUTPUT='E:\AIResearch\runs\manual-live\task2612-mechanism-development-live-v12'; $env:AUTORESEARCH_MECHANISM_LLM_CONFIG='E:\AIResearch\configs\campaign\ollama-qwen35-sprint-8k.yaml'; $env:AUTORESEARCH_MECHANISM_EXPECTED_MODEL='qwen3.5-sprint:9b-8k'; $env:AUTORESEARCH_LOCAL_OLLAMA_API_KEY='ollama-local'; poetry run python -m pytest tests/smoke/test_mechanism_development_live.py -q --no-cov`: passed 1 real local-model test in 21.92 seconds.
+  - The post-audit v13 invocation is deliberately not counted as passing evidence: it returned exit 1 because the generated mechanism failed the preregistered extreme-unsupported property. Its terminal manifest `b2255004988064b4966ffa3fa26ee27d8e01a14d035d312dd44974eadb23356e` is blocked, has no round freeze or development screen, and keeps confirmatory/scientific/external flags false.
+  - Final-code frozen-source replay through `run_generated_code_harness`: passed both actual-wrapper and reviewed-source preflights, returned `accept` then `abstain`, used no network, reproduced source hash `7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`, and sealed episode hash `62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`.
+  - `poetry run airesearcher campaign mechanism-status runs/manual-live/task2612-mechanism-development-live-v12`: revalidated the terminal manifest and all 119 indexed artifacts, reporting ready for preregistration with confirmatory/scientific/external flags false.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q --no-cov`: passed all 3 Vault-link checks.
+  - `poetry run ruff check .`: passed the repository-wide lint gate.
+  - `poetry run mypy src/autoresearch`: passed all 156 source files with no issues.
+  - `poetry run python -m pytest -q`: passed 971 tests with 15 opt-in tests skipped in 128.58 seconds; repository line coverage remained 87%.
+  - `git diff --check`: passed with no whitespace errors; Git emitted only the existing informational CRLF-to-LF warning for the CCF-B Vault index.
+- Problems:
+  - Added and resolved `P-20260729-042` for the installed local Ollama API not initially listening.
+  - Added and resolved `P-20260729-043` for transport grammar, generated-source serialization/safety, boundary-test, and dual-entrypoint preflight defects; it also records the fail-closed v13 diagnostic.
+  - Updated `P-20260724-022`: task `261.2.2` creates no child paper or submission-readiness verdict, so claim-level paper auditing remains task `261.2.4`.
+  - Updated `P-20260724-023` to mitigated: one bounded model-authored mechanism now exists, while unrestricted autonomy and an independent scientific endpoint remain unproved.
+- Follow-up:
+  - Execute task `261.2.3` without changing v12: freeze its exact model program, compiler, source, environment, metric, bootstrap uncertainty, coverage/abstention gates, stop rule, and six untouched confirmatory tasks; run that panel once, forbid same-panel tuning, retain every failure/abstention, and require provenance-v2, Event Journal, clean-directory reproduction, and rollback evidence before creating any positive or negative scientific endpoint.
+
 ### 2026-07-29 11:26:14 +08:00 - Codex - Task 261.2.1 parent-bound mechanism foundation
 
 - Request: Begin executing the evidence-backed system upgrade by completing the first bounded slice of task `261.2`: freeze the formal clean-v2 negative parent, cross-search the relevant science and engineering evidence, and make every later generated-mechanism claim pass a causal contract before it can become a result.

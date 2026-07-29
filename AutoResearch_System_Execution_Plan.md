@@ -978,11 +978,29 @@ research brief 和外部投稿 false；foundation manifest、parent evidence、r
 于父哈希漂移、非负父结果、非机制修改、已揭示任务复用、面板重叠、代码审查/测试缺失、
 reviewed/executed bytes 不一致、claim/evidence 类型缺失和外部投稿授权。
 
-下一执行单元是 261.2.2，而不是确认实验：配置化本地模型读取冻结 brief，生成一个 parent-bound
-诊断、文献支持的机制差异和受限可执行代码；静态安全、单测、性质测试、秘密/网络/路径检查及
-Harness sandbox smoke 全部通过后，才允许查看 development 分区。模型不可用、schema 不合规或
-代码失败时保留 blocked/negative-development 证据，不允许 code-authored fallback 产生科学结果，
-confirmatory 分区继续 sealed。
+Task 261.2.2 已完成。配置化本地 `qwen3.5-sprint:9b-8k` 从冻结 brief 生成 parent-bound
+诊断和一个 model-authored `structured_expression_v1` 机制程序；版本化编译器只提供固定、
+非科研的 JSONL I/O/循环包装，模型表达式拥有全部机制信号、权重组合、阈值与接受规则。每次合法
+或非法模型响应均单独留存；传输 schema 适配本地 grammar，但长度仍由本地 Pydantic fail closed，
+且没有 code-side repair 或 fallback scientific result。
+
+最终 `task2612-mechanism-development-live-v12` 的 manifest 为
+`55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`。精确生成源码在开发
+结果出现前通过静态安全、单测、含闭区间数值边界的性质测试、秘密/网络/路径检查和 Harness
+sandbox smoke。三项 development tasks 共 24 条声明，接受 18 条且无 unsupported accept，
+coverage `0.75`，结论为 `advance_to_preregistration`。六项 confirmatory tasks 的结果仍未
+揭示，result artifact count 为 0；本任务没有科学 endpoint、论文或外部投稿授权。
+共享执行器的最终防御纵深同时预检实际 `sandbox_runner.py` 和受审 `run.py`；冻结 v12 源码的
+最终 replay episode hash 为
+`62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`。后续 v13
+模型输出虽满足结构 schema，却因极端无支持样本仍被接受而在 development 前被性质门阻断；
+该失败被保留，且不通过重复抽样替换权威候选。
+
+下一执行单元是 261.2.3：在任何确认执行前冻结 v12 的精确源码、程序、编译器、环境、指标、
+bootstrap 不确定性、coverage/abstention 门、停止规则和六项未揭示确认任务。确认面板只能在
+Harness/Control Graph 中执行一次；不得以同一面板调表达式、阈值或代码。只有完整保留失败与
+abstention、独立任务级裁决、事件/来源链、干净目录复现和 rollback 证据后，才允许创建正或负
+scientific endpoint。
 
 ---
 

@@ -7,7 +7,7 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,6 +33,9 @@ def execute_experiment_task(
     output_dirs: list[Path | str] | None = None,
     project_root: Path | str | None = None,
     entrypoint: str | Path | None = None,
+    review_entrypoint: str | Path | None = None,
+    python_arguments: Sequence[str] | None = None,
+    environment: Mapping[str, str] | None = None,
     commit_sha: str | None = None,
 ) -> ExecutionRun:
     """Execute an experiment task locally with sandbox runtime limits."""
@@ -48,6 +51,18 @@ def execute_experiment_task(
         Path(entrypoint) if entrypoint is not None else Path(task.entrypoint).name,
         SandboxAccessMode.READ,
     )
+    review_entrypoint_path = policy.require_access(
+        (
+            Path(review_entrypoint)
+            if review_entrypoint is not None
+            else entrypoint_path
+        ),
+        SandboxAccessMode.READ,
+    )
+    preflight_entrypoint_paths = [entrypoint_path]
+    if review_entrypoint_path != entrypoint_path:
+        preflight_entrypoint_paths.append(review_entrypoint_path)
+    isolated_arguments = _validated_python_arguments(python_arguments)
     timeout_seconds = _positive_int(task.timeout_seconds, default=1)
     memory_limit_mb = _optional_positive_int(task.resource_budget.get("memory_mb"))
     run = ExecutionRun(
@@ -60,11 +75,23 @@ def execute_experiment_task(
         metadata={
             "experiment_dir": root.as_posix(),
             "entrypoint": entrypoint_path.as_posix(),
+            "review_entrypoint": review_entrypoint_path.as_posix(),
+            "preflight_entrypoints": [
+                path.as_posix() for path in preflight_entrypoint_paths
+            ],
+            "python_arguments": isolated_arguments,
+            "explicit_environment_keys": (
+                sorted(environment) if environment is not None else []
+            ),
             "timeout_seconds": timeout_seconds,
             "memory_limit_mb": memory_limit_mb,
         },
     )
-    preflight_findings = _preflight_findings(root, entrypoint_path)
+    preflight_findings = tuple(
+        finding
+        for path in preflight_entrypoint_paths
+        for finding in _preflight_findings(root, path)
+    )
     static_findings = _static_preflight_findings(preflight_findings)
     if static_findings:
         run = _with_static_preflight_metadata(run, findings=static_findings)
@@ -100,10 +127,15 @@ def execute_experiment_task(
                 error_type="NetworkPreflightDenied",
             )
 
-    command = [str(python_executable), str(entrypoint_path)]
+    command = [
+        str(python_executable),
+        *isolated_arguments,
+        str(entrypoint_path),
+    ]
     process = subprocess.Popen(
         command,
         cwd=root,
+        env=dict(environment) if environment is not None else None,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -463,3 +495,16 @@ def _optional_positive_int(value: object) -> int | None:
     if isinstance(value, float) and value > 0 and value.is_integer():
         return int(value)
     return None
+
+
+def _validated_python_arguments(value: Sequence[str] | None) -> list[str]:
+    arguments = list(value or ())
+    allowed = {"-B", "-I", "-S"}
+    unknown = sorted(set(arguments) - allowed)
+    if unknown:
+        raise ValueError(
+            "sandbox python arguments are not allowlisted: " + ", ".join(unknown)
+        )
+    if len(arguments) != len(set(arguments)):
+        raise ValueError("sandbox python arguments must be unique")
+    return arguments

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from textwrap import dedent
 
@@ -238,6 +239,110 @@ def test_execute_experiment_task_rejects_entrypoint_outside_sandbox(
 
     with pytest.raises(PermissionError):
         execute_experiment_task(experiment_dir, _task(), entrypoint=outside)
+
+
+def test_executor_records_reviewed_entrypoint_and_explicit_environment(
+    tmp_path: Path,
+) -> None:
+    source = """
+        import json
+        from pathlib import Path
+
+        Path("metrics.json").write_text(
+            json.dumps({"score": 1.0}),
+            encoding="utf-8",
+        )
+    """
+    _write_run_py(tmp_path, source)
+    (tmp_path / "trusted_runner.py").write_text(
+        dedent(source).strip() + "\n",
+        encoding="utf-8",
+    )
+
+    environment = {
+        "PYTHONHASHSEED": "0",
+        "PYTHONIOENCODING": "utf-8",
+    }
+    for key in ("SYSTEMROOT", "WINDIR"):
+        if value := os.environ.get(key):
+            environment[key] = value
+
+    run = execute_experiment_task(
+        tmp_path,
+        _task(),
+        entrypoint="trusted_runner.py",
+        review_entrypoint="run.py",
+        python_arguments=["-I"],
+        environment=environment,
+    )
+
+    assert run.status is ExecutionStatus.SUCCESS, run.stderr
+    assert run.metadata["entrypoint"].endswith("trusted_runner.py")
+    assert run.metadata["review_entrypoint"].endswith("run.py")
+    assert [
+        Path(path).name for path in run.metadata["preflight_entrypoints"]
+    ] == ["trusted_runner.py", "run.py"]
+    assert run.metadata["python_arguments"] == ["-I"]
+    assert run.metadata["explicit_environment_keys"] == sorted(environment)
+
+
+def test_executor_preflights_actual_wrapper_and_reviewed_source(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        from pathlib import Path
+
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+    (tmp_path / "unsafe_runner.py").write_text(
+        dedent(
+            """
+            import subprocess
+
+            subprocess.run(["whoami"], check=False)
+            """
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    run = execute_experiment_task(
+        tmp_path,
+        _task(),
+        entrypoint="unsafe_runner.py",
+        review_entrypoint="run.py",
+    )
+
+    assert run.status is ExecutionStatus.FAILED
+    assert run.error_type == "StaticPreflightDenied"
+    assert run.limit_violations == ["static_preflight"]
+    assert "dangerous_command" in run.stderr
+    assert not (tmp_path / "metrics.json").exists()
+
+
+def test_executor_rejects_non_allowlisted_python_arguments(
+    tmp_path: Path,
+) -> None:
+    _write_run_py(
+        tmp_path,
+        """
+        import json
+        from pathlib import Path
+
+        Path("metrics.json").write_text(json.dumps({"score": 1.0}), encoding="utf-8")
+        """,
+    )
+
+    with pytest.raises(ValueError, match="not allowlisted"):
+        execute_experiment_task(
+            tmp_path,
+            _task(),
+            python_arguments=["-c"],
+        )
 
 
 def test_windows_process_group_hides_child_console(monkeypatch) -> None:

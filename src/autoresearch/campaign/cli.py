@@ -16,6 +16,12 @@ from autoresearch.campaign.mdbench import (
     MDBenchCampaignAdapter,
     audit_mdbench_holdout,
 )
+from autoresearch.campaign.mechanism_development import (
+    MechanismDevelopmentManifest,
+    MechanismDevelopmentStatus,
+    load_mechanism_development,
+    run_task2612_mechanism_development,
+)
 from autoresearch.campaign.models import (
     CampaignPolicy,
     CampaignRoundDesign,
@@ -523,6 +529,78 @@ def campaign_sprint_status(
     _echo_sprint_result(result)
 
 
+@campaign_app.command("mechanism-develop")
+def campaign_mechanism_develop(
+    foundation_dir: Annotated[
+        Path,
+        typer.Option(
+            "--foundation-dir",
+            help="Verified task 261.2.1 foundation directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-foundation-live-v3"),
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Absent or empty task 261.2.2 evidence directory.",
+        ),
+    ] = Path("runs/manual-live/task2612-mechanism-development-live-v1"),
+    run_id: Annotated[
+        str,
+        typer.Option("--run-id", help="Stable task 261.2.2 run ID."),
+    ] = "task2612-mechanism-development-live-v1",
+    llm_config: Annotated[
+        Path,
+        typer.Option(
+            "--llm-config",
+            help="Provider-neutral OpenAI-compatible model configuration.",
+        ),
+    ] = Path("configs/campaign/ollama-qwen35-sprint-8k.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option(
+            "--env-path",
+            help="Optional local environment file; secret values are never persisted.",
+        ),
+    ] = Path(".env"),
+) -> None:
+    """Generate, secure, and development-screen one parent-bound mechanism."""
+
+    try:
+        result = run_task2612_mechanism_development(
+            output_dir=output_dir,
+            foundation_dir=foundation_dir,
+            llm_config_path=llm_config,
+            env_path=env_path,
+            run_id=run_id,
+        )
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_develop: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_mechanism_development(result)
+    if result.status is MechanismDevelopmentStatus.BLOCKED:
+        raise typer.Exit(code=2)
+    if result.status is MechanismDevelopmentStatus.NEGATIVE_DEVELOPMENT:
+        raise typer.Exit(code=3)
+
+
+@campaign_app.command("mechanism-status")
+def campaign_mechanism_status(
+    mechanism_dir: Annotated[
+        Path,
+        typer.Argument(help="Existing terminal task 261.2.2 directory."),
+    ],
+) -> None:
+    """Verify every task 261.2.2 artifact hash without advancing the run."""
+
+    try:
+        result = load_mechanism_development(mechanism_dir)
+    except (OSError, RuntimeError, ValidationError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] campaign_mechanism_status: {exc}")
+        raise typer.Exit(code=2) from exc
+    _echo_mechanism_development(result)
+
+
 def _development_campaign_spec(
     *,
     campaign_id: str,
@@ -710,6 +788,19 @@ def _required_hash(value: str | None, label: str) -> str:
     if value is None:
         raise ValueError(f"{label} has no content hash")
     return value
+
+
+def _echo_mechanism_development(result: MechanismDevelopmentManifest) -> None:
+    typer.echo(f"run_id={result.run_id}")
+    typer.echo(f"status={result.status.value}")
+    typer.echo(f"manifest_hash={result.manifest_hash}")
+    typer.echo(f"proposal_hash={result.proposal_hash}")
+    typer.echo(f"generated_source_sha256={result.generated_source_sha256}")
+    typer.echo(f"round_freeze_hash={result.round_freeze_hash}")
+    typer.echo(f"development_screen_hash={result.development_screen_hash}")
+    typer.echo("confirmatory_payload_executed=false")
+    typer.echo("scientific_result_created=false")
+    typer.echo("external_submission_authorized=false")
 
 
 def _parse_deadline(value: str) -> datetime:

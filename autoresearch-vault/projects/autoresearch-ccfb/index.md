@@ -33,8 +33,14 @@ External submission remains human-gated.
 - [[task-261-2-1-mechanism-foundation|Task 261.2.1 mechanism foundation]] — verifies the
   immutable clean-v2 negative parent, freezes the verified 14-source research brief, and adds
   parent/proposal/code/panel/claim contracts. No new mechanism result exists yet.
+- [[task-261-2-2-generated-mechanism-development|Task 261.2.2 generated mechanism development]]
+  — records the model-authored structured mechanism, exact compiled source, security/test/Harness
+  evidence, and development-only advance decision. Confirmatory results remain sealed.
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 evidence survey]] —
   selective factuality, scientific-Agent evaluation, generated-code security, and
   claim-evidence synthesis for the next model-generated mechanism.
 - Final local foundation:
   `runs/manual-live/task2612-mechanism-foundation-live-v3/`; external submission remains false.
+- Final local development evidence:
+  `runs/manual-live/task2612-mechanism-development-live-v12/`; scientific result and external
+  submission remain false.

@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260729-043 - Live mechanism generation exposed transport, code-safety, and boundary-test defects
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-07-29 11:35:00 +08:00
+- Source: Task `261.2.2` real local-model generation, exact-code review, sandbox tests, and development screening.
+- Symptom: Superseded v1-v10 attempts failed at different pre-result gates: Ollama rejected unsupported `maxLength` grammar keywords; raw free-form code produced unsafe findings and initially exposed duplicate finding aggregation; later protocols double-encoded source or emitted unreliable source lines/chunks/triple-quoted payloads; one response omitted the required main entrypoint; another had invalid indentation; and one valid expression was rejected by a redundant accept-expression check. v11 passed the then-current test set, but a later adversarial probe found division by zero at legal 0/1 input boundaries. During final audit, the shared executor was also found to preflight only the reviewed generated file when a distinct trusted wrapper was launched. After that defense was corrected, a fresh v13 model response was schema-valid but failed the extreme-unsupported abstention property.
+- Impact: No failed attempt was allowed to open development evidence, reveal confirmatory results, create a scientific endpoint, or authorize external submission. Treating v11 as final would have admitted an executable mechanism that was not total over its declared input domain.
+- Evidence: Every attempt directory is retained. The final v12 generated a structured expression program, passed exact-source static review, three unit probes, six property checks including closed numeric boundaries, a no-network Harness smoke, and all three development tasks. Its development screen accepted 18/24 claims, accepted zero unsupported claims, and recorded `advance_to_preregistration`. v13 recorded `extreme_unsupported_abstains=false`, no development directory, no round freeze, and no confirmatory or scientific result. A final-code replay of the frozen v12 source preflighted both `sandbox_runner.py` and `run.py`, used no network, and returned accept/abstain for the supported/unsupported probes.
+- Root cause: The local Ollama JSON-grammar subset is narrower than the local Pydantic schema; free-form source serialization was too brittle for the selected small local model; early validation duplicated one semantic constraint; the original property suite sampled realistic values without explicitly covering every closed-domain extreme; and the initial reviewed/actual entrypoint split lacked a second baseline preflight. v13 demonstrates expected provider output variability rather than an executor regression.
+- Workaround: None remains necessary for task `261.2.2`. Transport schemas omit unsupported length keywords while local validation keeps the hard bounds; the model now authors a restricted expression program compiled by a fixed non-scientific wrapper; every valid or invalid response is retained; code-side repair and scientific fallback remain forbidden; 0/1 boundary probes are mandatory; and both the actual wrapper and reviewed source are preflighted. v13 is retained rather than repeatedly resampling the model until another candidate passes.
+- Next action: Task `261.2.3` must freeze and execute the exact v12 mechanism without changing its expressions, thresholds, compiler, source, or confirmatory panel after reveal.
+- Linked tasks: `261.2.2`, `261.2.3`.
+- Resolution: Added the structured-expression contract and compiler evidence, strict AST and exact-byte review, attempt-level artifacts, deterministic unit/property/adversarial tests, no-secret sandbox execution, the missing numeric-boundary probe, and dual-entrypoint executor preflight. Fixed the diagnostic test fixture's Windows environment, the pre-adapter Harness token budget, and the CLI invocation during bring-up without changing scientific evidence.
+- Verification: The authoritative v12 live smoke passed against `qwen3.5-sprint:9b-8k`; manifest hash is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`, source hash is `7b4961c62a7b8a253eb44d1e656dde3abc30dc1d6c1fc4e25b17745eca137025`, and property report hash is `9b769071a81b7d6bc45d588f2401f360dd1fccd1e57dfe6c918afaceb0b2e746`. The post-audit v13 smoke failed closed before development, and the frozen v12 final-code replay passed with episode hash `62dce7261cf92c4535d23e24e5002bcdbf350a3286e7e3a83ff3800fff24b1c1`. The final focused regression passed 35 tests with one opt-in smoke skipped.
+
+### P-20260729-042 - Installed local Ollama API was initially not listening
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-29 11:30:00 +08:00
+- Source: Task `261.2.2` opt-in local-model smoke bring-up.
+- Symptom: The first request to `127.0.0.1:11434` was refused even though Ollama was installed locally, so the live smoke could not reach the configured provider.
+- Impact: Only the initial live diagnostic was blocked. Mocked tests remained valid, and no fallback model, cloud credential, or fabricated response was used.
+- Evidence: The installed executable is `C:\Users\Z\AppData\Local\Programs\Ollama\ollama.exe`. After explicitly starting the local service, `GET /api/tags` returned HTTP 200 and listed both `qwen3.5:9b` and the frozen `qwen3.5-sprint:9b-8k` alias.
+- Root cause: The installed desktop application had not exposed a listening API server in the current session.
+- Workaround: Explicitly start the installed local executable before the opt-in smoke and probe `/api/tags` before model invocation.
+- Next action: Keep local-model smoke tests opt-in and fail closed when the configured endpoint or expected model is unavailable.
+- Linked tasks: `261.2.2`.
+- Resolution: Started the local service without changing provider configuration or repository secrets, verified the expected model alias, and reran the real smoke successfully.
+- Verification: `Invoke-WebRequest http://127.0.0.1:11434/api/tags` returned HTTP 200 with two local models; the final v12 smoke passed in 21.92 seconds.
+
 ### P-20260729-041 - Direct pytest entry point omitted the repository root for Campaign collection
 
 - Status: Resolved
@@ -371,24 +403,24 @@ update a factual problem entry below.
 - Workaround: Use clean-v2 only as a bounded-autonomy negative artifact; do not use it as the August 15 submission paper or as evidence of high innovation.
 - Next action: Task `261.2.4` must apply the new typed audit to the actual child manuscript, distinguish deterministic Harness behavior from model-driven policy in every method statement, add source-backed figure descriptions, check final-page balance, and require adequate adjacent-work positioning before a submission-readiness verdict.
 - Linked tasks: `261.1`, `261.2`.
-- Resolution: Deterministic code owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. Task `261.2.1` now defines typed evidence requirements for named work, method, experiment, result, limitation, and figure descriptions, but the remaining semantic audit is open until those contracts are applied to a real child paper in `261.2.4`.
-- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Task `261.2.1` unit tests additionally reject semantically incomplete claim requirements and report unsupported claim IDs without granting submission readiness.
+- Resolution: Deterministic code owns Results, Limitations, Conclusion, citation-token normalization, unknown-ID rejection, and bibliography union. Task `261.2.1` defines typed evidence requirements for named work, method, experiment, result, limitation, and figure descriptions. Task `261.2.2` creates no child paper or submission-readiness verdict, so the remaining semantic audit is still open until those contracts are applied in `261.2.4`.
+- Verification: Clean-v2 citation scan found inline/reference IDs both exactly `L012`, no bare IDs, no missing bibliography binding, and no unsupported positive result or general mechanism-failure conclusion. Task `261.2.1` unit tests reject semantically incomplete claim requirements; the task `261.2.2` v12 manifest independently records `scientific_result_created=false` and `external_submission_authorized=false`.
 
-### P-20260724-023 - The sprint is bounded catalogue selection, not open-ended mechanism invention
+### P-20260724-023 - Open-ended mechanism provenance remains bounded and is not unrestricted science
 
-- Status: Open
+- Status: Mitigated
 - Severity: High
 - Discovered: 2026-07-24 02:22:00 +08:00
 - Source: Task `261.1` autonomy audit of `task261-bounded-autonomous-clean-v2`.
-- Symptom: Local Qwen independently selected the primary question and executable program after runtime start, but the high-level brief, Route A import, three program definitions, fault suite, and experiment code were fixed by humans before the sprint.
-- Impact: The run proves one-command bounded autonomous selection, execution, analysis, manuscript generation, and PDF compilation. It does not prove that the system independently originated an unrestricted topic, invented a new mechanism, wrote the executed experiment code, or achieved a CCF-B-level original contribution.
-- Evidence: The autonomy audit records one prelaunch operator research decision, zero post-start manual research decisions, zero local-model fallbacks, `route_a_generated_inside_same_sprint=false`, `open_ended_experiment_code_generation=false`, and final level `bounded_autonomous`.
-- Root cause: Task `261.1` intentionally used an installed executable catalogue so a model-selected topic always mapped to a safe, testable program; task 260's prior method choices were also imported rather than created inside this invocation.
-- Workaround: None. The audit and user-facing documentation prohibit stronger autonomy claims.
-- Next action: Implement task `261.2.2`: let the configured local model produce a parent-bound diagnosis and executable mechanism, review and test the exact generated bytes, and reveal only the development partition. Confirmatory freeze and execution remain `261.2.3`.
+- Symptom: The clean-v2 Sprint independently selected only from a human-authored catalogue. Task `261.2.2` now proves one parent-bound model-authored structured mechanism and exact compiled implementation, but the high-level brief, evidence set, safety grammar, compiler wrapper, development/confirmatory fixtures, and approval boundaries remain human-frozen.
+- Impact: The evidence now supports a narrow claim that the local model authored and executed the scientific mechanism logic inside a constrained program. It still does not prove unrestricted topic invention, arbitrary code/tool autonomy, a confirmatory scientific effect, or a CCF-B-level original contribution.
+- Evidence: Clean-v2 records `open_ended_experiment_code_generation=false`. The v12 child round records `open_ended_experiment_code_generation=true` only after proposal, model program, exact generated source, review/test evidence, and development execution share a verified causal chain. The model-owned program hash is `e0b4d9b7ce3ea29a5fe370c5edec8f8ff1830a763cf7a034e41ef2cf4f60d57d`; confirmatory result count and scientific-result flags remain zero/false.
+- Root cause: Safe transition away from catalogue-only selection requires a restricted scientific program boundary and independent result-blind adjudication before broader autonomy claims are defensible.
+- Workaround: Keep the autonomy claim explicitly bounded to the model-authored structured mechanism and exact implementation. The compiler wrapper is fixed and non-scientific; protected actions, arbitrary execution, and external submission remain unavailable.
+- Next action: Complete task `261.2.3` without same-panel tuning, then assess only the resulting independent endpoint. Task `261.2.4` must separately audit manuscript claims and citations.
 - Linked tasks: `260.3`, `260.4`, `260.5`, `261.1`, `261.2`.
-- Resolution: Pending task `261.2.2`. Task `261.2.1` closes only the parent/brief/causal-contract foundation and does not change the catalogue-only scientific status.
-- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; audit hash is `23e8333334f9e8cb01f8a60303a672a992b628fa94bcabb90851f433561cc360`; the new parent evidence hash is `6ae565f23c963514d0c0ac7891a81244171749ca18604bcf734d3c704da652d5`.
+- Resolution: Task `261.2.2` mitigates the catalogue-only limitation for one parent-bound structured mechanism, but the broader issue remains open by design until independent confirmatory evidence and claim-level paper auditing exist.
+- Verification: Clean-v2 manifest hash is `eb3ac1c5411b4444e6512a5119ecff1afbbedb736ace12e2f7329d3e90c1e33e`; v12 mechanism-development manifest hash is `55c4604474517317114fa88fa389aced28ca5ba96f2eafee6832cfcceb24737e`; development coverage is `0.75`, unsupported-accept rate is `0.0`, confirmatory results remain unrevealed, and no scientific result exists.
 
 ### P-20260723-014 - Single-cycle services could not autonomously turn a negative result into a new scientific round
 
