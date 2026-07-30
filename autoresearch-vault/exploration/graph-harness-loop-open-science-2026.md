@@ -1,6 +1,7 @@
 ---
 title: AutoResearch vNext：Graph、Harness、Loop 与 Open Science 重构研究
 date: 2026-07-28
+updated: 2026-07-30
 status: accepted-plan
 task: "262.1"
 tags:
@@ -31,7 +32,7 @@ tags:
 目标读者是项目所有者、技术负责人和后续实现 Agent。检索优先级为：规范与标准、官方运行时文档、
 已发表论文、公开预印本、官方工程报告。2026 年预印本只作为新方向证据，不被当成已形成共识的标准。
 “Graph Engineering”和“Loop Engineering”目前仍是快速演化术语；本计划只采纳其中可验证、可测试的
-工程语义，不追随单一厂商命名。
+工程语义，不追随单一厂商命名。更新后的来源登记含 32 条规范、官方文档、论文或显式标注的预印本。
 
 本轮明确不扩大以下边界：
 
@@ -48,6 +49,8 @@ LangGraph 的当前官方运行时把 checkpoint、pending writes、thread、rep
 作为持久执行语义；Temporal 则把崩溃后恢复作为工作流运行时的基础保证。[S01][S02] 2026 年的
 Structured Graph Harness 预印本把单体 Agent Loop 解释为一个不透明的单就绪单元调度器，并提出将
 计划、执行、恢复分层；Execution Lineage 则强调稳定中间产物、显式依赖和按身份回放。[S03][S04]
+Graph of Trace 把工具调用、代码执行和中间步骤实时组织成有向执行图，并在小规模专家评估中改善了
+workflow 理解与可检查性；它支持可视化运行轨迹，但不能单独证明轨迹中的科学判断正确。[S29]
 
 这些资料支持“显式图优于隐式对话状态”的方向，但并不支持把所有关系塞进同一个图。因此 vNext 使用：
 
@@ -73,6 +76,13 @@ Agentic Harness Engineering 进一步要求组件、经验和决策三类可观�
 human-in-the-loop 和 tracing 作为运行时原语；Inspect AI 将 dataset、agent、tool、sandbox、approval、
 scorer、limits、trace 和 eval log 分离；Anthropic 的工程经验强调简单可组合 workflow、完整 trajectory、
 最终环境 outcome 和多次 trial，而不是只评最终文本。[S08][S09][S10]
+
+2026 年的 Code as Agent Harness 调研进一步把代码视为 reasoning、action、environment modeling 和
+execution verification 的共同运行基底，并把“超越最终成功的评测、不完整反馈下的验证、无回归演化、
+多 Agent 一致共享状态和高风险人工监督”列为 harness engineering 的核心未解问题。[S30] 另一项
+scientific workflow 预印本将系统拆为 LLM semantic intent、validated deterministic DAG generator 和
+专家编写 Skills 三层，把非确定性限制在意图抽取而不是 workflow 执行；这支持本项目继续使用结构化
+certificate/skill 作为输入、确定性图作为执行真相。[S31]
 
 因此 vNext 的 Harness 不是 prompt 模板，而是可版本化的 `HarnessSpec`：
 
@@ -113,6 +123,10 @@ wasAssociatedWith 等可扩展溯源语义；PROV-AGENT 展示了把 prompt、re
 交互接入端到端工作流溯源的方法。[S12][S13] RO-Crate 1.3 使用 JSON-LD 描述研究对象，Workflow Run
 RO-Crate 0.5 区分 prospective workflow 与 retrospective run provenance，并提供逐级更细的
 Process/Workflow/Provenance Run Crate profile。[S14][S15]
+
+Reasoning Provenance 预印本则区分了 checkpoint、普通 execution trace 与可查询的 intent、
+observation、inference、plan revision、evidence chain 和 delegation authority；其经验性验证仍有限，
+但该区分支持我们把 Decision/Validation/Evidence 作为 schema-level 记录，而不是事后从日志猜测。[S32]
 
 开放科学不等于公开所有数据。UNESCO 的原则是 “as open as possible, as closed as necessary”；
 FAIR4RS 要求软件拥有持久标识、版本、元数据、开放协议和可复用条件。[S16][S17] 因此 vNext 的发布包
@@ -469,6 +483,35 @@ vertical run 通过后，才弃用重复状态机和旧 audit/evidence 写路径
   arXiv:2606.07591v5, 2026.
 - [S28] Lei Xiong et al., “AutoResearchBench: Benchmarking AI Agents on Complex Scientific Literature
   Discovery,” arXiv:2604.25256, 2026.
+
+### 2026 补充：可检查 Graph、代码 Harness 与科研 Workflow
+
+- [S29] Tianci Gao et al., “Graph of Trace: Visualizing Execution Traces of Scientific Agent,”
+  arXiv:2606.15116, 2026. [arXiv](https://arxiv.org/abs/2606.15116)
+- [S30] Xuying Ning et al., “Code as Agent Harness,” arXiv:2605.18747, 2026.
+  [arXiv](https://arxiv.org/abs/2605.18747)
+- [S31] Bartosz Balis et al., “From Research Question to Scientific Workflow: Leveraging Agentic AI
+  for Science Automation,” arXiv:2604.21910, 2026.
+  [arXiv](https://arxiv.org/abs/2604.21910)
+- [S32] Neelmani Vispute, “Reasoning Provenance for Autonomous AI Agents: Structured Behavioral
+  Analytics Beyond State Checkpoints and Execution Traces,” arXiv:2603.21692, 2026.
+  [arXiv](https://arxiv.org/abs/2603.21692)
+
+### 10.1 Task 263.6 对 vNext 架构的实证反馈
+
+首次确认的 `invalid_confirmation` 给四个平面提供了一个比成功演示更有价值的压力测试。Control
+Graph 和 Harness 正确保留了 1,620 个 assignment、180 个 null control、失败语义、单次 reveal 和
+独立 clean-room replay；Evidence/PROV 层使 primary 与 replay scientific projection 可精确比较；
+Open Science 清单把冻结源码、输入、环境和报告绑定。因此系统没有把 69 个 null-control
+`runner_nonzero_exit` 隐藏成普通低分。
+
+缺口也很具体：现有 artifact/hash 验证能证明“字节和轨迹一致”，不能自动证明“跨 ARFF、CSV、JSON
+边界的标签语义一致”。23 个 classification task 的数值 train label 与字符串 sealed test label
+混合，稳定破坏 balanced-accuracy evaluator。vNext 因而需要在 scientific evaluator 前增加
+`EvaluatorCompatibilityCertificate`，把 schema dtype、semantic label token、fit/eval class
+vocabulary、metric input contract、null-control behavior、prediction replay 和双解释器一致性作为
+不可补偿门。Graph 记录语义映射，Harness 强制证书与输入可见性，Loop 在证书失败时停止，Open
+Science 保留 invalid endpoint；任何一层都不能单独声称“系统已会做可靠科学”。
 
 ## 11. 关联
 

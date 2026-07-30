@@ -1288,3 +1288,38 @@ numerical determinism、failure/cost/provenance audit 均通过；60 个 confirm
 LLM reviewer score 未进入科学判定，release/submission 仍为 false。当前不可发表的核心原因已从
 “没有真实开发实验”缩小为“尚无独立确认效应”：`263.6` 必须一次性执行未触碰的 60-task panel；
 确认失败就保留预注册阴性 endpoint，不允许回到同一 panel 调参或改写投稿路线。
+
+`263.6` 的第一次 one-use confirmation 已于 2026-07-31 完整执行，但终点是
+`invalid_confirmation`，不能改写成可信阴性。主执行与独立 clean-room replay 各完成
+1,620 个 policy assignment 和 180 个 null control；两者 scientific projection SHA-256 均为
+`17299042a7f3b851b7e16fdea183e6cd6c9622833bfb678277d001b96d570789`，证明无效结论可精确复现，
+而不是运行偶然漂移。完整报告、冻结和清单 hash 分别为
+`664993d04132dbfcff7aacb7431e499103c0698c2282c5325a6a42000401513a`、
+`7069ae95433cf7f83c86d35993dd3bd88020e919102d01594574c1860b3c8031` 和
+`c9c7e2993d3be15894579ee50867a7e1511184027d7cd2fcde427dabc2924567`。
+
+冻结主比较也没有给出支持方向：`portfolio_memory` 为 26/60，`linear_self_loop` 为 28/60，
+task-level risk difference `-0.033333`，保守 exact 95% interval
+`[-0.153229, 0.093699]`，exact McNemar `p=0.625`；CC18 与 CTR23 family risk difference
+分别为 `-0.024390` 和 `-0.052632`。这些数值失败了方向、SESOI `0.25`、区间和显著性门，
+但仍不能构成正式可信阴性，因为 null control 的完整性门失败。
+
+无效性的确定根因是 F3 classification label representation 不一致。23 个分类任务的训练 target
+从 CSV 被推断为数值，而 sealed label JSON 保留字符串；训练集 LabelEncoder 因而把预测反编码成
+数值，和字符串 test label 一起交给 `balanced_accuracy_score`，稳定触发
+`Mix of label input types (string and number)`。该模式严格覆盖 23 tasks × 3 seeds = 69 个
+null-control failure，并在 clean-room 中精确再现。行为哨兵仍为 0/60 task success，但
+69/180 artifact/replay/evaluator integrity failure 使 validity conjunction 失败。完整矩阵、来源 MD5、
+A/B baseline、网络/开发轨迹隔离、预注册统计、单次 reveal 和 clean-room 门均通过；这说明 Graph、
+Harness 和 provenance 能诚实暴露错误，却不能把有缺陷的测量变成科学结论。
+
+研究路径因此不直接“再找一个有利确认集”。首次面板已经消耗，只能用于带明显
+`technical/exploratory` 标记的 v2 repair replay。下一门先是跨 ARFF/JSON/CSV 类型边界的 evaluator
+compatibility certificate：dummy/prior 与所有允许 learner 必须在两套 pinned interpreter 中通过
+numeric/string label、dense/sparse、quoted/mixed-type、unseen-category、F3 label isolation 和 exact
+prediction replay；同时修复 next-version task-bundle resume。之后在已消耗面板运行技术重放并生成
+stop/advance certificate。若修复后的同一主张没有方向正确且实际可行的效应，就停止
+`portfolio_memory` 发表路线，返回 opportunity tournament；只有新的机制依据、development 证据、
+新 Research Question Certificate、全新独立 source group 和 zero-result freeze 同时成立，才允许再建
+untouched panel。`263.7` 在有效阳性或具预注册诊断价值的有效阴性之前保持阻塞，公开发布和投稿仍为
+false。

@@ -1550,3 +1550,56 @@ git diff --check
 - **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
 - **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类
   新颖性/作者/许可/venue/投稿审查；系统本身仍不执行投稿。
+
+### 27.7 263.6 首次无效确认与恢复执行门
+
+2026-07-31 的首次 one-use confirmation 已形成不可改写的
+`invalid_confirmation`，所以 P4 尚未通过。该状态不是运行未完成：primary 和 clean-room 各完整执行
+1,620 assignments、180 null controls、77,760 candidate-stage records；60 个任务、60 个独立 source
+group、120 个 A/B baseline、2,860 个 unique evaluation、11,804 次 logical cache reuse 和全部失败/
+成本记录均被保留。clean-room scientific projection 与 primary 精确相同：
+`17299042a7f3b851b7e16fdea183e6cd6c9622833bfb678277d001b96d570789`。
+
+冻结主比较结果为：
+
+| 端点 | `portfolio_memory` | `linear_self_loop` | 裁决 |
+|---|---:|---:|---|
+| task success | 26/60 | 28/60 | survivor 未优于 comparator |
+| favorable / unfavorable / tied | 1 / 3 / 56 | — | 方向不利 |
+| risk difference | -0.033333 | — | 未达到 SESOI 0.25 |
+| conservative exact 95% CI | [-0.153229, 0.093699] | — | lower bound 未高于 0 |
+| exact McNemar | p=0.625 | — | 未达到 0.05 |
+| CC18 / CTR23 risk difference | -0.024390 / -0.052632 | — | 两个 family 均为负 |
+
+这组观察值不支持 frozen claim，但不能被升级为可信阴性，因为 null-control validity 失败。零模型在行为
+上为 0/60 task success，却在 23 个 classification task 的全部三个 seed 上产生 69/180 个一致的
+nonzero-exit。冻结 runner 在训练侧从 CSV 得到数值标签，在 F3 sealed JSON 得到字符串标签，再将
+数值反编码预测与字符串 truth 送入 `balanced_accuracy_score`，触发
+`Mix of label input types (string and number)`。primary 与 clean-room 都精确复制该模式；冻结 v1
+源码和工件不得修改。
+
+恢复按以下不可越过的顺序执行：
+
+1. **263.6.0（已完成）**：保存并递归验证首次 invalid endpoint；修正 smoke 对合法 terminal status
+   的测试假设；记录根因、已消耗 panel 和未通过门，不改科学结果。
+2. **263.6.1（evaluator certificate）**：next-version runner 对 label token 做确定性 canonicalization，
+   区分 candidate failure 与 evaluator failure；在两套 pinned interpreter 上覆盖 classification/
+   regression、numeric/string labels、dense/sparse ARFF、quoted comma、mixed feature、unseen category、
+   dummy/prior、所有 allowed learner 和 F3 exact prediction replay。next-version orchestrator 同时修复
+   materialized task-bundle resume。
+3. **263.6.2（consumed-panel technical replay）**：绑定 v1 freeze/report/failure hashes，只允许
+   evaluator repair；结果必须标记为 technical/exploratory，不能满足 independent-confirmation 或
+   publication gate。预先冻结 stop/advance certificate；修复后若主效应不具正确方向和实际可行幅度，
+   关闭该 claim。
+4. **263.6.3（conditional new confirmation）**：只有 stop/advance 通过，才能重新经过 opportunity、
+   development、prospective power 和 zero-result freeze，使用全新且与 v1/v2 source group 不重叠的
+   panel。否则选择新的客观研究 track，不得 panel shopping。
+5. **263.7**：继续阻塞。invalid v1、consumed-panel v2、漂亮子组、未校正 secondary result 或 LLM
+   reviewer score 均不能替代有效确认。作者、许可、公开发布、venue 和投稿仍需显式人工批准。
+
+该恢复门把 2025—2026 自动科研文献中的共同限制转成工程约束：AI Scientist 类系统的 workshop/writeup
+成功不能替代 main-venue scientific validity；MLR-Bench/PaperBench 暴露的实现与复现错误必须由
+artifact-level verifier 拒绝；Co-Scientist/Robin/ERA 的有效部分是外部客观反馈、搜索和留出验证；
+POPPER 的证伪思想只用于结果前统计设计；Graph of Trace、Code-as-Harness、PROV-O、RO-Crate 和
+Workflow Run Crate 分别承担可检查轨迹、权限执行、因果谱系和开放研究对象，不承担“自动证明新颖性”
+的职责。

@@ -40,6 +40,86 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260731-026 - Classification label-type drift invalidated the first one-use confirmation
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-31 03:20:00 +08:00
+- Source: Task `263.6` completed primary/clean-room analysis and null-control validity conjunction.
+- Symptom: The first one-use endpoint is `invalid_confirmation`. The `null-prior` behavior control achieved 0/60 task successes, but 69/180 null-control rows had no valid artifact, prediction replay, or evaluator-integrity result. The pattern is exactly 23 OpenML CC18 classification tasks × all three frozen seeds, and every failure is `runner_nonzero_exit`.
+- Impact: The main comparison cannot be called a positive or credible-negative confirmation even though both complete matrices and their scientific projections reproduce exactly. The affected classification tasks also contaminate main-policy F3 validity. The 60-task panel is now consumed and cannot be reused as untouched confirmation after a repair.
+- Evidence: Frozen report `664993d04132dbfcff7aacb7431e499103c0698c2282c5325a6a42000401513a`, manifest `c9c7e2993d3be15894579ee50867a7e1511184027d7cd2fcde427dabc2924567`, and primary/clean-room scientific projection `17299042a7f3b851b7e16fdea183e6cd6c9622833bfb678277d001b96d570789` verify. A representative retained stderr raises `ValueError: Mix of label input types (string and number)`. Its task bundle stores the sealed label as a JSON string while `train.csv` contains an unquoted numeric-looking target. The frozen primary comparison is 26/60 versus 28/60, risk difference `-0.033333`, exact 95% interval `[-0.153229, 0.093699]`, and exact McNemar `p=0.625`; these values do not support the claim but are not a valid confirmatory negative.
+- Root cause: The F3 runner fits `LabelEncoder` on training labels after CSV dtype inference. Numeric-looking class labels become numbers, while separately sealed labels retain their source-string representation. Inverse-transformed predictions are therefore numeric and are scored against string truths. The pre-reveal compatibility probes covered mixed feature types and unseen categories but did not certify cross-serialization target-label semantics or require the null candidate to execute over every classification label representation.
+- Workaround: None can repair the v1 scientific endpoint. Preserve the frozen source and invalid report. Any v2 execution on this panel must be labeled consumed-panel technical/exploratory evidence and cannot satisfy independent-confirmation or publication gates.
+- Next action: Task `263.6.1` must build a two-interpreter evaluator-compatibility certificate with deterministic label canonicalization, complete dummy/allowed-learner coverage, and exact F3 replay before any new confirmation. Task `263.6.2` may run a repair-lineage-bound technical replay and must apply a pre-frozen stop/advance rule. A new untouched panel is allowed only through Task `263.6.3` after new mechanism/development justification; otherwise close the `portfolio_memory` publication claim.
+- Linked tasks: `263.6`, `263.6.0`, `263.6.1`, `263.6.2`, `263.6.3`, `263.7`.
+- Resolution: Not resolved. Task `263.6.0` preserves and diagnoses the invalid endpoint; it deliberately does not edit or refreeze the v1 runner.
+- Verification: The public loader recursively reconstructed the raw primary matrix, analysis, manifest, and clean-room controller. The validity-aware opt-in smoke passed in 178.47 seconds against the immutable artifact. Aggregation confirmed 69 failures, 23 affected tasks, three seeds per task, and only `runner_nonzero_exit`; the representative traceback and serialized label types confirm the root cause.
+
+### P-20260730-025 - Frozen confirmatory input preparation cannot resume an already materialized task bundle
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-07-30 23:24:00 +08:00
+- Source: Task `263.6` fourth opt-in confirmatory live-smoke attempt.
+- Symptom: After the earlier network interruption left complete per-task bundle files, the frozen `_prepare_task_bundle` resume branch validated those files but did not reconstruct the local `feature_columns` variable. The function later referenced it and raised `UnboundLocalError`.
+- Impact: A normal input-layer resume could not proceed. Modifying or refreezing the scientific orchestrator after the one-use reveal would have invalidated the prospective protocol. No policy assignment, null-control result, primary analysis, or clean-room result existed when the defect was encountered.
+- Evidence: `runs/manual-live/task2636-confirmatory-live-smoke-04.stdout.log` and `.stderr.log`; the formal freeze still binds orchestrator SHA-256 `3779a1d6a5f46d9a771adb34037c387b1cd5fbc96510d18b7a3778f61818bb30`.
+- Root cause: The fresh-build branch assigned `feature_columns`; the already-materialized-bundle branch did not.
+- Workaround: Use the unchanged frozen downloader to cache all 120 exact source payloads and verify all 60 data MD5 values; move, rather than delete, the partial 47 task bundles and 94 baseline results into `technical-interruptions/pre-resume-cache-v1`; then rebuild all task bundles and baselines in one frozen invocation from the complete local source cache.
+- Next action: After Task `263.6` is sealed, fix the next orchestrator version and add a regression test that resumes from a fully materialized task bundle. Do not alter the Task `263.6` frozen source.
+- Linked tasks: `263.6`.
+- Resolution: The workaround rebuilt 60/60 task bundles and 120/120 A/B baseline results and wrote the bound execution index without changing the freeze, source, candidate, policy, threshold, randomization, or statistical plan. The underlying frozen-source defect remains intentionally unchanged.
+- Verification: The fifth live attempt crossed input preparation and completed the primary 1,620-assignment/180-null matrix plus the independent clean-room 1,620-assignment/180-null replay. The archived partial evidence remains under the formal evidence root. Report `664993d04132dbfcff7aacb7431e499103c0698c2282c5325a6a42000401513a` recursively verifies; the next orchestrator version still requires the direct resume fix.
+
+### P-20260730-024 - OpenML HTTP 503 interrupted the first post-reveal input and baseline build
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-30 23:16:00 +08:00
+- Source: Task `263.6` second opt-in confirmatory live-smoke attempt, after the formal one-use reveal.
+- Symptom: The official OpenML split endpoint for task `361244` returned HTTP 503 after the frozen bounded retry policy. The run stopped after materializing 47 task bundles and 94 A/B baseline results.
+- Impact: The first post-reveal process did not reach any policy assignment, null control, analysis, or scientific endpoint. Blindly restarting from the network could repeatedly fail or obscure the retained partial evidence.
+- Evidence: `runs/manual-live/task2636-confirmatory-live-smoke-02.stdout.log` and `.stderr.log`; the one-use reveal ledger has ordinal `1`, while no primary result existed at interruption.
+- Root cause: A transient upstream OpenML service failure on one of the 120 frozen data/split requests.
+- Workaround: Prefetch every exact frozen source URL through the frozen `_bounded_get` implementation, retain byte caps and retry policy, verify all panel MD5 bindings, and execute scientific work only after the complete local cache exists.
+- Next action: Preserve content-addressed source caching as a pre-execution operational step for large confirmatory panels; network availability must not become a hidden scientific exclusion rule.
+- Linked tasks: `263.6`.
+- Resolution: All 120 source payloads were cached and all 60 data MD5 values verified. The fifth attempt rebuilt the complete 60-task/120-baseline input layer without another network interruption.
+- Verification: `confirmatory-execution-index.json` was written only after all 60 task bundles and 120 baseline results were complete and bound.
+
+### P-20260730-023 - Initial live-smoke assertions were not compatible with the frozen claim shape and exact resume
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 23:09:00 +08:00
+- Source: Task `263.6` first and third opt-in confirmatory live-smoke attempts.
+- Symptom: The first test-only assertion read `frozen_policy_memory_catalogue_hash` from the freeze root instead of the nested frozen claim. After the formal reveal and network interruption, a second test-only assertion incorrectly required the reveal ledger to be absent rather than validating the existing ordinal-one ledger. After the complete scientific run, a third assertion incorrectly allowed only positive or credible-negative status even though the frozen report contract also defines invalid confirmation.
+- Impact: Attempts one and three stopped in smoke-test code. The first stopped before reveal; the third stopped before resumed scientific execution. Attempt five completed and sealed all science but the final test assertion failed after report generation. None of these assertions changed the frozen scientific source, protocol, assignments, endpoint, or result inventory.
+- Evidence: `runs/manual-live/task2636-confirmatory-live-smoke.stdout.log`, `.stderr.log`, `task2636-confirmatory-live-smoke-03.stdout.log`, `.stderr.log`, and `task2636-confirmatory-live-smoke-05.stdout.log`/`.stderr.log`.
+- Root cause: The live test encoded a stale object-access path, assumed only a fresh rather than resumed one-use run, and preordained the terminal scientific class instead of deriving it from the validity conjunction.
+- Workaround: None retained.
+- Next action: Keep one-use live tests resume-aware while requiring the same freeze hash, reveal ordinal `1`, `previous_reveal_exists=false`, and exact report/manifest idempotency.
+- Linked tasks: `263.6`.
+- Resolution: Corrected only `tests/smoke/test_confirmatory_evaluation_live.py`; it now validates an existing ordinal-one reveal and accepts `INVALID_CONFIRMATION` only when at least one validity check is false. No frozen scientific source or evidence object was changed.
+- Verification: The final opt-in rerun loaded and recursively reconstructed the immutable completed invalid endpoint four times and passed 1 test in 178.47 seconds.
+
+### P-20260730-022 - Task 263.6 diagnostics crossed the lean repository and scientific runner environments
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30, during Task `263.6` pre-freeze verification.
+- Source: Initial focused test and full-suite command diagnostics.
+- Symptom: One early unit-test shape imported numerical packages that intentionally exist only in the pinned clean scientific environments. Separately, `poetry run pytest` invoked the `pytest.exe` entry point without the repository root on `sys.path`, causing collection/import failures; `poetry run python -m pytest` used the intended module entry point and collected normally.
+- Impact: The failed commands had no valid scientific or repository-quality verdict and changed no frozen input, result, or external state.
+- Evidence: The standalone controller/runner are deliberately excluded from source-tree dependency resolution and are exercised in clean environment A/B; the canonical full-suite invocation later collected and passed.
+- Root cause: Verification commands crossed the intentional dependency boundary and used a Windows console-script import path that differed from module execution.
+- Workaround: Keep numerical behavior in deterministic asset tests plus pinned clean-interpreter probes, and use `poetry run python -m pytest` as the canonical repository test entry point.
+- Next action: Preserve the lean repository/scientific execution-environment separation.
+- Linked tasks: `263.6`.
+- Resolution: Removed the main-environment numerical import from unit collection and reran the canonical commands.
+- Verification: Before reveal, `poetry run python -m pytest -q` passed 1,058 tests with 23 opt-in skips and 84% line coverage; repository-wide Ruff, Mypy over 167 source files, and `poetry check` passed.
+
 ### P-20260730-021 - Initial Task 263.5 diagnostics used incompatible shell and execution-asset checks
 
 - Status: Resolved
@@ -579,10 +659,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Execute Task `263.6` once on the untouched 60-task confirmation panel using only the frozen `portfolio_memory` policy; preserve a positive or negative endpoint without retuning, policy substitution, or claim switching.
-- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`, `263.6`.
-- Resolution: Partially resolved by Tasks `263.2`—`263.5`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, the replacement panel supplies 60 independent confirmatory tasks, the strong baseline and zero-result causal preregistration are frozen, and a real 12-candidate/9-policy/189-assignment portfolio now replaces the single-candidate path. Task `263.5` retained and repaired an evaluator failure without changing the scientific design, calibrated F1/F2 against F3 at the task level, and admitted exactly the preregistered `portfolio_memory` policy to confirmation. The problem remains open because the development primary comparison is not significant (`p=1.0`) and no independent confirmatory endpoint exists yet.
-- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` checked all 67 replacement records. Task `263.4.2` verified 14 wheel hashes, reproduced all seven development tasks in separate A/B environments, froze 60 thresholds and 804 assignments, and produced result-free preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`. Task `263.5` then completed all 189 development assignments and 9,072 stage rows with exact resume, zero main-policy integrity/budget failures, no confirmatory access, report hash `b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`, and status `ready_for_confirmation`.
+- Next action: Complete Task `263.6.1` evaluator certification, then run only a clearly labeled consumed-panel technical repair under Task `263.6.2` and apply its pre-frozen stop/advance decision. Do not automatically buy a new panel for the same unfavorable claim. If the corrected effect lacks a directionally positive and practically plausible signal, close `portfolio_memory` and return to the objective opportunity tournament; otherwise a new question/development certificate and disjoint untouched panel are required by Task `263.6.3`.
+- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`, `263.6`, `263.6.0`, `263.6.1`, `263.6.2`, `263.6.3`.
+- Resolution: Partially resolved by Tasks `263.2`—`263.6.0`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, the replacement panel supplied 60 independent confirmatory tasks, the strong baseline and zero-result causal preregistration were frozen, and a real 12-candidate/9-policy/189-assignment portfolio replaced the single-candidate path. Task `263.5` retained and repaired an evaluator failure without changing the scientific design, calibrated F1/F2 against F3 at the task level, and admitted exactly the preregistered `portfolio_memory` policy to confirmation. The first confirmation then completed but was invalid rather than positive/credible-negative: the main comparison was unfavorable and the null-control integrity gate exposed a cross-serialization classification-label defect. The problem remains open because no valid independent contribution endpoint exists and the current claim lacks positive confirmatory direction.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` checked all 67 replacement records. Task `263.4.2` verified 14 wheel hashes, reproduced all seven development tasks in separate A/B environments, froze 60 thresholds and 804 assignments, and produced result-free preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`. Task `263.5` completed all 189 development assignments and 9,072 stage rows with report `b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`. Task `263.6.0` preserved the invalid 60-task endpoint with report `664993d04132dbfcff7aacb7431e499103c0698c2282c5325a6a42000401513a`, exact clean-room projection, primary risk difference `-0.033333`, and a diagnosed 69-row null-control label-type failure.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

@@ -1,6 +1,7 @@
 ---
 title: AutoResearch 可发表性恢复：从单候选流水线到证据约束的科研组合搜索
 date: 2026-07-29
+updated: 2026-07-30
 status: accepted-plan
 task: "263.1"
 tags:
@@ -42,7 +43,8 @@ tags:
 
 来源优先级为同行评审论文、官方论文页/会议论文集、作者原始预印本和官方代码库。预印本均显式标注，
 不把作者系统的自评当作独立复制，也不把 workshop 接收、运行成功或生成 PDF 当成主会/主刊证明。
-本轮不执行外部投稿，不租用云 GPU，不修改已揭示科学 panel、阈值或 Gate B。
+最终来源登记含 44 条可定位文献或标准，其中 36 条作为正文编号核心来源、8 条作为相邻 benchmark、
+方法或批评性上下文。本轮不执行外部投稿，不租用云 GPU，不修改已揭示科学 panel、阈值或 Gate B。
 
 ## 2. 本地事实：系统已经产出，科学贡献门才是失败点
 
@@ -65,10 +67,10 @@ tags:
 
 ### 3.1 端到端系统：最强结果仍依赖边界、筛选或实验人类
 
-Nature 2026 的 AI Scientist 研究采用调查、超参数搜索、研究议程和消融组成的树式实验。作者向 ICLR
-workshop 提交三篇人工筛选后的论文，按目标 workshop 的历史统计估计达到约 70% 接收概率，但只有一篇
-通过首轮 workshop 审查，三篇都未达到 ICLR 主会标准。[S01] AI Scientist-v2 的关键增量是 progressive
-agentic tree search、实验管理和视觉反馈，而不是“写得更像论文”。[S02]
+Nature 2026 的 AI Scientist 研究采用调查、超参数搜索、研究议程和消融组成的树式实验。作者向当届
+接受率为 70% 的 ICLR workshop 提交三篇人工筛选后的论文，其中一篇达到预计接收分数，另外两篇未过门，
+三篇都未达到 ICLR 主会标准。[S01] AI Scientist-v2 的关键增量是 progressive agentic tree search、
+实验管理和视觉反馈，而不是“写得更像论文”。[S02]
 
 Google 的 AI Co-Scientist 使用 generate、debate、evolve、rank、proximity 与 meta-review 组成异步
 锦标赛，并展示了生物医学实验验证；科学家仍定义目标、提供约束并解释结果。[S03] Robin 和 Virtual Lab
@@ -83,6 +85,11 @@ Agent Laboratory 从人类想法开始，显示人类反馈可提高报告质量
 19 个候选中只有 6 个通过其最低可靠性与增量新颖性门，超过一半候选发现被代码审查否决。[S24]
 Data-to-paper 则把稿件数值反向追到代码和数据；它在简单回顾性问题上较可靠，问题复杂后仍需要人类，
 支持把论文视为执行证据的只读视图，而不是研究真相来源。[S25]
+
+与端到端写稿路线相比，ERA 主动把任务收窄为具有客观 quality metric 的 empirical software search：
+它让 LLM 在 sandbox 中改写代码，用 tree search 在历史节点间探索/回退，并把外部论文想法与成功实现
+重组后再以留出任务评分。[S29] 这比 narrative review 更接近可证伪实验，但 problem、data 和 metric
+仍由人类预先给定，因此支持的是“可评分科研软件搜索”，不能外推为自主选题或一般科学发现。
 
 ### 3.2 从想法到执行：纸面新颖性会在真实实施中消失
 
@@ -107,6 +114,7 @@ Execution-Grounded Automated AI Research 把 Implementer、Scheduler、GPU worke
 | DiscoveryBench | 264 个真实、903 个合成发现任务；最佳约 25% [S12] | 已给数据与目标，仍未解决 p-hacking 和大型多模态工作流 |
 | BLADE | GPT-4o 可执行分析可达 96%，但正确统计模型 coverage@10 低于 13% [S13] | “代码能跑”不等于科学分析成立 |
 | MLRC-Bench | 7 个前沿 ML 竞赛；最佳只弥合顶尖人类差距的 9.3%；LLM 创新评分与实测效果 Spearman `-0.06` [S14] | LLM 自评不能成为 novelty/effect 门 |
+| MLR-Bench | 201 个开放 ML 研究任务；论文可连贯成形，但被测 coding agent 在约 80% 情形产生虚构或未验证实验结果 [S30] | 文稿完整与实验真实性必须分开裁决 |
 | MLE-bench | 75 个 Kaggle 任务；o1-preview+AIDE medal rate 16.9%，pass@8 34.1% [S15] | problem/data/metric 已给定，不是完整 R&D |
 | RE-Bench | Agent 在 2 小时预算可领先人类，但 8/32 小时后人类反超 [S16] | 短时速度不能外推为长时科研控制能力 |
 | AIRS-Bench v3 | 20 个无 baseline-code 的 ML 任务中，仅 4 个任务某些运行超过人类 SOTA [S17] | 仍给定 problem/data/metric，且存在 context overflow 与累计调试漂移 |
@@ -117,6 +125,12 @@ Execution-Grounded Automated AI Research 把 Implementer、Scheduler、GPU worke
 `Novelty ∧ EmpiricalValidity ∧ Reproducibility ∧ EvidenceCoverage ∧ Robustness ∧ IndependentReview`
 
 任一项为 false，其他项的高分不能补偿。
+
+受控审计进一步把常见失败归纳为 benchmark 选择不当、data leakage、metric misuse 和 post-hoc
+selection；完整 trace 与代码比只读最终论文更容易发现这些问题。[S31] 更广泛的验证综述也把
+transparent verification，而不是规模化 hypothesis generation，视为 AI-driven discovery 的核心
+瓶颈。[S32] 因此本项目的 Harness 必须保存 evaluator、split、预算、失败和选择轨迹，确认 runner
+必须与开发轨迹隔离。
 
 ### 3.4 2026 前沿：可借鉴的是搜索和环境机制，不是未经复制的榜单数字
 
@@ -135,6 +149,18 @@ Execution-Grounded Automated AI Research 把 Implementer、Scheduler、GPU worke
   问题和三种 seed 上运行 9,623 次模型调用。[S23] 它与本仓库 PDE 路线直接相邻，但仍有单模型、prompt
   偏向、有限 ablation、未全量全保真验证等局限，因此更适合作为“独立复制 + 因果角色消融 + 多保真
   校准”的新研究对象，而不是直接照搬其性能结论。
+
+### 3.5 Open Science：把结果变成可交换研究对象，但不替代科学门
+
+FAIR 原则明确覆盖数据、算法、工具和 workflow，要求持久标识、丰富元数据、清晰许可和详细
+provenance；它解决的是第三方发现、访问、互操作和复用。[S33] W3C PROV-O 用 Entity、Activity、
+Agent 及 generation/usage/derivation 关系提供跨系统 provenance 交换模型，[S34] RO-Crate 1.3 与
+Workflow Run Crate 再把 workflow、软件、输入输出、环境和逐步运行封装为 JSON-LD research
+object。[S35][S36]
+
+三者共同支持本项目的 Graph/PROV/Open Science 导出，却不提供效应、功效、机制新颖性或独立确认。
+因此 Open Science 层应忠实投影冻结协议、完整分支流和最终裁决；若科学 endpoint 为阴性或无效，
+research object 也必须保持阴性或无效，不能因元数据完整而升级为发表贡献。
 
 ## 4. 根因分析：后端很强，前端搜索统计学不足
 
@@ -341,6 +367,29 @@ F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conj
 [[projects/ai_researcher_system/progress/task-263-5-budget-matched-development-search]]；下一步只能在 60 个
 未触碰确认任务上一次性裁决，不能根据确认结果换 arm、调阈值或改研究问题。
 
+### 8.2 Task 263.6 首次确认更新
+
+首次 one-use confirmation 已完成全部 1,620 个主 assignment、180 个 null control 和等量独立
+clean-room replay，但合法终点是 `invalid_confirmation`，不是阳性或可信阴性。冻结主比较中，
+`portfolio_memory` 为 26/60，`linear_self_loop` 为 28/60；risk difference `-0.033333`，保守
+exact 95% interval `[-0.153229, 0.093699]`，exact McNemar `p=0.625`。CC18/CTR23 family effect
+均为负，因此现有观察没有支持开发 winner 的独立优势。
+
+invalid 的直接原因不是统计不显著，而是 null-control integrity。23 个 classification task 的 train
+CSV target 被推断为数值，sealed test-label JSON 保留字符串；冻结 runner 由训练 LabelEncoder
+反编码出的预测仍为数值，和字符串 truth 混合评分，69/180 次一致退出。clean-room 精确复制相同
+scientific projection，证明系统的 Graph/Harness/Open Science 层成功保存并暴露了缺陷，却也说明
+验证层仍缺少跨序列化边界的 label canonicalization certificate。
+
+这次结果进一步支持本综述的核心判断：端到端生成论文或 workshop-level writeup 并不等于发表级
+科学。真正瓶颈是客观 evaluator 的语义正确性、未触碰确认、失败可见性、统计与实际效应、独立复现和
+人类新颖性审查的合取。恢复路径不是在已揭示的 60 个任务上继续调参，也不是只修 runner 后把同一
+面板称为 fresh confirmation；应先构建两环境 evaluator compatibility certificate，再做明确标注的
+consumed-panel technical replay 和预冻结 stop/advance decision。若修复后仍无方向正确且实际可行的
+效应，停止该 claim 并返回 opportunity tournament；只有新机制、重新开发和全新独立 panel 才可再次
+进入确认。详细证据见
+[[projects/ai_researcher_system/progress/task-263-6-0-invalid-confirmation-diagnosis]]。
+
 ## 9. 反方审查
 
 1. **组合搜索可能只是更昂贵的多次尝试。** 因此必须预算匹配、预注册 survival rule、保留全部分支，
@@ -369,13 +418,13 @@ F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conj
 
 ### 端到端 AI Scientist 与真实实验
 
-- [S01] Yamada et al., “Towards end-to-end automation of AI research,” *Nature*, 2026.
+- [S01] Lu et al., “Towards end-to-end automation of AI research,” *Nature*, 2026.
   [Nature article](https://www.nature.com/articles/s41586-026-10265-5)
 - [S02] Lu et al., “The AI Scientist-v2: Workshop-Level Automated Scientific Discovery via Agentic
   Tree Search,” arXiv:2504.08066, 2025. [arXiv](https://arxiv.org/abs/2504.08066)
-- [S03] Gottweis et al., “Towards an AI co-scientist,” *Nature*, 2026.
+- [S03] Gottweis et al., “Accelerating scientific discovery with Co-Scientist,” *Nature*, 2026.
   [Nature article](https://www.nature.com/articles/s41586-026-10644-y)
-- [S04] Ghafarollahi and Buehler, “Robin: a multi-agent system for automating scientific discovery,”
+- [S04] Ghareeb et al., “A multi-agent system for automating scientific discovery,”
   *Nature*, 2026. [Nature article](https://www.nature.com/articles/s41586-026-10652-y)
 - [S05] Swanson et al., “The Virtual Lab: AI agents design new SARS-CoV-2 nanobodies with experimental
   validation,” *Nature*, 2025.
@@ -386,6 +435,8 @@ F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conj
   Large Language Models,” NAACL 2025. [arXiv](https://arxiv.org/abs/2404.07738)
 - [S08] Edison Scientific, “Kosmos: An AI Scientist for Autonomous Discovery,” arXiv:2511.02824, 2025.
   [arXiv](https://arxiv.org/abs/2511.02824)
+- [S29] Aygün et al., “An AI system to help scientists write expert-level empirical software,”
+  *Nature*, 2026. [Nature article](https://www.nature.com/articles/s41586-026-10658-6)
 
 ### 复现、科学分析与研究 benchmark
 
@@ -408,6 +459,8 @@ F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conj
   Human Experts,” arXiv:2411.15114, 2024. [arXiv](https://arxiv.org/abs/2411.15114)
 - [S17] Lupidi et al., “AIRS-Bench: a Suite of Tasks for Frontier AI Research Science Agents,”
   arXiv:2602.06855v3, 2026. [arXiv](https://arxiv.org/abs/2602.06855)
+- [S30] Chen et al., “MLR-Bench: Evaluating AI Agents on Open-Ended Machine Learning Research,”
+  NeurIPS 2025. [NeurIPS paper](https://papers.nips.cc/paper_files/paper/2025/hash/ab8dd000d6f87f40061a73f8bca7fae4-Abstract-Datasets_and_Benchmarks_Track.html)
 - Huang et al., “MLAgentBench: Evaluating Language Agents on Machine Learning Experimentation,”
   ICML 2024. [PMLR](https://proceedings.mlr.press/v235/huang24y.html)
 - Si et al., “Can LLMs Generate Novel Research Ideas? A Large-Scale Human Study with 100+ NLP
@@ -449,10 +502,26 @@ F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conj
 
 - Messeri et al., “Risks of AI scientists,” *Nature Communications*, 2025.
   [Nature article](https://www.nature.com/articles/s41467-025-63913-1)
+- [S31] Luo, Kasirzadeh and Shah, “The More You Automate, the Less You See: Hidden Pitfalls of AI
+  Scientist Systems,” arXiv:2509.08713, 2025. [arXiv](https://arxiv.org/abs/2509.08713)
+- [S32] Cornelio et al., “The Need for Verification in AI-Driven Scientific Discovery,”
+  arXiv:2509.01398, 2025. [arXiv](https://arxiv.org/abs/2509.01398)
 - *Nature* editorial, “Why AI cannot do good science without humans,” 2026.
   [Nature editorial](https://www.nature.com/articles/d41586-026-01551-3)
-- Hao et al., “AI tools expand scientists’ impact but contract science’s focus,” *Nature*, 2025.
+- Hao et al., “AI tools expand scientists’ impact but contract science’s focus,” *Nature*, 2026.
   [Nature article](https://www.nature.com/articles/s41586-025-09922-y)
+
+### Open Science 与 provenance 标准
+
+- [S33] Wilkinson et al., “The FAIR Guiding Principles for scientific data management and
+  stewardship,” *Scientific Data*, 2016.
+  [Scientific Data article](https://www.nature.com/articles/sdata201618)
+- [S34] W3C, “PROV-O: The PROV Ontology,” W3C Recommendation, 2013.
+  [W3C recommendation](https://www.w3.org/TR/prov-o/)
+- [S35] Research Object community, “RO-Crate Specification 1.3.”
+  [RO-Crate specification](https://www.researchobject.org/ro-crate/specification/1.3/introduction.html)
+- [S36] Research Object community, “The Workflow Run RO-Crate Profile Collection.”
+  [Workflow Run RO-Crate](https://www.researchobject.org/workflow-run-crate/profiles/)
 
 ## 12. 关联
 

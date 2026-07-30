@@ -64,6 +64,57 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 03:38:17 +08:00 - Codex - Task 263.6.0 first invalid confirmation preservation and diagnosis
+
+- Request: Continue the publication-grade AutoResearch recovery, explain why real execution still does not produce a publishable contribution, incorporate current automated-science/Graph/Harness/Loop/Open Science research, execute the untouched confirmation, and optimize the path without weakening evidence gates.
+- Files changed:
+  - `src/autoresearch/research/confirmatory_evaluation.py`
+  - `src/autoresearch/research/assets/frozen_confirmation_policy_controller_v1.py`
+  - `src/autoresearch/research/assets/frozen_tabular_confirmation_runner_v1.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_confirmatory_evaluation.py`
+  - `tests/smoke/test_confirmatory_evaluation_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-0-invalid-confirmation-diagnosis.md`
+- Summary:
+  - Added the complete Task 263.6 one-use confirmation system: result-blind freeze/reveal, 60 independent tasks, three within-task seeds, nine policies/ablations, 1,620 assignments, 180 null controls, frozen development-terminal memories cloned per task, source/baseline/package bindings, standalone path-confined controller and scientific runner, deterministic task-level inference, exact McNemar and conservative risk-difference intervals, 20,000 paired/domain bootstraps, Holm correction, OOD/family/cost/failure reporting, and full independent clean-room replay.
+  - Kept the confirmatory controller unable to read raw development trajectories, primary replay results, network, secrets, or post-reveal policy changes. Test labels load only at F3, all primary/secondary/null/failure/cost/intervention outcomes are retained, and release/submission authorization remains false.
+  - Formally froze v1 before reveal. The one-use run completed primary and clean-room matrices, but the immutable terminal status is `invalid_confirmation`, not positive or credible negative. The primary/replay scientific projections are exactly equal.
+  - Preserved the observed main result without reinterpretation: `portfolio_memory` succeeded on 26/60 tasks versus 28/60 for `linear_self_loop`; favorable/unfavorable/tied counts are 1/3/56; risk difference is `-0.033333`; conservative exact 95% interval is `[-0.153229, 0.093699]`; exact McNemar is `p=0.625`; CC18 and CTR23 risk differences are both negative.
+  - Diagnosed the failed validity gate: `null-prior` has 0/60 task successes but 69/180 integrity failures, exactly 23 classification tasks × all three seeds. CSV inference made training labels numeric while sealed F3 JSON labels remained strings; the frozen runner therefore raised `Mix of label input types (string and number)`. Clean-room replay reproduced the same projection. This is an evaluator/serialization defect and also contaminates main-policy classification validity.
+  - Corrected only the live-smoke assertion that had preordained a positive/credible-negative terminal class. It now accepts invalid status only when the validity conjunction fails. The frozen orchestrator/controller/runner, endpoint, report, and manifest were not edited after reveal.
+  - Kept parent Task `263.6` open and added completed Task `263.6.0` plus recovery Tasks `263.6.1`—`263.6.3`: build a cross-serialization/two-interpreter evaluator certificate, run only a consumed-panel technical repair with a pre-frozen stop/advance rule, and permit a new untouched panel only after new mechanism/development justification.
+  - Updated the 2025—2026 primary-source synthesis with AI Scientist, Co-Scientist, Robin, ERA, MLR-Bench, verification/audit work, POPPER, Graph of Trace, Code as Agent Harness, scientific-workflow/provenance work, FAIR, PROV-O, RO-Crate, and Workflow Run Crate. The implementation lesson is objective feedback plus independent verification, not more self-scoring agents.
+- Verification:
+  - Formal freeze SHA-256: `7069ae95433cf7f83c86d35993dd3bd88020e919102d01594574c1860b3c8031`; source orchestrator SHA-256: `3779a1d6a5f46d9a771adb34037c387b1cd5fbc96510d18b7a3778f61818bb30`; controller SHA-256: `b6bd15cd1062494ebbf9576f43cb9ea1a009052c57afbbd7f9d846b92f9fd542`; runner SHA-256: `155bdb972729ca69ff4a1f6327b5c3584e4ffc1fdb1a46b46977ba9ca9446405`. Source and copied execution assets match exactly after completion.
+  - Complete endpoint: report `664993d04132dbfcff7aacb7431e499103c0698c2282c5325a6a42000401513a`; manifest `c9c7e2993d3be15894579ee50867a7e1511184027d7cd2fcde427dabc2924567`; analysis `9b391da3181ace68e75e94a1bff35e3fcd7f8748a01ad29a02b5f04a2eb2a427`; reveal `d27e25a450be075476519af052eaf6a1c34939c77376c8df87d32c1283b2fb52`; primary/clean-room scientific projection `17299042a7f3b851b7e16fdea183e6cd6c9622833bfb678277d001b96d570789`.
+  - The formal fifth live attempt completed all science in 14,016.72 seconds and correctly failed only the stale final smoke assertion after producing `invalid_confirmation`. After the test-only correction, `$env:AUTORESEARCH_RUN_TASK2636_LIVE='1'; ...; poetry run python -m pytest tests/smoke/test_confirmatory_evaluation_live.py -q --no-cov` passed 1 test in 178.47 seconds by recursively loading/reconstructing the immutable endpoint.
+  - Public `load_confirmatory_evaluation_report` recursively verified raw primary results, the deterministic analysis, all manifest files, top-level bindings, and the independent clean-room controller.
+  - `poetry run python -m pytest tests/unit/research/test_confirmatory_evaluation.py tests/smoke/test_confirmatory_evaluation_live.py -q`: 12 passed, 1 opt-in skipped.
+  - Final `poetry run python -m pytest -q`: 1,058 passed, 23 opt-in skipped, 84% coverage, in 176.56 seconds.
+  - `poetry run ruff check .`: passed.
+  - `poetry run mypy src`: passed across 167 source files.
+  - `poetry check`: exited zero with existing metadata deprecation warnings only.
+  - `git diff --check`, required-file presence, Task/Vault link, checked-child/open-parent, and three open recovery-task audits passed.
+- Problems:
+  - Added open high-severity `P-20260731-026` for the classification label-type drift that invalidated v1 confirmation.
+  - Updated resolved `P-20260730-023` with the validity-aware terminal-status assertion and final live-smoke pass.
+  - Updated mitigated `P-20260730-025` with the completed primary/clean-room endpoint and retained next-version resume fix.
+  - Added/resolved or retained `P-20260730-022`—`P-20260730-025` for environment-boundary diagnostics, OpenML HTTP 503, resume-aware live assertions, and the frozen materialized-bundle resume defect.
+  - Updated open `P-20260729-048`: the front end is materially stronger, but the first independent endpoint is invalid and the observed main direction is unfavorable, so no valid publishable contribution exists yet.
+- Follow-up:
+  - Task `263.6.1`: implement a v2 evaluator compatibility certificate and next-version task-bundle resume fix without modifying v1.
+  - Task `263.6.2`: run a lineage-bound, consumed-panel technical replay only; apply a frozen stop/advance decision and close the claim if the corrected effect lacks positive practical signal.
+  - Task `263.6.3`: only after a justified advance, return through opportunity/development and freeze a new disjoint panel. Otherwise select a different objective track.
+  - Task `263.7` remains blocked; invalid v1 evidence, a consumed-panel repair, pretty subgroups, LLM review, public release, and external submission cannot bypass valid independent confirmation and human approval.
+
 ### 2026-07-30 21:56:29 +08:00 - Codex - Task 263.5 budget-matched development search
 
 - Request: Continue the publication-grade research recovery path, explain why real system execution still failed to produce a publishable scientific result, operationalize lessons from automated-research literature, and execute the next gated research task without weakening confirmation or Open Science boundaries.
