@@ -64,6 +64,55 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 04:07:46 +08:00 - Codex - Task 263.6.1 evaluator compatibility certificate
+
+- Request: Continue the publication-grade AutoResearch recovery, explain why real execution is not yet publishable, incorporate automated-science/Graph/Harness/Loop/Open Science lessons, and implement the next gated repair without weakening or rewriting the consumed confirmation.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_tabular_confirmation_runner_v2.py`
+  - `src/autoresearch/research/evaluator_compatibility.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_evaluator_compatibility.py`
+  - `tests/smoke/test_evaluator_compatibility_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-1-evaluator-compatibility-certificate.md`
+- Summary:
+  - Added an independent v2 confirmation evaluator without changing the frozen Task 263.6 v1 orchestrator, controller, runner, endpoint, report, or evidence tree. Classification targets are read from CSV with lexical string semantics, sealed F3 truth is transformed through the training label vocabulary, and truth/prediction are scored in one encoded domain. Regression keeps finite-float semantics.
+  - Made label visibility a hard stage contract: F3 requires a hash-bound, path-confined label artifact; F1/F2 reject label fields, and the formal F2 workspaces contain no label file. The runner remains network-free and path-confined.
+  - Replaced undifferentiated process failure with retained `input`, `candidate`, and `evaluator` domains plus stable codes. Expected `invalid_probe` execution produces a structured candidate-domain artifact with process success; input/evaluator defects retain an artifact and return nonzero.
+  - Added a result-blind certificate orchestrator that calls only the public v1 freeze loader and fixed result-free source inventory. It does not read the consumed report, reveal, execution index, task bundles, primary results, or replay results and does not reopen the panel.
+  - Added four deterministic ARFF fixtures spanning dense/sparse encodings, numeric-looking and string classes, quoted commas, missing/mixed features, test-only unseen categories, and regression. The materializer builds ARFF→CSV/JSON inputs, hashes every boundary, reloads the already-materialized branch, reconstructs `feature_columns` from the manifest, and fails closed on tamper.
+  - Selected nine result-free valid representatives covering dummy/prior, both linear preprocessing decisions, LightGBM, XGBoost, random forest, extra trees, histogram gradient boosting, and the heterogeneous ensemble. The two pinned interpreters each ran every fixture/config twice, plus expected invalid-control and F2-label-isolation probes.
+  - Formal result is `certified`: 144/144 valid F3 probes succeeded; four invalid controls were attributed only to `candidate/intentional_invalid_probe`; four physical F2 label-isolation probes succeeded; null-prior, unexpected-candidate, evaluator, and input integrity-failure counts are all zero. All 15 conjunction checks pass, within-interpreter replay and cross-interpreter scientific projections are exact, and 1,242 artifacts are recursively content addressed.
+  - Kept the scientific boundary explicit: this certificate calibrates the evaluator only. It does not repair or reinterpret the v1 `invalid_confirmation`, make the consumed panel fresh, support `portfolio_memory`, authorize another panel, or unlock paper/publication/submission.
+- Verification:
+  - Result-free source freeze: `7069ae95433cf7f83c86d35993dd3bd88020e919102d01594574c1860b3c8031`. All protected v1 source hashes matched before and after certification.
+  - v2 confirmation runner SHA-256: `7bc71786216ba48addc3ab4212c2b18b9ffd1ed0da3a60cc18b942d23afc77fd`; certificate orchestrator SHA-256: `97c2152427c7a075731fb83fe421351ae7f9728d60d691f3e867a54e4b1fd1bc`; four-schema bundle SHA-256: `6b9a4353a819ba4f7abf8354b8c43b07b67b568327f9938240436f1a0e8b1d3`.
+  - Formal report SHA-256: `e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797b`; manifest SHA-256: `4e3251eb2453fffaa37a4f6849251396e3f1fc88f882739faa07a5e8d4dda73c`; recursive artifact count: 1,242.
+  - `poetry run python -m pytest tests/unit/research/test_evaluator_compatibility.py tests/smoke/test_evaluator_compatibility_live.py -q`: 8 passed, 1 opt-in skipped.
+  - `$env:AUTORESEARCH_RUN_TASK26361_LIVE='1'; ...; poetry run pytest tests/smoke/test_evaluator_compatibility_live.py -q -s`: 1 passed in 222.72 seconds; all 152 subprocess probes and exact reload/idempotency checks passed. This local-only certificate required no external network or credentials.
+  - An exploratory `poetry run pytest -q` and a focused console-entrypoint retry reproduced the known Windows import-path failure `ModuleNotFoundError: No module named 'tests'` at `tests/unit/campaign/test_sprint_migration.py`; neither command was accepted as a quality verdict.
+  - Canonical `poetry run python -m pytest -q`: 1,066 passed, 24 opt-in skips, 84% coverage, in 173.72 seconds.
+  - `poetry run ruff check .`: passed.
+  - `poetry run mypy src`: passed across 168 source files.
+  - `poetry check`: exited zero with existing project-metadata deprecation warnings only.
+  - `git diff --check`, recursive certificate load, task checkbox/open-parent audit, Vault link audit, source hash audit, and required-file presence passed.
+- Problems:
+  - Updated high-severity `P-20260731-026` from open to mitigated: v1 remains irreparably invalid, while the result-blind v2 evaluator now has a passing two-interpreter compatibility certificate.
+  - Updated `P-20260730-025`: the frozen v1 resume defect remains unchanged, and the next-version materializer now reconstructs/validates already-materialized feature metadata with deterministic regression and tamper tests.
+  - Updated resolved `P-20260730-022` with the repeated console-entrypoint failure and canonical `python -m pytest` full-suite pass.
+- Follow-up:
+  - Task `263.6.2`: freeze the repair lineage, consumed-panel/technical-only status, and stop/advance rule before running the exact claim with the certified evaluator.
+  - Close `portfolio_memory` if the corrected effect is not directionally positive and practically plausible. Do not shop for another panel.
+  - Task `263.6.3` remains conditional on a new mechanism, new development evidence, a new research-question certificate, a disjoint result-free panel, and prospective human review.
+  - Task `263.7`, public release, and external submission remain blocked.
+
 ### 2026-07-31 03:38:17 +08:00 - Codex - Task 263.6.0 first invalid confirmation preservation and diagnosis
 
 - Request: Continue the publication-grade AutoResearch recovery, explain why real execution still does not produce a publishable contribution, incorporate current automated-science/Graph/Harness/Loop/Open Science research, execute the untouched confirmation, and optimize the path without weakening evidence gates.

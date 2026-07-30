@@ -513,6 +513,29 @@ vocabulary、metric input contract、null-control behavior、prediction replay �
 不可补偿门。Graph 记录语义映射，Harness 强制证书与输入可见性，Loop 在证书失败时停止，Open
 Science 保留 invalid endpoint；任何一层都不能单独声称“系统已会做可靠科学”。
 
+### 10.2 Task 263.6.1 校准结果
+
+上述 `EvaluatorCompatibilityCertificate` 已实现并通过。certificate 没有扫描或加载已消耗确认的
+report、execution index、task bundle、primary result 或 replay result，只从 result-free freeze
+取得候选声明、冻结 asset hash、两套 interpreter 和 package snapshot。四个合成 ARFF fixture 经真实
+ARFF→CSV/JSON 边界覆盖 numeric-looking/string class、dense/sparse、quoted comma、mixed feature、
+unseen test category 和 regression；九个有效配置在两个环境各重复两次，形成 144 个成功 F3 probe，
+再加 4 个预期 candidate-domain invalid control 与 4 个物理无 labels 的 F2 probe。
+
+这次结果给四平面职责一个可执行定义：
+
+- Control Graph 只调度冻结 probe matrix 和 stop conjunction；
+- Harness 强制 path confinement、label 可见阶段、失败域和 network-off environment；
+- Evidence/PROV 绑定 1,242 个 source/config/input/log/result/schema/report artifact；
+- Loop 在任何 null/evaluator/input integrity failure 或 replay delta 上停止；
+- Open Science 明示这是 instrument calibration，不是 scientific confirmation。
+
+15/15 gate 通过，四类非预期 failure count 均为 0，within-/cross-interpreter scientific replay 精确；
+report hash 为 `e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797b`。
+这证明 Graph/Harness 可以承载语义校准门，但不证明 `portfolio_memory` 有效。下一步仍只能是明确
+`consumed-panel/technical/exploratory` 的 263.6.2，并由结果前 stop/advance rule 决定关闭主张还是
+重新进入全新 opportunity/development 流程。
+
 ## 11. 关联
 
 - 项目：[[projects/ai_researcher_system/index|AI-Researcher System Project]]

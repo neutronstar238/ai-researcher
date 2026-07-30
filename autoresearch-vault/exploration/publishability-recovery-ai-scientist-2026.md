@@ -390,6 +390,28 @@ consumed-panel technical replay 和预冻结 stop/advance decision。若修复�
 进入确认。详细证据见
 [[projects/ai_researcher_system/progress/task-263-6-0-invalid-confirmation-diagnosis]]。
 
+### 8.3 Task 263.6.1 evaluator certificate 更新
+
+跨格式语义门已经真实落地，而不是只写进计划。新 runner 在 CSV 入口把 classification target 固定为
+lexical string token，将 sealed F3 truth 映射进训练 vocabulary 后在同一整数空间评分；F1/F2
+工作目录和 config 都没有 label artifact。fit/predict、input binding 和 objective scoring 现在分别
+归入 candidate、input、evaluator failure domain，预期 invalid branch 会留下 candidate-domain artifact，
+不再用一个 `runner_nonzero_exit` 混淆研究方法失败和测量系统失败。
+
+正式 result-blind certificate 没有读取 v1 report、task bundle 或任何确认结果。它在两套 pinned
+interpreter 中对四个 dense/sparse/quoted/mixed/unseen-category fixture、九个有效 learner/config 和
+两次 exact repeat 执行 144 个 F3 probe，另有 4 个 invalid control 与 4 个 F2 label-isolation probe。
+15/15 checks 通过；null-prior、unexpected candidate、evaluator 和 input integrity failure 均为 0；
+within-role 与 cross-role scientific projection 精确一致。报告 hash 为
+`e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797b`。
+
+这一步说明从相关研究中真正可迁移的不是“再增加一个自评 agent”，而是把 evaluator 当成实验仪器做
+校准：PaperBench/MLR-Bench 类复现失败要求 artifact-level verifier；Graph of Trace 和
+Code-as-Harness 要求轨迹与权限边界；Co-Scientist/Robin/ERA 的客观反馈只有在 measurement contract
+正确时才有意义。certificate 只允许进入 consumed-panel technical replay，不把现有不利主效应改成
+可发表贡献。详细证据见
+[[projects/ai_researcher_system/progress/task-263-6-1-evaluator-compatibility-certificate]]。
+
 ## 9. 反方审查
 
 1. **组合搜索可能只是更昂贵的多次尝试。** 因此必须预算匹配、预注册 survival rule、保留全部分支，

@@ -1603,3 +1603,31 @@ artifact-level verifier 拒绝；Co-Scientist/Robin/ERA 的有效部分是外部
 POPPER 的证伪思想只用于结果前统计设计；Graph of Trace、Code-as-Harness、PROV-O、RO-Crate 和
 Workflow Run Crate 分别承担可检查轨迹、权限执行、因果谱系和开放研究对象，不承担“自动证明新颖性”
 的职责。
+
+#### 263.6.1 evaluator compatibility certificate（已完成）
+
+next-version evaluator 已在独立 source 和 run root 中冻结为
+`frozen-tabular-confirmation-runner-v2`。它不修改 v1 runner、controller、orchestrator 或任何首次
+确认工件。classification train target 以 pandas string dtype 读取，sealed F3 label 必须为 string，
+随后 truth 与 prediction 在同一个编码空间内交给 balanced accuracy；regression 继续要求有限浮点。
+F2 probe 的工作目录不复制 label file，config 也没有 label path/hash；任何非 F3 label binding 都
+fail closed。所有失败都有 `input`、`candidate` 或 `evaluator` domain 以及稳定 code，预期
+`invalid_probe` 返回 candidate-domain artifact，而输入/评价器错误返回非零进程码。
+
+certificate matrix 固定为：
+
+- 4 个 36/12 split fixture，覆盖 dense、sparse、numeric-looking/string class、quoted comma、
+  mixed-type、unseen category 与 regression；
+- 9 个有效代表配置，覆盖 dummy、linear（raw/scaled）、LightGBM、XGBoost、RF、Extra Trees、
+  HistGradientBoosting 与 heterogeneous ensemble；
+- primary/replay 两套既有 pinned interpreter，每个组合重复两次；
+- 144 个有效 F3 probe、4 个 intentional invalid control、4 个 F2 label-isolation probe，共 152 个；
+- within-role exact prediction/scientific replay、cross-role exact scientific projection、null-prior
+  zero-integrity、package/interpreter/source hash、static network audit、result-free source inventory 和
+  materialized-fixture resume 为不可补偿 conjunction。
+
+正式报告 `e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797b`
+以 `certified` 结束，15/15 checks 通过，四类非预期 failure count 均为 0；manifest
+`4e3251eb2453fffaa37a4f6849251396e3f1fc88f882739faa07a5e8d4dda73c`
+递归绑定 1,242 个 artifact。下一步只能进入 `263.6.2`：先冻结 consumed-panel、technical-only、
+stop/advance 和 publication-ineligible contract，再把 exact v1 claim 交给 certified v2 evaluator。

@@ -1323,3 +1323,23 @@ stop/advance certificate。若修复后的同一主张没有方向正确且实�
 新 Research Question Certificate、全新独立 source group 和 zero-result freeze 同时成立，才允许再建
 untouched panel。`263.7` 在有效阳性或具预注册诊断价值的有效阴性之前保持阻塞，公开发布和投稿仍为
 false。
+
+`263.6.1` 已于 2026-07-31 完成，不接触确认结果地校准了 measurement boundary。v2 runner 将
+classification target 在 CSV 入口强制保持 lexical string token，F3 truth 在同一个
+`LabelEncoder` vocabulary 中转成整数后评分，不再做数值/字符串 inverse-transform 混评；F1/F2
+配置若出现 `labels_path` 或 `labels_sha256` 会直接归入 input failure。运行器同时把候选
+fit/predict、输入绑定和 objective evaluator 失败分成三个结构化 failure domain，使“候选无效”和
+“测量系统无效”不再共享一个 nonzero-exit 语义。
+
+正式 certificate 只读取 result-free v1 freeze 及其冻结 execution assets；没有读取
+`confirmatory-evaluation-report.json`、execution index、task bundle、primary result 或 clean-room
+result，也没有重新打开 panel。四个确定性 fixture 覆盖 dense/sparse ARFF、numeric-looking/string
+class label、quoted comma、mixed-type feature、test-only unseen category 和 regression。两套 pinned
+interpreter 完成 144 个有效 F3 learner probe、4 个预期 `invalid_probe` candidate-domain control 和
+4 个物理无 label file 的 F2 isolation probe。15/15 合取门通过，null-prior、unexpected candidate、
+evaluator 和 input integrity failure 均为 0；每个解释器内 prediction replay 与两个解释器之间的
+scientific projection 都精确相等。报告和清单 hash 分别为
+`e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797b` 与
+`4e3251eb2453fffaa37a4f6849251396e3f1fc88f882739faa07a5e8d4dda73c`。这只解锁
+`263.6.2` 的 consumed-panel technical replay；不改变 v1 invalid endpoint，不提供 independent
+confirmation，也不解锁 paper/publication。
