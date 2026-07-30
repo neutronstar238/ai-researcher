@@ -64,6 +64,46 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-30 11:37:28 +08:00 - Codex - Task 263.4.0 search-policy feasibility diagnosis
+
+- Request: Continue the publication-grade research path, explain why the current system cannot yet produce a publishable scientific result, borrow from automated-research literature/benchmarks, optimize the study design, and proceed without weakening evidence gates.
+- Files changed:
+  - `src/autoresearch/research/search_policy_study.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_search_policy_study.py`
+  - `tests/smoke/test_search_policy_study_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `263.4` hunk only; concurrent Task `264` changes remain user-owned and unstaged)
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-3-live-opportunity-tournament.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-4-0-search-policy-feasibility.md`
+- Summary:
+  - Split Task `263.4` into an explicit pre-reproduction feasibility diagnosis (`263.4.0`), an adequately powered fully open objective panel build (`263.4.1`), and clean-room baseline reproduction/preregistration (`263.4.2`). The parent remains open.
+  - Added six strict, provider-neutral, content-addressed contracts for per-task output/evaluator/data/license audit; prospective two-sided exact McNemar power; complete claim/source/code/data/environment/command/seed/raw-prediction/metric/tolerance binding or an explicit pre-execution denial; a non-compensatory feasibility report; a four-arm/five-ablation preregistration constructible only after clean independent baseline recovery; and artifact manifests plus deterministic JSON Schemas.
+  - Replaced the Task `263.3` generic continuous normal approximation for the selected paired-binary endpoint. For SESOI `0.25`, alpha `0.05`, target power `0.80`, and frozen `p01={0,0.05,0.10}`, `n=12` exact power is only `0.054402`, `0.080152`, and `0.095619`; the corresponding minimum independent-task counts are `31`, `45`, and `60`. Seeds and trajectories are enforced as within-task repeats, observed power is not used, and the next panel must use at least the conservative 60-task requirement unless a different exact design is prospectively versioned.
+  - Audited the official 2026-04-30 ScienceAgentBench metadata without retaining task prompts, domain knowledge, gold programs, gold results, or evaluation results. The 102-row CSV hash is `7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`; the selected confirmation panel is exactly 9 image/model-judged outputs and 3 structured outputs. The public GitHub/Hugging Face trees do not expose the named task-specific evaluators or complete `benchmark_verified.zip`, and the SharePoint entry did not return the named anonymous attachment.
+  - Stopped before baseline execution and emitted `blocked_reproduction_diagnosis`. Report hash is `7c4d06eb82eabb250cf1b509242480bf27f079f65eaec6fbe564593c54b4aa3c`; manifest hash is `1d18b358d9b537ad083095d9897b542d6a1a8870b3b7393e6d017a41a1582a43`; six-schema bundle hash is `4541ecc3deb3d094bb826be532354998593539132b32921e5712cdb42560ba2c`. Novelty search, confirmation reveal, public release, and external submission remain false.
+  - The experimental-design and statistical-power skills materially shaped the corrected path: research tasks are the randomized/independent units, benchmark/domain are blocking factors, seeds are repeated measures, SESOI is prospective, and exact power matches the frozen paired-binary analysis rather than using observed power or pseudoreplication.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_search_policy_study.py -q --no-cov`: 10 passed in 0.64 seconds after exact-power caching, covering exact decision boundaries/power, invalid inputs, all hard blockers, image/model-judge denial, split leakage, invented blocked evidence, preregistration denial/admission, baseline failure, order invariance, nested tamper, persistence, manifests, and schemas.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py tests/unit/research/test_search_policy_study.py -q --no-cov`: 13 passed.
+  - `$env:AUTORESEARCH_SEARCH_POLICY_STUDY_LIVE='1'; $env:AUTORESEARCH_SEARCH_POLICY_STUDY_OUTPUT='runs/manual-live/task2634-search-policy-diagnosis-v1'; poetry run python -m pytest tests/smoke/test_search_policy_study_live.py -q --no-cov`: final hardened run passed in 39.02 seconds after prior transport/status diagnostics were repaired.
+  - Schema audit: six deterministic schemas with canonical bundle SHA-256 `4541ecc3deb3d094bb826be532354998593539132b32921e5712cdb42560ba2c`.
+  - `poetry run python -m pytest tests -q`: 1021 passed, 19 opt-in live tests skipped, 87% line coverage, in 224.50 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src/autoresearch`: passed across 161 source files.
+  - Task-owned `git diff --check`: passed.
+- Problems:
+  - Added open high-severity `P-20260730-001` for the inaccessible/model-judged/underpowered selected panel.
+  - Added and resolved `P-20260730-002` through `P-20260730-005` for initial contract normalization/type/evidence-clearing defects, SharePoint TLS/private-page handling, bounded reconnaissance path/transport/tooling failures, and the Windows pytest console-script namespace import.
+  - Updated open `P-20260729-048`: the front-end now rejects the invalid panel, but the publication path remains open until Tasks `263.4.1`—`263.5` create a powered open panel, reproduce the baseline, and execute the real portfolio.
+  - Preserved mitigated `P-20260729-053`; concurrent Task `264` and `.gitignore` changes are not owned by this task.
+- Follow-up:
+  - Task `263.4.1`: inventory and live-verify at least 60 independent, fully open, structured/objectively evaluated, bounded-compute tasks across at least two benchmark/task families. Do not count seeds, trajectories, archive files, or correlated subtasks as independent units. Only then may Task `263.4.2` reproduce and preregister.
+
 ### 2026-07-29 16:40:00 +08:00 - Codex - Task 263.3 live opportunity tournament
 
 - Request: Continue the publication-grade recovery path by testing multiple real research opportunities against AI Scientist, scientific-agent benchmark, method, resource, and Open Science evidence before any novelty search.

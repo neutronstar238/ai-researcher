@@ -1169,3 +1169,29 @@ normal-approximation power `0.822982`。该数值是结果前的设计敏感性�
 `263.4` 必须在不读取确认结果的条件下复现 search-policy 强基线、核对所选 ScienceAgentBench
 任务的确定性 evaluator/许可证/数据可取得性并审查方差假设；若失败则把赛道转为 reproduction
 diagnosis，不进入 novelty search。
+
+`263.4.0` 于 2026-07-30 完成 endpoint-specific 前置诊断，并推翻了把上述通用正态近似用于当前
+主终点的做法。冻结主终点是同一独立任务上 `portfolio+memory` 相对 `linear self-loop` 的配对二元
+成功差，故应使用前瞻性 two-sided exact McNemar/sign-test 枚举，而不是假设连续单位标准差。对
+SESOI `0.25`、alpha `0.05`、target power `0.80`，在不利 discordance 概率
+`p01={0.00,0.05,0.10}` 下，现有 `n=12` 的精确功效分别仅为
+`0.054402`、`0.080152`、`0.095619`，最小独立任务数分别为 `31`、`45`、`60`。因此后续面板采用
+敏感性集合中最保守的 `n>=60`；不得用 observed power、seed 数或 trajectory 数补足样本量。
+
+官方 ScienceAgentBench 2026-04-30 verified 元数据含 102 行，CSV SHA-256 为
+`7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`。对 Task 263.3 冻结的
+4 个 development 和 12 个 confirmatory ID 逐项审计后，confirmatory panel 中 9 个输出是图像、
+3 个是 CSV/NPY 结构化产物；官方评测说明图像由 GPT-4o judge。公开 GitHub 树包含通用 harness，
+但不含这 16 个 task-specific evaluator；Hugging Face 树只含元数据 CSV、README 和 verified
+Parquet，不含 `benchmark_verified.zip`。README 指向的 SharePoint 包在匿名探测中没有返回可下载
+工件。因此不能证明数据、评测器和客观确定性，baseline 未执行，状态依法转为
+`blocked_reproduction_diagnosis`。这不是科学结果，也没有读取 gold program/result、启动 novelty
+search、揭示确认结果或授权外部动作。
+
+接下来的研究路径不是在这 12 个任务上降阈值，而是先执行 `263.4.1`：从完全匿名可下载、许可清楚、
+task-specific evaluator 可固定、主终点不依赖模型 judge、算力可承受的任务中构建至少 60 个独立单位，
+并跨至少两个 benchmark/task family 按 benchmark/domain 分层随机。ScienceAgentBench 的非图像
+元数据候选、`autoresearch-sab-tasks`、ResearchGym、MLGym 等只能作为面板来源候选；任何单一来源
+都不能仅凭任务/文件条目数被宣称满足独立单位和功效。只有完整面板通过 live 数据/评测器/许可/算力
+审计，才允许 `263.4.2` clean-room 复现强 baseline 并冻结四臂、五消融、预算、随机化、停止规则和
+sealed confirmatory panel。

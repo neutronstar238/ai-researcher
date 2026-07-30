@@ -67,6 +67,20 @@ sensitivity calculation, not observed power, empirical assurance, novelty, or
 a publishable contribution. Task 263.4 must review the variance assumption
 before preregistration.
 
+## Subsequent endpoint-specific correction
+
+Task 263.4.0 replaced the tournament's generic continuous normal
+approximation for the selected track. The frozen primary endpoint is paired
+binary task success, so prospective two-sided exact McNemar enumeration is
+required. At `n=12`, SESOI `0.25`, and alpha `0.05`, exact power is only
+`0.054402` to `0.095619` across the frozen discordance sensitivity set; the
+most conservative scenario requires 60 independent tasks for 80% power.
+
+The tournament artifact remains an accurate record of its selection-time
+assumption, but `0.822982` is superseded and must not be used to justify the
+causal study. See
+[[projects/ai_researcher_system/progress/task-263-4-0-search-policy-feasibility]].
+
 ## Live and integrity evidence
 
 - Opt-in live command: `$env:AUTORESEARCH_OPPORTUNITY_TOURNAMENT_LIVE='1'; poetry run python -m pytest tests/smoke/test_opportunity_tournament_live.py -q --no-cov`

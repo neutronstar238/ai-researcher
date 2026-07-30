@@ -1350,7 +1350,9 @@ LLM reviewer、idea score、总分、workshop 历史接收率、运行成功或 
 | 263.1 | 交叉检索 AI Scientist/benchmark/方法/Open Science；审计本地失败；冻结恢复路径 | primary/official 来源实时核验；任务、计划、Vault 与 Problem/Agent 同步 |
 | 263.2 | 增加 `ResearchQuestionCertificate`、`ResearchOpportunity`、`PortfolioSpec` 与合取门合同 | deterministic schema/hash/tamper/leakage/diversity/budget/publication-boundary tests；全量质量门 |
 | 263.3 | 对至少三条独立研究 track 运行真实 opportunity tournament | 每条有 nearest-work matrix、baseline smoke、power/sensitivity、cost、许可和 disjoint-panel 证据；可以全部不通过 |
-| 263.4 | 对胜出 track clean-room 复现强 baseline，并冻结搜索策略因果实验 | baseline claim/code/data/env/result 一致；task suite、预算、null、ablation、确认 panel 和 stop rule 在结果前冻结 |
+| 263.4.0 | 在复现前审计 task/evaluator/data/license 与 endpoint-specific exact power | 逐任务客观性与可取得性合取门；配对二元终点精确功效；失败即 reproduction diagnosis，不启动 novelty |
+| 263.4.1 | 重建充分功效、完全开放、客观的多来源任务面板 | 当前冻结敏感性要求至少 60 个独立任务、至少两个 family、确定性 evaluator、许可/数据/算力与 disjoint split 全通过 |
+| 263.4.2 | 对合格面板 clean-room 复现强 baseline，并冻结搜索策略因果实验 | baseline claim/code/data/env/command/seed/raw prediction/metric/tolerance 一致；四臂、五消融、预算、随机化、stop rule 和 sealed panel 在结果前冻结 |
 | 263.5 | 运行 budget-matched 多分支、多保真 development search | 至少 8 个候选、3 个机制族和 1 个 null/rule arm；全分支/失败/成本保留；低/高保真校准与因果 ablation 完整 |
 | 263.6 | 运行未揭示 panel 的独立确认与 clean-room replay | 无 leakage/事后改门；任务级效应、区间/功效、多重比较、null 和 reproduction 门由确定性代码裁决 |
 | 263.7 | 构建 claim audit、paper 和 Open Science research object | 合取门全通过或忠实阴性；公开发布、署名、许可、venue 与投稿仍需显式人类批准 |
@@ -1421,6 +1423,37 @@ prospective power/sensitivity、资源可行性和无加权总分的确定性排
 `5609a30f5d4c9900aa8e500bcb61f4f222e7e3de553a9c81ca996239cfffe5d0`。该轮没有进入 novelty search、
 揭示确认结果、调用付费模型、租用云 GPU、公开发布或授权投稿。
 
+`263.4.0` 已完成 selected-track 的 endpoint-specific 审计。此前 `0.822982` 是 tournament 阶段的
+通用连续近似，不能作为冻结配对二元主终点的功效证明，已由 two-sided exact McNemar 枚举取代：
+
+| p(favorable) | p(unfavorable) | SESOI | n=12 exact power | n for 80% power |
+|---:|---:|---:|---:|---:|
+| 0.25 | 0.00 | 0.25 | 0.054402 | 31 |
+| 0.30 | 0.05 | 0.25 | 0.080152 | 45 |
+| 0.35 | 0.10 | 0.25 | 0.095619 | 60 |
+
+独立单位只能是科研任务；seed/trajectory 是单位内重复。确认面板采用冻结敏感性中最保守的
+`n>=60`，且不得报告 observed power。
+
+实时 official-source smoke 固定了 102 行 ScienceAgentBench 元数据 CSV
+`7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`，并审计原先 4+12 个 ID。
+确认集精确构成为 9 个图像输出、3 个 CSV/NPY 输出；README 明示图像评测依赖 GPT-4o。GitHub 公开树
+只有通用 evaluation harness，没有所选 task-specific evaluator；Hugging Face 公开树只有元数据和
+verified Parquet，没有完整 `benchmark_verified.zip`；外部 SharePoint 入口没有向匿名探测返回可下载
+数据包。故 16 个任务当前均不能同时证明完整数据、评测器源代码和确定性，baseline 按前置门未执行。
+
+新增 6 个内容寻址合同把 task audit、exact power、完整或 pre-execution baseline binding、feasibility
+report、四臂五消融 preregistration 和 artifact manifest 固化为不可补偿合取门。live report 状态为
+`blocked_reproduction_diagnosis`，hash
+`7c4d06eb82eabb250cf1b509242480bf27f079f65eaec6fbe564593c54b4aa3c`，manifest hash
+`1d18b358d9b537ad083095d9897b542d6a1a8870b3b7393e6d017a41a1582a43`。它没有读取 gold/result、执行
+baseline、启动 novelty、揭示确认结果或授权 release/submission。
+
+`263.4.1` 必须先构建至少 60 个完全开放、结构化确定性 evaluator、许可清楚且算力有界的独立任务，
+覆盖至少两个 benchmark/task family，并按 benchmark/domain blocking。只有该面板逐 family 通过 live
+数据、evaluator、许可和 compute smoke，`263.4.2` 才能 clean-room 复现 baseline 并生成真正预注册；
+否则停止或重设计 claim。
+
 开发搜索比较 budget-matched one-shot、linear self-loop、portfolio 和 portfolio + cross-branch
 memory。Generator、Implementer 与 Evaluator 权限分离；Evaluator 只读取预注册 rubric、执行产物和
 原始指标，不读取作者叙事。Portfolio 使用 F0 静态、F1 最小执行、F2 多任务开发、F3 全保真开发四级
@@ -1452,9 +1485,10 @@ git diff --check
 - **P1（前端合同，2026-07-29 已通过）**：263.2 的 16-contract schema bundle、certificate/
   opportunity/portfolio 合取门、16 个 focused unit/property tests、999-test regression、全量
   Ruff/Mypy 和 fail-closed scientific/external boundaries 通过。
-- **P2（机会与复现，部分通过）**：263.3 已从三条 track 中只允许 search-policy track 进入下一门，
-  并保留两条带证据的负机会记录；263.4 仍须完成强 baseline clean-room reproduction、evaluator/
-  数据/许可复核和方差假设审查。任一项失败都转为 reproduction diagnosis，不进入搜索。
+- **P2（机会与复现，部分通过）**：263.3 已从三条 track 中只允许 search-policy track 进入下一门；
+  263.4.0 随后用 endpoint-specific exact power 和逐任务 live 审计否决原 12-task panel，并形成
+  reproduction diagnosis。263.4.1 仍须构建至少 60 个 fully open/objective 独立任务，263.4.2 再
+  clean-room 复现与预注册。任一门失败都不进入 novelty search。
 - **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
 - **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
 - **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类

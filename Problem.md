@@ -40,6 +40,86 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260730-005 - Console-script pytest omitted the repository root for a namespace test helper
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 11:31:00 +08:00
+- Source: Task `263.4.0` first repository-wide regression invocation.
+- Symptom: `poetry run pytest tests -q` stopped during collection because `tests/unit/campaign/test_sprint_migration.py` could not import the tracked namespace helper `tests.sprint_migration_support`.
+- Impact: That full-suite invocation produced no regression verdict. Focused Task `263.4.0` tests, Ruff, and Mypy were unaffected.
+- Evidence: The tracked helper exists and plain Python resolves both `tests` and `tests.sprint_migration_support`; the console-script invocation failed with `ModuleNotFoundError`, while `poetry run python -m pytest tests/unit/campaign/test_sprint_migration.py -q --no-cov` collected and passed all seven tests.
+- Root cause: On this Windows Poetry environment, invoking the pytest console script did not place the repository root on `sys.path`; `python -m pytest` retains it and matches the repository's established full-suite command.
+- Workaround: Use `poetry run python -m pytest ...` for repository tests that import tracked helpers through the `tests` namespace.
+- Next action: Keep the module-form pytest invocation in verification logs; a separate packaging task may add an explicit test package only if repository-wide policy chooses that change.
+- Linked tasks: `262.8.3`, `263.4.0`.
+- Resolution: Re-ran the previously failing file and the full repository through the module-form command; no unrelated test file was edited.
+- Verification: `poetry run python -m pytest tests/unit/campaign/test_sprint_migration.py -q --no-cov`: 7 passed in 5.58 seconds. `poetry run python -m pytest tests -q`: 1021 passed, 19 opt-in tests skipped, and 87% coverage.
+
+### P-20260730-004 - Task 263.4 reconnaissance hit bounded path, transport, and shell-tooling failures
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 10:10:00 +08:00
+- Source: Task `263.4.0` read-only baseline and benchmark feasibility reconnaissance.
+- Symptom: An initial lookup guessed `systems-preregistration.json` instead of the actual Task `260` `preregistration.json`; one `Invoke-WebRequest` retry for the official CSV ended with an unexpected EOF; bundled Python `urllib` failed an HTTPS Range request during SSL setup; and one combined temporary-file command was rejected by the command policy before execution.
+- Impact: Those individual diagnostics produced no usable evidence. They did not modify tracked source, benchmark data, scientific results, or external state.
+- Evidence: Repository search located the real preregistration filename; bounded `curl.exe` retries fetched the official 278,626-byte CSV with SHA-256 `7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`; a system-curl range request plus local parser read the public ZIP directory; the rejected combined command did not run.
+- Root cause: One inferred artifact name and environment-specific Windows HTTPS/shell behavior were used before choosing the repository-search and system-curl paths already known to work.
+- Workaround: Resolve persisted artifacts with `rg`; use bounded system curl with retry and explicit local paths for this Windows environment; keep filesystem operations in native PowerShell.
+- Next action: Reuse the committed opt-in live smoke rather than ad hoc download commands for future panel audits.
+- Linked tasks: `260`, `263.4.0`, `263.4.1`.
+- Resolution: All required official metadata/repository observations were reobtained through bounded, auditable commands, and the final live smoke passed.
+- Verification: The final opt-in Task `263.4.0` live smoke passed in 39.02 seconds and reproduced the official CSV digest, 102-row count, selected task inventory, repository trees, and blocked artifact result.
+
+### P-20260730-003 - First live feasibility smoke crashed on SharePoint TLS instead of recording unavailability
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 11:15:00 +08:00
+- Source: First opt-in live run of `tests/smoke/test_search_policy_study_live.py`.
+- Symptom: GitHub and Hugging Face probes succeeded, but the retried Python `requests.head()` call to the README's SharePoint `benchmark_verified.zip` link ended in `SSLEOFError`/`MaxRetryError`; pytest failed after 123.75 seconds before writing the diagnosis.
+- Impact: The first live invocation had no verdict and could not be acceptance evidence. It did not execute a scientific baseline or reveal any benchmark result.
+- Evidence: Python logged repeated TLS EOF/connect failures. An independent bounded system-curl HEAD probe resolved the same link through HTTP 302 to HTTP 401 Unauthorized.
+- Root cause: The test treated a transport/private-resource failure as an uncaught test-framework exception, even though the scientific availability gate must fail closed whenever an anonymous bounded probe does not return the named downloadable artifact.
+- Workaround: None remains necessary.
+- Next action: Keep resource availability separate from test transport success and retain a short, no-retry probe for private artifact hosts.
+- Linked tasks: `263.4.0`, `263.4.1`.
+- Resolution: The live smoke now defines availability by a successful HTTP 200 response carrying a `benchmark_verified.zip` content-disposition, not by status alone. Transport failure, 401/403, or a 200 SharePoint page without the named attachment all remain non-downloadable evidence without claiming why the host withheld the artifact; the content-addressed blocker remains stable.
+- Verification: The exact opt-in live command subsequently passed, and the final hardened rerun passed in 39.02 seconds with report hash `7c4d06eb82eabb250cf1b509242480bf27f079f65eaec6fbe564593c54b4aa3c`.
+
+### P-20260730-002 - Initial feasibility contracts had numeric-hash, type, and blocked-binding defects
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-30 10:55:00 +08:00
+- Source: First focused Ruff, Mypy, import, and unit verification for Task `263.4.0`.
+- Symptom: Ruff first reordered the package export block; Mypy found five narrow numeric/optional typing errors; an integral probability hashed differently before and after Pydantic float normalization; and the first unit run had two failures—over-precise expected power constants and a factory that silently erased a forbidden code hash from a pre-execution blocked attempt.
+- Impact: The first contract implementation could not round-trip one exact-power scenario and could conceal an attempted insertion of unobserved evidence into a blocked record. It was not eligible for use or commit.
+- Evidence: The import smoke raised `exact power scenario_hash mismatch`; Mypy reported five errors in the new module; the first focused test run reported 2 failed and 8 passed.
+- Root cause: Create-time content hashing occurred before numeric normalization, optional fields were not explicitly narrowed for the type checker, and the blocked-attempt factory used replacement rather than validation for prohibited bindings.
+- Workaround: None remains necessary.
+- Next action: Preserve tests that reject invented blocked-attempt bindings and compare exact enumerations at stable precision.
+- Linked tasks: `263.4.0`.
+- Resolution: Normalized numeric payloads before hashing, made probability accumulation explicitly floating point, narrowed optional values, rejected rather than cleared forbidden fields, and corrected the independently recomputed exact constants.
+- Verification: The focused suite passed all 10 tests; focused Ruff and Mypy passed; write/load, nested tamper, canonical ordering, hard-blocker, exact-power, and preregistration denial paths all passed.
+
+### P-20260730-001 - Selected ScienceAgentBench panel is inaccessible, model-judged, and underpowered
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-30 10:35:00 +08:00
+- Source: Task `263.4.0` endpoint-specific official task/evaluator/data/license/power audit.
+- Symptom: The Task `263.3` selected development/confirmation panel cannot satisfy the publication-grade baseline-reproduction gate. Nine of 12 confirmation outputs are images, the official evaluation uses GPT-4o for visualizations, task-specific evaluator programs and the complete benchmark bundle are absent from the public GitHub/Hugging Face trees, the SharePoint bundle did not return anonymously, and `n=12` cannot support the frozen paired-binary SESOI `0.25`.
+- Impact: Running the planned four-arm search on this panel would create model-judge dependence, unauditable evaluator/data provenance, and severe false-negative/unstable inference risk. A successful command or polished paper could not repair those design defects.
+- Evidence: Official CSV has 102 rows and SHA-256 `7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`; selected confirmation IDs contain 9 images and 3 structured outputs. Exact two-sided McNemar power at `n=12` is `0.054402`, `0.080152`, and `0.095619` for frozen `p01={0,0.05,0.10}`, requiring `31`, `45`, and `60` independent tasks for 80% power.
+- Root cause: The opportunity tournament used metadata-level data/license reachability and a generic continuous normal approximation before the task-specific paired-binary evaluator and independent-unit design were audited.
+- Workaround: Baseline execution, novelty search, confirmation reveal, public release, and submission remain false. Task `263.4.0` emits a content-addressed reproduction diagnosis rather than weakening a threshold.
+- Next action: Task `263.4.1` must build a fully open, objectively scored, bounded-compute panel with at least 60 independent tasks across at least two benchmark/task families; Task `263.4.2` may reproduce and preregister only after that panel passes live gates.
+- Linked tasks: `263.3`, `263.4`, `263.4.0`, `263.4.1`, `263.4.2`, `263.5`.
+- Resolution: The immediate overclaim risk is mitigated by the new fail-closed contract, but the scientific blocker remains open until an adequately powered panel and clean-room baseline exist.
+- Verification: Ten focused deterministic tests and one opt-in live official-source smoke passed; report status is `blocked_reproduction_diagnosis`, report hash is `7c4d06eb82eabb250cf1b509242480bf27f079f65eaec6fbe564593c54b4aa3c`, and all external/result-visibility flags remain false.
+
 ### P-20260729-060 - Two ad hoc Markdown inspections mishandled Windows text and PowerShell escaping
 
 - Status: Resolved
@@ -243,10 +323,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Run Task `263.4` only for `track.search-policy-causality`: independently reproduce the strong baseline, prove deterministic evaluators and complete data/license availability for the selected units, review the prospective variance/power assumptions, and freeze the budget-matched causal study before any development result is read. Any failure must convert the lane to reproduction diagnosis.
+- Next action: Execute Task `263.4.1` for `track.search-policy-causality`: replace the rejected 12-task panel with at least 60 fully open, objectively evaluated independent tasks across at least two benchmark/task families, then allow Task `263.4.2` clean-room reproduction and preregistration only if every live gate passes.
 - Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`.
-- Resolution: Partially resolved by Tasks `263.2` and `263.3`: content-addressed front-end contracts now fail closed, and a real three-track tournament admitted only search-policy causality to baseline reproduction. Neural-operator compute and sequential-falsification license/baseline failures are retained as negative opportunities. The problem remains open until Task `263.4` reproduces the selected baseline and Task `263.5` replaces single-candidate search with a real bounded portfolio.
-- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts and passed its full quality gates. Task `263.3` then reached 11/11 primary literature sources and 9/9 repository/data/license endpoints, revalidated the 210-cell Task `260` baseline, froze 12 confirmation units per track, selected exactly one track without a weighted score or hard-coded winner, and kept novelty search, confirmation reveal, release, and submission false.
+- Resolution: Partially resolved by Tasks `263.2`—`263.4.0`: content-addressed front-end contracts now fail closed, a real three-track tournament retained two negative opportunities, and the selected track's endpoint-specific audit correctly rejected its inaccessible/model-judged/underpowered panel before baseline execution. The problem remains open until Tasks `263.4.1`—`263.4.2` establish an adequately powered open panel and reproduced baseline, and Task `263.5` replaces single-candidate search with a real bounded portfolio.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts and passed its full quality gates. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` then fixed the official 102-row metadata hash, found 9/12 confirmation outputs are model-judged images, proved the published artifact/evaluator surface is not anonymously auditable, replaced the invalid normal approximation with exact paired-binary power requiring up to 60 independent tasks, and kept novelty search, confirmation reveal, release, and submission false.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 
