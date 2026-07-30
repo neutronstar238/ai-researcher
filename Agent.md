@@ -64,6 +64,61 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-30 21:56:29 +08:00 - Codex - Task 263.5 budget-matched development search
+
+- Request: Continue the publication-grade research recovery path, explain why real system execution still failed to produce a publishable scientific result, operationalize lessons from automated-research literature, and execute the next gated research task without weakening confirmation or Open Science boundaries.
+- Files changed:
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/research/development_search.py`
+  - `src/autoresearch/research/assets/frozen_tabular_candidate_runner_v1.py`
+  - `src/autoresearch/research/assets/frozen_tabular_candidate_runner_v2.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/unit/research/test_development_search.py`
+  - `tests/smoke/test_development_search_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-5-budget-matched-development-search.md`
+- Summary:
+  - Added strict content-addressed contracts for 12 fixed declarative candidates, one result-blind initialization, nine policy realizations, 189 blocked task-seed-policy assignments, dev-only labels, F0—F3 candidate records, objective evaluations, costs, failures, interventions, memory lineage, task-level outcomes, exact McNemar/bootstrap/Holm comparisons, low/high-fidelity calibration, survival conjunction, report, schemas, manifest, exact resume, and deterministic verification.
+  - The candidate catalogue spans nine mechanism families plus a null prior and an intentional invalid-schema control. One configured local `qwen3.5:9b` call ordered the fixed catalogue before results and used 992 tokens; every scientific assignment then used zero model calls. LLM reviewer score is never a scientific endpoint.
+  - Added an Ollama native structured-response adapter for configured Ollama providers with `reasoning_effort=none`, because the OpenAI-compatible route consumed its output allowance in reasoning and returned empty content. Base URL, API key, and model remain provider-neutral configuration/environment values; no secret is persisted.
+  - Recovered only the seven development-task labels from official data/split sources, verified OpenML MD5 plus data/split/file/content hashes and row IDs, redistributed no raw payload, and recorded 14 development URLs versus zero confirmatory URLs. The candidate runner rejects any label artifact marked confirmatory.
+  - Completed the first 189-assignment v1 matrix and rejected its `negative_development` endpoint as scientifically invalid after the audit showed a shared numeric-only preprocessing failure on mixed-type `openml-ctr23-task-361269`. Preserved v1 freeze/report/manifest hashes as diagnostic evidence rather than hiding the failure.
+  - Added a hash-pinned v2 mixed-type wrapper and `DevelopmentRepairLineage`. A repair freeze is accepted only after a complete exact-resume predecessor, the same failure across at least three mechanism families and all repeated seeds, and an intact confirmation seal. It reuses the exact v1 initialization/candidate order and records that candidates, policies, budgets, thresholds, randomization, survival rules, and scientific design did not change.
+  - Ran the valid v2 matrix: 189 assignments, 9,072 candidate-stage rows, 315 unique objective evaluations, and 1,386 logical cache reuses. All 21 failures are the reviewer-ablation intentional invalid-schema control; no main-policy assignment has artifact, evaluator, replay, or budget failure.
+  - `portfolio_memory` succeeded on 6/7 development tasks versus 5/7 for `linear_self_loop`; task-level risk difference is `+0.142857`, paired bootstrap interval `[0.000000, 0.428571]`, and exact McNemar `p=1.0`. F1→F3 and F2→F3 task-level Spearman are both `0.964286`. All frozen survival checks pass and only the preregistered `portfolio_memory` policy is `ready_for_confirmation`.
+  - Preserved the publication boundary: development screening is not significant evidence, all ten secondary comparisons remain nonsignificant after Holm correction, 60 confirmatory payloads remain untouched, and public release/external submission remain false.
+- Verification:
+  - `poetry run python -m pytest tests/unit/llm/test_client.py tests/unit/research/test_development_search.py -q`: 30 passed.
+  - Clean-interpreter mixed-type probe on `openml-ctr23-task-361269`: detected seven categorical columns and produced 20/20 finite predictions after injecting an unseen category.
+  - v1 diagnostic verification: freeze `e7d3ba9a24f18be05f51188b90eb83fa6b7977393bba1751cd5d1bbf6d2cb4fc`, report `5956384a2b748c92b8bc7c40712d4a6f78de16e19ed43c686a0863e87bd05ac4`, manifest `3175b4be95f64a6fec9d08c2f116ad0ce355e770747882ea43bc5fb22cdf4d30`, status `negative_development`; the endpoint is retained only as evaluator diagnosis.
+  - v2 freeze audit: freeze `1120bc27839eafefcf20e042e7b043e344c9d59cc3b2daa657a102c5ff264332`; initialization `ed932c8622abe903e6bd5bfccfd81f9933d0116171881b3a316493b4d9955327` exactly matches v1; repair lineage `5fd59d9ef00ea924c3fb1f9b50385d07eabf961d960e0ac2a4fdd2b274662715`; result count zero; confirmatory URL count zero.
+  - Complete v2 `run` plus two `verify` calls and a second idempotent `run`: report hash remained `b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`; manifest hash remained `e423e7cc3f82d083c8a0776f572a550da0cad06fd7b70b79b3d2f213fe71eb49`; status remained `ready_for_confirmation`.
+  - F2/exploration audit: every multi-fidelity-enabled policy executed F2 on all seven independent tasks (frozen minimum three), every enabled assignment retained three F1 survivors, and only the `ablation-multi_fidelity` arm recorded zero F1/F2 executions by construction.
+  - `$env:AUTORESEARCH_RUN_TASK2635_LIVE='1'; ...; poetry run python -m pytest tests/smoke/test_development_search_live.py -q --no-cov`: 1 passed in 7.08 seconds against the complete real artifact.
+  - Final `poetry run python -m pytest` after all source/documentation updates: 1,046 passed, 22 opt-in tests skipped, 86% coverage, in 164.43 seconds.
+  - `poetry run ruff check .`: passed.
+  - `poetry run mypy src`: passed across 166 source files.
+  - `poetry check`: exited zero; reported only existing Poetry metadata deprecation warnings.
+  - `git diff --check`: passed before and after the implementation slice; final documentation/link/status audit is recorded before commit.
+- Problems:
+  - Added and resolved `P-20260730-017` for the mixed-type evaluator defect that invalidated the v1 scientific endpoint.
+  - Added and resolved `P-20260730-018` for local Qwen empty structured content on the OpenAI-compatible reasoning route.
+  - Added and resolved `P-20260730-019` for absent development labels and zero-valued initial Windows peak-RSS instrumentation.
+  - Added and resolved `P-20260730-020` for the live process interruption at 96/189 and exact resume.
+  - Added and resolved `P-20260730-021` for incompatible ad hoc shell, path, Mypy, and unit-environment diagnostics.
+  - Updated mitigated `P-20260730-009`: Task `263.5` retained the narrow tabular construct and zero confirmation access.
+  - Updated open `P-20260729-048`: real portfolio search now exists, but the development effect is not significant and the publication front end remains open until independent Task `263.6` confirmation.
+- Follow-up:
+  - Task `263.6`: freeze the sole surviving `portfolio_memory` implementation and execute it once on the untouched 60-task confirmatory panel with a runner that cannot read development trajectories. Preserve a positive or negative endpoint; do not retune, switch policies, change thresholds, or reopen the panel after reveal.
+  - Task `263.7` remains blocked on independent confirmation, claim/counterevidence graph, clean reproduction package, nearest-work/novelty review, and explicit human authorship/license/release/submission decisions.
+
 ### 2026-07-30 12:57:13 +08:00 - Codex - Tasks 264.1, 264.2, 264.3, and 264.5 local Windows client
 
 - Request: Implement the local-only “研启智链” Windows 10/11 x64 desktop client with scheme-1 research-command-center visuals, supplied logo, Owner auth, visual integration configuration, complete existing-data visualization, Figma handoff, NSIS packaging, and an absolute prohibition on demo data.

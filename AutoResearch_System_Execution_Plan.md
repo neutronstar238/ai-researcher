@@ -1500,6 +1500,24 @@ fidelity；每级 survival 数、探索 quota、预算和 stop rule 在执行前
 必要的 alpha spending/FDR、OOD/temporal holdout 和 exact/within-tolerance reproduction 全部进入
 合取门。确认失败产生正式阴性 endpoint，不回流同一 panel 继续搜索。
 
+`263.5` 已执行完成。正式 v2 development freeze 固定 12 candidates、9 policies、7 tasks、3
+within-task seeds 和 189 assignments；完整结果保留 9,072 个 F0—F3 candidate-stage row、315 个
+unique evaluation 和 1,386 个 cache reuse。v1 首次完整矩阵暴露 numeric-only imputer 无法处理
+`openml-ctr23-task-361269` 类别列，故其零 survivor 只作为 evaluator diagnosis，不作科学阴性。
+v2 repair lineage 绑定 v1 freeze/report/failure evidence，复用原 candidate initialization/order，
+只增加 mixed-type imputation/one-hot，未改变任何科学设计或 confirmation seal。
+
+v2 中 `portfolio_memory` 为 6/7 task success，`linear_self_loop` 为 5/7；risk difference
+`0.142857`，paired bootstrap 95% interval `[0.000000, 0.428571]`，exact McNemar `p=1.0`。
+F1→F3、F2→F3 task-level Spearman 均为 `0.964286`，五项 frozen survival check 全部通过，唯一
+允许晋级的 policy 状态为 `ready_for_confirmation`。这只是 P3 screening gate：主效应未显著，
+Holm 校正后的消融也未显著，不能写成已证实优越。21 个失败全部是 reviewer ablation 故意放行的
+invalid-schema control；主策略零 artifact/evaluator/replay/budget failure。freeze/report/manifest
+hash 分别为 `1120bc27839eafefcf20e042e7b043e344c9d59cc3b2daa657a102c5ff264332`、
+`b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`、
+`e423e7cc3f82d083c8a0776f572a550da0cad06fd7b70b79b3d2f213fe71eb49`。60 个 confirmation
+payload 仍未下载；`263.6` 只能用冻结的 `portfolio_memory` 做一次性独立裁决。
+
 ### 27.5 验证层级
 
 263.2 先运行 focused unit/property/schema tests，再运行：
@@ -1526,7 +1544,9 @@ git diff --check
   7-development/60-confirmatory 的 fully open/objective 双 family 面板；263.4.2 在两个 clean
   environment 精确重放强 baseline，并在 `result_record_count=0` 时冻结四臂、五消融、预算、权限、
   阈值、随机化和 stop rule。P2 只授权开发搜索，不表示已有正向科学结果。
-- **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
+- **P3（组合开发，2026-07-30 已通过）**：263.5 完成预算匹配的 189-assignment 全分支开发
+  实验、五个 one-at-a-time ablation、任务级低/高保真校准、精确 resume 和完整失败/成本/谱系审计；
+  唯一冻结策略 `portfolio_memory` 只获得进入一次性确认的资格，不构成显著或可发表结论。
 - **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
 - **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类
   新颖性/作者/许可/venue/投稿审查；系统本身仍不执行投稿。

@@ -327,6 +327,20 @@ portfolio 因果实验作为新证据，而不是继续润色旧 PDF。
 
 Task 263 不改变 Task 259 的 Gate B 状态，也不把 Task 260/261 已揭示数据重新变成 holdout。
 
+### 8.1 Task 263.5 执行更新
+
+Task 263.5 已把本报告提出的固定预算多分支、comparative memory、客观 evaluator、全失败保留和
+任务级低/高保真校准真正落地。正式 v2 运行覆盖 12 candidates、9 policies 和 189 assignments，
+唯一预注册策略 `portfolio_memory` 在 7 个开发任务上成功 6 个，较 `linear_self_loop` 多 1 个；
+F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`，五项 survival conjunction 通过。
+
+这个结果没有推翻本报告的反方约束：主比较 exact McNemar `p=1.0`，10 个次要比较经 Holm 校正后
+均不显著。第一次完整矩阵还发现 numeric-only evaluator 无法处理一个 mixed-type task；系统保留该
+无效阴性，绑定 failure lineage 后只修 evaluator，并复用原候选顺序。正式状态因此只是
+`ready_for_confirmation`，不是“AI 已经会做科学”或“已可投稿”。详细证据见
+[[projects/ai_researcher_system/progress/task-263-5-budget-matched-development-search]]；下一步只能在 60 个
+未触碰确认任务上一次性裁决，不能根据确认结果换 arm、调阈值或改研究问题。
+
 ## 9. 反方审查
 
 1. **组合搜索可能只是更昂贵的多次尝试。** 因此必须预算匹配、预注册 survival rule、保留全部分支，

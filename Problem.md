@@ -40,6 +40,86 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260730-021 - Initial Task 263.5 diagnostics used incompatible shell and execution-asset checks
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 13:20:00 +08:00
+- Source: Task `263.5` ad hoc runner, path, process-launch, and type-check diagnostics.
+- Symptom: One PowerShell command used Bash heredoc syntax; one source inspection duplicated a path segment; a combined hidden-process/logging command was rejected before execution; an explicit Mypy command targeted a deliberately excluded scientific execution asset and reported unavailable NumPy/scikit-learn stubs plus its script-mode fallback import; and the first mixed-type unit test imported NumPy in the lean repository environment, stopping collection.
+- Impact: Those diagnostic invocations had no valid verdict. They changed no scientific parameter, result, external state, confirmatory seal, or tracked evidence.
+- Evidence: The failed Mypy command named only the excluded `src/autoresearch/research/assets/` path; the first test collection reported `ModuleNotFoundError: numpy`; subsequent canonical commands and the clean interpreter resolved the intended environments.
+- Root cause: The diagnostics crossed Windows shell syntax and the deliberate dependency boundary between the lean AutoResearch environment and the pinned clean scientific runner environment.
+- Workaround: Use native PowerShell, inspect actual paths before composing commands, launch long work with one simple hidden `Start-Process`, keep repository Mypy on `src`, use static deterministic tests for the execution asset, and exercise numerical behavior in the pinned clean interpreter/live smoke.
+- Next action: Preserve the repository/execution-environment boundary and use the canonical commands recorded in `Agent.md`.
+- Linked tasks: `263.5`.
+- Resolution: Replaced the invalid diagnostics, removed the main-environment NumPy import from unit collection, and ran a real mixed-type probe inside the clean interpreter.
+- Verification: The clean probe produced 20/20 finite predictions; 30 focused tests passed; repository-wide Mypy passed across 166 source files; the full live smoke and 1,046-test suite passed.
+
+### P-20260730-020 - A desktop-turn interruption stopped the first matrix process at 96 of 189 assignments
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 21:24:00 +08:00
+- Source: Task `263.5` first complete v1 development run.
+- Symptom: The hidden Poetry process disappeared after a desktop turn interruption with the progress log at `96/189`; no report or manifest had yet been written.
+- Impact: The interrupted process did not by itself produce a complete development verdict. Re-running from scratch without lineage checks could have obscured the interruption or double-counted costs.
+- Evidence: Ninety-six assignment progress records and the content-addressed evaluation cache remained; stderr contained only the Python module-reentry warning.
+- Root cause: The desktop execution context terminated the background process while the scientific subprocess was active.
+- Workaround: Reinvoke the same `run` action against the unchanged freeze and retained cache; require exact result hashes, logical cache provenance, contiguous assignment order, and final manifest verification.
+- Next action: Keep long live processes monitored in bounded intervals and retain interruption/resume evidence.
+- Linked tasks: `263.5`.
+- Resolution: The same freeze resumed, verified the first 96 logical trajectories, completed all 189 assignments, and wrote the report and manifest without changing order, budget, or policy.
+- Verification: Both v1 and the final v2 report record `exact_resume_verified=true`; repeated v2 `run` and `verify` preserved report hash `b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123` and manifest hash `e423e7cc3f82d083c8a0776f572a550da0cad06fd7b70b79b3d2f213fe71eb49`.
+
+### P-20260730-019 - Development bundles omitted labels and initial Windows peak-RSS instrumentation returned zero
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-30 13:15:00 +08:00
+- Source: Task `263.5` first real frozen-runner probes.
+- Symptom: The Task `263.4.2` test CSV intentionally contained row IDs and features but no target, so the first candidate probe stopped with `ValueError: frozen input is missing target`. After labels were supplied safely, Windows peak RSS was reported as `0.0` because the `ctypes` process-handle signatures truncated the native handle.
+- Impact: Without a development-only label artifact, objective evaluation could not run. With zero RSS, the memory gate and cost provenance were not trustworthy.
+- Evidence: The baseline manifest confirmed label-free test inputs; the panel/split sources contain development labels; the first runner result showed zero RSS despite a live scikit-learn process.
+- Root cause: The baseline replay correctly avoided redistributing test targets, while Task `263.5` had not yet defined a sealed development-label recovery artifact. The Windows API wrapper lacked explicit argument/return types.
+- Workaround: None retained.
+- Next action: Reuse only content-addressed development label artifacts; Task `263.6` must use a separate one-use confirmatory loader and may not reuse the development path.
+- Linked tasks: `263.4.2`, `263.5`, `263.6`.
+- Resolution: Added a dev-only label preparation contract that downloads only the seven development data/split pairs, checks data SHA-256, split SHA-256, OpenML MD5, row IDs, and content hashes, and refuses `confirmatory_source=true`. Corrected the Windows API prototypes and return type.
+- Verification: Label preparation accessed 14 development URLs and zero confirmatory URLs, cached seven opaque label files, and redistributed no raw payload. The runner reported nonzero RSS; the final matrix maximum was 282.614 MiB against the 4,096 MiB cap, with zero budget failures.
+
+### P-20260730-018 - Local Qwen OpenAI-compatible structured calls exhausted reasoning tokens and returned empty content
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-30 13:02:00 +08:00
+- Source: Task `263.5` real local-model candidate-catalogue initialization.
+- Symptom: Three OpenAI-compatible Ollama calls to `qwen3.5:9b` at 64, 512, and 2,048 output-token limits consumed their allowance in reasoning and returned empty assistant content, so no JSON object could be parsed.
+- Impact: The required real result-blind catalogue ordering could not be recorded through the generic structured-completion path. Fabricating an order or hard-coding a vendor response would invalidate the live-model evidence.
+- Evidence: The failed responses contained usage/reasoning but empty content. Ollama's native `/api/chat` returned the required schema when invoked with `think=false`.
+- Root cause: The model/backend's OpenAI-compatible reasoning behavior did not honor the intended no-reasoning structured-response mode.
+- Workaround: None retained.
+- Next action: Keep the native adaptation restricted to configured Ollama providers with `reasoning_effort=none`; other providers continue through the generic OpenAI-compatible path.
+- Linked tasks: `263.5`.
+- Resolution: Added a provider-specific transport adapter to the provider-neutral client that calls Ollama native chat with `think=false`, requests JSON, normalizes usage/response fields, and keeps base URL, API key, and model name in configuration/environment.
+- Verification: A real native structured probe parsed `{"token":"safe"}` with 35 total tokens; 22 client tests passed; the frozen initialization used the configured local provider/model, parsed the complete 12-ID order, and recorded 992 total tokens without exposing a secret.
+
+### P-20260730-017 - Numeric-only preprocessing invalidated the first Task 263.5 scientific endpoint
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-07-30 21:28:00 +08:00
+- Source: Failure/cost/provenance audit of the first complete Task `263.5` v1 matrix.
+- Symptom: v1 reported `negative_development` with no survivor, but every main policy had three invalid assignments on `openml-ctr23-task-361269`. Multiple valid candidates exited at F1 with `Cannot use median strategy with non-numeric data: could not convert string to float: 'yes'`.
+- Impact: The zero-survivor result was contaminated by a shared evaluator incompatibility and could not support a scientific negative conclusion. Accepting it would confuse harness failure with search-policy failure.
+- Evidence: The task has seven categorical feature columns. v1 freeze `e7d3ba9a24f18be05f51188b90eb83fa6b7977393bba1751cd5d1bbf6d2cb4fc`, report `5956384a2b748c92b8bc7c40712d4a6f78de16e19ed43c686a0863e87bd05ac4`, and manifest `3175b4be95f64a6fec9d08c2f116ad0ce355e770747882ea43bc5fb22cdf4d30` verify the complete diagnostic matrix.
+- Root cause: The frozen v1 preprocessor applied numeric median imputation to every feature instead of separating numeric and categorical columns.
+- Workaround: Do not interpret or promote the v1 endpoint; retain it as evaluator-failure evidence.
+- Next action: Task `263.6` must use the v2 frozen implementation and retain the repair lineage; it may not use the v1 endpoint or change the candidate/policy design.
+- Linked tasks: `263.5`, `263.6`.
+- Resolution: Added an immutable-hash-pinned v2 wrapper with numeric median imputation plus categorical most-frequent imputation/unknown-safe one-hot encoding. Added `DevelopmentRepairLineage`, which accepts only a complete sealed predecessor, requires the failure across at least three mechanism families and all seeds, reuses the exact initialization/order, and records `scientific_design_changed=false`.
+- Verification: A clean-interpreter probe on the failed task, including an unseen category, produced 20/20 finite predictions. In the final v2 matrix all main-policy assignments on that task had valid artifacts/evaluator/replay and no failure code. All five survival checks passed; the only 21 retained failures were the reviewer-ablation intentional invalid-schema control.
+
 ### P-20260730-016 - Initial desktop account-lifecycle checks exposed test-environment and Rust assertion defects
 
 - Status: Resolved
@@ -163,10 +243,10 @@ update a factual problem entry below.
 - Evidence: The frozen Task `263.4.1` report explicitly scopes the claim to bounded tabular-ML search policies, records `existing_public_runs_queried=false`, downloads only two development representatives, and retains `confirmatory_payloads_downloaded=false` for all 60 confirmatory tasks.
 - Root cause: The fully open, objectively scored, adequately powered tasks available under local compute constraints are narrower than the original broad scientific-agent construct.
 - Workaround: Keep the narrow claim in every contract and manuscript; block OpenML run/result endpoints, confirmation payloads, and development trajectories from the confirmatory runner; freeze task thresholds and permissions before any search; report public-benchmark familiarity as a limitation.
-- Next action: Task `263.5` must execute only the frozen development schedule, must not broaden the claim or use public scores as reward, and must retain the sealed confirmatory boundary.
+- Next action: Task `263.6` must execute only the frozen `portfolio_memory` policy on the untouched 60-task panel, must not broaden the claim or use public scores as reward, and must keep development trajectories outside the confirmatory runner.
 - Linked tasks: `263.4.1`, `263.4.2`, `263.5`, `263.6`, `263.7`.
-- Resolution: The immediate overclaim and leakage risks are contractually mitigated, but the construct boundary is inherent and must remain in the final scientific claim. Task `263.4.2` additionally freezes network-denied runner permissions, paired-baseline thresholds, and a zero-result preregistration before development search.
-- Verification: Unit tests reject confirmatory leakage and post-result preregistration; the Task `263.4.1` smoke queried no run endpoint, and the Task `263.4.2` smoke accessed only seven development payloads while retaining 60 confirmatory payloads as not downloaded. The latter wrote `ready_for_development_search` with `result_record_count=0`, not a scientific result.
+- Resolution: The immediate overclaim and leakage risks are contractually mitigated, but the construct boundary is inherent and must remain in the final scientific claim. Task `263.4.2` froze network-denied runner permissions, paired-baseline thresholds, and a zero-result preregistration. Task `263.5` then used only the seven development tasks, objective local metrics, and a result-blind fixed-catalogue ordering; its `ready_for_confirmation` status is explicitly a screening decision, not a general capability or publication claim.
+- Verification: Unit tests reject confirmatory leakage and post-result preregistration; the Task `263.4.1` smoke queried no run endpoint, and the Task `263.4.2` smoke accessed only seven development payloads while retaining 60 confirmatory payloads as not downloaded. Task `263.5` recorded 14 development resource URLs, zero confirmatory URLs, `confirmatory_payloads_downloaded=false`, and `llm_reviewer_score_used=false` across the complete 189-assignment matrix.
 
 ### P-20260730-008 - A short live-test timeout left a child run active and briefly duplicated metadata probes
 
@@ -499,10 +579,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Execute Task `263.5`: run the real bounded, budget-matched multi-branch development portfolio under the frozen `263.4.2` schedule; calibrate fidelity promotion and retain a valid no-winner endpoint when warranted.
-- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`.
-- Resolution: Partially resolved by Tasks `263.2`—`263.4.2`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, the replacement panel supplies 60 independent confirmatory tasks, and the strong baseline plus zero-result causal preregistration are now frozen. The problem remains open until Task `263.5` replaces single-candidate search with a real bounded portfolio and later confirmation supplies a valid positive or negative endpoint.
-- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` checked all 67 replacement records. Task `263.4.2` then verified 14 wheel hashes, reproduced all seven development tasks in separate A/B environments, froze 60 thresholds and 804 assignments, and produced `ready_for_development_search` preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707` with no result records.
+- Next action: Execute Task `263.6` once on the untouched 60-task confirmation panel using only the frozen `portfolio_memory` policy; preserve a positive or negative endpoint without retuning, policy substitution, or claim switching.
+- Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`, `263.6`.
+- Resolution: Partially resolved by Tasks `263.2`—`263.5`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, the replacement panel supplies 60 independent confirmatory tasks, the strong baseline and zero-result causal preregistration are frozen, and a real 12-candidate/9-policy/189-assignment portfolio now replaces the single-candidate path. Task `263.5` retained and repaired an evaluator failure without changing the scientific design, calibrated F1/F2 against F3 at the task level, and admitted exactly the preregistered `portfolio_memory` policy to confirmation. The problem remains open because the development primary comparison is not significant (`p=1.0`) and no independent confirmatory endpoint exists yet.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` checked all 67 replacement records. Task `263.4.2` verified 14 wheel hashes, reproduced all seven development tasks in separate A/B environments, froze 60 thresholds and 804 assignments, and produced result-free preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`. Task `263.5` then completed all 189 development assignments and 9,072 stage rows with exact resume, zero main-policy integrity/budget failures, no confirmatory access, report hash `b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`, and status `ready_for_confirmation`.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

@@ -1253,3 +1253,38 @@ diversity、multi-fidelity、reviewer 或 memory。所有 arm 共用 12 个候�
 仍未开始/授权。当前仍不能发表的剩余原因很明确：尚无真实 portfolio 开发结果、低/高保真校准、
 关键消融、未揭示确认效应、区间与独立复现；即使以后通过，也只能支持“有界 tabular-ML 搜索策略”
 这一窄命题。下一门是 `263.5`，它必须真实执行预算匹配的多分支研究，而不能用预注册本身冒充结果。
+
+`263.5` 已于 2026-07-30 完成真实开发搜索。候选层不是自由生成代码，而是先固定 12 个安全声明式
+候选，覆盖 9 个机制 family、一个 null prior 和一个 intentional invalid-schema control；本地
+`qwen3.5:9b` 只在任何结果可见前调用一次，对固定目录排序，共 992 tokens。此后 189 个
+task-seed-policy assignment 不再调用模型，完整保留 `189×12×4=9,072` 个 F0—F3 stage row、
+315 个唯一客观评测、1,386 次逻辑缓存复用、全部失败、成本、干预和 lineage。统计独立单位始终是
+7 个 OpenML task，三个 seed 只作 task 内重复。
+
+第一次完整 v1 矩阵产生 `negative_development`，但审计没有把它当科学阴性：混合类型回归任务
+`openml-ctr23-task-361269` 含字符串类别值，而 v1 runner 把所有列送入 numeric median imputer，
+导致多个不同机制在 F1 同源失败。这个结果说明 evaluator/harness 不足，不能说明搜索策略无效。
+v1 freeze `e7d3ba9a24f18be05f51188b90eb83fa6b7977393bba1751cd5d1bbf6d2cb4fc` 和 report
+`5956384a2b748c92b8bc7c40712d4a6f78de16e19ed43c686a0863e87bd05ac4` 被保留为失败证据。
+v2 只增加 frozen mixed-type imputation/one-hot compatibility；`DevelopmentRepairLineage` 绑定 v1
+freeze/report/failure hash，强制复用原 initialization hash 和候选顺序，并声明 candidates、policy、
+budget、threshold、randomization、survival rule 和 confirmation seal 均未改变。真实 clean
+interpreter probe 在原失败任务的 7 个类别列及未见类别上产出 20/20 个有限预测。
+
+有效 v2 矩阵中，`portfolio_memory` 在 7 个开发任务上成功 6 个，`linear_self_loop`、`portfolio`
+和 `one_shot` 各成功 5 个。冻结主比较的 task-level risk difference 为 `+1/7=0.142857`，
+paired task bootstrap 95% interval 为 `[0.000000, 0.428571]`，exact McNemar `p=1.0`；因此开发门
+通过不等于统计显著或已经证明优越。10 个 secondary/ablation comparison 经 Holm 校正后也没有
+显著结果。`portfolio_memory` 的 F1→F3 与 F2→F3 task-level Spearman 均为 `0.964286`；6/7 task
+success、非负主风险差、两项 calibration 和零主策略 integrity/budget failure 五个冻结条件同时通过。
+21 个 runner failure 全部只来自 `ablation-reviewer` 放行的 intentional invalid-schema control，
+其余主臂没有 artifact、evaluator、replay 或 budget failure。
+
+最终 v2 状态为 `ready_for_confirmation`：freeze
+`1120bc27839eafefcf20e042e7b043e344c9d59cc3b2daa657a102c5ff264332`，report
+`b767a0963d0c4f60a92cbc7c35b835918122028f90bff5bb6b73e43ccecd1123`，manifest
+`e423e7cc3f82d083c8a0776f572a550da0cad06fd7b70b79b3d2f213fe71eb49`。精确 resume、幂等重跑、
+numerical determinism、failure/cost/provenance audit 均通过；60 个 confirmatory payload 仍未下载，
+LLM reviewer score 未进入科学判定，release/submission 仍为 false。当前不可发表的核心原因已从
+“没有真实开发实验”缩小为“尚无独立确认效应”：`263.6` 必须一次性执行未触碰的 60-task panel；
+确认失败就保留预注册阴性 endpoint，不允许回到同一 panel 调参或改写投稿路线。

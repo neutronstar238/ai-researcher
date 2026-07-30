@@ -6,6 +6,7 @@ import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -326,19 +327,32 @@ def run_llm_json_completion(
 
     config, api_key = _load_llm_config_and_api_key(config_path=config_path, env_path=env_path)
     llm = config.deployment.llm
-    endpoint = _chat_completions_endpoint(llm.base_url)
-    response = _post_chat_completion(
-        endpoint=endpoint,
-        api_key=api_key,
-        model_name=llm.model_name,
-        timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
-        max_tokens=max_tokens,
-        messages=messages,
-        temperature=temperature,
-        reasoning_effort=reasoning_effort,
-        response_schema=response_schema,
-        response_schema_name=response_schema_name,
-    )
+    if reasoning_effort == "none" and llm.provider.lower().startswith("ollama"):
+        endpoint = _ollama_native_chat_endpoint(llm.base_url)
+        response = _post_ollama_native_json_completion(
+            endpoint=endpoint,
+            api_key=api_key,
+            model_name=llm.model_name,
+            timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+            max_tokens=max_tokens,
+            messages=messages,
+            temperature=temperature,
+            response_schema=response_schema,
+        )
+    else:
+        endpoint = _chat_completions_endpoint(llm.base_url)
+        response = _post_chat_completion(
+            endpoint=endpoint,
+            api_key=api_key,
+            model_name=llm.model_name,
+            timeout_seconds=timeout_seconds or llm.request_timeout_seconds,
+            max_tokens=max_tokens,
+            messages=messages,
+            temperature=temperature,
+            reasoning_effort=reasoning_effort,
+            response_schema=response_schema,
+            response_schema_name=response_schema_name,
+        )
     content = _extract_message_content(response)
     try:
         parsed = json.loads(_strip_json_fences(content))
@@ -594,6 +608,102 @@ def _post_chat_completion(
     if not isinstance(decoded, dict):
         raise LLMClientError("LLM API response JSON top-level value is not an object")
     return decoded
+
+
+def _ollama_native_chat_endpoint(base_url: str) -> str:
+    """Translate an Ollama OpenAI-compatible base URL to its native chat endpoint."""
+
+    parsed = urllib.parse.urlsplit(base_url.rstrip("/"))
+    path = parsed.path.rstrip("/")
+    if path.endswith("/v1"):
+        path = path[:-3]
+    return urllib.parse.urlunsplit(
+        (parsed.scheme, parsed.netloc, f"{path}/api/chat", "", "")
+    )
+
+
+def _post_ollama_native_json_completion(
+    *,
+    endpoint: str,
+    api_key: str,
+    model_name: str,
+    timeout_seconds: int,
+    max_tokens: int | None,
+    messages: list[dict[str, str]],
+    temperature: float,
+    response_schema: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Use Ollama's native ``think=false`` path and normalize its response.
+
+    Ollama's OpenAI-compatible endpoint currently accepts ``reasoning_effort``
+    but does not disable thinking for Qwen 3.5. Short structured calls can
+    therefore spend the complete output budget on hidden reasoning and return
+    an empty message. The native endpoint has an explicit ``think`` switch.
+    The public client selects this adapter only for an Ollama provider and an
+    explicit ``reasoning_effort="none"`` request.
+    """
+
+    options: dict[str, Any] = {"temperature": temperature}
+    if max_tokens is not None:
+        options["num_predict"] = max_tokens
+    payload: dict[str, Any] = {
+        "model": model_name,
+        "messages": messages,
+        "stream": False,
+        "think": False,
+        "format": response_schema or "json",
+        "options": options,
+    }
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise LLMClientError(
+            f"Ollama native API HTTP {exc.code}: {_redact_api_key(body)}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise LLMClientError(f"Ollama native API request failed: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise LLMClientError("Ollama native API request timed out") from exc
+
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise LLMClientError(
+            f"Ollama native API response was not JSON: {exc.msg}"
+        ) from exc
+    if not isinstance(decoded, dict):
+        raise LLMClientError("Ollama native API response top-level value is not an object")
+    message = decoded.get("message")
+    if not isinstance(message, dict):
+        raise LLMClientError("Ollama native API response did not include a message")
+    content = message.get("content")
+    if not isinstance(content, str):
+        raise LLMClientError("Ollama native API message content is not text")
+    return {
+        "choices": [
+            {
+                "finish_reason": decoded.get("done_reason"),
+                "message": {"role": message.get("role", "assistant"), "content": content},
+            }
+        ],
+        "usage": {
+            "prompt_tokens": int(decoded.get("prompt_eval_count") or 0),
+            "completion_tokens": int(decoded.get("eval_count") or 0),
+            "total_tokens": int(decoded.get("prompt_eval_count") or 0)
+            + int(decoded.get("eval_count") or 0),
+        },
+    }
 
 
 def _smoke_messages() -> list[dict[str, str]]:

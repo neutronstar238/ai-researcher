@@ -209,6 +209,75 @@ def test_post_chat_completion_includes_explicit_reasoning_effort(monkeypatch) ->
     assert captured["payload"]["reasoning_effort"] == "none"
 
 
+def test_ollama_native_endpoint_replaces_openai_v1_path() -> None:
+    assert (
+        llm_client._ollama_native_chat_endpoint("http://127.0.0.1:11434/v1")
+        == "http://127.0.0.1:11434/api/chat"
+    )
+    assert (
+        llm_client._ollama_native_chat_endpoint("https://ollama.example.test/prefix/v1/")
+        == "https://ollama.example.test/prefix/api/chat"
+    )
+
+
+def test_post_ollama_native_json_completion_disables_thinking(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "done_reason": "stop",
+                    "message": {"role": "assistant", "content": '{"token":"safe"}'},
+                    "prompt_eval_count": 7,
+                    "eval_count": 3,
+                }
+            ).encode("utf-8")
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["authorization"] = request.headers["Authorization"]
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+    schema = {
+        "type": "object",
+        "properties": {"token": {"type": "string", "enum": ["safe"]}},
+        "required": ["token"],
+        "additionalProperties": False,
+    }
+
+    response = llm_client._post_ollama_native_json_completion(
+        endpoint="http://127.0.0.1:11434/api/chat",
+        api_key="ollama-local",
+        model_name="qwen3.5:9b",
+        timeout_seconds=10,
+        max_tokens=128,
+        messages=[{"role": "user", "content": "Return safe."}],
+        temperature=0.0,
+        response_schema=schema,
+    )
+
+    assert captured["payload"] == {
+        "model": "qwen3.5:9b",
+        "messages": [{"role": "user", "content": "Return safe."}],
+        "stream": False,
+        "think": False,
+        "format": schema,
+        "options": {"temperature": 0.0, "num_predict": 128},
+    }
+    assert captured["authorization"] == "Bearer ollama-local"
+    assert response["choices"][0]["message"]["content"] == '{"token":"safe"}'
+    assert response["usage"]["total_tokens"] == 10
+
+
 def test_post_chat_completion_includes_explicit_json_schema(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
