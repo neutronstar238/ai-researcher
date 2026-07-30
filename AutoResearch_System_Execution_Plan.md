@@ -1470,6 +1470,26 @@ OpenML public run 未查询。报告状态 `ready_for_clean_baseline`，hash
 `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`；这不等于 baseline 已复制，
 更不等于通用自动科研、创新性或可投稿性。
 
+`263.4.2` 随后完成了 clean-room replay 和 outcome-free causal preregistration。FLAML `2.6.0`
+baseline 的源码、命令、seed、单线程/12-trial 限额、14 个 pinned wheel、环境、原始 prediction、
+metric 和 tolerance 均内容寻址；两个分别创建的 virtual environment 对全部 7 个 development task
+运行独立进程，A/B prediction 与 score 逐任务精确一致。standalone runner 不导入 AutoResearch、
+不访问网络，只读取预制匿名输入；60 个 confirmatory payload 和 OpenML public run endpoint 均未
+访问。baseline report hash 为
+`e8f828c97561e789f523328aa25b82d512a159ab1e6f447f6163a770df4598e5`，但其含义仅是冻结应用在
+本面板可重放，不是 FLAML 论文全部 benchmark 的重复验证。
+
+预注册在任何 policy result 产生前固定 60 个 paired-baseline success threshold（balanced accuracy
+`+0.005` 或 R² `+0.010`）、四个 arm、五个 one-at-a-time ablation、三个 task 内 seed、客观 evaluator、
+exact McNemar 主检验、Holm 次检验、权限和 stop/failure policy。四臂共用 12-candidate F0—F3
+successive-halving 预算，最大 240 CPU 秒/task-seed、60,000 model tokens，unused budget 不得重分配。
+benchmark/domain blocked schedule 覆盖 67 个 task、3 个 seed 和 4 个 arm，共 804 个 assignment。
+preregistration hash 为
+`100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`，manifest hash 为
+`df0324759c6099bdb1cf5764cdc4a3e5db838ae9328db0b8b427de562dc8055a`；状态
+`ready_for_development_search`，`result_record_count=0`，所以它是允许开始 `263.5` 的门，不是科学
+发现、发表结论或外部动作授权。
+
 开发搜索比较 budget-matched one-shot、linear self-loop、portfolio 和 portfolio + cross-branch
 memory。Generator、Implementer 与 Evaluator 权限分离；Evaluator 只读取预注册 rubric、执行产物和
 原始指标，不读取作者叙事。Portfolio 使用 F0 静态、F1 最小执行、F2 多任务开发、F3 全保真开发四级
@@ -1501,10 +1521,11 @@ git diff --check
 - **P1（前端合同，2026-07-29 已通过）**：263.2 的 16-contract schema bundle、certificate/
   opportunity/portfolio 合取门、16 个 focused unit/property tests、999-test regression、全量
   Ruff/Mypy 和 fail-closed scientific/external boundaries 通过。
-- **P2（机会与复现，部分通过）**：263.3 已从三条 track 中只允许 search-policy track 进入下一门；
-  263.4.0 随后用 endpoint-specific exact power 和逐任务 live 审计否决原 12-task panel，并形成
-  reproduction diagnosis。263.4.1 仍须构建至少 60 个 fully open/objective 独立任务，263.4.2 再
-  clean-room 复现与预注册。任一门失败都不进入 novelty search。
+- **P2（机会、面板与复现，2026-07-30 已通过）**：263.3 只允许 search-policy track 进入下一门；
+  263.4.0 用 endpoint-specific exact power 和逐任务 live 审计否决原 12-task panel；263.4.1 重建
+  7-development/60-confirmatory 的 fully open/objective 双 family 面板；263.4.2 在两个 clean
+  environment 精确重放强 baseline，并在 `result_record_count=0` 时冻结四臂、五消融、预算、权限、
+  阈值、随机化和 stop rule。P2 只授权开发搜索，不表示已有正向科学结果。
 - **P3（组合开发）**：263.5 完成预算匹配的全分支开发实验和低/高保真校准。
 - **P4（独立科学端点）**：263.6 在未揭示 panel 上形成不可改写的正向或阴性 endpoint。
 - **P5（发表候选）**：263.7 的 claim、reproduction、paper 和 Open Science 合取门通过，并进入人类

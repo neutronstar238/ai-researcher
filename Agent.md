@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-30 12:56:15 +08:00 - Codex - Task 263.4.2 clean baseline and causal preregistration
+
+- Request: Continue the publication-grade research recovery path, diagnose why real execution still does not yield publishable science, borrow testable mechanisms from recent automated-research literature, optimize the research path, and implement the next gated task.
+- Files changed:
+  - `src/autoresearch/research/baseline_preregistration.py`
+  - `src/autoresearch/research/assets/frozen_flaml_baseline_v1.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_baseline_preregistration.py`
+  - `tests/smoke/test_baseline_preregistration_live.py`
+  - `pyproject.toml`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `263.4.2` hunk only; concurrent Task `264` changes remain user-owned and unstaged)
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-4-2-clean-baseline-preregistration.md`
+- Summary:
+  - Added strict, content-addressed contracts for a pinned clean baseline environment, baseline specification, per-task A/B replay, reproduction report, result-free paired-baseline thresholds, matched F0—F3 budget, four policy arms, five one-at-a-time ablations, blocked randomization, causal preregistration, schemas, manifests, atomic writers/loaders, and reader-facing Markdown.
+  - Added a standalone, network-free FLAML `2.6.0` runner that imports no AutoResearch code, accepts only prepared local inputs and opaque task IDs, uses one thread, seed `263420001`, four fixed estimators, and exactly 12 record-bearing trials. The repository Mypy configuration excludes this copied execution asset because its scientific dependencies exist only inside the separately pinned replay environments; its runtime behavior is covered by deterministic and live tests.
+  - Verified official PyPI release metadata and 14 wheel SHA-256 values, built two separate virtual environments from the verified wheelhouse, and ran independent A/B processes over all seven development tasks. Every task reproduced raw predictions and objective scores exactly, remained within the budget, queried no OpenML public run, and accessed no confirmatory payload.
+  - Froze 60 task-specific success formulas before any policy result: classification requires paired FLAML balanced accuracy `+0.005`, regression requires paired FLAML R² `+0.010`, and both require artifact/replay/budget/evaluator validity. Baseline confirmation scores and policy scores remained unobserved.
+  - Froze budget-matched one-shot, linear-loop, portfolio, and portfolio-plus-comparative-memory arms; certificate/diversity/multi-fidelity/reviewer/memory ablations; 12 candidates; a 240-CPU-second/task-seed and 60,000-token cap; no unused-budget transfer; three within-task seeds; exact McNemar/Holm analysis; permissions; stop/failure rules; and 804 benchmark/domain-blocked assignments.
+  - Operationalized findings from PaperBench, AI Research Agents, MARS, MLRC-Bench, and AI Scientist work: artifact-level replay, separable policy/operator/evaluator factors, budget-aware branching, comparative memory, objective rather than LLM-judged primary outcomes, and a deliberately narrow construct boundary. The experimental-design and statistical-power skills shaped the independent-unit, blocking, result-free threshold, exact-test, multiplicity, and confirmation-sealing choices.
+  - Recorded the publication boundary explicitly: `ready_for_development_search` with `result_record_count=0` is a prerequisite, not a positive effect or paper. The replay covers the selected FLAML application on this development panel, not every headline experiment in the FLAML paper, and even a later passing result can support only bounded tabular-ML search-policy claims.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_baseline_preregistration.py -q --no-cov`: 8 passed in 2.82 seconds.
+  - `poetry run python -m pytest tests/unit/research/test_baseline_preregistration.py tests/unit/knowledge/test_links.py -q --no-cov`: 11 passed in 1.68 seconds.
+  - `$env:AUTORESEARCH_BASELINE_PREREGISTRATION_LIVE='1'; $env:AUTORESEARCH_BASELINE_PREREGISTRATION_OUTPUT='runs/manual-live/task26342-clean-baseline-preregistration-v2'; poetry run python -m pytest tests/smoke/test_baseline_preregistration_live.py -q --no-cov`: 1 passed in 150.93 seconds after two clean installs and 14 independent A/B task runs.
+  - Live artifact audit: baseline report hash `e8f828c97561e789f523328aa25b82d512a159ab1e6f447f6163a770df4598e5`; preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`; manifest hash `df0324759c6099bdb1cf5764cdc4a3e5db838ae9328db0b8b427de562dc8055a`; dependency-lock hash `e03b61f59bbfeba0b6cab33d9c56611158b91913a754b61f667ecca2e77f8a51`; environment hash `443dec14af2671c28600edb5e6925583750ef58311fbe67da90d5923abf0e16e`; runner-source hash `1d7cb87d0c70887b122b5fb6bd83952562cb18d6c30c1b425d723f719116174a`; randomization hash `0e078296a7ca7b3d115f15bae8e9c3ef3d0e281a22dec9b48d2dd8e58d0ac588`; eight-schema bundle hash `126bd2d2a840fdf2b6a6d63a487d5b6bb79d3fdc65a88d398ce7a914925c9dcb`.
+  - Corrected public-package import smoke loaded `build_frozen_randomization_schedule` and `write_baseline_preregistration`; a direct file digest confirmed the committed runner source matches the live evidence hash exactly.
+  - Focused Black and Ruff passed; `poetry run ruff check src tests` passed; `poetry run mypy src/autoresearch` passed across 165 source files.
+  - Documentation assertions found all nine required status/hash/boundary phrases, and all three Vault-link tests passed.
+  - `poetry run python -m pytest tests -q`: 1036 passed, 21 opt-in live tests skipped, 87% line coverage, in 273.70 seconds.
+  - `git diff --check`: task-owned changes passed; the only warning concerns the concurrent user-owned `.gitignore` line-ending conversion.
+- Problems:
+  - Added and resolved `P-20260730-010` through `P-20260730-012` for initial typing/fixture/diagnostic-name defects, transient PyPI/OpenML transport timeouts, and the first live audit's Windows launcher-PID plus trial-summary counting defects.
+  - Updated mitigated `P-20260730-009` with the sealed runner and zero-result preregistration while preserving the inherent tabular-only construct boundary.
+  - Resolved `P-20260730-001`: the original invalid ScienceAgentBench panel remains retired, and its replacement now has both objective power and a reproducible baseline.
+  - Updated open `P-20260729-048`: baseline reliability and causal design are now resolved, but the front-end publication bottleneck remains until Task `263.5` executes a real bounded portfolio and Task `263.6` produces a valid independent endpoint.
+  - Preserved concurrent Task `264` and `.gitignore` changes without staging them.
+- Follow-up:
+  - Task `263.5`: execute the real budget-matched multi-branch development search under the frozen schedule, retain all branches/failures/costs, calibrate F0—F3 promotion, run the five ablations, and allow a no-winner endpoint. If live model execution needs credentials, obtain provider-neutral `base_url`, `api_key`, and `model_name` through `.env`; do not hard-code or fabricate them.
+
 ### 2026-07-30 12:17:17 +08:00 - Codex - Task 263.4.1 open objective task panel
 
 - Request: Continue the publication-grade research recovery path, explain why the running system still cannot produce a publishable scientific claim, learn from automated-research studies, and replace the rejected task panel without weakening evidence gates.

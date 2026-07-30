@@ -40,6 +40,118 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260730-016 - Initial desktop account-lifecycle checks exposed test-environment and Rust assertion defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 12:27:00 +08:00
+- Source: Task `264.2` account change-password and destructive reset verification.
+- Symptom: The first frontend check entered Fluent UI dialog rendering under jsdom and failed because `ResizeObserver` and `NodeFilter` were unavailable. The first Rust check also used an assertion shape that required a missing `Debug` implementation, and `cargo fmt --check` reported formatting drift.
+- Impact: The first combined account-lifecycle verification did not pass and could not be used as completion evidence.
+- Evidence: No production runtime failed; the failures occurred in the new focused tests and formatting gate.
+- Root cause: The frontend test covered a browser-layout dependency instead of the pure destructive-confirmation contract, while the Rust assertion and formatting had not yet been normalized.
+- Workaround: None retained.
+- Next action: Keep the pure confirmation helper and the current Rust regression tests in the normal desktop gate.
+- Linked tasks: `264.2`.
+- Resolution: Test the reset phrase through the exported pure helper, use Rust assertions that do not require the error type to implement `Debug`, and run `cargo fmt`.
+- Verification: Final `npm run test` passed 5 tests in 3 files; `cargo fmt --check` passed; `cargo test --lib` passed 4 tests, including Argon2 verification, session expiry, workspace markers, and secret-vault cleanup.
+
+### P-20260730-015 - External-credential and clean-machine desktop checks remain environment-dependent
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-07-30 12:36:00 +08:00
+- Source: Tasks `264.4` and `264.6` final acceptance matrix.
+- Symptom: No real LLM, WeChat, or Feishu credentials were supplied for explicit outbound connection tests. The current machine also cannot represent a fresh Windows user with WebView2 absent and a guaranteed fully offline first launch.
+- Impact: The provider/channel UI, secure storage, allowlist, installer, bundled Sidecar, startup, uninstall, and data retention were verified locally, but the credentialed external flows and the three clean-machine environment cases cannot be claimed as executed.
+- Evidence: The browser preview correctly keeps credentialed writes disabled; the installer and packaged Sidecar pass locally; no raw secret entered screenshots, Figma, logs, DTOs, or the package scan.
+- Root cause: These checks require user-controlled credentials or a separate disposable Windows environment.
+- Workaround: Treat integrations as disconnected until a user explicitly supplies credentials and runs the visual test action; retain WebView2 bootstrap and the bundled Python Sidecar in the NSIS package.
+- Next action: Run the credentialed LLM/WeChat/Feishu checks and a clean-VM matrix covering absent WebView2, offline launch, restart, and uninstall retention.
+- Linked tasks: `264.4`, `264.6`.
+- Resolution: Pending the external credentials and clean Windows environment; tasks remain unchecked.
+- Verification: `npm run verify`, packaged-Sidecar snapshot validation, release-app startup, silent installer install/uninstall, workspace-retention check, and final package scan passed on the current Windows host.
+
+### P-20260730-014 - Figma Code Connect is unavailable on the current plan
+
+- Status: Mitigated
+- Severity: Low
+- Discovered: 2026-07-30 12:08:00 +08:00
+- Source: Task `264.5` Figma implementation handoff.
+- Symptom: Publishing Code Connect mappings was rejected because the current Figma Pro plan does not provide the required Organization/Enterprise Dev or Full seat capability.
+- Impact: The Figma file, variables, components, screens, state ledger, screenshots, and implementation remain available, but component-to-code mappings are not published through Code Connect.
+- Evidence: Figma returned debug UUID `8afbac36-7389-41bf-841c-7261b65e1ee8`.
+- Root cause: Figma plan entitlement, not a design or implementation defect.
+- Workaround: Retain component names, node IDs, screenshots, and `winapp/docs/figma-state-yanqizhilian.json` for manual traceability.
+- Next action: Publish Code Connect mappings only if the Figma workspace is upgraded to an eligible seat.
+- Linked tasks: `264.5`.
+- Resolution: Design QA is complete without Code Connect; the entitlement limitation remains.
+- Verification: The six-page Figma file contains nine 1440 × 900 screens, 50 variables, reusable components, 17 source indicators, zero forbidden-content hits, and zero secret hits.
+
+### P-20260730-013 - First NSIS dependency download ended with an incomplete stream
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 11:25:00 +08:00
+- Source: Task `264.6` first `tauri build --bundles nsis`.
+- Symptom: Tauri's first NSIS dependency download failed with `io: unexpected end of file`.
+- Impact: The first installer build produced no usable setup executable.
+- Evidence: The failure occurred before packaging and did not modify the research workspace.
+- Root cause: Transient incomplete download of the NSIS build dependency.
+- Workaround: Retry the same deterministic package build.
+- Next action: None.
+- Linked tasks: `264.6`.
+- Resolution: The retry downloaded the dependency successfully and produced the local x64 installer.
+- Verification: `winapp/dist/研启智链_0.1.0_x64-setup.exe` is 30,746,677 bytes with SHA-256 `18E21F26F255967D5DEC6C9CE81BDE679CE1FF4D391B7668332C07027A619EFB`; silent install, packaged-Sidecar snapshot, uninstall, and workspace retention passed.
+
+### P-20260730-012 - First clean replay audit confused the Windows launcher PID and counted a log summary as a trial
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-07-30 13:18:00 +08:00
+- Source: First opt-in live invocation for Task `263.4.2`.
+- Symptom: Both A/B FLAML runners completed, but the v1 smoke rejected the result because a Windows virtual-environment launcher PID differed from the spawned runner PID. The same audit counted the final FLAML summary JSON line as a thirteenth trial even though only 12 records had a `record_id`.
+- Impact: The v1 invocation could not serve as acceptance evidence, and retaining either check would misdescribe process independence or the matched search budget.
+- Evidence: Both v1 result directories contain predictions and runner results. Inspection showed distinct actual A/B process IDs and 12 record-bearing trial lines plus one non-trial summary line.
+- Root cause: The parent audit recorded the wrapper/launcher PID instead of requiring the PID emitted by the runner, and the line counter did not distinguish FLAML trial records from its terminal summary.
+- Workaround: The failed v1 artifact remains ignored and is not used as evidence.
+- Next action: Preserve the actual-runner PID and record-bearing trial-count assertions in the live smoke.
+- Linked tasks: `263.4.2`.
+- Resolution: Audit the positive PID written by each runner, require A/B runner PIDs to differ, and count only JSON lines containing `record_id`.
+- Verification: The v2 clean replay passed all seven development tasks with distinct A/B runner processes, exactly 12 trials per run, and exact prediction/score agreement; the opt-in smoke passed in 150.93 seconds.
+
+### P-20260730-011 - Baseline dependency and OpenML fetches encountered transient transport timeouts
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 12:45:00 +08:00
+- Source: Task `263.4.2` official PyPI/OpenML reconnaissance and first live replay.
+- Symptom: A PyPI metadata request ended in Windows socket error `10060`, and one OpenML development-data connection timed out during the first live invocation.
+- Impact: The affected requests produced no evidence on those attempts. They did not alter the frozen dependency selection, task split, scientific result, or external state.
+- Evidence: Bounded independent retries subsequently returned the official PyPI release metadata, all 14 named wheels and hashes, and every required development task/split payload.
+- Root cause: Transient remote/network availability during a dependency-and-data-intensive live check.
+- Workaround: Use bounded retries with fresh requests, fixed URLs, expected content identities, and hash verification; fail closed if the retry budget is exhausted.
+- Next action: Keep network acquisition outside the sealed runner and reuse the cached, hash-verified wheel/data inputs for Task `263.5`.
+- Linked tasks: `263.4.2`, `263.5`.
+- Resolution: The committed live smoke verifies every downloaded wheel hash and retries official metadata/data acquisition without changing scientific parameters.
+- Verification: The final v2 smoke installed both clean environments from the same 14 verified wheels and completed all seven development replays in 150.93 seconds.
+
+### P-20260730-010 - Initial preregistration checks exposed local typing, fixture, and diagnostic-name defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 12:30:00 +08:00
+- Source: Task `263.4.2` focused format, lint, type, unit, import, and artifact-audit checks.
+- Symptom: Initial checks found narrow import/literal/type issues; six unit fixtures referenced `metric_id` instead of `objective_metric`; one reconstructed fixture retained a stale replay hash; source-tree Mypy attempted to resolve clean-environment-only scientific dependencies in the standalone runner; and two ad hoc smoke/audit commands guessed a nonexistent export and a wrong JSON property name.
+- Impact: The first focused runs and those two diagnostics had no valid verdict. No confirmatory result was exposed and no scientific threshold or result was changed.
+- Evidence: The unit sequence reported six failures, then one failure, before all eight passed. Canonical Mypy later passed after treating the copied standalone runner as an externally pinned execution asset; the corrected package import loaded `build_frozen_randomization_schedule` and `write_baseline_preregistration`; the corrected JSON audit found 60 thresholds and 804 assignments.
+- Root cause: Test factories and diagnostic commands were written against inferred field/function names, while the standalone runner intentionally depends on packages installed only into its two clean replay environments.
+- Workaround: Use model-declared field names, recompute content hashes after fixture mutation, inspect public exports before import smoke, and audit the runner dynamically inside its pinned environment while keeping repository Mypy focused on AutoResearch integration code.
+- Next action: Preserve the round-trip/tamper tests and run canonical full gates before commit.
+- Linked tasks: `263.4.2`.
+- Resolution: Corrected the fixtures, regenerated replay hashes, isolated external runner type resolution, formatted imports, and reran the actual public API and JSON-field audits.
+- Verification: Eight focused unit tests, focused Black/Ruff, canonical source-tree Mypy, and the corrected package import smoke passed.
+
 ### P-20260730-009 - Public tabular benchmarks cannot support a general autonomous-science claim
 
 - Status: Mitigated
@@ -51,10 +163,10 @@ update a factual problem entry below.
 - Evidence: The frozen Task `263.4.1` report explicitly scopes the claim to bounded tabular-ML search policies, records `existing_public_runs_queried=false`, downloads only two development representatives, and retains `confirmatory_payloads_downloaded=false` for all 60 confirmatory tasks.
 - Root cause: The fully open, objectively scored, adequately powered tasks available under local compute constraints are narrower than the original broad scientific-agent construct.
 - Workaround: Keep the narrow claim in every contract and manuscript; block OpenML run/result endpoints, confirmation payloads, and development trajectories from the confirmatory runner; freeze task thresholds and permissions before any search; report public-benchmark familiarity as a limitation.
-- Next action: Task `263.4.2` must prove clean-room baseline reproduction and sealed runner permissions before preregistration. Task `263.5` must not broaden the claim or use public scores as reward.
+- Next action: Task `263.5` must execute only the frozen development schedule, must not broaden the claim or use public scores as reward, and must retain the sealed confirmatory boundary.
 - Linked tasks: `263.4.1`, `263.4.2`, `263.5`, `263.6`, `263.7`.
-- Resolution: The immediate overclaim and leakage risks are contractually mitigated, but the construct boundary is inherent and must remain in the final scientific claim.
-- Verification: Unit tests reject confirmatory tasks as live-probe downloads and force all outcome/run visibility flags false; the 49.60-second live smoke queried no run endpoint and wrote a `ready_for_clean_baseline` report rather than a scientific result.
+- Resolution: The immediate overclaim and leakage risks are contractually mitigated, but the construct boundary is inherent and must remain in the final scientific claim. Task `263.4.2` additionally freezes network-denied runner permissions, paired-baseline thresholds, and a zero-result preregistration before development search.
+- Verification: Unit tests reject confirmatory leakage and post-result preregistration; the Task `263.4.1` smoke queried no run endpoint, and the Task `263.4.2` smoke accessed only seven development payloads while retaining 60 confirmatory payloads as not downloaded. The latter wrote `ready_for_development_search` with `result_record_count=0`, not a scientific result.
 
 ### P-20260730-008 - A short live-test timeout left a child run active and briefly duplicated metadata probes
 
@@ -170,7 +282,7 @@ update a factual problem entry below.
 
 ### P-20260730-001 - Selected ScienceAgentBench panel is inaccessible, model-judged, and underpowered
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-07-30 10:35:00 +08:00
 - Source: Task `263.4.0` endpoint-specific official task/evaluator/data/license/power audit.
@@ -179,10 +291,10 @@ update a factual problem entry below.
 - Evidence: Official CSV has 102 rows and SHA-256 `7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`; selected confirmation IDs contain 9 images and 3 structured outputs. Exact two-sided McNemar power at `n=12` is `0.054402`, `0.080152`, and `0.095619` for frozen `p01={0,0.05,0.10}`, requiring `31`, `45`, and `60` independent tasks for 80% power.
 - Root cause: The opportunity tournament used metadata-level data/license reachability and a generic continuous normal approximation before the task-specific paired-binary evaluator and independent-unit design were audited.
 - Workaround: Baseline execution, novelty search, confirmation reveal, public release, and submission remain false. Task `263.4.0` emits a content-addressed reproduction diagnosis rather than weakening a threshold.
-- Next action: The original ScienceAgentBench panel is retired. Task `263.4.2` may now attempt clean-room baseline reproduction only on the replacement panel and must stop if thresholds, permissions, or replay cannot be frozen without confirmatory leakage.
+- Next action: Keep the original ScienceAgentBench selection retired. Task `263.5` may execute only the replacement panel's frozen development design.
 - Linked tasks: `263.3`, `263.4`, `263.4.0`, `263.4.1`, `263.4.2`, `263.5`.
-- Resolution: Task `263.4.1` replaced, rather than repaired, the original panel with 60 independent confirmatory OpenML tasks across two objective families. The panel/power portion is resolved; baseline reliability and causal preregistration remain open under Task `263.4.2`.
-- Verification: The original diagnosis remains `blocked_reproduction_diagnosis`. The replacement panel's official-source smoke passed in 49.60 seconds with report status `ready_for_clean_baseline`, 7 development plus 60 confirmatory tasks, no confirmatory payload download, no public-run query, and report hash `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`.
+- Resolution: Task `263.4.1` replaced, rather than repaired, the original panel with 60 independent confirmatory OpenML tasks across two objective families. Task `263.4.2` then reproduced the selected FLAML application across all seven replacement development tasks and froze the causal design without touching the confirmation payloads.
+- Verification: The original diagnosis remains an immutable negative artifact. The replacement panel smoke passed in 49.60 seconds, and the clean baseline/preregistration smoke passed in 150.93 seconds with baseline report hash `e8f828c97561e789f523328aa25b82d512a159ab1e6f447f6163a770df4598e5`, preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`, and `result_record_count=0`.
 
 ### P-20260729-060 - Two ad hoc Markdown inspections mishandled Windows text and PowerShell escaping
 
@@ -387,10 +499,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Execute Task `263.4.2`: reproduce the selected strong baseline in a clean environment and freeze task thresholds, budgets, permissions, randomization, and stopping rules before any development outcome. Then Task `263.5` must run the real bounded multi-branch portfolio.
+- Next action: Execute Task `263.5`: run the real bounded, budget-matched multi-branch development portfolio under the frozen `263.4.2` schedule; calibrate fidelity promotion and retain a valid no-winner endpoint when warranted.
 - Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`.
-- Resolution: Partially resolved by Tasks `263.2`—`263.4.1`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, and a replacement open/objective panel now supplies exactly 60 independent confirmatory tasks. The problem remains open until Task `263.4.2` reproduces the baseline and Task `263.5` replaces single-candidate search with a real bounded portfolio.
-- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` then checked all 67 replacement metadata records, passed two family data/split/evaluator/license/compute probes, retained 7 development plus 60 sealed confirmatory tasks, and produced `ready_for_clean_baseline` report hash `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`.
+- Resolution: Partially resolved by Tasks `263.2`—`263.4.2`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, the replacement panel supplies 60 independent confirmatory tasks, and the strong baseline plus zero-result causal preregistration are now frozen. The problem remains open until Task `263.5` replaces single-candidate search with a real bounded portfolio and later confirmation supplies a valid positive or negative endpoint.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` checked all 67 replacement records. Task `263.4.2` then verified 14 wheel hashes, reproduced all seven development tasks in separate A/B environments, froze 60 thresholds and 804 assignments, and produced `ready_for_development_search` preregistration hash `100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707` with no result records.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

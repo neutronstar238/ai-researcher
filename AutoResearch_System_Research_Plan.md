@@ -1218,3 +1218,38 @@ live panel 状态为 `ready_for_clean_baseline`，report hash
 `2224147ea065249e10e6ad69642f91611376b0f84ec983b99b0d122028bc4efa`。这只解锁
 `263.4.2` 的 clean-room baseline reproduction；task-specific success threshold、四臂五消融、
 预算和 preregistration 尚未冻结，novelty search、确认执行、公开发布和投稿仍为 false。
+
+`263.4.2` 已于 2026-07-30 完成 baseline 可重复性门和结果前因果预注册。这里借鉴的不是“让更多
+Agent 自由讨论”，而是近期自动科研研究中可被实验化的部分：PaperBench 的 artifact-level
+reproduction、AI Research Agents 对 search policy/operator/evaluator 的拆分、MARS 的固定预算多分支
+搜索与 comparative memory、MLRC-Bench 对 LLM 创新评分和客观效果失配的警告，以及 AI Scientist
+工作中“窄任务成功不能自动外推为普适科学能力”的边界。详细交叉检索和原始来源继续保存在
+[[exploration/publishability-recovery-ai-scientist-2026|发表能力恢复交叉检索]]；本阶段把这些思路转成
+可反驳、可复放的研究设计，而不是把论文中的系统名直接拼进产品。
+
+选定 baseline 是固定为 FLAML `2.6.0` 的有界 tabular AutoML 应用，候选 estimator 为
+LightGBM/XGBoost/Random Forest/Extra Trees，每个任务固定 12 个 trial、单线程和 seed
+`263420001`。官方 PyPI 元数据和 14 个 wheel 的版本与 SHA-256 先冻结，再分别新建两个互不共享的
+virtual environment；standalone runner 不导入 AutoResearch、不访问网络，只接收匿名 task ID、特征、
+固定 split 和本地目标值。7 个 development task 均在 A/B 独立进程中精确重放：每个 task 的 raw
+prediction hash、客观 metric 和 12-trial 计数一致。该结果证明的是“本项目选定的 FLAML 应用在冻结
+开发面板上可重放”，不是对 FLAML 论文全部 headline benchmark 的再现，也不是新科学效果。
+
+结果读取前已经冻结 60 个 task-specific threshold：分类为 paired baseline balanced accuracy
+`+0.005`，回归为 paired baseline R² `+0.010`，并且必须同时通过 artifact、prediction replay、budget
+和 evaluator integrity 门。四个预算匹配 arm 是 one-shot batch、linear self-loop、branching
+portfolio、portfolio + comparative memory；五个 one-at-a-time ablation 分别去除 certificate、
+diversity、multi-fidelity、reviewer 或 memory。所有 arm 共用 12 个候选和 F0—F3 预算：
+`12×0.125×5s→6`、`6×0.25×10s→3`、`3×0.5×20s→1`、`1×1.0×60s→1`，每个 task-seed
+最多 240 CPU 秒和 60,000 model tokens，未使用预算不得跨 arm 重新分配。三个 seed
+`1729/3253/7919` 只是 task 内重复；按 benchmark/domain blocking 冻结的 67×3×4 调度共有
+804 个 assignment，主比较使用 task-level exact McNemar，次要比较使用 Holm 控制。
+
+最终状态是 `ready_for_development_search`，不是“已有可发表发现”。baseline report hash 为
+`e8f828c97561e789f523328aa25b82d512a159ab1e6f447f6163a770df4598e5`，preregistration hash 为
+`100f8a0054fb1fc69ef77cbdeab5521361ba5b1a514082bac9e78493fcf0e707`，manifest hash 为
+`df0324759c6099bdb1cf5764cdc4a3e5db838ae9328db0b8b427de562dc8055a`。`result_record_count=0`，
+60 个 confirmatory payload 仍未下载，development search、confirmation、release 和 submission
+仍未开始/授权。当前仍不能发表的剩余原因很明确：尚无真实 portfolio 开发结果、低/高保真校准、
+关键消融、未揭示确认效应、区间与独立复现；即使以后通过，也只能支持“有界 tabular-ML 搜索策略”
+这一窄命题。下一门是 `263.5`，它必须真实执行预算匹配的多分支研究，而不能用预注册本身冒充结果。
