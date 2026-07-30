@@ -40,6 +40,70 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260730-009 - Public tabular benchmarks cannot support a general autonomous-science claim
+
+- Status: Mitigated
+- Severity: Medium
+- Discovered: 2026-07-30 11:50:00 +08:00
+- Source: Task `263.4.1` construct-validity and leakage review after rebuilding the rejected ScienceAgentBench panel.
+- Symptom: OpenML CC18/CTR23 provide objective data, fixed splits, and enough independent tasks, but they are public tabular prediction benchmarks with historical runs. They do not exercise literature search, wet-lab work, arbitrary scientific software, or broad end-to-end publication, and a future runner could leak public benchmark results if network/tool permissions are not constrained.
+- Impact: Treating a passing panel or later policy effect as proof of "fully autonomous science" would be a construct overclaim. Querying public runs or allowing confirmatory payloads into branch memory would also invalidate the preregistered comparison.
+- Evidence: The frozen Task `263.4.1` report explicitly scopes the claim to bounded tabular-ML search policies, records `existing_public_runs_queried=false`, downloads only two development representatives, and retains `confirmatory_payloads_downloaded=false` for all 60 confirmatory tasks.
+- Root cause: The fully open, objectively scored, adequately powered tasks available under local compute constraints are narrower than the original broad scientific-agent construct.
+- Workaround: Keep the narrow claim in every contract and manuscript; block OpenML run/result endpoints, confirmation payloads, and development trajectories from the confirmatory runner; freeze task thresholds and permissions before any search; report public-benchmark familiarity as a limitation.
+- Next action: Task `263.4.2` must prove clean-room baseline reproduction and sealed runner permissions before preregistration. Task `263.5` must not broaden the claim or use public scores as reward.
+- Linked tasks: `263.4.1`, `263.4.2`, `263.5`, `263.6`, `263.7`.
+- Resolution: The immediate overclaim and leakage risks are contractually mitigated, but the construct boundary is inherent and must remain in the final scientific claim.
+- Verification: Unit tests reject confirmatory tasks as live-probe downloads and force all outcome/run visibility flags false; the 49.60-second live smoke queried no run endpoint and wrote a `ready_for_clean_baseline` report rather than a scientific result.
+
+### P-20260730-008 - A short live-test timeout left a child run active and briefly duplicated metadata probes
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 12:09:00 +08:00
+- Source: First Task `263.4.1` opt-in live invocation.
+- Symptom: The shell wrapper was given a one-second timeout and returned exit `124`, but its Poetry/Python child process continued after the wrapper exited. Starting the intended hidden/logged run briefly produced two copies of the read-only metadata smoke.
+- Impact: The timed invocation had no verdict and briefly duplicated anonymous GET traffic to official metadata endpoints. It did not download confirmatory data, query benchmark runs, mutate external state, or write a second scientific artifact.
+- Evidence: Process-tree inspection showed two timestamp-separated `test_objective_task_panel_live.py` trees; the older exact PID tree was stopped, leaving one logged run. The surviving run then passed once in 49.60 seconds.
+- Root cause: The command tool timeout terminated the PowerShell wrapper without recursively terminating spawned Poetry descendants.
+- Workaround: Launch long repository/live verification once with hidden `Start-Process`, redirected ignored logs, and explicit process-tree monitoring; do not use a sub-five-second wrapper timeout.
+- Next action: Reuse the completed live artifact unless a source/code change requires an intentional rerun.
+- Linked tasks: `263.4.1`.
+- Resolution: Stopped only the older exact process tree after verifying its command line and retained one canonical logged run.
+- Verification: Subsequent process inspection showed one live-test tree; it exited normally with `1 passed in 49.60s`.
+
+### P-20260730-007 - Initial panel lint and type checks found local formatting and inference defects
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 12:00:00 +08:00
+- Source: Focused Ruff, Black, and Mypy checks for Task `263.4.1`.
+- Symptom: Black required two new modules to be reformatted; Mypy retained a classification-candidate loop variable type when the same name was reused for regression candidates; Ruff required import ordering in the new tests and package exports; a standalone test-only Mypy invocation resolved the installed package without `py.typed`.
+- Impact: Runtime unit tests passed, but the new slice did not initially satisfy repository format/type gates. The standalone Mypy command produced no valid repository-wide verdict.
+- Evidence: Mypy reported four candidate-type errors; Ruff reported `I001`; Black listed two files; the standalone test invocation reported import-untyped for local package modules.
+- Root cause: Reused local names confused static inference, manually inserted imports did not match isort order, and checking a test file without its local source modules changed Mypy's module resolution.
+- Workaround: Use distinct candidate variable names, apply the repository format/import tools, and include source modules or run the canonical `mypy src/autoresearch` gate.
+- Next action: Preserve the focused tests and run full Ruff/Mypy before commit.
+- Linked tasks: `263.4.1`.
+- Resolution: Renamed the variables, formatted the files, normalized imports, and reran canonical source-tree Mypy.
+- Verification: Focused Ruff passed and `poetry run mypy src/autoresearch` passed across 164 source files.
+
+### P-20260730-006 - OpenML reconnaissance encountered transient TLS and HTTP 503 failures
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-30 11:38:00 +08:00
+- Source: Read-only Task `263.4.1` source-inventory commands.
+- Symptom: A first high-concurrency metadata inventory shared one `requests.Session` across workers and hit a remote disconnect/TLS EOF; a later suite request returned HTTP 503 before the candidate-source redirect audit started.
+- Impact: Those two reconnaissance commands produced no complete inventory verdict. No task selection, data payload, external state, or tracked file was changed by either failure.
+- Evidence: The commands exited nonzero with `RemoteDisconnected`/`SSLEOFError` and `503 Server Error`. Lower-concurrency per-request retries subsequently recovered all 107 suite metadata records and all 67 frozen selected records.
+- Root cause: The OpenML legacy REST endpoint was transiently unavailable, and the first script also reused a session across threads.
+- Workaround: Use bounded retries with backoff, four workers at most, an independent session per concurrent fetch, exact suite/task/data IDs, and content hashes.
+- Next action: Keep endpoint instability separate from scientific eligibility; a future source change or repeated bounded failure must block rather than silently reuse stale metadata.
+- Linked tasks: `263.4.1`, `263.4.2`.
+- Resolution: The committed smoke uses retry/backoff and independent sessions for concurrent dataset-detail requests.
+- Verification: The final official-source smoke checked all 67 selected records and passed in 49.60 seconds.
+
 ### P-20260730-005 - Console-script pytest omitted the repository root for a namespace test helper
 
 - Status: Resolved
@@ -106,7 +170,7 @@ update a factual problem entry below.
 
 ### P-20260730-001 - Selected ScienceAgentBench panel is inaccessible, model-judged, and underpowered
 
-- Status: Open
+- Status: Mitigated
 - Severity: High
 - Discovered: 2026-07-30 10:35:00 +08:00
 - Source: Task `263.4.0` endpoint-specific official task/evaluator/data/license/power audit.
@@ -115,10 +179,10 @@ update a factual problem entry below.
 - Evidence: Official CSV has 102 rows and SHA-256 `7f490f17f721a9c7e9415d3608a1a37d1a5315a26862cf556e3096ac4062face`; selected confirmation IDs contain 9 images and 3 structured outputs. Exact two-sided McNemar power at `n=12` is `0.054402`, `0.080152`, and `0.095619` for frozen `p01={0,0.05,0.10}`, requiring `31`, `45`, and `60` independent tasks for 80% power.
 - Root cause: The opportunity tournament used metadata-level data/license reachability and a generic continuous normal approximation before the task-specific paired-binary evaluator and independent-unit design were audited.
 - Workaround: Baseline execution, novelty search, confirmation reveal, public release, and submission remain false. Task `263.4.0` emits a content-addressed reproduction diagnosis rather than weakening a threshold.
-- Next action: Task `263.4.1` must build a fully open, objectively scored, bounded-compute panel with at least 60 independent tasks across at least two benchmark/task families; Task `263.4.2` may reproduce and preregister only after that panel passes live gates.
+- Next action: The original ScienceAgentBench panel is retired. Task `263.4.2` may now attempt clean-room baseline reproduction only on the replacement panel and must stop if thresholds, permissions, or replay cannot be frozen without confirmatory leakage.
 - Linked tasks: `263.3`, `263.4`, `263.4.0`, `263.4.1`, `263.4.2`, `263.5`.
-- Resolution: The immediate overclaim risk is mitigated by the new fail-closed contract, but the scientific blocker remains open until an adequately powered panel and clean-room baseline exist.
-- Verification: Ten focused deterministic tests and one opt-in live official-source smoke passed; report status is `blocked_reproduction_diagnosis`, report hash is `7c4d06eb82eabb250cf1b509242480bf27f079f65eaec6fbe564593c54b4aa3c`, and all external/result-visibility flags remain false.
+- Resolution: Task `263.4.1` replaced, rather than repaired, the original panel with 60 independent confirmatory OpenML tasks across two objective families. The panel/power portion is resolved; baseline reliability and causal preregistration remain open under Task `263.4.2`.
+- Verification: The original diagnosis remains `blocked_reproduction_diagnosis`. The replacement panel's official-source smoke passed in 49.60 seconds with report status `ready_for_clean_baseline`, 7 development plus 60 confirmatory tasks, no confirmatory payload download, no public-run query, and report hash `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`.
 
 ### P-20260729-060 - Two ad hoc Markdown inspections mishandled Windows text and PowerShell escaping
 
@@ -323,10 +387,10 @@ update a factual problem entry below.
 - Evidence: Task `260` Route A produced development median relative improvements `0.779785` and `0.672083`, but both frozen unseen system-level 95% confidence intervals crossed zero (`[-3.053723, 0.953866]` and `[-2.157336, 0.921594]`). Task `261.2` development passed, while the six-task confirmatory coverage endpoint was `0.583333`, below the frozen `0.60` threshold. Task `259` and its recovery both retained negative system-level endpoints and kept Gate B closed. In contrast, Task `260` Route B proves the back-end system/paper/reproduction path can pass and is `ready_for_human_submission_review`.
 - Root cause: The research front end lacks one content-addressed Research Question Certificate, a conjunctive opportunity gate, clean-room strong-baseline reproduction before novelty search, prospective independent-unit/power evidence, diversity-constrained branch portfolios, calibrated multi-fidelity survival rules, and causal comparisons of search strategies. Seed repeats have correctly not been treated as new independent units, but the available unit count was not used as a pre-search feasibility gate.
 - Workaround: Keep every current scientific gate unchanged; preserve all negative results; do not rerun or reinterpret revealed Task `259`—`261` panels. Treat Task `260` as a separate systems-paper candidate for human review, and require new scientific work to follow the Task `263` replication-first portfolio plan.
-- Next action: Execute Task `263.4.1` for `track.search-policy-causality`: replace the rejected 12-task panel with at least 60 fully open, objectively evaluated independent tasks across at least two benchmark/task families, then allow Task `263.4.2` clean-room reproduction and preregistration only if every live gate passes.
+- Next action: Execute Task `263.4.2`: reproduce the selected strong baseline in a clean environment and freeze task thresholds, budgets, permissions, randomization, and stopping rules before any development outcome. Then Task `263.5` must run the real bounded multi-branch portfolio.
 - Linked tasks: `259`, `260`, `261`, `263`, `263.1`, `263.2`, `263.3`, `263.4`, `263.5`.
-- Resolution: Partially resolved by Tasks `263.2`—`263.4.0`: content-addressed front-end contracts now fail closed, a real three-track tournament retained two negative opportunities, and the selected track's endpoint-specific audit correctly rejected its inaccessible/model-judged/underpowered panel before baseline execution. The problem remains open until Tasks `263.4.1`—`263.4.2` establish an adequately powered open panel and reproduced baseline, and Task `263.5` replaces single-candidate search with a real bounded portfolio.
-- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts and passed its full quality gates. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` then fixed the official 102-row metadata hash, found 9/12 confirmation outputs are model-judged images, proved the published artifact/evaluator surface is not anonymously auditable, replaced the invalid normal approximation with exact paired-binary power requiring up to 60 independent tasks, and kept novelty search, confirmation reveal, release, and submission false.
+- Resolution: Partially resolved by Tasks `263.2`—`263.4.1`: content-addressed front-end contracts fail closed, a real tournament retained negative opportunities, endpoint-specific power rejected the first panel, and a replacement open/objective panel now supplies exactly 60 independent confirmatory tasks. The problem remains open until Task `263.4.2` reproduces the baseline and Task `263.5` replaces single-candidate search with a real bounded portfolio.
+- Verification: Task `263.1` revalidated the immutable local endpoints and all 36 report locators. Task `263.2` added 16 contracts. Task `263.3` reached 11/11 primary literature and 9/9 resource endpoints. Task `263.4.0` rejected the model-judged 12-task panel and required 60 tasks. Task `263.4.1` then checked all 67 replacement metadata records, passed two family data/split/evaluator/license/compute probes, retained 7 development plus 60 sealed confirmatory tasks, and produced `ready_for_clean_baseline` report hash `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`.
 
 ### P-20260729-047 - Task 261 parent status remained open after all acceptance evidence passed
 

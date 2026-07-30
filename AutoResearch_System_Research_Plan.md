@@ -1195,3 +1195,26 @@ task-specific evaluator 可固定、主终点不依赖模型 judge、算力可�
 都不能仅凭任务/文件条目数被宣称满足独立单位和功效。只有完整面板通过 live 数据/评测器/许可/算力
 审计，才允许 `263.4.2` clean-room 复现强 baseline 并冻结四臂、五消融、预算、随机化、停止规则和
 sealed confirmatory panel。
+
+`263.4.1` 已于 2026-07-30 完成该重建，但同时主动收窄了可外推的科学命题。新面板不是“通用自动
+科学” benchmark，而是两个 OpenML 固定套件上的 bounded tabular-ML research task：CC18 分类与
+CTR23 回归。CC18 的 72 个任务中，只有能从官方元数据追到 UCI CC BY 4.0 来源的候选进入许可池；
+同一 Multiple Features 来源的多种表示先合并为一个 independence group。CTR23 的 35 个任务中，
+10 个仅标 `Public`、1 个非商业许可和 1 个未注明版本的 `CC BY` 全部排除；red/white wine 同源任务
+只保留一个。选择只使用冻结的 metadata-only SHA-256 排序，不读取 OpenML run、score、prediction
+或确认结果。
+
+最终注册表含 67 个互不重复的 data/source group：7 个 development 与 60 个 confirmatory；
+confirmatory 由 41 个分类和 19 个回归任务组成，覆盖多个 domain block。每个任务绑定 OpenML task、
+data MD5、官方 split URL、source/task/code license、target、resampling procedure、实例/特征上限和
+本地 Apache-2.0 evaluator；分类使用 balanced accuracy，回归使用 R²，主终点不调用模型 judge。
+逐 family 的真实 smoke 只下载 development 代表 `openml-cc18-task-11` 与
+`openml-ctr23-task-361247`，验证数据 MD5、split ARFF、许可证、确定性 replay 与 CPU compute；
+60 个 confirmatory payload 仍未下载。最保守 exact McNemar 情景在 `n=60` 的功效为 `0.801422`。
+
+live panel 状态为 `ready_for_clean_baseline`，report hash
+`ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`，registry hash
+`6aa348b2014905d582b979dd35183fe9fa722abcbd41a8de9f65c720bafe780e`，manifest hash
+`2224147ea065249e10e6ad69642f91611376b0f84ec983b99b0d122028bc4efa`。这只解锁
+`263.4.2` 的 clean-room baseline reproduction；task-specific success threshold、四臂五消融、
+预算和 preregistration 尚未冻结，novelty search、确认执行、公开发布和投稿仍为 false。

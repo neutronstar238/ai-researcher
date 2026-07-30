@@ -1454,6 +1454,22 @@ baseline、启动 novelty、揭示确认结果或授权 release/submission。
 数据、evaluator、许可和 compute smoke，`263.4.2` 才能 clean-room 复现 baseline 并生成真正预注册；
 否则停止或重设计 claim。
 
+`263.4.1` 已完成为窄范围、可执行的 OpenML 双 family 面板。metadata-only SHA-256 选择在结果前冻结，
+先按原始 source group 去重，再排除模糊或非开放许可证：CC18 保留 45 个 UCI→CC BY 4.0 分类任务，
+CTR23 保留 22 个明确 CC/CC0/GPL 且同源去重的回归任务。面板分为 7 个 development 和 60 个
+confirmatory 独立任务；确认层是 41 classification + 19 regression，seed/trajectory 仍只是单位内
+重复。`Public`、非商业、未注明版本的 `CC BY`、同源 wine/mfeat 和无 source-specific 开放许可证据
+均作为带原因的排除记录保留，未用于凑样本量。
+
+本地 evaluator source hash 为
+`dfa9c2012d11fa9989ad80ce41818f8e4dc0b691d44047157b2311de0a96191e`，Apache-2.0 license hash 为
+`5cb668e80870451ec5797defddfc2bccdfb40e4c49ff4ebf205e984b9be4898f`；分类 balanced accuracy 与
+回归 R² 均为结构化确定性评分，task success threshold 留给 `263.4.2` 在 baseline 复制后、确认结果前
+冻结。逐 family live smoke 通过，且只下载两个 development 代表，60 个 confirmatory payload 未下载、
+OpenML public run 未查询。报告状态 `ready_for_clean_baseline`，hash
+`ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`；这不等于 baseline 已复制，
+更不等于通用自动科研、创新性或可投稿性。
+
 开发搜索比较 budget-matched one-shot、linear self-loop、portfolio 和 portfolio + cross-branch
 memory。Generator、Implementer 与 Evaluator 权限分离；Evaluator 只读取预注册 rubric、执行产物和
 原始指标，不读取作者叙事。Portfolio 使用 F0 静态、F1 最小执行、F2 多任务开发、F3 全保真开发四级

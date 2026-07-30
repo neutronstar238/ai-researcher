@@ -64,6 +64,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-30 12:17:17 +08:00 - Codex - Task 263.4.1 open objective task panel
+
+- Request: Continue the publication-grade research recovery path, explain why the running system still cannot produce a publishable scientific claim, learn from automated-research studies, and replace the rejected task panel without weakening evidence gates.
+- Files changed:
+  - `src/autoresearch/research/objective_evaluators.py`
+  - `src/autoresearch/research/objective_task_registry.py`
+  - `src/autoresearch/research/objective_task_panel.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_objective_task_panel.py`
+  - `tests/smoke/test_objective_task_panel_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `263.4.1` hunk only; concurrent Task `264` changes remain user-owned and unstaged)
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-4-1-open-objective-task-panel.md`
+- Summary:
+  - Replaced the inaccessible, model-judged, underpowered ScienceAgentBench selection with a frozen, outcome-blind OpenML registry spanning two objective task families: OpenML-CC18 classification and OpenML-CTR23 regression.
+  - Built 67 unique source/data groups with 7 disjoint development tasks and exactly 60 sealed confirmatory tasks: 41 classification and 19 regression. Seeds and trajectories remain within-task repeats. Correlated mfeat representations and the red/white wine pair are deduplicated; ambiguous `Public`, noncommercial, and version-unspecified `CC BY` records are rejected with explicit reasons.
+  - Bound every selected task to official suite/task/data metadata, data MD5, fixed OpenML split, target, deterministic structured evaluator, source/task/code license, and bounded CPU procedure. The evaluator source SHA-256 is `dfa9c2012d11fa9989ad80ce41818f8e4dc0b691d44047157b2311de0a96191e`; the registry SHA-256 is `6aa348b2014905d582b979dd35183fe9fa722abcbd41a8de9f65c720bafe780e`.
+  - Preserved the prospective exact paired-binary power design. At 60 independent confirmation tasks, exact power is `0.999044`, `0.918666`, and `0.801422` across the frozen discordance sensitivity set; no seed, trajectory, or correlated representation is counted as a new unit.
+  - The live audit checked both official suite inventories and all 67 selected task/data records. It downloaded and replayed only the two development-family probes, queried no public OpenML runs, and downloaded no confirmatory payload. Status is `ready_for_clean_baseline`, not `ready_for_confirmation` or publication.
+  - The construct is deliberately limited to causal comparison of bounded tabular-ML search policies. It cannot support a general autonomous-science claim, wet-lab claim, or broad end-to-end paper-generation claim.
+  - The experimental-design and statistical-power skills materially shaped the design: task/source groups are the independent units, benchmark family is a blocking factor, development and confirmation are disjoint, and prospective exact power replaces seed-based pseudoreplication or observed-power reasoning.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_objective_task_panel.py tests/unit/knowledge/test_links.py -q --no-cov`: 10 passed in 1.28 seconds.
+  - `$env:AUTORESEARCH_OBJECTIVE_TASK_PANEL_LIVE='1'; $env:AUTORESEARCH_OBJECTIVE_TASK_PANEL_OUTPUT='runs/manual-live/task26341-open-objective-panel-v1'; poetry run python -m pytest tests/smoke/test_objective_task_panel_live.py -q --no-cov`: 1 passed in 49.60 seconds after checking all 67 selected official records and replaying one development task per family.
+  - Live artifact audit: report SHA-256 `ab4435f059676bcfd11387495947527455734eddf239f77b0e92a1c434e8a3ac`; manifest SHA-256 `2224147ea065249e10e6ad69642f91611376b0f84ec983b99b0d122028bc4efa`; four-schema bundle SHA-256 `20ba62ede420aba6738ffac3f61d3fa4acdac6f792075bab075a85c7c2125cc4`; CC18/CTR23 suite snapshot SHA-256 values `8a18f2762897c1bd38a3722b89a9d9142fad2f4e0da7cc8d79d7b6714efc671f` and `31fee4dd02283f1a841a2d715c83908a578ce3355a0406e80a38d74c0a72d345`.
+  - Package import smoke loaded the public panel API, schema version `1.0`, and the frozen registry hash.
+  - `poetry run python -m pytest tests -q`: 1028 passed, 20 opt-in live tests skipped, 87% line coverage, in 204.66 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src/autoresearch`: passed across 164 source files.
+  - `git diff --check`: task-owned changes passed; the only warning concerns the concurrent user-owned `.gitignore` line-ending conversion.
+- Problems:
+  - Added and resolved `P-20260730-006` through `P-20260730-008` for transient OpenML TLS/503 inventory failures, initial format/type/import defects, and an overly short live-test timeout that left a child process running; the duplicate process was stopped and the canonical run passed.
+  - Added mitigated `P-20260730-009` to prevent the public tabular panel from being presented as a general autonomous-science benchmark and to require network/run-history isolation during execution.
+  - Updated `P-20260730-001` and `P-20260729-048`: the task-panel and power blockers are mitigated, while clean baseline reproduction, causal preregistration, real portfolio execution, and a positive confirmation result remain open.
+  - Preserved mitigated `P-20260729-053`; concurrent Task `264` and `.gitignore` changes are not owned by this task.
+- Follow-up:
+  - Task `263.4.2`: reproduce the selected strong baseline in a clean environment, freeze success thresholds, budgets, permissions, blocking/randomization, arms, ablations, stopping rules, and the untouched confirmation panel before any development result is read. Do not begin novelty search or confirmation execution until that gate passes.
+
 ### 2026-07-30 11:37:28 +08:00 - Codex - Task 263.4.0 search-policy feasibility diagnosis
 
 - Request: Continue the publication-grade research path, explain why the current system cannot yet produce a publishable scientific result, borrow from automated-research literature/benchmarks, optimize the study design, and proceed without weakening evidence gates.
