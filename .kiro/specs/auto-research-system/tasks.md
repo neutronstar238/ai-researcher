@@ -3455,6 +3455,38 @@ A task can be checked only when all applicable items are true:
     - Keep authorship, licenses, public release, venue choice, and external submission behind explicit human approval.
     - _Verify: full claim/audit/reproduction/paper/Open Science gates, live sources, independent clean-directory rebuild, visual PDF inspection, Agent/Problem updates, and one focused commit._
 
+- [ ] 264. Build the local-only “研启智链” Windows desktop client
+  - [x] 264.1 Establish the ignored desktop workspace and zero-demo-data contracts
+    - Add `/winapp/` to the root ignore policy before generating any desktop source, preserve all unrelated worktree state, and keep the client local-only.
+    - Bootstrap the selected Product Design desktop template, Tauri shell, typed `desktop-api-v1` contracts, canonical source registry, and production guard that rejects user-visible research data without `SourceRef`.
+    - Add production-bundle checks that reject seeded, sample, placeholder, random, or hard-coded research records; tests may use isolated doubles but they must never ship or be reachable from the UI.
+    - _Verify: ignore audit, source-registry/parser tests against existing repository artifacts, zero-demo production scan, frontend/Rust/Python checks, Agent/Problem updates, and one focused governance commit._
+  - [x] 264.2 Add local Owner authentication, workspace control, and secure configuration
+    - Add first-run registration, Argon2id password verification, login/lock/change-password/reset flows, workspace validation and path confinement.
+    - Store secrets through the desktop secret vault and expose only masked `SecretRef` values; keep raw credentials out of frontend state, logs, files, screenshots, Figma, and process arguments.
+    - Add visual LLM, WeChat, and Feishu configuration forms backed by the existing provider-neutral configuration fields.
+    - _Verify: auth/session/path-boundary/secret-redaction tests, restart smoke, empty-workspace behavior, Agent/Problem updates, and one focused governance commit._
+  - [x] 264.3 Implement the evidence-first research command center over existing data
+    - Build the selected scheme-1 navigation, lifecycle overview, project/topic/literature/experiment/evidence/writing/evolution/agent/approval/integration/system surfaces.
+    - Read only canonical existing workspace records or deterministic derivations; render explicit empty, blocked, incomplete, or unavailable states when evidence is absent.
+    - Require every visible research datum and derivation to retain inspectable file/hash/timestamp lineage.
+    - _Verify: real-workspace integration tests, empty-workspace tests, visible-lineage audit, accessibility/responsive checks, Agent/Problem updates, and one focused governance commit._
+  - [ ] 264.4 Map every existing CLI capability to typed desktop actions
+    - Inventory every registered CLI command and classify it as implemented, read-only, planned, blocked, or desktop-replaced.
+    - Execute allowed commands through a fixed JSON-lines sidecar action registry with structured job events, cancellation, redacted output, and explicit approval for external or high-risk effects.
+    - Wire real LLM, WeChat QR, Feishu, readiness, doctor, reports, scheduler, sessions, approvals, and artifact-opening paths without arbitrary shell execution.
+    - _Verify: 100-percent command mapping, action allowlist/approval/cancellation tests, opt-in live checks when credentials are available, Agent/Problem updates, and one focused governance commit._
+  - [x] 264.5 Create the Figma system and pass source-to-implementation design QA
+    - Create one Figma Design file named `研启智链 Windows 客户端`, preserve the supplied logo exactly, and build token-bound foundations, reusable components, auth/onboarding, desktop core, integration, state, and QA pages.
+    - Treat the selected scheme-1 image as layout and visual truth only; replace all sample business content with safe existing data or explicit empty states.
+    - Compare the source and rendered app at the same viewport, fix every P0/P1/P2 mismatch, and retain `winapp/design-qa.md` with `final result: passed`.
+    - _Verify: Figma metadata/screenshots, font/token/component checks, paired visual comparison, keyboard/high-DPI/accessibility smoke, Agent/Problem updates, and one focused governance commit._
+  - [ ] 264.6 Package and verify the Windows x64 installer
+    - Bundle the Python core bridge as a Tauri sidecar, build the React/Tauri release, and produce a local NSIS installer under `winapp/dist/`.
+    - Verify install, launch, local account, workspace reuse, uninstall/data-retention behavior, WebView2 handling, operation without a system Python, offline read-only startup, and absence of secrets/demo data.
+    - Keep code signing, auto-update, public release, repository upload, and external submission out of scope.
+    - _Verify: clean-profile installer smoke, package inventory/security scan, final zero-demo and ignored-path audit, Agent/Problem updates, and one focused governance commit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -4250,27 +4282,27 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 187,
-      "tasks": ["263.2"]
+      "tasks": ["263.2", "264.1"]
     },
     {
       "id": 188,
-      "tasks": ["263.3"]
+      "tasks": ["263.3", "264.2"]
     },
     {
       "id": 189,
-      "tasks": ["263.4"]
+      "tasks": ["263.4", "264.3"]
     },
     {
       "id": 190,
-      "tasks": ["263.5"]
+      "tasks": ["263.5", "264.4"]
     },
     {
       "id": 191,
-      "tasks": ["263.6"]
+      "tasks": ["263.6", "264.5"]
     },
     {
       "id": 192,
-      "tasks": ["263.7"]
+      "tasks": ["263.7", "264.6"]
     }
   ]
 }

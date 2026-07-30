@@ -64,6 +64,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-30 12:57:13 +08:00 - Codex - Tasks 264.1, 264.2, 264.3, and 264.5 local Windows client
+
+- Request: Implement the local-only “研启智链” Windows 10/11 x64 desktop client with scheme-1 research-command-center visuals, supplied logo, Owner auth, visual integration configuration, complete existing-data visualization, Figma handoff, NSIS packaging, and an absolute prohibition on demo data.
+- Files changed:
+  - `.gitignore`
+  - `.kiro/specs/auto-research-system/tasks.md` (Task `264` hunk only; concurrent Task `263` work remains separately owned)
+  - `Problem.md`
+  - `Agent.md`
+  - `winapp/**` (local-only and ignored, including React/Tauri/Python source, tests, design QA, Figma state ledger, screenshots, Sidecar, and installer)
+- Summary:
+  - Added `/winapp/` to the root ignore policy before generating the client; `git ls-files winapp` remains empty.
+  - Built a Tauri 2 + React/TypeScript + Vite + Fluent UI v9 + ECharts desktop shell with the unchanged supplied logo and a white/light-blue research-command-center visual system.
+  - Added single-Owner registration/login, Argon2id password verification, 15-minute session lock, change-password and destructive-reset flows, workspace validation/confinement, Stronghold secret storage, masked `SecretRef` handling, and visual LLM/WeChat/Feishu configuration.
+  - Added the `desktop-api-v1` Python bridge, canonical source registry, typed DTOs, production source guard, deterministic derivation metadata, real-workspace/empty-workspace parsing, CLI capability inventory, fixed allowlist execution, approval checks, redacted JSON Lines events, and path-bounded source opening.
+  - Implemented 11 visual product surfaces. The current workspace snapshot exposes 29 projects, 140 runs, 42 topics, and 94 inventoried CLI capabilities; every available business record carries an inspectable file/hash/time `SourceRef`.
+  - Created Figma file `研启智链 Windows 客户端` (`neziKUKFRaIHeixUfB7Trw`) with six pages, 50 variables, reusable components, nine 1440 × 900 screens, auth-security states, integration states, and source indicators. The reference image is used only for visual relationships; its business values are excluded.
+  - Preserved the supplied PNG byte-for-byte; source and client copies share SHA-256 `FEE6B77C2A45B3CC4B415185850052E7FB4F89155128ED73264D26E25B0CA633`.
+  - Produced local installer `winapp/dist/研启智链_0.1.0_x64-setup.exe`, bundling the Python core as a Sidecar. The file is 30,746,677 bytes with SHA-256 `18E21F26F255967D5DEC6C9CE81BDE679CE1FF4D391B7668332C07027A619EFB`.
+  - Marked Tasks `264.1`, `264.2`, `264.3`, and `264.5` complete. Kept `264.4` and `264.6` unchecked because credentialed external checks, cancellation coverage, and the clean-machine/WebView2/offline matrix are not fully verified.
+- Verification:
+  - `npm run verify`: passed TypeScript; 5 frontend tests in 3 files; zero-demo scan across 26 production files, 4 built-client files, and 1 installer; current snapshot validation; production build; and 4 Sites-worker packaging tests.
+  - Current real snapshot: `desktop-api-v1`, 29 projects, 140 runs, 42 topics, 94 capabilities, and zero parser issues.
+  - `cargo fmt --check`: passed.
+  - `cargo test --lib`: 4 passed, covering Argon2/password rejection, workspace markers, expired-session clearing, and reset cleanup that preserves unrelated files.
+  - `cargo check`: passed.
+  - `poetry run pytest winapp/backend/tests/test_bridge.py -q`: 4 passed against the current workspace and an empty temporary workspace.
+  - Packaged Sidecar `snapshot --workspace E:\AIResearch --validate-only`: passed with the same 29/140/42/94 counts and zero issues.
+  - In-app browser smoke: all 11 navigation destinations matched their page titles; the source dialog exposed a real path, content hash, calculation time, and deterministic lifecycle formula; browser-only account mutations remained disabled.
+  - Paired visual comparison retained at `winapp/docs/qa/visual-comparison-reference-vs-app-final.png`; `winapp/design-qa.md` records `final result: passed`.
+  - Figma scan: 6 pages, 9 screens, 291 visible text items, 17 Source Indicator instances, zero forbidden-content hits, and zero secret hits.
+  - Silent NSIS install, packaged-Sidecar snapshot, release-app startup, uninstall, and preservation of `E:\AIResearch\autoresearch-vault` passed on the current Windows host.
+  - `git check-ignore -v winapp/package.json winapp/dist/研启智链_0.1.0_x64-setup.exe`: both resolve to root `.gitignore` `/winapp/`; `git ls-files winapp` returned empty.
+- Problems:
+  - Added and resolved `P-20260730-013` for the first transient NSIS download failure.
+  - Added mitigated `P-20260730-014` for unavailable Figma Code Connect entitlement.
+  - Added mitigated `P-20260730-015` for missing external credentials and clean-machine/WebView2/offline coverage.
+  - Added and resolved `P-20260730-016` for the first account-lifecycle test-environment and Rust assertion defects.
+- Follow-up:
+  - Add a tested desktop job-cancellation path before completing Task `264.4`.
+  - With user-supplied provider-neutral credentials, run explicit LLM/WeChat/Feishu live tests without logging raw values.
+  - Run the final installer matrix on a disposable clean Windows x64 profile with WebView2 absent and offline mode before completing Task `264.6`.
+
 ### 2026-07-30 12:56:15 +08:00 - Codex - Task 263.4.2 clean baseline and causal preregistration
 
 - Request: Continue the publication-grade research recovery path, diagnose why real execution still does not yield publishable science, borrow testable mechanisms from recent automated-research literature, optimize the research path, and implement the next gated task.

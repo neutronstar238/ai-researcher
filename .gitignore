@@ -28,3 +28,7 @@ autoresearch-vault/projects/ci_dry/
 runs/
 artifacts/
 outputs/
+
+# Local-only Windows desktop client. The user explicitly requested that the
+# complete client source tree and build outputs never be uploaded to Git.
+/winapp/
