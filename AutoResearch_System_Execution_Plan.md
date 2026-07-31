@@ -1745,3 +1745,68 @@ weighted score 或 hardcoded winner，允许全失败；本次 Socratic route �
 当前 release、submission、paper claim 与 `263.7` 仍为 false/blocked。若 evaluator 无法客观化、
 独立 source group 少于功效要求，或 SciAgentArena 已覆盖决定性增量，合法结果是保留诊断 research
 object 并再次回到 opportunity tournament，而不是改变指标或调用更多 Agent。
+
+### 27.10 Task 263.6.5 实施结果与 263.6.6 执行门
+
+Task `263.6.5` 按 stop-first 顺序完成在 inventory 层。实现新增：
+
+- `socratic_development_vertical.py`：严格 Pydantic 合同、DiscoveryBench tree/answer-key/license
+  获取与绑定、189-folder audit、保守/乐观来源投影、停止证书、Markdown/JSON/schema/manifest 和
+  tamper-blocking loader；
+- `frozen_discoverybench_inventory_probe_v1.py`：只使用标准库、只接收结果盲 tree/key projection
+  的冻结 runner；
+- deterministic unit tests：目录/来源计数、raw/processed 与 semantic-tree 聚类、fail-closed
+  downstream、重复/tamper、Windows-1252 严格解码、standalone runner parity 和 artifact round trip；
+- opt-in live smoke：官方 Hugging Face/GitHub/license/论文 surface、两套冻结 clean interpreter、
+  exact replay、零 retry 和 outcome-access=false。
+
+正式 live output 位于
+`runs/manual-live/task26365-socratic-inventory-v3/`，核心绑定为：
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `a01303685e1aa4ee2d6ef19f75b5ca01cf3694bc58075008d78840d9bab1d75e` |
+| Manifest contract | `8253096b08a8c44c6ec99ea9286872efe76b23f376ce63097ebebb561b6e7ed2` |
+| Projection | `8ec78def64fcdc4934d69cc8371d9c05a95c21299cde19ad8e00650bc46474f3` |
+| Replay certificate | `02af0e8a089104da4f77e65ad9a90055aacc46e6e47d4736ebc08fa8fb2edc9b` |
+| Replay input | `01cb2537f55a28a39f6a7174a6b772391ab5f9682a5b1d39bf9698ace54f4545` |
+| Frozen runner | `efe05a01434bffae461a2e2facf8afd25b085052c184ba291ebaf13e54131238` |
+
+正式判定为 `stopped-at-inventory`。189 个 provisional folder 在 conservative audit 后只形成 107 个
+source group；30 个 development group 之后的 reserve 最大值为 41。即使采用不应作为主分析的
+optimistic counting，reserve 上限也只有 81，低于 84。因而实现正确地保持以下状态：
+
+- fault generator / objective evaluator implemented：false；
+- evaluator construction / baseline execution authorized：false；
+- provider configuration collected：false；
+- Research Question Certificate issued：false；
+- confirmatory panel created or read：false；
+- public content release / release / submission authorized：false。
+
+#### 下一执行任务：263.6.6
+
+`263.6.6` 是 replacement objective-data opportunity tournament，而不是立即实现另一套 Agent。
+它按下列次序执行：
+
+1. **冻结候选和构念**：至少比较 AutoSDT-5K repository-group coding、ScienceAgentBench
+   publication-group scientific programming、CORE-Bench paper-group reproducibility 和 QRData
+   source-sheet statistical/causal reasoning；可以全部失败，不 hardcode winner。
+2. **result-blind inventory**：只读取 provenance、license、input/output schema、依赖/资源清单和
+   evaluator definition；在任何模型输出前按 repository/publication/shared data/generator template
+   聚类。
+3. **许可门**：逐 task/source 绑定 SPDX 或许可证原文；无许可证不得凭公开可见或“academic use
+   assumed”进入可再分发面板。分别记录 local execution、derivative、software reuse 和 content
+   redistribution 权限。
+4. **objective label 门**：primary endpoint 必须由可执行程序、数值容差、文件/figure property 或
+   冻结规则决定；LLM judge、自由文本 similarity 和事后 human score 只能作 secondary evidence。
+5. **独立单位门**：一个候选 coherent construct 必须保留至少 30 个 development 与 84 个完全 sealed
+   reserve source groups；seed、attempt、difficulty variant、同 repository 多 task 和 Agent vote
+   不是独立单位。
+6. **资源门**：在 development-only subset 上估算下载、依赖、CPU/GPU、wall-clock、失败率和 clean
+   replay 可行性，但不得运行 candidate model 或读取 reserve outcome。
+7. **继续证书**：只有 license、unit、objective endpoint、strong baseline、compute、nearest-work
+   与独立 human novelty 全部通过，下一任务才可构建 evaluator/critic。否则写出负面 opportunity
+   research object 并回到 track selection。
+
+Task `263.6.3` 仍不得进入；旧 consumed panel 不得复用。`263.7`、论文 claim、公开发布与外部投稿
+继续被独立门禁阻止。

@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 10:40:55 +08:00 - Codex - Task 263.6.5 DiscoveryBench Socratic inventory stop
+
+- Request: Continue the publication-grade recovery; explain why real automated-research execution still does not produce a publishable result; cross-search current fully automated science research; optimize the route; and implement the next prospective gate without weakening power, independence, objective evaluation, license, or one-use confirmation boundaries.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_discoverybench_inventory_probe_v1.py`
+  - `src/autoresearch/research/socratic_development_vertical.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_socratic_development_vertical.py`
+  - `tests/smoke/test_socratic_development_vertical_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/licensed-objective-socratic-inventory-gate-2026.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-5-socratic-inventory-stop.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Cross-checked the primary papers and official resources for DiscoveryBench, AstaBench, AHOIS/Socratic Agents, POPPER, SciAgentArena, ScienceAgentBench, AutoSDT, QRData, and CORE-Bench. The review separates end-to-end claims, validity/falsification mechanisms, scientific programming, computational reproduction, statistical/causal reasoning, harness software, dataset contents, and license scope. AHOIS/POPPER/SciAgentArena already cover the four intended critic primitives or invalid-premise construct, so merely composing those primitives is not a publishable novelty.
+  - Added a frozen standard-library inventory runner whose only scientific input is a result-blind projection of tree path/type/object-id/size, answer-key dataset-key lineage, and the prospective `30 development + 84 reserve` thresholds. Raw answer-key files are strictly decoded and whole-file hashed, but application logic does not inspect, project, or persist `gold_hypo` field values; no data/metadata body, model output, critic output, or development outcome enters the runner.
+  - Added strict content-addressed contracts for tree entries, dataset snapshot, answer-key summaries, license scope, all 189 folder audits, real/synthetic derivation lineage, duplicate-object signatures, conservative and optimistic independent-unit projections, two-interpreter replay observations/certificate, fail-closed decision, Markdown/JSON/schema/manifest persistence, and tamper-blocking load. The result-blind replay input is now an explicit manifest artifact.
+  - Froze official `allenai/discoverybench` revision `e54ec033049d3a0fd95d3c746919cc8c01c25781`: 987 entries, 198 directories, 789 files, 14 real and 175 synthetic depth-four folders, and 104/85 train/test folders. Real answer-key lineage has 239 rows and 10 dataset names; synthetic has 200 rows and 75 dataset names; all 85 test folders are covered. The files require strict UTF-8-SIG and Windows-1252 decoding respectively.
+  - Applied the independent-unit definition from the prospective exact McNemar design. The 175 synthetic folders reduce to 99 `domain + semantic-tree` groups because one semantic tree generates multiple difficulty datasets. Fourteen real folders reduce to eight source groups after grouping NLS subsets/raw data, meta-regression raw/processed data, World Bank indicators/processed data, and other shared-source relationships. The conservative result is 107 groups, 67 train, 41 test, 66 train-only, 40 test-only, and one cross-split group.
+  - Enforced the prescribed stop: after 30 development groups, maximum conservative reserve is 41; even the deliberately optimistic upper bound is 81, below the frozen 84. Decision is `stopped-at-inventory` with blockers `conservative-reserve-groups-below-84`, `independent-source-group-total-below-114`, and `optimistic-reserve-upper-bound-below-84`. Fault generation, evaluator construction, baseline execution, provider configuration, RQ issuance, panel creation/read, public content release, release, and submission remain false.
+  - Bound DiscoveryBench ODC-By as database-use evidence only: it excludes software and does not independently clear rights in individual contents. Bound AstaBench Apache-2.0 as software evidence only. Public content redistribution remains human-review gated.
+  - Added Task `263.6.6` as a replacement objective-data opportunity tournament over AutoSDT-5K, ScienceAgentBench, CORE-Bench, QRData, and other justified candidates without a hardcoded winner. It requires task-to-repository/publication/shared-data/generator lineage, per-source license evidence, executable deterministic primary labels, a coherent construct, bounded workload, and at least 30 development plus 84 sealed reserve groups before any model/evaluator work. AutoSDT's official card records 317 no-license repositories, ScienceAgentBench has only 44 publication groups, and CORE-Bench has only 90 paper groups; none is treated as qualified without the new audit.
+- Verification:
+  - Formal v3 output `runs/manual-live/task26365-socratic-inventory-v3/`: report `a01303685e1aa4ee2d6ef19f75b5ca01cf3694bc58075008d78840d9bab1d75e`; manifest contract `8253096b08a8c44c6ec99ea9286872efe76b23f376ce63097ebebb561b6e7ed2`; manifest file `e5eb5aec6f22c6c7d661dc7c154aa97a90ab0d5f7c6d54fe729faa289135fd1e`; projection `8ec78def64fcdc4934d69cc8371d9c05a95c21299cde19ad8e00650bc46474f3`; replay certificate `02af0e8a089104da4f77e65ad9a90055aacc46e6e47d4736ebc08fa8fb2edc9b`; replay input `01cb2537f55a28a39f6a7174a6b772391ab5f9682a5b1d39bf9698ace54f4545`; runner `efe05a01434bffae461a2e2facf8afd25b085052c184ba291ebaf13e54131238`.
+  - `$env:AUTORESEARCH_SOCRATIC_DEVELOPMENT_INVENTORY_LIVE='1'; $env:AUTORESEARCH_SOCRATIC_DEVELOPMENT_INVENTORY_OUTPUT='E:\AIResearch\runs\manual-live\task26365-socratic-inventory-v3'; poetry run python -m pytest -q tests/smoke/test_socratic_development_vertical_live.py --no-cov`: 1 passed in 35.76 seconds against official literature, Hugging Face/GitHub/license surfaces, and two frozen clean interpreters; exact projection, retry zero, development-outcome access false.
+  - `poetry run python -m pytest -q tests/unit/research/test_socratic_development_vertical.py --no-cov`: 8 passed. Coverage includes exact counts/stop, family linkage, fail-closed downstream, duplicate/tamper rejection, strict Windows-1252 fallback, non-inspection of blank `gold_hypo`, standalone-runner parity, and manifest/schema/persistence integrity.
+  - `poetry run python -m pytest -q tests/unit/research/test_socratic_development_vertical.py tests/unit/research/test_workload_qualified_opportunity.py tests/unit/research/test_opportunity_tournament.py tests/smoke/test_socratic_development_vertical_live.py tests/smoke/test_workload_qualified_opportunity_live.py --no-cov`: 25 passed and 2 opt-in tests skipped before the final result-blind tightening; the final eight-task focused suite and final live v3 smoke then passed.
+  - `poetry run python -m pytest -q`: final canonical regression collected 1,119 tests; 1,091 passed, 28 opt-in live tests skipped, 82% coverage, in 174.86 seconds.
+  - `poetry run ruff check .`: passed. `poetry run mypy src`: passed across 172 source files. `poetry check`: exited zero with only pre-existing Poetry metadata deprecation warnings. `git diff --check`: passed.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py --no-cov`: 9 passed after the final Vault updates.
+  - Frozen-source audit passed: protected v2 controller `f7a561542eb30b18fb4369fdf1d318de0d22ce97b3c2465276ff121465299ced`; protected technical replay orchestrator `924c3e0a7cab8c588870b542956881524e386a85cea3c1baa22049fe00185e65`; Task 263.6.4 workload runner `c109d368cd64cd5356cc95304948ed9d6594a823b0bddf00fa4faaa797e6bcca`.
+  - Development incidents were retained in `P-20260731-029`: unsupported Hugging Face tree parameters, PowerShell parse/interpolation errors, one operator-guessed nonexistent path, tuple/datetime canonicalization failures, the legitimate UTF-8 decode rejection that established Windows-1252 fallback, a platform-newline replay hash mismatch, a workspace-policy rejection of recursive generated-output deletion, and one wrong inspection filename. Each received a bounded repair; no scientific threshold, source-group rule, or outcome was changed.
+- Problems:
+  - Added `P-20260731-029` for DiscoveryBench's insufficient independent groups and license/content boundary; status mitigated by the prospective stop, with the broader qualified-panel gap moved to Task `263.6.6`.
+  - Updated `P-20260731-028` from open to mitigated because Task `263.6.5` resolved the selected Socratic route negatively rather than leaving its feasibility ambiguous.
+  - Updated `P-20260729-048` with the second prospectively stopped non-publishable path and the replacement objective-data route.
+- Follow-up:
+  - Execute only Task `263.6.6`. Keep Task `263.6.3`, evaluator/critic construction, provider credentials, Research Question issuance, confirmation-panel creation/read, Task `263.7`, publication, public release, and external submission blocked until one replacement candidate independently passes every prospective gate.
+
 ### 2026-07-31 09:53:14 +08:00 - Codex - Task 263.6.4 workload-qualified objective opportunity tournament
 
 - Request: Continue the publication-grade recovery; explain why real AutoResearch executions still fail to produce a publishable contribution; cross-search current fully automated scientific-research work; optimize the research path; and implement the next gated step without reusing the consumed confirmation.

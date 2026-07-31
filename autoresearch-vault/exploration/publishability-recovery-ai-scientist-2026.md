@@ -608,6 +608,22 @@ implementation、independence audit、RQ Certificate 和新 confirmation panel �
 [[exploration/workload-qualified-ai-scientist-opportunity-tournament-2026]] 和
 [[projects/ai_researcher_system/progress/task-263-6-4-workload-qualified-opportunity]]。
 
+## 11.6 263.6.5 更新：189 个目录不是 189 个独立科学单位
+
+Task 263.6.5 在任何 evaluator、critic 或模型调用前，对固定 DiscoveryBench revision 执行了
+result-blind provenance、derivation、answer-key key-lineage 和 license audit。175 个 synthetic
+folder 按共享 semantic tree 聚类为 99 组，14 个 real folder 按 raw/processed/subset/source family
+聚类为 8 组，总计只有 107 个 source group。满足 30 个 development group 后，最多只剩 41 个
+reserve group；即使采用偏宽松的 optimistic counting，reserve 上限也只有 81，仍低于预注册的 84。
+
+两套冻结 clean interpreter 零重试复现相同 projection，正式 decision 是
+`stopped-at-inventory`。这进一步修正“真实不可产出”的诊断：系统不是缺少写作能力，而是先后遇到
+无效 evaluator、负效应、真实负载漂移和伪样本量；Graph/Harness/Loop/Open Science 只能让这些失败
+可见，不能替代科学有效性。下一任务改为对 AutoSDT-5K、ScienceAgentBench、CORE-Bench、QRData 等
+候选做许可清晰、可执行标签和独立来源的机会锦标赛。完整证据见
+[[exploration/licensed-objective-socratic-inventory-gate-2026]] 和
+[[projects/ai_researcher_system/progress/task-263-6-5-socratic-inventory-stop]]。
+
 ## 12. 关联
 
 - 项目：[[projects/ai_researcher_system/index|AI-Researcher System Project]]

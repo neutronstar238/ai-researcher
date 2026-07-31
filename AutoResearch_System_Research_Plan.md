@@ -1455,3 +1455,63 @@ baseline 和 causal/constraint/counterexample/falsifier 四项消融。POPPER/AH
 未许可或 gated 实现不得复制。只有 clean-room evaluator、baseline live smoke、development effect、
 null/Type-I 控制和人类新颖性复核全部通过，才允许签发新的 RQ Certificate；这之前没有新的
 confirmation panel，也没有“可发表级结果”。
+
+### 27.3 Task 263.6.5 独立单位审计与 DiscoveryBench 路线停止
+
+`263.6.5` 已在第一个 prospective gate 合法停止，没有进入 evaluator、baseline 或模型实验。正式
+审计固定 `allenai/discoverybench@e54ec033049d3a0fd95d3c746919cc8c01c25781`，只把目录
+path/type/object id/size、answer-key 的键和 dataset name、许可证与一手文献投影给冻结 runner。
+原始 answer-key 只用于严格解码、整文件哈希和 key lineage；应用逻辑不检查或持久化 `gold_hypo`
+字段值，metadata/data 正文和任何 development outcome 也未进入 runner。
+
+987 个 tree entry 中存在 189 个 depth-four folder：14 real、175 synthetic，train/test 为
+104/85。DiscoveryBench 的 synthetic 数据由 semantic tree 派生多个 difficulty dataset；real 数据
+还存在 NLS family、meta-regression raw/processed 和 World Bank indicators/processed 等明显共享
+来源。按这一 lineage 保守聚类后：
+
+- real source groups：8；
+- synthetic semantic-tree groups：99；
+- source groups 总数：107；
+- train/test groups：67/41；
+- train-only/test-only/cross-split：66/40/1；
+- 取 30 个 development group 后的最大 reserve：41；
+- 即使把每个 synthetic folder 当独立单位，乐观 development/reserve 上限也只有 `103/81`。
+
+因此门槛同时被三个 blocker 否决：
+`conservative-reserve-groups-below-84`、
+`independent-source-group-total-below-114` 和
+`optimistic-reserve-upper-bound-below-84`。目录数、seed、retry、Agent 数或 interpreter 重放都
+不能补足独立科学单位。
+
+answer-key lineage 对 85/85 test folder 完整：real key 为 239 rows/10 dataset，synthetic key 为
+200 rows/75 dataset；两者分别严格解码为 `utf-8-sig` 和 `windows-1252`，且 gold hypothesis 文本
+保留量为 0。DiscoveryBench ODC-By 证据只确认带署名的 database use，不许可软件，也不自动清除
+individual contents 的再分发权；AstaBench Apache-2.0 只覆盖其软件边界。公开发布仍需独立人类许可
+复核。
+
+冻结标准库 runner 在两套 clean interpreter 中零重试得到同一个 projection：
+`8ec78def64fcdc4934d69cc8371d9c05a95c21299cde19ad8e00650bc46474f3`。
+正式 report 为
+`a01303685e1aa4ee2d6ef19f75b5ca01cf3694bc58075008d78840d9bab1d75e`，
+manifest contract 为
+`8253096b08a8c44c6ec99ea9286872efe76b23f376ce63097ebebb561b6e7ed2`，
+replay certificate 为
+`02af0e8a089104da4f77e65ad9a90055aacc46e6e47d4736ebc08fa8fb2edc9b`。
+
+这解释了“真实系统为什么仍不可发表”：Graph、Harness、Loop、证据包和 PDF 证明过程可追踪；它们
+不能代替客观 instrument、足量独立单位、强基线因果增量、untouched confirmation、新颖性与许可。
+本次停止还避免了为一个已知功效不足的设计收集 provider credential、花费模型预算或做结果驱动的
+指标修改。
+
+下一研究任务 `263.6.6` 回到 objective-data opportunity tournament。候选包括 AutoSDT-5K、
+ScienceAgentBench、CORE-Bench 与 QRData，但不得预设赢家。AutoSDT 表面有 5,404 个 task、756 个
+package 与 1,325 个来源 repository，最有可能提供足量单位；然而官方 card 同时记录 317 个无
+license repository，并将其假定为允许学术使用，这不足以支持本项目再分发。ScienceAgentBench 的
+102 tasks 只来自 44 publications，CORE-Bench 的 270 tasks 只来自 90 papers，单独均少于 114 个
+publication-level unit；QRData 的 411 questions 仍须按 source sheet 聚类和审计内容许可。
+
+`263.6.6` 必须先做 task→repository/publication/data lineage、逐资源许可和 executable-label
+清单，再要求 `30 development + 84 sealed reserve`。只有一个候选在同一 coherent construct 下
+同时通过独立单位、objective evaluator、强基线、算力和 human novelty gate，才允许恢复 evaluator/
+critic construction；在这之前 Research Question、confirmatory panel、release、submission 和
+`263.7` 继续为 false。
