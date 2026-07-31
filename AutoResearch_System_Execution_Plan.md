@@ -2253,7 +2253,7 @@ Task `265` 是新的官方 MDBench 自主研究路线，不是 Task `260` 旧稿
 标题呈现不同，SR3 的实际一手标题是 *A unified sparse optimization framework to learn parsimonious
 physics-informed models from data*，修正为真实标题后重新完整执行通过，没有放宽 status/hash/origin gate。
 
-### 28.3 下一实现任务：265.2
+### 28.3 已完成的 Task 265.2
 
 Task `265.2` 只实现通用科研运行能力，不得在源码中写入下一候选答案：
 
@@ -2269,6 +2269,26 @@ Task `265.2` 只实现通用科研运行能力，不得在源码中写入下一�
 6. search-freeze receipt 在 Task `265.3` 结束前保持不存在；confirmation loader 必须在 receipt 缺失、hash 不符、
    branch 未闭合、预算超限或人工 scientific decision 非零时拒绝解封。
 
-Task `265.2` 完成前不运行开发数据。如果真实 provider credential 不在 `.env`，mocked CI 可以验证合同，但按项目规则
-不能把任务标为完成；必须停止并请项目负责人安全提供 provider-neutral 参数。即便 `265.2` 通过，显著性答案仍只能
-来自 `265.4`，文章只能由 `265.5` 从同一 ledger 生成。
+正式 live v22 已用 `.env` 中的 provider-neutral 配置和 12 个真实一手页面完成上述合同。结果包在
+`runs/manual-live/task2652-autonomous-branch-engine-v22/`，hash 为
+`096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`。8 个模型自产 family、23 个逻辑
+交互、47 次 provider request、11 个精确代码 revision 全部保留；最终 8/8 分支通过五类 capability 和来源门。
+row-major adapter、runner、input、source、output、环境和 episode 全部有独立 hash，适配器数值变换计数为零。
+正式包仍记录 `official_development_results=0`、`mechanism_cycles=0`、`publication_ready=false`。
+
+### 28.4 下一执行任务：265.3
+
+Task `265.3` 必须直接消费 v22 的八个最终源码，不能由实现代理重写候选。执行顺序为：
+
+1. 对公开 development panel 运行冻结的 paired system/condition/seed cells，所有失败、超时和资源结果进入同一 ledger；
+2. 只由确定性规则把 telemetry、traceback、change point 和分支比较转为 `Observation` 与 `Problem`；
+3. 配置模型只能根据这些结构化观测提出前瞻 `Hypothesis` 和完整 exact-code `Intervention`，总候选不超过 12、
+   总 generation 不超过 2；
+4. 每个 OPHIS cycle 在执行前冻结 directional prediction、matched comparator、alternative explanation、falsifier、
+   primary endpoint、预算和父/证据 hash，最多执行 1—4 个 cycle；
+5. stage racing、Pareto 和 failure-aware 选择从完整候选分布确定唯一实现；开发效应只作探索性选择，不作显著性声明；
+6. 在任何 confirmation read 之前冻结 exact code、环境、branch tree、comparative memory、全部开发结果和 search-freeze
+   receipt。若不能产生合格候选或机制 cycle，则登记 autonomous development negative，不解封确认集。
+
+显著性只能来自 Task `265.4` 的一次性 sealed confirmation，文章只能由 Task `265.5` 从同一 ledger 生成。Task
+`265.2` 的能力门通过不能替代这两个阶段。

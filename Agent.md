@@ -64,6 +64,58 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-01 05:21:12 +08:00 - Codex - Task 265.2 autonomous literature-to-code branch engine
+
+- Request: Continue the formal competition work as a real entry rather than a demonstration; determine why existing performance and evidence are not publication-grade; ensure the system rather than the implementation agent originates the research; evaluate the proposed OPHIS mechanism-driven framework against current autonomous-research literature; and implement the next provider-neutral, evidence-first autonomous research stage without claiming significance before data exist.
+- Files changed:
+  - `src/autoresearch/competition/autonomous_engine.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/llm/client.py`
+  - `tests/unit/competition/test_autonomous_recovery.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/llm/test_client.py`
+  - `tests/smoke/test_autonomous_engine_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/ophis-autonomous-research-mechanism-audit-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-265-2-autonomous-branch-engine.md`
+  - `runs/manual-live/task2652-autonomous-branch-engine-v22/` (generated formal package; ignored by repository policy)
+  - `runs/manual-live/task2652-autonomous-branch-engine-v12/` through `v21/` and three exact-source counterfactual rechecks (retained non-authoritative failure/calibration evidence; ignored by repository policy)
+- Summary:
+  - Applied the `deep-research` and `experimental-design` workflows before changing the scientific route. Cross-checked OPHIS's official blog and two public repositories against current automated-research systems, execution/replication benchmarks, adaptive-data-analysis safeguards, PROV-O, RO-Crate, and Workflow Run RO-Crate. The Vault audit concludes that OPHIS's Observation→Problem→Hypothesis→Intervention→Speed-up loop is useful as an evidence protocol, but its public Grokking comparison has unequal search budgets and its NanoGPT result has selection/variance limitations; the public “no LLM” claim is also qualified by the disclosed NanoGPT coding-agent loop. Task `265.3` therefore uses a hybrid deterministic-telemetry + LLM-proposal + matched-Harness + sealed-confirmation design rather than treating OPHIS prose or LLM self-assessment as evidence.
+  - Added a strict provider-neutral literature-to-code runtime. It reloads the hash-valid Task `265.1` public plan without reading sealed identities, refreshes all 12 primary sources into content-addressed checkpoints, obtains a model-authored eight-slot portfolio and one independently validated hypothesis per slot, and persists every exact complete implementation response. There is no repository candidate catalogue or implementation-agent scientific repair.
+  - Added immutable model-transaction evidence with provider/config identity, exact messages/response/parsed payload hashes, JSON-schema fallback, narrowly audited trailing-delimiter normalization, structured-output retries, distinct transient transport retries and terminal receipts, checkpoint/resume validation, and secret-safe logging. Thinking mode can be explicitly disabled through the existing OpenAI-compatible provider path without hard-coding a vendor.
+  - Added exact-source static review and isolated Harness execution. The reviewer bounds source bytes/AST, imports, effects, dynamic execution, paths, network, subprocesses, system-name targeting, and top-level behavior. Every model revision is byte-bound to its interaction, Harness spec/episode, isolated process input/output, runtime environment, and capability observation. Technical repair sees only synthetic diagnostics/traceback and must return a new complete model-authored module; official development scores remain unavailable.
+  - Separated generic tensor transport from candidate science through hashed `row-major-flat-v1`. Candidates receive nested values plus authoritative shape and row-major leaves; they return an equal-length flat prediction. The fixed runner reconstructs the container without changing values, padding, truncating, or modifying source. Adapter contract and runner hashes are `6556200e16fa1d89efd6600c57f743330794ea816eee9207f8b5cc421865db53` and `9e82345cad141a54e7693d32510f3a8813fa229da287ec392d98e18e294d1b7b`; every observation records zero scientific numeric transforms.
+  - Used retained failures rather than blind retries to calibrate only pre-development capability gates. v18 exposed rank-deficient `{0,1}` quadratic axes and passed with the exact source on three-level axes; v19's exact 5,225-node source passed under a 6,000-node bound; v20 showed four technical revisions could be exhausted by a genuine matrix-orientation fault; v21 showed stateless source-domain repair and a line-count gate were invalid. The final protocol retains 40-KB/6,000-AST/20-second/256-MB/network-deny limits, at most six score-blind technical revisions, and late hypothesis repair containing the prior payload plus all already-public domain-valid source IDs. No official outcome was observed during these changes.
+  - The real v22 package has hash `096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`, binds Task `265.1` plan hash `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda`, and retains 12 current sources, 8 model-authored mechanism families/candidates, 23 logical interactions, 47 provider attempts, and 11 exact-code revisions. All eight final branches pass ODE, 1D/2D/3D PDE, multi-field, provenance, contamination, and budget gates. A terminal replay with provider and source functions replaced by hard failures returned the identical package, proving no hidden external call.
+  - Task `265.2` changes only `development_execution_authorized` to true. Official development results, OPHIS mechanism cycles, confirmation reads, manuscripts, post-start human scientific decisions, publication readiness, public release, and submission remain zero/false. The old two cycles remain non-significant; neither v22 capability NMSE nor code executability is a scientific effect.
+- Verification:
+  - `poetry run pytest tests/unit/competition/test_autonomous_recovery.py -q --no-cov`: 18 passed. Coverage includes model-only origin, portfolio/source-domain semantic repair, provider/format/transport retry separation, exact checkpoint resume, static/security/resource gates, rank-safe axes, flat-adapter round-trip and mismatch rejection, five dimensional probes, structured exception diagnostics, contamination, budgets, tamper failure, and terminal behavior.
+  - Final `$env:AUTORESEARCH_TASK2652_LIVE='1'; $env:AUTORESEARCH_TASK2652_OUTPUT_DIR='...v22'; poetry run pytest tests/smoke/test_autonomous_engine_live.py -q --no-cov -s`: 1 passed in 339.45 seconds against the configured real provider and 12 real primary pages. The package contains 8/8 passing branches and no official development result.
+  - Strict `load_autonomous_branch_engine_package(...)` plus `build_autonomous_branch_engine_package(...)` with provider/source callbacks that always raise returned the identical v22 package hash and object; no callback ran.
+  - Formal CLI `poetry run airesearcher competition mdbench autonomous-generate --plan ...task2651.../autonomous-research-plan.json --output-dir ...v22`: exited zero, printed the exact package hash, 12 sources, 23 interactions, 8 candidates/families, true provenance/capability/development authorization, zero official results, and blocked confirmation/publication.
+  - Relevant deterministic suite `poetry run pytest tests/unit/competition/test_autonomous_recovery.py tests/unit/competition/test_competition_cli.py tests/unit/llm/test_client.py tests/smoke/test_autonomous_engine_live.py -q --no-cov`: 45 passed, 1 default live skip.
+  - `poetry run python -m pytest -q`: 1,177 passed, 39 opt-in skips, 82-percent coverage, in 319.91 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 183 source files.
+  - `poetry run pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `git diff --check`: passed with only Git's existing CRLF-to-LF notice for the touched Vault index.
+  - Secret-value scan compared configured provider secrets with every v22 file: one configured secret value, zero persisted hits.
+- Problems:
+  - Added and resolved high-severity `P-20260801-041` for tensor-interface coupling, rank-deficient fixtures, arbitrary AST/line thresholds, insufficient score-blind repair budget, and stateless semantic repair. Failed packages and exact-source counterfactuals remain retained as non-authoritative evidence.
+  - Updated open high-severity `P-20260731-039`: the first-generation origin/capability defect is now addressed by v22, but the scientific and manuscript problem remains open because development, prospective mechanism intervention, sealed confirmation, and system-generated manuscript counts remain zero.
+- Follow-up:
+  - Implement Task `265.3` from the immutable v22 package. Execute all eight frozen branches on the public development panel, retain every failed cell, use paired system/condition/seed estimands and failure-aware stage racing, permit only model-authored mutations/ablations up to 12 candidates and two generations, and record 1-4 prospective OPHIS-style mechanism cycles with deterministic Observation/Problem derivation, directional predictions, matched comparators, alternatives, falsifiers, endpoints, budgets, and zero unsupported mechanism claims.
+  - Freeze one exact implementation and a search-freeze receipt before any confirmation access. Task `265.4` owns the one-use significance decision; Task `265.5` owns the same-ledger article. Human authorship, disclosure, license, release, venue, and submission decisions remain separate.
+
 ### 2026-07-31 22:55:00 +08:00 - Codex - Task 265.1 autonomous formal competition plan
 
 - Request: Continue the formal competition work, stop treating the repository as a demonstration, determine whether the existing data are significant or publication-grade, research why performance is poor and how current automated-science systems improve it, and correct the central origin defect so the research article is produced by AutoResearch rather than manually researched and written by the operator.

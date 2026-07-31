@@ -2,6 +2,7 @@
 
 ## architecture
 
+- [[ophis-autonomous-research-mechanism-audit-2026|OPHIS and autonomous-research mechanism evidence audit]]
 - [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
@@ -23,6 +24,7 @@
 
 ## scientific agent evaluation
 
+- [[ophis-autonomous-research-mechanism-audit-2026|OPHIS and autonomous-research mechanism evidence audit]]
 - [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
@@ -66,6 +68,7 @@
 
 ## loop engineering
 
+- [[ophis-autonomous-research-mechanism-audit-2026|OPHIS and autonomous-research mechanism evidence audit]]
 - [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
@@ -73,6 +76,7 @@
 
 ## open science
 
+- [[ophis-autonomous-research-mechanism-audit-2026|OPHIS and autonomous-research mechanism evidence audit]]
 - [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]

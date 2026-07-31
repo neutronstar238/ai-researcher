@@ -25,6 +25,8 @@ def test_competition_cli_is_registered() -> None:
     assert "prepare" in mdbench_result.stdout
     assert "preregister" in mdbench_result.stdout
     assert "recover-preregister" in mdbench_result.stdout
+    assert "autonomous-plan" in mdbench_result.stdout
+    assert "autonomous-generate" in mdbench_result.stdout
     assert "execute" in mdbench_result.stdout
     assert "evaluate" in mdbench_result.stdout
 

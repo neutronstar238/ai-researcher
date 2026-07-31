@@ -9,6 +9,10 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from autoresearch.competition.autonomous_engine import (
+    AutonomousBranchEngineError,
+    build_autonomous_branch_engine_package,
+)
 from autoresearch.competition.autonomous_recovery import (
     AutonomousRecoveryError,
     freeze_autonomous_mdbench_research_plan,
@@ -294,6 +298,82 @@ def competition_mdbench_autonomous_plan(
     typer.echo(f"[OK] result_records: {plan.result_record_count}")
     typer.echo(f"[OK] manuscripts: {plan.manuscript_count}")
     typer.echo(f"[OK] next_required_task: {plan.next_required_task}")
+
+
+@competition_mdbench_app.command("autonomous-generate")
+def competition_mdbench_autonomous_generate(
+    plan: Annotated[
+        Path,
+        typer.Option(
+            "--plan",
+            help="Hash-valid public autonomous-research-plan.json from Task 265.1.",
+        ),
+    ] = Path(
+        "runs/competition/mdbench-autonomous-recovery-plan/"
+        "autonomous-research-plan.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            help="Immutable literature/model/source/Harness preflight package.",
+        ),
+    ] = Path("runs/competition/mdbench-autonomous-branch-engine"),
+    config: Annotated[
+        Path,
+        typer.Option("--config", help="Provider-neutral system configuration."),
+    ] = Path("config.yaml"),
+    env_file: Annotated[
+        Path,
+        typer.Option(
+            "--env-file",
+            help="Local credential environment file; secret values are never persisted.",
+        ),
+    ] = Path(".env"),
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-model-call timeout."),
+    ] = 120,
+    source_timeout_seconds: Annotated[
+        int,
+        typer.Option(
+            "--source-timeout-seconds",
+            min=1,
+            help="Per-primary-source refresh timeout.",
+        ),
+    ] = 20,
+) -> None:
+    """Generate eight original exact-code branches and run bounded capability Harnesses."""
+
+    try:
+        package = build_autonomous_branch_engine_package(
+            plan,
+            output_dir,
+            config_path=config,
+            env_path=env_file,
+            timeout_seconds=timeout_seconds,
+            source_timeout_seconds=source_timeout_seconds,
+        )
+    except (AutonomousBranchEngineError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_autonomous_generate: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] autonomous_branch_package: {package.output_path}")
+    typer.echo(f"[OK] package_hash: {package.package_hash}")
+    typer.echo(f"[OK] current_primary_sources: {len(package.literature_snapshots)}")
+    typer.echo(f"[OK] model_interactions: {package.model_interaction_count}")
+    typer.echo(f"[OK] exact_code_candidates: {package.generated_candidate_count}")
+    typer.echo(f"[OK] mechanism_families: {package.mechanism_family_count}")
+    typer.echo(f"[OK] capability_gate: {str(package.capability_gate_passed).lower()}")
+    typer.echo(f"[OK] provenance_gate: {str(package.provenance_gate_passed).lower()}")
+    typer.echo(
+        "[OK] development_execution_authorized: "
+        f"{str(package.development_execution_authorized).lower()}"
+    )
+    typer.echo("[OK] official_development_results: 0")
+    typer.echo("[BLOCKED] confirmation_access: false")
+    typer.echo("[BLOCKED] publication_ready: false")
+    if not package.development_execution_authorized:
+        raise typer.Exit(code=2)
 
 
 @competition_mdbench_app.command("execute")

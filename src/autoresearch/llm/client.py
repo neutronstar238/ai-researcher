@@ -9,10 +9,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from autoresearch.config import ConfigParser, SystemConfig
 from autoresearch.schemas import file_hash
@@ -91,6 +91,19 @@ PROFILE_CONTEXT_NEGATION_TERMS = (
 class LLMClientError(RuntimeError):
     """Raised when a live LLM smoke request cannot complete."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        response_text: str | None = None,
+        response_usage: dict[str, Any] | None = None,
+        finish_reason: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.response_text = response_text
+        self.response_usage = response_usage or {}
+        self.finish_reason = finish_reason
+
 
 class LLMOutputQuality(BaseModel):
     """Local quality checks for the smoke-test model output."""
@@ -157,8 +170,25 @@ class LLMJsonCompletionResult(BaseModel):
     endpoint: str
     response_text: str
     parsed_json: dict[str, Any]
+    transport_normalization: Literal[
+        "none", "discarded_trailing_closing_delimiters"
+    ] = "none"
+    normalization_suffix: str | None = Field(default=None, min_length=1, max_length=4)
     usage: dict[str, Any] = Field(default_factory=dict)
     temperature: float = Field(ge=0.0)
+
+    @model_validator(mode="after")
+    def _validate_transport_normalization(self) -> LLMJsonCompletionResult:
+        normalized = self.transport_normalization != "none"
+        if normalized != (self.normalization_suffix is not None):
+            raise ValueError("JSON transport normalization suffix presence mismatch")
+        if self.normalization_suffix is not None:
+            delimiters = self.normalization_suffix.strip()
+            if not delimiters or any(marker not in "]}" for marker in delimiters):
+                raise ValueError(
+                    "JSON transport normalization suffix is not a closing delimiter"
+                )
+        return self
 
 
 def run_llm_smoke_test(
@@ -320,6 +350,7 @@ def run_llm_json_completion(
     max_tokens: int | None = None,
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
+    thinking_mode: Literal["enabled", "disabled"] | None = None,
     response_schema: dict[str, Any] | None = None,
     response_schema_name: str = "autoresearch_output",
 ) -> LLMJsonCompletionResult:
@@ -350,16 +381,37 @@ def run_llm_json_completion(
             messages=messages,
             temperature=temperature,
             reasoning_effort=reasoning_effort,
+            thinking_mode=thinking_mode,
             response_schema=response_schema,
             response_schema_name=response_schema_name,
         )
     content = _extract_message_content(response)
     try:
-        parsed = json.loads(_strip_json_fences(content))
+        parsed, transport_normalization, normalization_suffix = (
+            _parse_json_completion_content(content)
+        )
     except json.JSONDecodeError as exc:
-        raise LLMClientError(f"LLM JSON completion was not valid JSON: {exc.msg}") from exc
+        raise LLMClientError(
+            f"LLM JSON completion was not valid JSON: {exc.msg}",
+            response_text=content,
+            response_usage=(
+                response.get("usage", {})
+                if isinstance(response.get("usage"), dict)
+                else {}
+            ),
+            finish_reason=_response_finish_reason(response),
+        ) from exc
     if not isinstance(parsed, dict):
-        raise LLMClientError("LLM JSON completion top-level value is not an object")
+        raise LLMClientError(
+            "LLM JSON completion top-level value is not an object",
+            response_text=content,
+            response_usage=(
+                response.get("usage", {})
+                if isinstance(response.get("usage"), dict)
+                else {}
+            ),
+            finish_reason=_response_finish_reason(response),
+        )
     return LLMJsonCompletionResult(
         provider=llm.provider,
         base_url=llm.base_url,
@@ -367,6 +419,8 @@ def run_llm_json_completion(
         endpoint=endpoint,
         response_text=content,
         parsed_json=parsed,
+        transport_normalization=transport_normalization,
+        normalization_suffix=normalization_suffix,
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         temperature=temperature,
     )
@@ -557,6 +611,7 @@ def _post_chat_completion(
     messages: list[dict[str, str]] | None = None,
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
+    thinking_mode: Literal["enabled", "disabled"] | None = None,
     response_schema: dict[str, Any] | None = None,
     response_schema_name: str = "autoresearch_output",
 ) -> dict[str, Any]:
@@ -581,6 +636,8 @@ def _post_chat_completion(
         payload["max_tokens"] = max_tokens
     if reasoning_effort is not None:
         payload["reasoning_effort"] = reasoning_effort
+    if thinking_mode is not None:
+        payload["thinking"] = {"type": thinking_mode}
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
@@ -943,9 +1000,27 @@ def _extract_message_content(response: dict[str, Any]) -> str:
     if not isinstance(content, str) or not content.strip():
         raise LLMClientError(
             "LLM API message content is empty; if you manually set --max-tokens, "
-            "remove it or raise the provider-specific value"
+            "remove it or raise the provider-specific value",
+            response_text=content if isinstance(content, str) else None,
+            response_usage=(
+                response.get("usage", {})
+                if isinstance(response.get("usage"), dict)
+                else {}
+            ),
+            finish_reason=_response_finish_reason(response),
         )
     return content.strip()
+
+
+def _response_finish_reason(response: dict[str, Any]) -> str | None:
+    choices = response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    first = choices[0]
+    if not isinstance(first, dict):
+        return None
+    finish_reason = first.get("finish_reason")
+    return finish_reason if isinstance(finish_reason, str) else None
 
 
 def _finding_evidence_refs(findings: Any) -> list[list[str]]:
@@ -1001,6 +1076,29 @@ def _strip_json_fences(text: str) -> str:
             lines = lines[:-1]
         return "\n".join(lines).strip()
     return stripped
+
+
+def _parse_json_completion_content(
+    text: str,
+) -> tuple[
+    object,
+    Literal["none", "discarded_trailing_closing_delimiters"],
+    str | None,
+]:
+    """Parse JSON with one narrow, auditable provider-delimiter normalization."""
+
+    stripped = _strip_json_fences(text)
+    try:
+        return json.loads(stripped), "none", None
+    except json.JSONDecodeError as exc:
+        if exc.msg != "Extra data":
+            raise
+    parsed, end = json.JSONDecoder().raw_decode(stripped)
+    suffix = stripped[end:]
+    delimiters = suffix.strip()
+    if not (1 <= len(suffix) <= 4 and delimiters and set(delimiters) <= {"]", "}"}):
+        raise json.JSONDecodeError("Extra data", stripped, end)
+    return parsed, "discarded_trailing_closing_delimiters", suffix
 
 
 def _has_no_secret_leak(text: str, secret_values: list[str]) -> bool:

@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from autoresearch.llm import client as llm_client
 from autoresearch.llm.client import (
     LLMEvidenceArtifact,
@@ -207,6 +209,61 @@ def test_post_chat_completion_includes_explicit_reasoning_effort(monkeypatch) ->
     )
 
     assert captured["payload"]["reasoning_effort"] == "none"
+
+
+def test_post_chat_completion_includes_explicit_thinking_mode(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps({"choices": [{"message": {"content": "{}"}}]}).encode(
+                "utf-8"
+            )
+
+    def fake_urlopen(request: object, *, timeout: int) -> FakeResponse:
+        del timeout
+        data = request.data
+        captured["payload"] = json.loads(data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="https://api.example.test/chat/completions",
+        api_key="sk-testsecret",
+        model_name="research-model",
+        timeout_seconds=10,
+        max_tokens=500,
+        thinking_mode="disabled",
+    )
+
+    assert captured["payload"]["thinking"] == {"type": "disabled"}
+
+
+def test_json_completion_parser_records_one_trailing_closing_delimiter() -> None:
+    parsed, normalization, suffix = llm_client._parse_json_completion_content(
+        '{"candidate_id":"branch-02","source_text":"exact model code"}]'
+    )
+
+    assert parsed == {
+        "candidate_id": "branch-02",
+        "source_text": "exact model code",
+    }
+    assert normalization == "discarded_trailing_closing_delimiters"
+    assert suffix == "]"
+
+
+def test_json_completion_parser_rejects_second_object_or_trailing_prose() -> None:
+    with pytest.raises(json.JSONDecodeError, match="Extra data"):
+        llm_client._parse_json_completion_content('{"first":1}{"second":2}')
+    with pytest.raises(json.JSONDecodeError, match="Extra data"):
+        llm_client._parse_json_completion_content('{"first":1} explanation')
 
 
 def test_ollama_native_endpoint_replaces_openai_v1_path() -> None:

@@ -1993,3 +1993,32 @@ sealed confirmation commitment 为 `bc20cbdf28d69662ad38f23163b75185131074b0dc85
 comparative memory 和 search-freeze receipt；开发实验、确认集访问、发表、公开和投稿仍为 false。只有 Task
 `265.3` 真实产生并淘汰候选、Task `265.4` 一次性确认、Task `265.5` 从同一 ledger 自产文章之后，才能回答
 “系统的结果是否显著、数据是否达到参赛/发表水平”。现在的诚实答案仍是：旧结果不显著，新研究尚未运行。
+
+### 28.4 Task 265.2 自主来源与能力门结果
+
+Task `265.2` 已实现 provider-neutral `autonomous_engine.py` 和 CLI `competition mdbench autonomous-generate`。
+运行只接收 Task `265.1` 的高层 brief、公开 development 身份、12 个来源架构和固定预算；模型在运行时重新抓取
+并哈希 12 个一手页面，先形成 8 个机制槽与逐槽假设，再返回完整 Python 模块。候选不是代码内置目录：正式 v22
+生成 8 个不同 mechanism family，保留 23 个逻辑模型交互、47 次含格式/传输重试的 provider request 和 11 个
+精确源码 revision。每个源码都能反向绑定原始模型响应、prompt、模型配置、source IDs、静态审查、环境、Harness
+episode 和 process metrics；通用编排器没有插入科学方法或修改候选数值。
+
+多维接口采用版本化 `row-major-flat-v1` 适配器。模型读取原始 nested values、authoritative shape 与 row-major
+flat leaves，返回等长 flat prediction；Harness 只按 fixture-owned shape 还原容器，不改变任何数值。适配器合同
+hash 为 `6556200e16fa1d89efd6600c57f743330794ea816eee9207f8b5cc421865db53`，runner hash 为
+`9e82345cad141a54e7693d32510f3a8813fa229da287ec392d98e18e294d1b7b`。这样把可复用的数据搬运从科学算子中
+分离，但任何错长、非有限值、常量响应、维度失败、异常、无界循环、超 40KB 或超 6,000 AST 节点仍会失败。
+
+早期 live 运行没有被隐藏：v18 揭示二点空间轴使二次库 `x²=x` 而产生秩缺陷；原样候选在三点轴反事实中五门
+全过。v19 揭示 5,000 AST 节点恰好拒绝 5,225 节点但资源合规的源码；6,000 节点反事实全过。v20 的一个分支
+在四次技术修订后仍有矩阵方向错误；技术版本预算因此在不见官方分数的前提下明确扩为最多六版。v21 又证明
+行数不是安全或计算复杂度指标：850 行但 36.9KB/3,949 AST 的原样源码在移除行数假门后五门全过；同时逐槽
+假设修订现在携带上一响应和全部允许的 source-domain IDs，避免无状态地重复同一合同错误。
+
+最终真实包位于 `runs/manual-live/task2652-autonomous-branch-engine-v22/`，package hash 为
+`096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`。八个分支均通过
+`ode/pde_1d/pde_2d/pde_3d/multi_field`、provenance、contamination 和预算门；终态用会主动抛错的 provider/
+source 函数重载，仍返回同一哈希，证明没有隐藏外部调用。这个结果只把 `development_execution_authorized`
+置真。官方 development result、OPHIS mechanism cycle、confirmation read、manuscript 和 publication-ready 仍全为
+零；所以旧结果仍不显著，新候选也尚不能称显著或可发表。下一步只能由 Task `265.3` 在开发集执行完整 8 分支、
+形成 1—4 个前瞻机制干预 cycle，并在不接触 sealed confirmation 的条件下冻结一个实现。
