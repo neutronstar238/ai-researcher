@@ -1932,3 +1932,44 @@ publication claim、release 和 submission 均为 false。
 
 `263.6.7.3` 仍需要两位真实独立 reviewer 与一位不同的 adjudicator。身份、independence attestation、
 pre-adjudication agreement 和 coverage 未通过前，不执行正式关键编码，不生成领域普遍性 claim。
+
+### 27.13 Task 263.6.7.2 Harness 实施结果与正式检索前勘误门
+
+Task `263.6.7.2` 已完成以下可执行边界：
+
+- `benchmark_validity_harness.py`：四源 bibliographic adapter/parser、公开请求 hash、原始响应 store、
+  append-only PRISMA-S page/execution journal、retry/rate-limit/pacing、paper identity dedup、显式
+  family/revision clustering、known-item recall、frozen screening form、42-field empty packet、result-free
+  projection、双解释器 replay、JSON Schema/Markdown/manifest 和递归 tamper-blocking load；
+- `frozen_benchmark_validity_harness_probe_v1.py`：仅标准库的 result-blind projection probe；固定要求四个
+  adapter、四个 capability run、至少四个 raw response、Crossref formal blocker、零 formal search/card/
+  outcome/model call，以及 `protocol_erratum_required=true`；
+- deterministic tests：覆盖 arXiv total/offset、OpenAlex cursor、Crossref short-page、DBLP cap、HTTP
+  retry、append-only chain、raw/log tamper、paper duplicate、16-sentinel recall、family/revision
+  pseudoreplication、空 packet、persist/load、双解释器 replay 和 result-bearing payload 拒绝；
+- opt-in live smoke：四个官方 API 各一页、四个 raw response、四个 bibliographic-only record，全部为
+  `capability-only`，retry 为 0；两套 clean Python installation 的 environment hash 不同但
+  output-contract hash 相同。
+
+首轮 live smoke 在 Crossref 返回 HTTP 200 后按预期失败：probe 没有传 `cursor=*`，因此响应没有
+`next-cursor`，parser 拒绝把 full page 当作可继续页。失败 raw/log 保留在 v1 目录；实现随后只修正
+capability probe 的官方 cursor initialization，并在新 v2 目录重跑通过。这个 bounded repair 没有改动
+Task `263.6.7.1` protocol、query text、日期、研究单位、codebook、endpoint 或 stop rule。
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `fbb2a633bb57f0bb9f9f1471b58e8b4b8367098923f07c052d712758cbef9a10` |
+| Result-blind projection | `30bdad36006badccca89f335ff092e34c2c7f3a5a4586e5aba982689c7ba8b2d` |
+| Replay certificate | `29ed35c21eeeea9abf3e6256b717d963d3b8fd797326cd56acd17069b31b77f8` |
+| Journal snapshot | `03ecc8776f4e995aa932db3d6d2be9300b287c4dce3f43f0c66d132745233f71` |
+| Frozen runner | `46a30b615a3a85cae1493340f17fd3914927ac3952db869fa5dfd7912852fb45` |
+| Manifest | `688599b0b46c1502c79e9046f53dd96183989f6fcba8134bc8491d26eef18b3f` |
+
+正式状态是 `ready-for-capability-only`，不是 `ready-for-formal-search`。Task `263.6.7.2.1` 必须先生成
+绑定原 protocol hash 的 additive erratum：Crossref 从 `cursor=*` 开始并按 short page 停止；DBLP
+必须绑定 exact year-qualified fallback query，并在达到 1,000 cap 时停止 partial。erratum 仍要求零
+formal query、零 extraction、零 outcome access、零 model call 和 two-interpreter exact replay。
+
+erratum 通过后，Task `263.6.7.3` 仍受 `P-20260731-031` 的三位真实人类角色门约束。不得用两个 Agent
+run 冒充独立 reviewer，也不得在真实 screening/coding 之前宣称 known-item recall、纳入数量、agreement、
+coverage 或 benchmark-validity 结论。

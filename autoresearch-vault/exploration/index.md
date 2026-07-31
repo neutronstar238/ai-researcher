@@ -8,6 +8,7 @@
 
 ## benchmark validity
 
+- [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 - [[licensed-objective-socratic-inventory-gate-2026|DiscoveryBench independent-unit and license inventory gate]]
@@ -49,6 +50,7 @@
 
 ## harness engineering
 
+- [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
@@ -61,6 +63,7 @@
 
 ## open science
 
+- [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]

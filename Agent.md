@@ -64,6 +64,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 18:28:00 +08:00 - Codex - Task 263.6.7.2 result-blind benchmark-validity Harness
+
+- Request: Continue the publication-grade AutoResearch recovery; explain why real execution still cannot support a publishable conclusion; borrow the strongest ideas from current automated-science work; optimize the research path; and implement the next gated step without changing the frozen protocol, opening benchmark outcomes, or simulating independent human reviewers.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_benchmark_validity_harness_probe_v1.py`
+  - `src/autoresearch/research/benchmark_validity_harness.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_benchmark_validity_harness.py`
+  - `tests/smoke/test_benchmark_validity_harness_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/benchmark-validity-result-blind-harness-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-2-benchmark-validity-harness.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Implemented deterministic, protocol-bound bibliographic adapters and parsers for arXiv Atom offset/total paging, OpenAlex cursor paging, Crossref cursor/short-page paging, and DBLP's 1,000-result cap. Exact public request parameters/canonical URLs are hashed; parameters that look like secrets are rejected; formal execution defaults false and known protocol/API incompatibilities fail closed.
+  - Added a content-addressed raw-response store, bibliographic-only record store, append-only hash-chained PRISMA-S page/execution journals, retry/`Retry-After`/source-pacing logic, exact snapshot reconstruction, recursive package inventory, JSON Schemas, Markdown, manifest, and tamper-blocking loader. Raw bytes are retained before parsing, and response headers are restricted to an auditable safe subset.
+  - Added exact paper identity deduplication across DOI/arXiv/OpenAlex/DBLP/title-author-year; formal known-item recall evaluation over the 16 frozen sentinels; and a separate explicit benchmark-family/revision lineage algorithm. Tasks, seeds, attempts, difficulty variants, votes, and old revisions remain nested rather than becoming statistical replicates. The current capability records make no formal recall claim and the family map remains empty until real human coding.
+  - Materialized the frozen inclusion/exclusion form and 42-field empty evidence-packet template. Reviewer identities, screening/family/eligibility decisions, evidence states, Admission Cards, outcomes, and candidate-model outputs remain absent; result-bearing payload keys are rejected recursively.
+  - Added a dependency-free frozen replay runner and result-blind projection requiring four adapters, four capability runs, at least four raw responses, the explicit Crossref formal blocker, and zero formal search/card/outcome/model-call counts. Two distinct clean Python installations reproduced the exact output contract.
+  - Ran real one-page CORE-Bench bibliographic capability probes against all four official APIs. The first Crossref probe returned HTTP 200 but correctly failed parsing because the request omitted the documented initial `cursor=*`; the raw response and failure log were retained in the incomplete v1 directory. The bounded repair added cursor initialization only, preserved the immutable protocol/query/date/unit/codebook/stop rules, and the new v2 run passed all four sources with four raw responses, four records, and zero retry.
+  - Detected a protocol-level incompatibility before formal extraction: frozen Crossref termination expects an empty `next-cursor`, whereas current official guidance uses short-page exhaustion even though a cursor is returned on the last page. The conditional DBLP year split also lacks exact frozen year-qualified query bindings. Added Task `263.6.7.2.1` for a separate additive pre-extraction erratum; Task `263.6.7.3` remains blocked by both that erratum and the three-real-human-role gate.
+  - Formal successful package is `runs/manual-live/task263672-benchmark-validity-harness-v2/`: report `fbb2a633bb57f0bb9f9f1471b58e8b4b8367098923f07c052d712758cbef9a10`; projection `30bdad36006badccca89f335ff092e34c2c7f3a5a4586e5aba982689c7ba8b2d`; replay certificate `29ed35c21eeeea9abf3e6256b717d963d3b8fd797326cd56acd17069b31b77f8`; journal snapshot `03ecc8776f4e995aa932db3d6d2be9300b287c4dce3f43f0c66d132745233f71`; frozen runner `46a30b615a3a85cae1493340f17fd3914927ac3952db869fa5dfd7912852fb45`; manifest `688599b0b46c1502c79e9046f53dd96183989f6fcba8134bc8491d26eef18b3f`. Status is `ready-for-capability-only`, not a formal census or publication result.
+- Verification:
+  - Initial focused tests exposed seven shared content-addressing failures because pre-validation enum/date/datetime/default/sorted representations differed from canonical post-validation JSON; normalized JSON hashing and explicit constructor normalization fixed them. Final `poetry run python -m pytest tests/unit/research/test_benchmark_validity_harness.py -q --tb=short --no-cov`: 8 passed.
+  - Tests cover four pagination boundaries, rate-limit/retry, raw/journal tamper, formal-search blocking, 16-sentinel recall, duplicate-paper identity, family/revision pseudoreplication, empty packet enforcement, full persistence/load, two-interpreter parity, and result-bearing runner rejection.
+  - First `$env:AUTORESEARCH_BENCHMARK_VALIDITY_HARNESS_LIVE='1'; poetry run python -m pytest tests/smoke/test_benchmark_validity_harness_live.py -q --tb=short --no-cov` failed after retaining the Crossref HTTP-200 raw response and `parse-error`; inspection established missing initial `cursor=*`. The versioned v2 rerun passed in 6.60 seconds against all four real APIs. A later idempotent loader-only rerun passed in 0.77 seconds and recursively rehashed the successful package.
+  - `poetry run python -m pytest tests/unit/research/test_benchmark_validity_harness.py tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py -q --tb=short --no-cov`: 17 passed. An earlier focused command named nonexistent `tests/unit/test_task_dependencies.py`; it collected zero tests and was replaced with the actual Vault/link suites without changing source or artifacts.
+  - `poetry run python -m pytest -q`: 1,114 passed, 31 opt-in live tests skipped, 82-percent coverage, in 192.51 seconds.
+  - `poetry run ruff check .`: all checks passed. Initial focused Ruff found import order, a duplicate dictionary key, and an unused test import; all were corrected before the full gate.
+  - `poetry run mypy src`: success across 175 source files. Initial focused Mypy found two annotations around the generic JSON adapter and enum-key sorting; explicit generic/mapping types corrected them.
+  - `poetry check`: exited zero with only the pre-existing Poetry project-metadata deprecation warnings. `git diff --check`: exited zero with only the existing exploration-index CRLF-to-LF working-copy notice.
+  - Frozen protocol source remains `8ad851870621f524bd2d2710a66f94661b3c0d33a72280bca1f435635111b633`; its protocol remains `ed6088c225d5c7f7710ecb69507659003b5b97e06dc7c0ee005a81ed2712e8ed`. The Harness report retains formal-search/card counts `0/0` and outcome/model/human-identity flags false.
+- Problems:
+  - Added open high-severity `P-20260731-032` for the frozen Crossref terminal-page mismatch and unfrozen exact DBLP year-split bindings. Capability-only execution is verified; formal census remains stopped.
+  - Updated open high-severity `P-20260731-031` with the completed Harness and the ordering of the API erratum plus three-real-human-role gates.
+  - Updated open high-severity `P-20260731-030` with the completed result-blind instrument and the fact that API capability does not repair the missing qualified scientific substrate.
+- Follow-up:
+  - Execute only Task `263.6.7.2.1`: freeze a zero-result additive erratum bound to the original protocol hash, official Crossref short-page/cursor semantics, and exact DBLP year-qualified fallback bindings; verify in two clean interpreters before any formal extraction.
+  - After the erratum, the project owner must still assign two real independent reviewers and one distinct adjudicator before Task `263.6.7.3`. Keep mechanism experiments, field-wide claims, Task `263.7`, public release, and submission blocked.
+
 ### 2026-07-31 17:51:02 +08:00 - Codex - Task 263.6.7.1 benchmark-validity protocol freeze
 
 - Request: Continue the publication-grade recovery; diagnose why real automated-research output remains below publishable evidence; cross-search current AI Scientist, benchmark, Graph/Harness/Loop, falsification, systematic-review, and Open Science research; optimize the research path; and implement the next prospective step before looking at new benchmark records.

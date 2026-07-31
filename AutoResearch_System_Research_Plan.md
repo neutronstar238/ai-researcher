@@ -1618,3 +1618,46 @@ candidate-model output、RQ 和 confirmation panel 均为 0/false。
 append-only PRISMA-S log、paper/family/revision dedup 和空 evidence packet；`263.6.7.3` 才由真实双人
 团队执行冻结 census 和描述性综合。Graph/Harness/Loop/Open Science 的升级因此服务于 lineage、
 instrument、不可回流状态机和可审计研究对象，而不再被误当作科学效应本身。
+
+### 27.6 Task 263.6.7.2 结果盲检索与证据包 Harness
+
+Task `263.6.7.2` 已把冻结协议转成可执行但仍不接触 benchmark outcome 的研究仪器。实现分为五层：
+
+1. **Source instrument**：arXiv Atom offset、OpenAlex cursor、Crossref cursor/short-page、DBLP
+   1,000-hit cap 四个确定性 parser/adapter；每个请求只保存公开参数和规范 URL hash。
+2. **Append-only evidence**：每页原始 bytes、响应 header、时间、状态、retry、parser hash 和抽取出的
+   bibliographic-only record 都做内容寻址；page/execution JSONL 使用 previous-entry hash 串联，回读时
+   重建完整 inventory 并拒绝篡改。
+3. **Scientific lineage**：DOI、arXiv ID、OpenAlex ID、DBLP key 和规范化 title/author/year 只用于 paper
+   identity；benchmark family/revision 必须来自显式 lineage observation。task、seed、attempt、difficulty、
+   vote 和旧 revision 永远不增加独立 family 数。
+4. **Result-blind coding boundary**：screening form 与 42 字段 evidence-packet template 已生成，但
+   screening/family/eligibility decision、reviewer identity、evidence state 和 Admission Card 全部为空。
+5. **Independent replay**：只含 adapter/log/dedup/form/empty-template hash 和零下游权限的 projection，
+   在两套不同 clean interpreter 中得到相同 output contract；frozen runner 拒绝 model output、benchmark
+   outcome、screening decision 和 Admission Card payload。
+
+真实 capability smoke 向四个官方 API 各发送一个 CORE-Bench bibliographic probe，保留四个 raw
+response 和四个 bibliographic record。它的合法结论仅是“当前 API shape 能被 instrument 解析”，不是
+16-item formal recall、检索完整性或 benchmark 准入证据。正式 search execution、Admission Card、
+benchmark outcome 和 candidate-model call 仍为 `0/0/false/false`。
+
+本任务同时捕获一个不能静默修补的 protocol drift：冻结协议把 Crossref 终止条件写成
+`next-cursor until empty`，而当前官方规则说明最后一页仍返回 cursor，应以 `items < rows` 判断耗尽；
+首个 live capability probe 还证明 cursor paging 必须显式从 `cursor=*` 开始。DBLP 的 1,000-hit 条件
+虽然已冻结“按年份切分”，但四条 exact year-qualified query 尚未绑定。因此 Task `263.6.7.1` 保持不可变，
+正式 28-query census 继续停止；下一任务 `263.6.7.2.1` 只允许在首条正式记录提取前冻结 additive
+pagination erratum，不得借机修改构念、日期、单位、codebook、endpoint 或 stop rule。
+
+正式 capability package 位于
+`runs/manual-live/task263672-benchmark-validity-harness-v2/`：report
+`fbb2a633bb57f0bb9f9f1471b58e8b4b8367098923f07c052d712758cbef9a10`，projection
+`30bdad36006badccca89f335ff092e34c2c7f3a5a4586e5aba982689c7ba8b2d`，replay certificate
+`29ed35c21eeeea9abf3e6256b717d963d3b8fd797326cd56acd17069b31b77f8`，journal
+`03ecc8776f4e995aa932db3d6d2be9300b287c4dce3f43f0c66d132745233f71`，manifest
+`688599b0b46c1502c79e9046f53dd96183989f6fcba8134bc8491d26eef18b3f`。
+
+这一步提升的是发表所需的可审计性，而不是发表结论本身。最短路径现在是：先冻结 API erratum；再由
+两位真实独立 reviewer 与一位不同 adjudicator 执行 census/coding；只有 recall、non-pilot family
+数量、agreement、coverage 和完整性全部过门，才做冻结的描述性综合。任何失败都进入开放资源或诊断负
+终点，不回流到检索式或样本选择。
