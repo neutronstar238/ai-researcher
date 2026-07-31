@@ -2089,3 +2089,44 @@ exact code、淘汰和负结论确实由系统运行自产；但来源自主不�
 
 该优化吸收了 OPHIS 的机制闭环，但不把“写出机制故事”当证据；它也吸收 WSINDy/WENDy/WeakIdent/PDE-READ 的核心教训：
 方程发现的对象是由训练数据拟合并能对未见状态求值的具体算子，不是一个能通过返回值 shape 检查的函数。
+
+### 28.8 Task 266.1：结果盲科学契约与跨域基线已经冻结
+
+Task `266.1` 已把上一轮失败从诊断变成一个不能在看分后修改的执行合同。正式计划
+`runs/manual-live/task2661-scientific-contract-recovery-plan-v1/scientific-contract-recovery-plan.json` 的 hash 为
+`764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`，并不可变绑定 Task `265.3` 负结果
+package `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`。计划形成前没有读取新官方
+development 结果、confirmation identity 或 confirmation result，也没有生成候选答案或调用模型；五项计数均为零。
+
+科学接口现在由四类严格 JSON 对象约束：train-only fit request、包含具体 term 与数值 coefficient 的 frozen-equation
+artifact、target-free single-slice predict request 和 prediction response。artifact 必须随替代训练数据改变；每个 sentinel 只允许
+一次 fit、至少三次 predict，predict 期间 fit call 必须为零。Harness 将独立计算方程预测并要求与候选数值输出最大差
+`≤1e-9`，同时拒绝自由符号、恒零等价、训练 shuffle 不恶化、缺少训练依赖、query 携带目标导数和 fit-after-query。
+
+在任何新官方 score 前，计划已物化六个解析定律 fixture：二场线性 ODE、1D advection、1D diffusion、2D
+advection-diffusion、3D heat 和 1D 双场 diffusion。每个 fixture 都携带 primary/alternate train context、固定导数打乱、三个
+单时间片 target-free query、解析导数、精确方程和阈值；sentinel registry hash 为
+`59f21f4f9b37a25daebf91be4f220c1de2a68c055b9c8cb634271d07299afe92`。clean prediction NMSE 必须
+`≤1e-6`、term-support F1 必须为 `1`、coefficient relative error 必须 `≤0.05`、shuffle NMSE 至少恶化五倍且相对 zero-null
+至少改善 `0.5`。
+
+基线不再跨域冒充。九个 live 一手快照覆盖 MDBench 论文、固定 revision 的 fit/predict/to_str 接口与 MIT 许可、PySINDy
+论文/许可/WeakPDELibrary 实现，以及 PyOperon v0.5.0 实现/许可/PyPI 元数据；source registry hash 为
+`595bf406a608282a13a669008dd3b42a5b3fd7dbbf0fa2b6a987c038eeec238a`。ODE 路由到 Operon，PDE 路由到
+官方 MDBench PDE-FIND/PySINDy；任何必需基线失败都会阻断 receipt，而不会转化为候选优势。固定镜像
+`autoresearch-mdbench:task260`（image ID `sha256:6c8928e967cc4ff2995626c90ef57771df603028ddd6e17dbc60894ffa017c78`）
+中的真实 synthetic-only probe 通过：Operon ODE NMSE `0.0005562015925350986`、PDE-FIND 2D NMSE
+`1.3980779783672217e-31`、3D NMSE `2.034461901247889e-32`；probe hash 为
+`d46f4fe9bc83e41a3c2baa3fd06fa58ef3428d744fad8292f3dc9f493c453553`。该 probe 证明实现、依赖、shape 和
+fit/predict 可执行，不冒充 sentinel 的精确空间项恢复证据。
+
+新搜索预算冻结为 8 个首代、最多 12 个候选、2 代、最多 4 个机制 cycle：pilot 最多 96 candidate cells、mechanism 32、
+full 252、domain baseline 84，总上限 `380+84=464`。所有 cell 共用 300 秒、2 CPU、4096 MB；估计量是 system-level
+`log(baseline_nmse/candidate_nmse)`，condition/seed 只是系统内重复测量，固定种子 bootstrap 只在 14 个独立系统上重采样。
+receipt 要求 overall 至少 +5%、探索性下界大于零、ODE/PDE 两层方向均通过、所有契约门和所有 candidate/baseline full cells
+成功。功效审计同时明确：10 ODE + 4 PDE 的 PDE 子层只有四个独立系统，即使单系统正向概率为 `0.9`，四个 PDE 全正的概率
+也只有 `0.6561`；因此 PDE 层只能作方向资格门，不能声称独立 PDE 显著性。
+
+Task `266.1` 只授权 Task `266.2` 实现和验证 Harness，`official_development_execution_authorized=false`。下一步必须先让
+provider-neutral、模型源码原样的候选在六个 synthetic sentinels 上真实完成 fit→freeze→predict，并通过 leakage/null/shape/
+resource/tamper 门；在此之前仍没有可发表效果或可解封 confirmation 的证据。

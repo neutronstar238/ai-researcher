@@ -2304,17 +2304,38 @@ failure-aware NMSE 为 `0.9999999999988402`、train sensitivity 为零、Operon-
 实现代理没有在结果后补方法。但能力 probe 只验证接口可执行，没有验证具体方程拟合，首代代码在单时点 query 上退化为零导数，
 唯一局部一致的平均导数 intervention 也没有跨 14 systems 泛化。所以当前仍为 `publication_ready=false`，不能生成正向参赛稿。
 
-### 28.5 下一执行任务：Task 266 scientific-contract recovery
+### 28.5 已完成 Task 266.1：结果盲科学契约冻结
 
-Task `266.1` 先冻结新 lineage，不直接再跑候选：
+Task `266.1` 已生成 hash-bound 正式计划
+`runs/manual-live/task2661-scientific-contract-recovery-plan-v1/scientific-contract-recovery-plan.json`，plan hash 为
+`764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`。它绑定 Task `265.3` package，冻结
+4 类 fit/frozen-artifact/predict schema、6 个解析 ODE/PDE sentinels、9 个一手 source/license/implementation snapshots、ODE→Operon
+与 PDE→MDBench PDE-FIND/PySINDy 的分域基线，以及 380 candidate + 84 baseline cells 的最大预算。
 
-1. 将 API 改为 train-only `fit_equations` → hash-frozen learned artifact → query-only `predict_derivative`；fit artifact 必须有具体
-   term、coefficient 和 scaling，且 equation-derived prediction 与返回预测一致；
-2. 在官方分数前冻结 synthetic known-law ODE/PDE、train-shuffle、zero/null、coefficient/term recovery、leakage、noise、shape、
-   train-sensitivity 和 fit-once/query-many sentinels；
-3. 检索并冻结 domain-valid baseline policy：Operon 保留在适用域；PDE baseline 必须通过来源、实现、许可、依赖和 live smoke；
-4. 冻结新的候选/代数/cycle/compute budget、ODE/PDE 分层 matched endpoint、exploration quota 和 failure policy；
-5. 继续物理隔离原 confirmation。Task `266.2` 只实现/验证 Harness，不看新官方分数；Task `266.3` 才执行恢复搜索。
+固定 Python `3.9.23` 科学镜像的真实离线 probe 已通过，probe hash 为
+`d46f4fe9bc83e41a3c2baa3fd06fa58ef3428d744fad8292f3dc9f493c453553`；Operon ODE、PDE-FIND 2D/3D
+NMSE 分别为 `5.562015925350986e-4`、`1.3980779783672217e-31`、`2.034461901247889e-32`。任何 domain baseline
+失败都会阻断 receipt。估计单位固定为 system，保留 +5% overall、exploratory lower bound >0、ODE/PDE 双向和所有 full-cell
+成功门；只有 4 个 PDE systems 的事实也被写成“方向门而非 standalone significance”限制。
 
-只有 Task `266.3` 的新选择同时通过 overall ≥5%、development lower bound >0、ODE/PDE 双层方向、具体方程恢复和完整 cells，
-才能签发 receipt 并授权 Task `265.4`。失败则再次登记自主开发负结果；不得降低阈值、重写 Task `265.3` 或提前生成正向论文。
+该计划没有读取任何新官方 development 或 confirmation 结果，没有候选、模型交互或稿件。它只把
+`harness_implementation_authorized=true`，而 `official_development_execution_authorized=false`、
+`confirmation_authorized=false`、`publication_ready=false`。
+
+### 28.6 下一执行任务：Task 266.2 scientific-contract Harness
+
+Task `266.2` 只实现合成能力门，不运行任何新官方 development cell：
+
+1. 增加版本化两阶段 runner：模型原样源码接收 train-only fit request，返回 strict frozen artifact；query-only predict 只能读取该
+   artifact 与单时间片 state/coordinates，通用层只做数组传输、hash/cache/schema 和解析方程复算；
+2. 在六个 frozen sentinels 上验证 concrete numeric equations、term/coefficient recovery、alternate-train artifact 变化、
+   train-shuffle degradation、zero/null improvement、equation/prediction consistency、1D/2D/3D/multi-field shape 与 fit-once/query-many；
+3. 对 free symbols、常量/零等价、absent training dependence、fit-after-query、target leakage、query state reuse、超时/内存/网络、
+   unsupported shape 和 artifact tamper 全部 fail closed；
+4. 实现 provider-neutral model-only score-blind repair，所有 exact source/revision/prompt/response 保留，通用编排器不得插入科学库、
+   term、coefficient 或候选方法；
+5. 通过 deterministic mocked suite、真实 provider + container opt-in smoke、strict terminal replay 和完整 repository gates 后，才允许
+   Task `266.3` 在官方 development lineage 执行上限 464 cells 的恢复搜索。
+
+Task `266.2` 结束时 new official result、confirmation read/result、receipt 和 manuscript 仍必须为零。任何能力门失败只允许在冻结的
+synthetic 反馈和最多六次 score-blind revision 内修复，不能查看或调参到官方分数。

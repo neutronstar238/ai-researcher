@@ -64,6 +64,59 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-01 07:07:54 +08:00 - Codex - Task 266.1 result-blind scientific-contract recovery plan
+
+- Request: Continue the formal competition work after the Task `265.3` autonomous negative; diagnose and repair the scientific path rather than turn a weak result into prose; keep AutoResearch responsible for later hypothesis/code/research generation; adopt the useful mechanism-evidence ideas from OPHIS and current automated-research literature; and first freeze a serious fit/freeze/predict protocol before implementation or any new official score.
+- Files changed:
+  - `deploy/experiments/mdbench/scientific_contract_baseline_probe.py`
+  - `src/autoresearch/competition/scientific_contract_recovery.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_scientific_contract_recovery.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/smoke/test_scientific_contract_recovery_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-266-1-scientific-contract-recovery-plan.md`
+  - `runs/manual-live/task2661-scientific-contract-recovery-plan-v1/` (generated authoritative formal plan; ignored by repository policy)
+  - `runs/manual-live/task2661-scientific-contract-recovery-plan-v1-failed-probe-hash/` (retained non-authoritative failed launch evidence; ignored by repository policy)
+  - `runs/manual-live/task2661-scientific-contract-recovery-plan-v1-superseded-missing-scaling-diagnostics/` (retained non-authoritative schema-audit evidence; ignored by repository policy)
+- Summary:
+  - Implemented a result-blind Task `266.1` plan freezer, strict recursive loader, CLI `competition mdbench scientific-contract-plan`, primary-source snapshot registry, versioned fit/frozen-artifact/predict JSON Schema exporter, analytic sentinel materializer, domain-baseline policy, offline container probe, failure-aware estimand, exact power audit, authorization boundary, Markdown report, and Vault projection. Existing output reloads without network, Docker, source, or model calls.
+  - Immutably bound the Task `265.3` negative package hash `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`, its identity/result-set/source, absent receipt, and zero confirmation reads. The new plan cannot mutate the parent. New official development results, candidate answers, model interactions, confirmation identity reads, confirmation results, and manuscripts remain `0/0/0/0/0/0`.
+  - Applied the already selected `deep-research` and `experimental-design` evidence rules: nine live primary method/interface/license/package snapshots; exact pinned revisions; paired system-level effects; condition/seed repeated measures; fixed-seed system bootstrap; complete baseline/candidate failure retention; development uncertainty labelled exploratory; a direction-only PDE subgate; and no access to sealed confirmation. OPHIS remains an Observation→Problem→prospective intervention evidence pattern, not a mechanism claim from prose.
+  - Froze a true two-stage contract: train-only `ScientificFitRequest`; one hash-frozen `FrozenEquationArtifact` with explicit factors, numeric coefficients, physical-unit coordinate system, ordered per-field affine scaling, bounded fit diagnostics, exact term count, training-context identity, and one fit call; target-free single-slice `ScientificPredictRequest`; and `ScientificPredictResponse` proving zero fit calls and zero artifact mutation. The trusted evaluator, not the candidate, must later recompute equations and match numeric predictions within `1e-9`.
+  - Materialized six analytic known-law sentinels: two-field linear ODE, 1D advection, 1D diffusion, 2D advection-diffusion, 3D heat, and 1D two-field diffusion. Each contains primary/alternate training contexts, a fixed derivative shuffle, three target-free one-slice queries, exact equations/derivatives, and immutable thresholds. The future Harness must achieve clean NMSE `<=1e-6`, exact term-support F1, coefficient error `<=0.05`, at least fivefold shuffle degradation, at least `0.5` zero-null improvement, one fit, and at least three predictions.
+  - Froze domain-valid strongest-baseline routing under a common 300-second/2-CPU/4096-MB cell cap: ODE uses Operon; PDE uses the exact official MDBench PDE-FIND/PySINDy implementation. Any required baseline failure blocks a receipt rather than becoming candidate advantage. The Python 3.9.23 pinned image probe used no network or official artifact and returned Operon ODE NMSE `0.0005562015925350986`, PDE-FIND 2D NMSE `1.3980779783672217e-31`, and PDE-FIND 3D NMSE `2.034461901247889e-32`.
+  - Froze eight initial and at most twelve total candidates, two generations, at most four matched mechanism cycles, 96 pilot candidate cells, 32 mechanism cells, 252 full candidate cells, and 84 domain-baseline cells: at most 380 candidate and 464 total official development cells. A receipt later requires all contract and full-cell gates, overall system-level improvement of at least five percent, exploratory lower bound above zero, and positive ODE and PDE directions.
+  - Recorded the non-compensating power limitation. Four PDE systems can support a directional qualification gate but not standalone PDE significance: even with independent positive probability `0.9`, the probability all four are positive is only `0.6561`. No development interval, synthetic probe, or Task `266.1` capability result is publication significance.
+  - The authoritative plan hash is `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`; source/schema/sentinel/baseline/probe registry hashes are `595bf406a608282a13a669008dd3b42a5b3fd7dbbf0fa2b6a987c038eeec238a`, `ff23cdc7b1ab53362cb00c1258b538a42d52615fd5ab897cef4aece167d17903`, `59f21f4f9b37a25daebf91be4f220c1de2a68c055b9c8cb634271d07299afe92`, `667d450931bb5dbb099bb01ba75b3e6e55d9acb3583315ce79311b8bee2548fa`, and `d46f4fe9bc83e41a3c2baa3fd06fa58ef3428d744fad8292f3dc9f493c453553`. Only Task `266.2` synthetic Harness implementation is authorized; official development, confirmation, publication, public release, and submission remain blocked.
+- Verification:
+  - Formal CLI `poetry run airesearcher competition mdbench scientific-contract-plan --development-package runs/manual-live/task2653-autonomous-development-v1/autonomous-development-search-package.json --output-dir runs/manual-live/task2661-scientific-contract-recovery-plan-v1 --image autoresearch-mdbench:task260 --timeout-seconds 45`: exited zero after nine live source snapshots and the real offline container probe; emitted the exact authoritative plan/probe hashes, six sentinels, two domain baselines, zero new results/confirmation reads, and Task `266.2`-only authorization.
+  - Deterministic mocked/CLI/default-smoke suite `poetry run pytest tests/unit/competition/test_scientific_contract_recovery.py tests/unit/competition/test_competition_cli.py tests/smoke/test_scientific_contract_recovery_live.py -q --no-cov`: 5 passed and 1 opt-in test skipped. Tests cover exact parent binding, six fixture identities/shapes/controls, result-blind idempotent reload, free coefficient rejection, scaling/diagnostic consistency, artifact and fixture tamper, qualified-parent denial, and source-marker failure.
+  - Relevant autonomy regression `poetry run pytest tests/unit/competition/test_autonomous_recovery.py tests/unit/competition/test_scientific_contract_recovery.py tests/unit/competition/test_competition_cli.py tests/smoke/test_autonomous_recovery_live.py tests/smoke/test_autonomous_engine_live.py tests/smoke/test_autonomous_development_live.py tests/smoke/test_scientific_contract_recovery_live.py -q --no-cov`: 24 passed and 4 opt-in tests skipped in 27.73 seconds.
+  - Real opt-in `$env:AUTORESEARCH_TASK2661_LIVE='1'; poetry run pytest tests/smoke/test_scientific_contract_recovery_live.py -q --no-cov`: 1 passed in 2.37 seconds against the authoritative formal package. A direct `probe_domain_baselines('autoresearch-mdbench:task260')` rerun returned the identical probe hash and exact three NMSE values.
+  - Full repository `poetry run python -m pytest -q`: 1,181 passed, 41 opt-in skips, 82-percent coverage, in 316.44 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 185 source files.
+  - `poetry run pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - Strict terminal replay replaced source/container callbacks with hard failures and made any `confirmation-panel.sealed.json` read raise; it returned authoritative plan hash `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`, invoked no callback, and retained zero new official/confirmation results.
+  - Task dependency graph parsed as valid JSON with 201 waves, 317 unique task IDs, and ordered lineage `265.3 -> 266.1 -> 266.2 -> 266.3 -> 265.4 -> 265.5`. The formal authorization/count audit and `git diff --check` passed before this entry and are rerun before commit.
+- Problems:
+  - Added and resolved medium `P-20260801-045`: the first container probe payload was hashed before typed optional-field normalization; the attempt failed closed and the rebuilt probe is stable under typed JSON-mode hashing.
+  - Added and resolved high `P-20260801-046`: the first normalized schema omitted scaling provenance and fit diagnostics despite the research contract requiring both; the package was explicitly superseded before completion, and the authoritative artifact schema now enforces both.
+  - Updated critical `P-20260801-042`: the replacement contract is frozen, but the underlying scientific implementation remains open until Task `266.2` passes the synthetic Harness and Task `266.3` produces a non-null development result.
+  - Updated open high `P-20260731-039`: autonomous origin is established for the new route, but effect, confirmation, and publication remain unresolved; Task `266.2` is now the next action.
+  - Updated resolved medium `P-20260801-043`: Task `266.2` must obey the now-frozen Python 3.9.23 compatibility floor and typed JSON-mode hash discipline.
+- Follow-up:
+  - Implement Task `266.2` only against the immutable Task `266.1` schemas and six synthetic sentinels. Generic code may transport arrays, validate/hash/cache artifacts, and independently evaluate equations, but may not insert a scientific library, term, coefficient, or candidate method. Provider/model repair remains score-blind and exact-source-preserving.
+  - Keep every Task `265.3` and Task `266.1` official/confirmation count unchanged. Task `266.3` may execute development recovery only after the Task `266.2` known-law/null/leakage/shape/resource/security/tamper gates and a real provider/container smoke pass. Significance, confirmation, and a system-generated paper remain unavailable until their separate gates complete.
+
 ### 2026-08-01 06:35:56 +08:00 - Codex - Task 265.3 autonomous development search and negative stop
 
 - Request: Continue the formal competition entry; make AutoResearch itself originate and execute the research rather than having the implementation agent write a paper; evaluate the OPHIS mechanism loop in a real run; determine honestly whether the data are significant/publication-grade; diagnose poor performance from literature and internal evidence; and improve the research path without lowering gates or reading the sealed confirmation panel.

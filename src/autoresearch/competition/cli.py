@@ -55,6 +55,10 @@ from autoresearch.competition.recovery import (
     MDBenchRecoveryError,
     preregister_mdbench_gate_a_recovery,
 )
+from autoresearch.competition.scientific_contract_recovery import (
+    ScientificContractRecoveryError,
+    freeze_scientific_contract_recovery_plan,
+)
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
 competition_app = typer.Typer(
@@ -458,6 +462,57 @@ def competition_mdbench_autonomous_search(
         f"{str(package.search_freeze_receipt_created).lower()}"
     )
     typer.echo("[BLOCKED] significance_claim: development_only")
+    typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("scientific-contract-plan")
+def competition_mdbench_scientific_contract_plan(
+    development_package: Annotated[
+        Path,
+        typer.Option(
+            "--development-package",
+            help="Hash-valid negative Task 265.3 autonomous-development package.",
+        ),
+    ] = Path(
+        "runs/manual-live/task2653-autonomous-development-v1/"
+        "autonomous-development-search-package.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Result-blind Task 266.1 plan directory."),
+    ] = Path("runs/competition/mdbench-scientific-contract-recovery-plan"),
+    image: Annotated[
+        str,
+        typer.Option("--image", help="Pinned local MDBench baseline image."),
+    ] = "autoresearch-mdbench:task260",
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-source retrieval timeout."),
+    ] = 30,
+) -> None:
+    """Freeze fit/freeze/predict schemas, sentinels, baselines, and budgets."""
+
+    try:
+        plan = freeze_scientific_contract_recovery_plan(
+            development_package,
+            output_dir,
+            image=image,
+            timeout_seconds=timeout_seconds,
+        )
+    except (ScientificContractRecoveryError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_scientific_contract_plan: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] scientific_contract_plan: {plan.output_path}")
+    typer.echo(f"[OK] plan_hash: {plan.plan_hash}")
+    typer.echo(f"[OK] primary_sources: {len(plan.sources)}")
+    typer.echo(f"[OK] sentinel_fixtures: {len(plan.sentinels)}")
+    typer.echo(f"[OK] domain_baselines: {len(plan.baselines)}")
+    typer.echo(f"[OK] baseline_probe_hash: {plan.baseline_probe.probe_hash}")
+    typer.echo("[OK] new_official_development_results: 0")
+    typer.echo("[OK] confirmation_reads: 0")
+    typer.echo("[AUTHORIZED] next_task: 266.2_harness_implementation_only")
+    typer.echo("[BLOCKED] official_development_execution: false")
+    typer.echo("[BLOCKED] significance_claim: no_new_result")
     typer.echo("[BLOCKED] publication_ready: false")
 
 
