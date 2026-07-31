@@ -2,12 +2,14 @@
 
 ## architecture
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## benchmark validity
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-human-review-handoff-2026|Benchmark-validity result-blind human-review handoff]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
@@ -21,6 +23,7 @@
 
 ## scientific agent evaluation
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
@@ -46,12 +49,14 @@
 
 ## graph engineering
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## harness engineering
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-human-review-handoff-2026|Benchmark-validity result-blind human-review handoff]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
@@ -61,12 +66,14 @@
 
 ## loop engineering
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## open science
 
+- [[task260-route-b-publication-currency-audit-2026|Task 260 Route B publication-currency and independent-unit audit]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]

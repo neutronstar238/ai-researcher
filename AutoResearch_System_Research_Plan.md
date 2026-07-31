@@ -1752,3 +1752,66 @@ screening、critical coding、Admission Card、benchmark outcome 和 model call 
 publication claim、public release 与 external submission 均未授权。下一步不是让 Loop 自动跨门，而是由项目
 负责人私下招募两位真实独立 reviewer 与一位不同 adjudicator，保留私密原件，只把绑定上述冻结证据的
 hash receipt 写入系统。三位角色结构核验通过后，Task `263.6.7.3` 才能开始正式 census。
+
+### 27.9 Task 263.7.0 Task 260 systems paper 发表时效与独立单位审计
+
+Task `263.7.0` 没有重写 Task `260` v2，也没有把一次新的事后分析冒充原预注册结论。它把 commit
+`5b3a64d4e24a0d59c23ea4f5b8fc9d135aaaf9db`、package hash
+`bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`、PDF、systems result、
+systems gate、matrix 与 preregistration 的 SHA-256 作为不可变父证据，并在分析前冻结三个问题：
+
+1. 2025 至 2026 年自主科研系统与独立 benchmark 出现后，Route B 的中心主张是否仍有区分度；
+2. `10 tasks x 3 deterministic seeds` 是否支持把 30 个 cell 当作独立单位进行总体推断；
+3. 哪些修复可由冻结证据完成，哪些必须新增独立实验或真实人类判断。
+
+真实检索固化了 21 个一手来源快照，其中 10 个为 peer-reviewed 文章、8 个为未同行评审 preprint、3 个为
+标准或政策。五个可重叠的对抗视角分别覆盖主流 autonomous-science systems、独立 benchmark/失败审计、
+统计与 benchmark 方法、Open Science 互操作性、以及人类责任与科研诚信。AI Scientist、Co-Scientist、
+Robin、ERA 与 Kosmos 表明 end-to-end、多 Agent、迭代搜索和 traceability 已经成为当前基线；PaperBench、
+CORE-Bench、REPRO-Bench、AstaBench、SciIntegrity-Bench 与 Kosmos 独立审计则表明，长链执行、论文复现、
+科研诚信与可证伪性仍远未解决。因此“我们也有一个全自动 loop”已不能构成可防御的新颖性。
+
+独立单位复核发现，三枚 seed 在每个 `(mode, task)` 上产生完全相同的科学输出。它们能证明幂等重放，不能
+把 10 个任务扩充成 30 个独立科研单位。按任务折叠后的 paired difference 是
+`[0, 0, 0, 1, 0, 0, 1, 1, 1, 1]`，均值 `0.5`；冻结的 20,000 次 bootstrap、seed `2604`
+得到 95% interval `[0.2, 0.8]`。exact sign test 为 5 wins、0 losses、5 ties，单侧
+`p=0.03125`、双侧 `p=0.0625`。四个 UCI 任务均值 `0.25`，六个 MDBench trace 任务均值
+`0.666667`，family-balanced mean `0.458333`。两族之间的差异只能视为异质性警报，不能视为跨领域
+总体效应。
+
+审计最终记录 3 个 critical、28 个 major 和 5 个 minor finding，发表准备度为 `3/10`。关键阻断是：
+
+- 原 30-pair interval 对确定性重复 seed 存在 pseudoreplication；
+- fault、允许 repair、controller 与 evaluator 由同一项目共同设计，没有独立任务作者、外部 research
+  agent 或 compute-matched 简单基线；
+- 只有两类且比例不平衡的任务族，无法支持一般性系统主张；
+- related work 停在 2026 年主要系统和独立失败审计之前；
+- 没有独立人类 scientific review、target venue、作者/许可/AI disclosure 决定；
+- 当前 hash package 可本地复现，但尚未把 Task 260 对象正式映射为 RO-Crate 1.3、Workflow Run
+  RO-Crate 与 PROV-O；全文还命中 28 处受限语气模式，虽未发现 em dash。
+
+可防御的中心主张必须收窄为：AutoResearch 提供一个 tamper-evident、failure-linked 的科研状态机，
+其状态转换、负结果谱系和 claim provenance 可被独立审计；它是否改善科研结果，仍是一个需要前瞻外部
+确认的问题。对应执行路线严格分为七段：
+
+1. 用现有证据发布 additive task-unit reanalysis，废止原 30-pair publication inference；
+2. 按当前领域重写定位，把 frozen study 限定为 controlled mechanism demonstration；
+3. 为原包增加 RO-Crate/Workflow Run/PROV-O 互操作层，不改写历史对象；
+4. 由两位真实独立 reviewer 和一位不同 adjudicator 完成 Task `263.6.7.3` benchmark-validity census；
+5. 在看结果前冻结独立 task authors、至少三类 task family、external agents、simple baselines、算力、
+   null controls、estimand、power 和 scorer；
+6. 一次性执行确认矩阵，保留所有失败和排除；充分功效下未过门时产出 diagnostic negative；
+7. 最后才由真实人类裁决 novelty、validity、authors、licenses、AI disclosure、venue、release 与 submission。
+
+前三段能增强现有证据的诚实性和互操作性，但不能创造新的独立科学证据。第四至第六段是从“工程对象”
+跨越到“可发表科学结论”的必要路径，第七段不可由 Agent 自动替代。任何 critical 或 major finding 未关闭
+时，publication-ready、public release 和 external submission 均保持 false。
+
+正式审计包位于 `runs/manual-live/task26370-systems-paper-currency-audit-v1/`：report
+`92a478ee85f2324353f5310425408fb60d5c58fc2ee222b16069cbcdc1bfa190`，source registry
+`50fbd19ad2a03896988ffa2d66d5b6499cf30c9996e9613a26c1cc4e97067427`，independent-unit audit
+`b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`，task projection
+`4247521dab59e0a65318f8391367aa11c26323d04335697be3e1f74f322f9cba`，replay certificate
+`de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253`，repair plan
+`4ad117a02defc318646456a9a754e91159756b5f148ae01f36f8ed1ddf36b3ec`，manifest
+`8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`。

@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260731-035 - Publication-currency live sources changed revision markers and access paths
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-31 19:52:13 +08:00
+- Source: Task `263.7.0` opt-in live primary-source smoke.
+- Symptom: The first live run retained 14 sources and then rejected the BenchmarkCards page because arXiv now serves revision v3 and the frozen v2-era phrase markers were absent. After binding stable v3 markers, a second run retained 19 sources and then received HTTP 403 from ACM's browser-facing Artifact Review and Badging URL through Python `urllib`.
+- Impact: Both runs failed closed before the final audit package, so no partial source set was mistaken for a complete current-field review. The task could not pass its required live gate until the current primary-source representations were bound explicitly.
+- Evidence: The recoverable partial packages remain under `runs/manual-live/task26370-systems-paper-currency-audit-v1-failed-source-marker/` and `runs/manual-live/task26370-systems-paper-currency-audit-v1-failed-acm-403/`. The final run used arXiv identifier `2410.12974` with stable title/abstract markers and ACM's official Bloomreach publication backend, returned HTTP 200 for all 21 registered sources, verified every required marker, and completed in 58.89 seconds.
+- Root cause: Source revisions and delivery endpoints are mutable even when the underlying publication identity or official policy is stable. Phrase-level markers and a browser-facing URL are versioned retrieval-instrument assumptions, not permanent publication facts.
+- Workaround: Updated the BenchmarkCards registry entry to the current v3 page and stable semantic markers. Bound the ACM source to its official `prod-www.acm.bloomreach.cloud` backend while retaining the same policy identity and required policy markers. Both changes are explicit in the content-addressed source registry and raw snapshots.
+- Next action: Keep source revision, final URL, retrieval time, raw bytes, stable markers, and hashes in future currency audits. Treat future marker or endpoint drift as a new fail-closed retrieval event instead of silently loosening validation.
+- Linked tasks: `263.7.0`, `263.7.2`, `263.7.7`.
+- Resolution: The third opt-in live run retained and validated all 21 primary sources and produced the final report/source/manifest package. No failed partial package is referenced as formal evidence.
+- Verification: `AUTORESEARCH_SYSTEMS_PAPER_CURRENCY_LIVE=1 poetry run pytest tests/smoke/test_systems_paper_currency_audit_live.py -q` passed with 1 test. Source registry hash is `50fbd19ad2a03896988ffa2d66d5b6499cf30c9996e9613a26c1cc4e97067427`; manifest hash is `8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`.
+
+### P-20260731-034 - Frozen Task 260 systems paper is not publication-ready under current-field and independent-unit audit
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-31 19:30:00 +08:00
+- Source: Task `263.7.0` immutable Task `260` v2 package audit, 21-source current-field review, task/seed hash reconstruction, statistical replay, and pre-submission audit.
+- Symptom: Task `260` Route B is a strong hash-linked engineering object, but its publication-facing confirmatory argument treats 30 deterministic task-seed cells as if they were independent pairs. Every seed produces the same scientific output for a given mode/task. The faults, permitted repairs, controller, and evaluator are co-designed; no independently authored task, compute-matched external research agent, or independent scorer is present. Only two imbalanced task families are sampled, the related work predates major 2026 systems and independent audits, and no independent human scientific review or target venue decision exists.
+- Impact: The old interval and readiness language cannot support a general claim that AutoResearch improves scientific-research outcomes. Manuscript polish, more Agent personas, more deterministic seeds, local clean reruns, or a richer Graph/Harness/Loop cannot repair the missing independent evidence. Submitting the current claim would risk pseudoreplication, stale novelty, weak external validity, and unowned authorship/license/venue decisions.
+- Evidence: The immutable parent package hash is `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac`. Task-level differences are `[0,0,0,1,0,0,1,1,1,1]`, mean `0.5`, frozen 20,000-resample 95-percent interval `[0.2,0.8]`, exact sign test 5 wins/0 losses/5 ties with one-sided `p=0.03125` and two-sided `p=0.0625`, UCI mean `0.25`, MDBench mean `0.666667`, and family-balanced mean `0.458333`. The audit records 3 critical, 28 major, and 5 minor findings, a publication-readiness score of 3/10, and verdict `major-revision-new-independent-evidence-and-human-review-required`. Report, unit-audit, replay, repair, and manifest hashes are `92a478ee85f2324353f5310425408fb60d5c58fc2ee222b16069cbcdc1bfa190`, `b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`, `de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253`, `4ad117a02defc318646456a9a754e91159756b5f148ae01f36f8ed1ddf36b3ec`, and `8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`.
+- Root cause: Earlier work optimized execution fidelity, failure lineage, evidence packaging, and repeatability before securing a defensible task sampling frame and role-separated external confirmation. Deterministic retries were useful for idempotency but were counted too generously for scientific inference. Meanwhile, end-to-end and multi-Agent AI Scientist systems became mainstream, so architecture alone no longer supplies the paper's novelty.
+- Workaround: Keep Task `260` v2 immutable and additive. Narrow the center claim to a tamper-evident, failure-linked research state machine with auditable negative-result and claim provenance. Complete Tasks `263.7.1` to `263.7.3` for truthful task-level reanalysis, current-field positioning, and RO-Crate/PROV interoperability, while keeping publication claims blocked.
+- Next action: Complete the real-human benchmark census in Task `263.6.7.3`/`263.7.4`; then freeze and execute Tasks `263.7.5` and `263.7.6` using independent task authors, at least three substantive task families, compute-matched external agents and simple baselines, prospective power, null controls, independent scoring, and one-use outcomes. Task `263.7.7` requires independent human scientific review and explicit authorship/license/AI-disclosure/venue/release/submission decisions.
+- Linked tasks: `260`, `263.6.7.3`, `263.7`, `263.7.0`, `263.7.1`, `263.7.2`, `263.7.3`, `263.7.4`, `263.7.5`, `263.7.6`, `263.7.7`.
+- Resolution: The risk of treating the current manuscript as publication-ready is mitigated by a fail-closed additive audit and seven-stage repair plan, but the underlying independent-evidence and human-review gaps remain open. Publication, public release, and external submission remain false.
+- Verification: Eight deterministic Task `263.7.0` tests pass; the opt-in live smoke validates all 21 authoritative source pages, the immutable real parent, full language scan, persistence/tamper checks, and exact replay in two clean Python installations. Broader repository verification is recorded in `Agent.md`.
+
 ### P-20260731-033 - Direct pytest console entry point omits the repository test-support package
 
 - Status: Resolved

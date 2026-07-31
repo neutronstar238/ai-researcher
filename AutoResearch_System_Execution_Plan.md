@@ -2063,3 +2063,44 @@ Task `263.6.7.2.2` 已完成以下实现：
 任何角色重复、私密字段进入公开包、peer draft/lock 泄漏、candidate-set hash 不一致、先裁决后锁定，或
 试图用裁决补救 agreement/coverage 失败，都必须 fail closed。当前三槽仍为空，所有研究活动计数为零，
 因此这项任务只使交接可执行，没有生成 field-wide result，更没有授权论文结论、公开发布或投稿。
+
+### 27.16 Task 263.7.0 实施结果与 systems-paper 修复执行门
+
+Task `263.7.0` 已把 Task `260` v2 的“可运行系统论文候选”重新判定为“需要新独立证据和人类评审的
+major revision”。实现包括：
+
+- 严格父对象绑定，任何 package/PDF/result/gate/matrix/preregistration byte drift 都拒绝审计；
+- 三个 result-blind RQ 和 21 个一手来源的内容寻址 raw snapshot/registry；
+- 从原冻结 cell 文件重建 task/seed/family，比对 scientific output hash，按 task 重算 bootstrap、
+  sign test 与 family sensitivity；
+- logic、novelty、empirical validity、external validity、Open Science、human governance 与全文语言审计；
+- repair class、七段 exit gate、JSON Schemas、Markdown reader、递归 manifest 与 tamper-blocking loader；
+- 标准库 frozen runner 在两套独立 clean Python installation 中得到完全相同的 task projection。
+
+当前必须按以下顺序实施，禁止由 Loop 自行跳跃：
+
+| Task | 依赖 | 产物 | 允许关闭的缺陷 | 仍不能声称 |
+|---|---|---|---|---|
+| `263.7.1` | `263.7.0` | additive task-unit analysis note | seed pseudoreplication、旧 interval 误用 | 外部 superiority |
+| `263.7.2` | `263.7.1` | current-field manuscript rewrite | stale positioning、claim scope、语言 hygiene | 新实验效应 |
+| `263.7.3` | `263.7.1` | RO-Crate 1.3 + Workflow Run + PROV-O overlay | 互操作性和 portable provenance | 科学有效性 |
+| `263.7.4` | `263.6.7.3` | dual-human benchmark-validity census binding | benchmark selection/field coverage 不透明 | method effect |
+| `263.7.5` | `263.7.2`—`263.7.4` | independent confirmation preregistration | task sampling、power、baseline 与 role separation 未冻结 | confirmatory result |
+| `263.7.6` | `263.7.5` | one-use external confirmation matrix | 缺少独立 task/baseline/outcome evidence | 投稿授权 |
+| `263.7.7` | `263.7.6` | human publication decision package | novelty/validity/authorship/license/venue 决策 | 自动投稿 |
+
+`263.7.1`—`263.7.3` 可以立即在不新增实验的情况下执行，但只能把历史结果表达得更准确、更可移植。
+`263.7.4` 需要项目负责人先满足三位真实人类角色门。`263.7.5` 和 `263.7.6` 必须使用独立 task authors、
+至少三类 substantive family、compute-matched external agents 与简单基线、独立 scorer、前瞻 power 和
+冻结 null controls。任何门失败都保留为 registered diagnostic negative，不重新挑任务、换 endpoint 或
+让 Agent 事后重写成功标准。
+
+正式 live package 为 `runs/manual-live/task26370-systems-paper-currency-audit-v1/`。21 个来源全部返回并通过
+marker 验证；两个 clean interpreter 的 projection 都为
+`4247521dab59e0a65318f8391367aa11c26323d04335697be3e1f74f322f9cba`。报告/审计/repair/manifest hashes
+分别为 `92a478ee85f2324353f5310425408fb60d5c58fc2ee222b16069cbcdc1bfa190`、
+`b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`、
+`4ad117a02defc318646456a9a754e91159756b5f148ae01f36f8ed1ddf36b3ec`、
+`8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`。审计状态保持
+`major-revision-new-independent-evidence-and-human-review-required`，publication/public release/external
+submission 均为 false。

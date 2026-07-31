@@ -64,6 +64,57 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 20:06:08 +08:00 - Codex - Task 263.7.0 systems-paper publication-currency audit
+
+- Request: Continue the active publication-grade AutoResearch recovery; explain why the real Task `260` systems-paper output is not yet publishable; cross-search current fully automated science research; optimize the research route; and implement the first audit/replanning task without altering the frozen parent package or authorizing publication.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_systems_paper_currency_probe_v1.py`
+  - `src/autoresearch/research/systems_paper_currency_audit.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_systems_paper_currency_audit.py`
+  - `tests/smoke/test_systems_paper_currency_audit_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/task260-route-b-publication-currency-audit-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-7-0-systems-paper-currency-audit.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Registered and completed Task `263.7.0`, then registered executable follow-ups `263.7.1` through `263.7.7` so existing-evidence repair, human benchmark census, new independent confirmation, and final human publication decisions cannot be conflated.
+  - Bound the audit to immutable Task `260` v2 commit/package/PDF/result/gate/matrix/preregistration evidence and froze RQ1 through RQ3 before reanalysis. The parent package remains byte-identical.
+  - Added a 21-source primary-source registry with retained raw snapshots across five adversarial perspectives. The final registry contains 10 peer-reviewed records, 8 preprints, and 3 normative standards/policies and covers 2025-2026 AI Scientist, Co-Scientist, Robin, ERA, Kosmos, independent benchmarks/audits, statistical unit-of-analysis methods, RO-Crate/PROV/FAIR4RS, and human-integrity boundaries.
+  - Reconstructed all 30 frozen cells from original evidence and proved that the three deterministic seeds duplicate the same scientific output for each mode/task. The task-level vector is `[0,0,0,1,0,0,1,1,1,1]`; mean `0.5`; frozen 20,000-resample interval `[0.2,0.8]`; exact sign test 5 wins/0 losses/5 ties with one-sided `p=0.03125` and two-sided `p=0.0625`; UCI/MDBench means `0.25/0.666667`; family-balanced mean `0.458333`.
+  - Added retrieval-grounded logic, novelty, empirical-validity, external-validity, reproducibility/Open Science, human-governance, and language/LaTeX findings. The audit records 3 critical, 28 major, and 5 minor findings, readiness 3/10, and verdict `major-revision-new-independent-evidence-and-human-review-required`; publication, public release, and external submission remain false.
+  - Added a pure-standard-library statistical runner, two-clean-interpreter replay certificate, JSON Schemas, Markdown reader, repair classification, seven-stage exit-gated route, recursive manifest, loader, and tamper checks. The defensible center claim is narrowed to an auditable tamper-evident, failure-linked research state machine; improved scientific outcomes remain a prospective external question.
+  - The `deep-research` workflow enforced frozen questions, five adversarial perspectives, primary-source/status separation, and critical counterevidence. The `pre-submission-reviewer` workflow enforced non-compensating severity, retrieval-grounded novelty, independent-unit review, and full restricted-language/em-dash scanning instead of treating a successful build as publication readiness.
+- Verification:
+  - `python -m py_compile src/autoresearch/research/systems_paper_currency_audit.py src/autoresearch/research/assets/frozen_systems_paper_currency_probe_v1.py`: passed.
+  - Focused `poetry run ruff check ...` for the new source, runner, exports, and tests: passed.
+  - Focused `poetry run mypy ...` for the new source and tests: passed.
+  - `poetry run pytest tests/unit/research/test_systems_paper_currency_audit.py -q`: passed with 8 tests in 26.07 seconds.
+  - First opt-in live smoke failed closed after retaining 14 sources because the current BenchmarkCards arXiv v3 page no longer contained the earlier phrase markers. The partial package was moved to `runs/manual-live/task26370-systems-paper-currency-audit-v1-failed-source-marker/`, and the registry was bound to the current v3 identifier and stable title/abstract markers.
+  - Second opt-in live smoke failed closed after retaining 19 sources because Python `urllib` received HTTP 403 from ACM's browser-facing policy URL. The partial package was moved to `runs/manual-live/task26370-systems-paper-currency-audit-v1-failed-acm-403/`, and the source was bound to ACM's official Bloomreach publication backend with the same policy identity and verified policy markers.
+  - `$env:AUTORESEARCH_SYSTEMS_PAPER_CURRENCY_LIVE='1'; poetry run pytest tests/smoke/test_systems_paper_currency_audit_live.py -q`: passed with 1 test in 58.89 seconds; all 21 sources returned HTTP 200/verified markers and the task projection reproduced exactly in two distinct clean Python installations.
+  - Formal package reload passed recursively with report `92a478ee85f2324353f5310425408fb60d5c58fc2ee222b16069cbcdc1bfa190`, source registry `50fbd19ad2a03896988ffa2d66d5b6499cf30c9996e9613a26c1cc4e97067427`, unit audit `b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`, projection `4247521dab59e0a65318f8391367aa11c26323d04335697be3e1f74f322f9cba`, replay `de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253`, repair plan `4ad117a02defc318646456a9a754e91159756b5f148ae01f36f8ed1ddf36b3ec`, and manifest `8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`.
+  - Immutable-parent reload reconfirmed package `bd4a2b74c271d321c4b859e4f16004f9eb8cd1cc6de6409bb8d6c71eb4c194ac` and parent evidence `61de76e8f74c191849f7b9d9ab88d606859004cd80fc73a9dbefe820d7335811`; publication and external-submission flags remain false.
+  - Full paper scan found 28 restricted-language hits and no em dash; findings are retained as repair inputs and the historical parent was not edited.
+  - `poetry run python -m pytest -q`: passed with 1,136 tests, 34 opt-in skips, and 82-percent coverage in 184.05 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 178 source files.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py -q`: passed with 3 tests.
+  - `git diff --check`: passed; Git emitted only the existing `autoresearch-vault/exploration/index.md` CRLF-to-LF normalization warning.
+- Problems:
+  - Added open high-severity `P-20260731-034` for the Task `260` independent-unit, external-baseline, task-family, current-field, and human-review publication blockers.
+  - Added and resolved `P-20260731-035` for the BenchmarkCards revision-marker drift and ACM policy delivery-path 403 encountered by the live source gate.
+  - Existing human-role blocker `P-20260731-031` remains open and now gates Tasks `263.6.7.3` and `263.7.4`.
+- Follow-up:
+  - Execute Task `263.7.1` next: publish only an additive task-level reanalysis note over the immutable parent, bind every quantitative manuscript claim to the ten-task analysis, and mark the 30-cell interval historical.
+  - Tasks `263.7.2` and `263.7.3` may then repair current-field positioning and Open Science interoperability without claiming new scientific effects. Tasks `263.7.4` through `263.7.7` require three real human roles, independently authored multi-family tasks, compute-matched external baselines, one-use confirmation, and an explicit human publication decision.
+
 ### 2026-07-31 19:28:12 +08:00 - Codex - Task 263.6.7.2.2 result-blind human-review handoff
 
 - Request: Continue the publication-grade AutoResearch recovery; explain why executable automation still cannot manufacture a publishable scientific result; and freeze the next enforceable handoff from result-blind software to two real independent reviewers and one distinct adjudicator before the formal benchmark-validity census.
