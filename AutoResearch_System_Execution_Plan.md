@@ -1680,3 +1680,68 @@ Kosmos 的 structured world model、Robin/Virtual Lab 的 lab-in-the-loop、AHOI
 constraint/counterexample/falsification critic 均作为可消融假设来源，而不是可直接声明的能力。新任务
 必须用独立正确率、错误发现率、实验晋级有效率、重放一致性和成本等客观端点验证；任何人类领域判断、
 湿实验、公开发布或投稿仍需显式批准。
+
+### 27.9 Task 263.6.4 实施结果与 263.6.5 执行门
+
+`263.6.4` 已完成，但完成的是 track selection 与 runtime qualification，不是科学效应或论文。实现
+新增严格、内容寻址的三轨合同、结果盲审计、exact paired-power sensitivity、
+`WorkloadQualificationCertificate`、Markdown/JSON/schema/manifest 输出和 tamper tests。冻结
+standalone probe SHA-256 为
+`c109d368cd64cd5356cc95304948ed9d6594a823b0bddf00fa4faaa797e6bcca`。
+
+正式 live run 使用 Task 263.4.2 已冻结的 clean interpreter A/B，逐条访问一手论文、GitHub API、
+Hugging Face dataset API 与 license evidence。DiscoveryBench 当前 tree 返回 987 个 entry，其中
+189 个 depth-four provisional source-group folder；card metadata 声明 `odc-by`，AstaBench license
+API 返回 `Apache-2.0`。这只证明数据/参考 harness 可以依法进入 clean-room 设计，不证明自然语言
+`gold_hypo` 可以 exact-scored，也不证明 189 个目录已经是统计独立样本。
+
+三条 workload certificate 都通过以下不可补偿检查：
+
+- 两个不同 interpreter installation 与完整 calibration/qualification matrix；
+- planned concurrency `1/2`，qualification repeat `3`，每条 track 共 24 observations；
+- `20,000` exact algorithmic work units 与独立 `5s` CPU budget；
+- calibration 后冻结的 orchestration deadline 与至少 `8×` slack；
+- retry `0`、timeout origin、完整 elapsed/CPU/peak-memory/batch/subprocess telemetry；
+- runner、input、environment 和 command hash 绑定；
+- scientific projection exact replay，telemetry 不进入科学投影。
+
+三条 track 的 scientific projection SHA-256 分别为：
+
+- `structured-world-model`:
+  `a8e779052194dd94f520104e235c6ab4c912905648745a433fce99a8d1fcc3d1`;
+- `socratic-falsification`:
+  `e8dce31df4d24ae1a20f7770875c3e7666e84c613f7741725086191680c316e9`;
+- `external-feedback`:
+  `953e90fcb01c3221b907548d47f5ab5b4860dafa2b526a7e6e26ae00ade734f4`.
+
+正式 tournament report
+`13e31dbe29f2d34ec3924459207610f04618271ed21ce551e13a3d0b7716e72c`
+只选择 `socratic-falsification` 进入
+`development-only clean-room baseline and evaluator construction`。另外两条路线分别因系统/数据/
+客观 evaluator/许可/算力缺失，以及 `2 < 84` 独立环境、许可和 8×H100 级算力失败。选择规则没有
+weighted score 或 hardcoded winner，允许全失败；本次 Socratic route 的 189 只是功效可行性上界。
+
+#### 下一执行任务：263.6.5
+
+263.6.5 采用以下 stop-first 顺序：
+
+1. **许可与独立性清单**：对 189 个 provisional folders 绑定来源、派生关系、真实/合成 family、
+   answer-key lineage、重复数据和许可证。必须在不读后续科学 outcome 的情况下保留至少
+   `30 development + 84 untouched reserve` 个无重叠 source groups；不足即停止。
+2. **客观 evaluator fixture**：从允许的数据字段和 gold hypothesis 预冻结 binary
+   valid/fault-injected decision；fault 类型至少含 causal inversion、constraint violation、
+   counterexample omission 和 unfalsifiable claim。expected label 必须由生成规则确定，主要终点不得
+   使用 free-form semantic match、LLM judge 或人工事后裁决。
+3. **clean-room strong baseline**：只复用 AstaBench Apache-2.0 接口思想与 DiscoveryBench
+   ODC-By 数据库；不复制无 LICENSE 的 POPPER/SciAgentArena code 或 gated data。baseline、model、
+   tool、token/call、CPU/wall-clock 与失败预算在任何结果前冻结。
+4. **development-only causal matrix**：比较 no-critic、rule/null control、四个单项 critic 和 full
+   critic；以 source group 为统计单位，seed/retry 只作技术重复；所有失败、timeout、人工介入、成本和
+   trajectory 都保留。
+5. **继续/停止证书**：只有 evaluator implementation、baseline reproduction、workload qualification、
+   exact replay、null/Type-I、SESOI 可行性、nearest-work delta 和独立人类新颖性复核同时通过，才可
+   创建新 Research Question Certificate。不得在 263.6.5 创建或读取 confirmatory panel。
+
+当前 release、submission、paper claim 与 `263.7` 仍为 false/blocked。若 evaluator 无法客观化、
+独立 source group 少于功效要求，或 SciAgentArena 已覆盖决定性增量，合法结果是保留诊断 research
+object 并再次回到 opportunity tournament，而不是改变指标或调用更多 Agent。

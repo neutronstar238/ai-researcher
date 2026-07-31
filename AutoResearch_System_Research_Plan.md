@@ -1394,3 +1394,64 @@ budget 和 orchestration deadline，冻结 timeout slack、telemetry、retry 与
 报告 200-rollout/12-hour structured-world-model 协作并逐句绑定代码或原始文献，但独立科学家仍只判定
 79.4% 语句准确；Robin 和 Virtual Lab 的有效性来自 lab-in-the-loop 与人类约束；AHOIS 的实证来自单一
 真实光学平台且目前是预印本。这些来源提供待检验机制，不提供可直接移植的“自主科研已解决”结论。
+
+### 27.2 Task 263.6.4 负载合格的机会锦标赛与可发表性诊断
+
+`263.6.4` 已把“为什么真实运行仍不能产出可发表论文”从笼统的 Agent 能力问题拆成五个互不补偿的
+研究有效性缺口：
+
+1. **构念有效性**：代码能运行、Graph 完整、PDF 可生成，不等于主科学终点测到了目标构念。旧路线先有
+   label representation 缺陷，修复后主效应仍为负，不能靠增加 Reviewer 或重写摘要补救。
+2. **真实负载有效性**：fixture replay 通过不保证完整 workload 稳定。旧 `xgb-deep` 在同一 task/seed
+   的 60 秒边界产生不同 scientific trajectory，说明 orchestration deadline 曾混入算法处理。
+3. **独立单位与功效**：seed、重复运行和 Agent 数量都不是新的科学单位。新路线把统计单位冻结为
+   source group；SESOI `0.20`、两侧 exact McNemar、`alpha=0.05`、power `0.80` 在
+   `p10=0.30,p01=0.10` 下要求 84 个单位，`.15/.20/.25` 敏感性分别要求 `129/84/60`。
+4. **客观评价与开放资源**：free-form hypothesis、LLM judge、作者自评、无 LICENSE 代码或 gated
+   dataset 不能充当主要晋级门。DiscoveryBench 的 gold hypothesis 是自然语言，因而本轮只认定
+   “可构建预冻结 binary fault-decision evaluator 的 specification”，不声称 evaluator 已实现。
+5. **科学责任与外部有效性**：Robin 等 lab-in-the-loop 系统的真实反馈很有价值，但人类仍执行实验、
+   审核安全/成本、解释结果并负责发表。自动化扩大搜索空间，不能转移科学责任。
+
+本轮交叉核验了 Kosmos、Graph of Trace、Code as Agent Harness、AHOIS、POPPER、DiscoveryBench、
+AstaBench、SciAgentArena、Robin、Execution-Grounded Automated AI Research 与 EurekAgent 的一手
+论文页和官方资源。最新 SciAgentArena 的约 200 个 stepwise-verified task、Validity 类别和
+“Agent 会执行错误前提”发现直接压缩了 Socratic 路线的可声明新颖性；同时其数据需要接受访问条件，
+公开仓库没有可核验 LICENSE，因此当前只能作为 decisive nearest work，不能直接成为开放主面板。
+
+结果盲锦标赛比较了三条机制路线：
+
+| 路线 | 可用候选单位 | 主要通过证据 | 失败门 | 决定 |
+|---|---:|---|---|---|
+| structured world model / evidence graph | 0 | Kosmos/Graph of Trace 证明结构化轨迹与可检查性有用 | 官方系统/强基线不可复现；客观增量 evaluator、数据/代码许可和本地算力均不足 | 拒绝 |
+| Socratic causal/constraint/counterexample/falsification critic | 189 个 provisional source-group folders | AstaBench Apache-2.0 harness、DiscoveryBench ODC-By 数据库、AHOIS/POPPER/SciAgentArena 机制与失败分类 | baseline/evaluator 尚未实现，189 组仍须做 provenance 去重和科学独立性审计 | 只准进入 development-only clean-room construction |
+| external data/lab/environment feedback | 2 | Robin 的人类实验闭环、Execution-Grounded/EurekAgent 的环境反馈 | exact-power 需 84；许可不明、8×H100 量级算力不可用、人类职责不可委托 | 拒绝 |
+
+三条路线都使用同一个冻结的、只依赖标准库的代表性 workload probe。每条路线先在两套独立 clean
+interpreter、并发 `1/2` 上各做一次 calibration，再冻结 timeout slack；qualification 在同样的
+interpreter/concurrency 矩阵上重复三次，共 6 个 calibration observation 和 18 个 qualification
+observation。算法预算固定为 `20,000` work units 和 `5s` CPU，orchestration deadline 独立冻结；
+retry 为 0，scientific projection 必须 exact，时间/CPU/内存只作 tolerant telemetry。三条路线的
+24 次观测均无 timeout，投影分别精确一致；这证明 workload contract 可工作，不证明任何科学机制有效。
+
+正式 report hash 为
+`13e31dbe29f2d34ec3924459207610f04618271ed21ce551e13a3d0b7716e72c`，manifest 为
+`8461c05491ca487443b0a0ab5250a048ac7721d53e61af2199654ce02824e933`。
+`socratic-falsification` 是唯一 development admission，但下列常量仍全部为 false：
+strong-baseline implementation verified、objective-evaluator implementation verified、scientific
+independence audit complete、Research Question Certificate issued、confirmatory panel created、
+novelty search started、public release 和 external submission。
+
+下一条研究路径不再直接生成论文或购买新 holdout，而是：
+
+`License/provenance audit → Clean-room objective fault evaluator → Same-budget strong baseline →`
+`Development-only critic ablations → New RQ Certificate → Untouched powered panel → Open Science →`
+`Independent human review`
+
+`263.6.5` 必须先对 189 个 provisional folder 做来源聚类、重复/衍生数据去重和许可审计；至少保留
+30 个 development source groups 与 84 个完全未读、未分配的潜在后续单位，否则停止路线。然后才可在
+development 数据上构建 binary valid/fault-injected decision endpoint、Asta-style equal-budget
+baseline 和 causal/constraint/counterexample/falsifier 四项消融。POPPER/AHOIS/SciAgentArena 的
+未许可或 gated 实现不得复制。只有 clean-room evaluator、baseline live smoke、development effect、
+null/Type-I 控制和人类新颖性复核全部通过，才允许签发新的 RQ Certificate；这之前没有新的
+confirmation panel，也没有“可发表级结果”。

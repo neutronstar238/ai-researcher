@@ -595,6 +595,19 @@ structured world model/evidence graph 对长程一致性与语句正确性的作
 - [S36] Research Object community, “The Workflow Run RO-Crate Profile Collection.”
   [Workflow Run RO-Crate](https://www.researchobject.org/workflow-run-crate/profiles/)
 
+## 11.5 263.6.4 更新：先验证 workload 与客观终点，再冻结新问题
+
+Task 263.6.2 已永久停止 `portfolio_memory` 主张。Task 263.6.4 随后把 Kosmos 式 world model、
+AHOIS/POPPER/SciAgentArena 式 validity/falsification critic、Robin/Execution-Grounded 式 external
+feedback 做成结果盲三轨锦标赛。三轨代表性 workload 都在两个 clean interpreter、并发 1/2、三次
+qualification repeat 中 exact replay；只有 Socratic 路线在开放资源与 prospective-power
+feasibility 上获得 development admission。DiscoveryBench 的 189 个 folder 仍是 provisional source
+groups，自然语言 gold hypothesis 也不是 exact evaluator，因此 baseline implementation、evaluator
+implementation、independence audit、RQ Certificate 和新 confirmation panel 均保持 false。完整研究
+与裁决见
+[[exploration/workload-qualified-ai-scientist-opportunity-tournament-2026]] 和
+[[projects/ai_researcher_system/progress/task-263-6-4-workload-qualified-opportunity]]。
+
 ## 12. 关联
 
 - 项目：[[projects/ai_researcher_system/index|AI-Researcher System Project]]

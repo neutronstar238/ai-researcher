@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 09:53:14 +08:00 - Codex - Task 263.6.4 workload-qualified objective opportunity tournament
+
+- Request: Continue the publication-grade recovery; explain why real AutoResearch executions still fail to produce a publishable contribution; cross-search current fully automated scientific-research work; optimize the research path; and implement the next gated step without reusing the consumed confirmation.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_mechanism_workload_probe_v1.py`
+  - `src/autoresearch/research/workload_qualified_opportunity.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_workload_qualified_opportunity.py`
+  - `tests/smoke/test_workload_qualified_opportunity_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/workload-qualified-ai-scientist-opportunity-tournament-2026.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-4-workload-qualified-opportunity.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Cross-checked primary papers and official resources for Kosmos, Graph of Trace, Code as Agent Harness, AHOIS/Socratic Agents, POPPER, DiscoveryBench, AstaBench, SciAgentArena, Robin, Execution-Grounded Automated AI Research, and EurekAgent. The synthesis separates structured inspectability, falsification/validity checking, and external feedback from evidence of a publishable incremental mechanism. SciAgentArena's approximately 200 stepwise tasks and invalid-premise failure mode directly narrow the Socratic novelty claim; its data are gated and its public repository has no verified license, so neither it nor unlicensed POPPER code may be copied.
+  - Added strict content-addressed contracts for the three frozen mechanism tracks, primary/resource probes, nearest-work deltas, clean-room baseline/evaluator specifications, open licenses, compute/human-duty boundaries, result-blind input inventory, exact paired-power sensitivity, conjunctive no-score assessments, all-track failure, persistence, Markdown reader view, manifest, and deterministic JSON schemas. A selected track receives only `development-only clean-room baseline and evaluator construction`; no weighted score or outcome ranking exists.
+  - Added prospective source-group-level exact McNemar planning. The primary SESOI is `+0.20`, `alpha=0.05`, power `0.80`, and discordance assumptions `p10=0.30,p01=0.10`, requiring 84 independent groups. Sensitivity effects `.15/.20/.25` require `129/84/60`; seeds, retries, interpreter runs, and concurrency lanes are explicitly not scientific units.
+  - Added a frozen dependency-free representative runner plus `WorkloadQualificationCertificate`. Each track calibrates on two distinct clean interpreter installations at concurrency 1/2, freezes an orchestration deadline with at least eightfold slack, then repeats the full interpreter/concurrency matrix three times. Algorithmic work is fixed at 20,000 work units and a separate five-second CPU budget; retry is zero; scientific projection replay is exact; wall/CPU/memory telemetry is tolerant and cannot alter the projection. Tamper, incomplete matrix, timeout, budget, environment/input/runner drift, or trajectory instability fail the conjunction.
+  - Ran the live tournament without reading the consumed v1/v2 panel or its outcomes. DiscoveryBench returned 987 tree entries and 189 provisional depth-four source-group folders; card metadata reported ODC-By and AstaBench license evidence reported Apache-2.0. Natural-language `gold_hypo` rows are not called an exact evaluator: the report fixes baseline implementation, evaluator implementation, and scientific-independence audit to false and authorizes only clean-room construction.
+  - Rejected structured world models for missing open official system/strong baseline, objective incremental evaluator, adequate units, complete data/code licenses, local compute, and power. Rejected external feedback because two accessible environments are below the 84-unit requirement, repository/data licenses are unverified, reported compute reaches eight H100s, and laboratory/scientific duties remain human. Selected only `socratic-falsification` for development construction; its 189 folders are a feasibility upper bound pending provenance clustering, not already-confirmed independent units.
+  - Added Task `263.6.5` as the next stop-first step: retain at least 30 disjoint development plus 84 untouched potential reserve groups after provenance/license clustering; build deterministic valid-versus-fault-injected labels; reconstruct an Asta-style equal-budget baseline; run no-critic/rule/four-component/full-critic ablations only on development groups; and create no RQ or confirmation panel unless the evaluator, baseline, workload, power, null/Type-I, nearest-work, and human novelty gates later pass.
+- Verification:
+  - Formal report `13e31dbe29f2d34ec3924459207610f04618271ed21ce551e13a3d0b7716e72c`, manifest `8461c05491ca487443b0a0ab5250a048ac7721d53e61af2199654ce02824e933`, and frozen runner `c109d368cd64cd5356cc95304948ed9d6594a823b0bddf00fa4faaa797e6bcca` verify. The selected track is `socratic-falsification`; RQ, panel, novelty search, release, and submission flags are false.
+  - Workload certificate/projection pairs: structured world model `808d3223139c5a0e3e299ebe3f44ed0148663e1caa6ac29b7ce2f8ba34d1548d` / `a8e779052194dd94f520104e235c6ab4c912905648745a433fce99a8d1fcc3d1`; Socratic falsification `4b35246b2b71c7a1a905e72b987e2a340ec53ebd72b3bc129fa2157c6f00ace8` / `e8dce31df4d24ae1a20f7770875c3e7666e84c613f7741725086191680c316e9`; external feedback `d190883bb67f94daaf221a9bcfba06a2a564ad23c1afa61ab7315622687715a3` / `953e90fcb01c3221b907548d47f5ab5b4860dafa2b526a7e6e26ae00ade734f4`. Each contains six calibration and eighteen qualification observations with zero timeout and exact projection replay.
+  - `poetry run pytest -q tests/unit/research/test_workload_qualified_opportunity.py --no-cov`: 6 passed. Tests cover exact sample sizes, no pseudoreplication, trajectory-instability rejection, tamper rejection, conjunctive selection, all-track failure, persistence, and schema determinism.
+  - `$env:AUTORESEARCH_WORKLOAD_QUALIFIED_OPPORTUNITY_LIVE='1'; poetry run pytest -q tests/smoke/test_workload_qualified_opportunity_live.py --no-cov`: 1 passed in 30.05 seconds against live primary/resource/license endpoints and the two frozen clean interpreters.
+  - `poetry run pytest -q tests/unit/research/test_workload_qualified_opportunity.py tests/unit/research/test_opportunity_tournament.py tests/smoke/test_workload_qualified_opportunity_live.py --no-cov`: 18 passed, 1 opt-in skipped.
+  - `poetry run python -m pytest -q`: 1,083 passed, 27 opt-in live tests skipped, 82% coverage, in 177.38 seconds.
+  - `poetry run ruff check .`: passed. `poetry run mypy src`: passed across 171 source files. `poetry check`: exited zero with only pre-existing Poetry metadata deprecation warnings. `git diff --check`: passed.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py --no-cov`: 9 passed. The full regression also passed task dependency, Vault, and link checks.
+  - Frozen-source audit passed: protected v2 controller `f7a561542eb30b18fb4369fdf1d318de0d22ce97b3c2465276ff121465299ced`; protected technical replay orchestrator `924c3e0a7cab8c588870b542956881524e386a85cea3c1baa22049fe00185e65`.
+  - An initial repository command `poetry run pytest -q` failed during collection because that executable form did not expose the repository-root `tests` package to `test_sprint_migration.py`. The canonical project command `poetry run python -m pytest -q` immediately collected all 1,110 tests and passed; no source or scientific artifact was changed to bypass the import.
+- Problems:
+  - Added `P-20260731-028` for the selected route's unimplemented baseline/evaluator, provisional independence, license boundary, and missing publishable scientific evidence.
+  - Updated `P-20260731-027` from open to mitigated because future tracks now have workload qualification; the old consumed-panel incident remains irreparable.
+  - Updated `P-20260731-026` and `P-20260729-048` with the completed tournament and Task `263.6.5` route.
+- Follow-up:
+  - Execute only Task `263.6.5`. Keep Task `263.6.3`, Task `263.7`, Research Question issuance, confirmation-panel creation, publication, release, and submission blocked until their independent prospective gates are satisfied.
+
 ### 2026-07-31 09:07:41 +08:00 - Codex - Task 263.6.2 consumed-panel technical replay and stop decision
 
 - Request: Continue the publication-grade recovery; determine why complete real execution still cannot produce a publishable scientific result; cross-check current automated-science research; optimize the research path; and implement the next gated step without weakening the consumed confirmation or shopping for a favorable panel.
