@@ -106,6 +106,26 @@ compute-matched external agents and simple baselines, prospective power, frozen
 null controls, role-separated scoring, one-use outcomes, and a registered
 diagnostic-negative endpoint.
 
+## Additive correction status
+
+Task `263.7.1` now materializes the independent-unit result as a separate
+post-audit note without changing any Task `260` byte or replacing its original
+preregistration. The correction binds all 8 original claims, 138 numeric leaves,
+2 tables, and 28 unit-sensitive LaTeX lines. Eight publication-facing 30-cell
+surfaces are retired, and C2 is the only original claim whose publication
+inference is retired. Nine new note claims are content-addressed to the parent
+and Task `263.7.0` audit.
+
+The formal correction package is
+`runs/manual-live/task26371-independent-task-reanalysis-v1/`, with report
+`476b920607ad981a1f0d7b0a33ff4d74e813a70159959c70386e9e15d6c37d99`
+and manifest
+`f6d8371c9b1c54cb5ffa885c407210b74ede4b0c74d45466c6a2e074d089a6ab`.
+Two clean interpreters reproduce the same ten-task projection. The object
+explicitly denies fresh confirmation, publication readiness, public release,
+and external submission. It fixes an evidence-expression defect, not the
+missing external evidence.
+
 ## Formal evidence
 
 Package: `runs/manual-live/task26370-systems-paper-currency-audit-v1/`
@@ -129,3 +149,4 @@ disclosure, and venue decisions remain false or human-owned.
 - [[benchmark-validity-human-review-handoff-2026]]
 - [[graph-harness-loop-open-science-2026]]
 - [[../projects/ai_researcher_system/progress/task-263-7-0-systems-paper-currency-audit]]
+- [[../projects/ai_researcher_system/progress/task-263-7-1-independent-task-reanalysis]]

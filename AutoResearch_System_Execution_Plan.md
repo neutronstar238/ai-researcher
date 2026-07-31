@@ -2104,3 +2104,26 @@ marker 验证；两个 clean interpreter 的 projection 都为
 `8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`。审计状态保持
 `major-revision-new-independent-evidence-and-human-review-required`，publication/public release/external
 submission 均为 false。
+
+### 27.17 Task 263.7.1 实施结果与 current-field rewrite 执行门
+
+Task `263.7.1` 已完成为 additive independent-task reanalysis，而不是覆盖原稿、替换预注册或追加一次
+“确认”。实现新增：
+
+- 对 Task `260` v2 和 Task `263.7.0` commit/report/manifest/unit/source/repair 证据的双重内容寻址绑定；
+- 对 8 个原 claim、138 个原数值叶、2 个原表格和 28 行单位敏感 LaTeX 的全量 disposition；
+- 仅退休 C2 的发表推断，并把 8 处 30-cell publication surface 交给 Task `263.7.2` 显式改写；
+- 十任务 20,000 次 bootstrap、exact sign test、family sensitivity 和两 clean interpreter exact replay；
+- 9 个增量 note claim、JSON Schemas、Markdown reader、递归 manifest、严格 loader 与 tamper tests；
+- 显式的 `original_preregistration_replaced=false`、`fresh_confirmatory_evidence=false` 与全部外部权限 false。
+
+正式包为 `runs/manual-live/task26371-independent-task-reanalysis-v1/`，report/manifest hashes 为
+`476b920607ad981a1f0d7b0a33ff4d74e813a70159959c70386e9e15d6c37d99` 和
+`f6d8371c9b1c54cb5ffa885c407210b74ede4b0c74d45466c6a2e074d089a6ab`。unit audit 与 Task `263.7.0`
+继续共享 hash `b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`，两个解释器继续共享
+projection `4247521dab59e0a65318f8391367aa11c26323d04335697be3e1f74f322f9cba`。
+
+Task `263.7.2` 可开始 current-field manuscript rewrite，但必须逐项消费 claim ledger 和 28 行 surface
+inventory：旧 30-cell interval 只能标作历史内部 gate，十任务结果只能标作事后单位纠正，标题、摘要和结论
+不得恢复外部 superiority。Task `263.7.3` 可并行增加互操作层。新科学效应仍只能来自 Task `263.7.5` 至
+`263.7.6` 的前瞻、独立、一次性确认；人类发表决定仍属于 Task `263.7.7`。

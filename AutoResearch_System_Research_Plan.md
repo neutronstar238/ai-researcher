@@ -1815,3 +1815,36 @@ CORE-Bench、REPRO-Bench、AstaBench、SciIntegrity-Bench 与 Kosmos 独立审�
 `de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253`，repair plan
 `4ad117a02defc318646456a9a754e91159756b5f148ae01f36f8ed1ddf36b3ec`，manifest
 `8e2dd7b5cbee5aa4274b125bc9f7c2cdab3ef33017a38f37e782ea35d089b9c9`。
+
+### 27.10 Task 263.7.1 additive independent-task reanalysis
+
+Task `263.7.1` 已把 Task `263.7.0` 的独立单位发现固化为一个单独、可复演、不可冒充原预注册的增量
+勘误。Task `260` v2 继续保持 byte-for-byte 不变；新对象同时绑定 Task `260` 父证据 hash
+`61de76e8f74c191849f7b9d9ab88d606859004cd80fc73a9dbefe820d7335811` 和 Task `263.7.0` commit
+`75546eba0ae387abe96635fb6559c4b4003dfa1e`、report、manifest、unit audit、source registry 与 repair
+plan hashes。任何一项漂移都会使加载或重建 fail closed。
+
+重分析没有只改一个数字，而是建立了完整发表表面清单：8 个原 claim、`paper-values.json` 的 138 个数值
+叶、2 个原表格以及 28 行单位敏感 LaTeX 均有 machine-readable disposition，未绑定计数全部为 0。其中
+8 行发表向 30-cell 推断被标记为必须退休；原 claim 仅 C2 退休发表推断，C1 改为独立任务单位，其余 claim
+只能保留在工程描述、负证据、受控消融或范围边界内。旧 `[0.333333, 0.666667]` interval 只保留为历史
+内部 gate，不再用于独立任务发表推断。
+
+独立任务结果与审计完全一致：向量 `[0, 0, 0, 1, 0, 0, 1, 1, 1, 1]`，均值 `0.5`，20,000 次
+task bootstrap interval `[0.2, 0.8]`，exact sign test 为 5 wins、0 losses、5 ties，单侧
+`p=0.03125`、双侧 `p=0.0625`，UCI/MDBench 均值 `0.25/0.666667`，family-balanced mean
+`0.458333`。两套独立 clean Python installation 复演出同一 projection；三枚 seed 仍只证明幂等性，不能
+增加独立样本量。
+
+正式增量包位于 `runs/manual-live/task26371-independent-task-reanalysis-v1/`。report、manifest、audit
+binding、surface inventory、claim ledger、unit audit 与 replay certificate hashes 分别为
+`476b920607ad981a1f0d7b0a33ff4d74e813a70159959c70386e9e15d6c37d99`、
+`f6d8371c9b1c54cb5ffa885c407210b74ede4b0c74d45466c6a2e074d089a6ab`、
+`c014c97241acb808f0a6de090180be33ba9cf3a54cc3eae16c66fe9ee85052d9`、
+`7ea653abaf1c3c7d3619ef7167161aee05badf6d847aae7d02a8a6950e23597e`、
+`f1f5bc960b159f6ede3cfb719e8590fd3ee77f2f50ec6d98df58d847207d4e41`、
+`b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`、
+`de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253`。该对象明确声明
+`fresh_confirmatory_evidence=false`、`publication_ready=false`、`public_release_authorized=false` 和
+`external_submission_authorized=false`。下一步 Task `263.7.2` 只能据此重写当前领域定位，不能把事后勘误
+包装成新的 superiority 证据。

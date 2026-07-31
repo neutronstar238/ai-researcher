@@ -64,6 +64,50 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 20:29:19 +08:00 - Codex - Task 263.7.1 additive independent-task reanalysis
+
+- Request: Continue the active publication-grade AutoResearch recovery by correcting the real Task `260` systems-paper unit of analysis, borrowing the independent-evaluation discipline identified in the current automated-science literature, and implementing the next gated repair without rewriting the frozen study or overstating publishability.
+- Files changed:
+  - `src/autoresearch/research/systems_paper_task_unit_reanalysis.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_systems_paper_task_unit_reanalysis.py`
+  - `tests/smoke/test_systems_paper_task_unit_reanalysis_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/task260-route-b-publication-currency-audit-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-7-1-independent-task-reanalysis.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Completed Task `263.7.1` as an additive post-audit correction. The immutable Task `260` v2 package and Task `263.7.0` audit are both content-addressed; report, manifest, independent-unit, source-registry, repair-plan, and relevant original-paper file drift fail closed.
+  - Inventoried all 8 original claims, all 138 numeric leaves in `paper-values.json`, both original tables, and all 28 unit-sensitive LaTeX lines. There are zero unbound claims, numbers, tables, or inference surfaces. Eight publication-facing 30-cell surfaces are retired, C2 alone retires publication inference, C1 is relabeled to the task unit, and all other claims remain bounded to engineering description, negative evidence, controlled ablation, or scope.
+  - Reproduced the ten-task vector `[0,0,0,1,0,0,1,1,1,1]`, mean `0.5`, frozen 20,000-resample interval `[0.2,0.8]`, exact sign test 5 wins/0 losses/5 ties with one-sided/two-sided `p=0.03125/0.0625`, UCI/MDBench means `0.25/0.666667`, and family-balanced mean `0.458333`. Three deterministic seeds remain idempotency evidence rather than independent observations.
+  - Added nine content-addressed correction-note claims, strict schemas, Markdown rendering, full note mechanical scan, recursive manifest, package loader, component/report parity, tamper rejection, and exact replay through two distinct clean Python installations.
+  - The formal local package is `runs/manual-live/task26371-independent-task-reanalysis-v1/`. Report `476b920607ad981a1f0d7b0a33ff4d74e813a70159959c70386e9e15d6c37d99`, manifest `f6d8371c9b1c54cb5ffa885c407210b74ede4b0c74d45466c6a2e074d089a6ab`, audit binding `c014c97241acb808f0a6de090180be33ba9cf3a54cc3eae16c66fe9ee85052d9`, surface inventory `7ea653abaf1c3c7d3619ef7167161aee05badf6d847aae7d02a8a6950e23597e`, claim ledger `f1f5bc960b159f6ede3cfb719e8590fd3ee77f2f50ec6d98df58d847207d4e41`, unit audit `b6a6e2cb59be88ebb4dc747a8c6d36d91a2279568a3c2cde711ac12acb751eb3`, and replay certificate `de0273ff820b898a58afc3689d5d524c9f7f8b1185a7d0e5cc4a84605416d253` reload exactly.
+  - Applied the `pre-submission-reviewer` workflow to enforce the independent observation unit, logical claim-to-evidence coverage, original-protocol preservation, no em dash, full forbidden-vocabulary scan, and a venue-unspecified boundary. The generated note passes mechanically but explicitly remains non-confirmatory and non-publishable.
+- Verification:
+  - `python -m py_compile src/autoresearch/research/systems_paper_task_unit_reanalysis.py tests/unit/research/test_systems_paper_task_unit_reanalysis.py tests/smoke/test_systems_paper_task_unit_reanalysis_live.py`: passed.
+  - Initial focused Ruff gates reported and then resolved test-import `I001`, package-export `F811`, and package-import `I001`; the generic new `EvidenceLocator` is exported as `TaskUnitEvidenceLocator`. See `P-20260731-036`.
+  - `poetry run python -m pytest -q tests/unit/research/test_systems_paper_task_unit_reanalysis.py`: passed with 8 tests.
+  - Focused `poetry run ruff check ...` over the new source, export surface, unit test, and smoke: passed.
+  - `poetry run mypy src/autoresearch/research/systems_paper_task_unit_reanalysis.py`: passed.
+  - `$env:AUTORESEARCH_SYSTEMS_PAPER_TASK_UNIT_LIVE='1'; poetry run python -m pytest -q tests/smoke/test_systems_paper_task_unit_reanalysis_live.py`: passed with 1 test in 14.62 seconds. The local-only smoke used the real immutable parent/audit packages and two clean interpreters; no external network source or credential was required.
+  - Live package reload verifies 138 numeric bindings, 28 manuscript surfaces, 8 retired inference surfaces, C2 as the sole retired original claim, 9 additive claims, exact audit/projection parity, and all publication/release/submission flags false. The rendered note has zero forbidden-vocabulary hits, zero em dashes, and zero unbound surfaces.
+  - `poetry run python -m pytest -q`: passed with 1,144 tests, 35 opt-in skips, and 82-percent coverage in 193.84 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 179 source files.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py`: passed with 3 tests in 19.49 seconds.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated open high-severity `P-20260731-034`: seed-pseudoreplication and expression risk are now mitigated by the separate correction, while missing independent tasks/baselines/scoring/human review and stale positioning remain publication blockers.
+  - Added and resolved low-severity `P-20260731-036` for the focused Ruff import-order and public export-name collision encountered during implementation.
+- Follow-up:
+  - Execute Task `263.7.2` next using the 28-line surface inventory and claim ledger to rewrite the manuscript against the current automated-science field. The historical 30-cell interval must remain historical, and the task-level correction must not be presented as fresh confirmation.
+  - Task `263.7.3` may add RO-Crate/Workflow Run/PROV interoperability independently. New scientific-effect evidence and a publication decision remain gated by Tasks `263.7.4` through `263.7.7`, including real human roles and an independently authored one-use confirmation.
+
 ### 2026-07-31 20:06:08 +08:00 - Codex - Task 263.7.0 systems-paper publication-currency audit
 
 - Request: Continue the active publication-grade AutoResearch recovery; explain why the real Task `260` systems-paper output is not yet publishable; cross-search current fully automated science research; optimize the research route; and implement the first audit/replanning task without altering the frozen parent package or authorizing publication.
