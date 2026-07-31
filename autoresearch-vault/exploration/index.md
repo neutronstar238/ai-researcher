@@ -4,6 +4,12 @@
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
 - [[unified-evaluation-observability-security-2026|AutoResearch vNext unified evaluation, observability, and Agentic security research]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
+
+## benchmark validity
+
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
+- [[licensed-objective-socratic-inventory-gate-2026|DiscoveryBench independent-unit and license inventory gate]]
 
 ## selective factuality
 
@@ -12,6 +18,7 @@
 ## scientific agent evaluation
 
 - [[task-261-2-generated-mechanism-evidence-survey-2026|Task 261.2 generated mechanism, selective factuality, and claim-evidence survey]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## generated-code security
 
@@ -36,18 +43,22 @@
 ## graph engineering
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## harness engineering
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## loop engineering
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## open science
 
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
+- [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
 
 ## adjacent work
 

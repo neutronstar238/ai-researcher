@@ -1515,3 +1515,61 @@ publication-level unit；QRData 的 411 questions 仍须按 source sheet 聚类�
 同时通过独立单位、objective evaluator、强基线、算力和 human novelty gate，才允许恢复 evaluator/
 critic construction；在这之前 Research Question、confirmatory panel、release、submission 和
 `263.7` 继续为 false。
+
+### 27.4 Task 263.6.6 四候选审计与研究问题重构
+
+`263.6.6` 已完成 exact-revision、result-blind 的 replacement objective-data tournament。它没有
+通过更换数据集名称来继续旧 critic 路线，也没有预设 AutoSDT 规模最大所以必须获胜。正式 runner
+只接收 source-group identifier、capacity 和八个前置门；prompt、answer、reference program、
+model/judge output 和 reserve result 全部不进入投影。四个候选的正式结果为：
+
+| Candidate | Released tasks | Independent upper bound | Development | Potential reserve | Sealed reserve | 结果 |
+|---|---:|---:|---:|---:|---:|---|
+| AutoSDT-5K | 5,148 | 1,002 license-labelled repositories | 30 | 972 | 0 | reject |
+| ScienceAgentBench | 102 | 44 publications | 30 | 14 | 0 | reject |
+| CORE-Bench | 270 | 90 papers | 45 | 45 | 45 | reject |
+| QRData | 411 | 190 shared data-file sets | 30 | 160 | 0 | reject |
+
+AutoSDT 的冻结 release 实际为 5,148 rows/1,317 normalized repositories，而非直接沿用论文/card 的
+5,404/1,325 headline；315 个 repository 的 label 为 `None`，剩余 label 也不是逐来源 license
+object。其 source URL 指向 branch、没有冻结 per-task scorer，reference program 公开，所以 sealed
+reserve 为 0。ScienceAgentBench 只有 44 个 publication upper bound，完整 primary evaluation 又
+混合 GPT-4o visualization judge 和 best-of-three attempt。CORE-Bench 的 270 tasks 是 90 papers
+各三个 difficulty；45 个 encrypted test papers 仍低于 84，且 capsule rights 和 privileged
+Docker/GPU/cloud workload 未通过。QRData 的 411 questions 聚为 190 shared-sheet groups，numeric/
+multiple-choice scorer 和本地算力通过，但 195 张上游表没有逐项许可，official baseline command
+缺失，question/answer 同包，不能成为 fresh seal。
+
+正式状态为 `all-candidates-rejected`。projection：
+`265d8c1b1195f6ad488a2d2fe12dd5133afaeadfd18d109fff56edefd11c7491`；
+report contract：
+`292899ec660d38490fd95dd40c832e304f6c816a1dd5f9f401b19f6615eea89a`；
+manifest contract：
+`4e4a47495d23f44c3df72cb3005cb4846d5f356f65b606a9677fd1c80013fc9a`。
+两套 distinct clean interpreter 零重试得到 exact projection，11 个一手论文页面和全部官方
+candidate artifacts 通过 live smoke。
+
+这个结果把“真实不可产出”定位到前端 scientific substrate：
+
+- Graph 能绑定证据和来源，不能创造独立单位；
+- Harness 能稳定执行，不能修复 construct、license 或 seal；
+- Loop 能扩大探索，不能在同一 revealed panel 上继续适配；
+- Open Science 能让研究可检查，不能自行授权内容或证明 novelty；
+- paper builder 能生成论文，不能生成强基线增量和独立确认。
+
+因此研究路径分为两个独立终点：
+
+1. **Systems-paper 路线**：Task 260 Route B 保持
+   `ready_for_human_submission_review`，由独立人类复核 novelty、scope、authorship、license 和
+   venue；其贡献是 evidence-first research OS 和 reproducibility，不声称新 critic 正效应。
+2. **Benchmark-validity 路线**：Task `263.6.7` 在提取任何新 benchmark 记录前冻结系统映射协议。
+   当前四个候选只作 protocol-development pilot，不得事后成为 confirmatory sample。新研究单位是
+   fixed-revision benchmark release，目标至少 20 个独立 release；预先固定检索式、来源、纳入/
+   排除、task-to-source compression、四类 rights、primary endpoint、judge role、baseline、
+   compute、seal、contamination 和 descriptive/sensitivity analysis。关键 license/lineage 字段
+   需要双人独立编码与冲突处理。
+
+新的 benchmark-validity 研究只允许提出描述性/治理性贡献。只有它前瞻发现一个 fresh、
+single-construct、`30 + 84`、逐来源许可、确定性 scorer、强基线和有界算力全部通过的面板，才允许
+另行冻结新 RQ 并恢复 mechanism-effect track。不得将 AutoSDT、CORE-Bench 和 QRData 的异质构念
+事后求平均来凑样本量。

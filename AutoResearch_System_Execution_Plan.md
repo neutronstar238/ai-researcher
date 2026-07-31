@@ -1810,3 +1810,73 @@ optimistic counting，reserve 上限也只有 81，低于 84。因而实现正�
 
 Task `263.6.3` 仍不得进入；旧 consumed panel 不得复用。`263.7`、论文 claim、公开发布与外部投稿
 继续被独立门禁阻止。
+
+### 27.11 Task 263.6.6 实施结果与 263.6.7 执行门
+
+Task `263.6.6` 已完成四候选、无 hardcoded winner 的 result-blind tournament。实现新增：
+
+- `replacement_objective_data_tournament.py`：exact official material fetch、四个专用 lineage
+  parser、repository/publication/paper/shared-sheet clustering、四用途 license audit、
+  deterministic endpoint/strong-baseline/compute audit、无权重合取投影、双解释器证书、
+  Markdown/JSON/schema/manifest 和 tamper-blocking loader；
+- `frozen_replacement_objective_data_probe_v1.py`：标准库 frozen runner，只接收 group IDs、
+  capacity 和 pre-outcome gate，不接收 prompt、answer、reference/model/judge/reserve values；
+- deterministic tests：四 parser 的 pseudoreplication control、敏感结果变更不影响 lineage、
+  all-candidate failure、任意第五候选可胜出、duplicate/outcome contamination、scope-specific
+  license fail-closed、projection/artifact tamper 和 exact runner parity；
+- opt-in live smoke：下载并哈希四个 exact official releases，探测 11 个一手论文页面，在
+  `clean-venv-a/b` 中零重试复演同一 projection。
+
+正式 live output 位于：
+
+`runs/manual-live/task26366-replacement-objective-data-tournament-v1/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Report contract | `292899ec660d38490fd95dd40c832e304f6c816a1dd5f9f401b19f6615eea89a` |
+| Report file | `299d7f884e9983b7d72e7c38e3da3b8ca6f7e1307baa539f46342c0bd29e203d` |
+| Projection | `265d8c1b1195f6ad488a2d2fe12dd5133afaeadfd18d109fff56edefd11c7491` |
+| Decision | `ca0697f34a8b70e81beb67bc2960fa5c121615cba556c372307f9209a7bd9d36` |
+| Replay certificate | `40370c725a9450ea3886ce0c72ad658100c27eea5f7a5c5e1a4eafbc08fced99` |
+| Replay input | `a78bdecce72a7e28aa6c30f64a11a69c1435815daaacacd98a2659b3b9f1b1df` |
+| Frozen runner | `a34a4ab5ec95fa5e37fd3f0b03c64830c18cb1449a9bc10788b5266f0707a396` |
+| Manifest contract | `4e4a47495d23f44c3df72cb3005cb4846d5f356f65b606a9677fd1c80013fc9a` |
+
+正式决策为 `all-candidates-rejected`：
+
+- AutoSDT-5K：1,002 labelled-repository capacity，但 source revision、per-source rights、
+  packaged scorer、strong baseline、本地 compute 和 reserve seal 失败；
+- ScienceAgentBench：publication upper bound 44，potential reserve 14，完整 endpoint 含
+  LLM judge/best-of-three，逐来源许可和 seal 失败；
+- CORE-Bench：90 paper groups、45 sealed reserve，低于 84；capsule rights 与 privileged/GPU
+  workload 失败；
+- QRData：190 shared-sheet groups、160 potential reserve，但 source-sheet rights、strong
+  baseline 和 reserve seal 失败。
+
+所有 candidate model calls、provider credentials、Research Question issuance、confirmation panel、
+heterogeneous post-result combination、publication claim、public release 和 submission 保持 false。
+
+#### 下一执行任务：263.6.7
+
+`263.6.7` 不再开始第五个 dataset/model 实验，而是冻结一项新的 AI-scientist benchmark-validity
+systematic mapping protocol：
+
+1. **Protocol before extraction**：先固定数据库/页面、检索式、日期、去重、release-level unit、
+   纳入/排除、字段、unknown 语义、冲突处理、分析和停止条件，再提取当前四个 pilot 之外的记录。
+2. **Census target**：至少 20 个独立 fixed-revision benchmark release；当前四个只作为 parser/
+   codebook calibration，不能充当独立 confirmation。
+3. **Benchmark Admission Card**：每个 release 记录 headline task、independent source upper bound、
+   compression ratio、local/software/derivative/redistribution rights、primary endpoint、
+   LLM/human judge role、strong baseline command、compute、split seal 和 contamination policy。
+4. **Human validity boundary**：模糊 license、lineage 与 construct 至少双人独立编码，预设一致性门和
+   adjudication；自动系统不能自行给出法律或作者责任结论。
+5. **Descriptive endpoint**：报告各 admission gate 通过率、完整合取通过率与 construct/source/year
+   sensitivity；不得把 systematic mapping 改写成某个 critic/Agent 有因果效果。
+6. **Result-blind downstream**：若发现单一 fresh panel 通过全部门，下一任务仍须先复现 baseline 和
+   冻结新 RQ；本任务不运行候选模型、不创建 confirmation panel。
+7. **Stop**：少于 20 个 release、关键 evidence 覆盖不足、双人一致性失败或协议后改 endpoint 时，
+   保留开放数据/诊断负结果，不生成领域普遍性 claim。
+
+Task 260 Route B 可作为独立 systems-paper candidate 进入 human submission review，但不自动授权
+公开或投稿。Task `263.6.3`、mechanism confirmation、`263.7` 和 external submission 继续被各自
+门禁阻止。
