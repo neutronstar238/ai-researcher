@@ -86,8 +86,7 @@ HARNESS_RAW_DIRECTORY = "raw-responses"
 HARNESS_BIBLIOGRAPHIC_DIRECTORY = "bibliographic-records"
 
 HARNESS_RUNNER_SOURCE_PATH = Path(
-    "src/autoresearch/research/assets/"
-    "frozen_benchmark_validity_harness_probe_v1.py"
+    "src/autoresearch/research/assets/" "frozen_benchmark_validity_harness_probe_v1.py"
 )
 
 MAX_RAW_RESPONSE_BYTES = 64 * 1024 * 1024
@@ -169,13 +168,16 @@ def _canonical_json_text(value: Any) -> str:
 
 
 def _pretty_json_text(value: Any) -> str:
-    return json.dumps(
-        _jsonable(value),
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=2,
-        allow_nan=False,
-    ) + "\n"
+    return (
+        json.dumps(
+            _jsonable(value),
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+            allow_nan=False,
+        )
+        + "\n"
+    )
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -264,7 +266,9 @@ def normalize_arxiv_id(value: str | None) -> str | None:
     match = _ARXIV_ID_RE.search(value.strip())
     if match is None:
         candidate = re.sub(r"v\d+$", "", value.strip(), flags=re.IGNORECASE)
-        if re.fullmatch(r"(?:[a-z-]+(?:\.[A-Z]{2})?/\d{7}|\d{4}\.\d{4,5})", candidate, re.IGNORECASE):
+        if re.fullmatch(
+            r"(?:[a-z-]+(?:\.[A-Z]{2})?/\d{7}|\d{4}\.\d{4,5})", candidate, re.IGNORECASE
+        ):
             return candidate.casefold()
         return None
     return match.group(1).casefold()
@@ -310,9 +314,7 @@ def _create_protocol_search_log(**values: Any) -> SearchExecutionLogEntry:
         "benchmark_records_extracted_before_protocol_freeze": False,
         **values,
     }
-    return SearchExecutionLogEntry.model_validate(
-        _addressed_payload(payload, "log_entry_hash")
-    )
+    return SearchExecutionLogEntry.model_validate(_addressed_payload(payload, "log_entry_hash"))
 
 
 class SearchPurpose(str, Enum):
@@ -355,9 +357,7 @@ class FamilyRevisionRole(str, Enum):
 class AdapterContract(KernelContract):
     """Versioned adapter semantics bound to one frozen search source."""
 
-    schema_version: Literal["benchmark-search-adapter-v1"] = (
-        "benchmark-search-adapter-v1"
-    )
+    schema_version: Literal["benchmark-search-adapter-v1"] = "benchmark-search-adapter-v1"
     source_id: SearchSourceId
     endpoint_url: NonEmptyText
     response_format: NonEmptyText
@@ -369,9 +369,7 @@ class AdapterContract(KernelContract):
         "cursor-short-page",
         "single-page-or-frozen-year-split",
     ]
-    parser_version: Literal["bibliographic-metadata-only-v1"] = (
-        "bibliographic-metadata-only-v1"
-    )
+    parser_version: Literal["bibliographic-metadata-only-v1"] = "bibliographic-metadata-only-v1"
     benchmark_outcome_fields_parsed: Literal[False] = False
     adapter_hash: Sha256
 
@@ -395,9 +393,7 @@ class AdapterContract(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "adapter_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"adapter_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"adapter_hash"}))
 
 
 class ProtocolCompatibilityFinding(KernelContract):
@@ -428,9 +424,7 @@ class ProtocolCompatibilityFinding(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "finding_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"finding_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"finding_hash"}))
 
 
 class CapabilityProbeSpec(KernelContract):
@@ -475,9 +469,7 @@ class CapabilityProbeSpec(KernelContract):
 class SearchPageRequest(KernelContract):
     """Exact request metadata; URLs contain only public query parameters."""
 
-    schema_version: Literal["benchmark-search-page-request-v1"] = (
-        "benchmark-search-page-request-v1"
-    )
+    schema_version: Literal["benchmark-search-page-request-v1"] = "benchmark-search-page-request-v1"
     purpose: SearchPurpose
     query_or_probe_id: StableId
     source_id: SearchSourceId
@@ -495,7 +487,10 @@ class SearchPageRequest(KernelContract):
         prohibited = {
             key
             for key in value
-            if any(token in key.casefold() for token in ("api_key", "apikey", "token", "secret", "password"))
+            if any(
+                token in key.casefold()
+                for token in ("api_key", "apikey", "token", "secret", "password")
+            )
         }
         if prohibited:
             raise ValueError(f"public search request cannot persist secrets: {sorted(prohibited)}")
@@ -635,7 +630,9 @@ class BibliographicRecord(KernelContract):
     @classmethod
     def create(cls, **values: Any) -> BibliographicRecord:
         title = _normalize_space(str(values["title"]))
-        authors = [_normalize_space(str(item)) for item in values.get("authors", []) if str(item).strip()]
+        authors = [
+            _normalize_space(str(item)) for item in values.get("authors", []) if str(item).strip()
+        ]
         publication_date = values.get("publication_date")
         publication_year = values.get("publication_year")
         if publication_date is not None:
@@ -743,6 +740,22 @@ class HttpGetTransport(Protocol):
     ) -> TransportResponse: ...
 
 
+class PaginationErratumAuthorization(Protocol):
+    """Minimal result-free authorization accepted by the formal Harness path."""
+
+    protocol_hash: str
+    erratum_hash: str
+    status: str
+    formal_search_authorized: bool
+    resolved_finding_ids: list[str]
+    dblp_cap_policy: str
+    formal_search_execution_count: int
+    benchmark_outcomes_accessed: bool
+    candidate_model_calls: bool
+
+    def verify_integrity(self) -> None: ...
+
+
 def urllib_get_transport(
     *,
     endpoint_url: str,
@@ -764,9 +777,7 @@ def urllib_get_transport(
         ) as response:
             body = cast(bytes, response.read(max_bytes + 1))
             if len(body) > max_bytes:
-                raise BenchmarkValidityTransportError(
-                    f"response exceeded {max_bytes} bytes"
-                )
+                raise BenchmarkValidityTransportError(f"response exceeded {max_bytes} bytes")
             return TransportResponse(
                 status_code=int(response.status),
                 headers={str(key): str(value) for key, value in response.headers.items()},
@@ -1022,12 +1033,15 @@ def parse_openalex_page(
     if request.purpose is SearchPurpose.FORMAL_CENSUS:
         records = [record for record in records if _record_in_frozen_window(record)]
     raw_total = meta.get("count")
-    total_results = int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    total_results = (
+        int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    )
     next_cursor = meta.get("next_cursor")
     next_parameters = None
     if isinstance(next_cursor, str) and next_cursor:
         next_parameters = dict(request.request_parameters)
         next_parameters["cursor"] = next_cursor
+    exhausted = next_parameters is None and not raw_results
     return ParsedSearchPage.create(
         source_id=SearchSourceId.OPENALEX,
         request_hash=request.request_hash,
@@ -1035,7 +1049,7 @@ def parse_openalex_page(
         records=records,
         total_results=total_results,
         next_parameters=next_parameters,
-        exhausted=next_parameters is None,
+        exhausted=exhausted,
         requires_frozen_year_split=False,
     )
 
@@ -1121,7 +1135,9 @@ def parse_crossref_page(
     if request.purpose is SearchPurpose.FORMAL_CENSUS:
         records = [record for record in records if _record_in_frozen_window(record)]
     raw_total = message.get("total-results")
-    total_results = int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    total_results = (
+        int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    )
     rows = int(request.request_parameters.get("rows", "1"))
     short_page = len(raw_items) < rows
     next_cursor = message.get("next-cursor")
@@ -1173,7 +1189,9 @@ def _dblp_record(
     author_value = raw_authors.get("author") if isinstance(raw_authors, Mapping) else None
     authors = _dblp_author_names(author_value)
     raw_year = info.get("year")
-    publication_year = int(raw_year) if isinstance(raw_year, int | str) and str(raw_year).isdigit() else None
+    publication_year = (
+        int(raw_year) if isinstance(raw_year, int | str) and str(raw_year).isdigit() else None
+    )
     locator = info.get("url") if isinstance(info.get("url"), str) else f"https://dblp.org/rec/{key}"
     doi = info.get("doi") if isinstance(info.get("doi"), str) else None
     return BibliographicRecord.create(
@@ -1224,7 +1242,9 @@ def parse_dblp_page(
     if request.purpose is SearchPurpose.FORMAL_CENSUS:
         records = [record for record in records if _record_in_frozen_window(record)]
     raw_total = hits_container.get("@total")
-    total_results = int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    total_results = (
+        int(raw_total) if isinstance(raw_total, int | str) and str(raw_total).isdigit() else None
+    )
     page_size = int(request.request_parameters.get("h", "1000"))
     requires_split = (
         request.purpose is SearchPurpose.FORMAL_CENSUS
@@ -1269,9 +1289,7 @@ def parse_search_page(
 class SearchPageLogEntry(KernelContract):
     """One chained request attempt in the append-only PRISMA-S page log."""
 
-    schema_version: Literal["benchmark-search-page-log-v1"] = (
-        "benchmark-search-page-log-v1"
-    )
+    schema_version: Literal["benchmark-search-page-log-v1"] = "benchmark-search-page-log-v1"
     sequence: int = Field(ge=1)
     protocol_hash: Sha256
     request: SearchPageRequest
@@ -1323,9 +1341,7 @@ class SearchPageLogEntry(KernelContract):
 class SearchRunSummary(KernelContract):
     """Content-addressed outcome of one bibliographic query or capability probe."""
 
-    schema_version: Literal["benchmark-search-run-summary-v1"] = (
-        "benchmark-search-run-summary-v1"
-    )
+    schema_version: Literal["benchmark-search-run-summary-v1"] = "benchmark-search-run-summary-v1"
     purpose: SearchPurpose
     query_or_probe_id: StableId
     source_id: SearchSourceId
@@ -1445,9 +1461,7 @@ class SearchExecutionLogEnvelope(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "envelope_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"envelope_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"envelope_hash"}))
 
 
 class SearchJournalSnapshot(KernelContract):
@@ -1584,9 +1598,7 @@ class AppendOnlyPrismaJournal:
     @staticmethod
     def _append_jsonl(path: Path, model: BaseModel) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        encoded = (_canonical_json_text(model.model_dump(mode="json")) + "\n").encode(
-            "utf-8"
-        )
+        encoded = (_canonical_json_text(model.model_dump(mode="json")) + "\n").encode("utf-8")
         with path.open("ab") as stream:
             stream.write(encoded)
             stream.flush()
@@ -1726,9 +1738,7 @@ class AppendOnlyPrismaJournal:
     def load_bibliographic_records(self) -> list[BibliographicRecord]:
         records: list[BibliographicRecord] = []
         for path in sorted(self.bibliographic_root.glob("*.json")):
-            record = BibliographicRecord.model_validate_json(
-                path.read_text(encoding="utf-8")
-            )
+            record = BibliographicRecord.model_validate_json(path.read_text(encoding="utf-8"))
             if path.stem != record.record_hash:
                 raise BenchmarkValidityHarnessIntegrityError(
                     f"bibliographic filename/hash mismatch: {path}"
@@ -1752,9 +1762,7 @@ class AppendOnlyPrismaJournal:
             raw_bytes += path.stat().st_size
         records = self.load_bibliographic_records()
         page_log_hash = (
-            _file_sha256(self.page_log_path)
-            if self.page_log_path.exists()
-            else _sha256_bytes(b"")
+            _file_sha256(self.page_log_path) if self.page_log_path.exists() else _sha256_bytes(b"")
         )
         execution_log_hash = (
             _file_sha256(self.execution_log_path)
@@ -1788,11 +1796,7 @@ def _safe_headers(headers: Mapping[str, str]) -> dict[str, str]:
 
 def _media_type(headers: Mapping[str, str], source_id: SearchSourceId) -> str:
     content_type = next(
-        (
-            str(value)
-            for key, value in headers.items()
-            if str(key).casefold() == "content-type"
-        ),
+        (str(value) for key, value in headers.items() if str(key).casefold() == "content-type"),
         "",
     )
     if content_type:
@@ -1802,11 +1806,7 @@ def _media_type(headers: Mapping[str, str], source_id: SearchSourceId) -> str:
 
 def _retry_after(headers: Mapping[str, str]) -> float | None:
     raw = next(
-        (
-            str(value)
-            for key, value in headers.items()
-            if str(key).casefold() == "retry-after"
-        ),
+        (str(value) for key, value in headers.items() if str(key).casefold() == "retry-after"),
         None,
     )
     if raw is None:
@@ -1832,6 +1832,7 @@ class ResultBlindSearchHarness:
         timeout_seconds: float = 60.0,
         max_raw_response_bytes: int = MAX_RAW_RESPONSE_BYTES,
         allow_formal_execution: bool = False,
+        pagination_erratum: PaginationErratumAuthorization | None = None,
     ) -> None:
         protocol.verify_integrity()
         if protocol.protocol_hash != FROZEN_BENCHMARK_VALIDITY_PROTOCOL_HASH:
@@ -1849,15 +1850,36 @@ class ResultBlindSearchHarness:
         self.timeout_seconds = timeout_seconds
         self.max_raw_response_bytes = max_raw_response_bytes
         self.allow_formal_execution = allow_formal_execution
+        self.pagination_erratum = pagination_erratum
+        if pagination_erratum is not None:
+            pagination_erratum.verify_integrity()
+            if pagination_erratum.protocol_hash != protocol.protocol_hash:
+                raise BenchmarkValidityHarnessIntegrityError(
+                    "pagination erratum is not bound to the frozen protocol"
+                )
+            if pagination_erratum.status != "frozen-pre-extraction-erratum":
+                raise BenchmarkValidityHarnessIntegrityError(
+                    "pagination erratum is not in its frozen state"
+                )
+            if not pagination_erratum.formal_search_authorized:
+                raise BenchmarkValidityHarnessIntegrityError(
+                    "pagination erratum does not authorize formal retrieval"
+                )
+            if (
+                pagination_erratum.formal_search_execution_count != 0
+                or pagination_erratum.benchmark_outcomes_accessed
+                or pagination_erratum.candidate_model_calls
+            ):
+                raise BenchmarkValidityHarnessIntegrityError(
+                    "pagination erratum is not result-free"
+                )
         self._last_request_at: float | None = None
         self._source_specs = {item.source_id: item for item in protocol.search_sources}
 
     def _pace(self, source_spec: SearchSourceSpec) -> None:
         current = self.monotonic()
         if self._last_request_at is not None:
-            remaining = source_spec.request_spacing_seconds - (
-                current - self._last_request_at
-            )
+            remaining = source_spec.request_spacing_seconds - (current - self._last_request_at)
             if remaining > 0:
                 self.sleep(remaining)
                 current = self.monotonic()
@@ -1890,6 +1912,10 @@ class ResultBlindSearchHarness:
             for finding in audit_protocol_adapter_compatibility(self.protocol)
             if finding.source_id is binding.source_id
             and not finding.formal_search_allowed
+            and (
+                self.pagination_erratum is None
+                or finding.finding_id not in self.pagination_erratum.resolved_finding_ids
+            )
         ]
         if blockers:
             raise FormalSearchBlockedError(
@@ -2050,9 +2076,7 @@ class ResultBlindSearchHarness:
 
             if not page_succeeded or parsed_page is None:
                 run_status = (
-                    SearchRunStatus.PARTIAL
-                    if successful_pages > 0
-                    else SearchRunStatus.UNREACHABLE
+                    SearchRunStatus.PARTIAL if successful_pages > 0 else SearchRunStatus.UNREACHABLE
                 )
                 break
             if purpose is SearchPurpose.API_CAPABILITY_SMOKE:
@@ -2061,7 +2085,14 @@ class ResultBlindSearchHarness:
                 break
             if parsed_page.requires_frozen_year_split:
                 run_status = SearchRunStatus.PARTIAL
-                completion_reason = "dblp-frozen-year-split-not-executable"
+                if (
+                    self.pagination_erratum is not None
+                    and self.pagination_erratum.dblp_cap_policy
+                    == "retain-partial-and-stop-no-documented-year-filter"
+                ):
+                    completion_reason = "dblp-cap-retained-partial-stop"
+                else:
+                    completion_reason = "dblp-frozen-year-split-not-executable"
                 break
             if parsed_page.exhausted:
                 run_status = SearchRunStatus.COMPLETE
@@ -2192,9 +2223,7 @@ def audit_protocol_adapter_compatibility(
                 "Start cursor pagination with * and follow meta.next_cursor for "
                 "deep paging until the service returns no continuation cursor."
             ),
-            documentation_url=(
-                "https://developers.openalex.org/guides/page-through-results"
-            ),
+            documentation_url=("https://developers.openalex.org/guides/page-through-results"),
             formal_search_allowed=True,
             required_action="Retain every raw JSON page before bibliographic parsing.",
         ),
@@ -2303,9 +2332,7 @@ def build_capability_probe_specs(
 class PaperDedupCluster(KernelContract):
     """Exact bibliographic identity cluster, not a benchmark family decision."""
 
-    schema_version: Literal["benchmark-paper-dedup-cluster-v1"] = (
-        "benchmark-paper-dedup-cluster-v1"
-    )
+    schema_version: Literal["benchmark-paper-dedup-cluster-v1"] = "benchmark-paper-dedup-cluster-v1"
     paper_id: StableId
     primary_identity_key: str = Field(min_length=1, max_length=2_048)
     identity_keys: list[str]
@@ -2354,9 +2381,7 @@ class PaperDedupCluster(KernelContract):
             "paper_id": f"paper-{_sha256_text(primary_identity)[:24]}",
             "identity_keys": sorted(set(values["identity_keys"])),
             "record_hashes": sorted(set(values["record_hashes"])),
-            "source_ids": sorted(
-                set(values["source_ids"]), key=lambda item: item.value
-            ),
+            "source_ids": sorted(set(values["source_ids"]), key=lambda item: item.value),
             "titles": sorted(set(values["titles"])),
             "publication_years": sorted(set(values["publication_years"])),
             "conflict_fields": sorted(set(values["conflict_fields"])),
@@ -2369,9 +2394,7 @@ class PaperDedupCluster(KernelContract):
 
 
 class PaperDeduplicationResult(KernelContract):
-    schema_version: Literal["benchmark-paper-dedup-result-v1"] = (
-        "benchmark-paper-dedup-result-v1"
-    )
+    schema_version: Literal["benchmark-paper-dedup-result-v1"] = "benchmark-paper-dedup-result-v1"
     input_record_hashes: list[Sha256]
     clusters: list[PaperDedupCluster]
     input_record_count: int = Field(ge=0)
@@ -2402,9 +2425,7 @@ class PaperDeduplicationResult(KernelContract):
         if self.unique_paper_count != len(self.clusters):
             raise ValueError("unique-paper count mismatch")
         clustered = sorted(
-            record_hash
-            for cluster in self.clusters
-            for record_hash in cluster.record_hashes
+            record_hash for cluster in self.clusters for record_hash in cluster.record_hashes
         )
         if clustered != self.input_record_hashes:
             raise ValueError("every bibliographic record must enter exactly one cluster")
@@ -2482,11 +2503,7 @@ def deduplicate_bibliographic_records(
         )
         titles = sorted({member.title for member in members})
         years = sorted(
-            {
-                member.publication_year
-                for member in members
-                if member.publication_year is not None
-            }
+            {member.publication_year for member in members if member.publication_year is not None}
         )
         conflict_fields: list[str] = []
         if len({member.normalized_title for member in members}) > 1:
@@ -2536,9 +2553,7 @@ class KnownItemMatch(KernelContract):
 
 
 class KnownItemRecallReport(KernelContract):
-    schema_version: Literal["benchmark-known-item-recall-v1"] = (
-        "benchmark-known-item-recall-v1"
-    )
+    schema_version: Literal["benchmark-known-item-recall-v1"] = "benchmark-known-item-recall-v1"
     protocol_hash: Sha256
     matches: list[KnownItemMatch]
     known_item_count: int = Field(ge=1)
@@ -2586,9 +2601,7 @@ def _locator_tokens(value: str) -> set[str]:
     tokens = {lowered}
     if arxiv_id := normalize_arxiv_id(lowered):
         tokens.add(f"arxiv:{arxiv_id}")
-    if (
-        lowered.startswith("doi:") or "doi.org/" in lowered
-    ) and (doi := normalize_doi(lowered)):
+    if (lowered.startswith("doi:") or "doi.org/" in lowered) and (doi := normalize_doi(lowered)):
         tokens.add(f"doi:{doi}")
     return tokens
 
@@ -2612,16 +2625,11 @@ def evaluate_known_item_recall(
         bases: set[Literal["stable-locator", "exact-normalized-title"]] = set()
         for cluster in deduplication.clusters:
             cluster_records = [records_by_hash[item] for item in cluster.record_hashes]
-            title_match = any(
-                item.normalized_title == sentinel_title for item in cluster_records
-            )
+            title_match = any(item.normalized_title == sentinel_title for item in cluster_records)
             locator_match = any(
                 bool(
                     sentinel_locators
-                    & (
-                        _locator_tokens(item.stable_locator)
-                        | set(item.identity_keys())
-                    )
+                    & (_locator_tokens(item.stable_locator) | set(item.identity_keys()))
                 )
                 for item in cluster_records
             )
@@ -2706,9 +2714,7 @@ class FamilyLineageObservation(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "observation_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"observation_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"observation_hash"}))
 
     def cluster_keys(self) -> list[str]:
         return sorted(
@@ -2771,9 +2777,7 @@ class FamilyRevisionCluster(KernelContract):
             if item.role is FamilyRevisionRole.PRIMARY_CROSS_SECTIONAL
         ]
         pilots = [
-            item
-            for item in self.assignments
-            if item.role is FamilyRevisionRole.PROTOCOL_PILOT
+            item for item in self.assignments if item.role is FamilyRevisionRole.PROTOCOL_PILOT
         ]
         if self.protocol_development_pilot:
             if len(pilots) != len(self.assignments) or self.selected_primary_release_id is not None:
@@ -2783,9 +2787,7 @@ class FamilyRevisionCluster(KernelContract):
                 raise ValueError("non-pilot family needs exactly one latest primary revision")
             if self.selected_primary_release_id != primary[0].release_id:
                 raise ValueError("selected primary release does not match assignment")
-        expected_eligible = (
-            not self.protocol_development_pilot and self.all_members_human_validated
-        )
+        expected_eligible = not self.protocol_development_pilot and self.all_members_human_validated
         if self.primary_cohort_eligible != expected_eligible:
             raise ValueError("family eligibility must remain human-validation gated")
         if self.cluster_hash != self.calculated_hash():
@@ -2842,15 +2844,11 @@ class FamilyRevisionDeduplicationResult(KernelContract):
         if self.independent_family_count != len(self.clusters):
             raise ValueError("independent family count mismatch")
         assigned = sorted(
-            item.observation_hash
-            for cluster in self.clusters
-            for item in cluster.assignments
+            item.observation_hash for cluster in self.clusters for item in cluster.assignments
         )
         if assigned != self.observation_hashes:
             raise ValueError("every lineage observation must be clustered once")
-        expected_primary = sum(
-            not item.protocol_development_pilot for item in self.clusters
-        )
+        expected_primary = sum(not item.protocol_development_pilot for item in self.clusters)
         expected_validated = sum(item.primary_cohort_eligible for item in self.clusters)
         if self.primary_non_pilot_family_count != expected_primary:
             raise ValueError("primary non-pilot family count mismatch")
@@ -2888,9 +2886,7 @@ def deduplicate_family_revisions(
         raise ValueError("duplicate lineage observations are forbidden")
     pilot_ids = {item.release_id for item in protocol.pilot_boundaries}
     for item in values:
-        known_pilot = (
-            item.release_id in pilot_ids or item.benchmark_family_id in pilot_ids
-        )
+        known_pilot = item.release_id in pilot_ids or item.benchmark_family_id in pilot_ids
         if known_pilot != item.protocol_development_pilot:
             raise ValueError("Task 263.6.6 pilot boundary mismatch")
     parent = list(range(len(values)))
@@ -2955,19 +2951,10 @@ def deduplicate_family_revisions(
                 )
             )
         family_ids = sorted(
-            {
-                item.benchmark_family_id
-                for item in members
-            }
-            | {
-                related
-                for item in members
-                for related in item.related_family_ids
-            }
+            {item.benchmark_family_id for item in members}
+            | {related for item in members for related in item.related_family_ids}
         )
-        lineage_keys = sorted(
-            {key for item in members for key in item.lineage_keys}
-        )
+        lineage_keys = sorted({key for item in members for key in item.lineage_keys})
         cluster_seed = "|".join([*family_ids, *lineage_keys])
         all_validated = all(item.independently_human_validated for item in members)
         clusters.append(
@@ -2994,9 +2981,7 @@ def deduplicate_family_revisions(
         primary_non_pilot_family_count=sum(
             not item.protocol_development_pilot for item in clusters
         ),
-        human_validated_primary_family_count=sum(
-            item.primary_cohort_eligible for item in clusters
-        ),
+        human_validated_primary_family_count=sum(item.primary_cohort_eligible for item in clusters),
     )
 
 
@@ -3328,18 +3313,14 @@ class BenchmarkValidityHarnessProjection(KernelContract):
             "formal_census_authorized": False,
             "protocol_erratum_required": True,
             **values,
-            "adapter_hashes": dict(
-                sorted(adapter_hashes.items(), key=lambda item: item[0].value)
-            ),
+            "adapter_hashes": dict(sorted(adapter_hashes.items(), key=lambda item: item[0].value)),
             **{field: sorted(values[field]) for field in list_fields},
         }
         _walk_forbidden(payload)
         return cls.model_validate(_addressed_payload(payload, "projection_sha256"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"projection_sha256"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"projection_sha256"}))
 
     def runner_projection(self) -> dict[str, Any]:
         return self.model_dump(mode="json", exclude={"projection_sha256"})
@@ -3374,9 +3355,7 @@ class HarnessReplayObservation(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "observation_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"observation_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"observation_hash"}))
 
 
 class HarnessReplayCertificate(KernelContract):
@@ -3409,9 +3388,7 @@ class HarnessReplayCertificate(KernelContract):
     def _validate_certificate(self) -> HarnessReplayCertificate:
         if any(item.projection_sha256 != self.projection_sha256 for item in self.observations):
             raise ValueError("Harness replay projections differ")
-        environment_hashes = {
-            item.runtime.environment_hash for item in self.observations
-        }
+        environment_hashes = {item.runtime.environment_hash for item in self.observations}
         if len(environment_hashes) != 2:
             raise ValueError("Harness replay needs distinct interpreter installations")
         output_hashes = {item.output_contract_sha256 for item in self.observations}
@@ -3434,9 +3411,7 @@ class HarnessReplayCertificate(KernelContract):
         return cls.model_validate(_addressed_payload(payload, "certificate_hash"))
 
     def calculated_hash(self) -> str:
-        return canonical_sha256(
-            self.model_dump(mode="json", exclude={"certificate_hash"})
-        )
+        return canonical_sha256(self.model_dump(mode="json", exclude={"certificate_hash"}))
 
 
 def build_harness_replay_payload(
@@ -3587,7 +3562,9 @@ class BenchmarkValidityHarnessReport(KernelContract):
             raise ValueError("Harness report needs four capability specs")
         if {item.source_id for item in self.capability_runs} != set(SearchSourceId):
             raise ValueError("Harness report needs four capability runs")
-        if any(item.purpose is not SearchPurpose.API_CAPABILITY_SMOKE for item in self.capability_runs):
+        if any(
+            item.purpose is not SearchPurpose.API_CAPABILITY_SMOKE for item in self.capability_runs
+        ):
             raise ValueError("formal searches cannot enter the Task 263.6.7.2 report")
         if any(item.status is not SearchRunStatus.CAPABILITY_ONLY for item in self.capability_runs):
             raise ValueError("all four API capability probes must validate")
@@ -3638,9 +3615,7 @@ def build_harness_projection(
     if any(item.purpose is SearchPurpose.FORMAL_CENSUS for item in capability_runs):
         raise ValueError("Task 263.6.7.2 projection cannot contain formal searches")
     blockers = sorted(
-        item.finding_id
-        for item in compatibility_findings
-        if not item.formal_search_allowed
+        item.finding_id for item in compatibility_findings if not item.formal_search_allowed
     )
     return BenchmarkValidityHarnessProjection.create(
         protocol_hash=protocol.protocol_hash,
@@ -3735,10 +3710,7 @@ HARNESS_CONTRACT_MODELS: tuple[type[BaseModel], ...] = (
 
 
 def benchmark_validity_harness_json_schemas() -> dict[str, dict[str, Any]]:
-    return {
-        model.__name__: model.model_json_schema()
-        for model in HARNESS_CONTRACT_MODELS
-    }
+    return {model.__name__: model.model_json_schema() for model in HARNESS_CONTRACT_MODELS}
 
 
 def render_benchmark_validity_harness_markdown(
@@ -3960,15 +3932,10 @@ def execute_benchmark_validity_capability_harness(
     protocol.verify_integrity()
     if protocol.protocol_hash != FROZEN_BENCHMARK_VALIDITY_PROTOCOL_HASH:
         raise BenchmarkValidityHarnessIntegrityError("unexpected protocol hash")
-    if (
-        _file_sha256(protocol_source_path)
-        != FROZEN_BENCHMARK_VALIDITY_PROTOCOL_SOURCE_SHA256
-    ):
+    if _file_sha256(protocol_source_path) != FROZEN_BENCHMARK_VALIDITY_PROTOCOL_SOURCE_SHA256:
         raise BenchmarkValidityHarnessIntegrityError("protocol source changed after freeze")
     if output_dir.exists() and any(output_dir.iterdir()):
-        raise FileExistsError(
-            f"capability output must be a new empty directory: {output_dir}"
-        )
+        raise FileExistsError(f"capability output must be a new empty directory: {output_dir}")
     journal = AppendOnlyPrismaJournal(
         output_dir,
         protocol_hash=protocol.protocol_hash,
@@ -4087,6 +4054,7 @@ __all__ = [
     "KnownItemMatch",
     "KnownItemRecallReport",
     "PageAttemptStatus",
+    "PaginationErratumAuthorization",
     "PaperDedupCluster",
     "PaperDeduplicationResult",
     "ParsedSearchPage",

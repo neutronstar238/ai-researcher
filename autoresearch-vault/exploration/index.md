@@ -8,6 +8,7 @@
 
 ## benchmark validity
 
+- [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[replacement-objective-data-tournament-2026|AI Scientist benchmark admission audit and publishable research-path refactor]]
@@ -50,6 +51,7 @@
 
 ## harness engineering
 
+- [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]
@@ -63,6 +65,7 @@
 
 ## open science
 
+- [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
 - [[graph-harness-loop-open-science-2026|AutoResearch vNext Graph, Harness, Loop, and Open Science refactor research]]

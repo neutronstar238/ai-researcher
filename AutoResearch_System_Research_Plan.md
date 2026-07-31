@@ -1645,9 +1645,10 @@ benchmark outcome 和 candidate-model call 仍为 `0/0/false/false`。
 本任务同时捕获一个不能静默修补的 protocol drift：冻结协议把 Crossref 终止条件写成
 `next-cursor until empty`，而当前官方规则说明最后一页仍返回 cursor，应以 `items < rows` 判断耗尽；
 首个 live capability probe 还证明 cursor paging 必须显式从 `cursor=*` 开始。DBLP 的 1,000-hit 条件
-虽然已冻结“按年份切分”，但四条 exact year-qualified query 尚未绑定。因此 Task `263.6.7.1` 保持不可变，
-正式 28-query census 继续停止；下一任务 `263.6.7.2.1` 只允许在首条正式记录提取前冻结 additive
-pagination erratum，不得借机修改构念、日期、单位、codebook、endpoint 或 stop rule。
+虽然已冻结“按年份切分”，但当时没有 exact executable binding；后续官方 syntax 核验又确认不存在可
+依赖的 year-field filter。因此 Task `263.6.7.1` 保持不可变，正式 28-query census 当时继续停止；
+Task `263.6.7.2.1` 只允许在首条正式记录提取前冻结 additive pagination erratum，不得借机修改构念、
+日期、单位、codebook、endpoint 或 stop rule。
 
 正式 capability package 位于
 `runs/manual-live/task263672-benchmark-validity-harness-v2/`：report
@@ -1661,3 +1662,52 @@ pagination erratum，不得借机修改构念、日期、单位、codebook、end
 两位真实独立 reviewer 与一位不同 adjudicator 执行 census/coding；只有 recall、non-pilot family
 数量、agreement、coverage 和完整性全部过门，才做冻结的描述性综合。任何失败都进入开放资源或诊断负
 终点，不回流到检索式或样本选择。
+
+### 27.7 Task 263.6.7.2.1 预提取 API 分页勘误冻结
+
+Task `263.6.7.2.1` 已在首条正式 query、正式 bibliographic extraction 和 benchmark outcome access
+之前完成。它没有重写 Task `263.6.7.1`，而是把原 protocol、Task `263.6.7.2` 的 parent commit、
+Harness source、report、projection 与 manifest 作为不可变父证据，另行冻结一份 additive deviation
+ledger。这样 API 漂移被当作可审计的 protocol event，而不是实现细节或结果出现后的方便修补。
+
+四源规则现在是：
+
+- **arXiv**：原 offset/`totalResults` 规则不变，不借用其他来源文档证明；
+- **OpenAlex**：从 `cursor=*` 开始，严格跟随 `meta.next_cursor`；只有 `next_cursor=null` 且结果页为空
+  才判定耗尽，非空页却没有 continuation 时保留为 partial；
+- **Crossref**：从 `cursor=*` 开始，full page 必须提供 `message.next-cursor`，`items < rows` 才终止。
+  这解决了“最后一页仍返回 cursor”与原 empty-cursor 终止之间的不一致；
+- **DBLP**：继续使用已冻结的 exact `q`、`f=0`、`h=1000`、`c=0`，随后按返回 metadata year
+  过滤。官方 API 只记录 1,000-hit 上限与 `f/h` 参数，官方 query syntax 没有可核验的 year-field
+  filter；因此 `@total >= 1000` 时保存 capped response、标记 partial 并停止，禁止发明 `year:` 查询或
+  改写关键词来制造“完整”检索。
+
+这项修正比原先计划的“精确年份拆分”更保守，也更科学：一个没有官方语义保证的字段拆分不能证明
+分区完备性，反而可能在标题或 venue 中匹配年份并产生不可见漏检。勘误只修复 retrieval instrument，
+没有改构念、日期窗、endpoint、研究单位、42 字段 codebook、primary endpoint、sensitivity 或 stop
+rules。
+
+真实 freeze 只访问四个官方文档页面，没有访问文献结果。所有页面保存 raw bytes、retrieval time、
+final-URL hash、body hash、marker verification 与内容寻址路径；独立 frozen runner 拒绝 benchmark
+outcome、model output、screening decision 和 Admission Card，并在两套 clean interpreter 中得到完全
+相同的零结果投影。正式包位于：
+
+`runs/manual-live/task2636721-pagination-erratum-v2/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `3fefa90f73c5e6990f1817c0a06f33707b8a5e553f344a321cab18451f50310b` |
+| Erratum | `f0ffc351a43eb8ac0176cca787ad53f9af4e343cc2554aca068a20215f81d571` |
+| Result-free projection | `b36624099cdda8030548068290596c41411b8e4bbc15611e3db519b2add79e7c` |
+| Replay certificate | `f2e83a372927b8dbebec5c48974c7b6a46d997205d8a67eaf2fe9de2c97d98c8` |
+| Frozen runner | `c0b2ee4d56286d807fd2f7a4c18d0174127fdf4dd7a70594e6a28b8a110b1b58` |
+| Erratum source | `1d3e3e364a6f3a247d8e5000f78ccc9b55f6bdcd03a096f58f2ac2321c5155d4` |
+| Integrated Harness source | `f22c9bbc2a528d2ae9ab58a96ca4ddcdb4cc26fb0158deba458251d4e22fe227` |
+| Manifest | `a62d742e9466369eb5e573871b413e6c71a9aee3fff1a1e44d178593facc3ffd` |
+
+formal search、record extraction、screening、Admission Card、outcome 和 model-call counts 仍为 0；
+真实 reviewer identity、publication claim、public release 与 submission 仍为 false。API 语义 blocker
+已经关闭，但这并不等于“可发表”：Task `263.6.7.3` 仍需项目负责人安排两位真实独立 reviewer 与一位
+不同 adjudicator，再执行完整 28-query census、citation chaining、known-item recall、双人锁码、
+agreement/coverage gate 与冻结描述性综合。若 DBLP 任一正式 query 触发 cap，或任一人类/recall/sample/
+coverage 门失败，终点必须是 registered partial/diagnostic negative，不能靠 Loop 重写检索式。

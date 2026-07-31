@@ -47,15 +47,19 @@ Formal package:
 
 ## Remaining gates
 
-Task `263.6.7.2.1` must freeze a pre-extraction additive erratum for Crossref
-short-page termination and exact DBLP year-split bindings. Task `263.6.7.3`
-then still needs two real independent reviewers and one distinct adjudicator.
-Until both gates pass, formal search, coding, field-wide claims, public release,
-and submission remain blocked.
+Task `263.6.7.2.1` has now frozen a pre-extraction additive erratum for
+Crossref short-page termination and the documented DBLP behavior: exact frozen
+query, metadata-year post-filter, and retained-partial stop at the 1,000-hit
+cap because the official syntax has no year-field filter. Task `263.6.7.3`
+still needs two real independent reviewers and one distinct adjudicator. Until
+that human gate passes, formal coding, field-wide claims, public release, and
+submission remain blocked.
 
 ## Related
 
 - [[../../../exploration/benchmark-validity-result-blind-harness-2026]]
+- [[../../../exploration/benchmark-validity-pagination-erratum-2026]]
 - [[../../../exploration/benchmark-validity-systematic-mapping-protocol-2026]]
+- [[task-263-6-7-2-1-pagination-erratum]]
 - [[task-263-6-7-1-benchmark-validity-protocol-freeze]]
 - [[../index]]

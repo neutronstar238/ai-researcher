@@ -64,6 +64,47 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 19:00:25 +08:00 - Codex - Task 263.6.7.2.1 pre-extraction API-pagination erratum
+
+- Request: Continue the publication-grade AutoResearch recovery by repairing the protocol/API pagination mismatch before any formal benchmark-validity extraction, while preserving the frozen search bindings, preventing result access, and keeping the human-review gate closed.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_benchmark_validity_pagination_erratum_probe_v1.py`
+  - `src/autoresearch/research/benchmark_validity_pagination_erratum.py`
+  - `src/autoresearch/research/benchmark_validity_harness.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_benchmark_validity_pagination_erratum.py`
+  - `tests/smoke/test_benchmark_validity_pagination_erratum_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/benchmark-validity-pagination-erratum-2026.md`
+  - `autoresearch-vault/exploration/benchmark-validity-result-blind-harness-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-2-1-pagination-erratum.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-2-benchmark-validity-harness.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Added an immutable, additive pagination erratum bound to parent Harness commit `312ebe47117ffb0bd78bd17c5c96d71f3ea48127`, its source/report/projection/manifest hashes, the unchanged frozen protocol and findings, and raw content-addressed snapshots of four official documentation pages. It cannot authorize result-bearing fields, formal bibliography retrieval, extraction, Admission Cards, outcome access, or model calls.
+  - Corrected Crossref to initialize with `cursor=*`, retain returned cursors, and terminate a formal traversal only on a page shorter than the requested row count. Corrected OpenAlex to continue from `next_cursor` and treat exhaustion as both a null cursor and an empty result page; a nonempty page without a continuation remains partial rather than being silently declared complete.
+  - Preserved DBLP's exact frozen `q`/`f`/`h`/`c` request bindings. Because the official API caps a query at 1,000 hits and its documented query syntax exposes no year-field filter, the prospective rule now retains and labels the capped response as partial and stops; it does not invent an unsupported year-qualified query. arXiv remains unchanged and no longer carries an irrelevant Crossref documentation reference.
+  - Added strict schemas, deviation ledger, source amendments, parent-evidence attestation, deterministic projection/replay certificate, Markdown report, recursive manifest, tamper-blocking loader, and a dependency-free frozen runner. The final report additionally binds the integrated Harness source so the authorization path cannot drift independently from the erratum package.
+  - Materialized the successful result-blind live package at `runs/manual-live/task2636721-pagination-erratum-v2/`: report `3fefa90f73c5e6990f1817c0a06f33707b8a5e553f344a321cab18451f50310b`; erratum `f0ffc351a43eb8ac0176cca787ad53f9af4e343cc2554aca068a20215f81d571`; projection `b36624099cdda8030548068290596c41411b8e4bbc15611e3db519b2add79e7c`; replay certificate `f2e83a372927b8dbebec5c48974c7b6a46d997205d8a67eaf2fe9de2c97d98c8`; frozen runner `c0b2ee4d56286d807fd2f7a4c18d0174127fdf4dd7a70594e6a28b8a110b1b58`; erratum source `1d3e3e364a6f3a247d8e5000f78ccc9b55f6bdcd03a096f58f2ac2321c5155d4`; integrated Harness source `f22c9bbc2a528d2ae9ab58a96ca4ddcdb4cc26fb0158deba458251d4e22fe227`; manifest `a62d742e9466369eb5e573871b413e6c71a9aee3fff1a1e44d178593facc3ffd`. The package records zero formal searches, extraction decisions, cards, outcomes, and model calls.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_benchmark_validity_pagination_erratum.py -q --tb=short --no-cov`: 7 passed. Coverage includes documentation-marker fail-closed behavior, Crossref authorization and short-page exhaustion, OpenAlex null-plus-empty exhaustion, DBLP cap retention without an invented year query, recursive result-bearing rejection, two-interpreter replay parity, loader idempotence, and tamper rejection.
+  - `poetry run python -m pytest tests/unit/research/test_benchmark_validity_harness.py tests/unit/research/test_benchmark_validity_pagination_erratum.py tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py -q --tb=short --no-cov`: 24 passed.
+  - `$env:AUTORESEARCH_BENCHMARK_PAGINATION_ERRATUM_LIVE='1'; poetry run python -m pytest tests/smoke/test_benchmark_validity_pagination_erratum_live.py -q --tb=short --no-cov`: 1 passed in 6.08 seconds after retrieving and hashing only the four official documentation pages; no formal bibliography query or downstream result activity occurred. The loader-only idempotent rerun passed in 0.81 seconds.
+  - `poetry run python -m pytest -q`: 1,121 passed, 32 opt-in live tests skipped, 82-percent coverage, in 193.68 seconds. An initial `poetry run pytest -q` invocation failed during collection because the generated console entrypoint did not expose the repository root for the existing `tests.sprint_migration_support` import; the canonical module invocation passed and the environment-specific issue is resolved and recorded as `P-20260731-033`.
+  - `poetry run ruff check .`: all checks passed. `poetry run mypy src`: success across 176 source files. `poetry check`: passed with only the repository's existing Poetry metadata deprecation warnings. `git diff --check`: no whitespace errors; only existing CRLF-to-LF warnings on touched Vault indexes.
+- Problems:
+  - Resolved `P-20260731-032`: official pagination semantics are now prospectively frozen, parent-bound, result-blind, and replayed before extraction.
+  - Updated `P-20260731-031`: API semantics are no longer a blocker, but two independent human reviewers and one distinct human adjudicator are still unassigned, so Task 263.6.7.3 remains closed.
+  - Updated `P-20260731-030`: the system still lacks the completed formal census, human-coded benchmark-family map, recall/agreement/evidence-coverage estimates, and scientific campaign needed for a publishable claim.
+  - Added and resolved `P-20260731-033`: documented the direct Poetry pytest console-path collection failure and the passing canonical `python -m pytest` gate.
+- Follow-up:
+  - The project owner must assign two independent real human reviewers and one distinct real human adjudicator before Task 263.6.7.3 can begin. Until then, formal coding, benchmark-family claims, release decisions, and publication/submission claims remain blocked; the next safe work should target result-blind infrastructure or an unrelated pre-approved task.
+
 ### 2026-07-31 18:28:00 +08:00 - Codex - Task 263.6.7.2 result-blind benchmark-validity Harness
 
 - Request: Continue the publication-grade AutoResearch recovery; explain why real execution still cannot support a publishable conclusion; borrow the strongest ideas from current automated-science work; optimize the research path; and implement the next gated step without changing the frozen protocol, opening benchmark outcomes, or simulating independent human reviewers.

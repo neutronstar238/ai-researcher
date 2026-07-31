@@ -1967,9 +1967,56 @@ Task `263.6.7.1` protocol、query text、日期、研究单位、codebook、endp
 
 正式状态是 `ready-for-capability-only`，不是 `ready-for-formal-search`。Task `263.6.7.2.1` 必须先生成
 绑定原 protocol hash 的 additive erratum：Crossref 从 `cursor=*` 开始并按 short page 停止；DBLP
-必须绑定 exact year-qualified fallback query，并在达到 1,000 cap 时停止 partial。erratum 仍要求零
-formal query、零 extraction、零 outcome access、零 model call 和 two-interpreter exact replay。
+只有在官方语义支持时才能绑定 exact year-qualified fallback。后续一手文档核验没有发现 year-field
+filter，因此冻结为达到 1,000 cap 时保留 partial 并停止，详见 27.14。erratum 仍要求零 formal query、
+零 extraction、零 outcome access、零 model call 和 two-interpreter exact replay。
 
 erratum 通过后，Task `263.6.7.3` 仍受 `P-20260731-031` 的三位真实人类角色门约束。不得用两个 Agent
 run 冒充独立 reviewer，也不得在真实 screening/coding 之前宣称 known-item recall、纳入数量、agreement、
 coverage 或 benchmark-validity 结论。
+
+### 27.14 Task 263.6.7.2.1 分页勘误实施结果与人类执行门
+
+Task `263.6.7.2.1` 已完成以下实现：
+
+- `benchmark_validity_pagination_erratum.py`：父 Harness 证据 attestation、四个一手文档快照、四源
+  pagination amendment、两条 deviation-ledger entry、零结果 projection、双解释器 replay、JSON
+  Schema/Markdown/manifest、内容寻址 raw documentation 和递归 tamper-blocking loader；
+- `frozen_benchmark_validity_pagination_erratum_probe_v1.py`：仅用标准库，固定原 protocol 与 parent
+  Harness report，验证四源规则、两条 finding、零 formal/extraction/card/outcome/model activity 和所有
+  downstream permission 为 false；
+- Harness 接线：formal Crossref 在没有有效勘误时继续 fail closed；绑定勘误后按 short page 完成。
+  OpenAlex 只有 null cursor 加 empty results 才耗尽；DBLP 达到 1,000 cap 时只产生
+  `dblp-cap-retained-partial-stop`，不会构造未文档化的年份查询；
+- deterministic tests：文档 marker fail-closed、OpenAlex 终止、Crossref authorization/short page、
+  DBLP cap/no-year-query、result-bearing runner rejection、package replay/load/tamper；并回归原 Harness
+  八项测试；
+- opt-in live smoke：真实读取 Crossref、DBLP API 参数、DBLP query syntax 与 OpenAlex 四个官方页面，
+  保存 raw bytes，在两套真实 clean interpreter 中 exact replay；没有发出任何 formal bibliographic
+  request。
+
+正式 output：
+
+`runs/manual-live/task2636721-pagination-erratum-v2/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `3fefa90f73c5e6990f1817c0a06f33707b8a5e553f344a321cab18451f50310b` |
+| Erratum | `f0ffc351a43eb8ac0176cca787ad53f9af4e343cc2554aca068a20215f81d571` |
+| Projection | `b36624099cdda8030548068290596c41411b8e4bbc15611e3db519b2add79e7c` |
+| Replay certificate | `f2e83a372927b8dbebec5c48974c7b6a46d997205d8a67eaf2fe9de2c97d98c8` |
+| Runner | `c0b2ee4d56286d807fd2f7a4c18d0174127fdf4dd7a70594e6a28b8a110b1b58` |
+| Integrated Harness source | `f22c9bbc2a528d2ae9ab58a96ca4ddcdb4cc26fb0158deba458251d4e22fe227` |
+| Manifest | `a62d742e9466369eb5e573871b413e6c71a9aee3fff1a1e44d178593facc3ffd` |
+
+#### 下一执行门：263.6.7.3
+
+软件层面的 API blocker 已解除，但系统不得自行继续真实关键编码。项目负责人必须先提供两位真实、
+相互独立的 reviewer 和一位不同 adjudicator，并记录职责/独立性 attestation；随后才可执行冻结的
+28 条 query、citation chaining、16-item recall、paper/family/revision dedup、双人 100% screening 与
+critical-field coding、pre-adjudication agreement、coverage 和 descriptive/sensitivity analysis。
+
+执行必须遵守三个终止分支：Crossref/OpenAlex 缺失必要 continuation 状态时保留 partial；DBLP
+`@total >= 1000` 时保留 capped raw response 并立即进入 registered partial stop；真实人类角色、至少
+20 个 non-pilot family、recall `>=0.90`、agreement 或 evidence coverage 任一失败时只交付开放资源或
+诊断负研究对象。Task `263.7`、publication claim、公开发布和 external submission 仍未授权。

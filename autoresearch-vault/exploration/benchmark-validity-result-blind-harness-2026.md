@@ -67,19 +67,23 @@ the current parser behavior without pretending that it is already authorized
 for the frozen census.
 
 DBLP officially caps the publication search API at 1,000 hits. The protocol
-predeclares a 2023/2024/2025/2026 split if the cap is reached, but the exact
-year-qualified backend queries are not frozen:
+predeclares a 2023/2024/2025/2026 split if the cap is reached, but the official
+query-syntax page does not document a year-field filter. Inventing `year:`
+tokens therefore cannot support a complete-search claim:
 
 <https://dblp.org/faq/13501473.html>
+
+<https://dblp.org/faq/1474589.html>
 
 OpenAlex's current deep-paging guidance confirms an initial `cursor=*` followed
 by `meta.next_cursor`:
 
 <https://developers.openalex.org/guides/page-through-results>
 
-The correct response is an additive, pre-extraction erratum bound to the
+The correct response was an additive, pre-extraction erratum bound to the
 original protocol hash—not a silent code change and not a post-result protocol
-rewrite. This is tracked as Task `263.6.7.2.1` and `P-20260731-032`.
+rewrite. Task `263.6.7.2.1` now freezes Crossref short-page termination and a
+DBLP capped-response partial stop; `P-20260731-032` is resolved.
 
 ## 4. Harness architecture
 
@@ -117,13 +121,13 @@ solve retrieval completeness, sample adequacy, semantic/legal coding,
 inter-rater reliability, evidence coverage, or the preregistered descriptive
 analysis. A real paper-level claim still requires:
 
-1. the additive pagination erratum before the first formal extraction;
-2. execution of all frozen searches and citation chaining;
-3. formal known-item recall at least 0.90;
-4. at least 20 additional non-pilot benchmark families;
-5. two real independent reviewers plus a distinct adjudicator;
-6. agreement and evidence-coverage gates;
-7. exact frozen descriptive/sensitivity analysis and independent review.
+1. execution of all frozen searches and citation chaining under the bound
+   pagination erratum;
+2. formal known-item recall at least 0.90;
+3. at least 20 additional non-pilot benchmark families;
+4. two real independent reviewers plus a distinct adjudicator;
+5. agreement and evidence-coverage gates;
+6. exact frozen descriptive/sensitivity analysis and independent review.
 
 If those gates fail, the legitimate endpoint is an open search/card resource or
 a bounded diagnostic negative. More Agent loops cannot substitute for the
@@ -153,5 +157,6 @@ projection, replay, and Markdown artifact.
 ## Related
 
 - [[benchmark-validity-systematic-mapping-protocol-2026]]
+- [[benchmark-validity-pagination-erratum-2026]]
 - [[graph-harness-loop-open-science-2026]]
 - [[../projects/ai_researcher_system/progress/task-263-6-7-2-benchmark-validity-harness]]
