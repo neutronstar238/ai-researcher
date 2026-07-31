@@ -212,6 +212,15 @@ from .scientific_contract_recovery import (
     probe_domain_baselines,
 )
 from .selection import TopicSelectionEngine, competition_topic_candidates
+from .sentinel_identifiability import (
+    SentinelIdentifiabilityErratum,
+    SentinelIdentifiabilityError,
+    SentinelIdentifiabilityProbe,
+    freeze_sentinel_identifiability_erratum,
+    load_corrected_sentinel_fixtures,
+    load_sentinel_identifiability_erratum,
+    probe_sentinel_identifiability,
+)
 from .service import ResearchCycleService, load_capability_grant
 
 __all__ = [
@@ -355,6 +364,9 @@ __all__ = [
     "ScientificPredictRequest",
     "ScientificPredictResponse",
     "ScientificSentinelFixture",
+    "SentinelIdentifiabilityErratum",
+    "SentinelIdentifiabilityError",
+    "SentinelIdentifiabilityProbe",
     "TopicCandidate",
     "TopicFeasibility",
     "TopicMode",
@@ -372,6 +384,7 @@ __all__ = [
     "execute_mdbench_matrix",
     "freeze_autonomous_mdbench_research_plan",
     "freeze_scientific_contract_recovery_plan",
+    "freeze_sentinel_identifiability_erratum",
     "hypothesis_from_topic",
     "load_capability_grant",
     "load_cycle_manifest",
@@ -383,6 +396,8 @@ __all__ = [
     "load_autonomous_development_search_package",
     "load_public_autonomous_recovery_plan",
     "load_scientific_contract_recovery_plan",
+    "load_corrected_sentinel_fixtures",
+    "load_sentinel_identifiability_erratum",
     "load_development_cell_result",
     "prepare_mdbench_official_data",
     "preregister_mdbench_gate_a",
@@ -390,6 +405,7 @@ __all__ = [
     "probe_mdbench_container",
     "probe_autonomous_development_environment",
     "probe_domain_baselines",
+    "probe_sentinel_identifiability",
     "run_mdbench_attempt_container",
     "run_mdbench_official_preflight",
     "score_equation_structure",

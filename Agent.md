@@ -64,6 +64,53 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-01 07:29:05 +08:00 - Codex - Task 266.1.1 sentinel-identifiability erratum
+
+- Request: Continue the real competition-grade autonomous-research recovery after Task `266.1`; implement the scientific-contract Harness without manufacturing publishability, while preserving system-originated research and the sealed confirmation boundary. During the required pre-implementation audit, correct any experimental-design defect before it can bias candidate evaluation.
+- Files changed:
+  - `deploy/experiments/mdbench/sentinel_identifiability_probe.py`
+  - `src/autoresearch/competition/sentinel_identifiability.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_scientific_contract_recovery.py`
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/smoke/test_sentinel_identifiability_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-266-1-1-sentinel-identifiability-erratum.md`
+  - `runs/manual-live/task26611-sentinel-identifiability-erratum-v1/` (generated formal erratum package; ignored by repository policy)
+- Summary:
+  - Stopped Task `266.2` implementation before candidate generation after a candidate-neutral design audit showed that the frozen 2D sentinel could not identify its named diffusion term. The original stimulus used only `(kx,ky)=(1,1),(2,2)`, so `u_xx=u_yy` on every training row while the frozen equation named only `u_yy`. An honest candidate choosing either term or splitting the coefficient would receive the same prediction loss but a different term-support verdict.
+  - Implemented a Python 3.9-compatible offline NumPy audit in the exact pinned image. For every target it builds an intercept/state/first-/second-spatial-derivative universe and records matrix rank, expected-support coefficient replay, reconstruction NMSE, condition number, null-space participation of each active term, and the best target reconstruction when each active term is removed. No official artifact is mounted; input arrives on stdin; network is disabled.
+  - The real audit reproduced exactly one original defect. `pde-advection-diffusion-2d` has maximum active-null component `0.7071067811865479` and leave-`u_yy`-out NMSE `6.961005703984873e-30`; the other five original fixtures pass. This proves non-identifiability rather than a tolerance or candidate-performance issue.
+  - Added an immutable-parent erratum overlay instead of mutating committed Task `266.1`. Only the 2D modal stimulus changes to independent `(kx,ky)=(1,1),(2,1),(1,2),(3,2)` modes. Speed/diffusivity, expected primary/alternate equations, axes, train/query times, tensor shapes, shuffle permutation, and every threshold remain unchanged. The other five fixture hashes remain byte-identical.
+  - The corrected 2D fixture has active-null component `0`, leave-active-out NMSE `0.045592207027804796`, and hash `ba4ff906a1e30c3942b6aed40f05e3786dd57a0b579cf0e868d264f8f9c4fc8a`; all six corrected fixtures pass. The overlay's strict loader recursively validates the immutable parent, fixture bytes/hashes, probe, exact file set, deterministic Markdown, and authorization boundary.
+  - Formal erratum/probe/corrected-registry/runner hashes are `4ce5c07ea5fc6af1269a77ae94c582e20891c57236c106ec0e09fee81b38fd07`, `77835000bd5df2f836cc739345f017b868cdce5bb333f9d54f424fcbfe9bc2a3`, `25085c7803aca04cd4b9ef3c4f317cd03539150d944ef84460744e4895353231`, and `c8d5fcc03cfc8011844983d6be2aed42cf4bdeef688dc6bf591bb47211ac3e2a`. The parent plan remains `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`.
+  - New official development results, candidates, model interactions, confirmation identity reads, and confirmation results remain `0/0/0/0/0`. This erratum only makes the synthetic gate identifiable; it does not establish candidate capability, effect, significance, or publication readiness. Only Task `266.2` remains authorized.
+- Verification:
+  - Formal CLI `poetry run airesearcher competition mdbench sentinel-identifiability-erratum --plan runs/manual-live/task2661-scientific-contract-recovery-plan-v1/scientific-contract-recovery-plan.json --output-dir runs/manual-live/task26611-sentinel-identifiability-erratum-v1 --image autoresearch-mdbench:task260`: exited zero, reproduced only the frozen 2D defect, passed all six corrected fixtures, emitted the exact hashes above, and retained zero result/model/confirmation counts.
+  - Direct real `probe_sentinel_identifiability(...)` in the pinned image returned the same probe hash and exact original/corrected null-space and leave-active-out metrics. The probe used Python 3.9.23, NumPy 1.26.4, no network, and zero official-artifact reads.
+  - Deterministic mocked/CLI/default-smoke suite `poetry run pytest tests/unit/competition/test_scientific_contract_recovery.py tests/unit/competition/test_competition_cli.py tests/smoke/test_sentinel_identifiability_live.py -q --no-cov`: 7 passed and 1 opt-in test skipped. Tests cover one-fixture-only correction, five immutable controls, parent/equation/threshold preservation, zero counts, idempotent no-probe replay, corrected-fixture loading, tamper rejection, and correction-failure denial.
+  - Relevant autonomy regression `poetry run pytest tests/unit/competition/test_scientific_contract_recovery.py tests/unit/competition/test_autonomous_recovery.py tests/unit/competition/test_competition_cli.py tests/smoke/test_scientific_contract_recovery_live.py tests/smoke/test_sentinel_identifiability_live.py -q --no-cov`: 26 passed and 2 opt-in tests skipped in 29.11 seconds.
+  - Real opt-in `$env:AUTORESEARCH_TASK26611_LIVE='1'; poetry run pytest tests/smoke/test_sentinel_identifiability_live.py -q --no-cov`: 1 passed in 3.24 seconds against the formal package.
+  - Full repository `poetry run python -m pytest -q`: 1,183 passed, 42 opt-in skips, 82-percent coverage, in 315.79 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 186 source files.
+  - `poetry run pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - Strict terminal replay replaced the Docker rank probe with a hard failure and made any sealed-confirmation identity read raise; it returned the identical erratum hash without invoking either path.
+  - Task dependency graph parsed as valid JSON with 202 waves, 318 unique task IDs, and ordered lineage `265.3 -> 266.1 -> 266.1.1 -> 266.2 -> 266.3 -> 265.4 -> 265.5`. `git diff --check` passed before this entry and is rerun before commit.
+- Problems:
+  - Added and resolved critical `P-20260801-047`: the frozen 2D `u_xx/u_yy` columns were exactly aliased, invalidating exact term-support evaluation; the immutable-parent overlay changes only the synthetic modes and proves all corrected supports identifiable.
+  - Updated critical `P-20260801-042`, high `P-20260801-046`, and the runtime/hash follow-up chain so Task `266.2` must consume and validate the identifiability overlay and may never fall back to the aliased parent fixture.
+- Follow-up:
+  - Resume Task `266.2` against both immutable hashes: Task `266.1` contract plan `764f851f...095a3` and Task `266.1.1` erratum `4ce5c07e...fd07`. Generate exact candidate source through the configured provider and allow only score-blind model repair on synthetic evidence.
+  - The generic Harness may transport arrays, validate/hash/cache artifacts, and independently evaluate equations; it must not inject a scientific method, library, term, or coefficient. Keep official development, confirmation, receipt, manuscript, release, and submission blocked until their later gates.
+
 ### 2026-08-01 07:07:54 +08:00 - Codex - Task 266.1 result-blind scientific-contract recovery plan
 
 - Request: Continue the formal competition work after the Task `265.3` autonomous negative; diagnose and repair the scientific path rather than turn a weak result into prose; keep AutoResearch responsible for later hypothesis/code/research generation; adopt the useful mechanism-evidence ideas from OPHIS and current automated-research literature; and first freeze a serious fit/freeze/predict protocol before implementation or any new official score.

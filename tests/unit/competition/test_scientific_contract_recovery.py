@@ -21,6 +21,15 @@ from autoresearch.competition.scientific_contract_recovery import (
     freeze_scientific_contract_recovery_plan,
     load_scientific_contract_recovery_plan,
 )
+from autoresearch.competition.sentinel_identifiability import (
+    FixtureIdentifiabilityAudit,
+    SentinelIdentifiabilityError,
+    SentinelIdentifiabilityProbe,
+    TargetIdentifiabilityAudit,
+    freeze_sentinel_identifiability_erratum,
+    load_corrected_sentinel_fixtures,
+    load_sentinel_identifiability_erratum,
+)
 
 
 def _negative_parent() -> SimpleNamespace:
@@ -129,6 +138,83 @@ def _freeze(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         baseline_probe=_baseline_probe,
         clock=lambda: datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc),
     )
+
+
+def _target_identifiability_audit(
+    target: str,
+    *,
+    passed: bool,
+) -> TargetIdentifiabilityAudit:
+    return TargetIdentifiabilityAudit(
+        target=target,
+        feature_labels=("1", "u0", "u0_x", "u0_xx", "u0_y", "u0_yy"),
+        feature_count=6,
+        nonzero_feature_count=6,
+        feature_matrix_rank=5 if not passed else 6,
+        expected_support=("u0_yy",),
+        expected_coefficients=(0.1,),
+        fitted_expected_support_coefficients=(0.1,),
+        expected_reconstruction_nmse=0.0,
+        maximum_expected_coefficient_relative_error=0.0,
+        maximum_active_null_component=0.0 if passed else 2**-0.5,
+        minimum_leave_active_out_nmse=0.1 if passed else 0.0,
+        expected_support_condition_number=1.0,
+        expected_support_identifiable=passed,
+        passed=passed,
+    )
+
+
+def _identifiability_probe(
+    original: tuple[ScientificSentinelFixture, ...]
+    | list[ScientificSentinelFixture],
+    corrected: tuple[ScientificSentinelFixture, ...]
+    | list[ScientificSentinelFixture],
+    image: str,
+) -> SentinelIdentifiabilityProbe:
+    original_audits = tuple(
+        FixtureIdentifiabilityAudit(
+            sentinel_id=fixture.sentinel_id,
+            fixture_hash=fixture.fixture_hash,
+            target_audits=tuple(
+                _target_identifiability_audit(
+                    equation.target,
+                    passed=fixture.sentinel_id != "pde-advection-diffusion-2d",
+                )
+                for equation in fixture.expected_equations
+            ),
+            passed=fixture.sentinel_id != "pde-advection-diffusion-2d",
+        )
+        for fixture in original
+    )
+    corrected_audits = tuple(
+        FixtureIdentifiabilityAudit(
+            sentinel_id=fixture.sentinel_id,
+            fixture_hash=fixture.fixture_hash,
+            target_audits=tuple(
+                _target_identifiability_audit(equation.target, passed=True)
+                for equation in fixture.expected_equations
+            ),
+            passed=True,
+        )
+        for fixture in corrected
+    )
+    payload: dict[str, object] = {
+        "schema_version": "sentinel-identifiability-probe-v1",
+        "image": image,
+        "image_id": f"sha256:{'6' * 64}",
+        "benchmark_revision": "f81813e760325589737fe3311ac8199ecc64188a",
+        "python_version": "3.9.23",
+        "dependencies": {"numpy": "1.26.4"},
+        "runner_sha256": "a" * 64,
+        "network_used": False,
+        "official_artifact_reads": 0,
+        "original_audits": [item.model_dump(mode="json") for item in original_audits],
+        "corrected_audits": [item.model_dump(mode="json") for item in corrected_audits],
+        "original_non_identifiable_ids": ["pde-advection-diffusion-2d"],
+        "corrected_all_identifiable": True,
+    }
+    payload["probe_hash"] = canonical_model_hash(payload)
+    return SentinelIdentifiabilityProbe.model_validate(payload)
 
 
 def test_freeze_scientific_contract_plan_is_result_blind_and_replayable(
@@ -311,4 +397,116 @@ def test_scientific_contract_plan_rejects_qualified_parent_and_source_marker(
             tmp_path / "missing-marker",
             source_fetcher=_missing_marker,
             baseline_probe=_baseline_probe,
+        )
+
+
+def test_sentinel_identifiability_erratum_changes_only_aliased_2d_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    plan = _freeze(monkeypatch, tmp_path)
+    erratum = freeze_sentinel_identifiability_erratum(
+        plan.output_path,
+        tmp_path / "erratum",
+        identifiability_probe=_identifiability_probe,
+        clock=lambda: datetime(2026, 8, 1, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert erratum.parent_plan_hash == plan.plan_hash
+    assert erratum.modified_sentinel_ids == ("pde-advection-diffusion-2d",)
+    assert sum(item.changed for item in erratum.corrected_sentinels) == 1
+    assert erratum.unchanged_fixture_count == 5
+    assert erratum.probe.original_non_identifiable_ids == (
+        "pde-advection-diffusion-2d",
+    )
+    assert erratum.probe.corrected_all_identifiable
+    assert erratum.new_official_development_result_count == 0
+    assert erratum.candidate_answer_count == 0
+    assert erratum.model_interaction_count == 0
+    assert erratum.confirmation_identity_read_count == 0
+    assert erratum.confirmation_result_count == 0
+    assert erratum.harness_implementation_authorized
+    assert not erratum.official_development_execution_authorized
+    assert not erratum.confirmation_authorized
+    assert not erratum.publication_ready
+
+    fixtures = load_corrected_sentinel_fixtures(erratum.output_path)
+    corrected_2d = next(
+        item for item in fixtures if item.sentinel_id == "pde-advection-diffusion-2d"
+    )
+    parent_2d_path = Path(plan.output_path).parent / next(
+        item.relative_path
+        for item in plan.sentinels
+        if item.sentinel_id == "pde-advection-diffusion-2d"
+    )
+    parent_2d = ScientificSentinelFixture.model_validate_json(
+        parent_2d_path.read_text(encoding="utf-8")
+    )
+    assert corrected_2d.fixture_hash != parent_2d.fixture_hash
+    assert corrected_2d.expected_equations == parent_2d.expected_equations
+    assert corrected_2d.alternative_expected_equations == (
+        parent_2d.alternative_expected_equations
+    )
+    assert corrected_2d.train_state.values != parent_2d.train_state.values
+    assert corrected_2d.train_derivative_shuffle_order == (
+        parent_2d.train_derivative_shuffle_order
+    )
+    assert load_sentinel_identifiability_erratum(erratum.output_path) == erratum
+
+    def _unexpected(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("terminal erratum replay invoked the rank probe")
+
+    assert (
+        freeze_sentinel_identifiability_erratum(
+            plan.output_path,
+            tmp_path / "erratum",
+            identifiability_probe=_unexpected,
+        )
+        == erratum
+    )
+
+
+def test_sentinel_identifiability_erratum_rejects_tamper_and_failed_correction(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    plan = _freeze(monkeypatch, tmp_path)
+    erratum = freeze_sentinel_identifiability_erratum(
+        plan.output_path,
+        tmp_path / "erratum",
+        identifiability_probe=_identifiability_probe,
+    )
+    changed = next(item for item in erratum.corrected_sentinels if item.changed)
+    changed_path = Path(erratum.output_path).parent / changed.relative_path
+    changed_path.write_text("{}", encoding="utf-8")
+    with pytest.raises(SentinelIdentifiabilityError, match="bytes changed"):
+        load_sentinel_identifiability_erratum(erratum.output_path)
+
+    def _failed_correction(
+        original: tuple[ScientificSentinelFixture, ...]
+        | list[ScientificSentinelFixture],
+        corrected: tuple[ScientificSentinelFixture, ...]
+        | list[ScientificSentinelFixture],
+        image: str,
+    ) -> SentinelIdentifiabilityProbe:
+        probe = _identifiability_probe(original, corrected, image)
+        payload = probe.model_dump(mode="json", exclude={"probe_hash"})
+        payload["corrected_audits"][3]["passed"] = False
+        payload["corrected_audits"][3]["target_audits"][0].update(
+            {
+                "maximum_active_null_component": 2**-0.5,
+                "minimum_leave_active_out_nmse": 0.0,
+                "expected_support_identifiable": False,
+                "passed": False,
+            }
+        )
+        payload["corrected_all_identifiable"] = False
+        payload["probe_hash"] = canonical_model_hash(payload)
+        return SentinelIdentifiabilityProbe.model_validate(payload)
+
+    with pytest.raises(SentinelIdentifiabilityError, match="remains non-identifiable"):
+        freeze_sentinel_identifiability_erratum(
+            plan.output_path,
+            tmp_path / "failed-erratum",
+            identifiability_probe=_failed_correction,
         )

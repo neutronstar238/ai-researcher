@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260801-047 - Frozen 2D sentinel could not identify u_xx from u_yy
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-01 07:15:00 +08:00
+- Source: Task `266.2` pre-implementation audit of the Task `266.1` analytic sentinel design.
+- Symptom: The original `pde-advection-diffusion-2d` training field used only modes `(kx,ky)=(1,1)` and `(2,2)`. Consequently `u_xx` and `u_yy` are exactly equal on every train row, while the frozen expected support names only `u_yy`.
+- Impact: Exact term-support and coefficient recovery were not identifiable. A scientifically equivalent implementation choosing `u_xx`, `u_yy`, or a coefficient split could be accepted or rejected arbitrarily, so Task `266.2` could not legitimately use the original fixture as a gate.
+- Evidence: The exact pinned-image audit produced active-null component `0.7071067811865479` and leave-`u_yy`-out target NMSE `6.961005703984873e-30` for the original fixture. The other five original fixtures passed. Formal erratum/probe hashes are `4ce5c07ea5fc6af1269a77ae94c582e20891c57236c106ec0e09fee81b38fd07` and `77835000bd5df2f836cc739345f017b868cdce5bb333f9d54f424fcbfe9bc2a3`.
+- Root cause: The two original spatial modes coupled x and y wave numbers, so the intended competing second-derivative columns never varied independently.
+- Workaround: None remains. The immutable Task `266.1` package is retained; Task `266.1.1` supplies an explicit overlay rather than rewriting it.
+- Next action: Task `266.2` must load and verify the Task `266.1.1` overlay before candidate generation and must never fall back to the aliased parent fixture.
+- Linked tasks: `266.1`, `266.1.1`, `266.2`.
+- Resolution: Changed only the 2D synthetic stimulus to independent modes `(1,1),(2,1),(1,2),(3,2)` while preserving equations, coefficients, axes, times, shapes, shuffle, and thresholds. Corrected active-null component is `0`; leave-active-out NMSE is `0.045592207027804796`. All six corrected fixtures pass, and the other five fixture hashes are byte-identical to Task `266.1`.
+- Verification: Formal CLI and opt-in live container smoke pass; corrected registry hash is `25085c7803aca04cd4b9ef3c4f317cd03539150d944ef84460744e4895353231`; no official result, candidate, model interaction, confirmation read, or authorization beyond Task `266.2` was created.
+
 ### P-20260801-046 - First normalized Task 266.1 schema omitted scaling and fit diagnostics
 
 - Status: Resolved
@@ -51,8 +67,8 @@ update a factual problem entry below.
 - Evidence: The superseded package is retained at `runs/manual-live/task2661-scientific-contract-recovery-plan-v1-superseded-missing-scaling-diagnostics/` with plan hash `14376da6c28559fc5ff80edbc54117713678d3442744eb577199ff91c4f2fb42`. The authoritative rebuilt package has plan hash `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3` and schema registry hash `ff23cdc7b1ab53362cb00c1258b538a42d52615fd5ab897cef4aece167d17903`.
 - Root cause: Contract implementation stopped at typed equation structure while the surrounding frozen protocol also required unit/scaling and fit-diagnostic evidence.
 - Workaround: None remains; the first package is explicitly non-authoritative and retained only as audit history.
-- Next action: Task `266.2` must populate per-field affine scaling, emit equations in `physical-unscaled-v1`, retain solver/sample/feature/selected-term/NMSE/time diagnostics, and let the Harness validate all fields before hashing.
-- Linked tasks: `266.1`, `266.2`.
+- Next action: Task `266.2` must consume the Task `266.1.1` identifiability overlay, populate per-field affine scaling, emit equations in `physical-unscaled-v1`, retain solver/sample/feature/selected-term/NMSE/time diagnostics, and let the Harness validate all fields before hashing.
+- Linked tasks: `266.1`, `266.1.1`, `266.2`.
 - Resolution: Added typed `EquationFieldScaling` and `EquationFitDiagnostics` contracts; frozen artifacts now require one ordered scaling record per field, physical-unit equations, finite positive scales, bounded diagnostics, and an exact diagnostic-to-equation selected-term count.
 - Verification: Focused schema tests reject free coefficients, artifact tamper, and selected-term diagnostic mismatch. The rebuilt nine-source/six-sentinel/two-baseline formal plan and exact offline container probe pass with zero new official or confirmation results.
 
@@ -68,7 +84,7 @@ update a factual problem entry below.
 - Root cause: Hash construction used untyped container JSON while persistence used `DomainBaselineProbeResult.model_dump(mode="json")`, so semantically absent optional fields changed canonical structure.
 - Workaround: None remains; the failed directory is retained as non-authoritative launch evidence.
 - Next action: In Task `266.2`, validate all runner and frozen-artifact payloads into their versioned typed schemas before canonical hashing or persistence.
-- Linked tasks: `266.1`, `266.2`.
+- Linked tasks: `266.1`, `266.1.1`, `266.2`.
 - Resolution: Every baseline result is now validated first, dumped in JSON mode, and only then included in the canonical probe hash.
 - Verification: Deterministic unit tests, the opt-in live source/container smoke, a direct real baseline-probe replay, and strict terminal plan reload all return the same normalized probe and plan hashes; terminal replay invokes no source or probe callback.
 
@@ -100,7 +116,7 @@ update a factual problem entry below.
 - Root cause: Scientific dependencies intentionally live in the pinned container rather than the core package; the historical image Python minor version cannot execute the current host runner self-test; and several new hashes were initially computed from raw nested Python payloads instead of JSON-mode typed model dumps.
 - Workaround: Reused the already pinned Task 260 image only after verifying its exact image ID, complete container runner hash, source commit, formal runner hash, and byte-identical Operon algorithm subset. Scientific NPZ execution remained inside that container.
 - Next action: Task `266.2` must implement against the now-frozen Python `3.9.23` scientific-runtime floor and keep typed JSON-mode hashing for nested models, datetimes, runner payloads, and learned artifacts.
-- Linked tasks: `265.3`, `266.1`, `266.2`.
+- Linked tasks: `265.3`, `266.1`, `266.1.1`, `266.2`.
 - Resolution: All identity, cell-spec, result, prospective-cycle, receipt, and package hashes now derive from typed `model_dump(mode="json")` drafts. The correct loaders/CLI/result fields were used, identity froze with zero prior numeric reads, the first cell and full formal search completed, and no unverified image was admitted.
 - Verification: Focused Ruff, Mypy, and `py_compile` passed; environment probing returned the exact expected hash; formal identity hash is `6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1`; strict terminal reload and the opt-in real smoke pass.
 
@@ -115,8 +131,8 @@ update a factual problem entry below.
 - Evidence: Formal package hash is `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`. Pilot/mechanism/full/baseline terminal counts are `72/24/252/84`; full finalists succeeded `252/252`, so the negative is not an execution artifact. Exact `branch-08` computes time finite differences inside an official query containing one time slice, which forces the ODE prediction toward zero; its equation strings contain unfitted `a_i/b_i`. Cycle-01's train-average `branch-09` improved a two-system matched endpoint but degraded to full-panel Operon-relative median `-4.452492306167319`.
 - Root cause: Task `265.2` capability probes measured shape, finite output, dimensions, dependencies, and execution, not recovery of a concrete law from train-only data. The stateless query API encouraged query-only differentiation and repeated fitting. A two-system mechanism endpoint allowed one ODE gain to mask negligible PDE change. Operon also failed 24 PDE cells, so it is not a sufficient strong baseline for every domain.
 - Workaround: The frozen qualification policy stopped automatically, issued no receipt, and preserved confirmation read/result counts at zero. All negative cells and model-authored interventions remain in the ledger.
-- Next action: Execute Task `266.2` against the frozen Task `266.1` plan: implement the train-only fit → concrete hash-frozen equation artifact → query prediction Harness; enforce known-law ODE/PDE recovery, train-shuffle/null and equation/prediction consistency sentinels, fit-once/query-many caching, and the domain-valid baseline boundary without reading a new official score. Task `266.3` may run only after those gates pass.
-- Linked tasks: `265.2`, `265.3`, `265.4`, `266.1`, `266.2`, `266.3`.
+- Next action: Execute Task `266.2` against the immutable Task `266.1` plan plus Task `266.1.1` identifiability overlay: implement the train-only fit → concrete hash-frozen equation artifact → query prediction Harness; enforce known-law ODE/PDE recovery, train-shuffle/null and equation/prediction consistency sentinels, fit-once/query-many caching, and the domain-valid baseline boundary without reading a new official score. Task `266.3` may run only after those gates pass.
+- Linked tasks: `265.2`, `265.3`, `265.4`, `266.1`, `266.1.1`, `266.2`, `266.3`.
 - Resolution: Partially resolved. Task `265.3` correctly detected and contained the failure; Task `266.1` has now frozen the replacement scientific contract, six analytic sentinels, and ODE/PDE baseline policy in a new result-blind lineage. The underlying candidate implementation remains unresolved until Task `266.2` passes the Harness and Task `266.3` produces a non-null development result.
 - Verification: Task `265.3` ended with `decision=autonomous_development_negative_stop`, `search_freeze_receipt=false`, and `publication_ready=false`. Task `266.1` plan hash is `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`; it records zero new official results/confirmation reads and authorizes only Harness implementation.
 
@@ -164,7 +180,7 @@ update a factual problem entry below.
 - Root cause: Earlier milestones optimized reliable execution and bounded demonstrations before enforcing a formal candidate-origin contract. Task `265` fixed that origin contract, but its first capability layer still validated callable tensor behavior rather than concrete train-derived equation recovery. Query-only finite differences collapsed to the zero null, a train-average intervention did not generalize, and the all-domain baseline policy lacked a PDE-capable strong comparator.
 - Workaround: Tasks `265.1`—`265.3` now prove that hypotheses, interventions, exact code, search, selection, and the negative conclusion can originate inside one audited system loop. The frozen gate issued no receipt, so the weak method cannot reach confirmation or a positive manuscript.
 - Next action: Execute Task `266.2` fit/freeze/predict Harness validation against the frozen Task `266.1` plan, then Task `266.3` bounded autonomous recovery. Task `265.4` remains physically unauthorized unless a new valid receipt exists. Do not claim significance or a positive autonomous paper before confirmation and same-ledger manuscript gates exist.
-- Linked tasks: `259.7.3.2`, `261.2`, `263.5`, `265.1`, `265.2`, `265.3`, `265.4`, `265.5`, `266.1`, `266.2`, `266.3`.
+- Linked tasks: `259.7.3.2`, `261.2`, `263.5`, `265.1`, `265.2`, `265.3`, `265.4`, `265.5`, `266.1`, `266.1.1`, `266.2`, `266.3`.
 - Resolution: The new-route origin defect is resolved: Task `265.3` contains model-authored interventions and a system-derived negative conclusion with zero post-start human scientific decisions. The old paper is not repaired retroactively, and the scientific/publication problem remains open because the selected method is zero-null-equivalent, no receipt/confirmation exists, and no system-generated manuscript exists.
 - Verification: Task `265.1` plan/confirmation hashes are `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda` and `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`; Task `265.2` v22 package hash is `096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`; Task `265.3` package hash is `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`, decision is `autonomous_development_negative_stop`, and result/confirmation/manuscript counts are `348/0/0`. Task `266.1` plan/probe hashes are `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3` and `d46f4fe9bc83e41a3c2baa3fd06fa58ef3428d744fad8292f3dc9f493c453553`, with zero new official or confirmation results.
 

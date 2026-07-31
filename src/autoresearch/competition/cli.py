@@ -59,6 +59,10 @@ from autoresearch.competition.scientific_contract_recovery import (
     ScientificContractRecoveryError,
     freeze_scientific_contract_recovery_plan,
 )
+from autoresearch.competition.sentinel_identifiability import (
+    SentinelIdentifiabilityError,
+    freeze_sentinel_identifiability_erratum,
+)
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
 
 competition_app = typer.Typer(
@@ -513,6 +517,57 @@ def competition_mdbench_scientific_contract_plan(
     typer.echo("[AUTHORIZED] next_task: 266.2_harness_implementation_only")
     typer.echo("[BLOCKED] official_development_execution: false")
     typer.echo("[BLOCKED] significance_claim: no_new_result")
+    typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("sentinel-identifiability-erratum")
+def competition_mdbench_sentinel_identifiability_erratum(
+    plan: Annotated[
+        Path,
+        typer.Option(
+            "--plan",
+            help="Hash-valid result-blind Task 266.1 scientific-contract plan.",
+        ),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Result-blind Task 266.1.1 erratum."),
+    ] = Path("runs/competition/mdbench-sentinel-identifiability-erratum"),
+    image: Annotated[
+        str,
+        typer.Option("--image", help="Pinned local scientific-runtime image."),
+    ] = "autoresearch-mdbench:task260",
+) -> None:
+    """Audit term identifiability and correct only the aliased 2D sentinel."""
+
+    try:
+        erratum = freeze_sentinel_identifiability_erratum(
+            plan,
+            output_dir,
+            image=image,
+        )
+    except (SentinelIdentifiabilityError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_sentinel_identifiability_erratum: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] sentinel_identifiability_erratum: {erratum.output_path}")
+    typer.echo(f"[OK] erratum_hash: {erratum.erratum_hash}")
+    typer.echo(f"[OK] parent_plan_hash: {erratum.parent_plan_hash}")
+    typer.echo(
+        "[OK] original_non_identifiable: "
+        f"{','.join(erratum.probe.original_non_identifiable_ids)}"
+    )
+    typer.echo(
+        "[OK] corrected_all_identifiable: "
+        f"{str(erratum.probe.corrected_all_identifiable).lower()}"
+    )
+    typer.echo("[OK] new_official_development_results: 0")
+    typer.echo("[OK] candidates_and_model_interactions: 0")
+    typer.echo("[OK] confirmation_reads: 0")
+    typer.echo("[AUTHORIZED] next_task: 266.2_harness_implementation_only")
+    typer.echo("[BLOCKED] official_development_execution: false")
     typer.echo("[BLOCKED] publication_ready: false")
 
 

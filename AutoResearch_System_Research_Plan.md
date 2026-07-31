@@ -2130,3 +2130,25 @@ receipt 要求 overall 至少 +5%、探索性下界大于零、ODE/PDE 两层方
 Task `266.1` 只授权 Task `266.2` 实现和验证 Harness，`official_development_execution_authorized=false`。下一步必须先让
 provider-neutral、模型源码原样的候选在六个 synthetic sentinels 上真实完成 fit→freeze→predict，并通过 leakage/null/shape/
 resource/tamper 门；在此之前仍没有可发表效果或可解封 confirmation 的证据。
+
+### 28.9 Task 266.1.1：先修正“不可辨识的考试题”，再测算法
+
+在实现 Harness 前，对六个 sentinel 做了候选无关的设计矩阵审计。审计 universe 只包含常数、各 field 状态以及每个空间轴的
+一阶/二阶导数；对每个 expected active term 同时检查设计矩阵 null space、删去该项后其余特征对真实导数的最优重构、expected
+support 上的系数重放和 condition number。这一步没有候选、模型调用、官方数据或 confirmation 输入。
+
+审计发现 Task `266.1` 的 2D advection-diffusion fixture 自身不适合验证 term recovery。它只有两个模式
+`(kx,ky)=(1,1),(2,2)`，所以在所有训练样本上 `u_xx=u_yy`；冻结真式要求 `u_t=-c u_x+D u_yy`，但把 `D` 放到
+`u_xx` 或任意分摊到两者都得到同样预测。真实 pinned-container SVD 给出 active-null component
+`0.7071067811865479`；删除 `u_yy` 后，其余特征仍以 NMSE `6.961005703984873e-30` 重构 target。这不是算法失败，
+而是实验刺激不能识别主张。
+
+Task `266.1.1` 因此建立不可变 parent overlay，不修改已提交的 Task `266.1` 包。它只把该 2D stimulus 改为四个独立 x/y
+wave-number modes `(1,1),(2,1),(1,2),(3,2)`；speed/diffusivity、解析 equation、x/y axes、train/query times、shape、
+shuffle permutation 和全部 gate thresholds 均原样保留。修改后 active-null component 为 `0`，leave-active-out NMSE 为
+`0.045592207027804796`；其余五个 fixture hash 完全不变，六个 corrected fixtures 全部通过 identifiability audit。
+
+正式 erratum hash 为 `4ce5c07ea5fc6af1269a77ae94c582e20891c57236c106ec0e09fee81b38fd07`，probe hash 为
+`77835000bd5df2f836cc739345f017b868cdce5bb333f9d54f424fcbfe9bc2a3`，corrected sentinel registry hash 为
+`25085c7803aca04cd4b9ef3c4f317cd03539150d944ef84460744e4895353231`。该修正只防止 Harness 错杀科学上等价的实现；
+它不是候选改善、不是官方结果、更不是显著性。Task `266.2` 必须消费这份 overlay，而不能悄悄读取或覆盖原 fixture。

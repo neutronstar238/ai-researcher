@@ -3663,6 +3663,11 @@ A task can be checked only when all applicable items are true:
     - Freeze a new bounded candidate/generation/mechanism-cycle budget, broader matched-cycle strata, exploration quota, failure-aware estimand, and receipt rule before Task `266.2` implementation. Do not read confirmation data, write a candidate answer into the orchestrator, or lower the original +5-percent/positive-lower-bound confirmation gate.
     - _Verify: hash-bound recovery plan, zero confirmation reads/results, source/license/baseline registry, fit/freeze/predict JSON schemas, deterministic sentinel fixtures, budget/power/estimand audit, Vault/Problem/Agent updates, and one focused commit._
     - _Outcome: completed as a result-blind scientific-contract freeze. Formal plan hash `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3` immutably binds the negative Task 265.3 package, 9 live primary implementation/license sources, 4 strict fit/artifact/predict schemas including physical-unit scaling and fit diagnostics, 6 analytic ODE/PDE sentinels, and a domain policy routing ODE to Operon and PDE to official MDBench PDE-FIND/PySINDy under the same 300-second/2-CPU/4096-MB cell cap. The exact pinned container probe passed Operon ODE NMSE `0.0005562015925350986`, PDE-FIND 2D NMSE `1.3980779783672217e-31`, and PDE-FIND 3D NMSE `2.034461901247889e-32`; probe hash is `d46f4fe9bc83e41a3c2baa3fd06fa58ef3428d744fad8292f3dc9f493c453553`. The frozen recovery search permits at most 380 candidate plus 84 baseline cells, requires every scientific-contract/domain/failure-aware gate, and preserves the original +5-percent and positive-lower-bound rules. Power audit explicitly limits the four-system PDE stratum to a directional qualification gate, not standalone significance. New official development results, candidate answers, model interactions, confirmation identity reads, and confirmation results remain `0/0/0/0/0`; only Task 266.2 Harness implementation is authorized._
+  - [x] 266.1.1 Freeze a result-blind sentinel-identifiability erratum
+    - Before candidate implementation, audit every expected equation support against a candidate-neutral state/first-/second-spatial-derivative feature universe. Bind the immutable Task `266.1` plan and retain any non-identifiable fixture as an explicit protocol defect rather than letting the Harness reward or punish arbitrary equivalent terms.
+    - Correct only a synthetic stimulus whose expected support is not identifiable. Preserve its coordinates, times, equations, thresholds, shuffle, field/domain identity, all other five fixtures, source/baseline/budget/estimand contracts, official panels, and confirmation commitment. Do not generate candidate code or observe an official development result.
+    - _Verify: exact offline rank/null-space/leave-active-out probe in the pinned image, original-defect reproduction, all-corrected-fixture identifiability, byte-identical unchanged fixtures, immutable-parent and zero-result replay, tamper tests, opt-in live container smoke, Vault/Problem/Agent updates, and one focused commit._
+    - _Outcome: completed as a result-blind immutable-parent erratum. The audit proved that the original 2D fixture's equal `(kx,ky)=(1,1),(2,2)` modes make `u_xx=u_yy`: active-null component `0.7071067811865479` and leave-`u_yy`-out NMSE `6.961005703984873e-30`. Only `pde-advection-diffusion-2d` was replaced with independent x/y wave-number modes; its expected equations, coefficients, axes, times, thresholds, shuffle, and query contract are unchanged, while active-null becomes `0` and leave-active-out NMSE becomes `0.045592207027804796`. All six corrected fixtures pass and the other five fixture hashes are byte-identical. Erratum/probe/corrected-registry hashes are `4ce5c07ea5fc6af1269a77ae94c582e20891c57236c106ec0e09fee81b38fd07`, `77835000bd5df2f836cc739345f017b868cdce5bb333f9d54f424fcbfe9bc2a3`, and `25085c7803aca04cd4b9ef3c4f317cd03539150d944ef84460744e4895353231`. Official results, candidates, model interactions, and confirmation reads remain zero; only Task 266.2 is authorized._
   - [ ] 266.2 Implement the scientific-contract Harness without official-score tuning
     - Implement provider-neutral exact-source generation and model-only score-blind repair against the frozen two-phase interface and synthetic sentinels. Generic code may transport arrays, cache a frozen fit artifact, validate schemas, and compare equation-derived predictions; it must not insert a scientific library, coefficient, term, or candidate method.
     - Fail closed on constant/zero-null equivalence, absent training dependence, free symbolic coefficients, equation/prediction disagreement, fit-after-query leakage, validation/test state reuse, train-shuffle non-degradation, resource overflow, or unsupported PDE shape.
@@ -4509,18 +4514,22 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 197,
-      "tasks": ["266.2"]
+      "tasks": ["266.1.1"]
     },
     {
       "id": 198,
-      "tasks": ["266.3"]
+      "tasks": ["266.2"]
     },
     {
       "id": 199,
-      "tasks": ["265.4"]
+      "tasks": ["266.3"]
     },
     {
       "id": 200,
+      "tasks": ["265.4"]
+    },
+    {
+      "id": 201,
       "tasks": ["265.5"]
     }
   ]

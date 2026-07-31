@@ -2322,13 +2322,21 @@ NMSE 分别为 `5.562015925350986e-4`、`1.3980779783672217e-31`、`2.0344619012
 `harness_implementation_authorized=true`，而 `official_development_execution_authorized=false`、
 `confirmation_authorized=false`、`publication_ready=false`。
 
-### 28.6 下一执行任务：Task 266.2 scientific-contract Harness
+### 28.6 已完成 Task 266.1.1：sentinel identifiability erratum
+
+实现前的 rank/null-space 审计发现原 2D fixture 使用等 x/y wave numbers，使 `u_xx` 与 `u_yy` 完全别名。原 active-null
+component 为 `0.7071067811865479`，leave-active-out NMSE 为 `6.961005703984873e-30`，因此 exact term-support gate
+不可合法执行。结果盲 erratum `4ce5c07ea5fc6af1269a77ae94c582e20891c57236c106ec0e09fee81b38fd07` 只替换该 fixture 的
+modal stimulus；修正后两项为 `0` 和 `0.045592207027804796`，六个 fixtures 全部可辨识、其余五个 byte-identical。
+该 overlay 保持 official/candidate/model/confirmation counts 全为零，并继续只授权 Task `266.2`。
+
+### 28.7 下一执行任务：Task 266.2 scientific-contract Harness
 
 Task `266.2` 只实现合成能力门，不运行任何新官方 development cell：
 
 1. 增加版本化两阶段 runner：模型原样源码接收 train-only fit request，返回 strict frozen artifact；query-only predict 只能读取该
    artifact 与单时间片 state/coordinates，通用层只做数组传输、hash/cache/schema 和解析方程复算；
-2. 在六个 frozen sentinels 上验证 concrete numeric equations、term/coefficient recovery、alternate-train artifact 变化、
+2. 加载 Task `266.1.1` 的六个 corrected frozen sentinels，先验证 overlay/parent/probe hashes，再验证 concrete numeric equations、term/coefficient recovery、alternate-train artifact 变化、
    train-shuffle degradation、zero/null improvement、equation/prediction consistency、1D/2D/3D/multi-field shape 与 fit-once/query-many；
 3. 对 free symbols、常量/零等价、absent training dependence、fit-after-query、target leakage、query state reuse、超时/内存/网络、
    unsupported shape 和 artifact tamper 全部 fail closed；
