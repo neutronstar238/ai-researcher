@@ -13,21 +13,28 @@ from pydantic import ValidationError
 from autoresearch.competition import (
     AutonomousBranchEngineError,
     AutonomousConfirmationPanel,
+    AutonomousDevelopmentEnvironment,
+    AutonomousDevelopmentError,
     AutonomousOriginPolicy,
     AutonomousRecoveryError,
+    DevelopmentCellInvocation,
+    DevelopmentCellOutcome,
     GateADecision,
     GateAPrimaryComparison,
     MDBenchArchiveManifest,
     MDBenchDatasetArtifact,
     MDBenchGateAReport,
     build_autonomous_branch_engine_package,
+    build_autonomous_development_search_package,
     freeze_autonomous_mdbench_research_plan,
     load_autonomous_branch_engine_package,
+    load_autonomous_development_search_package,
     load_autonomous_mdbench_research_plan,
     load_public_autonomous_recovery_plan,
     preregister_mdbench_gate_a,
     preregister_mdbench_gate_a_recovery,
 )
+from autoresearch.competition.autonomous_development import _runner_spec_payload
 from autoresearch.competition.autonomous_engine import (
     review_autonomous_candidate_source,
     run_autonomous_candidate_capability_harness,
@@ -1025,6 +1032,110 @@ def test_candidate_security_and_multidimensional_harness(tmp_path: Path) -> None
     )
 
 
+def test_autonomous_development_runs_complete_mocked_ophis_search(
+    tmp_path: Path,
+) -> None:
+    inputs = _formal_negative_cycles(tmp_path)
+    plan = freeze_autonomous_mdbench_research_plan(
+        *inputs,
+        tmp_path / "autonomous-plan",
+        source_fetcher=_source_fetcher,
+    )
+    Path(plan.confirmation_commitment.sealed_panel_path).unlink()
+    completion = _ScriptedAutonomousCompletion()
+    branch_engine = build_autonomous_branch_engine_package(
+        plan.output_path,
+        tmp_path / "branch-engine",
+        completion=completion,
+        source_fetcher=_source_fetcher,
+        clock=lambda: datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc),
+    )
+    manifest = MDBenchArchiveManifest.model_validate_json(
+        Path(plan.lineage.archive_manifest_path).read_text(encoding="utf-8")
+    )
+    _materialize_manifest_artifacts(manifest)
+    environment = _development_environment_fixture()
+    output_dir = tmp_path / "autonomous-development"
+    package = build_autonomous_development_search_package(
+        plan.output_path,
+        branch_engine.output_path,
+        output_dir,
+        completion=completion,
+        environment_probe=lambda _image: environment,
+        cell_executor=_development_cell_executor_fixture,
+        clock=lambda: datetime(2026, 8, 1, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert package.identity.numeric_payload_read_count_before_identity == 0
+    assert package.identity.confirmation_identity_read_count == 0
+    assert len(package.identity.pilot_units) == 9
+    assert len(package.identity.mechanism_units) == 6
+    assert len(package.identity.full_units) == 84
+    assert len(package.candidates) == 12
+    assert package.model_interaction_count == 4
+    assert package.official_development_result_count == 348
+    assert package.baseline_result_count == 84
+    assert sum(
+        result.method_kind == "candidate" and result.stage == "pilot"
+        for result in package.results
+    ) == 72
+    assert sum(
+        result.method_kind == "candidate" and result.stage == "mechanism"
+        for result in package.results
+    ) == 24
+    assert sum(
+        result.method_kind == "candidate" and result.stage == "full"
+        for result in package.results
+    ) == 252
+    assert all(result.status == "succeeded" for result in package.results)
+    assert package.executed_mechanism_cycle_count == 4
+    assert package.supported_mechanism_cycle_count == 4
+    assert all(cycle.frozen_before_execution for cycle in package.prospective_cycles)
+    assert all(
+        cycle.child_official_result_count_at_freeze == 0
+        for cycle in package.prospective_cycles
+    )
+    assert all(
+        outcome.unsupported_mechanism_claim_count == 0
+        for outcome in package.cycle_outcomes
+    )
+    assert package.selection.selected_candidate_id == "branch-09"
+    assert package.selection.qualified_for_confirmation is True
+    assert package.selection.decision == "search_frozen"
+    assert package.search_freeze_receipt_created is True
+    assert package.search_freeze_receipt is not None
+    assert package.confirmation_identity_read_count == 0
+    assert package.confirmation_result_count == 0
+    assert package.post_start_human_scientific_decision_count == 0
+    assert package.publication_ready is False
+    assert package.next_required_task == "265.4"
+    assert load_autonomous_development_search_package(package.output_path) == package
+
+    def _must_not_execute(**_kwargs: object) -> object:
+        raise AssertionError("terminal development replay must not call a model")
+
+    assert (
+        build_autonomous_development_search_package(
+            plan.output_path,
+            branch_engine.output_path,
+            output_dir,
+            completion=_must_not_execute,
+            environment_probe=lambda _image: (_ for _ in ()).throw(
+                AssertionError("terminal replay must not probe Docker")
+            ),
+            cell_executor=lambda _invocation: (_ for _ in ()).throw(
+                AssertionError("terminal replay must not execute a cell")
+            ),
+        )
+        == package
+    )
+
+    first_result = package.results[0]
+    Path(first_result.stdout_path).write_text("tampered", encoding="utf-8")
+    with pytest.raises(AutonomousDevelopmentError, match="log hash mismatch"):
+        load_autonomous_development_search_package(package.output_path)
+
+
 class _ScriptedAutonomousCompletion:
     def __init__(
         self,
@@ -1132,6 +1243,36 @@ class _ScriptedAutonomousCompletion:
                 and hypothesis_count <= 3
             ):
                 payload["source_ids"] = ["ai-research-agents", "wsindy"]
+        elif schema_name == "autonomous_mechanism_intervention":
+            context = json.loads(messages[1]["content"])
+            cycle_id = str(context["cycle_id"])
+            parent_id = str(context["parent_candidate_id"])
+            candidate_id = str(context["child_candidate_id"])
+            payload = {
+                "cycle_id": cycle_id,
+                "parent_candidate_id": parent_id,
+                "child_candidate_id": candidate_id,
+                "mechanism_family": "train-context residual operator",
+                "mechanism_hypothesis": (
+                    "A train-context residual term should make the derivative estimate "
+                    "responsive to training evidence and reduce paired derivative NMSE."
+                ),
+                "predicted_directional_effects": [
+                    "Paired failure-aware derivative NMSE will decrease."
+                ],
+                "alternative_explanations": [
+                    "The apparent gain may instead arise from scale regularization."
+                ],
+                "falsification_conditions": [
+                    "The paired system median does not improve over the parent.",
+                    "Training-context perturbation leaves every prediction unchanged.",
+                ],
+                "source_ids": ["wsindy", "ensemble-sindy"],
+                "intervention_summary": (
+                    "Add a bounded train-context residual while retaining a capability-safe fallback."
+                ),
+                "source_text": _mechanism_candidate_source(candidate_id),
+            }
         else:
             context = json.loads(messages[1]["content"])
             candidate_id = str(context["candidate"]["candidate_id"])
@@ -1287,6 +1428,115 @@ def discover_equations(payload):
         "diagnostics": {{"branch": BRANCH_TAG, "seed": int(payload["seed"])}},
     }}
 '''
+
+
+def _mechanism_candidate_source(candidate_id: str) -> str:
+    return f'''BRANCH_TAG = "{candidate_id}"
+
+def discover_equations(payload):
+    train = [float(value) for value in payload.get("train_flat_values", [])]
+    train_residual = (sum(train) / len(train) * 0.001) if train else 0.0
+    prediction = [float(value) * 0.1 + train_residual for value in payload["flat_values"]]
+    equations = ["du/dt = train_context_residual_" + BRANCH_TAG] * int(payload["field_count"])
+    return {{
+        "status": "ok",
+        "derivative_prediction_flat": prediction,
+        "equations": equations,
+        "complexity": 4,
+        "diagnostics": {{"branch": BRANCH_TAG, "seed": int(payload["seed"])}},
+    }}
+'''
+
+
+def _development_environment_fixture() -> AutonomousDevelopmentEnvironment:
+    payload: dict[str, object] = {
+        "image": "fixture-mdbench:task2653",
+        "image_id": f"sha256:{'1' * 64}",
+        "benchmark_revision": MDBENCH_REVISION,
+        "pinned_environment_hash": "2" * 64,
+        "pinned_baseline_runner_sha256": "3" * 64,
+        "formal_baseline_runner_sha256": "4" * 64,
+        "baseline_algorithm_subset_sha256": "5" * 64,
+        "autonomous_runner_sha256": "6" * 64,
+        "adapter_id": "official-single-time-query-v1",
+        "adapter_contract_sha256": "7" * 64,
+        "network_default_deny": True,
+        "maximum_parallel_cells": 4,
+    }
+    payload["environment_hash"] = canonical_model_hash(payload)
+    return AutonomousDevelopmentEnvironment.model_validate(payload)
+
+
+def _development_cell_executor_fixture(
+    invocation: DevelopmentCellInvocation,
+) -> DevelopmentCellOutcome:
+    candidate_id = invocation.spec.candidate_id
+    if invocation.spec.method_kind == "operon_gp":
+        derivative_nmse = 1.0
+        sensitivity = 0.0
+    elif candidate_id.startswith("branch-0") and int(candidate_id[-2:]) <= 8:
+        derivative_nmse = 0.90 + int(candidate_id[-2:]) * 0.01
+        sensitivity = 0.0
+    else:
+        derivative_nmse = {
+            "branch-09": 0.45,
+            "branch-10": 0.50,
+            "branch-11": 0.55,
+            "branch-12": 0.60,
+        }[candidate_id]
+        sensitivity = 0.01
+    payload = {
+        "schema_version": "autonomous-development-runner-payload-v1",
+        "status": "succeeded",
+        "failure_reason": None,
+        "derivative_nmse": derivative_nmse,
+        "validation_nmse": derivative_nmse * 1.01,
+        "trajectory_extrapolation_nmse_ode": (
+            derivative_nmse if invocation.spec.unit.data_type == "ode" else None
+        ),
+        "model_complexity": 4,
+        "training_context_sensitivity_max_abs": sensitivity,
+        "validation_query_count": 4,
+        "test_query_count": 8,
+        "wall_time_seconds": 0.01,
+        "peak_rss_mb": 32.0,
+        "discovered_equation": "du/dt = fixture_operator(u)",
+        "split_indices": {
+            "time_axis_size": 10,
+            "train_start": 0,
+            "train_end": 6,
+            "validation_start": 6,
+            "validation_end": 8,
+            "test_start": 8,
+            "test_end": 10,
+        },
+        "spec_hash": _runner_spec_payload(
+            invocation.spec,
+            invocation.environment,
+        )["spec_hash"],
+        "true_derivative_exposed_to_candidate": False,
+        "query_temporal_context_count": 1,
+        "candidate_output_numeric_transform_count": 0,
+    }
+    return DevelopmentCellOutcome(
+        return_code=0,
+        stdout="fixture stdout",
+        stderr="",
+        elapsed_seconds=0.01,
+        payload=payload,
+    )
+
+
+def _materialize_manifest_artifacts(manifest: MDBenchArchiveManifest) -> None:
+    extracted_root = Path(manifest.extracted_root)
+    for artifact in manifest.artifacts:
+        payload = (
+            f"{artifact.data_type}/{artifact.system_name}/{artifact.condition}"
+        ).encode()
+        assert hashlib.sha256(payload).hexdigest() == artifact.sha256
+        path = extracted_root / artifact.relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
 
 
 def _source_fetcher(

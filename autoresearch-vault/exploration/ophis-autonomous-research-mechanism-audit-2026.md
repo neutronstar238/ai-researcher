@@ -1,7 +1,7 @@
 ---
 title: OPHIS 与全自动科研：从试错、机制观测到可发表因果证据
 date: 2026-08-01
-status: evidence-audit-no-scientific-result
+status: evidence-audit-with-autonomous-development-negative
 task: "265.2/265.3"
 tags:
   - ophis
@@ -255,9 +255,9 @@ LLM”表述与 NanoGPT coding-agent 描述并不完全一致，核心发现空�
 检测，Harness 负责匹配干预和失败保留，Evidence Graph/RO-Crate 负责同源证据，development 与一次性
 confirmation 负责防止自适应过拟合。只有这一整条链通过，系统才有资格自己生成参赛文章。
 
-当前状态仍是：旧科学结果不显著；Task 265.2 的真实 v22 已证明 8 个模型自产分支能够通过来源、安全和
-五类维度能力门，但官方 development result 与机制 cycle 仍为零；confirmation 尚未执行，因此仍没有新的
-显著性或可发表结论。能力包见
+在本协议冻结时，Task 265.2 的真实 v22 只证明 8 个模型自产分支能够通过来源、安全和五类维度能力门，
+官方 development result 与机制 cycle 仍为零。Task 265.3 随后按该协议真实执行并形成自主开发负结果；见
+下方 post-execution update。能力包见
 [[projects/ai_researcher_system/progress/task-265-2-autonomous-branch-engine|Task 265.2 autonomous branch engine]]。
 
 ## 11. 参考文献与规范
@@ -296,3 +296,18 @@ confirmation 负责防止自适应过拟合。只有这一整条链通过，系�
 - [[task-261-2-generated-mechanism-evidence-survey-2026|模型生成机制与 claim-evidence 综述]]
 - [[graph-harness-loop-open-science-2026|Graph/Harness/Loop/Open Science 重构研究]]
 - [[projects/ai_researcher_system/progress/task-265-1-autonomous-competition-plan|Task 265.1 结果盲冻结]]
+
+## 13. Post-execution update：Task 265.3 对 OPHIS 合同的实证检验
+
+Task `265.3` package
+`8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576` 已在不读取 confirmation 的条件下完成
+348 个候选 development cells、84 个 Operon cells 和 4 个 prospective cycles。系统自产的 cycle-01 在两个匹配系统上
+方向一致，但干预只是把训练段平均导数用于所有 query；完整 14-system 面板上反而得到 Operon-relative median
+`-4.452492`。最终选择的 `branch-08` 在单 query slice 上做时间有限差分，退化为零导数，full NMSE≈`1`、
+train sensitivity=`0`，相对 Operon 为 `-2.796575`。系统按预先冻结规则停止，没有 receipt、confirmation 或稿件。
+
+这个结果支持 OPHIS 的一个强结论，也否定一个弱用法：显式 Observation→Problem→Hypothesis→Intervention 能把失败变成
+可审计机制证据；但只冻结自然语言机制链和 matched 两系统仍不足以保证泛化。下一协议必须把“训练数据拟合出具体方程”本身
+变成可执行机制：fit once、冻结 terms/coefficients、predict unseen query、known-law recovery、train-shuffle/null degradation，
+并分别要求 ODE/PDE strata 通过。相关正式进度见
+[[projects/ai_researcher_system/progress/task-265-3-autonomous-development-negative|Task 265.3 autonomous development negative]]。

@@ -2022,3 +2022,70 @@ source 函数重载，仍返回同一哈希，证明没有隐藏外部调用。�
 置真。官方 development result、OPHIS mechanism cycle、confirmation read、manuscript 和 publication-ready 仍全为
 零；所以旧结果仍不显著，新候选也尚不能称显著或可发表。下一步只能由 Task `265.3` 在开发集执行完整 8 分支、
 形成 1—4 个前瞻机制干预 cycle，并在不接触 sealed confirmation 的条件下冻结一个实现。
+
+### 28.5 Task 265.3：系统自主完成了研究，但研究结论为开发集负结果
+
+Task `265.3` 已实现 `autonomous_development.py`、离线容器 runner 和 CLI
+`competition mdbench autonomous-search`。正式运行在任何 NPZ 数值读取前写入身份哈希
+`6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1`，冻结 9 个首代 pilot 单元、6 个
+机制匹配单元和 84 个完整开发单元；confirmation identity/result read 均保持为零。科学环境哈希为
+`a8c20cadb241c73b99fec5c011cac58b1b747f55c8a75b2bb8a99dcf238cdfc7`，候选通过
+`official-single-time-query-v1` 只获得 train-only context、validation context 和每次一个 query time slice，真实导数从未
+传入候选。
+
+这次不是能力演示。系统实际保留并裁决了：
+
+- 8 个首代候选的 72 个 pilot cells：48 成功、24 失败；
+- 4 个由配置模型根据确定性 Observation/Problem 自主写出的前瞻 intervention，共 24 cells：21 成功、3 失败；
+- 3 个 finalist 的 252 个完整开发 cells：252 成功；
+- strongest official Operon baseline 的 84 cells：60 成功、24 失败；
+- 4 个先冻结 hypothesis、方向预测、替代解释、falsifier、matched comparator 和源码哈希，再执行的 OPHIS cycles。
+
+cycle-01 从 `branch-08` 到 `branch-09`，在两个匹配系统上的 exploratory effect 为 `0.373289`，区间
+`[0.000009, 0.746569]`；cycle-02 为 `-0.367887`，区间 `[-0.735893, 0.000119]`；cycle-03/04 均为零并被拒绝。
+cycle-01 只能说明局部匹配开发证据与方向一致，不能升级为因果或确认声明。系统随后在完整 14-system 面板上自动选择
+`branch-08`，其 exact-source SHA-256 为
+`1f489e613d240b5eea0dbc9d19e037b5697e7b72e548101aa02599b56bf71a50`。它的 failure-aware derivative NMSE
+为 `0.9999999999988402`，与零导数 null 几乎相同；training-context sensitivity 为 `0`；相对 Operon 的 system median
+为 `-2.796575097319253`，exploratory bootstrap interval 为 `[-26.681643038969824, 0.0]`。因此 +5% 和正方向门都失败。
+
+正式 package hash 为 `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`，decision 为
+`autonomous_development_negative_stop`。系统没有签发 search-freeze receipt，没有读取 sealed confirmation，没有生成稿件，
+也没有任何 post-start human scientific decision。这回答了“为什么不是系统自产”的来源问题：本轮 hypothesis、intervention、
+exact code、淘汰和负结论确实由系统运行自产；但来源自主不能补偿效果无效，所以它仍不是可发表的正向参赛结果。
+
+### 28.6 为什么效果差：能力接口没有验证“真的学到方程”
+
+正式证据把问题定位到科学合同，而不是 seed 或显著性技巧：
+
+1. v22 capability probe 验证了形状、有限值、五类维度、依赖和可执行性，却没有验证候选能从 train-only 数据恢复一个
+   具体定律。多个候选源码仍包含 placeholder 分支、自由符号 `a_i/b_i` 或没有拟合过程的 equation string。
+2. 官方 evaluator 为防验证/测试时间泄漏，每次只给一个 query slice。`branch-08` 在 `t_len=1` 上执行时间有限差分，因而
+   ODE 必然接近零导数；PDE 只附加 seed 驱动的小扰动。它运行成功但没有学习训练数据，这正解释 sensitivity=`0` 和
+   NMSE≈`1`。
+3. `branch-09` 修复了“完全不看 train”的表象，但只把训练段平均导数当作所有状态/位置的预测。它在单个 ODE 匹配系统上
+   改善，在 PDE 上几乎为零，完整面板则恶化到 Operon-relative median `-4.452492`；两系统局部 cycle 没有跨域泛化。
+4. Operon 在 24 个 PDE cells 上失败。失败感知记账是诚实的，但单一 ODE 型 baseline 不能回答“候选是否优于强 PDE
+   方程发现器”；后续必须冻结 domain-valid baseline，而不是借 baseline 失败制造优势。
+5. runner 每个 query 都重新物化完整 train/validation context；正式 host cell 最慢达到 `216.56` 秒。这不改变分数，但暴露
+   了 stateless API 的 `fit-many-times` 尾部成本。
+
+### 28.7 下一条研究路径：fit → freeze → predict，而不是继续生成占位代码
+
+下一合法动作是 Task `266` 的新结果盲 recovery lineage，而不是解封确认或在同一包上改分数：
+
+1. 候选必须先用 train-only 数据执行一次 `fit_equations`，输出可序列化、哈希冻结的 learned-equation artifact；artifact
+   必须包含具体 term、数值 coefficient、scaling 和诊断。随后 `predict_derivative` 只能从冻结 artifact 和单 query state
+   计算输出。
+2. 在任何新官方 development score 前，Harness 用已知 ODE/PDE 合成定律验证 term/coefficient recovery、方程与数值预测
+   一致性、train perturbation sensitivity、train-shuffle/zero/null degradation、fit-once/query-many、噪声与多维形状。自由
+   `a/b` 符号、query-only finite difference、恒零等价和 equation/prediction 不一致必须失败。
+3. 匹配机制 cycle 必须扩大并分层，分别报告 ODE 与 PDE 方向；一个 ODE 的改善不能遮蔽 PDE 为零。选择门保留完整失败、
+   exploration quota 和 system-level uncertainty。
+4. 先审计并冻结 domain-valid baseline：Operon 只在其有效域使用；PDE baseline 必须有一手方法来源、可执行实现、许可、
+   依赖和 real smoke，并与候选共享预算。
+5. 只有新开发搜索同时达到 overall ≥5%、exploratory lower bound >0、ODE/PDE 两层方向通过、具体方程恢复和完整 cell 成功，
+   才能签发新 receipt。原 confirmation commitment、+5% 门和一次性规则不降低。
+
+该优化吸收了 OPHIS 的机制闭环，但不把“写出机制故事”当证据；它也吸收 WSINDy/WENDy/WeakIdent/PDE-READ 的核心教训：
+方程发现的对象是由训练数据拟合并能对未见状态求值的具体算子，不是一个能通过返回值 shape 检查的函数。

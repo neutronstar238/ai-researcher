@@ -480,7 +480,13 @@ class AutonomousModelInteraction(StrictFrozenModel):
         "autonomous-model-interaction-v1"
     )
     interaction_id: str
-    stage: Literal["portfolio", "portfolio_repair", "implementation", "technical_repair"]
+    stage: Literal[
+        "portfolio",
+        "portfolio_repair",
+        "implementation",
+        "technical_repair",
+        "mechanism_intervention",
+    ]
     candidate_id: str | None = None
     messages: tuple[dict[str, str], ...]
     messages_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -589,7 +595,11 @@ class AutonomousModelInteraction(StrictFrozenModel):
         *,
         interaction_id: str,
         stage: Literal[
-            "portfolio", "portfolio_repair", "implementation", "technical_repair"
+            "portfolio",
+            "portfolio_repair",
+            "implementation",
+            "technical_repair",
+            "mechanism_intervention",
         ],
         candidate_id: str | None,
         messages: Sequence[Mapping[str, str]],
@@ -3417,7 +3427,13 @@ def _call_and_record(
     response_schema: dict[str, Any],
     response_schema_name: str,
     interaction_id: str,
-    stage: Literal["portfolio", "portfolio_repair", "implementation", "technical_repair"],
+    stage: Literal[
+        "portfolio",
+        "portfolio_repair",
+        "implementation",
+        "technical_repair",
+        "mechanism_intervention",
+    ],
     candidate_id: str | None,
     output_root: Path,
     now: Callable[[], datetime],

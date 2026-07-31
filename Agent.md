@@ -64,6 +64,55 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-01 06:35:56 +08:00 - Codex - Task 265.3 autonomous development search and negative stop
+
+- Request: Continue the formal competition entry; make AutoResearch itself originate and execute the research rather than having the implementation agent write a paper; evaluate the OPHIS mechanism loop in a real run; determine honestly whether the data are significant/publication-grade; diagnose poor performance from literature and internal evidence; and improve the research path without lowering gates or reading the sealed confirmation panel.
+- Files changed:
+  - `deploy/experiments/mdbench/autonomous_runner.py`
+  - `src/autoresearch/competition/autonomous_development.py`
+  - `src/autoresearch/competition/autonomous_engine.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_autonomous_recovery.py`
+  - `tests/smoke/test_autonomous_development_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/ophis-autonomous-research-mechanism-audit-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-265-3-autonomous-development-negative.md`
+  - `runs/manual-live/task2653-autonomous-development-v1/` (generated formal negative package; ignored by repository policy)
+- Summary:
+  - Implemented the Task `265.3` result-blind identity freezer, offline scientific runner, stage-racing scheduler, complete cell ledger, deterministic Observation/Problem derivation, provider-neutral mechanism-intervention calls, prospective matched-cycle records, full-finalist selection, receipt gate, strict loader, Markdown/Vault report, and `competition mdbench autonomous-search` CLI. Candidate code receives train context plus validation context and one isolated query slice, never the true query derivative; all exact sources, inputs, outputs, failures, timings, equations, metrics, hashes, budgets, and model interactions remain replayable.
+  - Applied the previously frozen `deep-research` and `experimental-design` decisions: paired cells and system-level blocks, exploratory development intervals only, prospective direction/falsifier records before each intervention, complete failure retention, no threshold peeking, immutable original confirmation identities, and a one-use receipt boundary. OPHIS is used as a mechanism-evidence protocol rather than accepted as proof from model prose.
+  - The system autonomously evaluated 72 first-generation pilot cells, 24 model-authored mechanism-intervention cells, 252 full-finalist cells, and 84 pinned Operon baseline cells. It authored four prospective OPHIS cycles: one two-system intervention was locally direction-consistent and three were rejected. There were four model interactions, 12 searched candidates, 348 official candidate results, 84 baseline results, zero post-start human scientific decisions, zero confirmation identity/result reads, zero manuscripts, and zero unsupported mechanism claims.
+  - The deterministic policy selected exact v22 `branch-08` with source SHA-256 `1f489e613d240b5eea0dbc9d19e037b5697e7b72e548101aa02599b56bf71a50`, but its 84-cell full-panel derivative NMSE was `0.9999999999988402`, zero-null relative improvement was approximately `4.95e-12`, training-context sensitivity was `0`, and Operon-relative system median was `-2.796575097319253` with exploratory interval `[-26.681643038969824, 0.0]`. The frozen positive-direction and +5-percent gates failed. Decision is `autonomous_development_negative_stop`; no search-freeze receipt exists, confirmation remains sealed, and no positive manuscript is authorized.
+  - The negative is scientifically diagnostic rather than an execution failure: all 252 finalist cells completed. The v22 capability contract admitted free symbolic coefficient placeholders and did not require train-only fitting. `branch-08` differentiates a one-time-slice official query, forcing ODE predictions toward zero; `branch-09` substitutes a training-average derivative that improved one local ODE endpoint but failed full-panel generalization. Operon failed 24 PDE cells and cannot serve as an all-domain strong baseline. The stateless API also repeats context work per query and creates an avoidable long tail.
+  - Added Task `266` as a non-retroactive recovery route. Before any new official development score, it must freeze and validate a train-only `fit -> concrete numeric equation/artifact -> hash freeze -> predict query` contract, equation/prediction agreement, known-law ODE/PDE sentinels, shuffle/null controls, training sensitivity, fit-once/query-many reuse, multidimensional coverage, domain-stratified gates, and a source/license/live-valid PDE comparator. The original Task `265.3` package and confirmation commitment remain immutable; thresholds are not weakened.
+  - Formal package hash is `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`; result-blind identity hash is `6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1`; environment hash is `a8c20cadb241c73b99fec5c011cac58b1b747f55c8a75b2bb8a99dcf238cdfc7`; offline runner hash is `728dc7c107b6cc2a2f11bf2a70d40d47e0b026c3dfd6049694d5ac57f8e7e44e`. No secret value was persisted.
+- Verification:
+  - Formal CLI `poetry run airesearcher competition mdbench autonomous-search --plan runs/manual-live/task2651-autonomous-recovery-plan-v1/autonomous-research-plan.json --branch-engine runs/manual-live/task2652-autonomous-branch-engine-v22/autonomous-branch-engine-package.json --output-dir runs/manual-live/task2653-autonomous-development-v1 --image autoresearch-mdbench:task260 --config config.yaml --env-file .env --timeout-seconds 180`: exited zero after the complete 348-candidate/84-baseline run and produced the exact negative package hash above.
+  - Focused mocked end-to-end test in `tests/unit/competition/test_autonomous_recovery.py`: passed with one complete 348+84-cell search, four prospective cycles, a synthetic qualified-receipt path, terminal no-external-call replay, and tamper rejection.
+  - Real opt-in `$env:AUTORESEARCH_TASK2653_LIVE='1'; $env:AUTORESEARCH_TASK2653_OUTPUT_DIR='E:\AIResearch\runs\manual-live\task2653-autonomous-development-v1'; poetry run pytest tests/smoke/test_autonomous_development_live.py -q`: 1 passed in 14.98 seconds against the real formal package.
+  - Relevant suite `poetry run pytest tests/unit/competition/test_autonomous_recovery.py tests/unit/competition/test_competition_cli.py tests/smoke/test_autonomous_recovery_live.py tests/smoke/test_autonomous_engine_live.py tests/smoke/test_autonomous_development_live.py -q --no-cov`: 21 passed, 3 default live skips, in 27.25 seconds.
+  - Full repository `poetry run python -m pytest -q`: 1,178 passed, 40 opt-in skips, 82-percent coverage, in 326.16 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 184 source files after extending the interaction factory's stage literal to include `mechanism_intervention`.
+  - `poetry run pytest tests/unit/knowledge/test_links.py -q --no-cov`: 3 passed.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - Strict terminal replay replaced completion, environment probing, cell execution, and any sealed-confirmation read with hard failures; it returned the identical package hash, decision, and zero confirmation reads without invoking them. The receipt file is absent, as required.
+  - Formal-directory secret scan compared one configured provider secret with every persisted file and found zero hits. Task dependency-graph JSON parsed successfully with unique ordered waves `265.3 -> 266.1 -> 266.2 -> 266.3 -> 265.4 -> 265.5`. `git diff --check` passed before this entry and is rerun before commit.
+- Problems:
+  - Added open critical `P-20260801-042`: capability-passing candidates lacked a concrete fit/freeze/predict scientific contract and collapsed to the zero null; confirmation and publication remain blocked.
+  - Added and resolved medium `P-20260801-043`: scientific-runtime/image-version, JSON datetime hashing, loader/CLI, and diagnostic-field launch faults failed closed before the valid formal search; the pinned image was admitted only after exact runner/function hash checks.
+  - Added and resolved low `P-20260801-044`: an accidentally short full-suite wrapper timeout left a repository-bound pytest child holding `.coverage`; only the exact matching process tree was stopped, and the clean full suite passed.
+  - Updated open high `P-20260731-039`: the autonomous-origin defect is resolved for the new route, but the scientific effect and publication problems remain open.
+- Follow-up:
+  - Execute Task `266.1` without reading any new official development score: freeze the result-blind scientific-contract recovery protocol, runtime floor, sentinel fixtures, failure conditions, domain baseline audit, identity lineage, and immutable Task `265.3` binding.
+  - Then implement Task `266.2` and run one bounded Task `266.3` recovery. Only a valid new receipt may authorize Task `265.4`; only one-use confirmation may establish significance; only Task `265.5` may let the system generate a same-ledger research article. Human authorship, disclosure, license, venue, public release, and submission remain separately approval-gated.
+
 ### 2026-08-01 05:21:12 +08:00 - Codex - Task 265.2 autonomous literature-to-code branch engine
 
 - Request: Continue the formal competition work as a real entry rather than a demonstration; determine why existing performance and evidence are not publication-grade; ensure the system rather than the implementation agent originates the research; evaluate the proposed OPHIS mechanism-driven framework against current autonomous-research literature; and implement the next provider-neutral, evidence-first autonomous research stage without claiming significance before data exist.

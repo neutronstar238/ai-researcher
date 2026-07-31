@@ -2276,19 +2276,45 @@ Task `265.2` 只实现通用科研运行能力，不得在源码中写入下一�
 row-major adapter、runner、input、source、output、环境和 episode 全部有独立 hash，适配器数值变换计数为零。
 正式包仍记录 `official_development_results=0`、`mechanism_cycles=0`、`publication_ready=false`。
 
-### 28.4 下一执行任务：265.3
+### 28.4 已完成的 Task 265.3：真实自主开发负结果
 
-Task `265.3` 必须直接消费 v22 的八个最终源码，不能由实现代理重写候选。执行顺序为：
+Task `265.3` 已直接消费 v22 的八个最终源码。实现新增：
 
-1. 对公开 development panel 运行冻结的 paired system/condition/seed cells，所有失败、超时和资源结果进入同一 ledger；
-2. 只由确定性规则把 telemetry、traceback、change point 和分支比较转为 `Observation` 与 `Problem`；
-3. 配置模型只能根据这些结构化观测提出前瞻 `Hypothesis` 和完整 exact-code `Intervention`，总候选不超过 12、
-   总 generation 不超过 2；
-4. 每个 OPHIS cycle 在执行前冻结 directional prediction、matched comparator、alternative explanation、falsifier、
-   primary endpoint、预算和父/证据 hash，最多执行 1—4 个 cycle；
-5. stage racing、Pareto 和 failure-aware 选择从完整候选分布确定唯一实现；开发效应只作探索性选择，不作显著性声明；
-6. 在任何 confirmation read 之前冻结 exact code、环境、branch tree、comparative memory、全部开发结果和 search-freeze
-   receipt。若不能产生合格候选或机制 cycle，则登记 autonomous development negative，不解封确认集。
+1. `autonomous_development.py` 写入 result-blind run identity，验证 plan/engine/archive/environment/source hashes，冻结
+   `72 + 24 + 252` 候选预算和 84-cell baseline，不读取 sealed confirmation；
+2. `autonomous_runner.py` 在 `--network none`、read-only、CPU/memory/time 限制下加载真实 NPZ，只给候选 train-only
+   context、validation context 和单 query time slice，隐藏真实导数；
+3. 确定性 Observation/Problem 层只从 terminal state、NMSE、zero null、train sensitivity、Operon comparison 和 ODE/PDE
+   gap 导出问题；模型只写 hypothesis 和完整 intervention source；
+4. 四个 cycle 均在 child result count 为零时冻结 parent、evidence、direction、alternatives、falsifiers、endpoint、预算和源码；
+5. 三 finalist 均完整执行 84 cells，selection 由 failure-aware Pareto/lexicographic policy 重放；
+6. terminal package loader 逐个验证 432 个 result artifacts 及其 logs/raw payload，再验证 branch tree、comparative memory、
+   selection 和 receipt state；终态重放不再调用 provider、Docker 或候选。
 
-显著性只能来自 Task `265.4` 的一次性 sealed confirmation，文章只能由 Task `265.5` 从同一 ledger 生成。Task
-`265.2` 的能力门通过不能替代这两个阶段。
+正式运行 identity/environment/package hashes 分别为
+`6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1`、
+`a8c20cadb241c73b99fec5c011cac58b1b747f55c8a75b2bb8a99dcf238cdfc7` 和
+`8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`。pilot 为 48 success/24 failed，
+mechanism 为 21/3，full finalist 为 252/0，Operon 为 60/24；无 timeout。系统选择 `branch-08`，但其 full-panel
+failure-aware NMSE 为 `0.9999999999988402`、train sensitivity 为零、Operon-relative system median 为
+`-2.796575097319253`，interval 为 `[-26.681643038969824, 0.0]`。因此 decision 是
+`autonomous_development_negative_stop`，receipt 不存在，Task `265.4` 不得启动。
+
+这次运行同时证明“系统自产”和“科学有效”是两个非补偿门。4 个 intervention、exact code、分支选择和负结论来自系统运行；
+实现代理没有在结果后补方法。但能力 probe 只验证接口可执行，没有验证具体方程拟合，首代代码在单时点 query 上退化为零导数，
+唯一局部一致的平均导数 intervention 也没有跨 14 systems 泛化。所以当前仍为 `publication_ready=false`，不能生成正向参赛稿。
+
+### 28.5 下一执行任务：Task 266 scientific-contract recovery
+
+Task `266.1` 先冻结新 lineage，不直接再跑候选：
+
+1. 将 API 改为 train-only `fit_equations` → hash-frozen learned artifact → query-only `predict_derivative`；fit artifact 必须有具体
+   term、coefficient 和 scaling，且 equation-derived prediction 与返回预测一致；
+2. 在官方分数前冻结 synthetic known-law ODE/PDE、train-shuffle、zero/null、coefficient/term recovery、leakage、noise、shape、
+   train-sensitivity 和 fit-once/query-many sentinels；
+3. 检索并冻结 domain-valid baseline policy：Operon 保留在适用域；PDE baseline 必须通过来源、实现、许可、依赖和 live smoke；
+4. 冻结新的候选/代数/cycle/compute budget、ODE/PDE 分层 matched endpoint、exploration quota 和 failure policy；
+5. 继续物理隔离原 confirmation。Task `266.2` 只实现/验证 Harness，不看新官方分数；Task `266.3` 才执行恢复搜索。
+
+只有 Task `266.3` 的新选择同时通过 overall ≥5%、development lower bound >0、ODE/PDE 双层方向、具体方程恢复和完整 cells，
+才能签发 receipt 并授权 Task `265.4`。失败则再次登记自主开发负结果；不得降低阈值、重写 Task `265.3` 或提前生成正向论文。

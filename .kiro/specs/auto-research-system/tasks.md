@@ -3637,20 +3637,41 @@ A task can be checked only when all applicable items are true:
     - _Verify: provider-neutral mocked model tests, exact-code/source-origin and fixed-catalogue rejection, sandbox/resource/security tests, deterministic objective-evaluator fixtures, 1D/2D/3D/multi-field capability probes, opt-in live provider smoke using user-supplied `.env`, Vault/Problem/Agent updates, and one focused commit._
     - _Outcome: completed as a capability- and provenance-only handoff. The runtime refreshed and content-addressed 12 primary pages, the configured model authored an eight-family/eight-candidate portfolio and exact replacement modules, and every failed revision remains in comparative memory. A versioned `row-major-flat-v1` Harness adapter performs only shape reconstruction, changes zero numeric values, and is contract/code hashed; exact model source bytes remain untouched. Static review, isolated execution, five dimensional probes, provider retries, semantic hypothesis repair, contamination checks, and immutable resume all fail closed. The passing live v22 package retained 23 logical model interactions, 47 provider request attempts, and 11 exact-code revisions; package hash is `096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`._
     - _Verify result: 18 focused autonomous-engine tests and the 45-test relevant CLI/LLM suite pass; the full repository gate passes with 1,177 tests, 39 opt-in skips, and 82-percent coverage; full Ruff and 183-file Mypy pass. The opt-in real-provider/12-source smoke passes in 339.45 seconds. Strict reload and a terminal replay with provider/source functions replaced by hard failures return the identical package without an external call. `provenance_gate=true`, `capability_gate=true`, and `development_execution_authorized=true`; official development results, mechanism-cycle records, confirmation reads, manuscripts, and publication claims remain `0/0/0/0/0`._
-  - [ ] 265.3 Run the autonomous development search and freeze one selected implementation
+  - [x] 265.3 Run the autonomous development search and freeze one selected implementation
     - Execute the frozen 8-candidate first generation, retain every failure, use objective stage racing, and allow only model-produced mutations/ablations up to 12 total candidates and two generations. Do not expose confirmation identities, payloads, or outcomes.
     - Operationalize OPHIS as an evidence contract rather than a prose template. Derive every `Observation` and `Problem` deterministically from timestamped telemetry, traceback, metric, change-point, or branch-comparison artifacts; then let the configured model author a prospective `Hypothesis` and exact-code `Intervention`. Before execution, freeze immutable cycle/parent IDs, a directional prediction, matched comparator, alternative explanation, falsifier, primary endpoint, budget, and artifact hashes. Permit 1-4 executed mechanism cycles; unsupported or prose-only mechanism claims must remain zero.
     - Keep capability repair, development search, and mechanism inference distinct. Transport retries do not create scientific revisions; technical repair cannot see official scores; development mutations receive only objective structured observations; LLM self-assessment never counts as evidence. Treat all 8-12 searched candidates and all failed cells as part of the selection process, report development effects as exploratory, and use paired system/condition/seed blocking plus failure-aware estimates rather than treating time points or seeds as independent samples.
     - Select the final implementation from development evidence by the frozen Pareto and failure-aware policy. Freeze exact code, environment, prompts/responses, comparative memory, branch tree, ablations, replication evidence, baseline state, and a signed search-freeze receipt before any confirmation access.
     - _Verify: complete development ledger, budget and origin audits, deterministic replay of every Observation-to-Problem derivation, 1-4 prospective mechanism-cycle records with matched interventions and zero unsupported mechanism claims, no-hidden-human-decision proof, deterministic selection replay, contamination/holdout denial tests, Vault/Problem/Agent updates, and one focused commit or explicit autonomous negative stop._
+    - _Outcome: completed as an explicit autonomous development negative stop. The result-blind identity froze 9 pilot, 6 matched-mechanism, and 84 full units before any numeric payload read. The real run retained 72 first-generation pilot cells, 24 model-authored intervention cells, 252 three-finalist full cells, and 84 pinned Operon cells. Four prospective OPHIS cycles executed; one was locally direction-consistent and three were rejected. The deterministic policy selected exact v22 `branch-08`, but its full-panel derivative NMSE was effectively the zero-null (`0.9999999999988402`), its training-context sensitivity was zero, and its Operon-relative system median was `-2.796575097319253` with exploratory bootstrap interval `[-26.681643038969824, 0.0]`. The +5-percent and positive-direction gates failed, so no search-freeze receipt was issued and confirmation stayed sealed._
+    - _Verify result: package hash `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`; identity/environment hashes `6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1` and `a8c20cadb241c73b99fec5c011cac58b1b747f55c8a75b2bb8a99dcf238cdfc7`. Exact-source, artifact, result, log, raw-payload, branch-tree, comparative-memory, selection, and terminal-package reloads pass. A complete mocked 348+84-cell regression passes deterministic replay and tamper rejection; the opt-in real smoke strictly reloads the formal package. Confirmation identity/result reads, post-start human scientific decisions, unsupported mechanism claims, and manuscripts remain `0/0/0/0/0`; `publication_ready=false`._
   - [ ] 265.4 Execute one-use sealed confirmation and formal adjudication
-    - Let an independent confirmation executor consume only the selected frozen implementation and sealed panel after validating the search-freeze receipt. Run every frozen baseline/candidate/condition/seed cell once and retain all failures, timeouts, costs, structure, trajectory, complexity, and robustness evidence.
+    - Let an independent confirmation executor consume only the selected frozen implementation and sealed panel after validating a successful development search-freeze receipt. The negative Task `265.3` package has no receipt and cannot authorize this task; a later Task `266.3` receipt may do so without changing the one-use confirmation commitment. Run every frozen baseline/candidate/condition/seed cell once and retain all failures, timeouts, costs, structure, trajectory, complexity, and robustness evidence.
     - Apply the preregistered 5-percent noisy derivative-NMSE effect and system-level bootstrap lower-bound gate. Confirmation cannot invoke the research agent, change code, select another branch, substitute a metric/panel, or authorize a second attempt.
     - _Verify: complete one-use matrix, zero research-agent confirmation reads, exact failure-aware adjudication, independent replay, result and environment hashes, Vault/Problem/Agent updates, and one focused commit or registered negative result._
   - [ ] 265.5 Have the autonomous system generate its research article and reproducibility object
     - Generate the title, claims, manuscript, figures, tables, limitations, negative-result language when applicable, citation registry, and reproducibility package from the same append-only autonomous ledger. Reject manually supplied scientific prose or any number not resolved from executed evidence.
     - Record system generation provenance without treating an AI system as a legal author. Keep human authorship, contribution disclosure, license, venue, public release, and submission decisions separate and explicit.
     - _Verify: claim-to-evidence and citation checks, figure/table consistency, ledger-origin audit, independent rebuild, PDF visual review, Open Science package validation, human decision packet, Vault/Problem/Agent updates, and one focused commit._
+
+- [ ] 266. Recover the autonomous competition loop after the Task 265.3 scientific-contract negative
+  - [ ] 266.1 Freeze a result-blind fit/freeze/predict recovery protocol
+    - Treat the Task `265.3` ledger as development evidence and keep the original confirmation identities and payloads sealed. Bind the negative package hash and prohibit retroactive mutation of its source, adapter, cells, summaries, or decision.
+    - Replace stateless single-query discovery with a two-phase scientific contract: fit once on train-only state/coordinate context, freeze a serializable learned-equation artifact with concrete terms and numeric coefficients, then predict each validation/test query from that immutable artifact. The evaluator, not candidate prose, must verify that equations and numeric predictions agree.
+    - Before another official development score is observed, freeze synthetic known-law ODE/PDE sentinels, train-shuffle and zero/null controls, coefficient/term recovery checks, concrete-equation checks, train-context sensitivity, fit-once/query-many efficiency, multidimensional shape coverage, and rejection of unfitted symbolic placeholders or query-only finite differences.
+    - Audit and freeze a domain-valid strongest-baseline policy under common compute: retain Operon where supported and admit a PDE-capable reference only after primary-source, exact-implementation, dependency, license, and live-smoke checks. Report ODE and PDE strata separately; neither stratum may be hidden by the other or by baseline execution failures.
+    - Freeze a new bounded candidate/generation/mechanism-cycle budget, broader matched-cycle strata, exploration quota, failure-aware estimand, and receipt rule before Task `266.2` implementation. Do not read confirmation data, write a candidate answer into the orchestrator, or lower the original +5-percent/positive-lower-bound confirmation gate.
+    - _Verify: hash-bound recovery plan, zero confirmation reads/results, source/license/baseline registry, fit/freeze/predict JSON schemas, deterministic sentinel fixtures, budget/power/estimand audit, Vault/Problem/Agent updates, and one focused commit._
+  - [ ] 266.2 Implement the scientific-contract Harness without official-score tuning
+    - Implement provider-neutral exact-source generation and model-only score-blind repair against the frozen two-phase interface and synthetic sentinels. Generic code may transport arrays, cache a frozen fit artifact, validate schemas, and compare equation-derived predictions; it must not insert a scientific library, coefficient, term, or candidate method.
+    - Fail closed on constant/zero-null equivalence, absent training dependence, free symbolic coefficients, equation/prediction disagreement, fit-after-query leakage, validation/test state reuse, train-shuffle non-degradation, resource overflow, or unsupported PDE shape.
+    - Add deterministic mocked tests plus an opt-in live provider/container smoke. Keep all Task `265.3` official results immutable and do not execute the new candidates on the development panel in this task.
+    - _Verify: known-law recovery and null-control suite, equation/prediction consistency, leakage/shape/resource/security/tamper tests, real provider/container capability smoke, zero official new results, Vault/Problem/Agent updates, and one focused commit._
+  - [ ] 266.3 Run the bounded autonomous recovery search and issue a receipt only on a real positive development gate
+    - Execute the frozen recovery budget over the same public development lineage with complete failure retention, fit-once/query-many telemetry, domain-stratified matched mechanism cycles, and deterministic selection. Preserve every explored candidate so adaptive development freedom is visible.
+    - Require the selected implementation to beat the frozen domain-valid baselines by at least 5 percent on the overall system estimand, have a positive exploratory bootstrap lower bound, pass both ODE and PDE directional strata, recover concrete equations, and succeed on every required full cell before creating a new search-freeze receipt.
+    - If the gate fails, stop with another autonomous development negative and keep confirmation sealed. If it passes, Task `265.4` may consume only the newly frozen implementation and receipt; confirmation still remains one-use and cannot trigger reselection.
+    - _Verify: complete recovery ledger, deterministic Observation/Problem and selection replay, domain-stratified effects and uncertainty, exact source/environment/baseline hashes, no-hidden-human-decision proof, confirmation-denial or receipt proof, Vault/Problem/Agent updates, and one focused commit or explicit negative stop._
 
 ## Checkpoints
 
@@ -4483,10 +4504,22 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 196,
-      "tasks": ["265.4"]
+      "tasks": ["266.1"]
     },
     {
       "id": 197,
+      "tasks": ["266.2"]
+    },
+    {
+      "id": 198,
+      "tasks": ["266.3"]
+    },
+    {
+      "id": 199,
+      "tasks": ["265.4"]
+    },
+    {
+      "id": 200,
       "tasks": ["265.5"]
     }
   ]

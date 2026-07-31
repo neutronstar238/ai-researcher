@@ -40,6 +40,54 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260801-044 - Short full-suite timeout left a pytest coverage lock
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-01 06:29:31 +08:00
+- Source: Task `265.3` repository-wide verification.
+- Symptom: The first `poetry run python -m pytest -q` wrapper was mistakenly given a one-second timeout. The wrapper exited, but its Poetry/Python child processes continued and held `.coverage`; the immediate retry failed before collection with Windows `PermissionError [WinError 32]`.
+- Impact: No test assertion failed and no source or formal artifact changed, but the full-suite verdict was temporarily unavailable.
+- Evidence: Process inspection found only the four Poetry/Python descendants whose command line was the just-launched `pytest -q`. After stopping those exact PIDs, a second inspection returned `No matching pytest processes remain.`
+- Root cause: The shell timeout ended the wrapper without reliably terminating its Windows process tree.
+- Workaround: Identify the exact command-line-bound process tree before cleanup, then rerun with a long tool timeout and periodic non-interrupting waits.
+- Next action: Do not use a short blocking shell timeout as an asynchronous launcher for repository-wide pytest; use the execution cell's yield/wait mechanism.
+- Linked tasks: `265.3`.
+- Resolution: The exact orphaned process tree was stopped; no unrelated Python process was targeted. The clean full-suite rerun completed normally.
+- Verification: `poetry run python -m pytest -q` passed with `1178 passed, 40 skipped`, 82-percent coverage, in 326.16 seconds.
+
+### P-20260801-043 - Task 265.3 launch exposed environment-version and typed-hash serialization faults
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-01 05:46:21 +08:00
+- Source: Task `265.3` formal environment probe, identity freeze, and first-cell launch.
+- Symptom: Project-Poetry Python did not contain NumPy, a new Docker image build failed because the current runner uses Python 3.10 `zip(..., strict=False)` while the historical Dockerfile installs Python 3.9, and the first identity attempt passed a `datetime` directly to `canonical_model_hash`, raising `TypeError: Object of type datetime is not JSON serializable`. Follow-up operator probes also used the wrong loader module, the nonexistent `autoresearch` console name instead of `airesearcher`, and a nonexistent `DevelopmentCellResult.elapsed_seconds` field.
+- Impact: These attempts failed before a valid formal search could start. The image build produced no replacement image; the first identity failure wrote no identity and opened no NPZ; no confirmation identity or result was read. The successful first scientific cell was retained even though the diagnostic print command failed after persistence.
+- Evidence: Existing image `autoresearch-mdbench:task260` has ID `sha256:6c8928e967cc4ff2995626c90ef57771df603028ddd6e17dbc60894ffa017c78`. Its complete container runner hash is `bdc469e0fbafe910561ba103ba1a48011f0168d6a303d5eb61aa2421676e2c5a`, while the formal Task 259 recovery runner hash is `c22b92437280aae635cbfadd1f8a349f9b49c11658553ffee184b411610942eb`; the eight Operon-relevant functions extracted from both are byte-identical with function-set hash `7cd1b90b734fa570877f710ef13ee5a9b61dd3912691fd445ebbc88d05636963`. The new autonomous runner hash is `728dc7c107b6cc2a2f11bf2a70d40d47e0b026c3dfd6049694d5ac57f8e7e44e`, and the final Task 265.3 environment hash is `a8c20cadb241c73b99fec5c011cac58b1b747f55c8a75b2bb8a99dcf238cdfc7`.
+- Root cause: Scientific dependencies intentionally live in the pinned container rather than the core package; the historical image Python minor version cannot execute the current host runner self-test; and several new hashes were initially computed from raw nested Python payloads instead of JSON-mode typed model dumps.
+- Workaround: Reused the already pinned Task 260 image only after verifying its exact image ID, complete container runner hash, source commit, formal runner hash, and byte-identical Operon algorithm subset. Scientific NPZ execution remained inside that container.
+- Next action: Task `266.1` should freeze a Python/runtime compatibility floor for the new fit/freeze/predict runner before image construction. Keep typed JSON-mode hashing for nested models and datetimes.
+- Linked tasks: `265.3`, `266.1`, `266.2`.
+- Resolution: All identity, cell-spec, result, prospective-cycle, receipt, and package hashes now derive from typed `model_dump(mode="json")` drafts. The correct loaders/CLI/result fields were used, identity froze with zero prior numeric reads, the first cell and full formal search completed, and no unverified image was admitted.
+- Verification: Focused Ruff, Mypy, and `py_compile` passed; environment probing returned the exact expected hash; formal identity hash is `6ba91fb9781c34d2213c1014816ec873dd7392b5a1dd731dd766347dbb659fb1`; strict terminal reload and the opt-in real smoke pass.
+
+### P-20260801-042 - Capability-passing candidates did not fit concrete equations and collapsed to the zero null
+
+- Status: Open
+- Severity: Critical
+- Discovered: 2026-08-01 05:49:11 +08:00
+- Source: Task `265.3` first real development cell and complete autonomous development search.
+- Symptom: The first exact candidate succeeded operationally but produced derivative NMSE `0.9999999999956045` and training-context sensitivity `0`. The complete search selected `branch-08`; across 84 full cells its NMSE was `0.9999999999988402`, zero-null improvement was approximately zero, training sensitivity remained `0`, and Operon-relative system median was `-2.796575097319253` with interval `[-26.681643038969824, 0.0]`. No candidate qualified for confirmation.
+- Impact: Task `265.3` is a real autonomous research negative, not a publishable competition result. Confirmation must remain sealed. Repeating the same prompt, adding seeds, or writing a paper cannot repair the missing scientific learning contract.
+- Evidence: Formal package hash is `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`. Pilot/mechanism/full/baseline terminal counts are `72/24/252/84`; full finalists succeeded `252/252`, so the negative is not an execution artifact. Exact `branch-08` computes time finite differences inside an official query containing one time slice, which forces the ODE prediction toward zero; its equation strings contain unfitted `a_i/b_i`. Cycle-01's train-average `branch-09` improved a two-system matched endpoint but degraded to full-panel Operon-relative median `-4.452492306167319`.
+- Root cause: Task `265.2` capability probes measured shape, finite output, dimensions, dependencies, and execution, not recovery of a concrete law from train-only data. The stateless query API encouraged query-only differentiation and repeated fitting. A two-system mechanism endpoint allowed one ODE gain to mask negligible PDE change. Operon also failed 24 PDE cells, so it is not a sufficient strong baseline for every domain.
+- Workaround: The frozen qualification policy stopped automatically, issued no receipt, and preserved confirmation read/result counts at zero. All negative cells and model-authored interventions remain in the ledger.
+- Next action: Execute Task `266.1` before any new official score: freeze a train-only fit → concrete hash-frozen equation artifact → query prediction contract; known-law ODE/PDE recovery, train-shuffle/null and equation/prediction consistency sentinels; fit-once/query-many caching; domain-stratified mechanism gates; and a source/license/implementation-valid PDE baseline.
+- Linked tasks: `265.2`, `265.3`, `265.4`, `266.1`, `266.2`, `266.3`.
+- Resolution: Not resolved. Task `265.3` correctly detected and contained the failure; the underlying scientific contract must change in a new lineage rather than modifying the completed package.
+- Verification: Formal CLI ended with `decision=autonomous_development_negative_stop`, `search_freeze_receipt=false`, `publication_ready=false`; strict loader, complete mocked 348+84-cell regression, tamper rejection, and opt-in real-package smoke pass.
+
 ### P-20260801-041 - Autonomous capability preflight initially confounded scientific code with generic tensor handling and arbitrary fixture limits
 
 - Status: Resolved
@@ -78,15 +126,15 @@ update a factual problem entry below.
 - Severity: High
 - Discovered: 2026-07-31 22:05:00 +08:00
 - Source: User challenge that this is a formal competition entry and that the research article should be produced by the system, followed by a repository-wide autonomy and official-result audit.
-- Symptom: The first formal candidate was code-authored before execution; the recovery candidate was also a pre-authored two-mechanism implementation. Task `263.5` ranked a fixed 12-candidate catalogue, while Task `261.2` generated only one bounded expression outside the official MDBench main route. The first formal cycle's failure-aware median improvement was `0.371535` with system-level 95% CI `[-0.201060, 0.888991]`; the recovery cycle's value was `-1.704061` with CI `[-4.116249, 0.292912]`. Neither passed the frozen confidence gate.
+- Symptom: The first formal candidate was code-authored before execution; the recovery candidate was also a pre-authored two-mechanism implementation. Task `263.5` ranked a fixed 12-candidate catalogue, while Task `261.2` generated only one bounded expression outside the official MDBench main route. The first formal cycle's failure-aware median improvement was `0.371535` with system-level 95% CI `[-0.201060, 0.888991]`; the recovery cycle's value was `-1.704061` with CI `[-4.116249, 0.292912]`. Task `265.3` has now resolved the new-route origin question but produced another scientific negative: selected model-authored `branch-08` has development Operon-relative median `-2.796575097319253` with interval `[-26.681643038969824, 0.0]`. None passed a positive evidence gate.
 - Impact: The existing data do not support a significant positive competition claim, and the old paper cannot truthfully be presented as a research article autonomously originated by AutoResearch. More prose, agent personas, seeds, or Graph nodes cannot repair either the scientific effect or origin defect.
-- Evidence: Hash-valid predecessor reports are `runs/manual-live/task259-mdbench-official-v1/gate-a-v3/gate-a-adjudication.json` and `runs/manual-live/task259-mdbench-recovery-official-v1/gate-a-v1/gate-a-adjudication.json`. Task `265.1` binds both reports and their matrices plus the recovery preregistration, retains 12 live primary-source snapshots, exposes a fresh 14-system development panel, and commits a disjoint 14-system confirmation panel.
-- Root cause: Earlier milestones optimized reliable execution and bounded demonstrations before enforcing a formal candidate-origin contract. The noisy weak-form selector also used a narrow fixed search and validation objective that did not generalize to strong derivative error on untouched systems.
-- Workaround: Tasks `265.1` and `265.2` now forbid human-authored candidates, fixed catalogues, post-start human method choices, code-side scientific repair, LLM self-certification, and confirmation-driven reselection. The live v22 runtime generated eight exact-code candidates across eight mechanism families, retained every failed revision, passed provenance and five-dimensional capability gates, and kept official development results at zero.
-- Next action: Execute Task `265.3` from the immutable v22 package, using objective development evidence and 1-4 prospective OPHIS-style mechanism cycles to freeze one implementation. Then execute the one-use Task `265.4` confirmation and Task `265.5` same-ledger manuscript. Do not claim significance or an autonomous paper before those gates exist.
-- Linked tasks: `259.7.3.2`, `261.2`, `263.5`, `265.1`, `265.2`, `265.3`, `265.4`, `265.5`.
-- Resolution: The result-blind plan and the first-generation model-origin/capability layer are complete. The old paper-origin defect is not repaired retroactively, and the scientific/publication problem remains open because Task `265.2` contains no official development result, mechanism intervention result, confirmation, or manuscript.
-- Verification: Task `265.1` plan hash is `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda`; confirmation commitment is `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`. Task `265.2` v22 package hash is `096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`, with candidates/families/interactions/provider attempts/revisions `8/8/23/47/11`, `provenance_gate=true`, `capability_gate=true`, and official development result/manuscript counts `0/0`.
+- Evidence: Hash-valid predecessor reports are `runs/manual-live/task259-mdbench-official-v1/gate-a-v3/gate-a-adjudication.json` and `runs/manual-live/task259-mdbench-recovery-official-v1/gate-a-v1/gate-a-adjudication.json`. Task `265.1` binds both and seals a disjoint confirmation panel. Task `265.2` proves model origin/capability. Task `265.3` package `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576` retains 348 candidate and 84 baseline cells, four prospective cycles, selected exact source, and an automatic negative stop with zero confirmation reads.
+- Root cause: Earlier milestones optimized reliable execution and bounded demonstrations before enforcing a formal candidate-origin contract. Task `265` fixed that origin contract, but its first capability layer still validated callable tensor behavior rather than concrete train-derived equation recovery. Query-only finite differences collapsed to the zero null, a train-average intervention did not generalize, and the all-domain baseline policy lacked a PDE-capable strong comparator.
+- Workaround: Tasks `265.1`—`265.3` now prove that hypotheses, interventions, exact code, search, selection, and the negative conclusion can originate inside one audited system loop. The frozen gate issued no receipt, so the weak method cannot reach confirmation or a positive manuscript.
+- Next action: Execute Task `266.1` result-blind scientific-contract planning, then Task `266.2` fit/freeze/predict Harness validation and Task `266.3` bounded autonomous recovery. Task `265.4` remains physically unauthorized unless a new valid receipt exists. Do not claim significance or a positive autonomous paper before confirmation and same-ledger manuscript gates exist.
+- Linked tasks: `259.7.3.2`, `261.2`, `263.5`, `265.1`, `265.2`, `265.3`, `265.4`, `265.5`, `266.1`, `266.2`, `266.3`.
+- Resolution: The new-route origin defect is resolved: Task `265.3` contains model-authored interventions and a system-derived negative conclusion with zero post-start human scientific decisions. The old paper is not repaired retroactively, and the scientific/publication problem remains open because the selected method is zero-null-equivalent, no receipt/confirmation exists, and no system-generated manuscript exists.
+- Verification: Task `265.1` plan/confirmation hashes are `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda` and `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`; Task `265.2` v22 package hash is `096a14de81d6ba6ad055114a3c5946c6a0ee0ad50df1a57a809f89510985027f`; Task `265.3` package hash is `8f42cbb684b7b02eee5d4e9287e26f3edaebd49b7215f603d274450a58994576`, decision is `autonomous_development_negative_stop`, and result/confirmation/manuscript counts are `348/0/0`.
 
 ### P-20260731-038 - Open Science live bring-up exposed optional-tool, source-marker, payload-scan, and validator-version boundaries
 

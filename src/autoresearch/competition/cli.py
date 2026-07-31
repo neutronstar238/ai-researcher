@@ -9,6 +9,10 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from autoresearch.competition.autonomous_development import (
+    AutonomousDevelopmentError,
+    build_autonomous_development_search_package,
+)
 from autoresearch.competition.autonomous_engine import (
     AutonomousBranchEngineError,
     build_autonomous_branch_engine_package,
@@ -374,6 +378,87 @@ def competition_mdbench_autonomous_generate(
     typer.echo("[BLOCKED] publication_ready: false")
     if not package.development_execution_authorized:
         raise typer.Exit(code=2)
+
+
+@competition_mdbench_app.command("autonomous-search")
+def competition_mdbench_autonomous_search(
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="Hash-valid Task 265.1 public plan."),
+    ] = Path(
+        "runs/competition/mdbench-autonomous-recovery-plan/"
+        "autonomous-research-plan.json"
+    ),
+    branch_engine: Annotated[
+        Path,
+        typer.Option(
+            "--branch-engine",
+            help="Hash-valid Task 265.2 autonomous-branch-engine-package.json.",
+        ),
+    ] = Path(
+        "runs/competition/mdbench-autonomous-branch-engine/"
+        "autonomous-branch-engine-package.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Append-only Task 265.3 development ledger."),
+    ] = Path("runs/competition/mdbench-autonomous-development"),
+    image: Annotated[
+        str,
+        typer.Option("--image", help="Pinned local MDBench scientific image."),
+    ] = "autoresearch-mdbench:task260",
+    config: Annotated[
+        Path,
+        typer.Option("--config", help="Provider-neutral system configuration."),
+    ] = Path("config.yaml"),
+    env_file: Annotated[
+        Path,
+        typer.Option("--env-file", help="Local credential file; secrets are never persisted."),
+    ] = Path(".env"),
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-model intervention timeout."),
+    ] = 180,
+) -> None:
+    """Run two-generation public-panel search and freeze one exact implementation."""
+
+    try:
+        package = build_autonomous_development_search_package(
+            plan,
+            branch_engine,
+            output_dir,
+            image=image,
+            config_path=config,
+            env_path=env_file,
+            model_timeout_seconds=timeout_seconds,
+        )
+    except (AutonomousDevelopmentError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_autonomous_search: {exc}")
+        raise typer.Exit(code=2) from exc
+    selected = next(
+        item
+        for item in reversed(package.summaries)
+        if item.candidate_id == package.selection.selected_candidate_id
+        and item.stage == "full"
+    )
+    typer.echo(f"[OK] autonomous_development_package: {package.output_path}")
+    typer.echo(f"[OK] package_hash: {package.package_hash}")
+    typer.echo(f"[OK] candidate_results: {package.official_development_result_count}")
+    typer.echo(f"[OK] baseline_results: {package.baseline_result_count}")
+    typer.echo(f"[OK] searched_candidates: {len(package.candidates)}")
+    typer.echo(f"[OK] mechanism_cycles: {package.executed_mechanism_cycle_count}")
+    typer.echo(f"[OK] selected_candidate: {package.selection.selected_candidate_id}")
+    typer.echo(
+        "[OK] selected_operon_relative_system_median: "
+        f"{selected.operon_system_median_relative_improvement}"
+    )
+    typer.echo(f"[OK] decision: {package.selection.decision}")
+    typer.echo(
+        "[OK] search_freeze_receipt: "
+        f"{str(package.search_freeze_receipt_created).lower()}"
+    )
+    typer.echo("[BLOCKED] significance_claim: development_only")
+    typer.echo("[BLOCKED] publication_ready: false")
 
 
 @competition_mdbench_app.command("execute")
