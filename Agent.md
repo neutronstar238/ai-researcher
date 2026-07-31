@@ -64,6 +64,56 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 21:12:50 +08:00 - Codex - Task 263.7.2 current-field manuscript rewrite
+
+- Request: Continue the active AutoResearch publication recovery, explain why the real system output cannot yet reach publication grade, cross-search current fully automated science research, optimize the research path, and implement the next gated manuscript repair without overstating the frozen evidence.
+- Files changed:
+  - `src/autoresearch/research/systems_paper_current_field_rewrite.py`
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/main.tex`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/references.bib`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/values.tex`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/figures/graphical-abstract.tex`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/figures/evidence-boundary-map.tex`
+  - `src/autoresearch/research/assets/task26372_current_field_paper/sections/*.tex`
+  - `tests/unit/research/test_systems_paper_current_field_rewrite.py`
+  - `tests/smoke/test_systems_paper_current_field_rewrite_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-7-2-current-field-manuscript-rewrite.md`
+  - `runs/manual-live/task26372-current-field-manuscript-v1/` (generated formal package; ignored by repository policy)
+- Summary:
+  - Completed Task `263.7.2` as a separate, tamper-evident manuscript rewrite bound to the exact immutable Task `260` v2 evidence, Task `263.7.0` audit, and Task `263.7.1` reanalysis. No parent artifact or historical conclusion was rewritten.
+  - Cross-checked the retained 21 primary-source snapshots against current official pages and incorporated the 2026 peer-reviewed AI Scientist, AI co-scientist, Robin, ERA, and AstaBench field, peer-reviewed REPRO-Bench, preprint CORE-Bench/PaperBench/independent audits, and normative provenance/artifact standards. The resulting position treats end-to-end loop breadth as established and narrows novelty to a failure-linked, tamper-evident research state machine.
+  - Applied the `scientific-writing` workflow through a section-evidence outline before prose, full-paragraph scientific sections, nonbreaking citations, vector figures, and label hygiene. Applied `pre-submission-reviewer` as five non-compensating logic, novelty, methods/statistics, reproducibility/Open Science, and presentation gates. Applied `scientific-schematics` to the graphical abstract and evidence-boundary figure; because the optional image-model credential was absent, used deterministic TikZ and did not fabricate an image-model quality score. The preferred parallel research CLI was unavailable, so `research-lookup` fell back to the content-addressed source registry and official web corroboration.
+  - Rewrote title, abstract, introduction, related work, method, experiments, results, discussion, limitations, conclusion, and appendix. Removed the self-certified positioning table, resolved all 28 affected manuscript surfaces, confined the old 30-cell interval to a labelled historical internal gate, and kept the ten-task analysis explicitly post-audit and non-confirmatory.
+  - Added a 29-key/37-occurrence citation registry. Seventeen current snapshots are exact-hash bound as 9 peer-reviewed, 5 preprint, and 3 normative records; older references remain parent-verified. Full `.tex/.bib` scans have zero restricted-language hits, zero em dashes, no missing citation keys, and passing LaTeX structure checks.
+  - Built and inspected the 10-page paper *A Tamper-Evident Research State Machine for Failure-Linked Computational Studies: A Controlled Local Demonstration*. Seven vector figures, three tables, equations, bibliography, and appendix are legible on all ten 130-dpi page renders with no clipping, overlap, broken glyphs, truncated references, or unexplained interior blank regions.
+  - The formal package is `runs/manual-live/task26372-current-field-manuscript-v1/`. Report, manifest, PDF, citation registry, claim ledger, surface ledger, language scan, visual review, and pre-submission review hashes are `0182c044157b293e69227118a40431fd8fa2d36be23dbf4556569fb135708a31`, `83baa8a732560facc6d6401fbc3ef0d87c3958ef45d56de447d72b32c8a7b6df`, `b7f6ed4a403b97f226aef2cf1604cde6dea038e82bf8dd0455bba0b46b41b0dc`, `9abce4eb9e710f7d44e2b151cbc360dccd65e8773a31a48027a080862c378230`, `eef3815d28e3a76eb4c9700ffaa7d42097d5cee1e2703be7b288de72f8301d3a`, `0f157124a75eefb898a2d042a7e1ec6c416fed787decba147264251980468b0c`, `1d4b767ba686b70f062a6142e661f908c78969088d2d9efebbc0214008dc572b`, `649832e13cefa0e2b430d89033a9f39c497497fa8eeafa3e6ddb520382c23be1`, and `2ac929e7b85a33426507254dd5f56c582f91e9f13553730d8d3cb53b004220da`.
+  - The rewrite gate passes with zero unresolved rewrite findings. Independent confirmation, independent human review, target venue, authorship, license review, AI-use disclosure, public release, external submission, and publication readiness remain false by schema and loader contract.
+- Verification:
+  - `poetry run python -m pytest -q tests/unit/research/test_systems_paper_current_field_rewrite.py`: passed with 8 tests.
+  - `$env:AUTORESEARCH_SYSTEMS_PAPER_REWRITE_LIVE='1'; poetry run python -m pytest -q tests/smoke/test_systems_paper_current_field_rewrite_live.py --no-cov`: passed with 1 test in 1.01 seconds against the real immutable parent/audit/reanalysis and finalized package.
+  - Focused `poetry run ruff check ...`: the public-export addition initially required canonical import ordering, then passed after Ruff's deterministic import fix.
+  - `poetry run mypy src/autoresearch/research/systems_paper_current_field_rewrite.py`: passed with no issues.
+  - Tool-assisted inspection covered PDF pages 1 through 10 at 130 DPI; `visual-review.json` is finalized as `passed` and hash-bound to the exact PDF.
+  - `poetry run python -m pytest -q`: passed with 1,152 tests, 36 opt-in skips, and 82-percent coverage in 204.69 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 180 source files.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py --no-cov`: passed with 3 tests.
+  - `git diff --check`: passed.
+- Problems:
+  - Updated open high-severity `P-20260731-034`: seed pseudoreplication and stale positioning are now repaired, while independent tasks, external/common-budget baselines, independent scoring, Open Science interoperability, and real human review remain publication blockers.
+  - Added and resolved low-severity `P-20260731-037` for unavailable optional research/image helpers, fail-closed cross-platform paper-build issues, canonical import ordering, and guarded temporary-render cleanup encountered during implementation.
+- Follow-up:
+  - Execute Task `263.7.3` next to add an RO-Crate 1.3, Workflow Run RO-Crate, and PROV-O overlay without changing the immutable evidence or claiming a scientific effect.
+  - The actual publishability bridge remains Tasks `263.7.4` through `263.7.7`: real-human benchmark census, independently authored and prospectively powered multi-family confirmation, one-use common-budget execution with external agents/simple baselines and independent scoring, then qualified human publication/venue/authorship/license/AI-disclosure/release/submission decisions.
+
 ### 2026-07-31 20:29:19 +08:00 - Codex - Task 263.7.1 additive independent-task reanalysis
 
 - Request: Continue the active publication-grade AutoResearch recovery by correcting the real Task `260` systems-paper unit of analysis, borrowing the independent-evaluation discipline identified in the current automated-science literature, and implementing the next gated repair without rewriting the frozen study or overstating publishability.

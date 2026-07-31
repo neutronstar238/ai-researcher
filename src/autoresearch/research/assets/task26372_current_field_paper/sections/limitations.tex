@@ -1,0 +1,60 @@
+\section{Limitations and Responsible Use}
+\label{sec:limitations}
+
+\paragraph{The workflow matrix is co-designed.}
+The controller, injected faults, repair actions, and evaluator were designed
+within one project. The matrix tests whether implemented contracts interact as
+specified. It does not estimate performance on tasks written by independent
+researchers, and its absolute success proportions may be optimistic.
+
+\paragraph{The independent sample contains ten tasks.}
+The additive analysis correctly collapses the deterministic repetitions to
+\TaskCount{} task outcomes. This avoids pseudoreplication but leaves a small,
+heterogeneous sample. The interval is wide, the two-sided sign test does not
+cross a conventional 0.05 threshold, and neither analysis was prospectively
+powered as an external confirmation.
+
+\paragraph{Route B does not sample stochastic controller behavior.}
+The three identifiers test idempotency and accidental identifier dependence.
+They do not measure model-sampling variability, trajectory reliability, or
+repair diversity. A confirmation should sample independently generated
+trajectories within each independently authored task and retain task as the
+primary unit.
+
+\paragraph{Task families and comparisons are narrow.}
+The matrix contains four tabular-data workflows and six equation-discovery
+trace workflows. It excludes laboratory robotics, human participants,
+sensitive clinical data, large-scale training, and long-horizon literature
+synthesis. No current external research system is executed under the same
+compute, tool, and retry budget.
+
+\paragraph{Previously observed traces are behavior evidence only.}
+The six MDBench traces were inspected during the earlier scientific campaign.
+They cannot support a new method claim. The two Route A panels are unseen for
+their respective candidates, and both outcomes are negative.
+
+\paragraph{Source maturity is mixed.}
+The field position uses peer-reviewed 2025--2026 articles where available and
+labels CORE-Bench, PaperBench, the KOSMOS audit, SciIntegrity-Bench, and AI
+Agents That Matter as preprints. The retained snapshots establish what was
+checked on 31 July 2026, not permanent completeness of a fast-moving field.
+
+\paragraph{Local hashes are not an open-science profile.}
+The package has file hashes, lineage, a claim ledger, and rebuild commands.
+It has not completed RO-Crate 1.3, Workflow Run RO-Crate, PROV-O, persistent
+identifier, or rights mapping. Metadata interoperability is planned as a
+separate additive layer and will not be represented as independent
+confirmation.
+
+\paragraph{Human responsibility is unresolved.}
+Automated checks cannot decide novelty, scientific importance, ethical
+acceptability, author identity, licenses, AI-use disclosure, venue policy, or
+public-distribution risk. Those fields remain unresolved or false. The system
+must not upload, distribute, or submit the object without explicit human
+approval.
+
+\paragraph{Safety scope is local and computational.}
+The recorded experiments use local computation and public data, with no cloud
+GPU rental, private data, physical actuation, or autonomous communication.
+Moving to physical experiments, sensitive records, or public actions requires
+new containment, approval, and monitoring controls.

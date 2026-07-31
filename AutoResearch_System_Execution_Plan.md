@@ -2127,3 +2127,40 @@ Task `263.7.2` 可开始 current-field manuscript rewrite，但必须逐项消�
 inventory：旧 30-cell interval 只能标作历史内部 gate，十任务结果只能标作事后单位纠正，标题、摘要和结论
 不得恢复外部 superiority。Task `263.7.3` 可并行增加互操作层。新科学效应仍只能来自 Task `263.7.5` 至
 `263.7.6` 的前瞻、独立、一次性确认；人类发表决定仍属于 Task `263.7.7`。
+
+### 27.18 Task 263.7.2 实施结果与 publication-evidence 执行门
+
+Task `263.7.2` 已完成为 additive current-field manuscript rewrite。实现新增：
+
+- 对 immutable Task `260`、Task `263.7.0` audit 和 Task `263.7.1` reanalysis 的三重内容寻址绑定；
+- 一个先证据提纲、后正文的 LaTeX source tree，重写 title、abstract、introduction、related work、method、
+  experiments、results、discussion、limitations、conclusion 与 appendix；
+- 29-key citation registry 与 37 个正文引用 occurrence，current-field 证据明确区分 9 个同行评议来源、
+  5 个预印本和 3 个规范/政策来源；
+- 8-claim current-field ledger 与 28-surface resolution ledger，禁止历史 30-cell interval 回到发表推断；
+- 全 `.tex/.bib` 受限措辞、em dash、标签、引用、数学定界符和 LaTeX 结构审计；
+- 确定性 PDF build、7 个 vector figure、PDF 文本/页数检查、10 页全量目视审查、五维 non-compensating
+  pre-submission review、JSON Schemas、递归 manifest 与 tamper-blocking loader；
+- 所有 target venue、authorship、license、AI disclosure、public release 和 external submission 字段强制为
+  human-owned false。
+
+正式包为 `runs/manual-live/task26372-current-field-manuscript-v1/`，report/manifest/PDF hashes 为
+`0182c044157b293e69227118a40431fd8fa2d36be23dbf4556569fb135708a31`、
+`83baa8a732560facc6d6401fbc3ef0d87c3958ef45d56de447d72b32c8a7b6df` 和
+`b7f6ed4a403b97f226aef2cf1604cde6dea038e82bf8dd0455bba0b46b41b0dc`。重写范围内
+`unresolved_rewrite_findings=[]` 且 `rewrite_gate_passed=true`；这只表示稿件表达与当前领域一致，不表示
+`publication_ready`。
+
+下一执行序列采用以下不可替代门：
+
+| 层 | 下一任务 | 必须新增的证据 | 失败时的合法产物 |
+|---|---|---|---|
+| Portable evidence | `263.7.3` | RO-Crate 1.3、Workflow Run 与 PROV-O 映射及重建 | 可审计但仍非确认性的研究对象 |
+| Field sampling | `263.7.4` | 两位真实 reviewer 和独立 adjudicator 的 benchmark census | 冻结的 diagnostic negative/open resource |
+| Prospective design | `263.7.5` | 独立任务作者、三类以上任务、外部与简单基线、共同预算、功效和 scorer | 不运行结果的 blocked preregistration |
+| Scientific effect | `263.7.6` | 一次性完整矩阵、null controls、独立复演和 task-level inference | 充分功效的 registered negative |
+| Publication ownership | `263.7.7` | 人类 novelty/validity、署名、许可、披露、venue 与发布裁决 | 保留研究记录，不投稿 |
+
+因此现在的最短可发表路径不是继续扩展 Graph、增加 Agent persona 或重复 seed，而是先完成互操作层和真实
+benchmark census，再用独立作者产生的新任务做一次 compute-matched 外部确认。直到 `263.7.6` 产生可接受
+的独立结果且 `263.7.7` 关闭人类门，publication、release 和 submission 都保持 false。

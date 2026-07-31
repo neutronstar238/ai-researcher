@@ -1,0 +1,82 @@
+\section{Related Work and Current Field Position}
+\label{sec:related_work}
+
+\subsection{Peer-reviewed research systems}
+
+The current field contains several peer-reviewed systems with wider research
+scope than the controller studied here. The 2026 Nature version of The AI
+Scientist reports automated ideation, experimentation, writing, and review in
+machine learning~\cite{lu2026aiscientist}. One of three selected manuscripts
+passed review at a workshop with a 70\% acceptance rate; the authors also
+report implementation, rigor, hallucination, and citation failures, and do
+not claim a main-conference standard. Co-Scientist uses asynchronous agents,
+debate, ranking, evolution, memory, expert steering, and experimental
+feedback for hypothesis development~\cite{gottweis2026coscientist}. Its role
+is collaborative and retains expert evaluation. Robin integrates literature
+search, hypothesis generation, human-selected candidates, human-run
+experiments, and iterative analysis in experimental biology
+~\cite{ghareeb2026robin}. ERA uses tree search to optimize empirical software
+against quantitative objectives~\cite{aygun2026era}. Its authors distinguish
+this objective from a claim of scientific discovery.
+
+Earlier peer-reviewed work addresses narrower components. ResearchAgent and
+SciMON use retrieved literature and iterative feedback for research-idea
+generation~\cite{baek2025researchagent,wang2024scimon}. Box's Loop searches
+over statistical models and analyses~\cite{li2024boxlm}. ReAct and Reflexion
+provide reasoning-action and feedback-memory patterns used by many agent
+controllers~\cite{yao2023react,shinn2023reflexion}. Against this background,
+the present state machine is not positioned as a broader automation system.
+Its object of study is the enforceable boundary between a negative result, a
+successor mechanism, and a report claim.
+
+\subsection{Independent evaluation and audit evidence}
+
+AstaBench is a peer-reviewed ICLR 2026 benchmark suite covering research
+planning, literature tasks, coding, and data analysis across 57 agents and 22
+agent classes~\cite{bragg2026astabench}. Its results support component-level
+progress but not a solved scientific-assistance problem. REPRO-Bench is a
+peer-reviewed ACL 2025 study of 112 paper-and-package reproducibility
+assessments; the strongest representative baseline reported 21.4\%
+accuracy~\cite{hu2025reprobench}. Both studies separate a benchmark outcome
+from a broad statement about discovery.
+
+Several current sources are preprints and are treated here as provisional
+evidence. The CORE-Bench preprint defines 270 reproducibility tasks from 90
+papers and reports 21\% accuracy for its strongest baseline on the hardest
+level~\cite{siegel2024corebench}. The PaperBench preprint evaluates replication
+of 20 machine-learning papers and reports a 21\% average score for its
+strongest tested agent, below its recruited human baseline
+~\cite{starace2025paperbench}. An independent preprint audit of KOSMOS reports
+a mixture of supported, uncertain, and false hypotheses in one radiation
+biology assessment~\cite{nusrat2025kosmosaudit}. A 2026 preprint benchmark on
+academic integrity studies whether research agents report failure honestly
+under pressure~\cite{yang2026sciintegrity}. These sources motivate external
+checks and adversarial failure tests; their review status prevents treating
+their numerical findings as settled field estimates.
+
+Evaluation design also matters. The AI Agents That Matter preprint argues for
+attention to cost, model-scaffold attribution, meaningful downstream
+outcomes, and reproducible comparisons~\cite{kapoor2024agentsmatter}. The
+analysis by Demsar of comparisons across data sets supports treating the task
+or data set, rather than repeated runs within it, as the unit for many
+cross-task comparisons~\cite{demsar2006}. This is the statistical reason for
+the additive task-level analysis in Section~\ref{sec:experimental_design}.
+
+\subsection{Provenance and open research objects}
+
+Evidence graphs need interoperable semantics in addition to local hashes.
+The W3C PROV-O Recommendation defines entities, activities, agents, and their
+provenance relations~\cite{lebo2013provo}. RO-Crate 1.3 provides a
+machine-actionable research-object packaging specification
+~\cite{rocrate2026spec}. Workflow Run RO-Crate profiles prospective and
+retrospective workflow provenance and maps its terms to W3C PROV
+~\cite{leo2024workflowrun}. The FAIR principles for research software add
+software-specific expectations for findability, accessibility,
+interoperability, and reuse~\cite{barker2022fair4rs}.
+
+The current package is hash-linked and locally reproducible, but it is not
+claimed to conform to those interoperable profiles. That mapping is separate
+future work because adding metadata cannot convert an author rerun into
+independent validation. ACM artifact policy likewise distinguishes artifact
+availability and functionality from independently validated results
+~\cite{acm2020artifacts}. This separation is retained throughout the paper.

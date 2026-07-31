@@ -1,0 +1,120 @@
+\section{Evidence-Bound Research State Machine}
+\label{sec:method}
+
+\subsection{Campaign state and counted successors}
+
+A campaign is a persistent state machine rather than a sequence of unrelated
+prompts. Figure~\ref{fig:campaign_pipeline} shows the ten implemented states.
+The campaign manifest records the policy, resource limits, current state,
+round index, intervention count, and lineage hash. Each round manifest stores
+the parent-result hash and content hashes for its structured artifacts.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=.98\textwidth]{figures/campaign-pipeline.pdf}
+  \Description{Ten stages from observation through report. A feedback arrow
+  connects a negative report to a new diagnosis in a later round.}
+  \caption{Persistent campaign state machine. Outcome data become available
+  only after the freeze. A negative decision can start a later diagnosis but
+  cannot modify the adjudicated round.}
+  \label{fig:campaign_pipeline}
+\end{figure*}
+
+Let \(r_i\) denote round \(i\), \(e_{i-1}\) its parent result,
+\(h(\cdot)\) a SHA-256 content hash, and \(m_i\) the proposed mechanism
+family. The state machine counts \(r_i\) as a scientific successor only when five conditions
+hold:
+
+\begin{enumerate}
+  \item the proposal records \(h(e_{i-1})\) and a typed diagnosis of the
+  parent failure;
+  \item \(m_i\) changes a stated causal or statistical operation, rather than
+  only parameters or wording;
+  \item code, data identifiers, idempotency identifiers, metrics, stopping
+  rules, and the adjudicator are frozen before outcome access;
+  \item execution creates new observations and a deterministic decision; and
+  \item both the research report and any failure report remain in the lineage.
+\end{enumerate}
+
+An identical rerun is reproduction, a manuscript edit is reporting, and a
+prompt edit without new evidence is neither. The counted object is therefore
+a parent-linked transition through a new empirical contract.
+
+\subsection{Evidence graph and adjudication boundary}
+
+The evidence graph contains typed claim, artifact, activity, decision,
+limitation, and contradiction records. A report claim must resolve to a file,
+JSON pointer or line locator, content hash, and allowed scope. Claims without
+a live edge fail the deterministic report gate. This local graph follows the
+same entity-activity-agent separation used by PROV-O
+~\cite{lebo2013provo}, but the current serialization is project-specific.
+
+The local language model receives the parent diagnosis, permitted development
+context, mechanism constraints, and an output schema. In this study the model
+is from the Qwen family~\cite{yang2025qwen3}. It may propose a diagnosis,
+mechanism, falsifier, or concise policy. It cannot choose unseen data after
+outcome access, calculate the acceptance statistic, alter a threshold, or
+mark a contribution as accepted. A timeout or malformed response selects a
+recorded deterministic fallback and cannot change numerical adjudication.
+
+All decisions are functions of frozen records. The mechanism screen checks
+that a successor changes the declared mechanism family. The development gate
+calculates the registered statistic and validates cell coverage. The freeze
+records hashes of candidate code, data identities, parameter space, metrics,
+stopping rules, and adjudicator source. The unseen evaluator writes one result
+for that identity. The adjudicator maps it to positive, negative, or invalid.
+
+For preregistration \(P_i\), adjudicator source \(A_i\), and parent result
+\(e_{i-1}\), the freeze identity is
+\[
+F_i=h\!\left(h(P_i)\,\|\,h(A_i)\,\|\,h(e_{i-1})\right).
+\]
+The result stores \(F_i\), and the decision stores the result hash. This chain
+detects later substitution. It does not determine novelty, experimental
+adequacy, or truth.
+
+Figure~\ref{fig:evidence_boundary} separates the three statistical and
+governance layers that were conflated in the original internal report.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=.98\textwidth]{figures/evidence-boundary-map.pdf}
+  \Description{Three columns separate the historical 30-cell internal gate,
+  the additive ten-task analysis, and a future independent confirmation. The
+  first two are complete and the third remains required.}
+  \caption{Evidence boundary. Deterministic repetitions can test stability,
+  but only the ten task outcomes enter the additive uncertainty analysis.
+  Neither layer replaces an independently authored confirmation and a human
+  publication decision.}
+  \label{fig:evidence_boundary}
+\end{figure*}
+
+\subsection{Permissioned project memory}
+
+The \vault{} is an Obsidian-compatible and Git-friendly project memory. It
+stores literature notes, topic indexes, experiment records, failure cases,
+skill and strategy cards, claim links, and version history. Retrieval is
+state-dependent. A failure-analysis card may inform a later diagnosis, while
+an unseen metric cannot enter the proposal context for the current round.
+Every retrieved memory item has a stable path and is recorded in the round
+manifest.
+
+This memory design differs from an unconstrained conversation history.
+Negative mechanisms remain addressable, reports link back to their runs and
+decisions, and permission labels define which state may consume an artifact.
+The controlled ablation removes this memory channel for tasks whose repair
+depends on a prior evidence card.
+
+\subsection{Terminal artifacts and human controls}
+
+Each completed round exports its hypothesis, preregistration, experiment
+manifest, raw metrics, validation record, failure analysis, research report,
+loop report, claim-evidence map, figures, decision, and manuscript version.
+The package also records tool versions, build commands, hashes, and source
+status. These objects support inspection and rerunning.
+
+Five decisions remain outside the state machine: target venue, authorship,
+license resolution, AI-use disclosure, and external distribution or
+submission. The package stores each as unresolved or false. A successful
+internal build cannot change those values, and self-iteration cannot modify
+their policy.

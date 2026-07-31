@@ -1,0 +1,89 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Research automation is no longer represented by one generic agent loop.
+Peer-reviewed systems now automate substantial but distinct parts of the
+research process. The AI Scientist joins ideation, implementation,
+experimentation, manuscript production, and automated review in machine
+learning~\cite{lu2026aiscientist}. Co-Scientist organizes generation,
+critique, ranking, and evolution of hypotheses around expert objectives and
+experimental feedback~\cite{gottweis2026coscientist}. Robin connects
+literature-grounded hypotheses with human-run biology experiments and
+machine-assisted analysis~\cite{ghareeb2026robin}. ERA searches over
+empirical software under machine-scored objectives while explicitly
+separating score optimization from scientific discovery~\cite{aygun2026era}.
+These systems make breadth of automation an unsuitable novelty claim by
+itself.
+
+Evaluation evidence is more guarded. The peer-reviewed AstaBench study spans
+many agents and scientific-assistance tasks and finds that current systems do
+not solve the suite as a whole~\cite{bragg2026astabench}. The peer-reviewed
+REPRO-Bench study reports low accuracy when agents assess realistic social
+science reproduction packages~\cite{hu2025reprobench}. Two public preprint
+benchmarks, CORE-Bench and PaperBench, also report low performance on
+computational reproduction and paper-scale replication
+tasks~\cite{siegel2024corebench,starace2025paperbench}. These results do not
+measure original discovery directly, but they show why a system's own local
+checks cannot stand in for independent evaluation.
+
+This paper asks a more limited question. When a computational experiment
+fails, can a research controller preserve the decision, connect a successor
+to that failure, freeze the successor's evaluation before inspecting its
+outcome, and prevent unsupported report claims? This is a question about a
+research state machine, an experimental harness, and an evidence graph. It is
+not a test of whether the controller produces important discoveries or
+performs better than current research systems.
+
+Figure~\ref{fig:running_example} illustrates the unit of mechanism studied.
+A retry may change code or prose without creating a new scientific round. A
+counted successor must cite a parent result, state a mechanism change, commit
+its falsification rule, run against the frozen contract, and retain the
+decision regardless of sign.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=.94\textwidth]{figures/running-example.pdf}
+  \Description{Two workflow paths after a failed experiment. The upper path
+  retries or rewrites. The lower path records a hash-bound diagnosis, proposes
+  a changed mechanism, freezes before outcome access, and exports evidence and
+  a report before another diagnosis.}
+  \caption{A retry and a counted scientific successor are different state
+  transitions. The lower path requires parent linkage, a stated mechanism
+  change, a pre-outcome contract, deterministic adjudication, and a retained
+  report.}
+  \label{fig:running_example}
+\end{figure*}
+
+The implementation, \method{}, stores campaign state in a versioned,
+Obsidian-compatible \vault{}. Structured artifacts record hypotheses,
+preregistrations, code and data hashes, run manifests, raw metrics,
+validation decisions, failure analyses, claim-evidence edges, and manuscript
+versions. A language model may propose structured text, while deterministic
+code controls partitions, metrics, thresholds, state transitions, and
+acceptance decisions. Hashes make replacement detectable; they do not certify
+scientific merit.
+
+The empirical record has two parts. First, two parent-linked
+equation-discovery candidates pass development screens and fail their
+respective unseen criteria. The negative results remain in the lineage and
+cause a registered route change. Second, a frozen matrix injects controlled
+workflow faults into four fresh UCI executions and six previously observed
+MDBench traces. Three controller modes and four ablations exercise the state
+machine. The three recorded repetitions per task are deterministic
+idempotency checks rather than independent samples.
+
+The first contribution is an executable definition of a counted research
+successor with parent-result linkage, pre-outcome freezing, and visible
+negative decisions. The second is a claim-evidence boundary that separates a
+scientific-method gate, a controlled workflow gate, and a manuscript audit.
+The third is an additive correction that treats the ten tasks, rather than 30
+duplicated task-repetition cells, as the independent units. This correction
+preserves the observed mean difference of \TaskLevelGain{} while widening the
+task bootstrap interval to [\TaskLevelCILower{}, \TaskLevelCIUpper{}] and
+giving a two-sided sign-test \(p\)-value of \SignTestTwoSided{}.
+
+The intended conclusion is correspondingly narrow. The frozen study supports
+a controlled demonstration of enforcement and traceability. It does not
+establish performance on independently authored research tasks, stochastic
+controller reliability, broad scientific autonomy, or readiness for external
+submission. Those questions require a new protocol and human-owned decisions.

@@ -1,0 +1,130 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Two development screens lead to two negative decisions}
+
+Both equation-discovery candidates pass their development screens. Round 1
+has a median development improvement of \RouteOneDevelopment{}, and Round 2
+has \RouteTwoDevelopment{}. Their frozen unseen panels give a different
+decision. Round 1 has a system-level 95\% interval of
+[\RouteOneCILower{}, \RouteOneCIUpper{}], and Round 2 has
+[\RouteTwoCILower{}, \RouteTwoCIUpper{}]. Each interval crosses zero, so both
+rounds are negative under their registered criteria.
+
+Figure~\ref{fig:route_a_results} shows these intervals before the detailed
+values in Table~\ref{tab:route_a_results}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/route-a-results.pdf}
+  \Description{Two horizontal confidence intervals cross a vertical zero
+  boundary, so neither equation-discovery round passes its unseen criterion.}
+  \caption{Route A unseen results. Points show median failure-aware relative
+  improvement and bars show frozen system-level bootstrap intervals. The
+  dashed line is the acceptance boundary.}
+  \label{fig:route_a_results}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Development values and unseen decisions for the two parent-linked
+mechanism rounds. Full identifiers are retained in the artifact.}
+\label{tab:route_a_results}
+\resizebox{\columnwidth}{!}{\input{tables/route-a-results}}
+\end{table}
+
+The tested smoothing and support-selection mechanisms therefore do not
+establish improvement over Operon on the held-out systems. The state machine
+keeps each favorable development value and unfavorable unseen decision,
+connects Round 2 to the Round 1 result, and activates the preregistered systems
+route after the second failure. This is negative scientific evidence and a
+workflow transition, not a positive equation-discovery result.
+
+\subsection{Task-level controller comparison}
+
+Figure~\ref{fig:main_results} reports descriptive success proportions for the
+three controllers. The one-shot controller succeeds on \OneShotSuccess{} of
+the deterministic cells, execute-once on \ExecuteOnceSuccess{}, and the full
+loop on \FullLoopSuccess{}. These values are properties of the frozen matrix.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/main-results.pdf}
+  \Description{Bar chart with descriptive success proportions 0.20 for
+  one-shot, 0.50 for execute-once, and 1.00 for the full loop.}
+  \caption{Descriptive controller success in the controlled matrix. Each bar
+  aggregates ten tasks repeated under three deterministic idempotency
+  identifiers; the identifiers are not independent samples.}
+  \label{fig:main_results}
+\end{figure}
+
+At the independent task level, the full-loop minus execute-once difference
+vector is \([0,0,0,1,0,0,1,1,1,1]\). The mean is \TaskLevelGain{} and the
+\BootstrapResamples{}-resample task bootstrap interval is
+[\TaskLevelCILower{}, \TaskLevelCIUpper{}]. There are \NonTieTaskCount{}
+positive differences, no negative differences, and five ties. The exact
+one-sided sign-test \(p\)-value is \SignTestOneSided{}, while the two-sided
+value is \SignTestTwoSided{}. The two-sided value and the wide interval do not
+support a publication-facing statement that the controller performs better
+on a population of research tasks. The unchanged mean is reported as an
+observed contrast only.
+
+The earlier interval [\HistoricalCellCILower{},
+\HistoricalCellCIUpper{}] treated 30 deterministic task-repetition cells as
+the resampling pool. It remains in the immutable parent object as evidence of
+the original internal decision. It is excluded from the current abstract,
+contribution statement, and scientific interpretation.
+
+\subsection{Controlled recovery and component behavior}
+
+The full loop begins with 24 negative cells and repairs 15, for a descriptive
+recovery proportion of \FullLoopRecovery{}. Execute-once has no post-execution
+action and records zero recovery. The full-loop scientific and reproduction
+hashes agree for every cell, giving \FullLoopReproduction{} exact replay, and
+its reports contain \FullLoopUnsupported{} unsupported claims under the
+frozen checker. The campaign records \HumanInterventions{} human research
+decisions after start.
+
+Figure~\ref{fig:component_results} and Table~\ref{tab:all_modes} report the
+registered component removals. Removing \vault{} memory gives
+\NoVaultSuccess{} descriptive success because memory-dependent repairs remain
+blocked. Removing failure feedback gives \NoFeedbackSuccess{}. Removing the
+freeze gives \NoPreregSuccess{} under an endpoint that requires a frozen
+contract. Removing the evidence gate gives \NoGateSuccess{} apparent success
+and permits \NoGateUnsupported{} unsupported claims. These contrasts show
+that the co-designed evaluator responds to each removed contract; they are
+not estimates for independently authored research tasks.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/ablation-results.pdf}
+  \Description{Bar chart comparing full-loop success of 1.00 with four
+  component removals: no Vault 0.70, no feedback 0.50, no freeze 0.00, and no
+  evidence gate 0.80.}
+  \caption{Descriptive success for the complete loop and four component
+  removals. The no-evidence-gate condition also emits six unsupported claims.}
+  \label{fig:component_results}
+\end{figure}
+
+\begin{table*}[t]
+\centering
+\caption{All controller modes. Recovery is conditional on an initially failed
+deterministic cell. Reproduction compares primary and rerun scientific hashes.
+Unsupported is a count over 30 cells per mode.}
+\label{tab:all_modes}
+\small
+\input{tables/mode-results}
+\end{table*}
+
+\subsection{Execution and artifact checks}
+
+The main controller summaries create \LocalRequests{} local-model requests.
+\LocalFallbacks{} request reaches its timeout and uses the declared fallback.
+The event is present in policy evidence and does not affect numerical
+adjudication. Paid external model and cloud-compute cost is zero.
+
+Each matrix cell has a result JSON file, a reproduction record, a Markdown
+report, and hashes for source and policy evidence. The manuscript rewrite adds
+a citation-status registry, a ledger for all 28 affected publication
+surfaces, full language and LaTeX scans, a compiled PDF, and a page-by-page
+visual inspection record. These checks establish artifact consistency only.

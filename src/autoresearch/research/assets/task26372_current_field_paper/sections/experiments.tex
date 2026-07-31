@@ -1,0 +1,136 @@
+\section{Experimental Design}
+\label{sec:experimental_design}
+
+\subsection{Route A: parent-linked mechanism rounds}
+
+The campaign begins from an immutable negative result: existing sparse
+equation-discovery methods degraded under observation noise. Sparse
+identification of nonlinear dynamics supplies the formulation
+~\cite{brunton2016sindy}; PySINDy supplies a reference implementation pattern
+~\cite{desilva2020pysindy}; and Operon is the genetic-programming baseline
+~\cite{burlacu2020operon}. The benchmark contains ordinary and partial
+differential-equation systems under several noise settings
+~\cite{ziaei2025mdbench}. These citations define context only. Candidate
+decisions come from the frozen local results.
+
+An archive audit excludes systems used in two earlier panels, leaving two
+mutually exclusive unseen panels of six systems. Each round uses two
+development systems, one unseen panel, clean and SNR20 conditions, and three
+fresh random seeds for the stochastic scientific algorithms. The candidate,
+Operon baseline, and three mechanism-specific ablations produce 240 cells per
+round. Outcome access occurs only after a development median improvement of at
+least 0.15 and complete candidate and baseline coverage.
+
+Round 1, \path{noise_conditioned_ensemble_sindy}, applies
+noise-conditioned Savitzky--Golay derivative estimation and coefficient
+bootstrap aggregation. Its ablations remove noise conditioning, aggregation,
+or smoothing. Round 2, \path{spline_group_sparse_sindy}, uses analytic
+smoothing-spline derivatives and cross-output group-sparse projection. Its
+ablations remove spline derivatives, group projection, or adaptive
+thresholding. Round 2 stores the Round 1 negative-result hash and declares a
+mechanism delta before execution.
+
+The method gate requires a system-level, failure-aware bootstrap 95\%
+interval with a lower endpoint above zero, three-seed scientific
+reproduction, the strong baseline, all ablations, and an idempotent rerun.
+Failure on any condition writes a negative decision. Thresholds and panels
+remain unchanged after outcome access.
+
+\subsection{Route B: controlled workflow matrix}
+
+After both Route A rounds fail, the campaign freezes a systems study. Four
+sources are fresh local UCI executions~\cite{dua2019uci}; six are trace
+summaries from the previously observed equation-discovery campaign. Each
+source record contains hashes, validated scalar metrics, a truth label, and a
+use restriction. UCI runs show ingestion of newly computed evidence. MDBench
+traces connect the state-machine study to the failed rounds but cannot serve
+as new method holdouts.
+
+Table~\ref{tab:task_matrix} lists the ten tasks. One frozen workflow state is
+injected into each otherwise valid source task. Faults cover source integrity,
+metric direction, configuration freeze, missing evidence maps, unsupported
+claims, missing repetition coverage, failed cells, and claim-evidence
+mismatch. Three tasks require a prior \vault{} record. One task in each family
+has no injected fault.
+
+\begin{table*}[t]
+\centering
+\caption{Frozen tasks and controlled workflow states. Source evidence is
+observed data, while the workflow fault is deliberately introduced. MDBench
+rows are behavior tests rather than method holdouts.}
+\label{tab:task_matrix}
+\small
+\begin{tabular}{llll}
+\toprule
+Family & Source task & Initial workflow state & Required repair \\
+\midrule
+UCI & PenDigits prototypes & none & retain valid evidence \\
+UCI & Letter prototypes & stale source hash & rehash source \\
+UCI & Spambase prototypes & wrong metric direction & bind direction \\
+UCI & Skin prototypes & missing evidence map & restore from \vault{} \\
+\midrule
+MDBench & binocular rivalry & none & retain valid evidence \\
+MDBench & interacting magnets & unfrozen configuration & freeze configuration \\
+MDBench & oscillator death & unsupported claim & evidence-bound decision \\
+MDBench & population growth & incomplete repetitions & resume checkpoint \\
+MDBench & RC circuit & failed experiment cell & classify and recover \\
+MDBench & Van der Pol & claim-evidence mismatch & rewrite claim \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Controllers and component removals}
+
+The \oneshot{} controller emits a result from the initial state. The
+\executeonce{} controller plans once and repairs only a fault visible during
+planning. The \systemloop{} freezes a contract, executes, classifies an
+observed failure, retrieves permitted \vault{} context, applies the task's
+registered repair, reruns once, and checks claim support. These policies are
+deterministic in Route B. A local model supplies a structured policy summary
+but cannot change a transition or score.
+
+Four registered component removals isolate the contracts. Removing \vault{}
+memory blocks repairs that need a prior evidence card. Removing failure
+feedback prevents the second action after a runtime diagnosis. Removing
+preregistration makes the completion contract false. Removing the evidence
+gate hides claim-support failures and permits an unsupported report claim.
+
+Seven modes run on \TaskCount{} tasks with \IdempotencyRepeatCount{}
+deterministic repetition identifiers. This produces \MainCellCount{} main
+cells and \AblationCellCount{} component-removal cells, or \CellCount{} cells
+in total. Each repetition recomputes the scientific hash. The transition
+policy does not sample stochastic repair behavior, so equal outcomes across
+the three identifiers test idempotency and accidental identifier dependence.
+They do not represent three independent controller trajectories.
+
+\subsection{Endpoints and additive task-level analysis}
+
+Task success requires valid source identity, completed execution, a complete
+evidence map, reproduction readiness, supported report claims, and, for the
+full loop, a frozen contract. Recovery is a cell-level engineering measure:
+an initially failed cell takes a second action and then satisfies the task
+contract. An unsupported claim has a polarity or scope inconsistent with its
+source record. Intervention counts any human research decision after campaign
+start. External cost counts paid API and cloud-compute use.
+
+The primary independent unit for the additive analysis is task. After
+confirming that the three deterministic repetitions agree within each task,
+let \(F_t\) and \(E_t\) denote full-loop and execute-once task success. We
+define
+\[
+d_t=F_t-E_t.
+\]
+The ten values are sampled with replacement for \BootstrapResamples{}
+task-bootstrap resamples using the registered random seed. We report the
+percentile interval and an exact sign test over nonzero task differences;
+ties are retained in the task inventory and omitted only from the conditional
+sign count. The bootstrap follows the nonparametric procedure
+~\cite{efron1979bootstrap}, and the task-level unit follows cross-data-set
+comparison practice~\cite{demsar2006}.
+
+The original internal gate averaged 30 task-repetition differences and
+reported [\HistoricalCellCILower{}, \HistoricalCellCIUpper{}]. That interval
+is retained as historical protocol evidence. Because repeated deterministic
+outcomes do not create new independent tasks, it is not used for a
+publication-facing effect statement. The task-level analysis was added after
+the field-currency audit and does not replace the original preregistration.

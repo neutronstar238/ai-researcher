@@ -1848,3 +1848,43 @@ binding、surface inventory、claim ledger、unit audit 与 replay certificate h
 `fresh_confirmatory_evidence=false`、`publication_ready=false`、`public_release_authorized=false` 和
 `external_submission_authorized=false`。下一步 Task `263.7.2` 只能据此重写当前领域定位，不能把事后勘误
 包装成新的 superiority 证据。
+
+### 27.11 Task 263.7.2 current-field manuscript repositioning
+
+Task `263.7.2` 已把原系统稿重写为一个独立、可重建、不可反向修改 Task `260` 历史对象的 current-field
+manuscript package。新标题是 *A Tamper-Evident Research State Machine for Failure-Linked Computational
+Studies: A Controlled Local Demonstration*；中心主张只覆盖受控本地研究中状态转换、失败谱系、负结果和
+claim provenance 的可审计性，不再声称通用 autonomous-research superiority。
+
+当前领域交叉检索改变了研究定位。2026 年已有同行评议的 AI Scientist、AI co-scientist、Robin 和 ERA
+等端到端、协作式、实验闭环或专用科研系统；AstaBench 与 REPRO-Bench 又把科研代理能力拆成可验证的
+外部任务，CORE-Bench、PaperBench 和独立系统审计则显示“能运行一条长 Loop”不等于科学正确、复现成功
+或证据有效。因此 Graph、Harness、Loop 和 Open Science 不能再被当作四个并列卖点：Graph 负责显式
+证据状态与矛盾，Harness 负责独立单位、预算和执行边界，Loop 必须围绕预先冻结的停止规则和失败保留，
+Open Science 则负责可移植的 provenance 与研究对象。它们共同服务的可防御新颖性是“失败联结、可篡改
+检测的证据状态机”，不是 Agent 数量、循环长度或自动生成论文。
+
+重写包逐项消费 Task `263.7.1` 的 28 个受影响表面，未解决表面为 0；历史 30-cell interval 只出现在
+明确标注的历史内部门中，十任务结果只作为事后单位纠正。29 个 citation key、37 个 citation occurrence
+全部可解析，其中 17 个 current-field snapshot 由 Task `263.7.0` 内容寻址绑定为 9 个 peer-reviewed、
+5 个 preprint 和 3 个 normative source，旧稿参考文献则保持 parent-verified。自认证的定位比较表已删除；
+全文受限语气和 em dash 命中均为 0。生成的 10 页 PDF 含 7 个 vector figure，全部页面已经过工具辅助逐页
+目视检查，未见裁切、重叠、破损字形、不可读图表或截断参考文献。
+
+正式包位于 `runs/manual-live/task26372-current-field-manuscript-v1/`。report、manifest、PDF、citation
+registry、surface ledger 和 visual review hashes 分别为
+`0182c044157b293e69227118a40431fd8fa2d36be23dbf4556569fb135708a31`、
+`83baa8a732560facc6d6401fbc3ef0d87c3958ef45d56de447d72b32c8a7b6df`、
+`b7f6ed4a403b97f226aef2cf1604cde6dea038e82bf8dd0455bba0b46b41b0dc`、
+`9abce4eb9e710f7d44e2b151cbc360dccd65e8773a31a48027a080862c378230`、
+`0f157124a75eefb898a2d042a7e1ec6c416fed787decba147264251980468b0c` 和
+`649832e13cefa0e2b430d89033a9f39c497497fa8eeafa3e6ddb520382c23be1`。
+
+这次重写关闭的是 stale positioning、claim scope、语言和 LaTeX 表达缺陷，不会凭文本创造科学效应。
+后续研究路径必须保持非补偿式顺序：Task `263.7.3` 增加 RO-Crate 1.3、Workflow Run RO-Crate 和
+PROV-O 互操作层；Task `263.7.4` 绑定真实双人 benchmark census；Task `263.7.5` 在结果访问前冻结独立
+任务作者、至少三类任务、外部 agent、简单基线、共同预算、独立 scorer、功效和 null control；Task
+`263.7.6` 一次性执行并允许充分功效的 diagnostic negative；Task `263.7.7` 才由真实人类决定 novelty、
+validity、authorship、license、AI disclosure、venue、release 与 submission。当前
+`rewrite_gate_passed=true`，但 `independent_confirmation_complete=false`、`publication_ready=false`，全部
+人类所有权和外部权限字段继续为 false。
