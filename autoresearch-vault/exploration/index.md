@@ -8,6 +8,7 @@
 
 ## benchmark validity
 
+- [[benchmark-validity-human-review-handoff-2026|Benchmark-validity result-blind human-review handoff]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]
@@ -51,6 +52,7 @@
 
 ## harness engineering
 
+- [[benchmark-validity-human-review-handoff-2026|Benchmark-validity result-blind human-review handoff]]
 - [[benchmark-validity-pagination-erratum-2026|Benchmark-validity pre-extraction API pagination erratum]]
 - [[benchmark-validity-result-blind-harness-2026|Benchmark-validity result-blind search Harness]]
 - [[benchmark-validity-systematic-mapping-protocol-2026|AI Scientist benchmark-validity systematic-mapping protocol]]

@@ -2020,3 +2020,46 @@ critical-field coding、pre-adjudication agreement、coverage 和 descriptive/se
 `@total >= 1000` 时保留 capped raw response 并立即进入 registered partial stop；真实人类角色、至少
 20 个 non-pilot family、recall `>=0.90`、agreement 或 evidence coverage 任一失败时只交付开放资源或
 诊断负研究对象。Task `263.7`、publication claim、公开发布和 external submission 仍未授权。
+
+### 27.15 Task 263.6.7.2.2 人类评审交接实施结果与双锁执行门
+
+Task `263.6.7.2.2` 已完成以下实现：
+
+- `benchmark_validity_human_handoff.py`：绑定 immutable protocol、分页勘误 package 与父提交，定义三类
+  人类角色、七个私密 enrollment 字段、公开空槽、隔离 packet、五步状态机、双 reviewer lock barrier、
+  conflict-only adjudicator access、JSON Schema/Markdown/manifest 和递归 tamper-blocking loader；
+- `frozen_benchmark_validity_human_handoff_probe_v1.py`：仅依赖标准库，拒绝 identity-bearing 与
+  result-bearing projection，固定三槽均未分配、所有计数为零和所有下游权限为 false；
+- future receipts：assignment receipt 必须绑定 protocol、handoff、role requirement、packet template 与
+  opaque person ID；reviewer lock 还必须绑定同一 candidate-set hash 和各自 assignment；dual-lock barrier
+  检查两个 reviewer 为不同人且提交同一候选集；adjudicator 必须是第三人；
+- human-validity boundary：软件只验证结构和内容寻址关系，不能替代自然人身份、资格、独立性、冲突声明
+  真伪和知情同意。私密原件禁止进入仓库，公开层只保留 hash-only receipt；
+- deterministic verification：覆盖父证据篡改、非空公开槽、重复/跨 handoff assignment、自动化
+  humanity 伪证、交叉 reviewer 泄漏、异候选集双锁、提前 adjudicator、result-bearing runner、持久化与
+  tamper rejection；并使用两套 clean interpreter 做 local-only exact replay。
+
+正式 output：
+
+`runs/manual-live/task2636722-human-review-handoff-v2/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `c070839d39aa9b5a5b18af170e4b7c8690faf342399c1c98a2ef13ecba0f17b7` |
+| Handoff | `2abc9296b2b14471ad8236e1d91b501f9c6c320950a3552ac771409b4df9fa18` |
+| Projection | `bf9298474bddd74dc274984c474e5d27b92f8cea578b7a2963b6f1841976c3f5` |
+| Replay certificate | `17c57008cdf404c1ecbe74ab670773775d881dc6811d709dca53532ca1c1d259` |
+| Handoff source | `c643266e298d2bc7e39f643a9cd0ddb5420a7ae1892afa9b9f131220304c15f5` |
+| Frozen runner | `dd4666051fe2f9c0548712cac884994832540f56549874f5af8277be78ed1c63` |
+| Manifest | `1060176b4d23cf13ca5cbde23d8f664adfdc9334048adbd7737d2926abf6c6a1` |
+
+#### 下一执行门：263.6.7.3 真实角色 enrollment
+
+项目负责人必须在仓库外核验两位 reviewer 与一位不同 adjudicator 的身份、资格、冲突和同意记录，并仅
+向公开包提交 hash receipts。系统首先运行结构验证；即使结构通过，`formal_census_authorized` 也不能由
+自动化自行置真，仍需负责人显式授权。之后两个 reviewer 在相互隔离的 workspace 对同一冻结候选集完成
+100% screening/critical coding 并分别锁定。只有双锁屏障成立，adjudicator 才能接触冲突清单。
+
+任何角色重复、私密字段进入公开包、peer draft/lock 泄漏、candidate-set hash 不一致、先裁决后锁定，或
+试图用裁决补救 agreement/coverage 失败，都必须 fail closed。当前三槽仍为空，所有研究活动计数为零，
+因此这项任务只使交接可执行，没有生成 field-wide result，更没有授权论文结论、公开发布或投稿。

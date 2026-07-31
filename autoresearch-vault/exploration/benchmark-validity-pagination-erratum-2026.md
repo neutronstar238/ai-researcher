@@ -123,6 +123,7 @@ must end as a registered partial or diagnostic negative.
 
 ## Related
 
+- [[benchmark-validity-human-review-handoff-2026]]
 - [[benchmark-validity-result-blind-harness-2026]]
 - [[benchmark-validity-systematic-mapping-protocol-2026]]
 - [[graph-harness-loop-open-science-2026]]

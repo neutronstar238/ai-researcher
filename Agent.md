@@ -64,6 +64,44 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 19:28:12 +08:00 - Codex - Task 263.6.7.2.2 result-blind human-review handoff
+
+- Request: Continue the publication-grade AutoResearch recovery; explain why executable automation still cannot manufacture a publishable scientific result; and freeze the next enforceable handoff from result-blind software to two real independent reviewers and one distinct adjudicator before the formal benchmark-validity census.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_benchmark_validity_human_handoff_probe_v1.py`
+  - `src/autoresearch/research/benchmark_validity_human_handoff.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_benchmark_validity_human_handoff.py`
+  - `tests/smoke/test_benchmark_validity_human_handoff_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/benchmark-validity-human-review-handoff-2026.md`
+  - `autoresearch-vault/exploration/benchmark-validity-pagination-erratum-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-2-2-human-review-handoff.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-2-1-pagination-erratum.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Used the experimental-design workflow to treat two reviewers as independent replication units rather than repeated Agent personas, isolate their workspaces and peer streams, require locks over the same frozen candidate-set commitment, and defer a third-person conflicts-only adjudication until both immutable locks exist. Adjudication cannot repair failed pre-adjudication agreement or evidence coverage.
+  - Added strict content-addressed contracts for the immutable parent protocol/erratum/commit, exactly three empty role slots, seven private-only enrollment fields, public hash-only role receipts, role requirements, isolated packet templates, five stage transitions, assignment validation, reviewer locks, dual-lock barrier, adjudicator access, schemas, Markdown, recursive manifest, package load, and tamper rejection.
+  - Made the human-validity boundary explicit: automation may validate schemas, binding hashes, pairwise-distinct opaque person IDs, role separation, owner-attestation presence, and stage order, but cannot establish natural-person status, truthful disclosure, legal independence, qualification, or informed consent. Private identity evidence stays outside the repository.
+  - Self-review of the first `v1` smoke exposed that future receipts needed stronger cross-object binding. The final `v2` contract additionally binds assignment receipts to protocol/handoff/role requirement/packet template, reviewer locks to the exact assignment and packet, both locks to the same candidate set and distinct people, and adjudicator access to the same protocol/handoff plus a third person. The retained `v1` run is intermediate evidence; only `v2` is cited as formal output.
+  - Froze report `c070839d39aa9b5a5b18af170e4b7c8690faf342399c1c98a2ef13ecba0f17b7`, handoff `2abc9296b2b14471ad8236e1d91b501f9c6c320950a3552ac771409b4df9fa18`, projection `bf9298474bddd74dc274984c474e5d27b92f8cea578b7a2963b6f1841976c3f5`, replay `17c57008cdf404c1ecbe74ab670773775d881dc6811d709dca53532ca1c1d259`, source `c643266e298d2bc7e39f643a9cd0ddb5420a7ae1892afa9b9f131220304c15f5`, runner `dd4666051fe2f9c0548712cac884994832540f56549874f5af8277be78ed1c63`, and manifest `1060176b4d23cf13ca5cbde23d8f664adfdc9334048adbd7737d2926abf6c6a1`. Actual identity, assignment, lock, adjudicator-access, search, screening, coding, Admission-Card, outcome, and model-call counts remain zero/false; census/publication/release/submission permissions remain false.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_benchmark_validity_protocol.py tests/unit/research/test_benchmark_validity_harness.py tests/unit/research/test_benchmark_validity_pagination_erratum.py tests/unit/research/test_benchmark_validity_human_handoff.py -q --tb=short --no-cov`: 29 passed in 2.69 seconds.
+  - `$env:AUTORESEARCH_BENCHMARK_HUMAN_HANDOFF_LIVE='1'; poetry run python -m pytest tests/smoke/test_benchmark_validity_human_handoff_live.py -q --tb=short --no-cov`: 1 passed in 0.93 seconds. This was local-only, bound the real parent erratum package, and reproduced the exact result-free projection in two clean Python installations without network access or formal bibliographic queries.
+  - `poetry run python -m pytest tests/unit/knowledge/test_links.py tests/unit/knowledge/test_vault.py -q --tb=short --no-cov`: 9 passed in 0.50 seconds.
+  - `poetry run python -m pytest -q`: 1,128 passed, 33 opt-in live tests skipped, 82-percent coverage, in 172.13 seconds.
+  - `poetry run ruff check .`: all checks passed. `poetry run mypy src`: success across 177 source files. `poetry check`: exited zero with only the pre-existing Poetry metadata deprecation warnings. `git diff --check`: exited zero with only the existing exploration-index CRLF-to-LF working-copy warning.
+- Problems:
+  - Updated open high-severity `P-20260731-031`: handoff tooling, blinding, and dual-lock ambiguity are resolved, but the project still lacks two real independent reviewers and one distinct adjudicator.
+  - Updated open high-severity `P-20260731-030`: the enforceable human handoff does not create the missing licensed objective sealed panel or a publishable scientific outcome.
+- Follow-up:
+  - The project owner privately enrolls and verifies two real independent reviewers plus one different adjudicator, retains identity/qualification/conflict/consent records outside Git, and supplies only content-bound hash receipts. After explicit owner authorization, execute Task `263.6.7.3` exactly as frozen; otherwise retain the diagnostic-negative stop. Do not put personally identifying evidence in the repository or substitute Agent personas for humans.
+
 ### 2026-07-31 19:00:25 +08:00 - Codex - Task 263.6.7.2.1 pre-extraction API-pagination erratum
 
 - Request: Continue the publication-grade AutoResearch recovery by repairing the protocol/API pagination mismatch before any formal benchmark-validity extraction, while preserving the frozen search bindings, preventing result access, and keeping the human-review gate closed.

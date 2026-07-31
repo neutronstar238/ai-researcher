@@ -1711,3 +1711,44 @@ formal search、record extraction、screening、Admission Card、outcome 和 mod
 不同 adjudicator，再执行完整 28-query census、citation chaining、known-item recall、双人锁码、
 agreement/coverage gate 与冻结描述性综合。若 DBLP 任一正式 query 触发 cap，或任一人类/recall/sample/
 coverage 门失败，终点必须是 registered partial/diagnostic negative，不能靠 Loop 重写检索式。
+
+### 27.8 Task 263.6.7.2.2 结果盲人类评审交接与双锁冻结
+
+Task `263.6.7.2.2` 把“请两个人再看一遍”改造成可审计的科学设计。两位 reviewer 是同一冻结候选集上的
+两个独立复制单位，不是同一 Agent 的两个 persona、两次采样或两个工作流分支；第三位 adjudicator 必须是
+不同自然人，且只有两位 reviewer 都完成不可变锁定后才可看到冲突字段。这个边界来自独立复核、盲法和
+后置裁决的实验设计原则：裁决只能解决真实分歧，不能回填缺失编码、提高表面 agreement 或修复 coverage
+失败。
+
+公开与私密证据被严格分离：
+
+- 仓库只保存三个空角色槽和未来的 hash-only receipts，不保存姓名、联系方式、证件、签名、资格材料或
+  利益冲突正文；
+- 项目负责人在仓库外保存 identity、qualification、conflict disclosure、consent、independence、scope
+  acceptance 和 timestamp 七类私密记录；
+- 自动化只核验 schema、hash binding、owner attestation 是否存在、opaque person ID 是否两两不同，以及
+  角色/packet/lock 的顺序一致性；它不能证明对方是自然人、声明真实、法律上独立、具备资格或已知情同意；
+- reviewer-A 与 reviewer-B 只收到同一 protocol/source evidence/frozen form 和各自私有 draft/lock；任何
+  peer draft、peer lock 或 adjudication stream 泄漏都 fail closed；
+- 两个 lock 必须绑定同一 protocol、handoff、candidate-set hash、各自 assignment receipt 和精确 packet
+  template。只有 dual-lock barrier 通过后，adjudicator 才获得 conflicts-only packet。
+
+这解决的是责任链与测量设计，不是研究结果。正式包位于：
+
+`runs/manual-live/task2636722-human-review-handoff-v2/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Report | `c070839d39aa9b5a5b18af170e4b7c8690faf342399c1c98a2ef13ecba0f17b7` |
+| Handoff | `2abc9296b2b14471ad8236e1d91b501f9c6c320950a3552ac771409b4df9fa18` |
+| Result-free projection | `bf9298474bddd74dc274984c474e5d27b92f8cea578b7a2963b6f1841976c3f5` |
+| Replay certificate | `17c57008cdf404c1ecbe74ab670773775d881dc6811d709dca53532ca1c1d259` |
+| Handoff source | `c643266e298d2bc7e39f643a9cd0ddb5420a7ae1892afa9b9f131220304c15f5` |
+| Frozen runner | `dd4666051fe2f9c0548712cac884994832540f56549874f5af8277be78ed1c63` |
+| Manifest | `1060176b4d23cf13ca5cbde23d8f664adfdc9334048adbd7737d2926abf6c6a1` |
+
+当前 stage 仍是 `unassigned`：真实 identity、assignment、review lock、adjudicator access、formal search、
+screening、critical coding、Admission Card、benchmark outcome 和 model call 均为 0/false；formal census、
+publication claim、public release 与 external submission 均未授权。下一步不是让 Loop 自动跨门，而是由项目
+负责人私下招募两位真实独立 reviewer 与一位不同 adjudicator，保留私密原件，只把绑定上述冻结证据的
+hash receipt 写入系统。三位角色结构核验通过后，Task `263.6.7.3` 才能开始正式 census。

@@ -53,8 +53,14 @@ Task `263.6.7.3` remains blocked until the project owner assigns two real
 independent reviewers and one distinct adjudicator. Formal coding, field-wide
 claims, public release, and submission remain unauthorized.
 
+Task `263.6.7.2.2` has since frozen the private/public enrollment split,
+isolated reviewer packets, dual-lock barrier, and conflicts-only adjudication.
+The tooling ambiguity is closed; the three real people are still unassigned.
+
 ## Related
 
+- [[../../../exploration/benchmark-validity-human-review-handoff-2026]]
+- [[task-263-6-7-2-2-human-review-handoff]]
 - [[../../../exploration/benchmark-validity-pagination-erratum-2026]]
 - [[../../../exploration/benchmark-validity-result-blind-harness-2026]]
 - [[task-263-6-7-2-benchmark-validity-harness]]
