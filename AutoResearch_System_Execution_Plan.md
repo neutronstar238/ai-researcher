@@ -2164,3 +2164,44 @@ Task `263.7.2` 已完成为 additive current-field manuscript rewrite。实现�
 因此现在的最短可发表路径不是继续扩展 Graph、增加 Agent persona 或重复 seed，而是先完成互操作层和真实
 benchmark census，再用独立作者产生的新任务做一次 compute-matched 外部确认。直到 `263.7.6` 产生可接受
 的独立结果且 `263.7.7` 关闭人类门，publication、release 和 submission 都保持 false。
+
+### 27.19 Task 263.7.3 实施结果与 independent-evidence 执行门
+
+Task `263.7.3` 已完成为 immutable Task `260` 的 additive Open Science overlay：
+
+- 复用 Task `262.7` exporter，生成 RO-Crate 1.3、Workflow RO-Crate 1.0、Process/Workflow/Provenance Run
+  Crate 0.5 与 PROV-O，而不新建平行标准栈；
+- internal view byte-preserve 全部 3,272 个 Task `260` 文件，review view 只投影 22 个确定性脱敏、
+  review-only artifacts，public view 不存在；
+- 把 package/audit/reanalysis/rewrite、software、input、output、action、rights、identifier、claim support、
+  30-cell contradiction、external-validity limitation、两条 Route A negative-result lineage 与最终阻断 decision
+  连成可递归查询的 provenance bundle；
+- live 绑定 6 个 authoritative standards pages；raw body 仅内部参考，未推定 redistribution license；
+- 在 clean directory 重建全部 3,272 个父文件并执行 7 个冻结 assertion，`scientific_experiment_reexecuted=false`；
+- `roc-validator==0.11.3` 对 internal/review 共 8 个 required profiles 全部通过；工具无 RO-Crate 1.3 profile
+  的限制被显式保留，未以兼容 profile 冒充 1.3 外部验证；
+- JSON Schemas、recursive manifest、strict loader、tamper gate、private-path scan 与 source/parent parity 全部
+  fail closed。
+
+正式包为 `runs/manual-live/task26373-open-science-overlay-v1/`；以下 report/manifest/bundle/registry/query/
+reconstruction/profile 值均为排除自身 hash 字段后的 canonical contract hashes，recursive manifest 另行记录
+每个落盘文件的 byte hash：
+`58199dc384adde6753548f7f9667c68e8d8ca2005341e808a2b5c5dda002c4c8`、
+`8e26b4de58ade45ee3a82bc9aef1e79d0e36d4c2fafd364c7bdf9395ee3a6d51`、
+`9fe90ec45ec1cdd5339a09939c36f1c461f11ca0d113e5ce13e638df35960a5c`、
+`ceb93e3163aa83571749ffffa8716bdb9dc22c9317098075f3eb80a6e8d807f4`、
+`851410e449cdaa8ed87cfc336f18ee6b349f0fd6ae411d3fde261958414b02b2`、
+`9cfa2879bded0c0768f46f336d1f98dd8e45ab43f3d85dd41c0be4f7a850100a` 和
+`f7229f5460a46e32e1d43299f00c3e9d26b998a6a5722a98aaf690beec0d0084`。
+
+portable-evidence 层现在完成，但不得提前执行或宣称 scientific-effect 层。下一合法动作只有：
+
+1. Task `263.7.4` 由两位真实 reviewer 和一位独立 adjudicator 完成 benchmark-validity census；
+2. 只有 census 通过后，Task `263.7.5` 才能在看结果前冻结独立 task authors、至少三类 family、external/simple
+   baselines、共同预算、独立 scorer、task-level estimand、功效、null control 与角色隔离；
+3. Task `263.7.6` 一次性运行并允许 adequately powered diagnostic negative，不 benchmark-shop；
+4. Task `263.7.7` 由 qualified humans 决定 novelty、validity、authorship、license、AI disclosure、venue、
+   release 与 submission。
+
+因此当前 `metadata_interoperability_only=true`、`scientific_confirmation_added=false`、
+`publication_ready=false`。Open Science 让不可发表原因更容易审计，但不会自行把对象变成可发表结果。

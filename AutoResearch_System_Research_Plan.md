@@ -1888,3 +1888,47 @@ PROV-O 互操作层；Task `263.7.4` 绑定真实双人 benchmark census；Task 
 validity、authorship、license、AI disclosure、venue、release 与 submission。当前
 `rewrite_gate_passed=true`，但 `independent_confirmation_complete=false`、`publication_ready=false`，全部
 人类所有权和外部权限字段继续为 false。
+
+### 27.12 Task 263.7.3 interoperable Open Science overlay
+
+Task `263.7.3` 已把 immutable Task `260` 论文对象、Task `263.7.0` publication audit、Task `263.7.1`
+independent-task correction 与 Task `263.7.2` current-field rewrite 映射为一个 additive、unreleased、
+machine-actionable research object。实现复用既有 Task `262.7` Open Science exporter，而不是建立第二套标准
+栈：RO-Crate 1.3 负责对象、identifier、rights 和 `hasPart`；Workflow RO-Crate 1.0 与 Process/Workflow/
+Provenance Run Crate 0.5 负责 workflow/action/input/output；W3C PROV-O 投影负责 Entity、Activity、Agent、
+Usage、Generation、Derivation、Association、Claim、support、contradiction、limitation、validation 与 decision。
+
+新 overlay 关闭的是“别人无法机器读取和精确重建历史对象”的缺陷，不是科学有效性缺陷。internal-complete
+view 包含 Task `260` 全部 3,272 个文件及其原 hash；review-reproduction view 只包含 22 个脱敏、review-only
+证据对象，不含 internal provenance bundle、绝对私有路径、公开许可或发布批准。六个 authoritative standards
+页面通过 live marker 和 raw-byte hash 绑定；因未推定网页转载许可，raw body 只保留在本地 formal package，
+RO-Crate 只带 source registry、URL、hash、版本和 rights 状态。没有 public view。
+
+因果查询显式保留三条不同语义：受控 evidence-state-machine demonstration 有 support，也有 co-design、两类
+task、无独立确认的 limitation；历史“30 个 task-seed cell 是独立发表单位”同时保留历史 warning support 和
+Task `263.7.1` counterevidence；Route A 两个 `negative_result` 各自是 `EntityKind.FAILURE`，并进入最终
+publication-blocking decision 的递归祖先。这样 negative result、contradiction 与 limitation 不再被成功路径
+覆盖，但 hash/metadata 仍不被写成 scientific truth。
+
+正式包位于 `runs/manual-live/task26373-open-science-overlay-v1/`，含 3,371 个递归 hash 文件。clean-directory
+reconstruction 对全部 3,272 个 Task `260` 文件保持 exact file-set 与 byte parity，并运行 7 个 review assertion；
+没有重跑科学实验。隔离的 `roc-validator==0.11.3` 对 internal/review 各执行 Workflow RO-Crate 1.0、Process
+Run 0.5、Workflow Run 0.5、Provenance Run 0.5 required checks，共 8 份 passed report。该工具仍只内置到
+RO-Crate 1.2，因此 `external_ro_crate_1_3_profile_available=false`，1.3 由 exporter 对官方 1.3 contract
+检查，不能虚构为外部 1.3 validation。
+
+以下 report、manifest、bundle、source registry、provenance query、reconstruction 与 profile validation 均为
+排除自身 hash 字段后的 canonical contract hashes；recursive manifest 另行记录每个落盘文件的 byte hash。其值
+分别为 `58199dc384adde6753548f7f9667c68e8d8ca2005341e808a2b5c5dda002c4c8`、
+`8e26b4de58ade45ee3a82bc9aef1e79d0e36d4c2fafd364c7bdf9395ee3a6d51`、
+`9fe90ec45ec1cdd5339a09939c36f1c461f11ca0d113e5ce13e638df35960a5c`、
+`ceb93e3163aa83571749ffffa8716bdb9dc22c9317098075f3eb80a6e8d807f4`、
+`851410e449cdaa8ed87cfc336f18ee6b349f0fd6ae411d3fde261958414b02b2`、
+`9cfa2879bded0c0768f46f336d1f98dd8e45ab43f3d85dd41c0be4f7a850100a` 和
+`f7229f5460a46e32e1d43299f00c3e9d26b998a6a5722a98aaf690beec0d0084`。
+
+现在 `263.7.1`—`263.7.3` 只把旧证据纠正、重写和移植到可审计状态。真实不可发表的主因仍是没有独立
+task authors、至少三类 substantive family、common-budget external/simple baselines、independent scorer、
+prospective power/null controls、one-use confirmation 和 qualified human decision。最短路径因此转到 Task
+`263.7.4` 人类 benchmark census，再执行 `263.7.5`—`263.7.7`；继续加 Graph node、Agent persona、Loop
+次数、seed 或论文润色都不能补偿这些门。

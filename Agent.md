@@ -64,6 +64,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 21:58:58 +08:00 - Codex - Task 263.7.3 interoperable Open Science overlay
+
+- Request: Continue the active publication-grade AutoResearch recovery, explain why the real system still cannot produce a publishable result, borrow current automated-science/Open Science ideas, optimize the research path, and implement the next non-compensating interoperability task without changing frozen evidence or overstating scientific validity.
+- Files changed:
+  - `src/autoresearch/research/systems_paper_open_science_overlay.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_systems_paper_open_science_overlay.py`
+  - `tests/smoke/test_systems_paper_open_science_overlay_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-7-3-open-science-overlay.md`
+  - `runs/manual-live/task26373-open-science-overlay-v1/` (generated formal package; ignored by repository policy)
+- Summary:
+  - Completed Task `263.7.3` as an additive Open Science overlay bound to the exact immutable Task `260` v2 package and the exact Task `263.7.0` audit, Task `263.7.1` independent-task correction, and Task `263.7.2` current-field rewrite. No historical package, claim, outcome, gate, or dependency version changed.
+  - Applied the `research-lookup` workflow. Because its preferred `parallel-cli` helper was absent, used the required authoritative-source fallback and live-bound six official RO-Crate 1.3/profile, Workflow Run 0.5, Provenance Run 0.5, W3C PROV-O, and validator documentation pages. Every page retains requested/final URL, status, media type, marker set, raw-body SHA-256, retrieval time, and reference-only rights status.
+  - Reused the existing Task `262.7` exporter instead of creating a parallel standards stack. The resulting internal/review objects declare RO-Crate 1.3, Workflow RO-Crate 1.0, Process/Workflow/Provenance Run Crate 0.5, PROV-O, CodeMeta/CFF/DataCite, SPDX, SLSA construction scope, rights, identifiers, and no-publication policy.
+  - Added strict content-addressed contracts for authoritative source snapshots/registry, external profile results, provenance queries, exact reconstruction, package report, schemas, recursive manifest, and strict loader. All component/report/manifest relationships fail closed on file-set, byte, hash, or reference drift.
+  - The internal view retains every one of the 3,272 Task `260` files. The historical 3,269-file manifest and its deliberately excluded `artifact-hashes.json`, `paper-package.json`, and `paper-package.md` control files all reconstruct byte-for-byte in a fresh directory. Seven review assertions pass without rerunning the experiment.
+  - The review view exposes 22 sanitized review-only artifacts, excludes the internal provenance bundle and third-party raw HTML, and contains no workspace/user-home path. Raw standards pages remain only in the local formal package; no redistribution license is inferred. No artifact is public, and no public view is generated.
+  - Added a causal provenance bundle with software, two agents, inputs, outputs, five actions, qualified usage/generation/derivation/association, three claims, six validations, and a final publication decision. The controlled-demonstration claim has both support and an explicit external-validity limitation; the historical 30-cell interpretation retains historical warning support plus Task `263.7.1` counterevidence; both Route A negative rounds are first-class failure entities and recursive ancestors of the final decision.
+  - Installed `roc-validator==0.11.3` only in an isolated system-temporary virtual environment. It passed required Workflow RO-Crate 1.0 and Process/Workflow/Provenance Run 0.5 checks for both views, eight `passed=true` JSON reports. Its base profiles still stop at RO-Crate 1.2, so external 1.3 availability is explicitly false; the exporter validates the official 1.3 contract without claiming unsupported external validation. Distribution metadata supplies version `0.11.3`; the CLI's ambient dirty-Git string is preserved only as an observation, and private validator paths are sanitized.
+  - Formal package `runs/manual-live/task26373-open-science-overlay-v1/` contains 3,371 recursively hashed files and is approximately 44.3 MB. Canonical self-excluding contract hashes for the report, manifest, provenance bundle, source registry, provenance query, exact reconstruction, and profile validation are `58199dc384adde6753548f7f9667c68e8d8ca2005341e808a2b5c5dda002c4c8`, `8e26b4de58ade45ee3a82bc9aef1e79d0e36d4c2fafd364c7bdf9395ee3a6d51`, `9fe90ec45ec1cdd5339a09939c36f1c461f11ca0d113e5ce13e638df35960a5c`, `ceb93e3163aa83571749ffffa8716bdb9dc22c9317098075f3eb80a6e8d807f4`, `851410e449cdaa8ed87cfc336f18ee6b349f0fd6ae411d3fde261958414b02b2`, `9cfa2879bded0c0768f46f336d1f98dd8e45ab43f3d85dd41c0be4f7a850100a`, and `f7229f5460a46e32e1d43299f00c3e9d26b998a6a5722a98aaf690beec0d0084`; the recursive manifest separately records the on-disk byte hash of every included file.
+  - The first structurally passing package retained a misleading CLI-derived dirty suffix. It was moved recoverably to `runs/manual-live/task26373-open-science-overlay-v1-superseded-cli-version/`, not deleted, before the corrected formal package was rebuilt. Publication, independent confirmation, human review, authorship/license/venue/AI-disclosure decisions, public release, and external submission remain false.
+- Verification:
+  - `poetry run python -m pytest -q tests/unit/research/test_systems_paper_open_science_overlay.py --no-cov`: passed with 4 tests in 88.50 seconds. Coverage includes authoritative-source marker/hash failure, deterministic bundle/query parity, complete 3,272-file internal inventory, rights/public partitioning, exact clean reconstruction, seven frozen assertions, review privacy, strict reload, and tamper rejection.
+  - Final `$env:AUTORESEARCH_TASK26373_LIVE='1'; ...; poetry run pytest tests/smoke/test_systems_paper_open_science_overlay_live.py -q --no-cov`: passed with 1 test in 147.60 seconds against six real official pages, the real immutable parent/audit/reanalysis/rewrite packages, and the isolated external validator.
+  - External profile validation produced 8 reports with exit code zero and JSON `passed=true`: Workflow RO-Crate 1.0 and Process/Workflow/Provenance Run Crate 0.5 for internal and review. Persisted reports contain zero workspace/user-home path hits. Internal contract validation passes RO-Crate 1.3 for both views; external 1.3 remains explicitly unavailable in validator 0.11.3.
+  - `poetry run python -m pytest -q`: passed with 1,156 tests, 37 opt-in skips, and 82-percent coverage in 290.65 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 181 source files.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py --no-cov`: passed with 3 tests.
+  - `git diff --check`: passed.
+  - Post-build hash-semantics audit: confirmed that the named contract hashes exclude their own hash field by design, while the recursive manifest independently records persisted file-byte hashes, including the report file.
+- Problems:
+  - Updated open high-severity `P-20260731-034`: pseudoreplication, stale positioning, and interoperable-metadata/reconstruction gaps are now mitigated; independent tasks/families, external/common-budget baselines, independent scoring, prospective power/null controls, one-use confirmation, and qualified human publication ownership remain blockers.
+  - Added mitigated low-severity `P-20260731-038` for unavailable optional helpers, the initial PowerShell command failure, live source-marker drift, third-party HTML secret-scan collision, validator CLI version contamination, and the still-missing external RO-Crate 1.3 profile.
+- Follow-up:
+  - Task `263.7.4` is the next non-compensating gate, but it depends on Task `263.6.7.3` real-human completion: two qualified independent reviewers and a distinct adjudicator must complete and lock the benchmark-validity census. Automation must not invent those identities, receipts, coding decisions, or agreement results.
+  - Only after that human census passes may Tasks `263.7.5` and `263.7.6` freeze and run an independently authored, at-least-three-family, common-budget, externally baselined, independently scored, prospectively powered one-use confirmation. Task `263.7.7` remains the human novelty/validity/authorship/license/disclosure/venue/release/submission decision.
+
 ### 2026-07-31 21:12:50 +08:00 - Codex - Task 263.7.2 current-field manuscript rewrite
 
 - Request: Continue the active AutoResearch publication recovery, explain why the real system output cannot yet reach publication grade, cross-search current fully automated science research, optimize the research path, and implement the next gated manuscript repair without overstating the frozen evidence.
