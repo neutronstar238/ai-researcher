@@ -1631,3 +1631,52 @@ certificate matrix 固定为：
 `4e3251eb2453fffaa37a4f6849251396e3f1fc88f882739faa07a5e8d4dda73c`
 递归绑定 1,242 个 artifact。下一步只能进入 `263.6.2`：先冻结 consumed-panel、technical-only、
 stop/advance 和 publication-ineligible contract，再把 exact v1 claim 交给 certified v2 evaluator。
+
+### 27.8 Task 263.6.2 停止裁决与下一执行门
+
+`263.6.2` 的正式矩阵已经完成，但合法终点是 `invalid_technical_replay`。primary/replay 各有
+1,620 assignments 与 180 null controls；8 个 assignment trajectory 在同一真实 workload deadline
+上不一致，0 个 null projection 不一致。冻结编排器没有写 technical-effect report，而由独立 incident
+auditor 把差异、31 个不完整 label attestation、诊断分析和全部 release/confirmation/publication
+false 常量固化为 36,521-artifact 研究对象。
+
+事故对象：
+
+- repair freeze:
+  `6b7f124fab513e8032ff777b2a92926cf5e57836d409ad133700c49946cea22b`;
+- incident:
+  `f756ab01b1e7291875470e75d63e5fe668bf199a50659c041799e038578f9dd0`;
+- diagnostic analysis:
+  `f599ed894e484dae483c25e27364ebea5ceec27f45c925bfc625e16fed0d08b3`;
+- recursive incident manifest:
+  `79bfb70fa5ded53686ada5deadb1e735450ad442a441867b93eef615a9c30fe6`.
+
+冻结裁决是 `stop_portfolio_memory_claim`，下一路线是
+`return_to_objective_opportunity_tournament`。不得重跑旧面板直到出现一致结果，不得根据 v2 数值换
+指标/子组/阈值，不得进入 263.6.3 给旧 claim 购买新 panel。`263.7` 继续阻塞。
+
+下一执行任务为 `263.6.4`，采用三层资格门：
+
+1. **Instrument calibration**：schema、label token、metric、null behavior、failure domain、prediction
+   replay 和权限边界；
+2. **Development-only workload qualification**：最慢 task/candidate strata、两解释器、计划并发、
+   多次重复、process telemetry、algorithmic compute budget、orchestration deadline/slack、timeout
+   origin、retry 与 replay semantics；
+3. **Scientific opportunity qualification**：nearest work、strong baseline、客观 effect、独立单位/
+   功效、开放许可/数据/代码、预算、falsifier、消融和 disjoint panel 计划。
+
+至少比较 structured world-model/evidence graph、Socratic falsification critic、外部 data/lab/
+environment feedback 三条新机制 track。对每条 track：
+
+- 使用新 development evidence；不能读取或复用 v1/v2 consumed panel 做排序；
+- 先冻结一个主 claim、SESOI、反证和最小决定性实验；
+- 把 Agent 分数只作为探索信号，晋级只依赖客观 evaluator；
+- 用 budget-matched ablation 分别测 world model、critic 和 external feedback 的增量；
+- 记录全部失败、timeout、人工输入和成本；
+- 允许机会门全失败，并在失败时保留 research object；
+- 只有通过结果盲 RQ/opportunity/workload certificate 后，才可设计新的 untouched panel。
+
+Kosmos 的 structured world model、Robin/Virtual Lab 的 lab-in-the-loop、AHOIS 的 causal questioning/
+constraint/counterexample/falsification critic 均作为可消融假设来源，而不是可直接声明的能力。新任务
+必须用独立正确率、错误发现率、实验晋级有效率、重放一致性和成本等客观端点验证；任何人类领域判断、
+湿实验、公开发布或投稿仍需显式批准。

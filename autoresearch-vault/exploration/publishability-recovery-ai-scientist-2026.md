@@ -1,7 +1,7 @@
 ---
 title: AutoResearch 可发表性恢复：从单候选流水线到证据约束的科研组合搜索
 date: 2026-07-29
-updated: 2026-07-30
+updated: 2026-07-31
 status: accepted-plan
 task: "263.1"
 tags:
@@ -43,7 +43,7 @@ tags:
 
 来源优先级为同行评审论文、官方论文页/会议论文集、作者原始预印本和官方代码库。预印本均显式标注，
 不把作者系统的自评当作独立复制，也不把 workshop 接收、运行成功或生成 PDF 当成主会/主刊证明。
-最终来源登记含 44 条可定位文献或标准，其中 36 条作为正文编号核心来源、8 条作为相邻 benchmark、
+最终来源登记含 45 条可定位文献或标准，其中 36 条作为正文编号核心来源、9 条作为相邻 benchmark、
 方法或批评性上下文。本轮不执行外部投稿，不租用云 GPU，不修改已揭示科学 panel、阈值或 Gate B。
 
 ## 2. 本地事实：系统已经产出，科学贡献门才是失败点
@@ -149,6 +149,10 @@ transparent verification，而不是规模化 hypothesis generation，视为 AI-
   问题和三种 seed 上运行 9,623 次模型调用。[S23] 它与本仓库 PDE 路线直接相邻，但仍有单模型、prompt
   偏向、有限 ablation、未全量全保真验证等局限，因此更适合作为“独立复制 + 因果角色消融 + 多保真
   校准”的新研究对象，而不是直接照搬其性能结论。
+- AHOIS 把物理 critic 具体化为因果追问、约束检查、反例生成和证伪判据，并在真实多模光纤平台闭环
+  实验；消融报告 Socratic interrogation 改善物理一致性、假设完整性、不确定性校准和实验计划有效性。
+  [S37] 这支持把“反方 Agent”变成结果前可测试的干预，但该工作仍是单一物理平台的 2026 预印本，
+  不能直接证明通用自主科学能力。
 
 ### 3.5 Open Science：把结果变成可交换研究对象，但不替代科学门
 
@@ -412,6 +416,47 @@ Code-as-Harness 要求轨迹与权限边界；Co-Scientist/Robin/ERA 的客观�
 可发表贡献。详细证据见
 [[projects/ai_researcher_system/progress/task-263-6-1-evaluator-compatibility-certificate]]。
 
+### 8.4 Task 263.6.2 technical replay 与停止裁决
+
+已消耗面板上的 v2 重放完成 primary/replay 各 1,620 个 policy assignment 和 180 个 null control，
+但两个解释器的 scientific projection 不相等，因此冻结编排器正确拒绝生成正式 technical report。
+差异严格局限于 `openml-cc18-task-14970`、seed `3253`：同一个 `xgb-deep` F1 在 primary 成功、在
+replay 到达 60 秒 deadline，进而使八个共享该 evaluation 的 policy trajectory 出现 8/1,620 个
+投影差异；最终 selected candidate 和 task-success endpoint 没变也不能抹去中间搜索轨迹差异。
+180 个 null projection 全部一致。
+
+标签边界审计另记录 31 个 attestation anomaly：primary/replay 分别有 12/13 个 pre-F3 timeout
+无法返回 `labels_accessed=false`，另各有 3 个 F3 timeout 虽绑定正确 label path/hash，却未返回
+实际访问证明。它们不是 label leakage 的证据，而是冻结合取门所需证明不完整。这个结果说明小型合成
+fixture certificate 只能校准语义，不能替代真实工作负载尾部、并发和 deadline 的资格认证。
+
+由于 exact replay 失败，修复后数值只能作事故诊断：`portfolio_memory` 40/60，
+`linear_self_loop` 43/60，risk difference `-0.05`，保守 exact 95% interval
+`[-0.196505, 0.105569]`，exact McNemar `p=0.453125`；favorable/unfavorable 为 2/5，CC18 与
+CTR23 family effect 分别为 `-0.048780`、`-0.052632`。此外 primary 保留 30 个非预期 candidate
+failure 和 15 个 infrastructure timeout。即使忽略 replay mismatch，方向、实际效应、family
+一致性和失败清洁度也都不允许推进。
+
+系统已写入永久 `invalid_technical_replay` 事故对象，而不是挑选有利子集或再买 panel。incident hash
+为 `f756ab01b1e7291875470e75d63e5fe668bf199a50659c041799e038578f9dd0`，36,521-artifact
+manifest hash 为 `79bfb70fa5ded53686ada5deadb1e735450ad442a441867b93eef615a9c30fe6`。
+`portfolio_memory` 发表主张关闭，263.6.3 不进入；下一路线固定为
+`return_to_objective_opportunity_tournament`。详细证据见
+[[projects/ai_researcher_system/progress/task-263-6-2-technical-replay-stop]]。
+
+路径优化因此增加一个此前缺失的中间层：
+
+`Instrument Calibration → Development-only Workload Qualification → Scientific Search →`
+`Independent Confirmation → Open Science`
+
+下一次机会锦标赛必须在任何新冻结前，用 development-only 的最慢 task/candidate strata 在两套
+interpreter、计划并发和重复条件下校准 algorithmic compute budget 与 orchestration deadline；
+若科学轨迹依赖 wall-clock 抖动则该机制不具确认资格。新 track 至少比较三类机制化问题：Kosmos 式
+structured world model/evidence graph 对长程一致性与语句正确性的作用，AHOIS 式因果/约束/反例/
+证伪 critic 对错误发现率的作用，以及 Robin/Virtual Lab 式外部客观反馈与明确人类责任边界。
+每一项都必须有强 baseline、预注册消融、客观 evaluator、独立单位、功效、开放数据/许可和全失败保留；
+可以全部失败，不能用 agent 自评或消耗面板数值选 winner。
+
 ## 9. 反方审查
 
 1. **组合搜索可能只是更昂贵的多次尝试。** 因此必须预算匹配、预注册 survival rule、保留全部分支，
@@ -428,13 +473,15 @@ Code-as-Harness 要求轨迹与权限边界；Co-Scientist/Robin/ERA 的客观�
 
 ## 10. 结论
 
-- **RQ1：为什么达不到可发表级？** 后端已经能真实执行、审计、复现和构建论文；前端候选宽度、问题可
-  判决性、独立单位、功效和探索到确认的统计控制不足，导致开发效果在 unseen 中崩溃。
+- **RQ1：为什么达不到可发表级？** 后端已经能真实执行、审计、复现和构建论文；当前科学主张先在 v1
+  暴露测量语义缺陷，修复后又呈不利方向并在真实工作负载 deadline 上失去精确重放。没有有效、独立、
+  方向正确且可复现的主效应，论文写作质量无法补偿。
 - **RQ2：近期 AI Scientist 工作真正证明了什么？** 树搜索、锦标赛、结构化记忆、客观环境反馈和人机
   实验边界能改善流程；尚无可靠证据证明完全自主系统能稳定完成自主选题到主会/主刊发表。
-- **RQ3：最短恢复路径是什么？** 先把问题和机会变成内容寻址硬合同，再做预算匹配的多样组合和多保真
-  搜索，最后用未揭示 panel、clean-room reproduction 和人类终审裁决。第一篇新研究优先检验这套搜索
-  策略本身，而不是再次押注一个 PDE 单候选。
+- **RQ3：最短恢复路径是什么？** 当前 claim 已停止。下一轮先做全新问题的机会锦标赛，在 instrument
+  calibration 与科学搜索之间新增 development-only workload qualification，再做预算匹配的多样
+  组合、结果前证伪 critic、未揭示 panel、clean-room reproduction 和人类终审；不得给旧 claim
+  购买新面板。
 
 ## 11. 来源登记
 
@@ -519,6 +566,9 @@ Code-as-Harness 要求轨迹与权限边界；Co-Scientist/Robin/ERA 的客观�
   [PMLR](https://proceedings.mlr.press/v267/huang25n.html)
 - Buehler, “SciAgents: Automating Scientific Discovery through Multi-Agent Intelligent Graph
   Reasoning,” arXiv:2409.05556, 2024. [arXiv](https://arxiv.org/abs/2409.05556)
+- [S37] Zeng et al., “Socratic agents for autonomous scientific discovery in high-dimensional
+  physical systems,” arXiv:2606.26722, 2026.
+  [arXiv](https://arxiv.org/abs/2606.26722)
 
 ### 批评与边界
 

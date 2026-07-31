@@ -1,7 +1,7 @@
 ---
 title: AutoResearch vNext：Graph、Harness、Loop 与 Open Science 重构研究
 date: 2026-07-28
-updated: 2026-07-30
+updated: 2026-07-31
 status: accepted-plan
 task: "262.1"
 tags:
@@ -535,6 +535,41 @@ report hash 为 `e3709c8b834bfcc52ed7fb74389278e6c5a3e36d4bf13d32ddad7118f4aa797
 这证明 Graph/Harness 可以承载语义校准门，但不证明 `portfolio_memory` 有效。下一步仍只能是明确
 `consumed-panel/technical/exploratory` 的 263.6.2，并由结果前 stop/advance rule 决定关闭主张还是
 重新进入全新 opportunity/development 流程。
+
+### 10.3 Task 263.6.2 对运行时与研究路径的实证反馈
+
+完整 v2 technical primary/replay 各执行 1,620 assignments 和 180 null controls，但 scientific
+projection 出现 8/1,620 个差异。差异都来自同一个真实 workload boundary：
+`openml-cc18-task-14970`、seed `3253` 的 `xgb-deep` F1 在 primary 成功而 replay 到达 60 秒
+deadline；八个复用该 evaluation 的 policy 因此产生不同的 stage trajectory。selected candidate 和
+task-success endpoint 相同不能满足 exact scientific replay，因为搜索路径本身就是被研究的处理。
+冻结 Loop 正确停止，未生成 formal technical report。
+
+这一事故给四平面增加了新的非补偿要求：
+
+- **Graph**：除了 Entity/Activity/hash，还要表示 algorithmic budget、orchestration deadline、
+  concurrency、process telemetry、timeout origin 和 attestation completeness，不能把所有
+  `runner_timeout` 压成一个无上下文状态。
+- **Harness**：fixture-level `EvaluatorCompatibilityCertificate` 之后新增 development-only
+  `WorkloadQualificationCertificate`，用最慢 task/candidate strata 在两套 interpreter、计划并发和
+  重复条件下校准 runtime tail；scientific freeze 前明确 compute budget 与 deadline slack。
+- **Loop**：exact projection 失败必须产生终止事故对象，不能自动重跑到一致；旧面板、阈值和路线保持
+  冻结。新路线只能回到全新 opportunity tournament。
+- **Open Science**：invalid endpoint 不应只有 stderr。36,521-artifact incident manifest、八个最小
+  projection diff、31 个 label-attestation anomaly 和 stop decision 一起成为可交换研究对象；其中
+  “attestation unavailable”不得被写成“已证明泄漏”。
+
+小型合成证书因此是必要但不充分的 instrument calibration。正式矩阵还保留 30 个非预期 candidate
+failure、15 个 infrastructure timeout；非推断诊断中 `portfolio_memory` 40/60，`linear_self_loop`
+43/60，risk difference `-0.05`，两个 benchmark family 均为负。主张即使没有 replay mismatch 也应
+停止。incident hash 为 `f756ab01b1e7291875470e75d63e5fe668bf199a50659c041799e038578f9dd0`，
+manifest hash 为 `79bfb70fa5ded53686ada5deadb1e735450ad442a441867b93eef615a9c30fe6`。
+
+下一轮不通过增加自由 Agent 数量解决。Kosmos 的 structured world model 提供长程共享状态但独立审计
+仍只有 79.4% 语句准确；Robin/Virtual Lab 展示的是 lab-in-the-loop 与人类约束；AHOIS 把 causal
+questioning、constraint checking、counterexample 和 falsification criteria 做成可消融 critic。这些
+思路应进入至少三条全新、可客观评分的 opportunity track，并分别验证其增量作用。Graph/Harness/Loop/
+Open Science 只负责使问题、干预、反证、执行和裁决可检查，不能替这些机制制造正向效应。
 
 ## 11. 关联
 

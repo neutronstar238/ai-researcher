@@ -64,6 +64,55 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 09:07:41 +08:00 - Codex - Task 263.6.2 consumed-panel technical replay and stop decision
+
+- Request: Continue the publication-grade recovery; determine why complete real execution still cannot produce a publishable scientific result; cross-check current automated-science research; optimize the research path; and implement the next gated step without weakening the consumed confirmation or shopping for a favorable panel.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_confirmation_policy_controller_v2.py`
+  - `src/autoresearch/research/technical_confirmation_replay.py`
+  - `src/autoresearch/research/technical_confirmation_incident.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_technical_confirmation_replay.py`
+  - `tests/unit/research/test_technical_confirmation_incident.py`
+  - `tests/smoke/test_technical_confirmation_replay_live.py`
+  - `tests/smoke/test_technical_confirmation_incident_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/publishability-recovery-ai-scientist-2026.md`
+  - `autoresearch-vault/exploration/graph-harness-loop-open-science-2026.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-2-technical-replay-stop.md`
+- Summary:
+  - Froze a result-free consumed-panel repair contract before repaired outcomes existed. It binds the immutable v1 freeze/report/failure signature, the certified evaluator, both interpreter/index identities, exact candidates/policies/assignments, unchanged thresholds/budgets/randomization/statistics/route, exactly three allowed implementation repairs, and a non-compensating stop conjunction. Even a pass could only permit new-mechanism review; it could not authorize confirmation or publication.
+  - Added the frozen v2 policy controller and technical replay orchestrator. Primary and replay each completed all 1,620 assignments and 180 null controls. The orchestrator correctly raised `PortfolioIntegrityError: technical two-interpreter scientific projection differs` instead of emitting a formal technical report.
+  - Localized the scientific mismatch to 8/1,620 policy projections for `openml-cc18-task-14970`, seed `3253`: the shared `xgb-deep` F1 evaluation succeeded in primary and reached the 60-second runner deadline in replay. Final selected candidate/task success remained unchanged, but candidate-stage status, score, promotion, memory, failure, and downstream trajectory fields differed. All 180 null projections match.
+  - Added a separate fail-closed incident auditor rather than weakening the exact-replay gate. Its strict schemas, canonical nested hashes, source binding, minimal projection diffs, recursive manifest, deterministic reconstruction, Markdown report, and release constants make `invalid_technical_replay`, `stop_portfolio_memory_claim`, and `return_to_objective_opportunity_tournament` permanent. Confirmation, inference, publication, public release, and external submission are fixed false.
+  - Recorded 31 label-boundary attestation anomalies: primary/replay have 12/13 pre-F3 and 3/3 F3 unavailable attestations. F3 timeout configs bind the correct label path/hash but return no access result. Documentation explicitly states that unavailable attestation is not proof of leakage; it is incomplete evidence and therefore fails the frozen conjunction.
+  - Preserved the non-inferential diagnostic without presenting it as confirmation: `portfolio_memory` 40/60 versus `linear_self_loop` 43/60; risk difference `-0.05`; conservative exact 95% interval `[-0.1965047114, 0.1055685048]`; exact McNemar `p=0.453125`; favorable/unfavorable/tied `2/5/53`; CC18/CTR23 differences `-0.048780/-0.052632`; zero null-integrity failures; 30 unexpected candidate failures; and 15 infrastructure timeouts. The old claim stops even aside from replay failure.
+  - Cross-checked official primary pages for Kosmos, Robin, Virtual Lab, and AHOIS/Socratic agents. The resulting plan treats structured world models, causal/constraint/counterexample/falsification critics, and lab/data/environment feedback as separately ablatable hypotheses, not proof of general autonomous science. Kosmos's traceability is explicitly separated from its independently reviewed 79.4% statement accuracy; Robin/Virtual Lab remain lab-in-the-loop/human-bounded; AHOIS remains a single-platform 2026 preprint.
+  - Added Task `263.6.4` as the next executable research route. It inserts a result-blind, development-only `WorkloadQualificationCertificate` between evaluator calibration and scientific freeze, separates algorithmic compute budget from orchestration deadline, qualifies slow workload strata across interpreters/concurrency/repeats, and requires at least three fresh objectively scored mechanism tracks. Task `263.6.3` is explicitly not entered, so no new panel can be bought for `portfolio_memory`.
+- Verification:
+  - Formal repair freeze: `6b7f124fab513e8032ff777b2a92926cf5e57836d409ad133700c49946cea22b`. Primary/replay controller results: `7a37aaf05a8293b365fbe93b454c985bb9d488483eec00a05d6dddaf47b03bc4` / `b001641278a2324c5c304b49eba9bb299f03101b3c8bc1b4518d104cfbbe466b`. Scientific projections: `cfa130e8a66979e3ecb746c8c1a62a6a66c17fbdcbe3d4514b3f5ea8f267b941` / `a80256df42f0eab0c315adc021ef416fa6f3c9a62ed6c7b7078ebc53a0ce9070`.
+  - Incident `f756ab01b1e7291875470e75d63e5fe668bf199a50659c041799e038578f9dd0`, diagnostic analysis `f599ed894e484dae483c25e27364ebea5ceec27f45c925bfc625e16fed0d08b3`, and manifest `79bfb70fa5ded53686ada5deadb1e735450ad442a441867b93eef615a9c30fe6` verify across 36,521 recursively hashed artifacts.
+  - `poetry run python -m pytest -q tests/unit/research/test_technical_confirmation_incident.py tests/unit/research/test_technical_confirmation_replay.py tests/smoke/test_technical_confirmation_incident_live.py`: 11 passed, 1 opt-in skipped.
+  - `$env:RUN_TASK26362_TECHNICAL_INCIDENT='1'; poetry run python -m pytest -q tests/smoke/test_technical_confirmation_incident_live.py`: 1 passed in 74.29 seconds; report reconstruction, recursive inventory, 8 assignment diffs, zero null diffs, diagnostic stop, and all false release gates passed.
+  - `poetry run python -m pytest -q`: 1,077 passed, 26 opt-in live tests skipped, 82% coverage, in 176.39 seconds.
+  - `poetry run ruff check .`: passed.
+  - `poetry run mypy src`: passed across 170 source files.
+  - `poetry check`: exited zero; only pre-existing Poetry metadata deprecation warnings were emitted.
+  - `git diff --check`: passed. Task dependency parsing and three Vault-link tests passed inside the full regression; explicit required-phrase/link scans found the new progress note, next route, workload certificate, and AHOIS primary locator.
+  - Frozen source audit passed after every result and documentation action: v2 controller `f7a561542eb30b18fb4369fdf1d318de0d22ce97b3c2465276ff121465299ced`; technical replay orchestrator `924c3e0a7cab8c588870b542956881524e386a85cea3c1baa22049fe00185e65`.
+  - A read-only attempt to use the formal matrix loader correctly failed on six timed-out F3 rows lacking label-access attestation; the incident auditor records that conservative boundary instead of bypassing it. Several initial read-only PowerShell diagnostics used an invalid `foreach` pipeline shape; corrected collection-first commands produced the reported counts and changed no scientific artifact.
+- Problems:
+  - Added `P-20260731-027` for the full-workload runtime-boundary replay failure and missing workload-qualification layer.
+  - Updated `P-20260731-026` with the repaired-null but failed-replay/claim-stop endpoint.
+  - Updated `P-20260729-048` with the closed claim and new workload-qualified opportunity route.
+- Follow-up:
+  - Execute only Task `263.6.4`: a fresh, result-blind opportunity tournament over new questions/mechanisms with development-only workload qualification. Keep Task `263.6.3`, Task `263.7`, public release, and external submission blocked unless their independent prospective gates are later satisfied.
+
 ### 2026-07-31 04:07:46 +08:00 - Codex - Task 263.6.1 evaluator compatibility certificate
 
 - Request: Continue the publication-grade AutoResearch recovery, explain why real execution is not yet publishable, incorporate automated-science/Graph/Harness/Loop/Open Science lessons, and implement the next gated repair without weakening or rewriting the consumed confirmation.

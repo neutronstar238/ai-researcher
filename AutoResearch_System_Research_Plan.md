@@ -1343,3 +1343,54 @@ scientific projection 都精确相等。报告和清单 hash 分别为
 `4e3251eb2453fffaa37a4f6849251396e3f1fc88f882739faa07a5e8d4dda73c`。这只解锁
 `263.6.2` 的 consumed-panel technical replay；不改变 v1 invalid endpoint，不提供 independent
 confirmation，也不解锁 paper/publication。
+
+### 27.1 Task 263.6.2 技术重放终点与新研究路径
+
+`263.6.2` 已在结果读取前冻结 repair lineage 和 stop/advance conjunction。它只允许三类修复：
+classification label lexical semantics、结构化 failure domain 和 next-version materialized-bundle
+resume；候选、策略、阈值、预算、随机化、统计、面板和发表路线全部保持 v1 不变。即使所有检查通过，
+也只能进入 new-mechanism review，不能把 consumed panel 变回 confirmation。
+
+正式 primary/replay 各完成 1,620 个 assignment 和 180 个 null control，但 scientific projection
+分别为 `cfa130e8a66979e3ecb746c8c1a62a6a66c17fbdcbe3d4514b3f5ea8f267b941` 与
+`a80256df42f0eab0c315adc021ef416fa6f3c9a62ed6c7b7078ebc53a0ce9070`。8/1,620 个差异都来自
+`openml-cc18-task-14970`、seed `3253`：同一 `xgb-deep` F1 在 primary 成功、replay 达到 60 秒
+deadline，八个复用该 evaluation 的 policy 产生不同 stage trajectory。最终 selected candidate 与
+task success 相同也不能满足 exact replay，因为本研究的搜索轨迹本身就是处理。180/180 null
+projection 一致。
+
+冻结 orchestrator 因而正确拒绝 formal technical report。不可推断的事故诊断为
+`portfolio_memory` 40/60、`linear_self_loop` 43/60，risk difference `-0.05`，保守 exact 95%
+interval `[-0.196505, 0.105569]`，exact McNemar `p=0.453125`，favorable/unfavorable 为 2/5，
+CC18/CTR23 family effect 为 `-0.048780/-0.052632`。primary 还保留 30 个非预期 candidate failure
+和 15 个 infrastructure timeout；31 个 label-boundary anomaly 表示 timeout 后缺少访问证明，不是
+已经证明 label leakage。即使忽略 replay mismatch，方向和实际效应也要求停止主张。
+
+最终 incident hash 为 `f756ab01b1e7291875470e75d63e5fe668bf199a50659c041799e038578f9dd0`，
+36,521-artifact manifest hash 为 `79bfb70fa5ded53686ada5deadb1e735450ad442a441867b93eef615a9c30fe6`。
+`portfolio_memory` 发表主张关闭，`263.6.3` 不进入，禁止为同一主张选择新 panel。
+
+这次结果要求把主循环升级为：
+
+`Research Question Certificate → Instrument Calibration → Development-only Workload Qualification →`
+`Diverse Scientific Search → Frozen Independent Confirmation → Open Science → Human Review`
+
+新增的 `WorkloadQualificationCertificate` 不能读取 confirmation data。它在 development-only 数据上
+选取最慢的 task/candidate strata，在两套 interpreter、计划并发与重复条件下区分 algorithmic compute
+budget 和 orchestration deadline，冻结 timeout slack、telemetry、retry 与 exact/tolerant replay
+语义。若科学 trajectory 依赖 wall-clock 抖动，该机制不能进入确认。
+
+下一轮 opportunity tournament 不再自动延续旧搜索策略，而至少比较三条全新机制 track：
+
+1. Kosmos 式 structured world model/evidence graph 是否在相同预算下改善长程一致性、证据覆盖和独立
+   语句正确率；
+2. AHOIS 式 causal questioning、constraint checking、counterexample 和 falsification criteria 是否
+   提高预埋科学缺陷发现率并减少无效实验晋级；
+3. Robin/Virtual Lab 式外部 data/lab/environment feedback 与明确人类责任边界是否相对纯文本自评
+   提高真实验证成功率。
+
+每个 track 都必须有 verified nearest work、clean strong baseline、客观 evaluator、预注册消融、独立
+单位与功效、开放数据/代码/许可、失败保留和结果盲 publication endpoint；可以全部失败。Kosmos
+报告 200-rollout/12-hour structured-world-model 协作并逐句绑定代码或原始文献，但独立科学家仍只判定
+79.4% 语句准确；Robin 和 Virtual Lab 的有效性来自 lab-in-the-loop 与人类约束；AHOIS 的实证来自单一
+真实光学平台且目前是预印本。这些来源提供待检验机制，不提供可直接移植的“自主科研已解决”结论。
