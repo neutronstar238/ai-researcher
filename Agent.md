@@ -64,6 +64,51 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 22:55:00 +08:00 - Codex - Task 265.1 autonomous formal competition plan
+
+- Request: Continue the formal competition work, stop treating the repository as a demonstration, determine whether the existing data are significant or publication-grade, research why performance is poor and how current automated-science systems improve it, and correct the central origin defect so the research article is produced by AutoResearch rather than manually researched and written by the operator.
+- Files changed:
+  - `src/autoresearch/competition/autonomous_recovery.py`
+  - `src/autoresearch/competition/__init__.py`
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_autonomous_recovery.py`
+  - `tests/smoke/test_autonomous_recovery_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-265-1-autonomous-competition-plan.md`
+  - `runs/manual-live/task2651-autonomous-recovery-plan-v1/` (generated formal package; ignored by repository policy)
+- Summary:
+  - Audited the real formal and autonomous paths separately. The first official `stability_sindy` cycle has failure-aware system median improvement `0.371535` but system-level 95% CI `[-0.201060, 0.888991]`; the official `weak_stability_sindy` recovery has median `-1.704061` and CI `[-4.116249, 0.292912]`. Neither passed the frozen confidence gate. Task `259` candidates were pre-authored, Task `263.5` ranked a fixed 12-candidate catalogue, and Task `261.2` generated only one bounded expression outside the official main route. The old data therefore support neither a significant positive result nor the claim that the system autonomously originated the research article.
+  - Applied the `research-lookup` workflow and its authoritative-primary-source fallback because the preferred parallel helper was unavailable. Live-bound six automated-research sources (AI Scientist-v2, MLRC-Bench, Execution-Grounded Automated AI Research, MARS, AI Research Agents, and CodeScientist) and six equation-discovery sources (WSINDy, Ensemble-SINDy, WENDy, WeakIdent, the SR3 sparse optimization framework, and PDE-READ). Each retains requested/final URL, HTTP status, title/marker, raw-body SHA-256, retrieval timestamp, and reference-only redistribution boundary.
+  - Added a strict result-blind autonomous-plan implementation and `competition mdbench autonomous-plan` CLI. It reloads and verifies the official manifest plus parent matrix/report and recovery preregistration/matrix/report, recomputes the archive inventory hash, requires both predecessor decisions to remain negative, and refuses path/hash/candidate/lineage drift.
+  - Excluded every predecessor-cycle system without opening NPZ payloads. The official inventory leaves 43 ODE and 8 PDE systems with `clean` and `snr_20`; deterministic inventory-bound SHA-256 rank-then-alternate selection exposes 10 ODE plus 4 PDE development systems and writes 10 ODE plus 4 PDE confirmation identities to a separate sealed file. The reader plan contains only the confirmation counts, path, unseal rule, and content commitment. All eight untouched multidimensional PDEs are divided across development and confirmation, forcing the next Harness to prove 2D, 3D, and multi-field capability.
+  - Froze autonomous origin as 8-12 model-generated exact-code candidates, at least three mechanism families, two generations, objective execution reward, complete failure retention, provider-neutral `base_url`/`api_key`/`model_name`, and same-ledger manuscript generation. Schema validators forbid human-authored candidates, fixed catalogues, post-start human algorithm choices, code-side scientific repair, LLM self-certification, provider hardcoding, and confirmation-driven reselection.
+  - Kept `candidate_hypotheses`, model interactions, generated candidates, results, manuscripts, and post-start human scientific decisions at zero. Task `265.1` authorizes only Task `265.2` generation-engine implementation; development execution, confirmation access, publication, public release, and submission remain false. This prevents the implementation agent from becoming the scientist or paper author by silently supplying a candidate.
+  - Formal package `runs/manual-live/task2651-autonomous-recovery-plan-v1/` has plan hash `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda` and sealed confirmation hash `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`. An idempotent CLI reload with a one-second source timeout returned the same hashes without network access.
+- Verification:
+  - `poetry run pytest tests/unit/competition/test_autonomous_recovery.py -q`: 4 passed with 85-percent focused module coverage. Tests cover deterministic panel isolation, sealed identity omission, all-eight-PDE allocation, source snapshots, zero activity counts, autonomous-origin constraints, idempotence/no-refetch, plan/source tamper, result/candidate markers, missing source markers, fixed catalogues, and hidden human research.
+  - First opt-in live smoke failed closed on the Ensemble-SINDy PMC compound marker despite HTTP 200. After using a stable paper-family marker, the second full smoke failed closed because arXiv `1906.10612` had been labelled by an informal SR3 phrase rather than its real primary title. The exact title/marker was corrected; the third complete `$env:AUTORESEARCH_TASK2651_LIVE='1'; poetry run pytest tests/smoke/test_autonomous_recovery_live.py -q --no-cov` passed against all 12 real pages and all six formal predecessor artifacts in 39.75 seconds. Neither failed attempt wrote a plan or scientific artifact.
+  - The first formal CLI build fetched all 12 sources and produced the exact plan and confirmation hashes above. The repeated CLI command with `--timeout-seconds 1` loaded the existing package without refetch and returned identical counts/hashes.
+  - `poetry run python -m pytest -q tests/unit/competition --no-cov`: 65 passed in 14.96 seconds.
+  - `poetry run python -m pytest -q`: 1,160 passed, 38 opt-in tests skipped, 82-percent coverage, in 363.75 seconds.
+  - `poetry run ruff check src tests`: passed.
+  - `poetry run mypy src`: passed with no issues in 182 source files.
+  - `poetry run python -m pytest -q tests/unit/knowledge/test_links.py --no-cov`: 3 passed.
+  - `poetry check`: passed with existing Poetry metadata-deprecation warnings only.
+  - `git diff --check`: passed before the final log entry; it is rerun before commit.
+- Problems:
+  - Added open high-severity `P-20260731-039`: prior formal evidence is non-significant/negative and its candidate origin is not autonomous. Task `265.1` closes only the result-blind plan and origin contract; it does not manufacture a method, effect, or paper.
+  - Added and resolved low-severity `P-20260731-040`: two live primary-page marker/title mismatches failed closed and were corrected from the real pages before a complete live rerun.
+  - Existing `P-20260731-034` and the Task `263.7.4` three-human-role path remain applicable to the old Task `260` systems paper. Task `265` is a separate new official competition route and does not retroactively unblock that paper.
+- Follow-up:
+  - Implement Task `265.2` as a provider-neutral runtime literature-to-code branch engine and bounded Harness without embedding any scientific candidate in repository code. Require exact prompt/response/source/code provenance, objective evaluator feedback, multidimensional PDE capability preflight, and a model-issued revision for any scientific repair.
+  - Per repository policy, deterministic mocked provider tests are not enough to complete Task `265.2`; run an opt-in live smoke using user-supplied `.env` `base_url`, `api_key`, and `model_name`. Do not expose a credential in source, logs, CLI arguments, or the Vault.
+  - Only Task `265.3` may execute autonomous development search; only Task `265.4` may unseal and run one-use confirmation; only Task `265.5` may generate the research article from that same ledger. Human authorship, disclosure, license, release, venue, and submission decisions remain separate.
+
 ### 2026-07-31 21:58:58 +08:00 - Codex - Task 263.7.3 interoperable Open Science overlay
 
 - Request: Continue the active publication-grade AutoResearch recovery, explain why the real system still cannot produce a publishable result, borrow current automated-science/Open Science ideas, optimize the research path, and implement the next non-compensating interoperability task without changing frozen evidence or overstating scientific validity.

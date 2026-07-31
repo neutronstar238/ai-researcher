@@ -9,6 +9,10 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from autoresearch.competition.autonomous_recovery import (
+    AutonomousRecoveryError,
+    freeze_autonomous_mdbench_research_plan,
+)
 from autoresearch.competition.gate_a import (
     GateAAdjudicationError,
     adjudicate_mdbench_gate_a,
@@ -223,6 +227,73 @@ def competition_mdbench_recover_preregister(
     typer.echo("[OK] candidate_method: weak_stability_sindy")
     typer.echo(f"[OK] fresh_unseen_systems: {','.join(unseen)}")
     typer.echo(f"[OK] created_before_results: {str(matrix.created_before_results).lower()}")
+
+
+@competition_mdbench_app.command("autonomous-plan")
+def competition_mdbench_autonomous_plan(
+    archive_manifest: Annotated[
+        Path,
+        typer.Option("--archive-manifest", help="Verified official archive manifest."),
+    ] = Path("runs/competition/mdbench-official/data/archive-manifest.json"),
+    parent_matrix: Annotated[
+        Path,
+        typer.Option("--parent-matrix", help="Frozen matrix from the first formal cycle."),
+    ] = Path("runs/competition/mdbench-official/gate-a-preregistration.json"),
+    parent_report: Annotated[
+        Path,
+        typer.Option("--parent-report", help="Hash-valid first-cycle negative report."),
+    ] = Path("runs/competition/mdbench-official/gate-a/gate-a-adjudication.json"),
+    recovery_preregistration: Annotated[
+        Path,
+        typer.Option(
+            "--recovery-preregistration",
+            help="Hash-valid result-blind recovery contract.",
+        ),
+    ] = Path("runs/competition/mdbench-recovery/gate-a-recovery-preregistration.json"),
+    recovery_matrix: Annotated[
+        Path,
+        typer.Option("--recovery-matrix", help="Frozen matrix from the recovery cycle."),
+    ] = Path("runs/competition/mdbench-recovery/gate-a-recovery-matrix.json"),
+    recovery_report: Annotated[
+        Path,
+        typer.Option("--recovery-report", help="Hash-valid recovery-cycle negative report."),
+    ] = Path("runs/competition/mdbench-recovery/gate-a/gate-a-adjudication.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Result-free autonomous planning package."),
+    ] = Path("runs/competition/mdbench-autonomous-recovery-plan"),
+    timeout_seconds: Annotated[
+        int,
+        typer.Option("--timeout-seconds", min=1, help="Per-source live retrieval timeout."),
+    ] = 20,
+) -> None:
+    """Freeze autonomous origin, source, search, and sealed-panel commitments."""
+
+    try:
+        plan = freeze_autonomous_mdbench_research_plan(
+            archive_manifest,
+            parent_matrix,
+            parent_report,
+            recovery_preregistration,
+            recovery_matrix,
+            recovery_report,
+            output_dir,
+            timeout_seconds=timeout_seconds,
+        )
+    except (AutonomousRecoveryError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_autonomous_plan: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] autonomous_plan: {plan.output_path}")
+    typer.echo(f"[OK] plan_hash: {plan.plan_hash}")
+    typer.echo(f"[OK] primary_source_snapshots: {len(plan.evidence_sources)}")
+    typer.echo(f"[OK] development_systems: {len(plan.development_panel.systems)}")
+    typer.echo(
+        f"[OK] sealed_confirmation_hash: {plan.confirmation_commitment.panel_hash}"
+    )
+    typer.echo(f"[OK] generated_candidates: {plan.generated_candidate_count}")
+    typer.echo(f"[OK] result_records: {plan.result_record_count}")
+    typer.echo(f"[OK] manuscripts: {plan.manuscript_count}")
+    typer.echo(f"[OK] next_required_task: {plan.next_required_task}")
 
 
 @competition_mdbench_app.command("execute")

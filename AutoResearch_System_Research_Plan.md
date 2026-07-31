@@ -1932,3 +1932,64 @@ task authors、至少三类 substantive family、common-budget external/simple b
 prospective power/null controls、one-use confirmation 和 qualified human decision。最短路径因此转到 Task
 `263.7.4` 人类 benchmark census，再执行 `263.7.5`—`263.7.7`；继续加 Graph node、Agent persona、Loop
 次数、seed 或论文润色都不能补偿这些门。
+
+## 28. 正式参赛自主科研主线（Task 265）
+
+### 28.1 为什么旧路线不是“系统自主产出的研究”
+
+对当前仓库和两轮官方 MDBench 证据的交叉审计给出两个不同问题，不能再混为一谈：
+
+1. 科学效果没有达到正式参赛或发表门。首轮 `stability_sindy` 的 failure-aware system median improvement
+   为 `0.371535`，但 system-level 95% CI 为 `[-0.201060, 0.888991]`，没有排除零效应；恢复轮
+   `weak_stability_sindy` 的对应值为 `-1.704061`，95% CI 为 `[-4.116249, 0.292912]`，方向不利且仍不显著。
+   因此不能把成功 cell 的局部改善写成总体有效。
+2. 科研来源不自主。Task `259` 的候选机制和代码由人预先写入；Task `263.5` 只让模型给固定 12 候选目录
+   排序；Task `261.2` 虽生成表达式，却只有一个受限机制并且没有进入正式 MDBench 主赛道。旧系统自动执行了
+   实验和部分写作，但没有自主完成“检索 → 多机制假设 → 精确代码 → 真实淘汰 → 变异/消融 → 复验 → 论文”链。
+
+这也解释了为什么旧稿实际上是操作员借助系统完成的研究对象，而不是系统自身产生的科研对象。Task `265`
+不修改或粉饰旧结果，而是新建一条来源可审计的正式参赛主线。它与被三位真实人类门阻塞的 Task `263.7.4`
+systems-paper 修复路线分开：跳过旧稿的人类 census 不等于旧稿可发表，也不阻止新路线先做自主开发。
+
+### 28.2 文献给出的可执行研究路径
+
+自动科研文献支持的不是“多写几个 Agent persona”，而是将候选来源、搜索、执行反馈和证据绑定在一个运行中：
+
+- [AI Scientist-v2](https://arxiv.org/abs/2504.08066) 用 progressive agentic tree search 替代单次模板生成；
+- [MLRC-Bench](https://arxiv.org/abs/2504.09702) 表明语言模型的创新自评不能替代可执行客观结果；
+- [Execution-Grounded Automated AI Research](https://arxiv.org/abs/2601.14525) 和
+  [MARS](https://arxiv.org/abs/2602.02660) 支持 execution-grounded、预算约束的树/进化搜索与 comparative memory；
+- [AI Research Agents](https://arxiv.org/abs/2507.02554) 与
+  [CodeScientist](https://arxiv.org/abs/2503.22708) 强调 search policy、operator、evaluator 的耦合和对失败分支的保留；
+- 方程发现侧，[WSINDy](https://pmc.ncbi.nlm.nih.gov/articles/PMC8570254/)、
+  [Ensemble-SINDy](https://pmc.ncbi.nlm.nih.gov/articles/PMC9006119/)、
+  [WENDy](https://pmc.ncbi.nlm.nih.gov/articles/PMC10556152/)、
+  [WeakIdent](https://arxiv.org/abs/2211.03134)、
+  [SR3](https://arxiv.org/abs/1906.10612) 与 [PDE-READ](https://arxiv.org/abs/2111.00998)
+  提供可由系统组合、变异和消融的机制空间，但任何一种机制都不能由操作员在 Task `265.1` 提前指定为答案。
+
+因此新路线采用：高层参赛 brief 是唯一允许的人类科学输入；运行时模型先刷新一手文献，再产生 8—12 份精确
+可执行代码，至少覆盖三类机制、两代搜索；Harness 只把真实开发集指标和结构化失败回传给模型；LLM 自评分不
+能过科学门；人工不能中途选算法、补科学代码或删除失败；最终方法、消融、复验、数字、图表和稿件必须共享
+同一个 append-only ledger。
+
+### 28.3 Task 265.1 结果盲冻结
+
+Task `265.1` 已实现 `autonomous_recovery.py`、`competition mdbench autonomous-plan`、确定性测试和真实来源
+烟测。它严格绑定官方 archive、首轮 matrix/report、恢复 preregistration/matrix/report，并重算 inventory hash。
+官方 63 个 ODE、14 个 PDE 中，两轮已使用 26 个不同 system；剩余 43 个 ODE 和 8 个 PDE 均有 `clean` 与
+`snr_20` artifacts。系统仅按 inventory hash 做 SHA-256 排序并交替分配：研究 runtime 可见 10 ODE + 4 PDE
+开发集，另有 10 ODE + 4 PDE 确认集以单独文件封存，其身份不出现在 reader plan 中。八个此前未使用的 2D/3D/
+多场 PDE 被开发与确认各分四个，迫使下一 Harness 先证明 `pde_2d`、`pde_3d` 和 `multi_field` 能力。
+
+正式包位于 `runs/manual-live/task2651-autonomous-recovery-plan-v1/`。12 个一手页面均真实返回、marker-verified、
+byte-hashed；plan hash 为 `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda`，
+sealed confirmation commitment 为 `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`。
+冻结时 `candidate_hypotheses=0`、`model_interaction_count=0`、`generated_candidate_count=0`、
+`result_record_count=0`、`manuscript_count=0`、`post_start_human_scientific_decision_count=0`。
+
+这个零计数不是缺陷，而是来源边界：Task `265.1` 只能由我们写治理/执行合同，不能由我们替系统写研究方法或
+论文。当前只授权 Task `265.2` 实现 provider-neutral 文献到代码 branch engine、Sandbox Harness、客观 evaluator、
+comparative memory 和 search-freeze receipt；开发实验、确认集访问、发表、公开和投稿仍为 false。只有 Task
+`265.3` 真实产生并淘汰候选、Task `265.4` 一次性确认、Task `265.5` 从同一 ledger 自产文章之后，才能回答
+“系统的结果是否显著、数据是否达到参赛/发表水平”。现在的诚实答案仍是：旧结果不显著，新研究尚未运行。

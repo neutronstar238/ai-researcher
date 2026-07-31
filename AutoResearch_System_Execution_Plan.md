@@ -2205,3 +2205,70 @@ portable-evidence 层现在完成，但不得提前执行或宣称 scientific-ef
 
 因此当前 `metadata_interoperability_only=true`、`scientific_confirmation_added=false`、
 `publication_ready=false`。Open Science 让不可发表原因更容易审计，但不会自行把对象变成可发表结果。
+
+## 28. 正式参赛自主科研执行计划（Task 265）
+
+### 28.1 路线切换和不可替代边界
+
+Task `265` 是新的官方 MDBench 自主研究路线，不是 Task `260` 旧稿的文字修补，也不绕过 Task `263.7.4`
+所需的真实人类 benchmark census。它解决用户指出的来源问题：候选方法、科学代码、迭代选择、消融、复验和
+文章必须由同一系统运行产生；实现代理只允许预先写通用 Harness、数据门、预算门和验证合同，不能在运行开始
+后替系统选择或补写科学方法。
+
+执行必须按以下非补偿顺序进行：
+
+| Task | 输入 | 系统必须自产 | 失败时合法产物 | 禁止提前声称 |
+|---|---|---|---|---|
+| `265.1` | 高层 brief、两轮正式负结果、官方 inventory、一手架构文献 | 结果盲计划和 panel commitment | 被阻断的计划记录 | 新方法、显著性、论文 |
+| `265.2` | `265.1` plan、provider-neutral 配置 | runtime 文献记录、8 个精确代码分支、Harness episode | capability/origin negative | 开发效果、确认 |
+| `265.3` | 通过的 Harness、开发 panel | 2 代搜索、比较记忆、变异/消融/复验、selected code | autonomous development negative | 确认效果、可发表 |
+| `265.4` | search-freeze receipt、sealed panel | 一次性完整矩阵和 failure-aware adjudication | registered formal negative | 二次选择或重跑 |
+| `265.5` | 同一 append-only ledger | 全文、图表、引用、限制和可复现对象 | 系统自产负结果文章/研究记录 | 人类署名、发布、投稿 |
+
+人类仍拥有安全、私有数据、许可、公开、署名和投稿边界。`system-generated manuscript=true` 不能被误写为系统具有
+法律作者资格；相反，manuscript origin、human contribution 和 AI disclosure 都必须可审计。
+
+### 28.2 已完成的 Task 265.1
+
+实现新增 `src/autoresearch/competition/autonomous_recovery.py` 和 CLI `competition mdbench autonomous-plan`：
+
+- 递归验证 archive inventory，以及 parent/recovery matrix、preregistration、report 的 path/hash/decision；
+- 从 43 ODE + 8 PDE untouched inventory 以固定 SHA-256 rank-then-alternate 规则选出 development 10+4 和
+  sealed confirmation 10+4，不读取任何 NPZ 数值；
+- 把 confirmation identity 放入独立 `.sealed/confirmation-panel.sealed.json`，reader plan 只持有 count、hash、
+  path 和 unseal rule；研究 agent、selection 和 comparative memory 均无读取权限；
+- live snapshot 6 个 autonomous-research 与 6 个 equation-discovery 一手页面，记录 final URL、status、marker、
+  raw-byte SHA-256 和 retrieval timestamp，不把可访问性推断为 redistribution license；
+- 冻结 8—12 candidate、至少三 family、两 generation、96-cell pilot、三 finalist、252-cell full development、
+  25% exploration、每 cell 300 秒/4 CPU/8192 MB 上限和 1D/2D/3D/multi-field capability gate；
+- schema 强制 human-authored candidate、fixed catalogue、post-start human selection、code-side scientific repair、
+  LLM self-score gate、confirmation reselection 和 provider hardcode 全为 false；
+- loader 对 plan、raw snapshot、sealed panel、父证据、panel overlap、prior reuse 和 result/candidate/paper marker
+  全部 fail closed；已存在相同 plan 时不重新抓来源，输入/brief 变化则拒绝覆盖。
+
+正式 output 是 `runs/manual-live/task2651-autonomous-recovery-plan-v1/`，plan/confirmation hashes 为
+`fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda` 和
+`bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`。四个确定性测试通过；真实 smoke
+最终对 12 个页面全部通过。前两次 live smoke 对页面 marker 不一致均按设计失败：Ensemble-SINDy 页面连字符/
+标题呈现不同，SR3 的实际一手标题是 *A unified sparse optimization framework to learn parsimonious
+physics-informed models from data*，修正为真实标题后重新完整执行通过，没有放宽 status/hash/origin gate。
+
+### 28.3 下一实现任务：265.2
+
+Task `265.2` 只实现通用科研运行能力，不得在源码中写入下一候选答案：
+
+1. provider-neutral model adapter 从环境读取 `base_url`、`api_key`、`model_name`，并把 prompt/response、模型标识、
+   source citation、candidate family、exact code hash 记录进 event journal；
+2. 模型必须先在运行内刷新一手文献，再生成 8 个独立候选；同一语法模板换参数不能冒充三个 mechanism family；
+3. 每个候选 exact code 进入现有 bounded Harness，syntax/dependency failure 只能形成结构化 feedback，让模型返回
+   新 revision；通用 orchestrator 不能写 scientific repair；
+4. 先做 `ode/pde_1d/pde_2d/pde_3d/multi_field` deterministic capability preflight。全部通过并绑定 environment
+   hash 后，才可把 `development_execution_authorized` 置真；
+5. objective evaluator 以 derivative NMSE 为 primary，同时保留 structure、trajectory、complexity、robustness、
+   time 和 memory。LLM judge 只能解释日志，不能决定 survivor；
+6. search-freeze receipt 在 Task `265.3` 结束前保持不存在；confirmation loader 必须在 receipt 缺失、hash 不符、
+   branch 未闭合、预算超限或人工 scientific decision 非零时拒绝解封。
+
+Task `265.2` 完成前不运行开发数据。如果真实 provider credential 不在 `.env`，mocked CI 可以验证合同，但按项目规则
+不能把任务标为完成；必须停止并请项目负责人安全提供 provider-neutral 参数。即便 `265.2` 通过，显著性答案仍只能
+来自 `265.4`，文章只能由 `265.5` 从同一 ledger 生成。

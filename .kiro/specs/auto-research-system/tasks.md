@@ -3621,6 +3621,33 @@ A task can be checked only when all applicable items are true:
     - Keep code signing, auto-update, public release, repository upload, and external submission out of scope.
     - _Verify: clean-profile installer smoke, package inventory/security scan, final zero-demo and ignored-path audit, Agent/Problem updates, and one focused governance commit._
 
+- [ ] 265. Build the formal autonomous competition research loop
+  - [x] 265.1 Freeze autonomous origin, primary-source architecture, and untouched MDBench panels
+    - Bind the exact official MDBench archive plus both completed Gate A negative cycles. Recompute the archive inventory hash, validate every matrix/preregistration/report binding, and use metadata-only deterministic SHA-256 ranking without opening numerical payloads.
+    - Snapshot at least six primary autonomous-research sources and six primary equation-discovery sources. Use them only to constrain the search architecture; require a fresh runtime literature pass before any candidate is generated and keep the candidate-hypothesis list empty in this task.
+    - Freeze 43 untouched ODE and 8 untouched PDE systems after excluding all predecessor-cycle systems. Expose a 10-ODE/4-PDE development panel and create a disjoint 10-ODE/4-PDE confirmation commitment whose identities are unavailable to research agents until a hash-bound search-freeze receipt exists.
+    - Define autonomous origin as 8-12 model-generated exact-code candidates, at least three mechanism families, at least two generations, provider-neutral configuration, objective execution reward, retained failures, and one append-only ledger through manuscript generation. Forbid a human-authored candidate, fixed catalogue, post-start human algorithm selection, code-side scientific repair, LLM self-certification, and confirmation-driven reselection.
+    - Keep candidate hypotheses, model interactions, generated candidates, result records, manuscripts, and post-start human scientific decisions at zero. Authorize Task `265.2` generation implementation only; development execution, confirmation access, publication, public release, and submission remain false.
+    - _Outcome: completed as a result-blind formal implementation handoff. The official inventory contains 63 ODE and 14 PDE systems; excluding the two closed cycles leaves 43 ODE and 8 PDE systems. Deterministic rank-then-alternate selection exposes 14 development systems and commits 14 disjoint confirmation systems, including all eight previously unused multidimensional PDE systems across the two panels. Twelve live primary pages are marker-verified and content-addressed. Plan hash is `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda`; sealed confirmation commitment is `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`. Counts remain candidate/model/result/manuscript/human-decision `0/0/0/0/0`; therefore this task does not pretend that the autonomous research or paper already exists._
+    - _Verify result: four deterministic unit tests pass for source/panel/origin contracts, idempotence, tamper rejection, result-marker rejection, and source-marker failure. The opt-in live smoke passes against all 12 real primary pages and the six real formal predecessor artifacts. Focused Ruff and Mypy pass; the formal CLI package reloads with exact hashes._
+  - [ ] 265.2 Implement the provider-neutral literature-to-code branch engine and bounded Harness
+    - Give the runtime only the high-level brief, development panel, source architecture, provider-neutral `base_url`/`api_key`/`model_name`, and fixed compute policy. Require it to retrieve current primary literature, form at least three independently traceable mechanism families, and emit 8 exact executable candidate implementations rather than choosing from a code-authored catalogue.
+    - Execute each generated branch in the sandbox Harness with immutable source/code/config/data/environment/result hashes. Feed only objective development metrics and structured failures into comparative memory; the orchestrator may repair syntax or dependency faults only by asking the model for a new exact-code revision, never by inserting a scientific method itself.
+    - Add multidimensional and multi-field PDE capability preflight, stage-racing budget enforcement, branch/failure retention, prompt/model-response provenance, contamination checks, and a search-freeze receipt schema. Keep development execution false until every capability and provenance gate passes.
+    - _Verify: provider-neutral mocked model tests, exact-code/source-origin and fixed-catalogue rejection, sandbox/resource/security tests, deterministic objective-evaluator fixtures, 1D/2D/3D/multi-field capability probes, opt-in live provider smoke using user-supplied `.env`, Vault/Problem/Agent updates, and one focused commit._
+  - [ ] 265.3 Run the autonomous development search and freeze one selected implementation
+    - Execute the frozen 8-candidate first generation, retain every failure, use objective stage racing, and allow only model-produced mutations/ablations up to 12 total candidates and two generations. Do not expose confirmation identities, payloads, or outcomes.
+    - Select the final implementation from development evidence by the frozen Pareto and failure-aware policy. Freeze exact code, environment, prompts/responses, comparative memory, branch tree, ablations, replication evidence, baseline state, and a signed search-freeze receipt before any confirmation access.
+    - _Verify: complete development ledger, budget and origin audits, no-hidden-human-decision proof, deterministic selection replay, contamination/holdout denial tests, Vault/Problem/Agent updates, and one focused commit or explicit autonomous negative stop._
+  - [ ] 265.4 Execute one-use sealed confirmation and formal adjudication
+    - Let an independent confirmation executor consume only the selected frozen implementation and sealed panel after validating the search-freeze receipt. Run every frozen baseline/candidate/condition/seed cell once and retain all failures, timeouts, costs, structure, trajectory, complexity, and robustness evidence.
+    - Apply the preregistered 5-percent noisy derivative-NMSE effect and system-level bootstrap lower-bound gate. Confirmation cannot invoke the research agent, change code, select another branch, substitute a metric/panel, or authorize a second attempt.
+    - _Verify: complete one-use matrix, zero research-agent confirmation reads, exact failure-aware adjudication, independent replay, result and environment hashes, Vault/Problem/Agent updates, and one focused commit or registered negative result._
+  - [ ] 265.5 Have the autonomous system generate its research article and reproducibility object
+    - Generate the title, claims, manuscript, figures, tables, limitations, negative-result language when applicable, citation registry, and reproducibility package from the same append-only autonomous ledger. Reject manually supplied scientific prose or any number not resolved from executed evidence.
+    - Record system generation provenance without treating an AI system as a legal author. Keep human authorship, contribution disclosure, license, venue, public release, and submission decisions separate and explicit.
+    - _Verify: claim-to-evidence and citation checks, figure/table consistency, ledger-origin audit, independent rebuild, PDF visual review, Open Science package validation, human decision packet, Vault/Problem/Agent updates, and one focused commit._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -4437,6 +4464,26 @@ A task can be checked only when all applicable items are true:
     {
       "id": 192,
       "tasks": ["263.7", "264.6"]
+    },
+    {
+      "id": 193,
+      "tasks": ["265.1"]
+    },
+    {
+      "id": 194,
+      "tasks": ["265.2"]
+    },
+    {
+      "id": 195,
+      "tasks": ["265.3"]
+    },
+    {
+      "id": 196,
+      "tasks": ["265.4"]
+    },
+    {
+      "id": 197,
+      "tasks": ["265.5"]
     }
   ]
 }

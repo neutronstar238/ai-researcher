@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260731-040 - Autonomous-plan live source markers initially mismatched primary-page presentation
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-07-31 22:27:00 +08:00
+- Source: Task `265.1` opt-in live primary-source smoke.
+- Symptom: The first live smoke stopped on the Ensemble-SINDy PMC page although it returned HTTP 200 because the frozen compound `Ensemble-SINDy` marker did not survive the fetched page presentation exactly. After correcting that page to the stable paper-family marker, the second full smoke stopped on arXiv `1906.10612` because the source had been labelled with an informal SR3 phrase rather than its actual primary title, *A unified sparse optimization framework to learn parsimonious physics-informed models from data*.
+- Impact: Neither failed smoke produced a plan, panel, result, candidate, or completion claim. The fail-closed marker gate prevented a reachable but mismatched page from being accepted as the intended evidence.
+- Evidence: Direct primary-page inspection established the actual arXiv title and stable page markers. The third complete opt-in smoke fetched and verified all 12 sources in 39.75 seconds. The subsequent formal CLI run produced plan hash `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda` and 12 content-addressed snapshots.
+- Root cause: One PMC presentation did not preserve the assumed compound title marker in the bytes returned to `urllib`; the SR3 source was cited by a method nickname rather than the exact primary title.
+- Workaround: Use a stable paper-family marker for the PMC record and the exact arXiv primary title for `1906.10612`; retain status, final URL, byte hash, and title/marker validation as separate fields.
+- Next action: Keep exact primary titles in future source registries and rerun the complete live set after any marker change. Do not weaken a marker to URL reachability alone.
+- Linked tasks: `265.1`, `265.2`.
+- Resolution: Source metadata and markers were corrected; the complete live smoke and formal package generation pass.
+- Verification: `$env:AUTORESEARCH_TASK2651_LIVE='1'; poetry run pytest tests/smoke/test_autonomous_recovery_live.py -q --no-cov` passed with one test after both fail-closed attempts.
+
+### P-20260731-039 - Formal MDBench evidence is negative and the prior research origin was not autonomous
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-07-31 22:05:00 +08:00
+- Source: User challenge that this is a formal competition entry and that the research article should be produced by the system, followed by a repository-wide autonomy and official-result audit.
+- Symptom: The first formal candidate was code-authored before execution; the recovery candidate was also a pre-authored two-mechanism implementation. Task `263.5` ranked a fixed 12-candidate catalogue, while Task `261.2` generated only one bounded expression outside the official MDBench main route. The first formal cycle's failure-aware median improvement was `0.371535` with system-level 95% CI `[-0.201060, 0.888991]`; the recovery cycle's value was `-1.704061` with CI `[-4.116249, 0.292912]`. Neither passed the frozen confidence gate.
+- Impact: The existing data do not support a significant positive competition claim, and the old paper cannot truthfully be presented as a research article autonomously originated by AutoResearch. More prose, agent personas, seeds, or Graph nodes cannot repair either the scientific effect or origin defect.
+- Evidence: Hash-valid predecessor reports are `runs/manual-live/task259-mdbench-official-v1/gate-a-v3/gate-a-adjudication.json` and `runs/manual-live/task259-mdbench-recovery-official-v1/gate-a-v1/gate-a-adjudication.json`. Task `265.1` binds both reports and their matrices plus the recovery preregistration, retains 12 live primary-source snapshots, exposes a fresh 14-system development panel, and commits a disjoint 14-system confirmation panel.
+- Root cause: Earlier milestones optimized reliable execution and bounded demonstrations before enforcing a formal candidate-origin contract. The noisy weak-form selector also used a narrow fixed search and validation objective that did not generalize to strong derivative error on untouched systems.
+- Workaround: Task `265.1` now forbids human-authored candidates, fixed catalogues, post-start human method choices, code-side scientific repair, LLM self-certification, and confirmation-driven reselection. It requires 8-12 model-generated exact-code candidates, at least three mechanism families, two generations, objective execution feedback, failure retention, provider-neutral configuration, and same-ledger manuscript generation.
+- Next action: Implement Task `265.2` without placing any candidate method in source code. Run a live provider smoke only with user-supplied `.env` credentials, then execute Tasks `265.3`-`265.5` in order. Do not claim significance or an autonomous paper before the one-use confirmation and same-ledger manuscript exist.
+- Linked tasks: `259.7.3.2`, `261.2`, `263.5`, `265.1`, `265.2`, `265.3`, `265.4`, `265.5`.
+- Resolution: The result-blind autonomous-origin and untouched-panel plan is complete, but the underlying scientific and authorship-origin problem remains open because candidate generation, development search, confirmation, and system-generated manuscript counts are still zero.
+- Verification: Task `265.1` four-unit-test gate, 12-source opt-in live smoke, formal CLI build/reload, focused Ruff, and focused Mypy pass. Plan hash is `fb9eebd95ccd5020a1ae98c130c18bc713b5c8fe27eb2649df6c8dcb8a3d0fda`; confirmation commitment is `bc20cbdf28d69662ad38f23163b75185131074b0dc85c5448854ede98cc5fb46`.
+
 ### P-20260731-038 - Open Science live bring-up exposed optional-tool, source-marker, payload-scan, and validator-version boundaries
 
 - Status: Mitigated
