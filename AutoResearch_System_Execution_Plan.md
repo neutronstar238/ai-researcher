@@ -1880,3 +1880,55 @@ systematic mapping protocol：
 Task 260 Route B 可作为独立 systems-paper candidate 进入 human submission review，但不自动授权
 公开或投稿。Task `263.6.3`、mechanism confirmation、`263.7` 和 external submission 继续被各自
 门禁阻止。
+
+### 27.12 Task 263.6.7.1 预提取协议实施结果
+
+Task `263.6.7.1` 已实现一套结果盲、内容寻址的 benchmark-validity systematic-mapping 协议，而非
+提前运行正式 census：
+
+- `benchmark_validity_protocol.py` 提供严格协议、source/lens/query binding、study/family unit、
+  42 字段 Admission Card schema、七种 evidence state、12 个不可补偿 gate、人类编码门、四个描述性
+  endpoint、六个 sensitivity、十个 stop rule、结果盲 projection、双解释器 replay certificate、
+  Markdown/JSON/schema/manifest 持久化和 tamper-blocking loader；
+- `frozen_benchmark_validity_protocol_probe_v1.py` 是仅用标准库的冻结 runner，只接受协议投影，拒绝
+  search result、admission card、extracted record、benchmark/model outcome 和任何 downstream
+  authorization；
+- deterministic tests 覆盖 hash determinism、28 个 query binding、pilot exclusion、evidence state
+  语义、人类阈值、12 个 gate、结果污染拒绝、two-interpreter parity、schema/Markdown/manifest 和
+  artifact tamper；
+- opt-in live smoke 在两套真实 clean Python installation 中执行冻结 runner 和正式包回读，但按
+  pre-extraction 设计不访问文献 API，也不产生新 benchmark record。
+
+正式 output 位于：
+
+`runs/manual-live/task263671-benchmark-validity-protocol-freeze-v1/`
+
+| Artifact | SHA-256 |
+|---|---|
+| Protocol | `ed6088c225d5c7f7710ecb69507659003b5b97e06dc7c0ee005a81ed2712e8ed` |
+| Report | `0ed7f637ab10b10cc6b265c60020437255f64cc8d8a7259ad9eae9c9051a9408` |
+| Result-free projection | `e8628d484cfd3d5ead9dbb9b0e6610ca4f68adeebda4d0ef463bc3ac1d5e1881` |
+| Replay certificate | `85e8ee4da9ea685b32f1896759e5235bec3e47fa59af8b12e0790f9026d9b93a` |
+| Replay input | `e0e2c55aed44597be4cd9661b050590bb0ac4924ae5b7f6b642a09a865f5a4df` |
+| Frozen runner | `fb7c4f4e535a7168a89c48fc77a28772afd931e0cd61d2df29a6d62a6c8dee6f` |
+| Manifest | `9b99c6e4ccb43ea4982c546ebf6e18a34df63ae3f474ace3ed58ee2464a96b77` |
+
+正式状态为 `frozen-pre-extraction`：28 条 query、16 个 recall sentinel、42 个 card field 已冻结；
+搜索、non-pilot 提取、outcome access 和 candidate-model call 数均为 0；RQ、confirmation panel、
+publication claim、release 和 submission 均为 false。
+
+#### 下一执行任务：263.6.7.2
+
+1. 按冻结请求参数实现 arXiv、OpenAlex、Crossref、DBLP adapter；保存每页原始响应、请求时间、状态、
+   retry 和 SHA-256，不修改 query 或日期。
+2. 实现 append-only PRISMA-S search log、16 项 known-item recall 和 fail-closed API capability smoke；
+   capability smoke 不筛选或提取正式 benchmark record。
+3. 实现 paper identity、benchmark family、fixed revision 和 source-overlap dedup；禁止把 task、seed、
+   attempt、difficulty 或旧 revision 当作独立 family。
+4. 生成不含结论的 screening form 和空 Admission Card evidence packet；不得打开 benchmark outcome，
+   不得把四个 pilot 泄漏进 primary cohort。
+5. 只有 `263.6.7.2` 的 mocked/live adapter、分页、rate-limit、retry、tamper、dedup 和 exact replay
+   全部通过后，才可准备 `263.6.7.3`。
+
+`263.6.7.3` 仍需要两位真实独立 reviewer 与一位不同的 adjudicator。身份、independence attestation、
+pre-adjudication agreement 和 coverage 未通过前，不执行正式关键编码，不生成领域普遍性 claim。

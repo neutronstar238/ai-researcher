@@ -64,6 +64,48 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-07-31 17:51:02 +08:00 - Codex - Task 263.6.7.1 benchmark-validity protocol freeze
+
+- Request: Continue the publication-grade recovery; diagnose why real automated-research output remains below publishable evidence; cross-search current AI Scientist, benchmark, Graph/Harness/Loop, falsification, systematic-review, and Open Science research; optimize the research path; and implement the next prospective step before looking at new benchmark records.
+- Files changed:
+  - `src/autoresearch/research/assets/frozen_benchmark_validity_protocol_probe_v1.py`
+  - `src/autoresearch/research/benchmark_validity_protocol.py`
+  - `src/autoresearch/research/__init__.py`
+  - `tests/unit/research/test_benchmark_validity_protocol.py`
+  - `tests/smoke/test_benchmark_validity_protocol_freeze_live.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `autoresearch-vault/exploration/benchmark-validity-systematic-mapping-protocol-2026.md`
+  - `autoresearch-vault/exploration/index.md`
+  - `autoresearch-vault/projects/ai_researcher_system/progress/task-263-6-7-1-benchmark-validity-protocol-freeze.md`
+  - `autoresearch-vault/projects/ai_researcher_system/index.md`
+- Summary:
+  - Used the deep-research workflow to freeze RQ1—RQ3, the primary-source hierarchy, four scholarly indexes, 28 exact source/lens queries, one-round citation chaining, 16 known-item recall sentinels, inclusion/exclusion boundaries, and reporting before extraction. Used the experimental-design workflow to define unique benchmark family as the independent replicate; task, seed, attempt, difficulty, vote, and revision as nested observations; descriptive rather than causal endpoints; predeclared sensitivities; and explicit diagnostic-negative stopping.
+  - Cross-checked official methods and primary literature for PRISMA 2020, PRISMA-S, systematic mapping, BenchmarkCards, Benchmark Transparency, AI Scientist-v2, Co-Scientist, Kosmos, AstaBench, PaperBench, CORE-Bench, POPPER, FAIR4RS, PROV-O, and RO-Crate. Checked the official arXiv, OpenAlex, Crossref, and DBLP API/search documentation to freeze implementable request, pagination, and citation-chaining boundaries. This subtask did not execute the 28 formal searches or extract a new benchmark record.
+  - Reframed the route from a fifth post-hoc dataset/model experiment into a prospective benchmark-validity meta-research study. The four Task `263.6.6` candidates are pilot/calibration records excluded from the primary cohort; the target is at least 20 additional non-pilot families. A 42-field Admission Card, seven evidence states, 12 non-compensating gates, four descriptive endpoints, six sensitivities, 10 stop rules, Wilson intervals, and a 10,000-replicate family-cluster bootstrap with seed `2636071` are frozen. Only `verified-pass` satisfies a gate; unknown, unreachable, ambiguous, conflicting, and not-applicable evidence never becomes an automatic pass.
+  - Added strict Pydantic/content-addressed contracts, exact source/lens/query bindings, future search/screening/card schemas, result-free projection, a dependency-free frozen probe, two-clean-interpreter replay certificate, formal report, JSON Schemas, Markdown, manifest, recursive integrity verification, and tamper-blocking load. Result-bearing replay payloads, pilot leakage, incomplete query grids, changed protocol hashes, and persisted-artifact tamper fail closed.
+  - Kept all downstream permissions false: zero search execution, zero non-pilot extraction, zero benchmark-outcome access, zero candidate-model calls, no new RQ, no confirmation panel, no mechanism-effect claim, and no public release/submission. Formal status is `frozen-pre-extraction` with protocol `ed6088c225d5c7f7710ecb69507659003b5b97e06dc7c0ee005a81ed2712e8ed`, report `0ed7f637ab10b10cc6b265c60020437255f64cc8d8a7259ad9eae9c9051a9408`, projection `e8628d484cfd3d5ead9dbb9b0e6610ca4f68adeebda4d0ef463bc3ac1d5e1881`, replay certificate `85e8ee4da9ea685b32f1896759e5235bec3e47fa59af8b12e0790f9026d9b93a`, runner `fb7c4f4e535a7168a89c48fc77a28772afd931e0cd61d2df29a6d62a6c8dee6f`, and manifest `9b99c6e4ccb43ea4982c546ebf6e18a34df63ae3f474ace3ed58ee2464a96b77`.
+  - Froze the human validity boundary rather than simulating it: two real independent reviewers must lock 100-percent screening/critical coding, a third different human adjudicates afterward, exact agreement must be at least `0.90`, kappa at least `0.80` when estimable, overall critical-evidence coverage at least `0.90`, and per-field coverage at least `0.85`. Task `263.6.7.2` can implement result-blind adapters/logs/dedup/evidence packets; Task `263.6.7.3` remains human-gated.
+- Verification:
+  - Initial `py_compile` passed. Initial focused Ruff found two import-order/unused-import issues; they were fixed and `poetry run ruff check .` now reports `All checks passed!`.
+  - The first protocol constructor command exposed a generic list validator selecting `source_id` for `QueryBinding`; field-specific mappings and hash-validation context fixed it. Initial research-package Mypy exposed float `Literal` and optional-field indexing issues; both were fixed.
+  - `poetry run python -m pytest tests/unit/research/test_benchmark_validity_protocol.py -q`: 7 passed in 21.26 seconds.
+  - `$env:AUTORESEARCH_BENCHMARK_VALIDITY_PROTOCOL_FREEZE_LIVE='1'; poetry run python -m pytest tests/smoke/test_benchmark_validity_protocol_freeze_live.py -q`: 1 passed in 10.23 seconds using the two real clean Python installations; no network query or record extraction is expected in this pre-extraction freeze smoke.
+  - `poetry run python -m pytest -q`: 1106 passed, 30 skipped in 188.10 seconds; total coverage 82 percent.
+  - `poetry run mypy src`: success across 174 source files. Earlier `poetry run mypy src/autoresearch/research` also passed across 23 research files.
+  - `poetry check`: passed with only existing Poetry metadata deprecation warnings.
+  - Documentation marker/link checks passed; `git diff --check` exited zero with only a working-copy CRLF-to-LF notice for the generated exploration index.
+  - Formal loader recursively rehashed and loaded protocol/report/projection/certificate/manifest with the exact hashes above, `extracted=0`, `outcomes=False`, and status `frozen-pre-extraction`. An initial read-only display command used the nonexistent convenience name `result_free_projection`; the schema-correct `projection` attribute then verified successfully without changing an artifact.
+- Problems:
+  - Added `P-20260731-031` for the unresolved need to assign two real independent reviewers and one distinct human adjudicator before formal census coding.
+  - Updated `P-20260731-030` and `P-20260729-048` with the completed protocol freeze and the exact Task `263.6.7.2`/`263.6.7.3` boundary.
+- Follow-up:
+  - Task `263.6.7.2`: implement the frozen, result-blind arXiv/OpenAlex/Crossref/DBLP adapters, raw-response hashes, append-only PRISMA-S log, recall sentinel check, paper/family/revision deduplication, screening forms, and empty evidence packets without opening benchmark outcomes or changing the protocol.
+  - Project owner must assign two real independent reviewers and one distinct adjudicator before Task `263.6.7.3`; Task `260` Route B remains a separate systems-paper candidate for independent human review.
+
 ### 2026-07-31 11:32:07 +08:00 - Codex - Task 263.6.6 replacement objective-data tournament
 
 - Request: Continue the publication-grade recovery; explain why real automated-research execution still cannot produce a publishable result; cross-search current AI Scientist, Graph/Harness/Loop, falsification, benchmark, and Open Science research; optimize the research path; and implement the next prospective gate without benchmark shopping, outcome access, or premature model execution.

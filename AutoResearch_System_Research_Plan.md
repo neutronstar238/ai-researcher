@@ -1573,3 +1573,48 @@ candidate artifacts 通过 live smoke。
 single-construct、`30 + 84`、逐来源许可、确定性 scorer、强基线和有界算力全部通过的面板，才允许
 另行冻结新 RQ 并恢复 mechanism-effect track。不得将 AutoSDT、CORE-Bench 和 QRData 的异质构念
 事后求平均来凑样本量。
+
+### 27.5 Task 263.6.7.1 前瞻基准有效性协议冻结
+
+Task `263.6.7.1` 已在任何正式搜索和新 benchmark 提取之前完成协议冻结。它没有把“再找第五个
+dataset”当作升级，也没有读取当前四个 pilot 之外的 benchmark record。新的研究问题是：AI
+Scientist / scientific-agent benchmark 的 fixed-revision release 在按独立 family、来源权利、客观
+测量、强基线、有界算力、sealed outcome 和污染控制重计后，有多少能支持防御性研究结论，以及
+headline task 数量相对独立 source-group upper bound 收缩多少。
+
+冻结协议包含：
+
+- arXiv、OpenAlex、Crossref、DBLP 四个开放索引；
+- 2023-01-01 至 2026-07-31 的七个构念层，共 28 条 source-specific query；
+- 一轮 backward 与一轮 forward citation chaining、16 个 known-item recall sentinel 和 `0.90`
+  recall 门；
+- fixed-revision release 作为 study unit、unique benchmark family 作为独立单位；task、seed、attempt、
+  difficulty、Agent vote 和重复 revision 只作嵌套观测；
+- AutoSDT-5K、ScienceAgentBench、CORE-Bench、QRData 只作 protocol-development pilot，primary
+  cohort 至少包含 20 个额外 non-pilot family；
+- 42 字段 Benchmark Admission Card、七种 evidence state 和 12 个不可补偿准入门；只有
+  `verified-pass` 能通过，unknown/conflict/unreachable 不自动变成 fail，更不变成 pass；
+- 四个描述性 primary endpoint、六个 sensitivity、十个 stop rule、Wilson interval，以及以 family
+  为 cluster 的 10,000 次、seed `2636071` bootstrap；
+- 当 sample、recall、agreement、coverage、完整性或真实人类角色不足时，终点只能是
+  `open-resource-or-diagnostic-negative`，不得声称 Agent/critic 的因果效果。
+
+协议同时冻结 human validity boundary：100% screening 和关键字段由两位真实、相互独立的 reviewer
+分别锁码，第三位不同的 adjudicator 在锁码后裁决；pre-adjudication exact agreement 至少 `0.90`，
+Cohen kappa 可估时至少 `0.80`，总体 critical evidence coverage 至少 `0.90`，单字段至少 `0.85`。
+当前三位身份仍为未分配；系统不能伪造双人一致性，也不能自行作出法律、署名、公开和投稿结论。
+
+正式 protocol hash 为
+`ed6088c225d5c7f7710ecb69507659003b5b97e06dc7c0ee005a81ed2712e8ed`，report 为
+`0ed7f637ab10b10cc6b265c60020437255f64cc8d8a7259ad9eae9c9051a9408`，result-free projection 为
+`e8628d484cfd3d5ead9dbb9b0e6610ca4f68adeebda4d0ef463bc3ac1d5e1881`，两套 clean interpreter 的
+replay certificate 为
+`85e8ee4da9ea685b32f1896759e5235bec3e47fa59af8b12e0790f9026d9b93a`，manifest 为
+`9b99c6e4ccb43ea4982c546ebf6e18a34df63ae3f474ace3ed58ee2464a96b77`。正式包中 query binding 为
+28、card field 为 42、sentinel 为 16，而 search execution、extracted record、benchmark outcome、
+candidate-model output、RQ 和 confirmation panel 均为 0/false。
+
+下一步严格拆为两个任务：`263.6.7.2` 只构建 result-blind source adapter、raw-response hash、
+append-only PRISMA-S log、paper/family/revision dedup 和空 evidence packet；`263.6.7.3` 才由真实双人
+团队执行冻结 census 和描述性综合。Graph/Harness/Loop/Open Science 的升级因此服务于 lineage、
+instrument、不可回流状态机和可审计研究对象，而不再被误当作科学效应本身。
