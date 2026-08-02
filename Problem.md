@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-061 - Official NPZ derivative key is `du`, not `u_t`
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-02
+- Source: First live execution of the new Task `266.3` official runner.
+- Symptom: Both smoke cells failed closed with `KeyError: 'u_t'`. The new runner assumed the derivative array was stored under `u_t`, matching the synthetic sentinel payloads.
+- Impact: No result was fabricated. The runner failed closed, retained the exact failure reason, and wrote a hashed payload, so the defect was visible immediately rather than silently degrading a metric.
+- Evidence: Direct NPZ header inspection shows the official layout: `u.npy`, `du.npy`, `t.npy`, plus `x/y/z` for PDE systems. Shapes confirm the assumed axis order, for example `reaction_diffusion_cylinder` at `(100, 30, 51, 6)` as spatial-spatial-time-field and `heat_laser` at `(201, 201, 3, 20, 1)`.
+- Root cause: The synthetic sentinels and the official archive use different key names for the same quantity.
+- Workaround: None needed.
+- Next action: When adding a new data source, inspect its actual keys before assuming a naming convention.
+- Linked tasks: `266.3`.
+- Resolution: The runner reads `data["du"]` in all four places that need the derivative.
+- Verification: Three real ODE systems under SNR20 then executed successfully; see `P-20260802-062`.
+
+### P-20260802-062 - Confirmed the real-data regime keeps the estimand stable
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-02
+- Source: Task `266.3` real-data smoke, `runs/manual-live/task2663-official-runner-smoke-v2`.
+- Symptom: Not a defect. This entry records the measurement that justifies moving the paradigm comparison off the synthetic sentinels, as decided in `P-20260802-060`.
+- Impact: Confirms the Task `266.3` execution path is sound before any budgeted search is spent.
+- Evidence: A deliberately simple linear probe candidate, authored only as a harness probe and never entering the search, executed the fit-once/freeze/predict contract against three real SNR20 ODE systems inside the pinned image. Derivative NMSE was `0.18759248726304045` for `driven-pendulum-quadratic-damping`, `0.5901088107082761` for `velocity-falling-object`, and `0.10977829527970365` for `aizawa-attractor`. Every cell reported `maximum_equation_prediction_delta = 0.0`, so the candidate's returned numbers exactly matched an independent evaluation of its own reported equations, and `equation_changed_on_shuffled_training = True`, so the fit genuinely depends on its training target.
+- Root cause: Not applicable.
+- Workaround: Not applicable.
+- Next action: Build the bounded Task `266.3` search on this runner. Do not reuse the probe candidate as a research candidate.
+- Linked tasks: `266.2`, `266.3`, `267.6`, `267.7`.
+- Resolution: The real panel keeps NMSE in `O(0.1..1)`, which is the regime where a log-ratio effect is meaningful. On the synthetic sentinels both arms reached machine precision and produced a spurious `+24.4652` from `1.784e-31` versus `7.524e-21`. The substrate problem recorded in `P-20260802-060` is therefore resolved by construction on the official panel.
+- Verification: Three of three cells succeeded with concrete numeric equations, exact prediction/equation agreement, and confirmed training dependence.
+
 ### P-20260802-060 - Synthetic sentinels are the wrong substrate for the Route P2 estimand
 
 - Status: Resolved
