@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-063 - Pilot sent every baseline cell to Operon, failing 12 of 12
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-02
+- Source: Task `266.3` first pilot, `runs/manual-live/task2663-official-development-pilot-v1`.
+- Symptom: All 12 baseline cells failed. The 6 ODE cells raised `KeyError: 'pool_size'`, and the 6 PDE cells raised `ValueError: Gate A v1 Operon adapter supports the selected 1D PDE panel only`.
+- Impact: Critical, because every paired effect became meaningless rather than merely missing. With the baseline taking the frozen failure loss of `1e12`, the selected candidate showed `log_effect` values of `+27.6332`, `+26.9750`, and `+25.5737`, which look like enormous wins but only measure baseline absence. Reporting those as development evidence would have been a fabricated result.
+- Evidence: The pinned runner's `_baseline_configs` reads `basis_functions`, `optimizer_threshold`, `poly_order`, `optimizer_alpha`, and `pde_derivative_order` as swept lists, and `_run_operon` additionally requires `pool_size`, `population_size`, `max_evaluations`, and `max_time_seconds`. The frozen Task `266.1` baseline registry already routes by domain: `operon_gp_ode` is documented as "ODE only because Task 265.3 proved the query adapter is not PDE-valid", while `pdefind_pde` is backed by PySINDy 1.7.5 with recorded probe results of `1.3980779783672217e-31` at 2D and `2.034461901247889e-32` at 3D.
+- Root cause: My pilot passed a single hand-written Operon method dict for every cell, ignoring the frozen registry's domain routing and omitting required parameters.
+- Workaround: None needed.
+- Next action: Never pass one baseline method for all domains. `execute_official_stage(baseline_method=None)` now routes per cell.
+- Linked tasks: `266.1`, `266.3`.
+- Resolution: Added `_ODE_BASELINE_METHOD` and `_PDE_BASELINE_METHOD` with the exact parameter keys the pinned runner reads, plus `baseline_method_for(data_type)`. The in-container runner now dispatches `_run_operon` for ODE and `_run_sparse_baseline` for PDE, which is the `sindy_or_pdefind` path the registry specifies.
+- Verification: A two-cell real-data probe succeeded on both paths: `driven-pendulum-quadratic-damping` (ODE, Operon) at derivative NMSE `0.3027880561837553`, and `reaction_diffusion_cylinder` (2D PDE, PDE-FIND) at `0.24746354267221762`. Both land in the `O(0.1..1)` regime where the log ratio is meaningful.
+
 ### P-20260802-061 - Official NPZ derivative key is `du`, not `u_t`
 
 - Status: Resolved

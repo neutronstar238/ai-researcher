@@ -85,6 +85,48 @@ _FAILURE_LOSS = 1e12
 _BOOTSTRAP_RESAMPLES = 2_000
 _BOOTSTRAP_SEED = 2663
 
+# Domain-valid baseline methods, matching the frozen Task 266.1 registry and the
+# exact parameter keys the pinned runner reads. The registry routes Operon to ODE
+# only, because the pinned Operon adapter refuses anything beyond a 1D PDE panel,
+# and this panel's PDE systems are 2D and 3D. `sindy_or_pdefind` dispatches SINDy
+# for ODE and PDE-FIND for PDE, and the registry's probe recorded PDE-FIND
+# succeeding at 2D (1.398e-31) and 3D (2.034e-32).
+_ODE_BASELINE_METHOD: dict[str, Any] = {
+    "method_id": "operon_gp",
+    "family": "genetic_symbolic",
+    "max_cpu_cores": 2,
+    "parameters": {
+        "generations": 100,
+        "population_size": 1000,
+        "pool_size": 1000,
+        "max_evaluations": 20_000,
+        "max_time_seconds": 75,
+        "random_state": 101,
+    },
+}
+_PDE_BASELINE_METHOD: dict[str, Any] = {
+    "method_id": "sindy_or_pdefind",
+    "family": "sparse_linear",
+    "max_cpu_cores": 2,
+    "parameters": {
+        # `_baseline_configs` sweeps the cartesian product of these lists.
+        "basis_functions": ["polynomial"],
+        "optimizer_threshold": [0.01, 0.1],
+        "poly_order": [2, 3],
+        "optimizer_alpha": [1e-6, 1e-3],
+        "pde_derivative_order": [2],
+        "pysindy_revision": "1.7.5",
+    },
+}
+
+
+def baseline_method_for(data_type: str) -> dict[str, Any]:
+    """Return the domain-valid baseline method for one data type."""
+
+    if data_type == "ode":
+        return _ODE_BASELINE_METHOD
+    return _PDE_BASELINE_METHOD
+
 
 class OfficialDevelopmentSearchError(RuntimeError):
     """Raised when a Task 266.3 evidence boundary cannot be proved."""
@@ -690,11 +732,14 @@ def execute_official_stage(
     specs: Sequence[OfficialCellSpec],
     candidates: Sequence[OfficialCandidateRecord],
     output_dir: Path | str,
-    baseline_method: dict[str, Any],
+    baseline_method: dict[str, Any] | None = None,
     timeout_seconds: int = 300,
     maximum_parallel_cells: int = 4,
 ) -> tuple[OfficialCellResult, ...]:
-    """Execute one frozen stage, retaining every failure."""
+    """Execute one frozen stage, retaining every failure.
+
+    Pass `baseline_method=None` to route each cell to its domain-valid baseline.
+    """
 
     output_root = Path(output_dir).resolve()
     runner_path = output_root / "runner" / _RUNNER_SOURCE.name
@@ -707,6 +752,8 @@ def execute_official_stage(
     baseline_runner_sha256 = _baseline_runner_sha256(identity)
 
     def run(spec: OfficialCellSpec) -> OfficialCellResult:
+        # Each cell gets the baseline that is valid for ITS domain.
+        method = baseline_method or baseline_method_for(spec.data_type)
         return _execute_one_cell(
             spec=spec,
             identity=identity,
@@ -714,7 +761,7 @@ def execute_official_stage(
             candidate_paths=candidate_paths,
             runner_path=runner_path,
             baseline_runner_sha256=baseline_runner_sha256,
-            baseline_method=baseline_method,
+            baseline_method=method,
             timeout_seconds=timeout_seconds,
         )
 

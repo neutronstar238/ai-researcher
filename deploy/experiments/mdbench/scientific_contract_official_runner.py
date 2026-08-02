@@ -568,7 +568,15 @@ def _run_candidate(spec, data, candidate_path):
 
 
 def _run_baseline(spec, data):
-    """Invoke the pinned domain baseline, byte-verified before import."""
+    """Invoke the pinned DOMAIN-VALID baseline, byte-verified before import.
+
+    The frozen Task 266.1 baseline registry routes by domain: Operon for ODE, and
+    PDE-FIND backed by PySINDy for PDE. The pinned Operon adapter refuses anything
+    beyond the 1D PDE panel, and this panel's PDE systems are 2D and 3D, so sending
+    PDE cells to Operon fails every one of them and makes each paired effect
+    meaningless. The registry's own probe evidence records PDE-FIND succeeding at
+    2D (`1.398e-31`) and 3D (`2.034e-32`).
+    """
 
     baseline_path = Path("/opt/autoresearch-mdbench/runner.py")
     if _file_hash(baseline_path) != spec["expected_baseline_runner_sha256"]:
@@ -592,7 +600,16 @@ def _run_baseline(spec, data):
         "method": spec["baseline_method"],
         "split_policy": spec["split_policy"],
     }
-    result = baseline._run_operon(base_spec, pieces, spatial_grids, time_axis)
+    if spec["attempt"]["data_type"] == "ode" and spec["baseline_method"].get(
+        "method_id"
+    ) == "operon_gp":
+        result = baseline._run_operon(base_spec, pieces, spatial_grids, time_axis)
+    else:
+        # `sindy_or_pdefind` dispatches SINDy for ODE and PDE-FIND for PDE, which is
+        # the domain-valid path the frozen registry specifies.
+        result = baseline._run_sparse_baseline(
+            base_spec, pieces, spatial_grids, time_axis
+        )
     result.update(
         {
             "split_indices": split,
