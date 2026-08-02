@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-064 - Host-computed shuffle order was invalid for every PDE cell
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Task `266.3` pilot v2 PDE failure analysis.
+- Symptom: `official-03` and `official-04`, the two strongest candidates, failed every PDE cell with `ValueError: frozen shuffle is not a complete row permutation`.
+- Impact: The train-dependence control could not run, so those candidates were recorded as PDE failures and took the frozen failure loss of `1e12`. That produced paired log effects of `-29.4159` and `-29.5155`, which look like catastrophic scientific defeats but were caused by my own host-side bug.
+- Evidence: The host computed the shuffle as `range(int(n_time * 0.64))`, using only the time axis. For a PDE the training rows are every spatial position times every training time step: `reaction_diffusion_cylinder` is `(100, 30, 51, 6)`, so a 32-step training window has `100 * 30 * 32 = 96000` rows, not 32. The runner's completeness check correctly refused the short permutation.
+- Root cause: The host cannot know the true training row count without opening the array, which the result-blind freeze forbids. Passing a host-computed index list was the wrong design.
+- Workaround: None needed.
+- Next action: Keep any quantity that depends on array shape inside the runner. The host may pass only metadata and seeds.
+- Linked tasks: `266.3`.
+- Resolution: The runner now derives the permutation itself with `_deterministic_permutation(count, seed)`, a fixed-increment linear congruential shuffle over the true training row count. The same seed and row count always give the same order, so the control stays replayable without shipping a large index list into the container.
+- Verification: Both candidates then reached real PDE verdicts on `reaction_diffusion_cylinder` at SNR20: `official-03` at derivative NMSE `0.6627143734727947` with 279 selected terms, and `official-04` at `1.4203888957455957` with 131 terms. Both reported `equation_changed_on_shuffled_training = True`, so the control now actually functions.
+
 ### P-20260802-063 - Pilot sent every baseline cell to Operon, failing 12 of 12
 
 - Status: Resolved

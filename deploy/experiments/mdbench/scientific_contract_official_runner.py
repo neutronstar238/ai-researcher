@@ -483,6 +483,23 @@ def _predict_split(predict, spec, artifact, data, split, name, coordinates, time
     }
 
 
+def _deterministic_permutation(count, seed):
+    """Reproducible full permutation of `count` rows from the frozen cell seed.
+
+    Uses a fixed-increment linear congruential shuffle so the same seed and row
+    count always yield the same order, making the shuffle control replayable
+    without shipping a large index list into the container.
+    """
+
+    order = list(range(count))
+    state = (seed * 6364136223846793005 + 1442695040888963407) % (2**64)
+    for position in range(count - 1, 0, -1):
+        state = (state * 6364136223846793005 + 1442695040888963407) % (2**64)
+        target = state % (position + 1)
+        order[position], order[target] = order[target], order[position]
+    return order
+
+
 def _training_sensitivity(fit, spec, data, split, field_names, coordinates, time_axis):
     """Refit on a shuffled training target; a real fit must change its equations."""
 
@@ -490,7 +507,14 @@ def _training_sensitivity(fit, spec, data, split, field_names, coordinates, time
     derivatives = np.asarray(data["du"], dtype=np.float64)
     train = _time_slice(derivatives, split["train_start"], split["train_end"], time_axis)
     flat = train.reshape(-1, train.shape[-1])
-    order = np.asarray(spec["shuffle_order"], dtype=np.int64)
+    # The permutation must cover every training ROW, which for a PDE means all
+    # spatial positions times all training time steps, not just the time steps. The
+    # host cannot know that count without opening the array, so it is derived here
+    # deterministically from the frozen seed instead of being passed in.
+    order = np.asarray(
+        _deterministic_permutation(flat.shape[0], int(spec["attempt"]["seed"])),
+        dtype=np.int64,
+    )
     if sorted(order.tolist()) != list(range(flat.shape[0])):
         raise ValueError("frozen shuffle is not a complete row permutation")
     rebuilt = derivatives.copy()

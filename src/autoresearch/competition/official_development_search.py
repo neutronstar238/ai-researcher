@@ -609,8 +609,6 @@ def _execute_one_cell(
         return _result_from_payload(spec, payload)
 
     data_path = Path(identity.data_root) / spec.data_relative_path
-    n_time = _npz_time_length(data_path)
-    train_rows = int(n_time * _SPLIT_POLICY["train"][1])
     runner_spec: dict[str, Any] = {
         "attempt": {
             "attempt_id": spec.attempt_id,
@@ -627,7 +625,6 @@ def _execute_one_cell(
         "split_policy": _SPLIT_POLICY,
         "maximum_fit_seconds": timeout_seconds - 30,
         "maximum_predict_seconds": 10,
-        "shuffle_order": list(range(train_rows))[::-1],
     }
     runner_spec["spec_hash"] = _canonical(runner_spec)
     spec_path = cell_dir / "spec.json"
