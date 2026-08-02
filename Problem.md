@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-060 - Synthetic sentinels are the wrong substrate for the Route P2 estimand
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Investigation of why Route P2 run `v3` implied 212 paired units.
+- Symptom: The self-correction cycle correctly derived that 212 paired units were needed, which exceeds both the 6 synthetic sentinels and the 14-system official panel and therefore looked unreachable. Treating that as a sample-size problem would have been wrong.
+- Impact: A literal reading would have justified either an unreachable panel or abandoning the question. Neither was necessary.
+- Evidence: On `ode-linear-2field` both arms produced essentially exact fits, `1.784e-31` for the evolutionary arm and `7.524e-21` for the independent arm. Their ratio yields a log effect of `+24.4652`, but both values are far below any physically meaningful error, so the ratio is dominated by floating-point-level differences rather than any real difference in method quality. The five PDE effects are all well-scaled, between `-2.0195` and `+0.6121`, because their losses are `O(0.05..1.0)`. Removing the single near-exact cell shrinks the bootstrap interval from `13.588802` to `2.631600`, a factor of 5.2.
+- Root cause: A log-ratio estimand is undefined in practice when both arms approach machine precision. The synthetic sentinels were built for Task `266.2` to prove contract compliance through exact recovery, which is exactly the regime in which this estimand loses meaning. The estimand is sound; the measurement substrate is wrong.
+- Workaround: None needed.
+- Next action: Run the paradigm comparison on the official MDBench panel, where SNR20 noise keeps NMSE at `O(0.1..1)` and the log ratio is stable. Do not add synthetic sentinels to chase 212 units, and do not exclude the ODE cell post hoc from an already-observed run.
+- Linked tasks: `266.2`, `266.3`, `267.6`, `267.7`.
+- Resolution: The Route P2 result stands as a recorded `underpowered_inconclusive` outcome on synthetic sentinels, and the reason is now understood and documented rather than mysterious. The comparison moves to the official panel as part of Task `266.3`, whose gate Task `267.7` already authorized.
+- Verification: Per-sentinel losses and log ratios tabulated above; PDE-only bootstrap recomputed with the same fixed-seed routine used by the audit.
+
 ### P-20260802-059 - Self-correction proposals were internally incoherent and had to be rejected
 
 - Status: Resolved
