@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-053 - Unaddressable model patches ended the whole search instead of being retried
+
+- Status: Mitigated
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Live Harness runs `task2662-scientific-contract-harness-v10`, `v12`, and `v13`.
+- Symptom: `_apply_model_authored_patch` raised a terminal `ScientificContractHarnessError` whenever a model-authored `old_text` did not match exactly once. Run v10 ended with `replacement 1 matched 0 times`, v12 with `replacement 5 matched 3 times`, and v13 with `replacement 7 matched 2 times` on `    n_fields = state.shape[-1]`.
+- Impact: A text-addressing mistake discarded the entire remaining revision budget even though no scientific verdict had been reached. In v12 this happened immediately after the first genuine scientific execution in this lineage, so the run was lost at its most informative point.
+- Evidence: v13 records `scientific-contract-r02.patch-retry-02.json` and `...-retry-03.json`, proving the bounded re-ask now happens and that the model received the improved diagnosis. Its `revision-01` recorded six `contract_execution_error` codes, correctly classified `technical`, so the scientific budget was preserved rather than spent.
+- Root cause: Patch application treated an addressing error as an unrecoverable evidence-boundary violation rather than as a technical fault that the model can repair given the right feedback.
+- Workaround: The failure is now retried up to `_MAX_PATCH_ADDRESSING_ATTEMPTS` (3) with the exact match count and an instruction to extend the anchor until unique. It remains bounded, so a persistently mis-addressing model still stops.
+- Next action: Not fully resolved. The model still exhausted all three attempts in v13 by re-selecting non-unique anchors. Consider giving the model line-numbered parent source, or accepting a whole-function replacement anchored on the `def` line, so a unique anchor is easier to produce. Do not raise the retry budget without evidence that it helps.
+- Linked tasks: `266.2`, `267.2`.
+- Resolution: Partially resolved. Added `ScientificContractPatchError` with named failure codes (`patch_old_text_not_unique`, `patch_left_source_unchanged`, `patch_source_size_out_of_bounds`), actionable diagnoses, a bounded re-ask loop, and per-attempt interaction records suffixed `.patch-retry-NN` so every attempt stays individually auditable.
+- Verification: 7 focused tests cover the subclass relationship, zero-match and multi-match diagnoses, no-op rejection, successful application, and budget bounds. The full mocked Harness suite passes except the 4 pre-existing NumPy-dependent runner tests.
+
 ### P-20260802-052 - Model lost newline escapes in source_text, collapsing every candidate to one line
 
 - Status: Resolved

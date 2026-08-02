@@ -648,7 +648,11 @@ class _FixtureCompletion:
                 else self.source
             ).split("\n"),
         }
-        if self.patch_repair and self.calls == 2:
+        # A no-op-only fixture must keep returning the no-op patch so the bounded
+        # patch-addressing retry budget is genuinely exhausted (Task 267.2).
+        if self.patch_repair and (
+            self.calls == 2 or (self.noop_only_patch and self.calls > 2)
+        ):
             replacements = [
                 {
                     "old_text": "import os\n",

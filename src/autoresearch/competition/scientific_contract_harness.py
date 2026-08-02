@@ -102,6 +102,10 @@ _MAX_REVISIONS = 6
 _MAX_SCIENTIFIC_REVISIONS = 6
 _MAX_TECHNICAL_REVISIONS = 6
 _MAX_TOTAL_REVISIONS = _MAX_SCIENTIFIC_REVISIONS + _MAX_TECHNICAL_REVISIONS
+# Bounded re-ask budget for a patch whose old_text could not be addressed
+# uniquely. This is text addressing, not science, so it does not consume a
+# revision; it is bounded so a persistently mis-addressing model cannot loop.
+_MAX_PATCH_ADDRESSING_ATTEMPTS = 3
 _MAX_SOURCE_BYTES = 80_000
 _PREFERRED_SOURCE_CHARACTERS = 12_000
 _MAX_OPHIS_CHARACTERS = 8_000
@@ -355,6 +359,22 @@ _FORBIDDEN_SOURCE_MARKERS = {
 
 class ScientificContractHarnessError(RuntimeError):
     """Raised when a Task 266.2 evidence boundary cannot be proved."""
+
+
+class ScientificContractPatchError(ScientificContractHarnessError):
+    """A model-authored patch could not be applied deterministically.
+
+    Task 267.2 follow-up. This is a TECHNICAL fault: the candidate's science was
+    never reached, so it must be fed back to the model as actionable repair
+    context instead of terminating the run. Live runs v10 and v12 both died here
+    (`replacement 1 matched 0 times`, `replacement 5 matched 3 times`), which
+    ended the whole search on a text-addressing mistake rather than on any
+    scientific verdict.
+    """
+
+    def __init__(self, message: str, *, failure_code: str) -> None:
+        super().__init__(message)
+        self.failure_code = failure_code
 
 
 class ScientificContractSourceResponse(StrictFrozenModel):
@@ -730,7 +750,13 @@ class ScientificContractRevision(StrictFrozenModel):
         )
         if self.stage != expected_stage or self.model_interaction.stage != expected_stage:
             raise ValueError("scientific revision stage changed")
-        if self.model_interaction.interaction_id != self.revision_id:
+        # The interaction must belong to this revision. A bounded patch-addressing
+        # re-ask appends a `.patch-retry-NN` suffix, which stays bound to the same
+        # revision while keeping every attempt individually auditable.
+        interaction_id = self.model_interaction.interaction_id
+        if interaction_id != self.revision_id and not interaction_id.startswith(
+            f"{self.revision_id}.patch-retry-"
+        ):
             raise ValueError("scientific revision interaction changed")
         if self.model_interaction.parsed_payload != self.ophis_response.model_dump(
             mode="json"
@@ -1264,9 +1290,19 @@ def _apply_model_authored_patch(
     for index, replacement in enumerate(patch_response.replacements, start=1):
         occurrences = resolved.count(replacement.old_text)
         if occurrences != 1:
-            raise ScientificContractHarnessError(
-                "scientific patch replacement "
-                f"{index} matched {occurrences} times instead of exactly once"
+            # Give the model the information it needs to re-address the edit.
+            excerpt = replacement.old_text[:160].replace("\n", "\\n")
+            hint = (
+                "no line in the parent source contains this text; copy an exact "
+                "substring from the parent"
+                if occurrences == 0
+                else f"this text appears {occurrences} times; extend it with "
+                "surrounding lines until it is unique"
+            )
+            raise ScientificContractPatchError(
+                f"scientific patch replacement {index} matched {occurrences} times "
+                f"instead of exactly once. old_text began: '{excerpt}'. {hint}.",
+                failure_code="patch_old_text_not_unique",
             )
         resolved = resolved.replace(
             replacement.old_text,
@@ -1274,11 +1310,17 @@ def _apply_model_authored_patch(
             1,
         )
     if resolved == parent_source:
-        raise ScientificContractHarnessError("scientific patch left source unchanged")
+        raise ScientificContractPatchError(
+            "scientific patch left source unchanged; every replacement was a no-op. "
+            "Emit at least one replacement whose new_text differs from its old_text.",
+            failure_code="patch_left_source_unchanged",
+        )
     encoded_size = len(resolved.encode("utf-8"))
     if not 200 <= encoded_size <= _MAX_SOURCE_BYTES:
-        raise ScientificContractHarnessError(
-            "scientific patched source is outside the frozen source-size bounds"
+        raise ScientificContractPatchError(
+            f"scientific patched source is {encoded_size} bytes, outside the frozen "
+            f"bounds of 200..{_MAX_SOURCE_BYTES}.",
+            failure_code="patch_source_size_out_of_bounds",
         )
     return resolved
 
@@ -1378,14 +1420,6 @@ def build_scientific_contract_harness_package(
             if revision.passed:
                 break
             continue
-        messages = _generation_messages(
-            plan=plan,
-            erratum=erratum,
-            fixtures=fixtures,
-            runtime=runtime,
-            previous_revision=revisions[-1] if revisions else None,
-            output_root=output_root,
-        )
         revision_id = f"scientific-contract-r{revision_number:02d}"
         stage: Literal[
             "scientific_contract_implementation", "scientific_contract_repair"
@@ -1394,44 +1428,66 @@ def build_scientific_contract_harness_package(
             if revision_number == 1
             else "scientific_contract_repair"
         )
-        try:
-            response_schema = (
-                _SOURCE_RESPONSE_SCHEMA
-                if revision_number == 1
-                else _REPAIR_RESPONSE_SCHEMA
-            )
-            completion_result, interaction = _call_and_record(
-                completion=completion,
-                messages=messages,
-                config_path=config_path,
-                env_path=env_path,
-                timeout_seconds=provider_timeout_seconds,
-                max_tokens=12_000,
-                response_schema=response_schema,
-                response_schema_name=(
-                    "scientific_contract_source"
-                    if revision_number == 1
-                    else "scientific_contract_repair"
-                ),
-                interaction_id=revision_id,
-                stage=stage,
-                candidate_id="scientific-contract-candidate",
-                output_root=output_root,
-                now=now,
-            )
-            response = _parse_scientific_model_response(
-                completion_result.parsed_json,
-                allow_patch=revision_number > 1,
-            )
-        except (ValidationError, OSError, RuntimeError) as exc:
-            raise ScientificContractHarnessError(
-                f"cannot obtain exact model source for {revision_id}: {exc}"
-            ) from exc
+        # Task 267.2 follow-up: a patch that cannot be addressed uniquely is a
+        # TECHNICAL fault, so re-ask the model with the exact addressing error
+        # instead of ending the search. Live runs v10 and v12 both died here.
+        patch_failure_feedback: str | None = None
         source_derivation: ScientificContractSourceDerivation | None = None
-        if isinstance(response, ScientificContractSourceResponse):
-            source_text = response.source_text
-            exact_model_source_unmodified = True
-        else:
+        source_text: str | None = None
+        exact_model_source_unmodified = True
+        completion_result = None
+        interaction = None
+        response = None
+        for patch_attempt in range(1, _MAX_PATCH_ADDRESSING_ATTEMPTS + 1):
+            messages = _generation_messages(
+                plan=plan,
+                erratum=erratum,
+                fixtures=fixtures,
+                runtime=runtime,
+                previous_revision=revisions[-1] if revisions else None,
+                output_root=output_root,
+                patch_failure_feedback=patch_failure_feedback,
+            )
+            attempt_suffix = "" if patch_attempt == 1 else f".patch-retry-{patch_attempt:02d}"
+            try:
+                response_schema = (
+                    _SOURCE_RESPONSE_SCHEMA
+                    if revision_number == 1
+                    else _REPAIR_RESPONSE_SCHEMA
+                )
+                completion_result, interaction = _call_and_record(
+                    completion=completion,
+                    messages=messages,
+                    config_path=config_path,
+                    env_path=env_path,
+                    timeout_seconds=provider_timeout_seconds,
+                    max_tokens=12_000,
+                    response_schema=response_schema,
+                    response_schema_name=(
+                        "scientific_contract_source"
+                        if revision_number == 1
+                        else "scientific_contract_repair"
+                    ),
+                    interaction_id=f"{revision_id}{attempt_suffix}",
+                    stage=stage,
+                    candidate_id="scientific-contract-candidate",
+                    output_root=output_root,
+                    now=now,
+                )
+                response = _parse_scientific_model_response(
+                    completion_result.parsed_json,
+                    allow_patch=revision_number > 1,
+                )
+            except (ValidationError, OSError, RuntimeError) as exc:
+                raise ScientificContractHarnessError(
+                    f"cannot obtain exact model source for {revision_id}: {exc}"
+                ) from exc
+
+            if isinstance(response, ScientificContractSourceResponse):
+                source_text = response.source_text
+                exact_model_source_unmodified = True
+                break
+
             if not revisions:
                 raise ScientificContractHarnessError(
                     "scientific patch has no previous revision"
@@ -1442,7 +1498,22 @@ def build_scientific_contract_harness_package(
                 parent_revision.source_relative_path,
             )
             parent_source = parent_source_path.read_bytes().decode("utf-8")
-            source_text = _apply_model_authored_patch(parent_source, response)
+            try:
+                source_text = _apply_model_authored_patch(parent_source, response)
+            except ScientificContractPatchError as exc:
+                patch_failure_feedback = str(exc)
+                if patch_attempt == _MAX_PATCH_ADDRESSING_ATTEMPTS:
+                    raise
+                continue
+            exact_model_source_unmodified = False
+            break
+
+        if source_text is None or interaction is None or response is None:
+            raise ScientificContractHarnessError(
+                f"scientific revision produced no source: {revision_id}"
+            )
+        if not isinstance(response, ScientificContractSourceResponse):
+            parent_revision = revisions[-1]
             final_source_sha256 = _sha256_text(source_text)
             source_derivation = ScientificContractSourceDerivation.create(
                 parent_revision_id=parent_revision.revision_id,
@@ -1494,7 +1565,7 @@ def build_scientific_contract_harness_package(
             "ophis_response": response.model_dump(mode="json"),
             "model_interaction": interaction.model_dump(mode="json"),
             "interaction_relative_path": (
-                Path("interactions") / f"{revision_id}.json"
+                Path("interactions") / f"{interaction.interaction_id}.json"
             ).as_posix(),
             "source_relative_path": source_path.relative_to(output_root).as_posix(),
             "source_sha256": source_sha256,
@@ -2396,6 +2467,7 @@ def _generation_messages(
     runtime: ScientificContractRuntimeEnvironment,
     previous_revision: ScientificContractRevision | None,
     output_root: Path,
+    patch_failure_feedback: str | None = None,
 ) -> list[dict[str, str]]:
     interface = _scientific_interface_contract()
     frozen_gates = plan.contract_gate.model_dump(mode="json")
@@ -2499,6 +2571,29 @@ def _generation_messages(
             {
                 "role": "user",
                 "content": json.dumps(feedback, ensure_ascii=False, sort_keys=True),
+            }
+        )
+    if patch_failure_feedback:
+        # Task 267.2 follow-up: a patch that could not be applied is a technical
+        # fault. Feed the exact addressing error back instead of ending the run.
+        messages.append(
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "previous_patch_rejected": True,
+                        "patch_failure": patch_failure_feedback,
+                        "patch_addressing_rule": (
+                            "Each old_text must appear EXACTLY ONCE in the parent "
+                            "source shown above. Copy it verbatim, including "
+                            "indentation, and extend it with neighbouring lines "
+                            "until it is unique. Do not paraphrase it, and do not "
+                            "emit a no-op replacement."
+                        ),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
             }
         )
     return messages
