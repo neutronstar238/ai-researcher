@@ -2756,8 +2756,7 @@ def _condensed_observation(
     )
     results: list[dict[str, Any]] = []
     for item in observation.sentinel_results:
-        results.append(
-            {
+        condensed = {
                 key: item.get(key)
                 for key in (
                     "data_type",
@@ -2785,7 +2784,36 @@ def _condensed_observation(
                 )
                 if key in item
             }
-        )
+        # The candidate's OWN fit diagnostics. Without these it is told that
+        # `primary_term_support` failed but cannot see that it selected 12 terms
+        # from 12 features on 102 samples, which is the signature of fitting the
+        # training data instead of recovering the law. This is the candidate's own
+        # metadata, so it leaks nothing about the hidden expected equations.
+        diagnostics = (item.get("primary_artifact") or {}).get("diagnostics") or {}
+        own = {
+            key: diagnostics.get(key)
+            for key in (
+                "training_sample_count",
+                "design_feature_count",
+                "selected_term_count",
+                "training_nmse",
+                "solver_id",
+            )
+            if key in diagnostics
+        }
+        if own:
+            condensed["your_own_fit_diagnostics"] = own
+            train_nmse = diagnostics.get("training_nmse")
+            prediction_nmse = item.get("primary_prediction_nmse")
+            if isinstance(train_nmse, int | float) and isinstance(
+                prediction_nmse, int | float
+            ):
+                # A large gap means the fit did not generalize, which term count
+                # alone does not reveal.
+                condensed["your_train_to_prediction_nmse_gap"] = float(
+                    prediction_nmse
+                ) - float(train_nmse)
+        results.append(condensed)
     return {
         "passed_sentinel_count": observation.passed_sentinel_count,
         "sentinel_count": observation.sentinel_count,

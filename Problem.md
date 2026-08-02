@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-056 - Candidates could not see their own fit diagnostics, so overfitting was unattributable
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Live Harness runs `task2662-scientific-contract-harness-v15` and `v16` PDE diagnosis.
+- Symptom: Repair feedback carried per-sentinel outcome metrics but withheld the candidate's own fit diagnostics. A candidate was therefore told that `primary_term_support` failed without being able to see that it had selected 12 terms from 12 available features on 102 training samples.
+- Impact: The dominant PDE failure mode was invisible to the only agent that could fix it. Across `v15` and `v16` the best revisions reached term-support F1 of only `0.29` to `0.75` on PDE sentinels while fitting the training data closely, and the gate never passed.
+- Evidence: `v16` revision-05 shows the contrast the candidate could not see. The passing ODE unit used 2 of 6 features with a train-to-prediction NMSE gap of `-6.0e-33`. The failing PDE units used 6 of 6 and 12 of 12 features with gaps of `1.4e-01` and `1.5e-02`. This matches the granular-feedback finding in `arXiv:2605.29184`: coarse feedback cannot attribute an outcome to a component.
+- Root cause: The forwarding allowlist in `_condensed_observation` included outcome metrics but not the artifact's own `diagnostics` block.
+- Workaround: None needed.
+- Next action: Keep the forwarded-key allowlist test green. A new observation field must not reach the model merely by being added to the observation schema.
+- Linked tasks: `266.2`, `266.3`, `267.5`, `267.7`.
+- Resolution: Forward the candidate's own `training_sample_count`, `design_feature_count`, `selected_term_count`, `training_nmse`, and `solver_id`, plus a derived train-to-prediction NMSE gap. This is the candidate's own metadata only; a leakage test asserts that no sentinel identity, expected equation, or fixture hash appears in the payload.
+- Verification: Run `v17` passed the synthetic contract gate for the first time in this lineage. All 6 sentinels passed with term-support F1 `1.00`, coefficient relative errors between `2.31e-16` and `2.60e-15`, prediction NMSE between `1.78e-31` and `3.28e-29`, and sparse selection of 1 to 3 terms from 5 to 18 available features. Package hash is `5cba300195d343198f40dcca67b3401b2657c4f9ab4fdb5740bfdcd123831993`; `next_required_task` advanced to `266.3`. Official development results, confirmation reads, and manuscripts remain `0/0/0` and `publication_ready` stays false.
+
 ### P-20260802-054 - Evaluator's spatial-derivative operator was not disclosed to candidates
 
 - Status: Resolved
