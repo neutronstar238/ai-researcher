@@ -70,7 +70,9 @@ _REVISION_RESPONSE_SCHEMA: dict[str, Any] = {
         "required_protocol_change",
         "proposed_matched_model_call_budget",
         "proposed_paired_unit_count",
-        "predicted_effect",
+        "predicted_median_effect",
+        "predicted_interval_width",
+        "prediction_rationale",
         "falsification_conditions",
         "why_this_is_not_p_hacking",
     ],
@@ -82,13 +84,23 @@ _REVISION_RESPONSE_SCHEMA: dict[str, Any] = {
             "minimum": 2,
             "maximum": 64,
         },
-        "proposed_paired_unit_count": {"type": "integer", "minimum": 2, "maximum": 200},
-        "predicted_effect": {"type": "string", "minLength": 20, "maxLength": 4000},
+        "proposed_paired_unit_count": {"type": "integer", "minimum": 2, "maximum": 400},
+        # P-20260802-059: the model reproducibly answered a prose `predicted_effect`
+        # field with numeric fragments such as ",0.072726,> 0.072726". The numeric
+        # prediction and its falsifiable justification are now separate fields, so a
+        # numeric answer to a numeric field is valid and the prose is required apart.
+        "predicted_median_effect": {"type": "number"},
+        "predicted_interval_width": {"type": "number", "exclusiveMinimum": 0},
+        "prediction_rationale": {
+            "type": "string",
+            "minLength": 40,
+            "maxLength": 4000,
+        },
         "falsification_conditions": {
             "type": "array",
             "minItems": 2,
             "maxItems": 8,
-            "items": {"type": "string", "minLength": 10, "maxLength": 600},
+            "items": {"type": "string", "minLength": 25, "maxLength": 600},
         },
         "why_this_is_not_p_hacking": {
             "type": "string",
@@ -177,8 +189,12 @@ class RouteP2RevisionProposal(StrictFrozenModel):
     causal_hypothesis: str = Field(min_length=20)
     required_protocol_change: str = Field(min_length=20)
     proposed_matched_model_call_budget: int = Field(ge=2, le=64)
-    proposed_paired_unit_count: int = Field(ge=2, le=200)
-    predicted_effect: str = Field(min_length=20)
+    proposed_paired_unit_count: int = Field(ge=2, le=400)
+    # Numeric prediction and prose justification are separate fields; see
+    # `_REVISION_RESPONSE_SCHEMA` for why.
+    predicted_median_effect: float
+    predicted_interval_width: float = Field(gt=0.0)
+    prediction_rationale: str = Field(min_length=40)
     falsification_conditions: tuple[str, ...] = Field(min_length=2, max_length=8)
     why_this_is_not_p_hacking: str = Field(min_length=20)
     authored_by_model: Literal[True] = True
@@ -198,7 +214,7 @@ class RouteP2RevisionProposal(StrictFrozenModel):
         # contradicts itself, or that carries no falsifiable content, must be
         # rejected rather than recorded as the system's plan.
         for name, text in (
-            ("predicted_effect", self.predicted_effect),
+            ("prediction_rationale", self.prediction_rationale),
             ("why_this_is_not_p_hacking", self.why_this_is_not_p_hacking),
             ("causal_hypothesis", self.causal_hypothesis),
             ("required_protocol_change", self.required_protocol_change),
@@ -498,7 +514,14 @@ def propose_route_p2_revision(
                 "threshold, and you may not reinterpret an underpowered result as a "
                 "null result. Explain in why_this_is_not_p_hacking how your revision "
                 "avoids selecting a protocol because it is more likely to produce a "
-                "favourable answer."
+                "favourable answer. "
+                "FIELD TYPES MATTER. predicted_median_effect and "
+                "predicted_interval_width are NUMBERS: emit bare JSON numbers with "
+                "no comparison operators, units, or surrounding text. Every other "
+                "field is PROSE: emit complete sentences, never a bare number or a "
+                "fragment such as '> 0.07'. Each falsification_condition must be a "
+                "full sentence naming an observable outcome that would refute your "
+                "revision, and the conditions must differ from one another."
             ),
         },
         {
@@ -554,7 +577,9 @@ def propose_route_p2_revision(
             parsed["proposed_matched_model_call_budget"]
         ),
         "proposed_paired_unit_count": int(parsed["proposed_paired_unit_count"]),
-        "predicted_effect": parsed["predicted_effect"],
+        "predicted_median_effect": float(parsed["predicted_median_effect"]),
+        "predicted_interval_width": float(parsed["predicted_interval_width"]),
+        "prediction_rationale": parsed["prediction_rationale"],
         "falsification_conditions": tuple(parsed["falsification_conditions"]),
         "why_this_is_not_p_hacking": parsed["why_this_is_not_p_hacking"],
         "authored_by_model": True,

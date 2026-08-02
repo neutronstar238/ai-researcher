@@ -42,19 +42,19 @@ update a factual problem entry below.
 
 ### P-20260802-059 - Self-correction proposals were internally incoherent and had to be rejected
 
-- Status: Open
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-08-02
 - Source: Task `267.7` live self-correction runs `task2677-route-p2-self-correction-v1` and `v2`.
 - Symptom: Asked to author its own protocol repair, the model produced a proposal whose prose argued for 212 paired units while its structured field said `21`, and whose `predicted_effect` and both `falsification_conditions` were numeric fragments: `",0.072726,> 0.072726"` and `"> 0.072726"`. On the rerun, `predicted_effect` was `",0.072726,  null],  "`. The defect is reproducible, not a one-off.
 - Impact: The self-correction cycle cannot yet produce an executable repair. Both attempts were rejected by the coherence guard, so no incoherent plan was recorded, but the loop currently stops at diagnosis instead of reaching an approvable plan.
 - Evidence: `v1` proposal fields as quoted above; `v2` rejected with `revision predicted_effect is not substantive prose: ',0.072726,  null],  '`. The deterministic half of the cycle worked correctly in both runs, classifying `underpowered_design` and deriving 212 implied paired units from an interval 5.9405 times wider than the publishable threshold.
-- Root cause: Not yet confirmed. The structured-output schema constrains type and length but cannot require that a string carries a falsifiable statement. The model appears to treat `predicted_effect` as a numeric field despite its string type and prose instruction.
-- Workaround: `_is_substantive_prose` rejects fields that are mostly digits and punctuation, and a prose-versus-field consistency check rejects a proposal that contradicts itself. Both fail closed.
-- Next action: Split the numeric prediction from its prose justification into separate schema fields, so a numeric answer to a numeric field is valid and the falsifiable statement is required separately. Do NOT relax the coherence guard to let the current output through.
+- Root cause: A single `predicted_effect` field was typed as prose while its semantic content is a number. The model answered the semantics, not the type, and emitted numeric fragments. The schema could constrain type and length but not require that a string carry a falsifiable statement.
+- Workaround: None remains.
+- Next action: Keep numeric predictions in numeric fields. If another prose field starts returning fragments, split it the same way rather than relaxing `_is_substantive_prose`.
 - Linked tasks: `267.6`, `267.7`.
-- Resolution: Not resolved. Guards are in place; the underlying proposal quality is unfixed.
-- Verification: 19 focused tests pass, including regression guards that lock the exact degenerate strings from run `v1`.
+- Resolution: Split `predicted_effect` into numeric `predicted_median_effect` and `predicted_interval_width` plus a separate prose `prediction_rationale`, raised the per-condition minimum length, and told the model explicitly which fields are numbers and which are prose. The coherence guards were kept exactly as strict.
+- Verification: Live run `task2677-route-p2-self-correction-v3` produced an accepted, coherent revision: 212 paired units matching the deterministic derivation, matched budget raised from 4 to 8 to enable reasoning, `predicted_median_effect = -0.5`, `predicted_interval_width = 2.0`, and three distinct falsification conditions. A direct guard audit confirms all four prose fields pass `_is_substantive_prose` on merit, the three conditions are distinct, and the prose states no unit count that contradicts the structured field. Re-injecting the `v1` degenerate string into the accepted proposal is still rejected. 24 focused tests pass, including one asserting that a long numeric fragment in `prediction_rationale` is still refused.
 
 ### P-20260802-058 - Self-correction first derived a sample size that contradicted its own observation
 

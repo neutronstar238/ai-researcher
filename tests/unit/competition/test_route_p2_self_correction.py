@@ -23,6 +23,7 @@ import pytest
 from autoresearch.campaign.models import FailureKind
 from autoresearch.competition.route_p2_self_correction import (
     UNDERPOWERED_DESIGN,
+    RouteP2RevisionProposal,
     RouteP2SelfCorrectionError,
     _is_substantive_prose,
     _required_paired_units,
@@ -283,6 +284,118 @@ def test_diagnosis_is_bound_to_its_observation(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------
 # Spread helper
 # --------------------------------------------------------------------------
+
+
+def _valid_proposal_payload(**overrides: Any) -> dict[str, Any]:
+    """The accepted live v3 proposal, used as the coherent baseline."""
+
+    payload: dict[str, Any] = {
+        "schema_version": "route-p2-revision-proposal-v1",
+        "parent_diagnosis_hash": "a" * 64,
+        "causal_hypothesis": (
+            "Enabling reasoning mode will reduce the absolute difference in median "
+            "performance between the ODE and PDE strata."
+        ),
+        "required_protocol_change": (
+            "Enable reasoning mode for all experimental units while maintaining "
+            "identical model-call budgets across both arms."
+        ),
+        "proposed_matched_model_call_budget": 8,
+        "proposed_paired_unit_count": 212,
+        "predicted_median_effect": -0.5,
+        "predicted_interval_width": 2.0,
+        "prediction_rationale": (
+            "The observed effect spread and extreme stratum disagreement suggest high "
+            "variance that requires the implied sample size to achieve adequate "
+            "precision for the preregistered threshold."
+        ),
+        "falsification_conditions": (
+            "The confidence interval width still exceeds the publishable threshold "
+            "after completing every paired run with reasoning enabled.",
+            "The absolute difference between the ODE and PDE stratum medians increases "
+            "rather than decreases when reasoning mode is enabled.",
+        ),
+        "why_this_is_not_p_hacking": (
+            "The revision adheres to the power analysis derived from the observed "
+            "spread and alters no acceptance criterion."
+        ),
+        "authored_by_model": True,
+        "interaction_id": "route-p2-revision-test",
+        "human_approval_recorded": False,
+        "execution_authorized": False,
+        "requires_new_preregistration_lineage": True,
+    }
+    payload.update(overrides)
+    from autoresearch.competition.manifest import canonical_model_hash
+
+    payload["proposal_hash"] = canonical_model_hash(payload)
+    return payload
+
+
+def test_numeric_prediction_is_a_number_not_prose() -> None:
+    """P-20260802-059: the numeric prediction and its prose are separate fields.
+
+    The model reproducibly answered a prose `predicted_effect` field with numeric
+    fragments such as ",0.072726,> 0.072726". Splitting the fields makes a numeric
+    answer to a numeric field valid while still requiring a falsifiable statement.
+    """
+
+    proposal = RouteP2RevisionProposal.model_validate(_valid_proposal_payload())
+
+    assert proposal.predicted_median_effect == pytest.approx(-0.5)
+    assert proposal.predicted_interval_width == pytest.approx(2.0)
+    assert "variance" in proposal.prediction_rationale
+
+
+def test_numeric_fragment_in_the_rationale_is_still_rejected() -> None:
+    """Splitting the fields must not open a hole in the coherence guard."""
+
+    # Long enough to clear the length check, so the prose guard is what fires.
+    numeric_fragment = ",0.072726,> 0.072726, 12.538627, -1.050175, 2.287484, 5.9405"
+
+    with pytest.raises(RouteP2SelfCorrectionError, match="not substantive prose"):
+        RouteP2RevisionProposal.model_validate(
+            _valid_proposal_payload(prediction_rationale=numeric_fragment)
+        )
+
+
+def test_identical_falsification_conditions_are_rejected() -> None:
+    """Two copies of one condition is not genuine falsifiability."""
+
+    duplicate = (
+        "The confidence interval width still exceeds the publishable threshold "
+        "after completing every paired run.",
+    ) * 2
+
+    with pytest.raises(RouteP2SelfCorrectionError, match="must be distinct"):
+        RouteP2RevisionProposal.model_validate(
+            _valid_proposal_payload(falsification_conditions=duplicate)
+        )
+
+
+def test_prose_field_disagreement_is_rejected() -> None:
+    """The v1 defect: prose argued 212 units while the field said 21."""
+
+    with pytest.raises(RouteP2SelfCorrectionError, match="disagree"):
+        RouteP2RevisionProposal.model_validate(
+            _valid_proposal_payload(
+                required_protocol_change=(
+                    "Increase paired_units from 6 to 212 as implied by the observed "
+                    "spread to achieve sufficient power."
+                ),
+                proposed_paired_unit_count=21,
+            )
+        )
+
+
+def test_proposal_can_never_self_authorize() -> None:
+    """A revision is a proposal; execution needs the human plan gate."""
+
+    proposal = RouteP2RevisionProposal.model_validate(_valid_proposal_payload())
+
+    assert proposal.human_approval_recorded is False
+    assert proposal.execution_authorized is False
+    assert proposal.requires_new_preregistration_lineage is True
 
 
 def test_degenerate_predicted_effect_is_rejected() -> None:

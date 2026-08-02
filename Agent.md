@@ -64,6 +64,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-02 - Kiro - Task 267.6-267.7 Route P2 audit and autonomous self-correction
+
+- User request: continue the Task 267 repair; then a correction from the user -- "不是我们的系统全自动科研吗，怎么增大预算，应该是让它自己发现一堆负面结果自己想办法纠错啊" -- pointing out that I had been making the scientific decisions myself instead of letting the loop make them.
+- Files changed:
+  - `src/autoresearch/competition/route_p2_paradigm_audit.py` (new)
+  - `src/autoresearch/competition/route_p2_self_correction.py` (new)
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_route_p2_paradigm_audit.py` (new)
+  - `tests/unit/competition/test_route_p2_self_correction.py` (new)
+  - `Problem.md` (added `P-20260802-057` through `P-20260802-059`)
+- Summary: Built and executed the Task `267.6` Route P2 matched-budget audit, then accepted the user's correction and built the Task `267.7` self-correction cycle so the loop repairs itself instead of me choosing its next protocol. Route P2 run `v3` produced the first real measurement: median paired effect `+0.072726` with CI95 `[-1.050175, +12.538627]`, which the frozen preregistration classifies as `underpowered_inconclusive` because the interval width `13.588802` is 5.9405 times the publishable threshold of `2.287484`. The self-correction cycle then observed its own history deterministically, diagnosed `UNDERPOWERED_DESIGN` (a failure kind that did not exist in `FailureKind`), derived 212 required paired units from the observed bootstrap width, and asked the model to author the revised protocol. Execution remains blocked behind the Task `267.4` human plan gate and requires a new preregistration lineage.
+- Verification:
+  - `poetry run python -m pytest tests/unit/competition tests/unit/research tests/unit/llm -q --no-cov` -> `520 passed`, with only the 4 pre-existing NumPy-dependent runner tests failing.
+  - `poetry run ruff check src/autoresearch` -> `All checks passed!`.
+  - Live Route P2 `v3` package hash `49bf4bb78c80433f5dca8ca1ec1fe70465700c5ae965e51ffa05159d5094ac6d`.
+  - Live self-correction `v3` produced an accepted coherent revision: 212 paired units, matched budget 4 -> 8, `predicted_median_effect = -0.5`, `predicted_interval_width = 2.0`, three distinct falsification conditions. The system proposed enabling reasoning mode on its own after observing `reasoning_mode=disabled` in its own history.
+  - A direct guard audit confirms the accepted proposal passes every coherence check on merit and that re-injecting the earlier degenerate string is still rejected.
+- Problems added: `P-20260802-057` (Critical, Resolved: a thin brief and an inherited `1e-12` loss floor each fabricated an exactly-zero effect), `P-20260802-058` (High, Resolved: normal-theory sample size returned 2 units for an interval 5.94 times too wide), `P-20260802-059` (High, Resolved: model repair proposals were internally incoherent until the numeric prediction was split from its prose).
+- Not verified: the revised protocol has NOT been executed. It is a proposal only. The 4 NumPy-dependent runner tests still fail because scientific dependencies live in the pinned container by design.
+- Follow-up: The accepted revision needs a human plan decision via `airesearcher research-plan-confirm`, then a new preregistration lineage, before it may run. Its own derivation says 212 paired units are required, which exceeds both the 6 synthetic sentinels and the official 14-system panel, so the system's next honest step may be to stabilise the effect distribution rather than enlarge the panel.
+
 ### 2026-08-02 - Kiro - Task 267.5-267.6 search paradigm and dual publishable-outcome definition
 
 - User request: continue the Task 267 self-loop repair; decide open questions independently.
