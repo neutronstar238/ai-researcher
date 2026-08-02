@@ -333,6 +333,15 @@ from .opportunity_tournament import (
     run_baseline_command_smoke,
     write_opportunity_tournament,
 )
+from .plan_confirmation import (
+    ResearchPlanConfirmationError,
+    ResearchPlanDecisionRecord,
+    apply_plan_decision,
+    compute_plan_hash,
+    load_plan_decision,
+    record_plan_decision,
+    require_approved_plan,
+)
 from .plans import (
     ResearchPlanArtifact,
     ResearchPlanAudit,
@@ -853,6 +862,13 @@ __all__ = [
     "confirmatory_json_schemas",
     "create_project_from_approved_candidate",
     "audit_research_plan",
+    "ResearchPlanConfirmationError",
+    "ResearchPlanDecisionRecord",
+    "apply_plan_decision",
+    "compute_plan_hash",
+    "load_plan_decision",
+    "record_plan_decision",
+    "require_approved_plan",
     "bootstrap_mean_interval",
     "build_independent_unit_audit",
     "build_paper_findings",

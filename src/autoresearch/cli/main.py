@@ -148,10 +148,13 @@ from autoresearch.research import (
     BrainstormConfig,
     BrainstormEvidenceReviewConfig,
     SimilarityCheckConfig,
+    apply_plan_decision,
     audit_research_plan,
     evaluate_novelty_search_breadth,
     generate_research_plan,
     link_similarity_report_to_project,
+    load_plan_decision,
+    record_plan_decision,
     run_inspiration_brainstorm,
     run_project_similarity_check,
     write_novelty_search_breadth_artifact,
@@ -4757,6 +4760,101 @@ def research_plan_audit(
     for warning in audit.warnings:
         typer.echo(f"[WARN] {warning}")
     if not audit.passed:
+        raise typer.Exit(code=1)
+
+
+@app.command("research-plan-confirm")
+def research_plan_confirm(
+    plan_json: Annotated[
+        Path,
+        typer.Argument(help="research-plan.json or a raw ResearchPlan JSON file."),
+    ],
+    decision: Annotated[
+        str,
+        typer.Option(
+            "--decision",
+            help="approve, revise, or reject. Only approve authorizes execution.",
+        ),
+    ],
+    decided_by: Annotated[
+        str,
+        typer.Option("--decided-by", help="Human who made the scope decision."),
+    ],
+    notes: Annotated[
+        str,
+        typer.Option("--notes", help="Why this decision was made."),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Deliverables root holding <project-id>/."),
+    ] = Path("outputs"),
+) -> None:
+    """Record the blocking human research-plan decision (Task 267.4).
+
+    This is a scope decision about direction, never scientific evidence. Experiment
+    execution stays physically blocked until an `approve` is recorded here.
+    """
+
+    if decision not in {"approve", "revise", "reject"}:
+        typer.echo("[FAIL] --decision must be approve, revise, or reject", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        payload = json.loads(plan_json.read_text(encoding="utf-8-sig"))
+        plan_payload = (
+            payload["plan"]
+            if isinstance(payload, dict) and isinstance(payload.get("plan"), dict)
+            else payload
+        )
+        plan = ResearchPlan.model_validate(plan_payload)
+        record = record_plan_decision(
+            plan=plan,
+            decision=decision,  # type: ignore[arg-type]
+            decided_by=decided_by,
+            notes=notes,
+            output_dir=output_dir,
+        )
+        updated = apply_plan_decision(plan=plan, decision=record)
+    except Exception as exc:
+        typer.echo(f"[FAIL] research plan confirmation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"[OK] decision: {record.decision}")
+    typer.echo(f"[OK] plan_status: {updated.status.value}")
+    typer.echo(f"[OK] plan_hash: {record.plan_hash}")
+    typer.echo(f"[OK] decided_by: {record.decided_by}")
+    typer.echo("[NOTE] a plan decision is scope metadata, never scientific evidence")
+    if record.approved:
+        typer.echo("[OK] experiment execution is now authorized for this exact plan")
+    else:
+        typer.echo("[BLOCKED] execution stays blocked; control returns to plan generation")
+
+
+@app.command("research-plan-status")
+def research_plan_status(
+    project_id: Annotated[
+        str,
+        typer.Argument(help="Project ID whose plan decision should be inspected."),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Deliverables root holding <project-id>/."),
+    ] = Path("outputs"),
+) -> None:
+    """Show whether a human has confirmed this project's research plan."""
+
+    record = load_plan_decision(project_id=project_id, output_dir=output_dir)
+    if record is None:
+        typer.echo(f"[BLOCKED] no research-plan decision recorded for {project_id}")
+        typer.echo("[NEXT] run: airesearcher research-plan-confirm <plan.json> --decision approve")
+        raise typer.Exit(code=1)
+
+    typer.echo(f"[OK] decision: {record.decision}")
+    typer.echo(f"[OK] decided_by: {record.decided_by}")
+    typer.echo(f"[OK] decided_at: {record.decided_at.isoformat()}")
+    typer.echo(f"[OK] plan_hash: {record.plan_hash}")
+    if not record.approved:
+        typer.echo("[BLOCKED] execution is not authorized")
         raise typer.Exit(code=1)
 
 
