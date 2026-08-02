@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-052 - Model lost newline escapes in source_text, collapsing every candidate to one line
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-02
+- Source: Live Harness runs `task2662-scientific-contract-harness-v10` and `v11` after the Task `267.1` schema repair.
+- Symptom: The model emitted `source_text` containing a bare letter `n` where an escaped newline belonged, producing `import numpy as npnimport pysindyn...`. Run v10 collapsed 15,767 bytes onto one line; v11 collapsed 11,059 and 6,882 bytes the same way. `ast.parse` failed at line 1 with the unhelpful message `invalid syntax`.
+- Impact: Three consecutive attempts produced no scientific verdict. The response JSON was structurally valid and passed strict `json_schema`, so no transport error was raised; only the Python parse failed. Adding an explicit escaping instruction to the prompt did NOT fix it, which ruled out a prompt-clarity remedy.
+- Evidence: The raw v10 interaction record shows `structured_transport_mode=json_schema` and a `response_text` containing real newlines in the JSON envelope, while the parsed `source_text` contained zero newline characters across 15,767 characters. A strict schema cannot detect this because `n` and an escaped newline are both valid string content.
+- Root cause: Newline escaping inside a large single-string JSON field is unreliable for this model. Requiring the escape at all was the design flaw.
+- Workaround: None needed after the transport change.
+- Next action: Do not reintroduce a single-string source field. If another provider needs it, keep the line-array transport as the default and treat the string form as a fallback.
+- Linked tasks: `266.2`, `267.1`, `267.2`.
+- Resolution: Replaced `source_text` with `source_lines`, a JSON array carrying one element per physical line, so a newline escape is never written and cannot be lost. The orchestrator joins the elements to reconstruct the file byte-for-byte, leaving exact-source hashing unchanged. Also classified `syntax_error`, `source_size`, `markdown_fence`, `ast_size`, `missing_interface`, and `invalid_interface` as technical failures so a malformed candidate does not consume the scientific revision budget, and added a `_looks_like_collapsed_newlines` detector that replaces `invalid syntax` with an actionable diagnosis.
+- Verification: Run `v12` produced the first non-zero scientific execution in this lineage: `fit_call_count=18`, `predict_call_count=36`, `passed_sentinel_count=1/6`. Runs v1 through v9 all recorded `fit_call_count=0`. The remaining v12 failures are genuine scientific verdicts about term support and coefficient recovery, not formatting faults. 7 focused detector tests and 28 classification tests pass.
+
 ### P-20260802-051 - qwen3-max returns empty content when reasoning and JSON output are combined
 
 - Status: Resolved

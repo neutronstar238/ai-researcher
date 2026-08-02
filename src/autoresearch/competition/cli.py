@@ -55,6 +55,10 @@ from autoresearch.competition.recovery import (
     MDBenchRecoveryError,
     preregister_mdbench_gate_a_recovery,
 )
+from autoresearch.competition.scientific_contract_harness import (
+    ScientificContractHarnessError,
+    build_scientific_contract_harness_package,
+)
 from autoresearch.competition.scientific_contract_recovery import (
     ScientificContractRecoveryError,
     freeze_scientific_contract_recovery_plan,
@@ -568,6 +572,65 @@ def competition_mdbench_sentinel_identifiability_erratum(
     typer.echo("[OK] confirmation_reads: 0")
     typer.echo("[AUTHORIZED] next_task: 266.2_harness_implementation_only")
     typer.echo("[BLOCKED] official_development_execution: false")
+    typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("scientific-contract-harness")
+def competition_mdbench_scientific_contract_harness(
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="Hash-valid result-blind Task 266.1 plan."),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    erratum: Annotated[
+        Path,
+        typer.Option("--erratum", help="Hash-valid Task 266.1.1 sentinel erratum."),
+    ] = Path(
+        "runs/manual-live/task26611-sentinel-identifiability-erratum-v1/"
+        "sentinel-identifiability-erratum.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Task 266.2 exact-source Harness package."),
+    ] = Path("runs/competition/mdbench-scientific-contract-harness"),
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="Provider-neutral model configuration."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env", help="Local provider credentials; never persisted."),
+    ] = Path(".env"),
+) -> None:
+    """Let the configured model author and repair a synthetic-gated scientific method."""
+
+    try:
+        package = build_scientific_contract_harness_package(
+            plan,
+            erratum,
+            output_dir,
+            config_path=config_path,
+            env_path=env_path,
+        )
+    except (ScientificContractHarnessError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_scientific_contract_harness: {exc}")
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"[OK] scientific_contract_harness: {package.output_path}")
+    typer.echo(f"[OK] package_hash: {package.package_hash}")
+    typer.echo(f"[OK] model_revisions: {len(package.revisions)}")
+    typer.echo(
+        "[OK] synthetic_contract_gate: "
+        f"{str(package.synthetic_contract_gate_passed).lower()}"
+    )
+    typer.echo("[OK] new_official_development_results_and_reads: 0/0")
+    typer.echo("[OK] confirmation_identity_and_result_reads: 0/0")
+    if package.task_266_3_authorized:
+        typer.echo("[AUTHORIZED] next_task: 266.3_bounded_development_search")
+    else:
+        typer.echo("[BLOCKED] next_task: 266.2_model_only_repair_budget_exhausted")
+    typer.echo("[BLOCKED] significance_claim: synthetic_only")
     typer.echo("[BLOCKED] publication_ready: false")
 
 

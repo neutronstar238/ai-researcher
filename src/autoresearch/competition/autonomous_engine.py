@@ -486,6 +486,8 @@ class AutonomousModelInteraction(StrictFrozenModel):
         "implementation",
         "technical_repair",
         "mechanism_intervention",
+        "scientific_contract_implementation",
+        "scientific_contract_repair",
     ]
     candidate_id: str | None = None
     messages: tuple[dict[str, str], ...]
@@ -514,12 +516,14 @@ class AutonomousModelInteraction(StrictFrozenModel):
     response_text: str
     response_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     response_transport_normalization: Literal[
-        "none", "discarded_trailing_closing_delimiters"
+        "none",
+        "discarded_trailing_closing_delimiters",
+        "discarded_leading_self_revision",
     ] = "none"
     response_normalization_suffix: str | None = Field(
         default=None,
         min_length=1,
-        max_length=4,
+        max_length=200_000,
     )
     response_normalization_suffix_sha256: str | None = Field(
         default=None,
@@ -551,10 +555,29 @@ class AutonomousModelInteraction(StrictFrozenModel):
                 self.response_normalization_suffix
             ):
                 raise ValueError("model interaction normalization suffix hash mismatch")
-            if not self.response_text.strip().endswith(
-                self.response_normalization_suffix.strip()
-            ):
-                raise ValueError("model interaction response lacks its normalized suffix")
+            if self.response_transport_normalization == "discarded_trailing_closing_delimiters":
+                delimiters = self.response_normalization_suffix.strip()
+                if (
+                    len(self.response_normalization_suffix) > 4
+                    or not delimiters
+                    or set(delimiters) - {"]", "}"}
+                    or not self.response_text.strip().endswith(delimiters)
+                ):
+                    raise ValueError("model interaction delimiter suffix is invalid")
+            elif self.response_transport_normalization == "discarded_leading_self_revision":
+                if not self.response_text.startswith(self.response_normalization_suffix):
+                    raise ValueError("model interaction self-revision prefix changed")
+                selected = self.response_text[
+                    len(self.response_normalization_suffix) :
+                ].strip()
+                try:
+                    selected_payload = json.loads(selected)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        "model interaction selected self-revision is invalid"
+                    ) from exc
+                if selected_payload != self.parsed_payload:
+                    raise ValueError("model interaction selected self-revision changed")
         if self.parsed_payload_sha256 != canonical_model_hash(self.parsed_payload):
             raise ValueError("model interaction parsed payload hash mismatch")
         fallback_present = self.provider_format_fallback_relative_path is not None
@@ -600,6 +623,8 @@ class AutonomousModelInteraction(StrictFrozenModel):
             "implementation",
             "technical_repair",
             "mechanism_intervention",
+            "scientific_contract_implementation",
+            "scientific_contract_repair",
         ],
         candidate_id: str | None,
         messages: Sequence[Mapping[str, str]],
@@ -3433,6 +3458,8 @@ def _call_and_record(
         "implementation",
         "technical_repair",
         "mechanism_intervention",
+        "scientific_contract_implementation",
+        "scientific_contract_repair",
     ],
     candidate_id: str | None,
     output_root: Path,

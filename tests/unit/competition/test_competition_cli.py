@@ -29,6 +29,7 @@ def test_competition_cli_is_registered() -> None:
     assert "autonomous-generate" in mdbench_result.stdout
     assert "autonomous-search" in mdbench_result.stdout
     assert "scientific-contract-plan" in mdbench_result.stdout
+    assert "scientific-contract-harness" in mdbench_result.stdout
     assert "sentinel-identifiability-erratum" in mdbench_result.stdout
     assert "execute" in mdbench_result.stdout
     assert "evaluate" in mdbench_result.stdout
