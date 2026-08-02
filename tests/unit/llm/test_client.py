@@ -234,6 +234,7 @@ def test_post_chat_completion_includes_explicit_thinking_mode(monkeypatch) -> No
 
     monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
 
+    # Task 267.3.1: an Anthropic-shaped provider keeps the thinking block.
     llm_client._post_chat_completion(
         endpoint="https://api.example.test/chat/completions",
         api_key="sk-testsecret",
@@ -241,9 +242,132 @@ def test_post_chat_completion_includes_explicit_thinking_mode(monkeypatch) -> No
         timeout_seconds=10,
         max_tokens=500,
         thinking_mode="disabled",
+        provider="anthropic",
     )
 
     assert captured["payload"]["thinking"] == {"type": "disabled"}
+    assert "enable_thinking" not in captured["payload"]
+
+
+def test_dashscope_provider_receives_enable_thinking_and_bounded_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Task 267.3.1: DashScope silently ignores the Anthropic-shaped field.
+
+    Sending `{"thinking": {"type": ...}}` to DashScope returns HTTP 200 with an
+    empty `reasoning_content`, so the reasoning chain was never engaged. The
+    budget must always be bounded: unbounded reasoning on `qwen3-max` produced
+    81,933 completion tokens for a trivial prompt with empty content.
+    """
+
+    captured: dict[str, object] = {}
+
+    class FakeThinkingResponse:
+        def __enter__(self) -> "FakeThinkingResponse":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {"choices": [{"message": {"content": "{}"}}]}
+            ).encode("utf-8")
+
+    def fake_urlopen(request: object, *, timeout: int) -> "FakeThinkingResponse":
+        del timeout
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeThinkingResponse()
+
+    monkeypatch.setattr(llm_client.urllib.request, "urlopen", fake_urlopen)
+
+    llm_client._post_chat_completion(
+        endpoint="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        api_key="sk-testsecret",
+        model_name="qwen3-max",
+        timeout_seconds=10,
+        max_tokens=8000,
+        thinking_mode="enabled",
+        provider="qwen-dashscope",
+    )
+
+    payload = captured["payload"]
+    assert payload["enable_thinking"] is True
+    assert payload["thinking_budget"] == llm_client._DEFAULT_THINKING_BUDGET
+    # The ignored Anthropic-shaped field must never be sent to DashScope.
+    assert "thinking" not in payload
+
+
+def test_reasoning_transport_is_provider_neutral() -> None:
+    """Engine code passes a normalized mode; the client maps it per vendor."""
+
+    assert (
+        llm_client.reasoning_transport_for_provider("qwen-dashscope")
+        == "dashscope_enable_thinking"
+    )
+    assert (
+        llm_client.reasoning_transport_for_provider("anthropic")
+        == "anthropic_thinking_block"
+    )
+    # Unknown providers use the dialect this deployment verified live.
+    assert (
+        llm_client.reasoning_transport_for_provider("some-new-vendor")
+        == "dashscope_enable_thinking"
+    )
+
+
+def test_disabled_reasoning_on_dashscope_sends_no_budget() -> None:
+    """A disabled request must not allocate a reasoning budget."""
+
+    parameters = llm_client._reasoning_parameters(
+        provider="qwen-dashscope",
+        thinking_mode="disabled",
+        thinking_budget=None,
+    )
+
+    assert parameters == {"enable_thinking": False}
+
+
+def test_reasoning_text_is_recorded_but_never_evidence() -> None:
+    """Reasoning is process evidence about authoring, not scientific evidence."""
+
+    result = llm_client.LLMJsonCompletionResult(
+        provider="qwen-dashscope",
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model_name="qwen3-max",
+        endpoint="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        response_text="{}",
+        parsed_json={},
+        temperature=0.0,
+        reasoning_text="considered a weak-form estimator, then rejected it",
+        reasoning_transport="dashscope_enable_thinking",
+    )
+
+    assert result.reasoning_text is not None
+    assert result.reasoning_is_evidence is False
+
+
+def test_extract_reasoning_content_returns_none_when_absent() -> None:
+    """A provider that ignores the reasoning parameter must yield None, not ''."""
+
+    assert (
+        llm_client._extract_reasoning_content(
+            {"choices": [{"message": {"content": "{}"}}]}
+        )
+        is None
+    )
+    assert (
+        llm_client._extract_reasoning_content(
+            {"choices": [{"message": {"content": "{}", "reasoning_content": "   "}}]}
+        )
+        is None
+    )
+    assert (
+        llm_client._extract_reasoning_content(
+            {"choices": [{"message": {"content": "{}", "reasoning_content": "why"}}]}
+        )
+        == "why"
+    )
 
 
 def test_json_completion_parser_records_one_trailing_closing_delimiter() -> None:
@@ -264,6 +388,20 @@ def test_json_completion_parser_rejects_second_object_or_trailing_prose() -> Non
         llm_client._parse_json_completion_content('{"first":1}{"second":2}')
     with pytest.raises(json.JSONDecodeError, match="Extra data"):
         llm_client._parse_json_completion_content('{"first":1} explanation')
+
+
+def test_json_completion_parser_selects_a_schema_identical_final_self_revision() -> None:
+    raw = (
+        '{"status":"draft","source_text":"first"}'
+        "\nThe draft needs one correction.\n"
+        '{"status":"final","source_text":"second"}'
+    )
+
+    parsed, normalization, discarded = llm_client._parse_json_completion_content(raw)
+
+    assert parsed == {"status": "final", "source_text": "second"}
+    assert normalization == "discarded_leading_self_revision"
+    assert discarded == raw[: raw.rfind('{"status":"final"')]
 
 
 def test_ollama_native_endpoint_replaces_openai_v1_path() -> None:

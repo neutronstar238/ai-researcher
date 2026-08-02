@@ -1,0 +1,44 @@
+# Task 267.3: unified Qwen provider profile (OpenAI-compatible DashScope endpoint).
+#
+# Provider-neutral by contract: the engine reads base_url / model_name / api_key
+# from configuration or environment and must not hard-code a vendor.
+#
+# Verified live on 2026-08-01 against this endpoint:
+#   - qwen3-max        : strict `response_format=json_schema` ACCEPTED
+#   - qwen3.7-max      : strict `response_format=json_schema` ACCEPTED
+#   - qwen3-coder-plus : json_schema REJECTED (HTTP 400); `json_object` accepted
+#   - qwen3-coder-next : `json_object` accepted, but wraps output in ```json fences
+#
+# Task 267.3.1 reasoning-chain findings (live, 2026-08-01):
+#   - The client previously sent Anthropic-shaped `{"thinking":{"type":...}}`.
+#     DashScope IGNORES it silently: HTTP 200, `reasoning_content` length 0.
+#     The correct fields are `enable_thinking` plus a bounded `thinking_budget`.
+#   - Unbounded reasoning is unusable: qwen3-max spent 81,933 completion tokens
+#     on a trivial prompt and returned intermittently empty content.
+#   - `enable_thinking` downgrades `json_schema` to `json_object` and then
+#     REQUIRES the literal word "json" in messages, else invalid_parameter_error.
+#   - CRITICAL: qwen3-max + enable_thinking + json_object returns EMPTY content
+#     with finish_reason=stop at 13 completion tokens, reproducibly 3/3.
+#     qwen3.7-max succeeds 3/3 under the identical request.
+#
+# model_name is therefore qwen3.7-max: it is the verified model that supports
+# BOTH strict json_schema (reasoning off) and bounded reasoning (reasoning on).
+#
+# Set AUTORESEARCH_LLM_API_KEY in .env (gitignored). Never commit a key.
+project_root: .
+compute:
+  prefer_local: true
+  sandbox_enabled: true
+  sandbox_root: runs
+  max_cpu_seconds: 10800
+  max_memory_mb: 8192
+  max_gpu_hours: 0.0
+deployment:
+  environment: qwen-dashscope
+  llm:
+    provider: qwen-dashscope
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model_name: qwen3-max
+    api_key_env: AUTORESEARCH_LLM_API_KEY
+    request_timeout_seconds: 180
+    fallback_model_names: []

@@ -171,11 +171,27 @@ class LLMJsonCompletionResult(BaseModel):
     response_text: str
     parsed_json: dict[str, Any]
     transport_normalization: Literal[
-        "none", "discarded_trailing_closing_delimiters"
+        "none",
+        "discarded_trailing_closing_delimiters",
+        "discarded_leading_self_revision",
     ] = "none"
-    normalization_suffix: str | None = Field(default=None, min_length=1, max_length=4)
+    normalization_suffix: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200_000,
+    )
     usage: dict[str, Any] = Field(default_factory=dict)
     temperature: float = Field(ge=0.0)
+    # Task 267.3.1: explicit reasoning output.  This records HOW a candidate was
+    # authored.  It is process evidence only and must never satisfy an evidence
+    # gate, a metric claim, or a publication claim.
+    reasoning_text: str | None = Field(default=None, max_length=200_000)
+    reasoning_is_evidence: Literal[False] = False
+    reasoning_transport: Literal[
+        "absent",
+        "dashscope_enable_thinking",
+        "anthropic_thinking_block",
+    ] = "absent"
 
     @model_validator(mode="after")
     def _validate_transport_normalization(self) -> LLMJsonCompletionResult:
@@ -183,11 +199,26 @@ class LLMJsonCompletionResult(BaseModel):
         if normalized != (self.normalization_suffix is not None):
             raise ValueError("JSON transport normalization suffix presence mismatch")
         if self.normalization_suffix is not None:
-            delimiters = self.normalization_suffix.strip()
-            if not delimiters or any(marker not in "]}" for marker in delimiters):
-                raise ValueError(
-                    "JSON transport normalization suffix is not a closing delimiter"
-                )
+            if self.transport_normalization == "discarded_trailing_closing_delimiters":
+                delimiters = self.normalization_suffix.strip()
+                if (
+                    len(self.normalization_suffix) > 4
+                    or not delimiters
+                    or any(marker not in "]}" for marker in delimiters)
+                ):
+                    raise ValueError(
+                        "JSON transport normalization suffix is not a closing delimiter"
+                    )
+            elif self.transport_normalization == "discarded_leading_self_revision":
+                if not self.response_text.startswith(self.normalization_suffix):
+                    raise ValueError("JSON self-revision prefix differs from raw response")
+                selected = self.response_text[len(self.normalization_suffix) :].strip()
+                try:
+                    parsed = json.loads(selected)
+                except json.JSONDecodeError as exc:
+                    raise ValueError("selected JSON self-revision is invalid") from exc
+                if parsed != self.parsed_json:
+                    raise ValueError("selected JSON self-revision payload changed")
         return self
 
 
@@ -351,6 +382,7 @@ def run_llm_json_completion(
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
     thinking_mode: Literal["enabled", "disabled"] | None = None,
+    thinking_budget: int | None = None,
     response_schema: dict[str, Any] | None = None,
     response_schema_name: str = "autoresearch_output",
 ) -> LLMJsonCompletionResult:
@@ -382,6 +414,8 @@ def run_llm_json_completion(
             temperature=temperature,
             reasoning_effort=reasoning_effort,
             thinking_mode=thinking_mode,
+            thinking_budget=thinking_budget,
+            provider=llm.provider,
             response_schema=response_schema,
             response_schema_name=response_schema_name,
         )
@@ -423,7 +457,28 @@ def run_llm_json_completion(
         normalization_suffix=normalization_suffix,
         usage=response.get("usage", {}) if isinstance(response.get("usage"), dict) else {},
         temperature=temperature,
+        reasoning_text=_extract_reasoning_content(response),
+        reasoning_transport=(
+            reasoning_transport_for_provider(llm.provider)
+            if thinking_mode is not None
+            else "absent"
+        ),
     )
+
+
+def _extract_reasoning_content(response: dict[str, Any]) -> str | None:
+    """Return provider reasoning text when present, as explicit recorded output."""
+
+    choices = response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    if not isinstance(message, dict):
+        return None
+    reasoning = message.get("reasoning_content")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning[:200_000]
+    return None
 
 
 def evaluate_llm_output_quality(
@@ -601,6 +656,52 @@ def _has_failed_review_critical_checks(quality: LLMReviewQuality) -> bool:
     return any(not quality.checks.get(check, False) for check in critical_checks)
 
 
+_DEFAULT_THINKING_BUDGET = 4_000
+
+
+def reasoning_transport_for_provider(
+    provider: str,
+) -> Literal["dashscope_enable_thinking", "anthropic_thinking_block"]:
+    """Return the reasoning-parameter dialect a provider actually accepts.
+
+    Task 267.3.1.  Kept provider-neutral: engine code passes a normalized
+    `thinking_mode` and this function maps it onto the vendor's real field names.
+    """
+
+    normalized = provider.casefold()
+    if "dashscope" in normalized or "qwen" in normalized or "ollama" in normalized:
+        return "dashscope_enable_thinking"
+    if "anthropic" in normalized or "claude" in normalized:
+        return "anthropic_thinking_block"
+    # Unknown providers use the OpenAI-compatible DashScope-style field, which is
+    # the dialect this deployment has actually verified live.
+    return "dashscope_enable_thinking"
+
+
+def _reasoning_parameters(
+    *,
+    provider: str,
+    thinking_mode: Literal["enabled", "disabled"],
+    thinking_budget: int | None,
+) -> dict[str, Any]:
+    """Build the provider-correct reasoning payload fields.
+
+    Always bounds the reasoning budget when reasoning is enabled: unbounded
+    reasoning on `qwen3-max` produced 81,933 completion tokens for a trivial
+    prompt and an intermittently empty `content`.
+    """
+
+    transport = reasoning_transport_for_provider(provider)
+    if transport == "anthropic_thinking_block":
+        return {"thinking": {"type": thinking_mode}}
+    if thinking_mode != "enabled":
+        return {"enable_thinking": False}
+    return {
+        "enable_thinking": True,
+        "thinking_budget": thinking_budget or _DEFAULT_THINKING_BUDGET,
+    }
+
+
 def _post_chat_completion(
     *,
     endpoint: str,
@@ -612,6 +713,8 @@ def _post_chat_completion(
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
     thinking_mode: Literal["enabled", "disabled"] | None = None,
+    thinking_budget: int | None = None,
+    provider: str = "",
     response_schema: dict[str, Any] | None = None,
     response_schema_name: str = "autoresearch_output",
 ) -> dict[str, Any]:
@@ -637,7 +740,17 @@ def _post_chat_completion(
     if reasoning_effort is not None:
         payload["reasoning_effort"] = reasoning_effort
     if thinking_mode is not None:
-        payload["thinking"] = {"type": thinking_mode}
+        # Task 267.3.1: dispatch the provider-correct reasoning parameter.
+        # The Anthropic-shaped `{"thinking": {"type": ...}}` field is silently
+        # ignored by DashScope, which returns HTTP 200 with empty
+        # `reasoning_content`, so the reasoning chain was never engaged.
+        payload.update(
+            _reasoning_parameters(
+                provider=provider,
+                thinking_mode=thinking_mode,
+                thinking_budget=thinking_budget,
+            )
+        )
     request = urllib.request.Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
@@ -1082,10 +1195,14 @@ def _parse_json_completion_content(
     text: str,
 ) -> tuple[
     object,
-    Literal["none", "discarded_trailing_closing_delimiters"],
+    Literal[
+        "none",
+        "discarded_trailing_closing_delimiters",
+        "discarded_leading_self_revision",
+    ],
     str | None,
 ]:
-    """Parse JSON with one narrow, auditable provider-delimiter normalization."""
+    """Parse JSON with narrow, auditable provider transport normalizations."""
 
     stripped = _strip_json_fences(text)
     try:
@@ -1093,12 +1210,38 @@ def _parse_json_completion_content(
     except json.JSONDecodeError as exc:
         if exc.msg != "Extra data":
             raise
-    parsed, end = json.JSONDecoder().raw_decode(stripped)
+    decoder = json.JSONDecoder()
+    parsed, end = decoder.raw_decode(stripped)
     suffix = stripped[end:]
     delimiters = suffix.strip()
-    if not (1 <= len(suffix) <= 4 and delimiters and set(delimiters) <= {"]", "}"}):
+    if 1 <= len(suffix) <= 4 and delimiters and set(delimiters) <= {"]", "}"}:
+        return parsed, "discarded_trailing_closing_delimiters", suffix
+    if not isinstance(parsed, dict):
         raise json.JSONDecodeError("Extra data", stripped, end)
-    return parsed, "discarded_trailing_closing_delimiters", suffix
+    final_candidate: tuple[dict[str, Any], int] | None = None
+    for position in range(end, len(stripped)):
+        if stripped[position] != "{":
+            continue
+        try:
+            candidate, candidate_end = decoder.raw_decode(stripped, position)
+        except json.JSONDecodeError:
+            continue
+        if (
+            isinstance(candidate, dict)
+            and not stripped[candidate_end:].strip()
+            and set(candidate) == set(parsed)
+        ):
+            final_candidate = (candidate, position)
+    if final_candidate is None:
+        raise json.JSONDecodeError("Extra data", stripped, end)
+    candidate, position = final_candidate
+    stripped_offset = text.find(stripped)
+    if stripped_offset < 0:
+        raise json.JSONDecodeError("Extra data", stripped, end)
+    discarded_prefix = text[: stripped_offset + position]
+    if not 1 <= len(discarded_prefix) <= 200_000:
+        raise json.JSONDecodeError("Extra data", stripped, end)
+    return candidate, "discarded_leading_self_revision", discarded_prefix
 
 
 def _has_no_secret_leak(text: str, secret_values: list[str]) -> bool:
