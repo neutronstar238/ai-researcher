@@ -64,6 +64,39 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-02 - Kiro - Task 267.1-267.4 self-loop repair for publishable output
+
+- User request: the loop cannot produce publishable output and returns only negative metrics; unify on Qwen; suspected methodology fault; require a research-plan confirmation step inside the self-loop; cross-check recent literature online. Follow-up: the negatives may come from the pipeline not fitting Qwen's reasoning chain, so try requiring explicit reasoning output.
+- Files changed:
+  - `.kiro/specs/auto-research-system/tasks.md` (added tasks `267`, `267.1`-`267.7`, `267.3.1`)
+  - `src/autoresearch/competition/scientific_contract_harness.py`
+  - `src/autoresearch/llm/client.py`
+  - `src/autoresearch/research/plan_confirmation.py` (new)
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `configs/campaign/qwen-dashscope.yaml` (new)
+  - `config.yaml`, `.env` (both gitignored; provider switch only)
+  - `tests/unit/competition/test_equation_contract_parity.py` (new)
+  - `tests/unit/competition/test_revision_failure_classification.py` (new)
+  - `tests/unit/competition/test_revision_failure_kind_tamper.py` (new)
+  - `tests/unit/research/test_plan_confirmation.py` (new)
+  - `tests/smoke/test_qwen_reasoning_live.py` (new)
+  - `tests/unit/llm/test_client.py`
+  - `Problem.md` (added `P-20260802-048` through `P-20260802-051`)
+- Summary: Diagnosed four independent root causes for the all-negative output and repaired the first four. (1) Task `267.1`: the Harness prompt advertised `term_count`/`factor_count` while its own runner rejected every key outside the exact whitelists, so runs `task2662-...-v1`..`v9` all ended at `passed_sentinel_count=0/6` with `fit_call_count=0` and no candidate science ever executed. The contract is now generated from single-source-of-truth constants with an `ast`-based parity test. (2) Task `267.2`: a schema `ContractError` was counted as a scientific failure and spent all six revisions on formatting; technical and scientific budgets are now separate with a persisted, recomputable `failure_kind`. (3) Tasks `267.3`/`267.3.1`: the provider was DeepSeek, not Qwen, and the client sent an Anthropic-shaped `{"thinking":{"type":...}}` field that DashScope ignores silently, so the reasoning chain was never engaged in nine runs and 348 cells. Provider is now Qwen DashScope with a provider-neutral reasoning dispatcher, a bounded reasoning budget, and `reasoning_content` persisted as explicit non-evidence output. Live probes further showed `qwen3-max` returns empty content when reasoning and JSON output are combined (0/3), so the model is `qwen3.7-max` (3/3). (4) Task `267.4`: added a blocking research-plan confirmation gate; execution is physically impossible without a recorded human `approve`, the approved plan hash is bound downstream, `revise`/`reject` return control to planning without spending the scientific budget, and a plan edited after approval requires re-confirmation.
+- Verification:
+  - `poetry run python -m pytest tests/unit/research/test_plan_confirmation.py tests/unit/llm tests/unit/competition/test_equation_contract_parity.py tests/unit/competition/test_revision_failure_classification.py tests/unit/competition/test_revision_failure_kind_tamper.py -q --no-cov` -> `75 passed`.
+  - `poetry run ruff check src/autoresearch` -> `All checks passed!`.
+  - `poetry run mypy src/autoresearch/research/plan_confirmation.py src/autoresearch/llm/client.py` -> `Success: no issues found in 2 source files`.
+  - `$env:AUTORESEARCH_QWEN_REASONING_LIVE='1'; poetry run pytest tests/smoke/test_qwen_reasoning_live.py -q --no-cov` -> `2 passed` with non-empty `reasoning_text` and parsable content.
+  - `poetry run airesearcher llm-smoke` -> `provider: qwen-dashscope`, `model: qwen3.7-max`, `quality_score: 1.000`.
+  - End-to-end gate walkthrough: no decision -> BLOCKED; `revise` -> still BLOCKED; `approve` -> authorized with bound hash; plan edited after approval -> BLOCKED pending re-confirmation.
+  - A deliberate regression probe reintroducing `term_count` was correctly rejected by the parity test.
+  - Live literature cross-check via the arXiv API (HTML fetch was unavailable): `arXiv:2607.04108`, `arXiv:2605.29184`, `arXiv:2607.13608`, `arXiv:2601.03315`.
+- Problems added: `P-20260802-048` (contract/validator contradiction), `P-20260802-049` (format failures consuming the scientific budget), `P-20260802-050` (reasoning chain never engaged), `P-20260802-051` (`qwen3-max` empty content under reasoning plus JSON).
+- Not verified: 4 pre-existing tests in `tests/unit/competition/test_scientific_contract_harness.py` fail because the Poetry environment has no NumPy; the runner imports NumPy at line 25 and scientific dependencies live in the pinned container by design. These failures are unrelated to this change and reproduce on the unmodified files. A pre-existing mypy error at `scientific_contract_harness.py:2492` (`_inside` expects `str`, receives `Path`) also predates this work.
+- Follow-up: Tasks `267.5` (replace the falsified parent-conditioned evolution search with dictionary-plus-set-level selection), `267.6` (preregister the dual publishable-outcome definition and treat enabled reasoning as a measured variable, not an assumption), and `267.7` (run the repaired loop and let the system author its own outcome) remain open. The suspected reasoning-chain effect on scientific quality is explicitly NOT claimed: a 3-seed probe was directionally consistent but far too small, and Route P2 must measure it.
+
 ### 2026-08-01 07:29:05 +08:00 - Codex - Task 266.1.1 sentinel-identifiability erratum
 
 - Request: Continue the real competition-grade autonomous-research recovery after Task `266.1`; implement the scientific-contract Harness without manufacturing publishability, while preserving system-originated research and the sealed confirmation boundary. During the required pre-implementation audit, correct any experimental-design defect before it can bias candidate evaluation.

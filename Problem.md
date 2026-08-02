@@ -40,6 +40,70 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-051 - qwen3-max returns empty content when reasoning and JSON output are combined
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Task `267.3.1` live DashScope probes after repairing the reasoning-parameter dialect.
+- Symptom: `qwen3-max` with `enable_thinking=true` and `response_format={"type":"json_object"}` returns an empty `content` with `finish_reason=stop` at 13 completion tokens. Reproduced 3/3. Unaffected by `temperature` (0.0/0.2/0.7) and by four `thinking_budget`/`max_tokens` combinations (2000/4000, 4000/8000, 1000/6000, 2000/6000).
+- Impact: The first live reasoning smoke failed with `LLM API message content is empty`. Had reasoning been enabled on `qwen3-max` without this check, every candidate-authoring call would have returned nothing while still consuming budget.
+- Evidence: Identical request bodies succeeded on `qwen3.7-max` (3/3 non-empty), `qwen3.5-plus`, and `qwen3-235b-a22b-thinking-2507`. `qwen3-max` returned `nonempty=0/3`; `qwen3.7-max` returned `nonempty=3/3`.
+- Root cause: Upstream model behavior. `qwen3-max` does not support the reasoning plus JSON-output combination on the OpenAI-compatible endpoint; it terminates before emitting content.
+- Workaround: None needed after the model switch.
+- Next action: Do not set `model_name: qwen3-max` when reasoning may be enabled. Re-verify this constraint before changing the configured model.
+- Linked tasks: `267.3`, `267.3.1`, `267.6`.
+- Resolution: Configured model changed to `qwen3.7-max`, the verified model supporting both strict `json_schema` (reasoning off) and bounded reasoning (reasoning on). The constraint is recorded in `configs/campaign/qwen-dashscope.yaml`.
+- Verification: `tests/smoke/test_qwen_reasoning_live.py` passes with non-empty `reasoning_text` and parsable content; `airesearcher llm-smoke` reports `quality_score: 1.000` on `qwen3.7-max`.
+
+### P-20260802-050 - Qwen reasoning chain was never engaged because the client sent an Anthropic-shaped parameter
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: User hypothesis that the all-negative results came from the pipeline not fitting Qwen's reasoning chain, followed by live DashScope probes.
+- Symptom: `llm/client.py` sent `{"thinking": {"type": thinking_mode}}`, an Anthropic-shaped field. DashScope ignores it silently and returns HTTP 200 with `reasoning_content` length 0. A three-way live probe on one identical prompt returned reasoning lengths of `0` (Anthropic form), `301` (`enable_thinking=true`), and `0` (no parameter). Separately, `scientific_contract_harness.py` passed no thinking parameter at all, so exact-code authoring always ran with reasoning disabled.
+- Impact: Nine Harness runs and 348 development cells were executed with the reasoning chain off, and the defect never surfaced because the wrong parameter produced no error. Candidate scientific quality was measured under a configuration nobody intended.
+- Evidence: The three-way probe above. Two further constraints were found: enabling reasoning downgrades `json_schema` to `json_object` and then requires the literal word `json` in messages (`invalid_parameter_error` otherwise), and unbounded reasoning on `qwen3-max` produced 81,920 reasoning characters and 81,933 completion tokens for `17*23` with intermittently empty content.
+- Root cause: The reasoning parameter was hard-coded in one vendor's shape instead of being dispatched per provider, and the silent-ignore behavior made it undetectable without an explicit reasoning-length assertion.
+- Workaround: None remains.
+- Next action: Task `267.6` Route P2 must measure the effect of enabled reasoning under matched call budgets. A 3-seed neutral-brief probe was directionally consistent (`time-diff-in-predict` 1/3 off vs 0/3 on) but also produced one candidate with no real training fit, which is far too small to claim an effect.
+- Linked tasks: `267.3`, `267.3.1`, `267.6`.
+- Resolution: Added `reasoning_transport_for_provider` and `_reasoning_parameters` so DashScope receives `enable_thinking` plus a bounded `thinking_budget` while the Anthropic-shaped field stays reserved for Anthropic-shaped providers. `reasoning_content` is now persisted as `reasoning_text` with `reasoning_is_evidence: Literal[False]` so reasoning can never satisfy an evidence gate.
+- Verification: 31 client unit tests pass, including assertions that DashScope never receives the Anthropic-shaped field and that the budget is always bounded. The opt-in live smoke records non-zero reasoning with parsable content.
+
+### P-20260802-049 - Contract-format failures consumed the entire scientific revision budget
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Task `267.2` audit of the nine failed Harness runs.
+- Symptom: A schema `ContractError` was recorded as `synthetic-N:contract_execution_error` and treated as a scientific failure, so all six bounded model-only revisions were spent on formatting. `revision-03/harness/observation.json` shows `passed_sentinel_count=0/6`, `fit_call_count=0`, `predict_call_count=0`.
+- Impact: Nine consecutive runs produced no scientific verdict whatsoever while appearing, in the ledger, to be scientific failures.
+- Evidence: `runs/manual-live/task2662-scientific-contract-harness-v1` through `v9`, all with zero fit calls.
+- Root cause: The failure taxonomy did not distinguish "the candidate never ran" from "the candidate ran and lost".
+- Workaround: None remains.
+- Next action: None. Keep the technical and scientific suffix sets disjoint when new failure codes are added; unknown codes fail closed as scientific.
+- Linked tasks: `267.1`, `267.2`.
+- Resolution: Added `classify_revision_failure_kind` with separate `_MAX_SCIENTIFIC_REVISIONS` and `_MAX_TECHNICAL_REVISIONS` budgets, a persisted `failure_kind` on every revision, and package-level counts. The persisted classification must be recomputable from the exact failure codes, so an audit can prove no scientific failure was moved into the refunded bucket.
+- Verification: 15 focused tests pass, covering format-only refunds, scientific consumption, mixed-failure precedence, unknown-code fail-closed behavior, and suffix-set disjointness.
+
+### P-20260802-048 - Harness prompt advertised equation keys its own validator rejected
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-02
+- Source: User report that the loop produced only negative results, followed by inspection of the nine failed Task `266.2` runs.
+- Symptom: The prompt contract in `scientific_contract_harness.py` advertised `term_count` and `factor_count`, while `scientific_contract_harness_runner.py` rejected every key outside `{target, intercept, terms}` and `{field, derivative_axes, power}`. The same contract also declared `additional_fields_allowed: False`. A schema-obedient model answer was therefore rejected as a scientific failure.
+- Impact: Runs `task2662-scientific-contract-harness-v1` through `v9` all ended with `passed_sentinel_count=0/6` and `fit_call_count=0`. No candidate's science was ever executed. This was misread as a methodology failure.
+- Evidence: Contract at former lines 2105 and 2109 versus runner whitelists at lines 394 and 424. `revisions/revision-03/candidate.py` emits `'term_count': len(terms)` and `'factor_count': len(...)`, exactly as instructed. The provider also rejected strict `json_schema` (`HTTP 400: This response_format type is unavailable now`), so the contradictory prose contract was the only instruction channel.
+- Root cause: The advertised schema and the enforced schema were two independent definitions with no parity check.
+- Workaround: None remains.
+- Next action: None. The parity test fails the build if the two definitions diverge again.
+- Linked tasks: `266.2`, `267.1`, `267.3`.
+- Resolution: Introduced `_EQUATION_EXACT_FIELDS`, `_EQUATION_TERM_EXACT_FIELDS`, and `_EQUATION_FACTOR_EXACT_FIELDS` as a single machine-checkable source of truth, generated the prompt-visible contract from them via `build_scientific_interface_contract`, removed both count fields, added an explicit prohibition, and added a minimal valid example that itself validates against the whitelist.
+- Verification: `tests/unit/competition/test_equation_contract_parity.py` parses the real runner source with `ast` and asserts set equality. A regression probe that reintroduced `term_count` was correctly caught. The provider switch to `qwen3.7-max` additionally restores strict `json_schema`, so the schema is now machine-enforced rather than prose-only.
+
 ### P-20260801-047 - Frozen 2D sentinel could not identify u_xx from u_yy
 
 - Status: Resolved
