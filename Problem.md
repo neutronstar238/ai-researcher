@@ -40,6 +40,54 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-059 - Self-correction proposals were internally incoherent and had to be rejected
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Task `267.7` live self-correction runs `task2677-route-p2-self-correction-v1` and `v2`.
+- Symptom: Asked to author its own protocol repair, the model produced a proposal whose prose argued for 212 paired units while its structured field said `21`, and whose `predicted_effect` and both `falsification_conditions` were numeric fragments: `",0.072726,> 0.072726"` and `"> 0.072726"`. On the rerun, `predicted_effect` was `",0.072726,  null],  "`. The defect is reproducible, not a one-off.
+- Impact: The self-correction cycle cannot yet produce an executable repair. Both attempts were rejected by the coherence guard, so no incoherent plan was recorded, but the loop currently stops at diagnosis instead of reaching an approvable plan.
+- Evidence: `v1` proposal fields as quoted above; `v2` rejected with `revision predicted_effect is not substantive prose: ',0.072726,  null],  '`. The deterministic half of the cycle worked correctly in both runs, classifying `underpowered_design` and deriving 212 implied paired units from an interval 5.9405 times wider than the publishable threshold.
+- Root cause: Not yet confirmed. The structured-output schema constrains type and length but cannot require that a string carries a falsifiable statement. The model appears to treat `predicted_effect` as a numeric field despite its string type and prose instruction.
+- Workaround: `_is_substantive_prose` rejects fields that are mostly digits and punctuation, and a prose-versus-field consistency check rejects a proposal that contradicts itself. Both fail closed.
+- Next action: Split the numeric prediction from its prose justification into separate schema fields, so a numeric answer to a numeric field is valid and the falsifiable statement is required separately. Do NOT relax the coherence guard to let the current output through.
+- Linked tasks: `267.6`, `267.7`.
+- Resolution: Not resolved. Guards are in place; the underlying proposal quality is unfixed.
+- Verification: 19 focused tests pass, including regression guards that lock the exact degenerate strings from run `v1`.
+
+### P-20260802-058 - Self-correction first derived a sample size that contradicted its own observation
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Task `267.7` first deterministic diagnosis over the Route P2 history.
+- Symptom: The diagnosis reported `underpowered_design` with an interval 5.9405 times wider than the publishable threshold, yet derived an implied requirement of only 2 paired units against a current design of 6. More evidence had produced a smaller sample-size requirement, which is self-contradictory.
+- Impact: Caught before any protocol revision was proposed, so no run consumed the wrong budget.
+- Evidence: The paired effects were bimodal and heavy-tailed: ODE `+24.465181` against PDE `-0.007653`. The scaled median absolute deviation was `0.513628`, which by construction discards the outlier that actually drove the bootstrap interval. Substituting that spread into the normal-theory formula produced `n = 2`.
+- Root cause: The first implementation reused the analytic normal-theory sample-size form, whose normality assumption does not hold for this effect distribution.
+- Workaround: None needed.
+- Next action: Do not reintroduce a normality assumption for these effects. If a future estimand is provably normal, state that explicitly with evidence.
+- Linked tasks: `267.6`, `267.7`.
+- Resolution: Derive the requirement from the OBSERVED bootstrap width instead, using `required_n = current_n * (observed_width / target_width)^2`. For the `v3` outcome this yields 212 paired units, which is consistent with an interval 5.94 times too wide.
+- Verification: A regression test asserts the 212 result, that a too-wide interval always implies MORE units, and that the requirement scales quadratically with the width ratio. A further test documents that the robust spread barely moves when the `+24.47` outlier is added, which is why it was the wrong basis.
+
+### P-20260802-057 - Route P2 loss floor and thin brief silently fabricated a zero effect
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-02
+- Source: Task `267.6` live Route P2 runs `v1`, `v2`, and `v3`.
+- Symptom: Runs `v1` and `v2` both reported `median_paired_effect = 0.000000` with a zero-width interval. Neither was a finding. In `v1` all eight candidates across both arms failed static review, so every cell took the worst-case loss. In `v2` candidates executed correctly with prediction NMSE between `2.43e-32` and `4.47e-28`, but the inherited `1e-12` loss floor clipped every value to the floor, flattening both arms; a genuine log ratio of `5.801923` was reported as exactly `0.0`.
+- Impact: Both runs would have been recorded as an informative null replicating `arXiv:2607.04108`. That would have been a fabricated finding.
+- Evidence: `v1` failure codes were `static:missing_interface`, `static:dynamic_structure`, and `static:module_mutation` on 8/8 candidates. `v2` clipping was confirmed directly: `_clip(9.73e-32)` and `_clip(3.22e-29)` both returned `1.00e-12`, so the paired effect collapsed to zero. After both fixes, `v3` produced median `+0.072726` with CI95 `[-1.050175, +12.538627]`.
+- Root cause: Two independent defects in this module. The Route P2 brief was far thinner than the Harness contract, so candidates never learned the static constraints; and the `1e-12` floor, appropriate for noisy official MDBench cells, destroys resolution on near-exact synthetic fits.
+- Workaround: None needed.
+- Next action: When reusing a frozen estimand in a new measurement regime, re-derive its clipping bounds for that regime instead of inheriting them.
+- Linked tasks: `267.6`.
+- Resolution: The brief now reuses the full `build_scientific_interface_contract()`, the loss floor is `1e-300` so it only guards `log(0)`, and a degeneracy guard refuses to report an effect when every cell in both arms took the worst-case loss.
+- Verification: 16 focused tests pass, including a regression test asserting that `9.73e-32` versus `3.22e-29` survives clipping and yields an effect above 5.0, and a test that an all-failed comparison raises rather than reporting a null.
+
 ### P-20260802-056 - Candidates could not see their own fit diagnostics, so overfitting was unattributable
 
 - Status: Resolved

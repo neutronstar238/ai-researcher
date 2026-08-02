@@ -55,6 +55,10 @@ from autoresearch.competition.recovery import (
     MDBenchRecoveryError,
     preregister_mdbench_gate_a_recovery,
 )
+from autoresearch.competition.route_p2_paradigm_audit import (
+    RouteP2AuditError,
+    run_route_p2_paradigm_audit,
+)
 from autoresearch.competition.scientific_contract_harness import (
     ScientificContractHarnessError,
     build_scientific_contract_harness_package,
@@ -631,6 +635,89 @@ def competition_mdbench_scientific_contract_harness(
     else:
         typer.echo("[BLOCKED] next_task: 266.2_model_only_repair_budget_exhausted")
     typer.echo("[BLOCKED] significance_claim: synthetic_only")
+    typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("route-p2-paradigm-audit")
+def competition_mdbench_route_p2_paradigm_audit(
+    preregistration_hash: Annotated[
+        str,
+        typer.Option(
+            "--preregistration-hash",
+            help="Hash of the frozen Task 267.6 dual-route preregistration.",
+        ),
+    ],
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="Hash-valid result-blind Task 266.1 plan."),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    erratum: Annotated[
+        Path,
+        typer.Option("--erratum", help="Hash-valid Task 266.1.1 sentinel erratum."),
+    ] = Path(
+        "runs/manual-live/task26611-sentinel-identifiability-erratum-v1/"
+        "sentinel-identifiability-erratum.json"
+    ),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Route P2 comparison package."),
+    ] = Path("runs/competition/mdbench-route-p2-paradigm-audit"),
+    matched_model_call_budget: Annotated[
+        int,
+        typer.Option(
+            "--matched-budget",
+            help="Identical model-call budget spent by BOTH arms.",
+        ),
+    ] = 4,
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="Provider-neutral model configuration."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env", help="Local provider credentials; never persisted."),
+    ] = Path(".env"),
+) -> None:
+    """Compare LLM evolution against independent sampling under a matched budget."""
+
+    try:
+        package = run_route_p2_paradigm_audit(
+            output_dir=output_dir,
+            preregistration_hash=preregistration_hash,
+            plan_path=plan,
+            erratum_path=erratum,
+            matched_model_call_budget=matched_model_call_budget,
+            config_path=config_path,
+            env_path=env_path,
+        )
+    except (RouteP2AuditError, ScientificContractHarnessError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] mdbench_route_p2_paradigm_audit: {exc}")
+        raise typer.Exit(code=2) from exc
+
+    typer.echo(f"[OK] route_p2_paradigm_audit: {package.output_path}")
+    typer.echo(f"[OK] package_hash: {package.package_hash}")
+    typer.echo(f"[OK] matched_model_call_budget: {package.matched_model_call_budget}")
+    typer.echo(f"[OK] reasoning_mode: {package.reasoning_mode}")
+    for arm in package.arms:
+        typer.echo(
+            f"[OK] arm {arm.arm_id}: calls={arm.model_call_count} "
+            f"generations={arm.generations} selected=#{arm.selected_proposal_index}"
+        )
+    typer.echo(
+        "[RESULT] median_paired_effect: "
+        f"{package.median_paired_effect:.6f} "
+        f"CI95=[{package.bootstrap_lower:.6f}, {package.bootstrap_upper:.6f}]"
+    )
+    typer.echo(
+        "[RESULT] strata: "
+        f"ode={package.ode_stratum_median} pde={package.pde_stratum_median}"
+    )
+    typer.echo("[NOTE] positive effect means parent-conditioned evolution had lower loss")
+    typer.echo("[OK] new_official_development_results_and_reads: 0/0")
+    typer.echo("[BLOCKED] significance_claim: exploratory_synthetic_only")
     typer.echo("[BLOCKED] publication_ready: false")
 
 
