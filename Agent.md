@@ -64,6 +64,31 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-02 - Kiro - Task 267.5-267.6 search paradigm and dual publishable-outcome definition
+
+- User request: continue the Task 267 self-loop repair; decide open questions independently.
+- Files changed:
+  - `src/autoresearch/competition/term_dictionary_search.py` (new, Task `267.5`)
+  - `src/autoresearch/competition/dual_route_preregistration.py` (new, Task `267.6`)
+  - `src/autoresearch/competition/scientific_contract_harness.py`
+  - `tests/unit/competition/test_term_dictionary_search.py` (new)
+  - `tests/unit/competition/test_dual_route_preregistration.py` (new)
+  - `tests/unit/competition/test_patch_addressing_retry.py` (new)
+  - `tests/unit/competition/test_collapsed_newline_detection.py` (new)
+  - `tests/unit/competition/test_scientific_contract_harness.py`
+  - `Problem.md` (added `P-20260802-052`, `P-20260802-053`)
+- Summary: Ran the repaired Harness live rather than only writing code, which exposed two further root causes and produced the first real scientific execution in this lineage. (1) Task `267.5`: added dictionary-plus-set-level selection as a new module rather than mutating the frozen Task `265.3` lineage, per the project rule that a protocol change needs a new preregistered lineage. Terms are pooled across independent proposals, selection is over term SETS by BIC on train data only, per-term influence replaces scalar feedback, and zero-null-equivalent or train-independent fits are rejected rather than scored. The evolutionary arm survives only as a matched-budget comparator. (2) Root cause five, `P-20260802-052`: the model emitted `source_text` with a bare letter `n` where an escaped newline belonged, collapsing 15,767 and 11,059 bytes onto one line; strict `json_schema` cannot detect this and explicit instruction did not fix it, so source now arrives as a `source_lines` array and the escape is never written. (3) Root cause six, `P-20260802-053`: an unaddressable patch ended the whole search, so patch failures now raise a recoverable error with an actionable diagnosis and a bounded re-ask. This is mitigated, not resolved. (4) Task `267.6`: added a hash-bound, result-blind dual-route preregistration. Route P1 keeps the unchanged 5-percent plus positive-lower-bound gate and is validator-pinned so this module cannot weaken it. Route P2 registers the matched-budget audit of evolution versus independent sampling, where the effect and its interval are the finding, so an informative null is publishable while an underpowered interval is still refused. Reasoning mode is registered as a measured factor, explicitly not as an assumed improvement.
+- Verification:
+  - Live run `v12` produced `fit_call_count=18`, `predict_call_count=36`, `passed_sentinel_count=1/6`. Runs `v1` through `v9` all recorded `fit_call_count=0`, so no candidate science had ever executed before this change.
+  - Live run `v13` recorded `scientific-contract-r02.patch-retry-02.json` and `-03.json`, proving the bounded re-ask works, and classified its runtime contract errors as `technical` so the scientific budget was preserved.
+  - `poetry run python -m pytest tests/unit/competition tests/unit/research tests/unit/llm -q --no-cov` -> `455 passed`, with only the 4 pre-existing NumPy-dependent runner tests failing.
+  - `poetry run ruff check src/autoresearch` and `poetry run mypy` on both new modules pass.
+  - A dictionary demo recovered `u_t = -0.12 u_x + 0.06 u_xx` to six decimals from a pooled dictionary in which no single proposal contained both true terms.
+  - A route demo classified all three real historical results (`-1.704061`, `0.931295`, `-2.796575`) as unpublishable negatives under Route P1, and correctly separated an informative null from an underpowered interval under Route P2.
+- Problems added: `P-20260802-052` (lost newline escapes, Resolved), `P-20260802-053` (unaddressable patches ended the search, Mitigated).
+- Not verified: the 4 NumPy-dependent runner tests still fail because scientific dependencies live in the pinned container by design; they fail identically on unmodified files. The pre-existing mypy error at `scientific_contract_harness.py:2492` also predates this work.
+- Follow-up: `P-20260802-053` is open. The model exhausted all three patch attempts in `v13` by re-selecting non-unique anchors; the retry budget was deliberately NOT raised without evidence. Candidate next steps recorded there are line-numbered parent source or whole-function replacement anchored on the `def` line. Task `267.7` remains open and must let the system author its own outcome.
+
 ### 2026-08-02 - Kiro - Task 267.1-267.4 self-loop repair for publishable output
 
 - User request: the loop cannot produce publishable output and returns only negative metrics; unify on Qwen; suspected methodology fault; require a research-plan confirmation step inside the self-loop; cross-check recent literature online. Follow-up: the negatives may come from the pipeline not fitting Qwen's reasoning chain, so try requiring explicit reasoning output.

@@ -80,11 +80,18 @@ def test_collapsed_newline_failure_does_not_consume_scientific_budget() -> None:
     assert classify_revision_failure_kind(["static:syntax_error"]) == "technical"
 
 
-def test_contract_states_the_newline_escaping_requirement() -> None:
-    """The requirement must be explicit, since a strict schema cannot enforce it."""
+def test_contract_uses_a_line_array_so_the_escape_is_never_written() -> None:
+    """Superseded remedy.
+
+    Instructing the model to escape newlines did not work: runs v10 and v11 both
+    failed the same way. The contract now carries source as an array of lines, so
+    no newline escape is written and none can be lost.
+    """
 
     transport = build_scientific_interface_contract()["source_transport_contract"]
 
-    assert "source_text_newline_encoding" in transport
-    assert "backslash-n" in transport["source_text_newline_encoding"]
-    assert "source_text_self_check_before_responding" in transport
+    assert transport["source_field_name"] == "source_lines"
+    assert "one array element per physical line" in transport["source_lines_contract"]
+    assert transport["source_lines_rules"]["one_element_per_line"] is True
+    # The old single-string escaping rule must be gone, not merely supplemented.
+    assert "source_text_newline_encoding" not in transport
