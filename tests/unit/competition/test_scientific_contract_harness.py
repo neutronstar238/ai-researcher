@@ -15,6 +15,7 @@ from autoresearch.competition.scientific_contract_harness import (
     ScientificContractHarnessError,
     ScientificContractHarnessObservation,
     ScientificContractRuntimeEnvironment,
+    _top_level_function_spans,
     build_scientific_contract_harness_package,
     load_scientific_contract_harness_package,
     review_scientific_contract_source,
@@ -420,12 +421,12 @@ def test_model_origin_package_is_replayable_and_authorizes_only_task_266_3(
         output_dir / package.revisions[-1].source_relative_path
     )
     assert not package.revisions[0].static_review.approved
-    assert (
-        output_dir.joinpath(package.revisions[1].source_relative_path).read_text(
-            encoding="utf-8"
-        )
-        == GENERAL_SPARSE_CANDIDATE
-    )
+    # Task 267.2: the repair substitutes a whole named function, so the patched
+    # source carries the model's replacement rather than restoring the fixture.
+    repaired_source = output_dir.joinpath(
+        package.revisions[1].source_relative_path
+    ).read_text(encoding="utf-8")
+    assert "# model-authored repair marker" in repaired_source
     assert package.model_only_repair_count == 1
     assert completion.calls == 2
     assert package.official_development_result_count == 0
@@ -470,18 +471,29 @@ def test_model_origin_package_is_replayable_and_authorizes_only_task_266_3(
             "empty_string_element_means_a_blank_line": True,
         },
         "repair_modes": {
-            "orchestrator_role": "hash verification and deterministic replacement only",
-            "patch_content_origin": "all old_text and new_text are model-authored",
-            "patch_old_text_requirement": (
-                "each old_text must match exactly once when applied in order"
+            "orchestrator_role": (
+                "hash verification and deterministic whole-function substitution only"
             ),
+            "patch_content_origin": "every replacement line is model-authored",
+            "function_replacement_requirements": [
+                "function_name must be an existing top-level function",
+                "new_source_lines[0] must be that function's own unindented 'def' line",
+                "new_source_lines carries the COMPLETE function, one element per "
+                "physical line, with no newline escapes",
+                "at most one replacement per function name",
+            ],
             "required": (
-                "scientific_contract_patch with parent_source_sha256 and 1..16 ordered "
-                "exact old_text/new_text replacements"
+                "scientific_contract_patch with parent_source_sha256 and 1..8 "
+                "function_replacements, each naming a top-level function and "
+                "supplying its complete replacement as new_source_lines"
+            ),
+            "why_function_addressing": (
+                "A top-level function name is unique, so the orchestrator can "
+                "locate it exactly. Do not send text anchors."
             ),
             "whole_source_rewrite": (
-                "one replacement whose old_text is the exact whole parent source and whose "
-                "new_text is the complete model-authored replacement source"
+                "to rewrite everything, return a complete scientific_contract_source "
+                "response with source_lines instead of a patch"
             ),
         },
     }
@@ -543,30 +555,38 @@ def test_model_authored_exact_patch_is_hash_bound_and_replayable(tmp_path: Path)
     assert not patched.exact_model_source_unmodified
     assert patched.source_derivation is not None
     assert patched.source_derivation.parent_source_sha256 == package.revisions[0].source_sha256
-    assert (
-        output_dir.joinpath(patched.source_relative_path).read_text(encoding="utf-8")
-        == GENERAL_SPARSE_CANDIDATE
+    # Task 267.2: patches now substitute whole named functions, so the patched
+    # source is the parent with that function replaced, not a byte-identical
+    # restoration of the original fixture.
+    patched_source = output_dir.joinpath(patched.source_relative_path).read_text(
+        encoding="utf-8"
     )
+    assert "# model-authored repair marker" in patched_source
+    assert patched_source != GENERAL_SPARSE_CANDIDATE
     assert load_scientific_contract_harness_package(package.output_path) == package
 
 
-def test_model_authored_patch_preserves_redundant_noop_evidence(
+def test_model_authored_function_patch_records_its_named_target(
     tmp_path: Path,
 ) -> None:
+    """Task 267.2: the derivation must name which function the model replaced.
+
+    Replaces the former redundant-no-op test, whose semantics were specific to the
+    removed text-anchor mode.
+    """
+
     completion = _FixtureCompletion(
         GENERAL_SPARSE_CANDIDATE,
         bad_first=True,
         patch_repair=True,
-        redundant_noop_patch=True,
     )
     runtime = ScientificContractRuntimeEnvironment.create(
         image_id="sha256:6c8928e967cc4ff2995626c90ef57771df603028ddd6e17dbc60894ffa017c78"
     )
-    output_dir = tmp_path / "redundant-noop-patch-package"
     package = build_scientific_contract_harness_package(
         PLAN_PATH,
         ERRATUM_PATH,
-        output_dir,
+        tmp_path / "function-patch-package",
         completion=completion,
         clock=lambda: datetime(2026, 8, 1, tzinfo=timezone.utc),
         runtime_environment=runtime,
@@ -575,16 +595,12 @@ def test_model_authored_patch_preserves_redundant_noop_evidence(
     patched = package.revisions[1]
     assert package.synthetic_contract_gate_passed
     assert patched.source_derivation is not None
-    assert patched.source_derivation.replacement_count == 2
-    assert len(patched.ophis_response.replacements) == 2
-    assert (
-        patched.ophis_response.replacements[1].old_text
-        == patched.ophis_response.replacements[1].new_text
-    )
-    assert all(
-        item.old_text_required is True
-        for item in patched.ophis_response.replacements
-    )
+    assert patched.source_derivation.replacement_count == 1
+    replacements = patched.ophis_response.function_replacements
+    assert len(replacements) == 1
+    # A named top-level target is unambiguous, unlike the former text anchor.
+    assert replacements[0].function_name in {"fit_equations", "predict_derivative"}
+    assert replacements[0].new_source_lines[0].startswith("def ")
     assert load_scientific_contract_harness_package(package.output_path) == package
 
 
@@ -633,7 +649,16 @@ class _FixtureCompletion:
     def __call__(self, **kwargs: object) -> LLMJsonCompletionResult:
         self.calls += 1
         self.requests.append(dict(kwargs))
-        parent_source = "import os\n" + self.source
+        # Task 267.2: patches substitute whole top-level functions, so the injected
+        # first-attempt fault must live INSIDE a function to be repairable by one.
+        # A forbidden `open(...)` call inside fit_equations is rejected by static
+        # review as `dynamic_execution`, exactly like the former bad import, but it
+        # is reachable by a function replacement.
+        parent_source = self.source.replace(
+            "def fit_equations(payload):",
+            "def fit_equations(payload):\n    open('/tmp/forbidden')",
+            1,
+        )
         payload: dict[str, Any] = {
             "response_type": "scientific_contract_source",
             "observation": "Training arrays and a strict fit/freeze/query contract are available.",
@@ -643,9 +668,7 @@ class _FixtureCompletion:
             "expected_effect": "Known laws and alternate coefficients will be recovered consistently.",
             "implementation_summary": "General sparse train-only equation discovery with frozen evaluation.",
             "source_lines": (
-                ("import os\n" + self.source)
-                if self.bad_first and self.calls == 1
-                else self.source
+                parent_source if self.bad_first and self.calls == 1 else self.source
             ).split("\n"),
         }
         # A no-op-only fixture must keep returning the no-op patch so the bounded
@@ -653,37 +676,40 @@ class _FixtureCompletion:
         if self.patch_repair and (
             self.calls == 2 or (self.noop_only_patch and self.calls > 2)
         ):
-            replacements = [
-                {
-                    "old_text": "import os\n",
-                    "new_text": "import os\n" if self.noop_only_patch else "",
-                    **(
-                        {"old_text_required": True}
-                        if self.redundant_noop_patch
-                        else {}
-                    ),
-                }
-            ]
-            if self.redundant_noop_patch:
-                replacements.append(
-                    {
-                        "old_text": "import itertools\n",
-                        "new_text": "import itertools\n",
-                        "old_text_required": True,
-                    }
-                )
+            # Task 267.2: patches are addressed by top-level function name, so the
+            # fixture replaces a whole function rather than editing an import line.
+            spans = _top_level_function_spans(parent_source)
+            target = "fit_equations" if "fit_equations" in spans else sorted(spans)[0]
+            start, end = spans[target]
+            parent_lines = parent_source.split("\n")
+            if self.noop_only_patch:
+                # Byte-identical replacement, so the no-op guard must reject it.
+                new_source_lines = parent_lines[start - 1 : end]
+            else:
+                # Supply the clean function, which drops the forbidden call and
+                # adds a marker so the test can prove the substitution happened.
+                clean_spans = _top_level_function_spans(self.source)
+                clean_start, clean_end = clean_spans[target]
+                new_source_lines = [
+                    *self.source.split("\n")[clean_start - 1 : clean_end],
+                    "    # model-authored repair marker",
+                ]
             payload = {
                 "response_type": "scientific_contract_patch",
-                "observation": "Static review rejects one unnecessary import in the parent source.",
-                "problem": "The forbidden import prevents evaluation of otherwise valid code.",
-                "hypothesis": "Removing only that import preserves the scientific implementation.",
-                "intervention": "Delete the exact unique import line with a hash-bound patch.",
-                "expected_effect": "Static review should pass without changing scientific behavior.",
-                "implementation_summary": "Model-authored exact deletion of one forbidden import.",
+                "observation": "Static review rejected the parent candidate source.",
+                "problem": "The parent implementation cannot pass the synthetic gate.",
+                "hypothesis": "Replacing the whole fitting function preserves the method.",
+                "intervention": "Substitute one named top-level function by name.",
+                "expected_effect": "Static review should pass without fixture targeting.",
+                "implementation_summary": "Model-authored whole-function replacement.",
+                # Hash exactly what the orchestrator persisted for the parent,
+                # which is the joined line array.
                 "parent_source_sha256": hashlib.sha256(
-                    parent_source.encode("utf-8")
+                    "\n".join(parent_source.split("\n")).encode("utf-8")
                 ).hexdigest(),
-                "replacements": replacements,
+                "function_replacements": [
+                    {"function_name": target, "new_source_lines": new_source_lines}
+                ],
             }
         response_text = json.dumps(payload, sort_keys=True)
         return LLMJsonCompletionResult(

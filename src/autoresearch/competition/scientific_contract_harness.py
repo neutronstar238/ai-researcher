@@ -106,6 +106,16 @@ _MAX_TOTAL_REVISIONS = _MAX_SCIENTIFIC_REVISIONS + _MAX_TECHNICAL_REVISIONS
 # uniquely. This is text addressing, not science, so it does not consume a
 # revision; it is bounded so a persistently mis-addressing model cannot loop.
 _MAX_PATCH_ADDRESSING_ATTEMPTS = 3
+# Stray JSON delimiters the model sometimes interleaves into a line array. None of
+# these can be valid Python at statement level, so discarding them cannot alter
+# candidate code. Observed live in run v14 between every real source line.
+#
+# CAUTION: this must stay narrow. An earlier version stripped any line whose
+# STRIPPED form was a delimiter, which silently deleted legitimate Python such as
+# a closing `    }` of a returned dict literal and truncated candidate source.
+# Only an EXACTLY unindented single delimiter qualifies, because real Python at
+# statement level is either indented inside a function or is not a bare bracket.
+_DELIMITER_ONLY_LINES: frozenset[str] = frozenset({"]", "}", "],", "},"})
 _MAX_SOURCE_BYTES = 80_000
 _PREFERRED_SOURCE_CHARACTERS = 12_000
 _MAX_OPHIS_CHARACTERS = 8_000
@@ -244,7 +254,7 @@ _PATCH_RESPONSE_SCHEMA: dict[str, Any] = {
         "expected_effect",
         "implementation_summary",
         "parent_source_sha256",
-        "replacements",
+        "function_replacements",
     ],
     "properties": {
         "response_type": {"type": "string", "enum": ["scientific_contract_patch"]},
@@ -282,22 +292,32 @@ _PATCH_RESPONSE_SCHEMA: dict[str, Any] = {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
         },
-        "replacements": {
+        # Task 267.2 repair. Text-anchor patching failed live three times in a row
+        # (v10 `matched 0 times`, v12 `matched 3 times`, v13 `matched 2 times` on
+        # `    n_fields = state.shape[-1]`), each ending the whole search on a
+        # copy-paste error. A top-level function name is unique by Python's own
+        # rules, so addressing a whole function makes the ambiguity structurally
+        # impossible instead of merely less likely.
+        "function_replacements": {
             "type": "array",
             "minItems": 1,
-            "maxItems": 16,
+            "maxItems": 8,
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["old_text", "new_text"],
+                "required": ["function_name", "new_source_lines"],
                 "properties": {
-                    "old_text": {
+                    "function_name": {
                         "type": "string",
-                        "minLength": 1,
-                        "maxLength": _MAX_SOURCE_BYTES,
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                        "maxLength": 120,
                     },
-                    "new_text": {"type": "string", "maxLength": _MAX_SOURCE_BYTES},
-                    "old_text_required": {"type": "boolean", "enum": [True]},
+                    "new_source_lines": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2_000,
+                        "items": {"type": "string", "maxLength": 2_000},
+                    },
                 },
             },
         },
@@ -395,20 +415,51 @@ class ScientificContractSourceResponse(StrictFrozenModel):
 
     @property
     def source_text(self) -> str:
-        """Reassemble exact model source from its per-line transport."""
+        """Reassemble exact model source from its per-line transport.
 
-        return "\n".join(self.source_lines)
+        Delimiter-only elements are transport artifacts, not code; see
+        `ScientificContractFunctionReplacement.normalized_source_lines`.
+        """
+
+        return "\n".join(
+            line for line in self.source_lines if not _is_transport_delimiter(line)
+        )
 
 
-class ScientificContractPatchReplacement(StrictFrozenModel):
-    """One model-authored exact replacement against a unique parent substring."""
+class ScientificContractFunctionReplacement(StrictFrozenModel):
+    """One model-authored whole-function replacement, addressed by name.
 
-    old_text: str = Field(min_length=1, max_length=_MAX_SOURCE_BYTES)
-    new_text: str = Field(max_length=_MAX_SOURCE_BYTES)
-    old_text_required: Literal[True] | None = Field(
-        default=None,
-        exclude_if=lambda value: value is None,
-    )
+    A top-level function name is unique by Python's own rules, so this cannot be
+    ambiguous the way a text anchor was.
+    """
+
+    function_name: str = Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$", max_length=120)
+    new_source_lines: tuple[str, ...] = Field(min_length=2, max_length=2_000)
+
+    @property
+    def new_source(self) -> str:
+        """Reassemble the replacement body from its per-line transport."""
+
+        return "\n".join(self.normalized_source_lines)
+
+    @property
+    def normalized_source_lines(self) -> tuple[str, ...]:
+        """Drop delimiter-only transport artifacts from the line array.
+
+        Observed live in run v14: the model interleaved a bare `]` between every
+        real line, producing `[']', 'def fit_equations(payload):', ']', '    import
+        numpy as np', ']', ...]`. The Python itself was intact; only the array
+        carried stray JSON delimiters. A line consisting solely of `]`, `}`, `[`,
+        `{`, or `,` cannot be valid Python at statement level, so removing such
+        elements changes no candidate code while making the transport robust.
+
+        This mirrors the existing `response_transport_normalization` precedent,
+        which already discards trailing closing delimiters as transport noise.
+        """
+
+        return tuple(
+            line for line in self.new_source_lines if not _is_transport_delimiter(line)
+        )
 
 
 class ScientificContractPatchResponse(StrictFrozenModel):
@@ -425,10 +476,17 @@ class ScientificContractPatchResponse(StrictFrozenModel):
         max_length=_MAX_OPHIS_CHARACTERS,
     )
     parent_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    replacements: tuple[ScientificContractPatchReplacement, ...] = Field(
+    function_replacements: tuple[ScientificContractFunctionReplacement, ...] = Field(
         min_length=1,
-        max_length=16,
+        max_length=8,
     )
+
+    @model_validator(mode="after")
+    def _validate_unique_targets(self) -> ScientificContractPatchResponse:
+        names = [item.function_name for item in self.function_replacements]
+        if len(names) != len(set(names)):
+            raise ValueError("a patch cannot replace the same function twice")
+        return self
 
 
 class ScientificContractSourceDerivation(StrictFrozenModel):
@@ -468,7 +526,7 @@ class ScientificContractSourceDerivation(StrictFrozenModel):
             "patch_payload_sha256": canonical_model_hash(
                 patch_response.model_dump(mode="json")
             ),
-            "replacement_count": len(patch_response.replacements),
+            "replacement_count": len(patch_response.function_replacements),
             "final_source_sha256": final_source_sha256,
         }
         payload["derivation_hash"] = canonical_model_hash(payload)
@@ -781,7 +839,8 @@ class ScientificContractRevision(StrictFrozenModel):
                 != derivation.parent_source_sha256
                 or canonical_model_hash(self.ophis_response.model_dump(mode="json"))
                 != derivation.patch_payload_sha256
-                or len(self.ophis_response.replacements) != derivation.replacement_count
+                or len(self.ophis_response.function_replacements)
+                != derivation.replacement_count
                 or self.source_sha256 != derivation.final_source_sha256
             ):
                 raise ValueError("scientific patch derivation changed")
@@ -1283,36 +1342,70 @@ def _apply_model_authored_patch(
     parent_source: str,
     patch_response: ScientificContractPatchResponse,
 ) -> str:
-    parent_hash = _sha256_text(parent_source)
-    if patch_response.parent_source_sha256 != parent_hash:
+    original_source = parent_source
+    if patch_response.parent_source_sha256 != _sha256_text(original_source):
         raise ScientificContractHarnessError("scientific patch parent hash changed")
-    resolved = parent_source
-    for index, replacement in enumerate(patch_response.replacements, start=1):
-        occurrences = resolved.count(replacement.old_text)
-        if occurrences != 1:
-            # Give the model the information it needs to re-address the edit.
-            excerpt = replacement.old_text[:160].replace("\n", "\\n")
-            hint = (
-                "no line in the parent source contains this text; copy an exact "
-                "substring from the parent"
-                if occurrences == 0
-                else f"this text appears {occurrences} times; extend it with "
-                "surrounding lines until it is unique"
-            )
-            raise ScientificContractPatchError(
-                f"scientific patch replacement {index} matched {occurrences} times "
-                f"instead of exactly once. old_text began: '{excerpt}'. {hint}.",
-                failure_code="patch_old_text_not_unique",
-            )
-        resolved = resolved.replace(
-            replacement.old_text,
-            replacement.new_text,
-            1,
-        )
-    if resolved == parent_source:
+
+    spans = _top_level_function_spans(original_source)
+    if not spans:
         raise ScientificContractPatchError(
-            "scientific patch left source unchanged; every replacement was a no-op. "
-            "Emit at least one replacement whose new_text differs from its old_text.",
+            "the parent source defines no top-level function to replace; return a "
+            "complete scientific_contract_source response instead.",
+            failure_code="patch_parent_has_no_function",
+        )
+
+    for replacement in patch_response.function_replacements:
+        if replacement.function_name not in spans:
+            available = ", ".join(sorted(spans))
+            raise ScientificContractPatchError(
+                f"scientific patch targets unknown top-level function "
+                f"'{replacement.function_name}'. The parent defines: {available}. "
+                "Target one of those exact names.",
+                failure_code="patch_unknown_function",
+            )
+        normalized = replacement.normalized_source_lines
+        if not normalized:
+            raise ScientificContractPatchError(
+                f"the replacement for '{replacement.function_name}' contained no "
+                "source lines after transport normalization.",
+                failure_code="patch_replacement_empty",
+            )
+        first_line = normalized[0]
+        if not first_line.lstrip().startswith(("def ", "async def ")):
+            raise ScientificContractPatchError(
+                f"the replacement for '{replacement.function_name}' must begin with "
+                f"its own 'def' line, but began with '{first_line[:80]}'.",
+                failure_code="patch_replacement_missing_def",
+            )
+        if first_line.startswith((" ", "\t")):
+            raise ScientificContractPatchError(
+                f"the replacement for '{replacement.function_name}' must be a "
+                "top-level function, so its 'def' line cannot be indented.",
+                failure_code="patch_replacement_indented_def",
+            )
+
+    # Apply bottom-up so line numbers of not-yet-applied spans stay valid.
+    resolved = original_source
+    ordered = sorted(
+        patch_response.function_replacements,
+        key=lambda item: spans[item.function_name][0],
+        reverse=True,
+    )
+    for replacement in ordered:
+        start_line, end_line = spans[replacement.function_name]
+        lines = resolved.split("\n")
+        resolved = "\n".join(
+            [
+                *lines[: start_line - 1],
+                *replacement.normalized_source_lines,
+                *lines[end_line:],
+            ]
+        )
+
+    if resolved == original_source:
+        raise ScientificContractPatchError(
+            "scientific patch left source unchanged; every function replacement was "
+            "byte-identical to the parent. Emit at least one real change.",
             failure_code="patch_left_source_unchanged",
         )
     encoded_size = len(resolved.encode("utf-8"))
@@ -2240,18 +2333,31 @@ def _scientific_interface_contract() -> dict[str, Any]:
             ),
             "repair_modes": {
                 "required": (
-                    "scientific_contract_patch with parent_source_sha256 and 1..16 "
-                    "ordered exact old_text/new_text replacements"
+                    "scientific_contract_patch with parent_source_sha256 and 1..8 "
+                    "function_replacements, each naming a top-level function and "
+                    "supplying its complete replacement as new_source_lines"
+                ),
+                "why_function_addressing": (
+                    "A top-level function name is unique, so the orchestrator can "
+                    "locate it exactly. Do not send text anchors."
                 ),
                 "whole_source_rewrite": (
-                    "one replacement whose old_text is the exact whole parent source and "
-                    "whose new_text is the complete model-authored replacement source"
+                    "to rewrite everything, return a complete "
+                    "scientific_contract_source response with source_lines instead "
+                    "of a patch"
                 ),
-                "patch_old_text_requirement": (
-                    "each old_text must match exactly once when applied in order"
+                "function_replacement_requirements": [
+                    "function_name must be an existing top-level function",
+                    "new_source_lines[0] must be that function's own unindented "
+                    "'def' line",
+                    "new_source_lines carries the COMPLETE function, one element "
+                    "per physical line, with no newline escapes",
+                    "at most one replacement per function name",
+                ],
+                "patch_content_origin": "every replacement line is model-authored",
+                "orchestrator_role": (
+                    "hash verification and deterministic whole-function substitution only"
                 ),
-                "patch_content_origin": "all old_text and new_text are model-authored",
-                "orchestrator_role": "hash verification and deterministic replacement only",
             },
         },
         "static_source_contract": {
@@ -2503,14 +2609,17 @@ def _generation_messages(
             "every attempt. Keep the joined source compact, preferably at most "
             f"{_PREFERRED_SOURCE_CHARACTERS} characters. "
             "On repair turns, return only a scientific_contract_patch object with the exact "
-            "parent hash and minimal unique old_text/new_text replacements; the orchestrator "
-            "will apply only your replacement bytes and will never author a repair. If a "
-            "whole rewrite is necessary, express it as one replacement whose old_text is "
-            "the complete parent source and whose new_text is the complete replacement. "
+            "parent hash and 1..8 function_replacements. Each names ONE existing top-level "
+            "function and supplies that function's COMPLETE replacement as new_source_lines, "
+            "one array element per physical line, starting with its own unindented 'def' "
+            "line. Never send text anchors or line numbers as edit targets. The orchestrator "
+            "substitutes whole functions by name and will never author a repair. If a whole "
+            "rewrite is necessary, return a complete scientific_contract_source response "
+            "instead. "
             "Use Observation→Problem→Hypothesis→Intervention→expected effect explicitly, then "
             "implement your own general train-dependent equation-discovery method. The "
             "orchestrator will either persist your joined source_lines byte-for-byte or "
-            "apply only your hash-bound exact replacements. Do not "
+            "substitute your named functions verbatim. Do not "
             "target fixture IDs, embed coefficients/equations, inspect files/processes/call "
             "stacks, use network/subprocess/dynamic execution, print, or store state between "
             "calls. Each fit/predict runs in a fresh process. Derive equations only from fit "
@@ -2557,14 +2666,25 @@ def _generation_messages(
                 output_root,
                 previous_revision,
             ),
+            # Numbered source and an explicit name list remove the guesswork that
+            # made text-anchor patching fail in live runs v10, v12, and v13.
+            "previous_exact_source_numbered": _numbered_source(
+                source_path.read_bytes().decode("utf-8")
+            ),
+            "replaceable_top_level_function_names": sorted(
+                _top_level_function_spans(source_path.read_bytes().decode("utf-8"))
+            ),
             "repair_rule": (
                 "Use only this synthetic evidence to form a mechanism-level hypothesis and "
-                "return one compact scientific_contract_patch object with the supplied "
-                "parent source hash and ordered exact unique replacements. Never return a "
-                "bare replacements array. If a small patch is unsafe, use one replacement "
-                "covering the exact whole parent source. Do not merely "
-                "tune a fixture-specific constant and do not ask the orchestrator to invent "
-                "or edit scientific code."
+                "return one scientific_contract_patch object with the supplied parent "
+                "source hash and 1..8 function_replacements. Each must name one function "
+                "from replaceable_top_level_function_names and supply that function's "
+                "COMPLETE replacement as new_source_lines, one element per physical line, "
+                "beginning with its own unindented 'def' line. The line numbers shown are "
+                "for your reading only; address edits by function name. If a whole rewrite "
+                "is needed, return a complete scientific_contract_source response instead. "
+                "Do not merely tune a fixture-specific constant and do not ask the "
+                "orchestrator to invent or edit scientific code."
             ),
         }
         messages.append(
@@ -2584,11 +2704,12 @@ def _generation_messages(
                         "previous_patch_rejected": True,
                         "patch_failure": patch_failure_feedback,
                         "patch_addressing_rule": (
-                            "Each old_text must appear EXACTLY ONCE in the parent "
-                            "source shown above. Copy it verbatim, including "
-                            "indentation, and extend it with neighbouring lines "
-                            "until it is unique. Do not paraphrase it, and do not "
-                            "emit a no-op replacement."
+                            "Address every edit by an existing top-level function "
+                            "name from replaceable_top_level_function_names, and "
+                            "supply that function's COMPLETE replacement as "
+                            "new_source_lines beginning with its own unindented "
+                            "'def' line. Do not send text anchors, and do not emit "
+                            "a replacement identical to the parent."
                         ),
                     },
                     ensure_ascii=False,
@@ -2928,6 +3049,53 @@ methods, coefficients, or equation terms. Synthetic success authorizes only Task
 development evaluation. It is not a benchmark improvement, significance, novelty, competition,
 manuscript, or publication claim.
 """
+
+
+def _is_transport_delimiter(line: str) -> bool:
+    """True only for an exactly unindented bare JSON delimiter line.
+
+    Deliberately strict. Matching the STRIPPED form would delete legitimate Python
+    such as the closing `    }` of a returned dict literal, which silently
+    truncated candidate source during development of this repair.
+    """
+
+    return line in _DELIMITER_ONLY_LINES
+
+
+def _top_level_function_spans(source_text: str) -> dict[str, tuple[int, int]]:
+    """Map each top-level function name to its inclusive 1-based line span.
+
+    Uses the AST rather than text search, so a decorator, a nested function, or a
+    docstring containing `def ` cannot confuse the span. A top-level function name
+    is unique by Python's own rules, which is precisely why addressing a patch by
+    name removes the ambiguity that ended live runs v10, v12, and v13.
+    """
+
+    try:
+        tree = ast.parse(source_text)
+    except SyntaxError:
+        return {}
+    spans: dict[str, tuple[int, int]] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        start = node.lineno
+        for decorator in node.decorator_list:
+            # A decorator belongs to the function, so include it in the span.
+            start = min(start, decorator.lineno)
+        end = node.end_lineno or node.lineno
+        spans[node.name] = (start, end)
+    return spans
+
+
+def _numbered_source(source_text: str) -> str:
+    """Render source with 1-based line numbers for model-facing feedback."""
+
+    lines = source_text.split("\n")
+    width = len(str(len(lines)))
+    return "\n".join(
+        f"{index:>{width}} | {line}" for index, line in enumerate(lines, start=1)
+    )
 
 
 def _looks_like_collapsed_newlines(source_text: str) -> bool:

@@ -42,19 +42,19 @@ update a factual problem entry below.
 
 ### P-20260802-053 - Unaddressable model patches ended the whole search instead of being retried
 
-- Status: Mitigated
+- Status: Resolved
 - Severity: High
 - Discovered: 2026-08-02
-- Source: Live Harness runs `task2662-scientific-contract-harness-v10`, `v12`, and `v13`.
+- Source: Live Harness runs `task2662-scientific-contract-harness-v10`, `v12`, `v13`, `v14`, and `v15`.
 - Symptom: `_apply_model_authored_patch` raised a terminal `ScientificContractHarnessError` whenever a model-authored `old_text` did not match exactly once. Run v10 ended with `replacement 1 matched 0 times`, v12 with `replacement 5 matched 3 times`, and v13 with `replacement 7 matched 2 times` on `    n_fields = state.shape[-1]`.
 - Impact: A text-addressing mistake discarded the entire remaining revision budget even though no scientific verdict had been reached. In v12 this happened immediately after the first genuine scientific execution in this lineage, so the run was lost at its most informative point.
 - Evidence: v13 records `scientific-contract-r02.patch-retry-02.json` and `...-retry-03.json`, proving the bounded re-ask now happens and that the model received the improved diagnosis. Its `revision-01` recorded six `contract_execution_error` codes, correctly classified `technical`, so the scientific budget was preserved rather than spent.
 - Root cause: Patch application treated an addressing error as an unrecoverable evidence-boundary violation rather than as a technical fault that the model can repair given the right feedback.
-- Workaround: The failure is now retried up to `_MAX_PATCH_ADDRESSING_ATTEMPTS` (3) with the exact match count and an instruction to extend the anchor until unique. It remains bounded, so a persistently mis-addressing model still stops.
-- Next action: Not fully resolved. The model still exhausted all three attempts in v13 by re-selecting non-unique anchors. Consider giving the model line-numbered parent source, or accepting a whole-function replacement anchored on the `def` line, so a unique anchor is easier to produce. Do not raise the retry budget without evidence that it helps.
+- Workaround: None remains.
+- Next action: Do not reintroduce text-anchor patching. If a future provider needs it, keep function-name addressing as the default.
 - Linked tasks: `266.2`, `267.2`.
-- Resolution: Partially resolved. Added `ScientificContractPatchError` with named failure codes (`patch_old_text_not_unique`, `patch_left_source_unchanged`, `patch_source_size_out_of_bounds`), actionable diagnoses, a bounded re-ask loop, and per-attempt interaction records suffixed `.patch-retry-NN` so every attempt stays individually auditable.
-- Verification: 7 focused tests cover the subclass relationship, zero-match and multi-match diagnoses, no-op rejection, successful application, and budget bounds. The full mocked Harness suite passes except the 4 pre-existing NumPy-dependent runner tests.
+- Resolution: Resolved by replacing text-anchor patching with whole-function replacement addressed by name. A top-level function name is unique by Python's own rules, so the ambiguity is structurally impossible rather than merely less likely. `_top_level_function_spans` locates each target through the AST, so a decorator, a nested function, or a docstring containing `def ` cannot confuse the span, and replacements are applied bottom-up so not-yet-applied spans stay valid. Repair feedback now also carries line-numbered parent source and an explicit list of replaceable function names. Two further live faults were fixed along the way: run v14 showed the model interleaving a bare `]` between every real source line, which is discarded as a transport artifact, and a first version of that filter matched the STRIPPED form of each line, which deleted the legitimate closing `    }` of a returned dict literal and silently truncated candidate source. The filter now matches only an exactly unindented bare delimiter.
+- Verification: Run `v15` completed the whole loop for the first time in this lineage: 8 model revisions, a written package with hash `9300dedf09b329361d3fd81dd8c181ea655cdefc8d75b2ea6730ce59e24fafac`, and a clean `266.2_model_only_repair_budget_exhausted` stop instead of a crash. Revisions 4, 7, and 8 executed real science (`fit=18/predict=36`, `fit=15/predict=30`, `fit=18/predict=36`), and revision 4 passed one sentinel. Technical and scientific failures were classified separately throughout. 20 focused tests pass, including the exact v13 triple-ambiguity case, the v14 interleaved-delimiter case, and a regression guard for the indented-closing-brace truncation.
 
 ### P-20260802-052 - Model lost newline escapes in source_text, collapsing every candidate to one line
 
