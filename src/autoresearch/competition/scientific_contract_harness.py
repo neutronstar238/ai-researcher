@@ -2557,6 +2557,30 @@ def _scientific_interface_contract() -> dict[str, Any]:
             "equation_evaluator_id_exact_value": "trusted-equation-evaluator-v1",
         },
         "periodic_grid": "spatial coordinate arrays include a duplicated endpoint",
+        # Fairness disclosure. The trusted evaluator re-derives every spatial
+        # derivative itself when it scores your equations, using the operator named
+        # here. Live run v15 showed why this must be stated: candidates fit
+        # coefficients with finite differences, then the evaluator re-scored the
+        # same equations with a spectral operator, producing training NMSE around
+        # 15..34 on all five PDE sentinels even though each candidate's own fit was
+        # internally consistent. Withholding the scoring operator made the gate
+        # unpassable for reasons that had nothing to do with scientific quality.
+        "evaluator_spatial_derivative_operator": {
+            "method": "spectral_fft_on_the_periodic_axis",
+            "detail": (
+                "For each derivative_axes entry the evaluator drops the duplicated "
+                "endpoint, applies a real FFT along that axis, multiplies by "
+                "(1j*k)**1 per requested order using k = 2*pi*fftfreq(n, period/n), "
+                "inverts, and re-appends the endpoint. Repeated axis entries are "
+                "applied one order at a time."
+            ),
+            "implication": (
+                "Fit your coefficients against THIS operator, not against a finite "
+                "difference stencil, or your equation will be scored with a "
+                "different derivative than the one you fitted."
+            ),
+            "axis_requirements": "uniform spacing and at least five samples per axis",
+        },
         "state_layout": (
             "zero to three spatial axes in x/y/z order, then time, then field"
         ),

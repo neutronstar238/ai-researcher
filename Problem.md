@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-054 - Evaluator's spatial-derivative operator was not disclosed to candidates
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-02
+- Source: Live Harness run `task2662-scientific-contract-harness-v15` PDE diagnosis.
+- Symptom: The trusted evaluator re-derives every spatial derivative itself using a spectral FFT operator, but the prompt contract disclosed only that the grid was periodic with a duplicated endpoint. A probe confirmed the contract contained no occurrence of `spectral`, `fft`, `fourier`, `finite difference`, or `np.gradient`. A candidate that fitted coefficients against a finite-difference stencil was therefore scored with a different derivative than the one it fitted.
+- Impact: PDE sentinel outcomes were partly uninformative about scientific quality. This is the same class of defect as the Task `266.1.1` identifiability erratum: the Harness penalized something it had never specified.
+- Evidence: After disclosure, best-per-sentinel term support improved on three of five PDE sentinels: `pde-heat-3d` from `0.00` to `0.75`, `pde-diffusion-1d` from `0.00` to `0.40`, and `pde-diffusion-1d-2field` from `0.00` to `0.29`. `pde-advection-diffusion-2d` moved `0.40` to `0.50`, while `pde-advection-1d` moved `0.50` to `0.33`.
+- Root cause: The contract specified the data layout and the artifact schema but not the operator used to score the artifact.
+- Workaround: None needed.
+- Next action: Keep the runner-parity test green. If the evaluator's operator ever changes, the disclosure must change in the same commit.
+- Linked tasks: `266.2`, `267.1`, `267.7`.
+- Resolution: Added `evaluator_spatial_derivative_operator` to the contract, naming the spectral FFT method, its exact mechanics, the axis requirements, and the explicit warning not to fit against a finite-difference stencil. This discloses only how a candidate's own output is measured; the candidate still chooses its library, features, estimator, and sparsification.
+- Verification: 5 focused tests pass, including a parity guard that parses the real runner to confirm `_spectral_derivative` exists, that the prediction path calls it, and that it uses `fft`/`fftfreq`.
+
+### P-20260802-055 - Corrected mistaken claim that the PDE gate was unpassable
+
+- Status: Resolved
+- Severity: Low
+- Discovered: 2026-08-02
+- Source: Self-correction while diagnosing live run `v15`.
+- Symptom: An interim diagnosis reported PDE training NMSE of `9.077` to `34.02` with term-support F1 of `0.00` on all five PDE sentinels, and concluded the gate might be unpassable.
+- Impact: None on artifacts or code. The conclusion was wrong and would have justified weakening a gate that did not need weakening.
+- Evidence: That reading came from `revision-08` alone, which was simply a poor candidate. Scanning every revision instead gives best-per-sentinel values of `6.833e-04` to `3.389e-01` in `v15`, and the ODE sentinel reaches term-support F1 `1.00` with coefficient relative error `4.44e-16`.
+- Root cause: A single revision was treated as representative of a bounded search that deliberately retains failures.
+- Workaround: None.
+- Next action: When judging a search, always aggregate best-per-unit across retained revisions. A search that keeps its failures will always contain bad cells by design.
+- Linked tasks: `267.7`.
+- Resolution: The claim is withdrawn. The operator disclosure in `P-20260802-054` is still a genuine fairness fix and measurably improved three of five PDE sentinels, but it did not rescue an unpassable gate. The remaining PDE shortfall is a real scientific problem: the candidate selects too many terms, for example 12 terms from 12 features on `pde-diffusion-1d-2field`, so it fits the training data while recovering the wrong support.
+- Verification: Best-per-sentinel aggregation across all eight revisions of both `v15` and `v16`, plus per-check failure listings for the best revision of each run.
+
 ### P-20260802-053 - Unaddressable model patches ended the whole search instead of being retried
 
 - Status: Resolved
