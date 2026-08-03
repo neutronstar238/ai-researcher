@@ -13524,3 +13524,50 @@ This file defines the project development standard for coding agents and records
   - Existing README.zh-CN CRLF/mojibake maintenance risk remains tracked as `P-20260623-010`.
 - Follow-up:
   - Let scheduler workers consume `stage_route_diagnostics` alongside `AgentRegistry.select_for_stage(...)` so future real cycle traces show why each worker was selected or skipped.
+
+## 2026-08-04 02:11:41 +08:00 - Kiro - System-authored research plan passing the plan audit gate
+
+- Request: Satisfy the competition requirement that the system autonomously produce a research plan for a publishable sample study and prove it passes the project's own audit gate, under the governing constraint that the SYSTEM must author the scientific content rather than the agent.
+- Files changed:
+  - `src/autoresearch/research/candidate_authoring.py` (new)
+  - `src/autoresearch/research/__init__.py`
+  - `src/autoresearch/cli/main.py`
+  - `tests/unit/research/test_candidate_authoring.py` (new)
+  - `Agent.md`
+  - `Problem.md`
+- Summary:
+  - Discovered that the research-plan gate could only ever pass on a HUMAN-authored candidate. `research-plan` accepts only `--candidate-file`, and the retained Task `124` candidate had hand-written `method`/`dataset`/`baseline`/`metric` fields and the title `AI-Researcher competition proposal`. Recorded as `P-20260803-049`.
+  - Confirmed by live run that the system's own `generate_research_candidates` is unusable for this purpose: over 35 real retrieved documents it produced `method="method"`, `dataset="available benchmark"`, `limitation="open limitation"`, and never emits `baseline`, `metric`, or `target`, so `plans._build_plan` falls back to the exact placeholder strings `audit_research_plan` blocks.
+  - Added `candidate_authoring.py`: the configured model reads the REAL retrieved abstracts and authors the candidate's scientific fields itself. Guards reject citations to documents that were never retrieved, placeholder/contest wording, non-measurable metrics, fewer than two cited sources, and missing per-field grounding. Retrieval provenance (source URI, DOI, `retrieved_at`) is recorded per cited document.
+  - Added the `candidate-author` CLI command chaining live retrieval into authoring, exposing `seed_queries` so the operator supplies only the research DIRECTION while the system authors the science. `research-plan` is unchanged.
+  - Fixed a plan-prose defect found in the first live run: long model-authored `method` text spliced ungrammatically into the plan sentence templates. Constrained the spliced fields to short noun phrases and added a rejection guard. Recorded as `P-20260803-050`.
+  - The plan's topic, hypothesis, gap, method, dataset, baseline, metric, and validation route were all authored by `qwen3.7-max` over real ArXiv/OpenAlex evidence. No scientific claim in the plan was written by the agent.
+- Verification:
+  - Real live retrieval `node .\bin\airesearcher.mjs literature-refresh --vault runs\manual-live\task270-system-authored-plan\vault --cache runs\manual-live\task270-system-authored-plan\cache --max-queries 3 --max-results-per-source 6`: 35 documents, all fetches `cache=miss` (genuine network).
+  - Baseline check `node .\bin\airesearcher.mjs research-plan-audit runs\manual-live\task124-research-plan\outputs\task124_research_plan\research-plan\research-plan.json`: now `failed` at score `0.64`, proving the prior green Task `124` result no longer holds after Task `184` hardening.
+  - Real live authoring `node .\bin\airesearcher.mjs candidate-author --project-id task270_system_authored_plan_v2 --research-direction "interpretable prototype and nearest-centroid classifiers on public tabular benchmarks" --candidate-out runs\manual-live\task270-system-authored-plan-v2\candidate.json --provenance-out runs\manual-live\task270-system-authored-plan-v2\provenance.json --vault runs\manual-live\task270-system-authored-plan-v2\vault --cache runs\manual-live\task270-system-authored-plan-v2\cache --max-queries 3 --max-results-per-source 6`: 18 real documents, model `qwen-dashscope/qwen3.7-max`, 3 cited sources.
+  - Real live plan `node .\bin\airesearcher.mjs research-plan --candidate-file runs\manual-live\task270-system-authored-plan-v2\candidate.json --project-id task270_system_authored_plan_v2 --vault runs\manual-live\task270-system-authored-plan-v2\vault --output-dir runs\manual-live\task270-system-authored-plan-v2\outputs --literature-summary runs\manual-live\task270-system-authored-plan-v2\vault\exploration\topics\literature_refresh_20260803.md --compile-pdf --timeout-seconds 180`: `passed` at score `1.0`, `compile_status=compiled`, 3 pages.
+  - Independent re-audit `node .\bin\airesearcher.mjs research-plan-audit runs\manual-live\task270-system-authored-plan-v2\outputs\task270_system_authored_plan_v2\research-plan\research-plan.json`: `passed` at score `1.0`, zero issues.
+  - Artifacts confirmed present: vault Markdown `projects/task270_system_authored_plan_v2/plans/research-plan.md` plus `research-plan.json`, `research-plan.tex`, `research-plan.pdf`.
+  - `pdfinfo`: `Pages: 3`, `Page size: 595.28 x 841.89 pts (A4)`. `pdftotext` plus term scan across PDF text, TeX, and vault Markdown found none of `TODO`, `TBD`, `参赛`, `赛题`, `manual review`, `XH-202619`, `浙江阿里巴巴`, `人工评审`, `赛事`, `available benchmark`, `task-specific metric`, `approved hold-out split`, `strong public baseline`.
+  - LaTeX log: zero `Overfull \hbox`; 9 underfull hboxes are cosmetic justification slack only.
+  - Cited sources with retrieval timestamps, all `2026-08-03T17:55:27.293885+00:00`: `http://arxiv.org/abs/2306.12330` (ProtoGate), `http://arxiv.org/abs/2506.16791v4` (TabArena), `http://arxiv.org/abs/2604.15297v2` (Benchmarking Optimizers for MLPs in Tabular Deep Learning).
+  - Focused `python -m pytest tests\unit\research\test_candidate_authoring.py -q`: 8 passed.
+  - Focused `python -m pytest tests\unit\research\test_plans.py tests\unit\research\test_candidates.py tests\unit\research\test_candidate_authoring.py tests\unit\cli\test_main.py -q`: 134 passed.
+  - Broad `python -m pytest tests\smoke tests\unit -q --ignore=tests\unit\campaign\test_sprint_migration.py`: 1443 passed, 46 skipped, 3 failed.
+  - Focused `python -m ruff check src\autoresearch\research\candidate_authoring.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py tests\unit\research\test_candidate_authoring.py`: passed.
+  - Focused `python -m mypy src\autoresearch\research\candidate_authoring.py src\autoresearch\research\__init__.py src\autoresearch\cli\main.py`: passed, no issues in 3 source files.
+- Problems:
+  - Added `P-20260803-049` (research-plan gate could only pass on a hand-authored candidate).
+  - Added `P-20260803-050` (model-authored method text spliced ungrammatically into the plan template).
+- Problems NOT caused by this task, confirmed pre-existing:
+  - `tests/unit/campaign/test_sprint_migration.py` fails collection with `ModuleNotFoundError: No module named 'tests.sprint_migration_support'`. The support file exists and is committed, but `tests/__init__.py` does not exist, so `tests` is not an importable package. Both files came from commit `4f20e3d` (task `262.8.3`), untouched here.
+  - Three `tests/unit/runtime/test_loop_langgraph.py` failures. Verified pre-existing by stashing this task's changes and re-running: identical 3 failures on clean `main`.
+- Deviations:
+  - Did NOT update `.kiro/specs/auto-research-system/tasks.md`. It already carries an uncommitted Task `268`/`269` block belonging to another task, and editing or staging it would have mixed foreign work into this commit. The task-plan entry for this work is therefore still owed.
+  - Kept `publication_ready` untouched and absent from the plan artifact. This deliverable is a research PLAN that passes the plan audit gate, NOT a publishable finished result.
+- Follow-up:
+  - Add the task-plan entry for this work to `tasks.md` once the foreign `268`/`269` block is committed by its owner.
+  - Fix the `tests` package import so `test_sprint_migration.py` can be collected, most likely by adding `tests/__init__.py`.
+  - The model returned `grounding.field` values as research-topic names (`Tabular Machine Learning`) rather than candidate field names (`dataset`, `metric`). The grounding is still document-anchored and validated, but tightening that prompt wording would make the trail easier to read.
+  - Consider wiring `candidate-author` into the autopilot cycle so scheduled runs also author their own candidates instead of using per-demo hardcoded metadata.

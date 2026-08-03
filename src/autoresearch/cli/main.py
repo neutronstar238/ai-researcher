@@ -150,6 +150,7 @@ from autoresearch.research import (
     SimilarityCheckConfig,
     apply_plan_decision,
     audit_research_plan,
+    author_research_candidate,
     evaluate_novelty_search_breadth,
     generate_research_plan,
     link_similarity_report_to_project,
@@ -4639,6 +4640,143 @@ def similarity_check(
         typer.echo(f"[OK] summary: {report.summary_path}")
     if project_link is not None:
         typer.echo(f"[OK] project_link: {project_link}")
+
+
+@app.command("candidate-author")
+def candidate_author(
+    project_id: Annotated[
+        str,
+        typer.Option("--project-id", help="Project ID recorded on the authored candidate."),
+    ],
+    research_direction: Annotated[
+        str,
+        typer.Option(
+            "--research-direction",
+            help="Operator-confirmed research direction used as the retrieval seed.",
+        ),
+    ],
+    candidate_out: Annotated[
+        Path,
+        typer.Option("--candidate-out", help="Path for the authored ResearchCandidate JSON."),
+    ],
+    vault: Annotated[
+        Path,
+        typer.Option("--vault", help="Obsidian vault root for the retrieval summary."),
+    ] = Path("autoresearch-vault"),
+    cache: Annotated[
+        Path,
+        typer.Option("--cache", help="Retrieval cache directory."),
+    ] = Path(".cache/literature"),
+    provenance_out: Annotated[
+        Path | None,
+        typer.Option("--provenance-out", help="Optional path for the cited-source evidence trail."),
+    ] = None,
+    max_queries: Annotated[
+        int,
+        typer.Option("--max-queries", min=1, help="Maximum optimized queries to run."),
+    ] = 3,
+    max_results_per_source: Annotated[
+        int,
+        typer.Option("--max-results-per-source", min=1, help="Maximum papers per source/query."),
+    ] = 6,
+    config_path: Annotated[
+        Path,
+        typer.Option("--config-path", help="System config providing the LLM provider."),
+    ] = Path("config.yaml"),
+    env_path: Annotated[
+        Path,
+        typer.Option("--env-path", help="Optional .env file for API keys."),
+    ] = Path(".env"),
+    timeout_seconds: Annotated[
+        int | None,
+        typer.Option("--timeout-seconds", min=1, help="Model request timeout override."),
+    ] = None,
+) -> None:
+    """Let the system author a research candidate from real retrieved literature.
+
+    The operator supplies only the research direction. The configured model reads the
+    retrieved abstracts and authors the scientific fields, so the downstream plan is
+    system-authored rather than hand-written.
+    """
+
+    try:
+        _load_optional_env(env_path)
+        report = run_daily_literature_refresh(
+            vault_root=vault,
+            cache_root=cache,
+            config=LiteratureRefreshConfig(
+                max_queries=max_queries,
+                max_results_per_source=max_results_per_source,
+                seed_queries=(research_direction,),
+            ),
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] literature retrieval failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    _echo_fetches(report.fetches)
+    if not report.documents:
+        typer.echo("[FAIL] literature retrieval returned no source-backed documents", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"[OK] documents: {len(report.documents)}")
+
+    try:
+        authored = author_research_candidate(
+            list(report.documents),
+            project_id=project_id,
+            research_direction=research_direction,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=timeout_seconds,
+        )
+    except Exception as exc:
+        typer.echo(f"[FAIL] candidate authoring failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    candidate_out.parent.mkdir(parents=True, exist_ok=True)
+    candidate_out.write_text(
+        json.dumps(
+            authored.candidate.model_dump(mode="json"),
+            indent=2,
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    if provenance_out is not None:
+        provenance_out.parent.mkdir(parents=True, exist_ok=True)
+        provenance_out.write_text(
+            json.dumps(
+                {
+                    "project_id": project_id,
+                    "research_direction": research_direction,
+                    "retrieved_document_count": len(report.documents),
+                    "queries": [query.text for query in report.queries],
+                    "fetches": [
+                        {
+                            "source": fetch.source,
+                            "query": fetch.query,
+                            "cache_hit": fetch.cache_hit,
+                            "paper_count": fetch.paper_count,
+                        }
+                        for fetch in report.fetches
+                    ],
+                    **authored.to_dict(),
+                },
+                indent=2,
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        typer.echo(f"[OK] provenance: {provenance_out}")
+
+    typer.echo(f"[OK] model: {authored.provider}/{authored.model_name}")
+    typer.echo(f"[OK] title: {authored.candidate.title}")
+    typer.echo(f"[OK] cited_sources: {len(authored.cited_sources)}")
+    for source in authored.cited_sources:
+        typer.echo(f"[SOURCE] {source.retrieved_at} {source.source_uri}")
+    typer.echo(f"[OK] candidate: {candidate_out}")
 
 
 @app.command("research-plan")

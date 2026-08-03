@@ -5884,3 +5884,35 @@ update a factual problem entry below.
 - Linked tasks: `1.1`, `1.4`, `1.5`
 - Resolution: Installed Poetry, pytest-cov, pytest-asyncio, and ruff into the active Python environment. Added `pythonpath = ["src"]` to pytest configuration so tests can import the package without manual `PYTHONPATH`.
 - Verification: `poetry --version` printed `Poetry (version 2.4.1)`; `poetry run pytest tests/smoke tests/unit/config` passed with 18 tests and coverage enabled; `poetry run pytest tests/smoke tests/unit` passed with 21 tests and coverage enabled.
+
+### P-20260803-049 - Research-plan gate could only pass on a hand-authored candidate
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-03, while verifying that the system can autonomously produce a research plan that passes its own audit gate.
+- Source: Inspection of `runs/manual-live/task124-research-plan/candidate.json`, plus a live run of `generate_research_candidates` over 35 real retrieved documents.
+- Symptom: `research-plan` accepts only `--candidate-file`, and the retained Task `124` candidate had human-written scientific fields (`method`, `dataset`, `baseline`, `metric`) and the title `AI-Researcher competition proposal`. The system's own literature-derived generator produced degenerate candidates from real abstracts: `method="method"`, `dataset="available benchmark"`, `limitation="open limitation"`, and titles such as `Reduce Open Limitation In Method On Available Benchmark`. It never emits `baseline`, `metric`, or `target`, so `plans._build_plan` fell back to placeholder strings.
+- Impact: A plan for a genuinely system-discovered topic could not pass `audit_research_plan` at all, because `PLACEHOLDER_PLAN_TERMS` blocks exactly the strings the fallback produced. Every previously passing plan depended on a human supplying the science, which contradicts the recorded user requirement that the system discover and produce its own output.
+- Evidence: `generate_research_candidates` over 35 live documents returned the three degenerate candidates above. Re-auditing the retained Task `124` artifact with `research-plan-audit` now returns `failed` at score `0.64` with `approved public benchmark`, `approved hold-out split`, and `adjacent public benchmark selected`.
+- Root cause: `candidates._extract_signal` relies on the fixed vocabularies `METHOD_TERMS`, `LIMITATION_TERMS`, and `DATASET_PATTERN`. Real abstracts rarely match them, so every field collapses to its own default, and the vocabulary has no notion of a baseline, a metric, or a validation route.
+- Workaround: None needed now.
+- Next action: None required. Consider retiring or regenerating the stale Task `124` candidate fixture so it stops implying a human-authored plan is the supported path.
+- Linked tasks: `124.1`, `125.1`, `184.1`, `270.1`
+- Resolution: Added `src/autoresearch/research/candidate_authoring.py`, where the configured model reads the real retrieved abstracts and authors the candidate's scientific fields, and added the `candidate-author` CLI command chaining live retrieval into authoring. The module rejects citations to documents that were never retrieved, placeholder and contest wording, non-measurable metrics, and fewer than two cited sources.
+- Verification: Live `candidate-author` then `research-plan` produced a system-authored plan that passed `research-plan-audit` at score `1.0` with a 3-page A4 PDF. Eight deterministic tests in `tests/unit/research/test_candidate_authoring.py` cover the rejection paths.
+
+### P-20260803-050 - Model-authored method text spliced ungrammatically into the plan template
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-03, while reading the first system-authored plan PDF.
+- Source: `runs/manual-live/task270-system-authored-plan/outputs/.../research-plan.pdf`.
+- Symptom: `plans._build_plan` splices `method` into sentence templates such as `whether {method} can improve the measured {metric}`. The model returned a five-sentence imperative method description, so the rendered plan read `whether Train a feed-forward embedding network on tabular features, then apply a k-medoids-style prototype selection ... can improve the measured accuracy`.
+- Impact: The plan passed the audit at score `1.0` but the problem statement and rationale were ungrammatical, which weakens a document whose stated purpose is to guide code agents.
+- Evidence: `pdftotext` of the first live plan PDF shows the spliced imperative mid-sentence in section 1.
+- Root cause: The plan renderer assumes `method`, `dataset`, and `baseline` are short noun phrases, but nothing enforced that assumption once a model began authoring those fields.
+- Workaround: None needed now.
+- Next action: None required. If other candidate producers begin feeding `_build_plan`, consider moving the length guard into `plans.py` so it applies to every producer rather than only the authoring path.
+- Linked tasks: `270.1`
+- Resolution: Constrained `method` to 120 characters in the authoring response schema, instructed the model to keep the spliced fields as short noun phrases with elaboration in `description`, and added `_require_spliceable_phrases` to reject over-long spliced fields with a readable error.
+- Verification: The re-run live plan reads `whether ProtoGate prototype-based neural network with global-to-local feature selection can improve the measured macro_f1 while remaining reproducible against Muon-optimized MLP`. A regression test asserts the long-method rejection.

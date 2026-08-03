@@ -184,6 +184,12 @@ from .brainstorm import (
     run_brainstorm_evidence_review,
     run_inspiration_brainstorm,
 )
+from .candidate_authoring import (
+    AuthoredCandidate,
+    CandidateAuthoringError,
+    CitedSource,
+    author_research_candidate,
+)
 from .candidates import (
     CandidateGenerationConfig,
     CandidateLifecycleError,
@@ -664,6 +670,8 @@ __all__ = [
     "BrainstormReport",
     "BenchmarkTaskAudit",
     "BranchBudget",
+    "AuthoredCandidate",
+    "CandidateAuthoringError",
     "CandidateGenerationConfig",
     "CandidateEvaluation",
     "CandidateInitialization",
@@ -673,6 +681,7 @@ __all__ = [
     "CandidateSpec",
     "CandidateStageRecord",
     "CandidateVaultLinks",
+    "CitedSource",
     "CausalArmBudget",
     "CausalSearchPreregistration",
     "CleanRoomConfirmationReplay",
@@ -846,6 +855,7 @@ __all__ = [
     "analyze_trends_and_gaps",
     "analyze_development_search",
     "analyze_confirmatory_evaluation",
+    "author_research_candidate",
     "audit_independent_execution_source",
     "audit_frozen_runner_source",
     "assess_portfolio",
