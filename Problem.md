@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-067 - A fixed 64-term cap rejected valid multi-field PDE equations
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Gap analysis of the budget-conformant Task `266.3` lineage `task2663-conformant-v1`.
+- Symptom: The selected candidate `official-03-r2` failed `6/6` cells on `reaction_diffusion_cylinder` with `ContractError: equation must contain 1-64 concrete terms`, and that single system contributed a paired log effect of `-29.5155`, dominating the negative verdict.
+- Impact: An infrastructure limit was being reported as a scientific failure. The cap was inherited from the analytic sentinels, whose laws contain one to three terms, and applied unchanged to real multi-field PDE panels.
+- Evidence: Shape audit of the frozen panel shows the cap is indefensible for these systems. `reaction_diffusion_cylinder` has 6 fields and 2 spatial axes, so a purely linear library over field plus first and second derivatives per axis already needs about 255 terms; `heat_soil_uniform_2d_p1` needs thousands. Every PDE system in the panel exceeds 64 on a linear library alone.
+- Root cause: A constant copied from the synthetic contract into the official runner without re-deriving it for the real data regime.
+- Workaround: None needed.
+- Next action: Do not copy a numeric bound across data regimes. Derive it from the declared shape.
+- Linked tasks: `266.2`, `266.3`.
+- Resolution: Added `_maximum_terms(field_names, spatial_axes)`, which scales the bound with the library size the shape permits while keeping a hard ceiling of 20,000 so an unbounded equation is still refused. The failure message now also reports the ACTUAL term count, so a refusal is actionable instead of opaque.
+- Verification: The cap for `reaction_diffusion_cylinder` becomes 495 instead of 64, and `heat_soil_uniform_2d_p1` changed from a hard contract rejection to a real verdict at derivative NMSE `1.0005443538018686` with 4 selected terms. The improved message then revealed the true remaining problem on `reaction_diffusion_cylinder`, recorded separately as `P-20260802-068`.
+
+### P-20260802-068 - Candidate selects zero terms on one PDE system
+
+- Status: Open
+- Severity: Medium
+- Discovered: 2026-08-02
+- Source: Re-check after the `P-20260802-067` term-cap fix.
+- Symptom: With the cap raised to 495, `official-03-r2` on `reaction_diffusion_cylinder` reports `equation returned 0 terms`. It is not overshooting the bound; its sparse selection retains nothing at all.
+- Impact: This is a genuine scientific failure rather than an infrastructure limit, and it is the correct diagnosis to hand back to the system. It remains the largest single contributor to the negative verdict.
+- Evidence: The improved contract message reports the exact count. The same candidate succeeds on `heat_soil_uniform_2d_p1` with 4 terms and on 78 of 84 official cells overall, so the defect is system-specific rather than a broken implementation.
+- Root cause: Not confirmed. The plausible mechanism is that the candidate's thresholding eliminates every coefficient on this system's scaling, so the selection collapses to the empty set instead of falling back to a minimal support.
+- Workaround: None applied. Fixing the candidate's science myself is out of scope; the system must repair it.
+- Next action: Feed this exact observation into the score-blind self-revision channel, which already reports the candidate's own term counts, so a further generation can add an empty-selection fallback. Do NOT special-case this system in the runner.
+- Linked tasks: `266.3`, `267.7`.
+- Resolution: Not resolved. Correctly attributed and left with the system.
+- Verification: `runs/manual-live/task2663-term-cap-recheck-v2` records both outcomes: the zero-term failure and the newly succeeding `heat_soil_uniform_2d_p1` cell.
+
 ### P-20260802-066 - Task 266.3 development search overran the frozen budget
 
 - Status: Open

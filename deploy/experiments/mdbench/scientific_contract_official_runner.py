@@ -217,9 +217,32 @@ def _validate_factor(factor, field_names, spatial_axes):
     }
 
 
+def _maximum_terms(field_names, spatial_axes):
+    """Term cap derived from the system's own shape, not a fixed synthetic number.
+
+    The 64-term cap was inherited from the analytic sentinels, whose laws have one to
+    three terms. Real multi-field PDE panels need far more: on
+    `reaction_diffusion_cylinder` (6 fields, 2 spatial axes) even a purely linear
+    library over field plus first and second derivatives per axis needs about 255
+    terms, and `heat_soil_uniform_2d_p1` needs thousands. The fixed cap therefore
+    failed 6/6 cells of an otherwise valid implementation with
+    `equation must contain 1-64 concrete terms`, which is an infrastructure limit
+    misreported as a scientific failure.
+
+    The bound still exists, so a candidate cannot return an unbounded equation, but
+    it now scales with the declared library size the shape permits.
+    """
+
+    per_field = 1 + 2 * max(len(spatial_axes), 0)
+    linear = max(len(field_names), 1) * per_field
+    # Allow quadratic cross terms over the linear library, with a hard ceiling.
+    return int(min(20_000, max(64, linear + linear * (linear + 1) // 2)))
+
+
 def _validate_equations(equations, field_names, spatial_axes):
     if not isinstance(equations, list) or len(equations) != len(field_names):
         raise ContractError("candidate must return one equation per field")
+    maximum_terms = _maximum_terms(field_names, spatial_axes)
     normalized = []
     for field, equation in zip(field_names, equations):  # noqa: B905 - Python 3.9 image
         if not isinstance(equation, dict) or set(equation) - _EQUATION_EXACT_FIELDS:
@@ -228,8 +251,16 @@ def _validate_equations(equations, field_names, spatial_axes):
             raise ContractError("equation target order differs from field order")
         intercept = _finite(equation.get("intercept", 0.0), "intercept")
         terms = equation.get("terms")
-        if not isinstance(terms, list) or not 1 <= len(terms) <= 64:
-            raise ContractError("equation must contain 1-64 concrete terms")
+        if not isinstance(terms, list) or not 1 <= len(terms) <= maximum_terms:
+            # Report the ACTUAL count, so the failure is actionable rather than
+            # merely a refusal. Without this the candidate cannot tell whether it
+            # overshot by one term or by an order of magnitude.
+            actual = len(terms) if isinstance(terms, list) else "not-a-list"
+            raise ContractError(
+                f"equation returned {actual} terms but must contain "
+                f"1-{maximum_terms} concrete terms for a system with "
+                f"{len(field_names)} fields and {len(spatial_axes)} spatial axes"
+            )
         normalized_terms, supports = [], []
         for term in terms:
             if not isinstance(term, dict) or set(term) != _TERM_EXACT_FIELDS:
