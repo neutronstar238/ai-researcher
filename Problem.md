@@ -5916,3 +5916,51 @@ update a factual problem entry below.
 - Linked tasks: `270.1`
 - Resolution: Constrained `method` to 120 characters in the authoring response schema, instructed the model to keep the spliced fields as short noun phrases with elaboration in `description`, and added `_require_spliceable_phrases` to reject over-long spliced fields with a readable error.
 - Verification: The re-run live plan reads `whether ProtoGate prototype-based neural network with global-to-local feature selection can improve the measured macro_f1 while remaining reproducible against Muon-optimized MLP`. A regression test asserts the long-method rejection.
+
+### P-20260803-072 - A formal lineage was driven by an untracked, unreviewed scratch script
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-03, while promoting the lineage driver for Task `269.1`.
+- Source: `_lineage268.py` at the repository root, untracked; the driver of `runs/manual-live/task2663-conformant-v1`.
+- Symptom: The last real preregistered lineage was driven end to end by an untracked repo-root script that carried stage state across eight separate invocations (`plan`, `approve`, `generate`, `pilot`, `revise`, `baseline`, `full`, `adjudicate`). The frozen gate evaluation that decides whether a search-freeze receipt is issued was hand-written inside that script's `adjudicate` stage.
+- Impact: High, and it was a provenance hole rather than a style problem. The exact bytes that drove a formal lineage were absent from the commit history, so they were unrecoverable and could have changed silently between two stages of the same lineage. The script was excluded from `ruff`, `mypy`, and the test suite, so the adjudication rule was never reviewed and never tested. Three consequences were already observable: no `OfficialDevelopmentSearchPackage` was ever constructed, so the conformant lineage produced no signed package; its only adjudication record was `_verdict.txt`, a tracked scratch file whose numbers were superseded; and the script hard-coded `timeout_seconds=300`, an initial candidate count of 8, a finalist count of 3, and a pilot subset of `[:2]` ODE plus `[:2]` PDE systems, all of which the frozen Task `266.1` plan already stated.
+- Evidence: The retired script's `adjudicate` stage built its `checks` dict inline from literals `0.0` and from `estimand["minimum_overall_log_effect"]`, then printed `search_freeze_receipt : {all(checks.values())}` to a text file. `OfficialDevelopmentSearchPackage` existed in `official_development_search.py` with a validator refusing a receipt alongside a failed check, but a repository-wide search found no constructor call. The pilot hard-coding is visible as a second, separate defect: the script executed 4 pilot systems while `freeze_official_identity` wrote `pilot_system_count: 6` into the very identity that lineage is bound to, so the executed breadth contradicted the lineage's own frozen identity.
+- Root cause: Stage-by-stage manual driving was convenient during an exploratory sequence and was never promoted once the sequence became a formal preregistered lineage.
+- Workaround: None needed now.
+- Next action: None required for the driver. The pilot-breadth contradiction in the RETAINED lineage is historical and cannot be corrected without re-running that lineage; the retained artifacts stay as they are, and the module now refuses that disagreement for any future lineage.
+- Linked tasks: `269.1`
+- Resolution: Added `src/autoresearch/competition/official_lineage.py`, a reviewed module that owns all eight stages, owns `evaluate_frozen_gate`, and writes a hash-verified `OfficialDevelopmentSearchPackage` through `write_official_development_search_package`. Every threshold is read from the frozen plan's estimand and every count from its `search_budget`; nothing numeric is hard-coded. `_stage_shape` refuses a pilot whose breadth disagrees with the frozen identity. Added the `competition mdbench lineage-stage` CLI entry point. Deleted `_lineage268.py` and the superseded `_verdict.txt`.
+- Verification: Re-evaluated the retained conformant lineage through the new module read-only, writing the package to a temp directory, and reproduced its recorded numbers exactly: selected `official-03-r2`, overall median log effect `-0.5240758637614126`, bootstrap CI95 `[-3.2357131306670204, +1.804017497824948]`, ODE stratum `+0.5895091246734206`, PDE stratum `-15.402305316589244`, `search_freeze_receipt False`, and 78/84 succeeded cells for the selected candidate. An AST comparison confirmed the module calls the same 18 domain functions as the retired script and covers all 8 of its stages. 22 tests in `tests/unit/competition/test_official_lineage.py` pass, including a receipt-with-failed-check refusal and a budget-non-conformance refusal.
+
+### P-20260803-073 - Pilot finalist ranking silently discards an exact-zero validation loss
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-08-03, while porting the retired script's revision ranking into a reviewed module.
+- Source: `rank_pilot_finalists` in `src/autoresearch/competition/official_lineage.py`, ported from `_lineage268.py`'s `revise` stage.
+- Symptom: The candidate filter tests `item.validation_nmse` for truthiness rather than `is not None`, so a cell reporting an exact `0.0` validation NMSE is treated as having no usable measurement and is dropped from the median.
+- Impact: Low and currently latent. On the real noisy official panel no cell has produced an exact `0.0` validation loss, so no retained lineage is affected. If one ever did, that cell would be a perfect fit and dropping it would bias the finalist median upward, against the candidate that produced it.
+- Evidence: The retired script's `revise` stage filtered with `and c.validation_nmse`. The port preserves that expression verbatim, with a comment marking it.
+- Root cause: Truthiness was used as a null check in the scratch script and carried forward deliberately.
+- Workaround: None needed now.
+- Next action: Change the filter to `is not None` and add a regression test asserting that a `0.0` validation loss ranks first. Deliberately NOT changed here, because it would change which candidates a replay of the retained conformant lineage selects, and Task `269.1` is required to prove numerical equivalence with the retired driver rather than to alter its arithmetic.
+- Linked tasks: `269.1`
+- Resolution: Not yet fixed.
+- Verification: Not applicable yet.
+
+### P-20260803-074 - A second superseded scratch file remains tracked at the repository root
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-08-03, while removing `_verdict.txt` for Task `269.1`.
+- Source: `_budget_audit.txt`, tracked at the repository root.
+- Symptom: `_budget_audit.txt` is a tracked scratch text file recording the post-hoc budget audit of the overrun lineage (15 candidates against 12, 420 candidate cells against 380, 504 total cells against 464).
+- Impact: Low. Unlike `_verdict.txt` its numbers are not misleading, since they are a truthful record of the overrun described in `P-20260802-066`. But it is scratch output living at the repository root rather than a structured artifact, so it invites the same class of provenance problem.
+- Evidence: `git ls-files | Select-String \"^_\"` lists `_budget_audit.txt` alongside the now-removed `_verdict.txt`.
+- Root cause: Same as `P-20260803-072`: exploratory scratch output was committed and never promoted.
+- Workaround: None needed.
+- Next action: Either regenerate this audit through `audit_prior_lineage` into a structured artifact under the relevant run directory and remove the text file, or keep it and state its provenance in the file itself. Deliberately left untouched here to keep the Task `269.1` commit focused; it belongs to the overrun lineage's record, not to the driver promotion.
+- Linked tasks: `269.1`
+- Resolution: Not yet fixed.
+- Verification: Not applicable yet.

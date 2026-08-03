@@ -13571,3 +13571,53 @@ This file defines the project development standard for coding agents and records
   - Fix the `tests` package import so `test_sprint_migration.py` can be collected, most likely by adding `tests/__init__.py`.
   - The model returned `grounding.field` values as research-topic names (`Tabular Machine Learning`) rather than candidate field names (`dataset`, `metric`). The grounding is still document-anchored and validated, but tightening that prompt wording would make the trail easier to read.
   - Consider wiring `candidate-author` into the autopilot cycle so scheduled runs also author their own candidates instead of using per-demo hardcoded metadata.
+
+## 2026-08-04 02:45:12 +08:00 - Kiro - Task 269.1 promote the lineage driver into a reviewed, hash-bound module
+
+- Request: Task `269.1`. Replace the untracked repo-root scratch script `_lineage268.py` with a reviewed module and CLI entry point, move the frozen gate evaluation into the module, make a run write an `OfficialDevelopmentSearchPackage`, read timeout and candidate counts from the frozen plan, and remove the scratch script and the stale scratch verdict file.
+- Files changed:
+  - `src/autoresearch/competition/official_lineage.py` (new)
+  - `src/autoresearch/competition/cli.py`
+  - `tests/unit/competition/test_official_lineage.py` (new)
+  - `_lineage268.py` (deleted, untracked)
+  - `_verdict.txt` (deleted, tracked)
+  - `Agent.md`
+  - `Problem.md`
+- Summary:
+  - Added `official_lineage.py`, which owns all eight stages of one preregistered lineage (`plan`, `approve`, `generate`, `pilot`, `revise`, `baseline`, `full`, `adjudicate`) behind an `OfficialLineageConfig` frozen at construction, and returns a `LineageStageReport` so a caller never parses stdout.
+  - Moved the frozen gate evaluation out of the retired script into `evaluate_frozen_gate`. Every threshold is read from the frozen plan's `estimand`: `minimum_overall_log_effect`, `exploratory_lower_bound_minimum`, `ode_stratum_median_minimum`, `pde_stratum_median_minimum`. No threshold is a literal in the module.
+  - Strengthened two things the script left open, both in the refusing direction so no gate is weakened. An absent aggregate is now an explicit FAILED check rather than relying on `None` comparison behaviour, and the two `must_succeed` checks now require a NON-EMPTY arm, because `all()` over zero cells is vacuously true and would let an arm that produced no cells satisfy a success gate.
+  - Added `write_official_development_search_package`, the first constructor of `OfficialDevelopmentSearchPackage`. The model already validated that a receipt cannot coexist with a failed check and that a receipt requires a selected candidate, but nothing built it, so the conformant lineage had no signed package. The function writes the package, then re-reads the written bytes and compares hashes, so the persisted artifact is the thing verified rather than the in-memory object.
+  - Replaced every hard-coded count with a frozen-plan read: `initial_candidate_count`, `full_finalist_count`, `pilot_ode_system_count`, `pilot_pde_system_count`, `pilot_seed_count`, `maximum_seconds_per_cell` (the script's `timeout_seconds=300`), and `maximum_parallel_cells`.
+  - Found a second defect while doing that: the script hard-coded a pilot subset of the first 2 ODE plus the first 2 PDE systems and so executed 4 pilot systems, while `freeze_official_identity` wrote `pilot_system_count: 6` into the identity that same lineage is bound to. The executed breadth contradicted the lineage's own frozen identity. `_stage_shape` now refuses that disagreement. Recorded as `P-20260803-072`.
+  - Made adjudication read-only. `_load_frozen_read_only` loads the already-written identity instead of re-freezing, and `--package-output-dir` lets a retained lineage be adjudicated without writing into the retained directory, so equivalence can be proved without mutating retained evidence.
+  - Added the `competition mdbench lineage-stage` CLI command in the established style of the surrounding `mdbench` commands.
+  - Confirmed `_verdict.txt` carried no information the package loses before deleting it. Its frozen-gate block is now `minimum_overall_log_effect` plus `gate_checks`; its measured block is superseded by the package's own aggregates; and its prose "PDE honesty check" is now structural, carried per system by `SystemEffect.baseline_available`, which correctly marks `heat_laser` and `heat_soil_uniform_2d_p1` as unpaired.
+- Verification:
+  - Numerical equivalence against the retained conformant lineage, read-only, package written to a temp directory. Reproduced every recorded number exactly: selected `official-03-r2`; overall median log effect `-0.5240758637614126`; bootstrap CI95 `[-3.2357131306670204, +1.804017497824948]`; ODE stratum `+0.5895091246734206`; PDE stratum `-15.402305316589244`; `search_freeze_receipt False`; 78/84 succeeded cells for the selected candidate; 72/84 baseline cells succeeded; 12 paired systems with 2 coverage gaps.
+  - Stage coverage of the retired script proved by AST comparison before deleting it: the module calls the same 18 domain functions (set difference empty in both directions) and covers all 8 stage names the script accepted.
+  - `python -m pytest tests/unit/competition/test_official_lineage.py -q`: 22 passed. Covers the receipt-with-failed-check refusal, a failed baseline cell refusal, budget non-conformance blocking a receipt, empty-arm and absent-aggregate refusals, threshold-at-boundary behaviour, package hash tamper detection, pilot breadth read from the plan, the identity-contradiction refusal, finalist ranking with deterministic tie-breaking, and the retained-lineage equivalence assertion.
+  - `python -m pytest tests/unit/competition/test_official_development_search.py tests/unit/competition/test_official_spend_ledger.py tests/unit/competition/test_competition_cli.py tests/unit/competition/test_official_plan_gate_enforced.py -q`: 43 passed, no regressions.
+  - Live CLI on the retained lineage read-only: `competition mdbench lineage-stage --lineage-id task2663-conformant-v1 --stage adjudicate --package-output-dir <temp>` printed `search_freeze_receipt: false` and produced package hash `70324502f75a61bee811d71576c41a00e6ae9ddf2f5170da4de4361abca7f640`, identical to the direct module call.
+  - Confirmed the retained lineage was not mutated: no `official-development-search-package.json` exists under `runs/manual-live/task2663-conformant-v1/`, and `git status --short` shows no change there. A test asserts this too.
+  - Focused `python -m ruff check src/autoresearch/competition/official_lineage.py src/autoresearch/competition/cli.py tests/unit/competition/test_official_lineage.py`: passed.
+  - Focused `python -m mypy src/autoresearch/competition/official_lineage.py src/autoresearch/competition/cli.py`: no issues in either file.
+- Problems:
+  - Added `P-20260803-072` (a formal lineage was driven by an untracked, unreviewed scratch script), resolved by this task.
+  - Added `P-20260803-073` (pilot finalist ranking silently discards an exact-zero validation loss), left open deliberately.
+  - Added `P-20260803-074` (`_budget_audit.txt` remains tracked scratch at the repository root), left open deliberately.
+- Problems NOT caused by this task, confirmed pre-existing:
+  - mypy `Unused "type: ignore"` at `official_development_search.py:732`, plus missing `requests` stubs and other `competition`/`research` module errors reported when mypy follows imports. None are in the two files this task touched.
+  - `tests/unit/campaign/test_sprint_migration.py` fails collection because `tests/__init__.py` does not exist.
+  - Three `tests/unit/runtime/test_loop_langgraph.py` failures and 4 NumPy-dependent failures in `tests/unit/competition/test_scientific_contract_harness.py`; scientific dependencies live only in `autoresearch-mdbench:task260`.
+- Deviations:
+  - Did NOT execute a lineage. This task is machinery only, so no pilot, baseline, or full stage was run against the official panel, no candidate budget was spent, and no model call was made. Equivalence was proved by re-adjudicating retained cells read-only.
+  - Did NOT stage the uncommitted `non_empty_support_requirement` addition in `official_development_search.py::_generation_brief`. It belongs to Task `269.3` and testing it properly would mean asserting on the generation brief's content, which is that task's subject. Left unstaged and untouched.
+  - Did NOT change the truthiness filter in finalist ranking, and did NOT change any threshold, gate, bootstrap, or the numeric configuration grid. Fixing the truthiness filter would change which candidates a replay of the retained lineage selects, which would defeat the equivalence proof this task requires.
+  - Did NOT touch `autonomous_engine.py`, `llm/client.py`, or the `268.2`/`268.3`/`268.4` task entries, which another agent is modifying concurrently.
+  - Did NOT tick the `269.1` checkbox in `tasks.md`. That file carries uncommitted foreign edits from the concurrent agent, so staging it would mix their work into this commit.
+- Follow-up:
+  - Tick `269.1` in `tasks.md` once the concurrent agent's edits to that file are committed.
+  - Fix `P-20260803-073` in a later task that is not bound to reproducing the retired driver's arithmetic.
+  - The retained conformant lineage's pilot breadth contradiction is historical and stays as recorded; only future lineages are protected by the new refusal.
+  - The signed package for the retained lineage was written only to a temp directory during verification, deliberately, to avoid mutating retained evidence. If a permanent signed record of that lineage's adjudication is wanted, decide where it should live before writing it, since adding a file to a retained lineage directory changes that lineage's artifact set.

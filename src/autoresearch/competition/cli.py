@@ -47,6 +47,12 @@ from autoresearch.competition.official_execution import (
     MDBenchExecutionError,
     execute_mdbench_matrix,
 )
+from autoresearch.competition.official_lineage import (
+    LINEAGE_STAGES,
+    OfficialLineageConfig,
+    OfficialLineageError,
+    run_lineage_stage,
+)
 from autoresearch.competition.preregistration import (
     MDBenchPreregistrationError,
     preregister_mdbench_gate_a,
@@ -636,6 +642,92 @@ def competition_mdbench_scientific_contract_harness(
         typer.echo("[BLOCKED] next_task: 266.2_model_only_repair_budget_exhausted")
     typer.echo("[BLOCKED] significance_claim: synthetic_only")
     typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("lineage-stage")
+def competition_mdbench_lineage_stage(
+    lineage_id: Annotated[
+        str,
+        typer.Option("--lineage-id", help="Preregistered lineage identifier."),
+    ],
+    stage: Annotated[
+        str,
+        typer.Option("--stage", help=f"One of: {', '.join(LINEAGE_STAGES)}."),
+    ],
+    work_dir: Annotated[
+        Path | None,
+        typer.Option("--work-dir", help="Lineage directory; defaults to runs/manual-live/<id>."),
+    ] = None,
+    plan: Annotated[
+        Path,
+        typer.Option("--plan", help="Hash-valid result-blind Task 266.1 frozen plan."),
+    ] = Path(
+        "runs/manual-live/task2661-scientific-contract-recovery-plan-v1/"
+        "scientific-contract-recovery-plan.json"
+    ),
+    autonomous_plan: Annotated[
+        Path,
+        typer.Option("--autonomous-plan", help="Hash-valid Task 265.1 autonomous plan."),
+    ] = Path(
+        "runs/manual-live/task2651-autonomous-recovery-plan-v1/autonomous-research-plan.json"
+    ),
+    data_root: Annotated[
+        Path,
+        typer.Option("--data-root", help="Prepared official MDBench data root."),
+    ] = Path("runs/manual-live/task259-mdbench-official-v1/data/prepared/processed-9fe483c64ad6"),
+    prior_run_dir: Annotated[
+        list[Path] | None,
+        typer.Option("--prior-run-dir", help="Prior lineage for plan evidence; repeatable."),
+    ] = None,
+    decided_by: Annotated[
+        str,
+        typer.Option("--decided-by", help="Who recorded the approval, for the approve stage."),
+    ] = "operator",
+    notes: Annotated[
+        str,
+        typer.Option("--notes", help="Reviewer's own approval reasoning, for approve."),
+    ] = "",
+    package_output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--package-output-dir",
+            help="Write the adjudication package here instead of into the lineage.",
+        ),
+    ] = None,
+) -> None:
+    """Drive one stage of a preregistered official lineage under its frozen budget."""
+
+    if stage not in LINEAGE_STAGES:
+        typer.echo(f"[BLOCKED] unknown_stage: {stage}")
+        raise typer.Exit(code=2)
+    config = OfficialLineageConfig(
+        lineage_id=lineage_id,
+        work_dir=work_dir or Path("runs/manual-live") / lineage_id,
+        frozen_plan_path=plan,
+        autonomous_plan_path=autonomous_plan,
+        data_root=data_root,
+        prior_run_dirs=tuple(prior_run_dir or ()),
+    )
+    try:
+        report = run_lineage_stage(
+            config,
+            stage=stage,
+            decided_by=decided_by,
+            notes=notes,
+            package_output_dir=package_output_dir,
+        )
+    except (OfficialLineageError, RuntimeError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] lineage_stage_{stage}: {exc}")
+        raise typer.Exit(code=2) from exc
+    for line in report.lines:
+        typer.echo(line)
+    typer.echo(f"[OK] lineage_stage: {report.stage}")
+    if report.package_path is not None:
+        typer.echo(f"[OK] package: {report.package_path}")
+        typer.echo(
+            "[OK] search_freeze_receipt: "
+            f"{str(bool(report.search_freeze_receipt_issued)).lower()}"
+        )
 
 
 @competition_mdbench_app.command("route-p2-paradigm-audit")
