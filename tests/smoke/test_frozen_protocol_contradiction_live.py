@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pytest
 
+from autoresearch.competition.autonomous_engine import AutonomousModelInteraction
 from autoresearch.competition.frozen_protocol_contradiction import (
     ALL_ZERO_MODEL,
     FROZEN_PROTOCOL_CONTRADICTION,
@@ -82,3 +83,30 @@ def test_frozen_protocol_self_correction_live(tmp_path: Path) -> None:
     # The guard verdict is recorded either way; a rejection is a real finding.
     assert package.guard_audit.parent_proposal_hash == package.proposal.proposal_hash
     assert any("guard_verdict" in finding for finding in package.guard_audit.findings)
+
+    # Task 268.5 / P-20260803-071: bounded reasoning must be provably SENT, not just
+    # requested. The retained interaction is the evidence, and its reasoning text is
+    # process provenance that is explicitly never scientific evidence.
+    interaction_paths = sorted(
+        (tmp_path / "frozen-protocol-self-correction-live" / "interactions").glob(
+            "*.json"
+        )
+    )
+    assert len(interaction_paths) == 1
+    interaction = AutonomousModelInteraction.model_validate_json(
+        interaction_paths[0].read_text(encoding="utf-8")
+    )
+    assert interaction.thinking_mode == "enabled"
+    assert interaction.thinking_budget is not None
+    assert 0 < interaction.thinking_budget <= 32_000
+    assert interaction.reasoning_is_evidence is False
+    assert (
+        interaction.structured_transport_mode
+        == "json_object_reasoning_local_validation"
+    )
+    # A bounded budget must still return usable content (P-20260802-051).
+    assert interaction.response_text.strip() != ""
+    reasoning_tokens = interaction.usage.get("completion_tokens_details", {}).get(
+        "reasoning_tokens"
+    )
+    assert isinstance(reasoning_tokens, int) and reasoning_tokens > 0

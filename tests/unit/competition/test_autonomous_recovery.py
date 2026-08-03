@@ -247,7 +247,13 @@ def test_branch_engine_generates_exact_code_and_passes_all_capabilities(
 
     assert package.generated_candidate_count == 8
     assert package.model_interaction_count == 19
-    assert package.provider_request_attempt_count == 40
+    # Task 268.5: bounded reasoning is now sent on every authoring call, and reasoning
+    # is mutually exclusive with transport-level `json_schema` on DashScope-shaped
+    # providers. Each interaction therefore goes STRAIGHT to json-object mode with
+    # local strict validation instead of first spending a doomed json_schema request
+    # on a provider that rejects it. That removes exactly one wasted request per
+    # interaction: 19 interactions + 2 structured-output retries = 21.
+    assert package.provider_request_attempt_count == 21
     assert package.mechanism_family_count >= 3
     assert package.provenance_gate_passed is True
     assert package.capability_gate_passed is True
@@ -277,7 +283,10 @@ def test_branch_engine_generates_exact_code_and_passes_all_capabilities(
         branch.revisions[-1].source_sha256 for branch in package.branches
     }
     assert len(source_hashes) == 8
-    assert len(list((output_dir / "interactions").glob("*.json-schema-fallback.json"))) == 19
+    # A reasoning call never attempts transport-level json_schema, so it records no
+    # response_format fallback artifact: json-object mode is the deliberate request
+    # shape here rather than evidence of a provider rejection.
+    assert list((output_dir / "interactions").glob("*.json-schema-fallback.json")) == []
     retry_paths = sorted(
         (output_dir / "interactions").glob("*.structured-output-retry-*.json")
     )
@@ -286,7 +295,9 @@ def test_branch_engine_generates_exact_code_and_passes_all_capabilities(
     assert invalid_retry["error_kind"] == "invalid_json"
     assert invalid_retry["response_text_logged"] is True
     assert invalid_retry["finish_reason"] == "length"
-    assert package.model_interactions[0].provider_request_attempt_count == 4
+    # 1 json-object request + 2 scripted structured-output retries. The former
+    # fourth attempt was the doomed json_schema request that reasoning mode skips.
+    assert package.model_interactions[0].provider_request_attempt_count == 3
     normalized_interactions = [
         item
         for item in package.model_interactions

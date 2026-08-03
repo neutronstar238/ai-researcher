@@ -433,7 +433,7 @@ def test_model_origin_package_is_replayable_and_authorizes_only_task_266_3(
     assert package.confirmation_result_count == 0
     assert package.system_generated_manuscript_count == 0
     first_user_payload = json.loads(completion.requests[0]["messages"][1]["content"])
-    repair_schema = completion.requests[1]["response_schema"]
+    repair_schema = _effective_response_schema(completion.requests[1])
     assert isinstance(repair_schema, dict)
     assert "oneOf" not in repair_schema
     assert repair_schema["properties"]["response_type"]["enum"] == [
@@ -626,6 +626,35 @@ def test_model_authored_patch_rejects_entirely_unchanged_source(
             runtime_environment=runtime,
             harness_executor=_passing_executor,
         )
+
+
+def _effective_response_schema(request: dict[str, object]) -> dict[str, Any] | None:
+    """Return the schema the request actually constrained the model with.
+
+    Task 268.5 enables bounded reasoning on every autonomous authoring call, and
+    reasoning is mutually exclusive with transport-level `json_schema` on
+    DashScope-shaped providers. A reasoning call therefore sends
+    `response_schema=None` and carries the same schema in its system message, where
+    it is enforced by local strict validation instead. Either way the model is
+    constrained by exactly one schema, which is what this helper recovers.
+    """
+
+    transport_schema = request.get("response_schema")
+    if isinstance(transport_schema, dict):
+        return transport_schema
+    messages = request.get("messages")
+    assert isinstance(messages, list)
+    for message in messages:
+        content = message.get("content", "")
+        start = content.find('{"$defs"')
+        if start == -1:
+            start = content.find('{"additionalProperties"')
+        if start == -1:
+            continue
+        decoded, _ = json.JSONDecoder().raw_decode(content[start:])
+        assert isinstance(decoded, dict)
+        return decoded
+    return None
 
 
 class _FixtureCompletion:

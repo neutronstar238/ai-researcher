@@ -28,7 +28,14 @@ from pathlib import Path
 from typing import Any, Literal
 
 import certifi
-from pydantic import Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializerFunctionWrapHandler,
+    ValidationError,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from autoresearch.competition.autonomous_recovery import (
     AUTONOMOUS_RECOVERY_SOURCE_SPECS,
@@ -183,6 +190,17 @@ _MAX_TOTAL_TECHNICAL_REVISIONS = 48
 _MAX_HYPOTHESIS_ATTEMPTS_PER_CANDIDATE = 5
 _MAX_MODEL_INTERACTIONS = 90
 _MAX_PROVIDER_REQUEST_ATTEMPTS = 540
+
+# Task 268.5 / P-20260803-071: every autonomous authoring call runs with BOUNDED
+# reasoning.  This helper is shared by every authoring path, so the default is set
+# here once instead of being special-cased per module.
+#
+# The budget must stay bounded.  P-20260802-051 recorded that unbounded reasoning on
+# this provider family produced 81,920 reasoning characters and an intermittently
+# EMPTY `content`, which loses the actual answer.  A bounded budget returned content
+# reliably.
+_AUTONOMOUS_THINKING_MODE: Literal["enabled", "disabled"] = "enabled"
+_AUTONOMOUS_THINKING_BUDGET = 4_000
 _SECRET_MARKERS = (
     "authorization: bearer",
     '"api_key":',
@@ -223,9 +241,7 @@ class RuntimeLiteratureSnapshot(StrictFrozenModel):
 class RuntimeLiteratureIndex(StrictFrozenModel):
     """Content-addressed checkpoint for resumable live source retrieval."""
 
-    schema_version: Literal["runtime-literature-index-v1"] = (
-        "runtime-literature-index-v1"
-    )
+    schema_version: Literal["runtime-literature-index-v1"] = "runtime-literature-index-v1"
     snapshots: tuple[RuntimeLiteratureSnapshot, ...]
     index_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
@@ -235,9 +251,7 @@ class RuntimeLiteratureIndex(StrictFrozenModel):
             item.source_id for item in AUTONOMOUS_RECOVERY_SOURCE_SPECS
         ):
             raise ValueError("runtime literature index source order mismatch")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"index_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"index_hash"}))
         if self.index_hash != expected:
             raise ValueError("runtime literature index hash mismatch")
         return self
@@ -258,9 +272,7 @@ class AutonomousGenerationRunIdentity(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate_identity(self) -> AutonomousGenerationRunIdentity:
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"identity_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"identity_hash"}))
         if self.identity_hash != expected:
             raise ValueError("generation run identity hash mismatch")
         return self
@@ -287,9 +299,7 @@ class AutonomousMechanismSlot(StrictFrozenModel):
 class AutonomousPortfolioFrame(StrictFrozenModel):
     """Model-authored research frame and eight-slot mechanism blueprint."""
 
-    schema_version: Literal["autonomous-portfolio-frame-v1"] = (
-        "autonomous-portfolio-frame-v1"
-    )
+    schema_version: Literal["autonomous-portfolio-frame-v1"] = "autonomous-portfolio-frame-v1"
     research_gap: str = Field(min_length=40, max_length=2_000)
     architecture_source_ids: tuple[str, ...] = Field(min_length=3, max_length=12)
     mechanism_slots: tuple[AutonomousMechanismSlot, ...]
@@ -308,12 +318,8 @@ class AutonomousPortfolioFrame(StrictFrozenModel):
     def _validate_mechanism_blueprint(self) -> AutonomousPortfolioFrame:
         if tuple(item.candidate_id for item in self.mechanism_slots) != _CANDIDATE_IDS:
             raise ValueError("mechanism blueprint must contain ordered branch-01 through branch-08")
-        families = {
-            item.mechanism_family.casefold().strip() for item in self.mechanism_slots
-        }
-        operators = {
-            item.primary_operator.casefold().strip() for item in self.mechanism_slots
-        }
+        families = {item.mechanism_family.casefold().strip() for item in self.mechanism_slots}
+        operators = {item.primary_operator.casefold().strip() for item in self.mechanism_slots}
         if len(families) != len(_CANDIDATE_IDS) or len(operators) != len(_CANDIDATE_IDS):
             raise ValueError(
                 "mechanism blueprint requires eight distinct families and primary operators"
@@ -375,12 +381,10 @@ class MechanisticResearchLoopContract(StrictFrozenModel):
         "mechanistic-research-loop-contract-v1"
     )
     stages: tuple[str, ...] = _MECHANISM_STAGES
-    observation_origin: Literal["objective_experiment_telemetry"] = (
-        "objective_experiment_telemetry"
-    )
-    problem_detection_policy: Literal[
+    observation_origin: Literal["objective_experiment_telemetry"] = "objective_experiment_telemetry"
+    problem_detection_policy: Literal["deterministic_anomaly_bottleneck_and_failure_tests"] = (
         "deterministic_anomaly_bottleneck_and_failure_tests"
-    ] = "deterministic_anomaly_bottleneck_and_failure_tests"
+    )
     hypothesis_requirements: tuple[str, ...] = (
         "references immutable observation IDs",
         "states a falsifiable mechanism",
@@ -408,9 +412,7 @@ class MechanisticResearchLoopContract(StrictFrozenModel):
             raise ValueError("mechanistic research stages must preserve OPHIS order")
         if len(self.hypothesis_requirements) != len(set(self.hypothesis_requirements)):
             raise ValueError("mechanistic hypothesis requirements must be unique")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"contract_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"contract_hash"}))
         if self.contract_hash != expected:
             raise ValueError("mechanistic research contract hash mismatch")
         return self
@@ -457,9 +459,7 @@ class AutonomousMechanismCycleRecord(StrictFrozenModel):
             raise ValueError("mechanism effect estimate must lie inside its uncertainty interval")
         if not executed and any(value is not None for value in numeric):
             raise ValueError("prospective mechanism cycle cannot contain result statistics")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"record_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"record_hash"}))
         if self.record_hash != expected:
             raise ValueError("mechanism cycle record hash mismatch")
         return self
@@ -476,9 +476,7 @@ class CandidateImplementationResponse(StrictFrozenModel):
 class AutonomousModelInteraction(StrictFrozenModel):
     """Hash-bound prompt and raw response without credentials."""
 
-    schema_version: Literal["autonomous-model-interaction-v1"] = (
-        "autonomous-model-interaction-v1"
-    )
+    schema_version: Literal["autonomous-model-interaction-v1"] = "autonomous-model-interaction-v1"
     interaction_id: str
     stage: Literal[
         "portfolio",
@@ -497,7 +495,9 @@ class AutonomousModelInteraction(StrictFrozenModel):
     model_name: str
     endpoint: str
     structured_transport_mode: Literal[
-        "json_schema", "json_object_local_validation"
+        "json_schema",
+        "json_object_local_validation",
+        "json_object_reasoning_local_validation",
     ]
     provider_format_fallback_relative_path: str | None = None
     provider_format_fallback_sha256: str | None = Field(
@@ -510,9 +510,20 @@ class AutonomousModelInteraction(StrictFrozenModel):
     provider_transport_retry_sha256s: tuple[str, ...] = ()
     provider_request_attempt_count: int = Field(ge=1, le=6)
     max_tokens: int = Field(ge=1)
-    thinking_mode: Literal["provider_default", "enabled", "disabled"] = (
-        "provider_default"
-    )
+    thinking_mode: Literal["provider_default", "enabled", "disabled"] = "provider_default"
+    # Task 268.5: the bounded reasoning budget actually requested.  Present only when
+    # reasoning was enabled, so it is never an unbounded call by omission.
+    thinking_budget: int | None = Field(default=None, ge=1, le=32_000)
+    # Task 268.5: reasoning text is PROCESS evidence about how a response was
+    # authored.  It is explicitly NOT scientific evidence and must never satisfy an
+    # evidence gate, a metric claim, or a publication claim.
+    reasoning_content: str | None = Field(default=None, max_length=200_000)
+    reasoning_is_evidence: Literal[False] = False
+    reasoning_transport: Literal[
+        "absent",
+        "dashscope_enable_thinking",
+        "anthropic_thinking_block",
+    ] = "absent"
     response_text: str
     response_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     response_transport_normalization: Literal[
@@ -546,9 +557,7 @@ class AutonomousModelInteraction(StrictFrozenModel):
         normalization_present = self.response_transport_normalization != "none"
         if normalization_present != (self.response_normalization_suffix is not None):
             raise ValueError("model interaction normalization suffix presence mismatch")
-        if normalization_present != (
-            self.response_normalization_suffix_sha256 is not None
-        ):
+        if normalization_present != (self.response_normalization_suffix_sha256 is not None):
             raise ValueError("model interaction normalization suffix hash presence mismatch")
         if self.response_normalization_suffix is not None:
             if self.response_normalization_suffix_sha256 != _sha256_text(
@@ -567,15 +576,11 @@ class AutonomousModelInteraction(StrictFrozenModel):
             elif self.response_transport_normalization == "discarded_leading_self_revision":
                 if not self.response_text.startswith(self.response_normalization_suffix):
                     raise ValueError("model interaction self-revision prefix changed")
-                selected = self.response_text[
-                    len(self.response_normalization_suffix) :
-                ].strip()
+                selected = self.response_text[len(self.response_normalization_suffix) :].strip()
                 try:
                     selected_payload = json.loads(selected)
                 except json.JSONDecodeError as exc:
-                    raise ValueError(
-                        "model interaction selected self-revision is invalid"
-                    ) from exc
+                    raise ValueError("model interaction selected self-revision is invalid") from exc
                 if selected_payload != self.parsed_payload:
                     raise ValueError("model interaction selected self-revision changed")
         if self.parsed_payload_sha256 != canonical_model_hash(self.parsed_payload):
@@ -585,6 +590,24 @@ class AutonomousModelInteraction(StrictFrozenModel):
             raise ValueError("provider format fallback path/hash presence mismatch")
         if (self.structured_transport_mode == "json_object_local_validation") != fallback_present:
             raise ValueError("structured transport mode contradicts provider fallback evidence")
+        # Task 268.5: reasoning provenance must describe what was actually sent.
+        reasoning_enabled = self.thinking_mode == "enabled"
+        if reasoning_enabled != (self.thinking_budget is not None):
+            raise ValueError("enabled reasoning requires an explicit bounded budget")
+        # `reasoning_transport` is descriptive provenance echoed from the provider
+        # result (which dialect carried the parameter), so it is deliberately NOT
+        # required here: a provider that reports no dialect must still be recordable.
+        if not reasoning_enabled and self.reasoning_content is not None:
+            raise ValueError("reasoning content recorded without enabled reasoning")
+        # Enabling reasoning downgrades transport-level `json_schema` to `json_object`
+        # on DashScope-shaped providers, so strict validation moves into this process.
+        if reasoning_enabled and self.structured_transport_mode == "json_schema":
+            raise ValueError("enabled reasoning cannot claim transport-level json_schema")
+        if (
+            self.structured_transport_mode == "json_object_reasoning_local_validation"
+            and not reasoning_enabled
+        ):
+            raise ValueError("reasoning transport mode requires enabled reasoning")
         if len(self.provider_retry_relative_paths) != len(self.provider_retry_sha256s):
             raise ValueError("provider retry paths and hashes differ in length")
         if len(self.provider_retry_relative_paths) > _MAX_STRUCTURED_OUTPUT_RETRIES:
@@ -593,10 +616,7 @@ class AutonomousModelInteraction(StrictFrozenModel):
             self.provider_transport_retry_sha256s
         ):
             raise ValueError("provider transport retry paths and hashes differ in length")
-        if (
-            len(self.provider_transport_retry_relative_paths)
-            > _MAX_TRANSIENT_PROVIDER_RETRIES
-        ):
+        if len(self.provider_transport_retry_relative_paths) > _MAX_TRANSIENT_PROVIDER_RETRIES:
             raise ValueError("provider transient-transport retry budget exceeded")
         expected_attempt_count = (
             1
@@ -630,7 +650,9 @@ class AutonomousModelInteraction(StrictFrozenModel):
         messages: Sequence[Mapping[str, str]],
         completion: LLMJsonCompletionResult,
         structured_transport_mode: Literal[
-            "json_schema", "json_object_local_validation"
+            "json_schema",
+            "json_object_local_validation",
+            "json_object_reasoning_local_validation",
         ],
         provider_format_fallback_relative_path: str | None,
         provider_format_fallback_sha256: str | None,
@@ -640,6 +662,7 @@ class AutonomousModelInteraction(StrictFrozenModel):
         provider_transport_retry_sha256s: Sequence[str],
         max_tokens: int,
         thinking_mode: Literal["enabled", "disabled"],
+        thinking_budget: int | None,
         created_at: datetime,
     ) -> AutonomousModelInteraction:
         """Create a content-addressed interaction from the provider result."""
@@ -651,26 +674,20 @@ class AutonomousModelInteraction(StrictFrozenModel):
             "stage": stage,
             "candidate_id": candidate_id,
             "messages": normalized_messages,
-            "messages_sha256": canonical_model_hash(
-                {"messages": list(normalized_messages)}
-            ),
+            "messages_sha256": canonical_model_hash({"messages": list(normalized_messages)}),
             "provider": completion.provider,
             "base_url": completion.base_url,
             "model_name": completion.model_name,
             "endpoint": completion.endpoint,
             "structured_transport_mode": structured_transport_mode,
-            "provider_format_fallback_relative_path": (
-                provider_format_fallback_relative_path
-            ),
+            "provider_format_fallback_relative_path": (provider_format_fallback_relative_path),
             "provider_format_fallback_sha256": provider_format_fallback_sha256,
             "provider_retry_relative_paths": tuple(provider_retry_relative_paths),
             "provider_retry_sha256s": tuple(provider_retry_sha256s),
             "provider_transport_retry_relative_paths": tuple(
                 provider_transport_retry_relative_paths
             ),
-            "provider_transport_retry_sha256s": tuple(
-                provider_transport_retry_sha256s
-            ),
+            "provider_transport_retry_sha256s": tuple(provider_transport_retry_sha256s),
             "provider_request_attempt_count": (
                 1
                 + int(provider_format_fallback_relative_path is not None)
@@ -679,6 +696,12 @@ class AutonomousModelInteraction(StrictFrozenModel):
             ),
             "max_tokens": max_tokens,
             "thinking_mode": thinking_mode,
+            "thinking_budget": thinking_budget if thinking_mode == "enabled" else None,
+            "reasoning_content": (
+                completion.reasoning_text if thinking_mode == "enabled" else None
+            ),
+            "reasoning_is_evidence": False,
+            "reasoning_transport": completion.reasoning_transport,
             "response_text": completion.response_text,
             "response_sha256": _sha256_text(completion.response_text),
             "response_transport_normalization": completion.transport_normalization,
@@ -698,6 +721,31 @@ class AutonomousModelInteraction(StrictFrozenModel):
         draft = cls.model_construct(interaction_hash="0" * 64, **payload)
         payload["interaction_hash"] = draft.calculated_hash()
         return cls.model_validate(payload)
+
+    @model_serializer(mode="wrap")
+    def _serialize_without_unused_reasoning_fields(
+        self,
+        handler: SerializerFunctionWrapHandler,
+    ) -> dict[str, Any]:
+        """Omit the Task 268.5 reasoning fields when reasoning was not used.
+
+        These fields were added AFTER several lineages were retained, and parent
+        records such as `ScientificContractRevision.revision_hash` hash a full nested
+        dump of this model.  Emitting new keys at their defaults would therefore
+        retroactively invalidate retained evidence, which is not allowed.  A
+        reasoning-free interaction consequently serializes byte-identically to the
+        pre-268.5 shape, while a reasoning call records its provenance in full.
+        """
+
+        payload: dict[str, Any] = handler(self)
+        if self.thinking_budget is None:
+            payload.pop("thinking_budget", None)
+        if self.reasoning_content is None:
+            payload.pop("reasoning_content", None)
+        if self.reasoning_transport == "absent":
+            payload.pop("reasoning_transport", None)
+            payload.pop("reasoning_is_evidence", None)
+        return payload
 
     def calculated_hash(self) -> str:
         """Recompute the persisted interaction digest."""
@@ -825,17 +873,11 @@ class CapabilityProbeResult(StrictFrozenModel):
             raise ValueError("expected equation count must equal field count")
         if self.output_adapter_id != _CAPABILITY_OUTPUT_ADAPTER_ID:
             raise ValueError("unknown capability output adapter")
-        if self.adapter_reconstructed != (
-            self.candidate_output_layout == "row_major_flat"
-        ):
+        if self.adapter_reconstructed != (self.candidate_output_layout == "row_major_flat"):
             raise ValueError("capability adapter verdict contradicts output layout")
-        if self.output_shape_matches != (
-            self.observed_output_shape == self.expected_output_shape
-        ):
+        if self.output_shape_matches != (self.observed_output_shape == self.expected_output_shape):
             raise ValueError("capability shape verdict contradicts shape diagnostics")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"result_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"result_hash"}))
         if self.result_hash != expected:
             raise ValueError("capability result hash mismatch")
         return self
@@ -865,14 +907,12 @@ class BranchSandboxObservation(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate_observation(self) -> BranchSandboxObservation:
-        if (
-            self.output_adapter_contract_sha256
-            != _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256
-        ):
+        if self.output_adapter_contract_sha256 != _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256:
             raise ValueError("capability output adapter contract hash mismatch")
-        if self.capability_runner_sha256 != hashlib.sha256(
-            _capability_runner_source().encode("utf-8")
-        ).hexdigest():
+        if (
+            self.capability_runner_sha256
+            != hashlib.sha256(_capability_runner_source().encode("utf-8")).hexdigest()
+        ):
             raise ValueError("capability runner hash mismatch")
         expected_pass = (
             self.execution_status == ExecutionStatus.SUCCESS.value
@@ -977,9 +1017,7 @@ class AutonomousRuntimeEnvironment(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate_environment(self) -> AutonomousRuntimeEnvironment:
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"environment_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"environment_hash"}))
         if self.environment_hash != expected:
             raise ValueError("runtime environment hash mismatch")
         return self
@@ -1006,9 +1044,7 @@ class AutonomousComparativeMemoryEntry(StrictFrozenModel):
             raise ValueError("comparative memory contains an unknown capability metric")
         if any(not math.isfinite(value) for value in self.capability_derivative_nmse.values()):
             raise ValueError("comparative memory contains a non-finite metric")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"entry_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"entry_hash"}))
         if self.entry_hash != expected:
             raise ValueError("comparative memory entry hash mismatch")
         return self
@@ -1033,9 +1069,7 @@ class AutonomousStageBudgetAudit(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate_budget(self) -> AutonomousStageBudgetAudit:
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"audit_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"audit_hash"}))
         if self.audit_hash != expected:
             raise ValueError("stage budget audit hash mismatch")
         return self
@@ -1058,9 +1092,7 @@ class AutonomousContaminationAudit(StrictFrozenModel):
     def _validate_contamination(self) -> AutonomousContaminationAudit:
         if len(self.prompt_hashes) != self.interaction_count:
             raise ValueError("contamination audit does not cover every model interaction")
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"audit_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"audit_hash"}))
         if self.audit_hash != expected:
             raise ValueError("contamination audit hash mismatch")
         return self
@@ -1090,9 +1122,7 @@ class AutonomousSearchFreezeReceipt(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate_receipt(self) -> AutonomousSearchFreezeReceipt:
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"receipt_hash"})
-        )
+        expected = canonical_model_hash(self.model_dump(mode="json", exclude={"receipt_hash"}))
         if self.receipt_hash != expected:
             raise ValueError("search-freeze receipt hash mismatch")
         return self
@@ -1120,9 +1150,7 @@ class AutonomousBranchEnginePackage(StrictFrozenModel):
     mechanism_family_count: int = Field(ge=3)
     runtime_environment: AutonomousRuntimeEnvironment
     capability_output_adapter_id: Literal["row-major-flat-v1"] = "row-major-flat-v1"
-    capability_output_adapter_contract_sha256: str = Field(
-        pattern=r"^[0-9a-f]{64}$"
-    )
+    capability_output_adapter_contract_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     capability_runner_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     comparative_memory: tuple[AutonomousComparativeMemoryEntry, ...]
     comparative_memory_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -1169,9 +1197,10 @@ class AutonomousBranchEnginePackage(StrictFrozenModel):
             != _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256
         ):
             raise ValueError("package capability adapter contract hash mismatch")
-        if self.capability_runner_sha256 != hashlib.sha256(
-            _capability_runner_source().encode("utf-8")
-        ).hexdigest():
+        if (
+            self.capability_runner_sha256
+            != hashlib.sha256(_capability_runner_source().encode("utf-8")).hexdigest()
+        ):
             raise ValueError("package capability runner hash mismatch")
         if tuple(item.candidate.candidate_id for item in self.branches) != _CANDIDATE_IDS:
             raise ValueError("package must retain all eight ordered branches")
@@ -1190,8 +1219,7 @@ class AutonomousBranchEnginePackage(StrictFrozenModel):
         frame_interactions = [
             item
             for item in self.model_interactions
-            if item.stage in {"portfolio", "portfolio_repair"}
-            and item.candidate_id is None
+            if item.stage in {"portfolio", "portfolio_repair"} and item.candidate_id is None
         ]
         if not frame_interactions:
             raise ValueError("model interaction ledger lacks a portfolio frame")
@@ -1235,9 +1263,7 @@ class AutonomousBranchEnginePackage(StrictFrozenModel):
             for candidate in reconstructed_portfolio.candidates
         ):
             raise ValueError("portfolio hypotheses violate the model-authored mechanism blueprint")
-        interaction_hashes = {
-            item.interaction_hash for item in self.model_interactions
-        }
+        interaction_hashes = {item.interaction_hash for item in self.model_interactions}
         if any(
             revision.interaction_hash not in interaction_hashes
             for branch in self.branches
@@ -1249,23 +1275,23 @@ class AutonomousBranchEnginePackage(StrictFrozenModel):
         )
         if self.mechanism_family_count != expected_families:
             raise ValueError("mechanism family count mismatch")
-        expected_provenance = all(
-            revision.source_origin == "model_exact_response"
-            and not revision.code_side_repair
-            and not revision.fixed_catalogue_origin
-            for branch in self.branches
-            for revision in branch.revisions
-        ) and self.stage_budget_audit.passed and self.contamination_audit.passed
+        expected_provenance = (
+            all(
+                revision.source_origin == "model_exact_response"
+                and not revision.code_side_repair
+                and not revision.fixed_catalogue_origin
+                for branch in self.branches
+                for revision in branch.revisions
+            )
+            and self.stage_budget_audit.passed
+            and self.contamination_audit.passed
+        )
         expected_capability = all(branch.passed for branch in self.branches)
         revision_ids = {
-            revision.revision_id
-            for branch in self.branches
-            for revision in branch.revisions
+            revision.revision_id for branch in self.branches for revision in branch.revisions
         }
         memory_revision_ids = {item.revision_id for item in self.comparative_memory}
-        if revision_ids != memory_revision_ids or len(self.comparative_memory) != len(
-            revision_ids
-        ):
+        if revision_ids != memory_revision_ids or len(self.comparative_memory) != len(revision_ids):
             raise ValueError("comparative memory must cover every retained revision exactly once")
         expected_memory_hash = canonical_model_hash(
             {"entries": [item.model_dump(mode="json") for item in self.comparative_memory]}
@@ -1436,9 +1462,7 @@ def build_autonomous_branch_engine_package(
     timeout_seconds: int = 120,
     source_timeout_seconds: int = 20,
     completion: JsonCompletion = run_llm_json_completion,
-    source_fetcher: Callable[
-        [AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]
-    ]
+    source_fetcher: Callable[[AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]]
     | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> AutonomousBranchEnginePackage:
@@ -1515,11 +1539,7 @@ def build_autonomous_branch_engine_package(
         plan=plan,
         interactions=interactions,
     )
-    provenance_gate = (
-        provenance_gate
-        and stage_budget_audit.passed
-        and contamination_audit.passed
-    )
+    provenance_gate = provenance_gate and stage_budget_audit.passed and contamination_audit.passed
     created_at = now()
     payload: dict[str, Any] = {
         "schema_version": "autonomous-branch-engine-package-v1",
@@ -1543,19 +1563,13 @@ def build_autonomous_branch_engine_package(
         ),
         "runtime_environment": environment,
         "capability_output_adapter_id": _CAPABILITY_OUTPUT_ADAPTER_ID,
-        "capability_output_adapter_contract_sha256": (
-            _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256
-        ),
+        "capability_output_adapter_contract_sha256": (_CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256),
         "capability_runner_sha256": hashlib.sha256(
             _capability_runner_source().encode("utf-8")
         ).hexdigest(),
         "comparative_memory": comparative_memory,
         "comparative_memory_hash": canonical_model_hash(
-            {
-                "entries": [
-                    item.model_dump(mode="json") for item in comparative_memory
-                ]
-            }
+            {"entries": [item.model_dump(mode="json") for item in comparative_memory]}
         ),
         "mechanistic_research_loop": _build_mechanistic_research_loop_contract(),
         "mechanism_cycle_record_count": 0,
@@ -1671,9 +1685,10 @@ def load_autonomous_branch_engine_package(
     portfolio_path = _inside(root, package.portfolio_relative_path)
     if file_hash(portfolio_path) != package.portfolio_sha256:
         raise AutonomousBranchEngineError("candidate portfolio artifact hash mismatch")
-    if AutonomousCandidatePortfolio.model_validate_json(
-        portfolio_path.read_text(encoding="utf-8")
-    ) != package.portfolio:
+    if (
+        AutonomousCandidatePortfolio.model_validate_json(portfolio_path.read_text(encoding="utf-8"))
+        != package.portfolio
+    ):
         raise AutonomousBranchEngineError("embedded and persisted candidate portfolios differ")
     for snapshot in package.literature_snapshots:
         body_path = _inside(root, snapshot.body_relative_path)
@@ -1694,9 +1709,7 @@ def load_autonomous_branch_engine_package(
         raise AutonomousBranchEngineError(
             "embedded literature differs from the retrieval checkpoint"
         )
-    embedded_interactions = {
-        item.interaction_id: item for item in package.model_interactions
-    }
+    embedded_interactions = {item.interaction_id: item for item in package.model_interactions}
     for interaction_id, embedded in embedded_interactions.items():
         if (
             not interaction_id
@@ -1725,8 +1738,7 @@ def load_autonomous_branch_engine_package(
             )
             if (
                 not fallback_path.is_file()
-                or file_hash(fallback_path)
-                != embedded.provider_format_fallback_sha256
+                or file_hash(fallback_path) != embedded.provider_format_fallback_sha256
             ):
                 raise AutonomousBranchEngineError(
                     f"provider fallback artifact hash mismatch: {interaction_id}"
@@ -1736,10 +1748,7 @@ def load_autonomous_branch_engine_package(
                 embedded.provider_retry_relative_paths
                 + embedded.provider_transport_retry_relative_paths
             ),
-            (
-                embedded.provider_retry_sha256s
-                + embedded.provider_transport_retry_sha256s
-            ),
+            (embedded.provider_retry_sha256s + embedded.provider_transport_retry_sha256s),
             strict=True,
         ):
             retry_path = _inside(root, retry_relative_path)
@@ -1768,9 +1777,7 @@ def load_autonomous_branch_engine_package(
                 raise AutonomousBranchEngineError(
                     f"candidate interaction hash mismatch: {revision.revision_id}"
                 )
-            parsed = CandidateImplementationResponse.model_validate(
-                interaction.parsed_payload
-            )
+            parsed = CandidateImplementationResponse.model_validate(interaction.parsed_payload)
             if parsed.source_text.encode("utf-8") != source_path.read_bytes():
                 raise AutonomousBranchEngineError(
                     f"candidate source is not exact model response: {revision.revision_id}"
@@ -1805,9 +1812,7 @@ def load_autonomous_branch_engine_package(
                         f"sandbox source hash mismatch: {revision.revision_id}"
                     )
                 try:
-                    process_input = json.loads(
-                        process_input_path.read_text(encoding="utf-8")
-                    )
+                    process_input = json.loads(process_input_path.read_text(encoding="utf-8"))
                     persisted_observation = BranchSandboxObservation.model_validate_json(
                         observation_path.read_text(encoding="utf-8")
                     )
@@ -1873,21 +1878,13 @@ def review_autonomous_candidate_source(
             findings=findings,
         )
     nodes = list(ast.walk(tree))
-    parents = {
-        child: parent
-        for parent in nodes
-        for child in ast.iter_child_nodes(parent)
-    }
+    parents = {child: parent for parent in nodes for child in ast.iter_child_nodes(parent)}
     if len(nodes) > _MAX_AST_NODES:
         findings.append(_finding("ast_size", f"source exceeds {_MAX_AST_NODES} AST nodes"))
-    function_by_name = {
-        item.name: item for item in tree.body if isinstance(item, ast.FunctionDef)
-    }
+    function_by_name = {item.name: item for item in tree.body if isinstance(item, ast.FunctionDef)}
     discover = function_by_name.get("discover_equations")
     if discover is None:
-        findings.append(
-            _finding("missing_interface", "source must define discover_equations")
-        )
+        findings.append(_finding("missing_interface", "source must define discover_equations"))
     elif (
         len(discover.args.args) != 1
         or discover.args.posonlyargs
@@ -1926,9 +1923,8 @@ def review_autonomous_candidate_source(
             )
         if isinstance(node, ast.Call):
             call_name = _ast_call_name(node.func)
-            safe_locals_membership = (
-                call_name == "locals"
-                and _is_safe_locals_membership(node, parents)
+            safe_locals_membership = call_name == "locals" and _is_safe_locals_membership(
+                node, parents
             )
             if call_name in _BLOCKED_CALL_NAMES and not safe_locals_membership:
                 findings.append(
@@ -1938,8 +1934,10 @@ def review_autonomous_candidate_source(
                         line=node.lineno,
                     )
                 )
-            if call_name == "discover_equations" and discover is not None and any(
-                node is nested for nested in ast.walk(discover)
+            if (
+                call_name == "discover_equations"
+                and discover is not None
+                and any(node is nested for nested in ast.walk(discover))
             ):
                 findings.append(
                     _finding(
@@ -2128,10 +2126,7 @@ def _load_or_refresh_primary_literature(
     output_root: Path,
     *,
     timeout_seconds: int,
-    source_fetcher: Callable[
-        [AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]
-    ]
-    | None,
+    source_fetcher: Callable[[AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]] | None,
     now: Callable[[], datetime],
 ) -> tuple[RuntimeLiteratureSnapshot, ...]:
     index_path = output_root / _LITERATURE_INDEX_NAME
@@ -2179,10 +2174,7 @@ def _refresh_primary_literature(
     output_root: Path,
     *,
     timeout_seconds: int,
-    source_fetcher: Callable[
-        [AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]
-    ]
-    | None,
+    source_fetcher: Callable[[AutonomousRecoverySourceSpec, int], tuple[bytes, str, int]] | None,
     now: Callable[[], datetime],
 ) -> tuple[RuntimeLiteratureSnapshot, ...]:
     fetcher = source_fetcher or _default_source_fetcher
@@ -2194,9 +2186,7 @@ def _refresh_primary_literature(
     literature_root.mkdir(parents=True, exist_ok=True)
     for spec in AUTONOMOUS_RECOVERY_SOURCE_SPECS:
         body_path = literature_root / f"{spec.source_id}.html"
-        checkpoint_path = literature_root / (
-            f"{spec.source_id}{_LITERATURE_SNAPSHOT_SUFFIX}"
-        )
+        checkpoint_path = literature_root / (f"{spec.source_id}{_LITERATURE_SNAPSHOT_SUFFIX}")
         if checkpoint_path.is_file():
             try:
                 checkpoint = RuntimeLiteratureSnapshot.model_validate_json(
@@ -2252,9 +2242,7 @@ def _validate_runtime_literature_snapshot(
     parent_snapshot_sha256: str,
     output_root: Path,
 ) -> None:
-    expected_body_path = (
-        Path("literature") / f"{spec.source_id}.html"
-    ).as_posix()
+    expected_body_path = (Path("literature") / f"{spec.source_id}.html").as_posix()
     exact_fields = {
         "source_id": spec.source_id,
         "domain": spec.domain,
@@ -2313,8 +2301,7 @@ def _default_source_fetcher(
             if attempt < 2:
                 time.sleep(0.5 * (2**attempt))
     raise AutonomousBranchEngineError(
-        f"runtime source retrieval failed for {spec.source_id} after 3 attempts: "
-        f"{last_error}"
+        f"runtime source retrieval failed for {spec.source_id} after 3 attempts: {last_error}"
     ) from last_error
 
 
@@ -2409,8 +2396,7 @@ def _generate_portfolio(
         break
     if frame is None:
         raise AutonomousBranchEngineError(
-            "model could not produce a valid autonomous portfolio frame: "
-            + "; ".join(frame_errors)
+            "model could not produce a valid autonomous portfolio frame: " + "; ".join(frame_errors)
         )
 
     candidates: list[AutonomousCandidateHypothesis] = []
@@ -2431,11 +2417,7 @@ def _generate_portfolio(
             stage = "portfolio" if attempt == 1 else "portfolio_repair"
             active_messages = messages
             if candidate_errors:
-                repair_errors = (
-                    candidate_errors
-                    if attempt == 2
-                    else candidate_error_history
-                )
+                repair_errors = candidate_errors if attempt == 2 else candidate_error_history
                 repair_content = (
                     "The prior hypothesis failed only the machine contract. Return a "
                     "complete replacement for the same candidate slot; do not ask a human "
@@ -2494,14 +2476,10 @@ def _generate_portfolio(
             )
             interactions.append(interaction)
             candidate_previous_payload = (
-                dict(result.parsed_json)
-                if isinstance(result.parsed_json, dict)
-                else None
+                dict(result.parsed_json) if isinstance(result.parsed_json, dict) else None
             )
             try:
-                candidate = AutonomousCandidateHypothesis.model_validate(
-                    result.parsed_json
-                )
+                candidate = AutonomousCandidateHypothesis.model_validate(result.parsed_json)
                 if candidate.candidate_id != candidate_id:
                     raise AutonomousBranchEngineError(
                         f"candidate slot mismatch: expected {candidate_id}"
@@ -2511,9 +2489,7 @@ def _generate_portfolio(
                 _validate_candidate_mechanism_slot(candidate, frame=frame)
             except ValidationError as exc:
                 candidate_errors = [item["msg"] for item in exc.errors()]
-                candidate_error_details = [
-                    _format_validation_error(item) for item in exc.errors()
-                ]
+                candidate_error_details = [_format_validation_error(item) for item in exc.errors()]
                 candidate_error_history.extend(candidate_error_details)
                 candidate = None
                 continue
@@ -2556,9 +2532,7 @@ def _format_validation_error(error: Mapping[str, Any]) -> str:
     message = str(error.get("msg", "validation failed"))
     input_value = error.get("input")
     observed = (
-        f"; observed_string_length={len(input_value)}"
-        if isinstance(input_value, str)
-        else ""
+        f"; observed_string_length={len(input_value)}" if isinstance(input_value, str) else ""
     )
     return f"{location}: {message}{observed}"
 
@@ -2636,9 +2610,7 @@ def _validate_candidate_mechanism_slot(
     slot = next(
         item for item in frame.mechanism_slots if item.candidate_id == candidate.candidate_id
     )
-    if candidate.mechanism_family.casefold().strip() != (
-        slot.mechanism_family.casefold().strip()
-    ):
+    if candidate.mechanism_family.casefold().strip() != (slot.mechanism_family.casefold().strip()):
         raise AutonomousBranchEngineError(
             f"{candidate.candidate_id} changed its model-authored mechanism blueprint family; "
             f"use exactly {slot.mechanism_family!r} and expand its assigned primary operator"
@@ -2677,9 +2649,7 @@ def _portfolio_frame_messages(
 ) -> list[dict[str, str]]:
     context = {
         "research_brief": plan.research_brief,
-        "closed_negative_cycles": [
-            item.model_dump(mode="json") for item in plan.failure_summaries
-        ],
+        "closed_negative_cycles": [item.model_dump(mode="json") for item in plan.failure_summaries],
         "development_panel_metadata_only": [
             {
                 "data_type": item.data_type,
@@ -2874,9 +2844,7 @@ def _generate_candidate_branch(
                         "expected_equation_count": item.expected_equation_count,
                         "observed_equation_count": item.observed_equation_count,
                         "prediction_value_count": item.prediction_value_count,
-                        "finite_prediction_value_count": (
-                            item.finite_prediction_value_count
-                        ),
+                        "finite_prediction_value_count": (item.finite_prediction_value_count),
                         "input_sensitivity_max_abs_difference": (
                             item.input_sensitivity_max_abs_difference
                         ),
@@ -2905,11 +2873,14 @@ def _generate_candidate_branch(
                 generic_repair_hints.append(
                     "Reduce AST size by deleting optional solver branches, duplicated helpers, and verbose literals."
                 )
-            if any(item.error_type is not None for item in (
-                previous.sandbox_observation.capability_results
-                if previous.sandbox_observation is not None
-                else ()
-            )):
+            if any(
+                item.error_type is not None
+                for item in (
+                    previous.sandbox_observation.capability_results
+                    if previous.sandbox_observation is not None
+                    else ()
+                )
+            ):
                 generic_repair_hints.append(
                     "Use each traceback candidate.py line as the first repair target before changing unrelated code."
                 )
@@ -2921,9 +2892,7 @@ def _generate_candidate_branch(
                 ),
                 "candidate": candidate.model_dump(mode="json"),
                 "target_revision_number": revision_number,
-                "maximum_revision_number": (
-                    _MAX_TECHNICAL_REVISIONS_PER_CANDIDATE
-                ),
+                "maximum_revision_number": (_MAX_TECHNICAL_REVISIONS_PER_CANDIDATE),
                 "remaining_revisions_after_this": (
                     _MAX_TECHNICAL_REVISIONS_PER_CANDIDATE - revision_number
                 ),
@@ -2939,8 +2908,7 @@ def _generate_candidate_branch(
                 "mandatory_technical_repair_checklist": {
                     "remove_every_reported_static_finding": True,
                     "zero_ast_while_nodes_required": any(
-                        item.code == "unbounded_loop"
-                        for item in previous.static_review.findings
+                        item.code == "unbounded_loop" for item in previous.static_review.findings
                     ),
                     "failed_capability_diagnostics": failed_capability_diagnostics,
                     "eliminate_every_previous_failure_code": True,
@@ -2958,14 +2926,10 @@ def _generate_candidate_branch(
                         "complexity",
                         "diagnostics",
                     ],
-                    "derivative_prediction_flat_length": (
-                        "exactly len(payload['flat_values'])"
-                    ),
+                    "derivative_prediction_flat_length": ("exactly len(payload['flat_values'])"),
                     "fixed_non_scientific_output_adapter": {
                         **_CAPABILITY_OUTPUT_ADAPTER_CONTRACT,
-                        "contract_sha256": (
-                            _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256
-                        ),
+                        "contract_sha256": (_CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256),
                     },
                     "equation_count": "exactly payload field_count",
                     "required_behavior": [
@@ -3048,9 +3012,7 @@ def _generate_candidate_branch(
         )
         interactions.append(interaction)
         try:
-            implementation = CandidateImplementationResponse.model_validate(
-                result.parsed_json
-            )
+            implementation = CandidateImplementationResponse.model_validate(result.parsed_json)
         except ValidationError as exc:
             raise AutonomousBranchEngineError(
                 f"{candidate.candidate_id} implementation response violates schema: {exc}"
@@ -3076,9 +3038,7 @@ def _generate_candidate_branch(
                 fixtures=fixtures,
                 environment=environment,
                 revision_number=revision_number,
-                prior_source_sha256=(
-                    revisions[-1].source_sha256 if revisions else None
-                ),
+                prior_source_sha256=(revisions[-1].source_sha256 if revisions else None),
                 now=now,
             )
         revisions.append(revision)
@@ -3150,9 +3110,7 @@ def _load_checkpointed_candidate_revision(
         f"branches/{candidate.candidate_id}/revision-{revision_number:02d}/revision.json",
     )
     if revision_path.resolve() != expected_revision_path.resolve():
-        raise AutonomousBranchEngineError(
-            f"checkpoint revision path mismatch: {revision_id}"
-        )
+        raise AutonomousBranchEngineError(f"checkpoint revision path mismatch: {revision_id}")
     try:
         revision = AutonomousCandidateRevision.model_validate_json(
             revision_path.read_text(encoding="utf-8")
@@ -3167,9 +3125,7 @@ def _load_checkpointed_candidate_revision(
         or revision.revision_number != revision_number
         or revision.repair_kind != expected_repair_kind
     ):
-        raise AutonomousBranchEngineError(
-            f"checkpoint revision identity mismatch: {revision_id}"
-        )
+        raise AutonomousBranchEngineError(f"checkpoint revision identity mismatch: {revision_id}")
 
     expected_root = f"branches/{candidate.candidate_id}/revision-{revision_number:02d}"
     expected_paths = {
@@ -3220,9 +3176,7 @@ def _load_checkpointed_candidate_revision(
             f"checkpoint interaction identity or hash mismatch: {revision_id}"
         )
     try:
-        parsed = CandidateImplementationResponse.model_validate(
-            interaction.parsed_payload
-        )
+        parsed = CandidateImplementationResponse.model_validate(interaction.parsed_payload)
     except ValidationError as exc:
         raise AutonomousBranchEngineError(
             f"checkpoint implementation payload invalid: {revision_id}: {exc}"
@@ -3236,9 +3190,7 @@ def _load_checkpointed_candidate_revision(
             f"checkpoint source is not the exact model response: {revision_id}"
         )
     if not spec_path.is_file() or file_hash(spec_path) != revision.harness_spec_sha256:
-        raise AutonomousBranchEngineError(
-            f"checkpoint Harness spec hash mismatch: {revision_id}"
-        )
+        raise AutonomousBranchEngineError(f"checkpoint Harness spec hash mismatch: {revision_id}")
     if not episode_path.is_file() or file_hash(episode_path) != revision.harness_episode_sha256:
         raise AutonomousBranchEngineError(
             f"checkpoint Harness episode hash mismatch: {revision_id}"
@@ -3270,10 +3222,7 @@ def _validate_checkpointed_interaction_artifacts(
                 interaction.provider_retry_relative_paths
                 + interaction.provider_transport_retry_relative_paths
             ),
-            (
-                interaction.provider_retry_sha256s
-                + interaction.provider_transport_retry_sha256s
-            ),
+            (interaction.provider_retry_sha256s + interaction.provider_transport_retry_sha256s),
             strict=True,
         )
     )
@@ -3464,11 +3413,26 @@ def _call_and_record(
     candidate_id: str | None,
     output_root: Path,
     now: Callable[[], datetime],
+    thinking_mode: Literal["enabled", "disabled"] = _AUTONOMOUS_THINKING_MODE,
+    thinking_budget: int | None = _AUTONOMOUS_THINKING_BUDGET,
 ) -> tuple[LLMJsonCompletionResult, AutonomousModelInteraction]:
+    """Run one recorded authoring call for EVERY autonomous caller.
+
+    Task 268.5 / P-20260803-071: reasoning is threaded here once, so every authoring
+    path (candidate portfolios, implementations, technical repairs, Route P2
+    self-correction, frozen-protocol repair) engages the same bounded reasoning
+    chain through the same transport.  There is deliberately no second transport
+    path and no per-module special case.
+
+    `thinking_budget` is always bounded when reasoning is enabled, per
+    P-20260802-051, and the persisted record reflects what was ACTUALLY sent.
+    """
+
+    if thinking_mode == "enabled" and thinking_budget is None:
+        raise AutonomousBranchEngineError("bounded reasoning requires an explicit thinking budget")
+    reasoning_enabled = thinking_mode == "enabled"
     interaction_path = output_root / "interactions" / f"{interaction_id}.json"
-    fallback_path = (
-        output_root / "interactions" / f"{interaction_id}.json-schema-fallback.json"
-    )
+    fallback_path = output_root / "interactions" / f"{interaction_id}.json-schema-fallback.json"
     if interaction_path.is_file():
         try:
             interaction = AutonomousModelInteraction.model_validate_json(
@@ -3479,11 +3443,15 @@ def _call_and_record(
                 f"cannot resume invalid model interaction {interaction_id}: {exc}"
             ) from exc
         expected_messages = messages
-        expected_transport_label: Literal["json-schema", "json-object"] = (
-            "json-schema"
-        )
+        expected_transport_label: Literal["json-schema", "json-object"] = "json-schema"
         if interaction.structured_transport_mode == "json_object_local_validation":
             expected_messages = _json_object_fallback_messages(
+                messages,
+                response_schema=response_schema,
+            )
+            expected_transport_label = "json-object"
+        elif interaction.structured_transport_mode == "json_object_reasoning_local_validation":
+            expected_messages = _json_object_reasoning_messages(
                 messages,
                 response_schema=response_schema,
             )
@@ -3504,9 +3472,7 @@ def _call_and_record(
             max_tokens=max_tokens,
         )
         other_transport_label: Literal["json-schema", "json-object"] = (
-            "json-object"
-            if expected_transport_label == "json-schema"
-            else "json-schema"
+            "json-object" if expected_transport_label == "json-schema" else "json-schema"
         )
         other_messages = (
             _json_object_fallback_messages(messages, response_schema=response_schema)
@@ -3518,9 +3484,7 @@ def _call_and_record(
             interaction_id=interaction_id,
             transport_label=other_transport_label,
             messages=other_messages,
-            response_schema=(
-                response_schema if other_transport_label == "json-schema" else None
-            ),
+            response_schema=(response_schema if other_transport_label == "json-schema" else None),
             max_tokens=max_tokens,
         )
         if expected_transport_label == "json-schema":
@@ -3529,25 +3493,20 @@ def _call_and_record(
         else:
             all_retry_paths = other_retry_paths + retry_relative_paths
             all_retry_sha256s = other_retry_sha256s + retry_sha256s
-        transport_retry_paths, transport_retry_sha256s = (
-            _load_provider_transport_retry_chain(
-                output_root=output_root,
-                interaction_id=interaction_id,
-            )
+        transport_retry_paths, transport_retry_sha256s = _load_provider_transport_retry_chain(
+            output_root=output_root,
+            interaction_id=interaction_id,
         )
         if (
             interaction.interaction_id != interaction_id
             or interaction.stage != stage
             or interaction.candidate_id != candidate_id
-            or interaction.messages_sha256
-            != canonical_model_hash({"messages": expected_messages})
+            or interaction.messages_sha256 != canonical_model_hash({"messages": expected_messages})
             or interaction.max_tokens != expected_max_tokens
             or interaction.provider_retry_relative_paths != all_retry_paths
             or interaction.provider_retry_sha256s != all_retry_sha256s
-            or interaction.provider_transport_retry_relative_paths
-            != transport_retry_paths
-            or interaction.provider_transport_retry_sha256s
-            != transport_retry_sha256s
+            or interaction.provider_transport_retry_relative_paths != transport_retry_paths
+            or interaction.provider_transport_retry_sha256s != transport_retry_sha256s
         ):
             raise AutonomousBranchEngineError(
                 f"checkpoint interaction contract mismatch: {interaction_id}"
@@ -3559,8 +3518,7 @@ def _call_and_record(
             )
             if (
                 not recorded_fallback.is_file()
-                or file_hash(recorded_fallback)
-                != interaction.provider_format_fallback_sha256
+                or file_hash(recorded_fallback) != interaction.provider_format_fallback_sha256
             ):
                 raise AutonomousBranchEngineError(
                     f"provider fallback artifact hash mismatch: {interaction_id}"
@@ -3570,10 +3528,7 @@ def _call_and_record(
                 interaction.provider_retry_relative_paths
                 + interaction.provider_transport_retry_relative_paths
             ),
-            (
-                interaction.provider_retry_sha256s
-                + interaction.provider_transport_retry_sha256s
-            ),
+            (interaction.provider_retry_sha256s + interaction.provider_transport_retry_sha256s),
             strict=True,
         ):
             retry_path = _inside(output_root, retry_relative_path)
@@ -3590,15 +3545,64 @@ def _call_and_record(
             parsed_json=interaction.parsed_payload,
             usage=interaction.usage,
             temperature=interaction.temperature,
+            reasoning_text=interaction.reasoning_content,
+            reasoning_transport=interaction.reasoning_transport,
         )
         return result, interaction
 
     active_messages = messages
-    transport_mode: Literal["json_schema", "json_object_local_validation"] = (
-        "json_schema"
-    )
+    transport_mode: Literal[
+        "json_schema",
+        "json_object_local_validation",
+        "json_object_reasoning_local_validation",
+    ] = "json_object_reasoning_local_validation" if reasoning_enabled else "json_schema"
     fallback_relative_path: str | None = None
     fallback_sha256: str | None = None
+    # Task 267.3.1 interaction: reasoning and transport-level `json_schema` are
+    # mutually exclusive on DashScope-shaped providers, so a reasoning call goes
+    # DIRECTLY to json-object mode with local strict validation.  That is a deliberate
+    # request shape, not a provider failure, so it writes no fallback artifact.
+    if reasoning_enabled:
+        active_messages = _json_object_reasoning_messages(
+            messages,
+            response_schema=response_schema,
+        )
+        result, active_messages, active_max_tokens = _invoke_with_structured_output_retries(
+            completion=completion,
+            messages=active_messages,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=timeout_seconds,
+            max_tokens=max_tokens,
+            response_schema=None,
+            response_schema_name=response_schema_name,
+            interaction_id=interaction_id,
+            transport_label="json-object",
+            thinking_mode=thinking_mode,
+            thinking_budget=thinking_budget,
+            output_root=output_root,
+            now=now,
+        )
+        return _finalize_interaction(
+            result=result,
+            active_messages=active_messages,
+            active_max_tokens=active_max_tokens,
+            base_messages=messages,
+            response_schema=response_schema,
+            reasoning_enabled=True,
+            transport_mode=transport_mode,
+            fallback_relative_path=None,
+            fallback_sha256=None,
+            interaction_id=interaction_id,
+            interaction_path=interaction_path,
+            stage=stage,
+            candidate_id=candidate_id,
+            max_tokens=max_tokens,
+            thinking_mode=thinking_mode,
+            thinking_budget=thinking_budget,
+            output_root=output_root,
+            now=now,
+        )
     fallback_already_recorded = fallback_path.is_file()
     if fallback_already_recorded:
         _validate_provider_fallback_checkpoint(
@@ -3609,21 +3613,21 @@ def _call_and_record(
         )
     if not fallback_already_recorded:
         try:
-            result, active_messages, active_max_tokens = (
-                _invoke_with_structured_output_retries(
-                    completion=completion,
-                    messages=active_messages,
-                    config_path=config_path,
-                    env_path=env_path,
-                    timeout_seconds=timeout_seconds,
-                    max_tokens=max_tokens,
-                    response_schema=response_schema,
-                    response_schema_name=response_schema_name,
-                    interaction_id=interaction_id,
-                    transport_label="json-schema",
-                    output_root=output_root,
-                    now=now,
-                )
+            result, active_messages, active_max_tokens = _invoke_with_structured_output_retries(
+                completion=completion,
+                messages=active_messages,
+                config_path=config_path,
+                env_path=env_path,
+                timeout_seconds=timeout_seconds,
+                max_tokens=max_tokens,
+                response_schema=response_schema,
+                response_schema_name=response_schema_name,
+                interaction_id=interaction_id,
+                transport_label="json-schema",
+                thinking_mode=thinking_mode,
+                thinking_budget=thinking_budget,
+                output_root=output_root,
+                now=now,
             )
         except LLMClientError as exc:
             if "response_format" not in str(exc).casefold():
@@ -3659,34 +3663,106 @@ def _call_and_record(
             response_schema_name=response_schema_name,
             interaction_id=interaction_id,
             transport_label="json-object",
+            thinking_mode=thinking_mode,
+            thinking_budget=thinking_budget,
             output_root=output_root,
             now=now,
         )
         fallback_relative_path = fallback_path.relative_to(output_root).as_posix()
         fallback_sha256 = file_hash(fallback_path)
-    schema_base_messages = messages
-    fallback_base_messages = _json_object_fallback_messages(
-        messages,
+    return _finalize_interaction(
+        result=result,
+        active_messages=active_messages,
+        active_max_tokens=active_max_tokens,
+        base_messages=messages,
         response_schema=response_schema,
-    )
-    _, _, schema_retry_paths, schema_retry_sha256s = _load_provider_retry_chain(
-        output_root=output_root,
+        reasoning_enabled=False,
+        transport_mode=transport_mode,
+        fallback_relative_path=fallback_relative_path,
+        fallback_sha256=fallback_sha256,
         interaction_id=interaction_id,
-        transport_label="json-schema",
-        messages=schema_base_messages,
-        response_schema=response_schema,
+        interaction_path=interaction_path,
+        stage=stage,
+        candidate_id=candidate_id,
         max_tokens=max_tokens,
-    )
-    _, _, fallback_retry_paths, fallback_retry_sha256s = _load_provider_retry_chain(
+        thinking_mode=thinking_mode,
+        thinking_budget=thinking_budget,
         output_root=output_root,
-        interaction_id=interaction_id,
-        transport_label="json-object",
-        messages=fallback_base_messages,
-        response_schema=None,
-        max_tokens=max_tokens,
+        now=now,
     )
-    provider_retry_paths = schema_retry_paths + fallback_retry_paths
-    provider_retry_sha256s = schema_retry_sha256s + fallback_retry_sha256s
+
+
+def _finalize_interaction(
+    *,
+    result: LLMJsonCompletionResult,
+    active_messages: list[dict[str, str]],
+    active_max_tokens: int,
+    base_messages: list[dict[str, str]],
+    response_schema: dict[str, Any],
+    reasoning_enabled: bool,
+    transport_mode: Literal[
+        "json_schema",
+        "json_object_local_validation",
+        "json_object_reasoning_local_validation",
+    ],
+    fallback_relative_path: str | None,
+    fallback_sha256: str | None,
+    interaction_id: str,
+    interaction_path: Path,
+    stage: Literal[
+        "portfolio",
+        "portfolio_repair",
+        "implementation",
+        "technical_repair",
+        "mechanism_intervention",
+        "scientific_contract_implementation",
+        "scientific_contract_repair",
+    ],
+    candidate_id: str | None,
+    max_tokens: int,
+    thinking_mode: Literal["enabled", "disabled"],
+    thinking_budget: int | None,
+    output_root: Path,
+    now: Callable[[], datetime],
+) -> tuple[LLMJsonCompletionResult, AutonomousModelInteraction]:
+    """Reconstruct the retry provenance chain and persist one interaction record."""
+
+    if reasoning_enabled:
+        # A reasoning call never attempts transport-level json-schema, so only the
+        # json-object chain can hold retries.
+        _, _, provider_retry_paths, provider_retry_sha256s = _load_provider_retry_chain(
+            output_root=output_root,
+            interaction_id=interaction_id,
+            transport_label="json-object",
+            messages=_json_object_reasoning_messages(
+                base_messages,
+                response_schema=response_schema,
+            ),
+            response_schema=None,
+            max_tokens=max_tokens,
+        )
+    else:
+        _, _, schema_retry_paths, schema_retry_sha256s = _load_provider_retry_chain(
+            output_root=output_root,
+            interaction_id=interaction_id,
+            transport_label="json-schema",
+            messages=base_messages,
+            response_schema=response_schema,
+            max_tokens=max_tokens,
+        )
+        _, _, fallback_retry_paths, fallback_retry_sha256s = _load_provider_retry_chain(
+            output_root=output_root,
+            interaction_id=interaction_id,
+            transport_label="json-object",
+            messages=_json_object_fallback_messages(
+                base_messages,
+                response_schema=response_schema,
+            ),
+            response_schema=None,
+            max_tokens=max_tokens,
+        )
+        provider_retry_paths = schema_retry_paths + fallback_retry_paths
+        provider_retry_sha256s = schema_retry_sha256s + fallback_retry_sha256s
     provider_transport_retry_paths, provider_transport_retry_sha256s = (
         _load_provider_transport_retry_chain(
             output_root=output_root,
@@ -3707,7 +3783,8 @@ def _call_and_record(
         provider_transport_retry_relative_paths=provider_transport_retry_paths,
         provider_transport_retry_sha256s=provider_transport_retry_sha256s,
         max_tokens=active_max_tokens,
-        thinking_mode="disabled",
+        thinking_mode=thinking_mode,
+        thinking_budget=thinking_budget,
         created_at=now(),
     )
     write_json_model(interaction_path, interaction)
@@ -3726,18 +3803,18 @@ def _invoke_with_structured_output_retries(
     response_schema_name: str,
     interaction_id: str,
     transport_label: Literal["json-schema", "json-object"],
+    thinking_mode: Literal["enabled", "disabled"],
+    thinking_budget: int | None,
     output_root: Path,
     now: Callable[[], datetime],
 ) -> tuple[LLMJsonCompletionResult, list[dict[str, str]], int]:
-    active_messages, active_max_tokens, retry_paths, _ = (
-        _load_provider_retry_chain(
-            output_root=output_root,
-            interaction_id=interaction_id,
-            transport_label=transport_label,
-            messages=messages,
-            response_schema=response_schema,
-            max_tokens=max_tokens,
-        )
+    active_messages, active_max_tokens, retry_paths, _ = _load_provider_retry_chain(
+        output_root=output_root,
+        interaction_id=interaction_id,
+        transport_label=transport_label,
+        messages=messages,
+        response_schema=response_schema,
+        max_tokens=max_tokens,
     )
     terminal_failure_path = _provider_terminal_failure_path(
         output_root=output_root,
@@ -3779,7 +3856,8 @@ def _invoke_with_structured_output_retries(
                 timeout_seconds=timeout_seconds,
                 max_tokens=active_max_tokens,
                 temperature=0.2,
-                thinking_mode="disabled",
+                thinking_mode=thinking_mode,
+                thinking_budget=thinking_budget,
                 response_schema=response_schema,
                 response_schema_name=response_schema_name,
             )
@@ -3872,8 +3950,7 @@ def _invoke_with_structured_output_retries(
                     "retry_index": retry_index,
                     "error_kind": error_kind,
                     "provider_error": str(exc),
-                    "response_text_logged": _safe_provider_response_text(exc)
-                    is not None,
+                    "response_text_logged": _safe_provider_response_text(exc) is not None,
                     "response_text": _safe_provider_response_text(exc),
                     "response_sha256": (
                         _sha256_text(exc.response_text)
@@ -3882,18 +3959,14 @@ def _invoke_with_structured_output_retries(
                     ),
                     "response_usage": exc.response_usage,
                     "finish_reason": exc.finish_reason,
-                    "request_messages_sha256": canonical_model_hash(
-                        {"messages": active_messages}
-                    ),
+                    "request_messages_sha256": canonical_model_hash({"messages": active_messages}),
                     "response_schema_sha256": (
                         canonical_model_hash(response_schema)
                         if response_schema is not None
                         else None
                     ),
                     "max_tokens": active_max_tokens,
-                    "next_messages_sha256": canonical_model_hash(
-                        {"messages": next_messages}
-                    ),
+                    "next_messages_sha256": canonical_model_hash({"messages": next_messages}),
                     "next_max_tokens": next_max_tokens,
                     "retry_strategy": (
                         "explicit_valid_compact_json_instruction_and_doubled_output_budget"
@@ -3964,22 +4037,14 @@ def _load_provider_retry_chain(
             "transport_label": transport_label,
             "retry_index": retry_index,
             "error_kind": error_kind,
-            "request_messages_sha256": canonical_model_hash(
-                {"messages": active_messages}
-            ),
+            "request_messages_sha256": canonical_model_hash({"messages": active_messages}),
             "response_schema_sha256": (
-                canonical_model_hash(dict(response_schema))
-                if response_schema is not None
-                else None
+                canonical_model_hash(dict(response_schema)) if response_schema is not None else None
             ),
             "max_tokens": active_max_tokens,
-            "next_messages_sha256": canonical_model_hash(
-                {"messages": next_messages}
-            ),
+            "next_messages_sha256": canonical_model_hash({"messages": next_messages}),
             "next_max_tokens": next_max_tokens,
-            "retry_strategy": (
-                "explicit_valid_compact_json_instruction_and_doubled_output_budget"
-            ),
+            "retry_strategy": ("explicit_valid_compact_json_instruction_and_doubled_output_budget"),
             "api_key_value_logged": False,
         }
         if any(payload.get(key) != value for key, value in expected.items()):
@@ -3988,9 +4053,7 @@ def _load_provider_retry_chain(
             )
         provider_error = payload.get("provider_error")
         expected_error_fragment = (
-            "message content is empty"
-            if error_kind == "empty_content"
-            else "json completion"
+            "message content is empty" if error_kind == "empty_content" else "json completion"
         )
         if (
             not isinstance(provider_error, str)
@@ -4023,8 +4086,10 @@ def _provider_retry_path(
     transport_label: Literal["json-schema", "json-object"],
     retry_index: int,
 ) -> Path:
-    return output_root / "interactions" / (
-        f"{interaction_id}.{transport_label}.structured-output-retry-{retry_index:02d}.json"
+    return (
+        output_root
+        / "interactions"
+        / (f"{interaction_id}.{transport_label}.structured-output-retry-{retry_index:02d}.json")
     )
 
 
@@ -4034,8 +4099,10 @@ def _provider_transport_retry_path(
     interaction_id: str,
     retry_index: int,
 ) -> Path:
-    return output_root / "interactions" / (
-        f"{interaction_id}.provider-transport-retry-{retry_index:02d}.json"
+    return (
+        output_root
+        / "interactions"
+        / (f"{interaction_id}.provider-transport-retry-{retry_index:02d}.json")
     )
 
 
@@ -4044,8 +4111,10 @@ def _provider_transport_terminal_failure_path(
     output_root: Path,
     interaction_id: str,
 ) -> Path:
-    return output_root / "interactions" / (
-        f"{interaction_id}.provider-transport-terminal-failure.json"
+    return (
+        output_root
+        / "interactions"
+        / (f"{interaction_id}.provider-transport-terminal-failure.json")
     )
 
 
@@ -4082,9 +4151,7 @@ def _provider_transport_failure_payload(
             {"messages": [dict(item) for item in messages]}
         ),
         "response_schema_sha256": (
-            canonical_model_hash(dict(response_schema))
-            if response_schema is not None
-            else None
+            canonical_model_hash(dict(response_schema)) if response_schema is not None else None
         ),
         "max_tokens": max_tokens,
         "thinking_mode": "disabled",
@@ -4185,9 +4252,7 @@ def _load_provider_transport_failure_payload(
             f"provider transport evidence is not an object: {interaction_id}"
         )
     if payload.get("transport_label") not in {"json-schema", "json-object"}:
-        raise AutonomousBranchEngineError(
-            f"provider transport label is invalid: {interaction_id}"
-        )
+        raise AutonomousBranchEngineError(f"provider transport label is invalid: {interaction_id}")
     if payload.get("error_kind") not in {
         "timeout",
         "connection",
@@ -4214,15 +4279,12 @@ def _load_provider_transport_failure_payload(
             f"provider transport request hash is invalid: {interaction_id}"
         )
     if schema_hash is not None and (
-        not isinstance(schema_hash, str)
-        or re.fullmatch(r"[0-9a-f]{64}", schema_hash) is None
+        not isinstance(schema_hash, str) or re.fullmatch(r"[0-9a-f]{64}", schema_hash) is None
     ):
         raise AutonomousBranchEngineError(
             f"provider transport schema hash is invalid: {interaction_id}"
         )
-    if payload.get("thinking_mode") != "disabled" or not isinstance(
-        payload.get("max_tokens"), int
-    ):
+    if payload.get("thinking_mode") != "disabled" or not isinstance(payload.get("max_tokens"), int):
         raise AutonomousBranchEngineError(
             f"provider transport execution contract is invalid: {interaction_id}"
         )
@@ -4235,8 +4297,10 @@ def _provider_terminal_failure_path(
     interaction_id: str,
     transport_label: Literal["json-schema", "json-object"],
 ) -> Path:
-    return output_root / "interactions" / (
-        f"{interaction_id}.{transport_label}.structured-output-terminal-failure.json"
+    return (
+        output_root
+        / "interactions"
+        / (f"{interaction_id}.{transport_label}.structured-output-terminal-failure.json")
     )
 
 
@@ -4265,9 +4329,7 @@ def _provider_failure_payload(
         "response_text_logged": response_text is not None,
         "response_text": response_text,
         "response_sha256": (
-            _sha256_text(exc.response_text)
-            if isinstance(exc.response_text, str)
-            else None
+            _sha256_text(exc.response_text) if isinstance(exc.response_text, str) else None
         ),
         "response_usage": exc.response_usage,
         "finish_reason": exc.finish_reason,
@@ -4275,9 +4337,7 @@ def _provider_failure_payload(
             {"messages": [dict(item) for item in messages]}
         ),
         "response_schema_sha256": (
-            canonical_model_hash(dict(response_schema))
-            if response_schema is not None
-            else None
+            canonical_model_hash(dict(response_schema)) if response_schema is not None else None
         ),
         "max_tokens": max_tokens,
         "thinking_mode": "disabled",
@@ -4318,9 +4378,7 @@ def _validate_provider_terminal_failure(
             {"messages": [dict(item) for item in messages]}
         ),
         "response_schema_sha256": (
-            canonical_model_hash(dict(response_schema))
-            if response_schema is not None
-            else None
+            canonical_model_hash(dict(response_schema)) if response_schema is not None else None
         ),
         "max_tokens": max_tokens,
         "thinking_mode": "disabled",
@@ -4333,9 +4391,7 @@ def _validate_provider_terminal_failure(
         )
     provider_error = payload.get("provider_error")
     expected_error_fragment = (
-        "message content is empty"
-        if error_kind == "empty_content"
-        else "json completion"
+        "message content is empty" if error_kind == "empty_content" else "json completion"
     )
     if (
         not isinstance(provider_error, str)
@@ -4463,9 +4519,7 @@ def _validate_logged_provider_failure_response(
         raise AutonomousBranchEngineError(
             f"provider retry claims an unlogged response but embeds it: {interaction_id}"
         )
-    if response_sha256 is not None and not re.fullmatch(
-        r"[0-9a-f]{64}", str(response_sha256)
-    ):
+    if response_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", str(response_sha256)):
         raise AutonomousBranchEngineError(
             f"provider retry response hash is invalid: {interaction_id}"
         )
@@ -4478,6 +4532,40 @@ def _validate_logged_provider_failure_response(
         raise AutonomousBranchEngineError(
             f"provider retry finish reason is invalid: {interaction_id}"
         )
+
+
+def _json_object_reasoning_messages(
+    messages: Sequence[Mapping[str, str]],
+    *,
+    response_schema: Mapping[str, Any],
+) -> list[dict[str, str]]:
+    """Build json-object-mode messages for a BOUNDED-reasoning request.
+
+    Task 267.3.1 established the interaction that makes this necessary: enabling
+    reasoning downgrades transport-level `json_schema` to `json_object` on
+    DashScope-shaped providers, and `json_object` mode then REQUIRES the literal
+    lowercase word `json` somewhere in the messages or the provider rejects the
+    request with `invalid_parameter_error`.  The instruction below therefore states
+    that word literally, and strict schema conformance moves to local validation.
+
+    The instruction is folded into the LEADING system message rather than appended,
+    so the caller's final domain message stays last.  Every autonomous call now takes
+    this path, and callers and audits read the trailing message as the domain payload.
+    """
+
+    instruction = (
+        "Think first, then answer. Your reasoning is recorded as process provenance "
+        "only and is never treated as scientific evidence.\n"
+        "Return your answer as exactly one json object that satisfies this schema. "
+        "Emit no prose outside the json object; local strict validation will reject "
+        "every extra, missing, or invalid field: "
+        + json.dumps(response_schema, ensure_ascii=False, sort_keys=True)
+    )
+    normalized = [dict(item) for item in messages]
+    if normalized and normalized[0].get("role") == "system":
+        normalized[0]["content"] = f"{normalized[0]['content']}\n\n{instruction}"
+        return normalized
+    return [{"role": "system", "content": instruction}, *normalized]
 
 
 def _json_object_fallback_messages(
@@ -4701,7 +4789,9 @@ def _build_stage_budget_audit(
     provider_request_attempt_count: int,
 ) -> AutonomousStageBudgetAudit:
     if len(branches) != 8:
-        raise AutonomousBranchEngineError("initial candidate budget requires exactly eight branches")
+        raise AutonomousBranchEngineError(
+            "initial candidate budget requires exactly eight branches"
+        )
     total_revisions = sum(len(branch.revisions) for branch in branches)
     if (
         total_revisions > _MAX_TOTAL_TECHNICAL_REVISIONS
@@ -4732,9 +4822,7 @@ def _build_mechanistic_research_loop_contract() -> MechanisticResearchLoopContra
         "schema_version": "mechanistic-research-loop-contract-v1",
         "stages": _MECHANISM_STAGES,
         "observation_origin": "objective_experiment_telemetry",
-        "problem_detection_policy": (
-            "deterministic_anomaly_bottleneck_and_failure_tests"
-        ),
+        "problem_detection_policy": ("deterministic_anomaly_bottleneck_and_failure_tests"),
         "hypothesis_requirements": (
             "references immutable observation IDs",
             "states a falsifiable mechanism",
@@ -4742,9 +4830,7 @@ def _build_mechanistic_research_loop_contract() -> MechanisticResearchLoopContra
             "declares a matched parent or null comparator",
         ),
         "intervention_origin": "autonomous_exact_code_with_parent_lineage",
-        "speed_up_adjudication": (
-            "matched_executed_effect_with_uncertainty_and_failure_retention"
-        ),
+        "speed_up_adjudication": ("matched_executed_effect_with_uncertainty_and_failure_retention"),
         "llm_role": "literature_and_code_executor_not_scientific_evidence",
         "llm_self_score_is_evidence": False,
         "prose_only_mechanism_claim_allowed": False,
@@ -5303,9 +5389,7 @@ def _execute_candidate_source(
         "input_sha256": canonical_model_hash(input_payload),
         "environment_sha256": environment.environment_hash,
         "output_adapter_id": _CAPABILITY_OUTPUT_ADAPTER_ID,
-        "output_adapter_contract_sha256": (
-            _CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256
-        ),
+        "output_adapter_contract_sha256": (_CAPABILITY_OUTPUT_ADAPTER_CONTRACT_SHA256),
         "capability_runner_sha256": file_hash(runner_path),
         "candidate_source_modified_by_adapter": False,
         "scientific_numeric_transform_count": 0,
@@ -5380,9 +5464,7 @@ def _evaluate_capability_output(
         shape_matches = observed_shape == expected_shape
         finite_prediction = shape_matches and _all_finite(prediction)
         flattened_prediction = _flatten_numbers(prediction)
-        finite_prediction_value_count = sum(
-            math.isfinite(item) for item in flattened_prediction
-        )
+        finite_prediction_value_count = sum(math.isfinite(item) for item in flattened_prediction)
         equations = first.get("equations")
         observed_equation_count = len(equations) if isinstance(equations, list) else None
         equation_count_matches = (
@@ -5397,10 +5479,9 @@ def _evaluate_capability_output(
             and 1 <= complexity <= 100_000
         )
         deterministic = canonical_model_hash(first) == canonical_model_hash(repeated)
-        sensitivity_comparable = (
-            _nested_shape(perturbed_prediction) == expected_shape
-            and _all_finite(perturbed_prediction)
-        )
+        sensitivity_comparable = _nested_shape(
+            perturbed_prediction
+        ) == expected_shape and _all_finite(perturbed_prediction)
         sensitivity_delta = (
             _max_abs_difference(prediction, perturbed_prediction)
             if sensitivity_comparable
@@ -5574,7 +5655,7 @@ def _normalized_mean_squared_error(prediction: Any, target: Any) -> float:
 
 
 def _capability_runner_source() -> str:
-    return '''from __future__ import annotations
+    return """from __future__ import annotations
 
 import copy
 import importlib.util
@@ -5734,7 +5815,7 @@ for fixture in payload["fixtures"]:
     ),
     encoding="utf-8",
 )
-'''
+"""
 
 
 def _review_import_root(
@@ -5790,9 +5871,7 @@ def _while_loop_has_static_bound(node: ast.While, tree: ast.Module) -> bool:
     ):
         controller = node.test.left.id
         bound = node.test.comparators[0]
-        bound_names = {
-            item.id for item in ast.walk(bound) if isinstance(item, ast.Name)
-        }
+        bound_names = {item.id for item in ast.walk(bound) if isinstance(item, ast.Name)}
         if _names_written_in_statements(node.body) & bound_names:
             return False
         update = _single_direct_augmented_update(node, controller)
@@ -5808,9 +5887,7 @@ def _while_loop_has_static_bound(node: ast.While, tree: ast.Module) -> bool:
             return _positive_numeric_literal(update.value)
     if isinstance(node.test, ast.BinOp) and isinstance(node.test.op, ast.BitAnd):
         controller_names = [
-            item.id
-            for item in (node.test.left, node.test.right)
-            if isinstance(item, ast.Name)
+            item.id for item in (node.test.left, node.test.right) if isinstance(item, ast.Name)
         ]
         for controller in controller_names:
             update = _single_direct_augmented_update(node, controller)
@@ -5858,9 +5935,7 @@ def _single_direct_augmented_update(
         item
         for statement in node.body
         for item in ast.walk(statement)
-        if isinstance(item, ast.Name)
-        and isinstance(item.ctx, ast.Store)
-        and item.id == controller
+        if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store) and item.id == controller
     ]
     if len(direct) != 1 or len(writes) != 1:
         return None
@@ -5882,11 +5957,7 @@ def _list_length_grows_toward_bound(node: ast.While) -> bool:
     ):
         return False
     sequence_name = test.left.args[0].id
-    bound_names = {
-        item.id
-        for item in ast.walk(test.comparators[0])
-        if isinstance(item, ast.Name)
-    }
+    bound_names = {item.id for item in ast.walk(test.comparators[0]) if isinstance(item, ast.Name)}
     writes = _names_written_in_statements(node.body)
     if sequence_name in writes or writes & bound_names:
         return False
@@ -5929,9 +6000,7 @@ def _nested_list_controller_descends(node: ast.While) -> bool:
         item
         for statement in node.body
         for item in ast.walk(statement)
-        if isinstance(item, ast.Name)
-        and isinstance(item.ctx, ast.Store)
-        and item.id == controller
+        if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store) and item.id == controller
     ]
     if len(assignments) != 1 or len(writes) != 1:
         return False
@@ -5965,8 +6034,7 @@ def _last_assignment_value_before(
             continue
         if isinstance(item, ast.Assign):
             if any(
-                isinstance(target, ast.Name) and target.id == variable
-                for target in item.targets
+                isinstance(target, ast.Name) and target.id == variable for target in item.targets
             ):
                 assignments.append((item.lineno, item.value))
         elif (
