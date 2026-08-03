@@ -1,0 +1,35 @@
+=== finalists: ['official-02-r2', 'official-03-r2', 'official-04-r2']
+=== full panel: 14 systems x 2 conditions x 3 seeds
+  baseline cells : 84
+  candidate cells: 252
+  total          : 336
+
+=== FULL COMPLETE : 222/252 succeeded
+  official-02-r2: 78/84  nmse 1e-12..19.29
+  official-03-r2: 60/84  nmse 1e-12..11.14
+  official-04-r2: 84/84  nmse 2.719e-12..308.3
+
+=== SELECTED : official-04-r2
+  basis: median validation NMSE over executed cells, failures penalised
+
+=== SYSTEM EFFECTS (positive = candidate beat the baseline)
+  ode aizawa-attractor               cand=0.015162 base=0.092354 log=+1.8069 (6/6)
+  ode binocular-rivalry-model        cand=0.34881 base=38.463 log=+4.7029 (6/6)
+  ode cell-cycle-model               cand=24.042 base=3.0566 log=-2.0625 (6/6)
+  ode dipole-fixed-point             cand=10.682 base=6.5153 log=-0.4944 (6/6)
+  ode driven-pendulum-quadratic-damp cand=4.2463 base=0.17948 log=-3.1638 (6/6)
+  ode logistic-equation-harvesting   cand=0.16596 base=2.4269 log=+2.6826 (6/6)
+  ode population-growth-naive        cand=0.27279 base=0.0038637 log=-4.2571 (6/6)
+  ode rotational-dynamics            cand=0.19442 base=0.062573 log=-1.1337 (6/6)
+  ode van-der-pol-oscillator-simplif cand=1.1781 base=2.709 log=+0.8326 (6/6)
+  ode velocity-falling-object        cand=0.34606 base=0.13717 log=-0.9254 (6/6)
+  pde heat_laser                     cand=157.64 base=1e+12 log=+22.5707 (6/6)
+  pde heat_soil_uniform_2d_p1        cand=0.97599 base=1e+12 log=+27.6553 (6/6)
+  pde navier_stokes_cylinder         cand=0.6079 base=0.16781 log=-1.2872 (6/6)
+  pde reaction_diffusion_cylinder    cand=41.199 base=0.15191 log=-5.6029 (6/6)
+
+  overall median log effect : -0.709901
+  bootstrap CI95           : [-2.062499, +2.682640]
+  ODE stratum median       : -0.709901
+  PDE stratum median       : +10.641766
+  systems where candidate won : 6/14

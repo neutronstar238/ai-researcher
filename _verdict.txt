@@ -1,0 +1,38 @@
+=== frozen gate, verbatim from the 266.1 plan
+  minimum_overall_log_effect = 0.05129329438755058
+  exploratory_lower_bound_minimum = 0.0
+  ode_stratum_median_minimum = 0.0
+  pde_stratum_median_minimum = 0.0
+  all_candidate_full_cells_must_succeed = True
+  all_domain_baseline_cells_must_succeed = True
+
+=== measured, all 14 systems
+  overall median log effect : -0.709901
+  bootstrap CI95            : [-2.062499, +2.682640]
+  ODE stratum median        : -0.709901
+  PDE stratum median        : +10.641766
+
+=== PDE honesty check: which PDE effects have a REAL baseline?
+  heat_laser                     base=1e+12 log=+22.5707  BASELINE ABSENT - effect meaningless
+  heat_soil_uniform_2d_p1        base=1e+12 log=+27.6553  BASELINE ABSENT - effect meaningless
+  navier_stokes_cylinder         base=0.16781 log=-1.2872  real baseline
+  reaction_diffusion_cylinder    base=0.15191 log=-5.6029  real baseline
+  PDE median over REAL pairs only : -3.445028
+
+=== restricted to systems with a REAL baseline pair
+  systems                   : 12/14
+  median log effect         : -1.029540
+  bootstrap CI95            : [-2.613132, +1.319749]
+  systems where candidate won: 4/12
+
+=== gate checks
+  all_candidate_full_cells_succeeded     PASS
+  all_domain_baseline_cells_succeeded    FAIL
+  overall_median_at_least_minimum        FAIL
+  bootstrap_lower_above_zero             FAIL
+  ode_stratum_median_non_negative        FAIL
+  pde_stratum_median_non_negative        PASS
+
+  receipt issued : False
+  candidate cells succeeded: 84/84
+  baseline cells succeeded : 72/84

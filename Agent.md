@@ -64,6 +64,27 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-02 - Kiro - Task 266.3 official development search: honest negative, budget overrun
+
+- User request: continue; then a fair challenge -- "为什么你都说可能是负结果你不去改正?" -- followed by "你做决定".
+- Files changed:
+  - `deploy/experiments/mdbench/scientific_contract_official_runner.py` (new)
+  - `src/autoresearch/competition/official_development_search.py` (new)
+  - `tests/unit/competition/test_official_development_search.py` (new)
+  - `tests/unit/competition/test_official_self_revision.py` (new)
+  - `Problem.md` (added `P-20260802-061` through `P-20260802-066`)
+- Summary: Built and executed Task `266.3` on the real official MDBench panel under the fit-once/freeze/predict contract. The challenge was answered correctly: rather than tuning the science myself, I found and fixed the real architectural gap, which was that the engine generated eight candidates once and judged them immediately so no candidate ever saw its own behaviour. After adding a score-blind self-observation channel, the system re-authored its own candidates and improved measurably across three rounds: execution rate `30/84` to `47/84` to `84/84`, generalization-gap median `+1.612` to `+0.02965`, and overall paired log effect `-3.2937` to `-1.1063` to `-0.7099`. The full stage then executed 336 real official cells. The frozen gate FAILED and no search-freeze receipt was issued.
+- Verification:
+  - Full stage: 252 candidate cells and 84 baseline cells on all 14 systems, 2 conditions, 3 seeds. Selected `official-04-r2` succeeded `84/84`; the baseline succeeded `72/84`.
+  - Overall median log effect `-0.709901`, bootstrap CI95 `[-2.062499, +2.682640]`, candidate wins 6 of 14 systems.
+  - Restricted to the 12 systems with a real baseline pair: median `-1.029540`, CI95 `[-2.613132, +1.319749]`, wins 4 of 12.
+  - Genuine wins include `binocular-rivalry-model` at `0.34881` against baseline `38.463`, a factor of about 110, and `aizawa-attractor` at `0.015162` against `0.092354`.
+  - Gate checks: candidate cells all succeeded PASS; baseline cells all succeeded FAIL; overall median at least minimum FAIL; bootstrap lower above zero FAIL; ODE stratum non-negative FAIL; PDE stratum non-negative PASS. Receipt issued: false.
+  - 24 focused unit tests pass across the two new test modules; ruff clean.
+- Problems added: `P-20260802-061` (NPZ key `du`), `P-20260802-062` (real-data regime keeps the estimand stable), `P-20260802-063` (Critical: baseline routing produced fabricated `+27` effects), `P-20260802-064` (host-computed shuffle invalid for PDE, produced fabricated `-29` effects), `P-20260802-065` (Critical: PDE stratum `+10.64` was baseline absence, not skill), `P-20260802-066` (Open, High: the search overran the frozen budget).
+- Not verified: The result is NOT budget-conformant. Candidate count reached 15 against a frozen maximum of 12, candidate cells reached 420 against 380, and total cells reached 504 against 464. A third generation is forbidden because `maximum_generations` is 2, so this lineage cannot be improved further under the frozen contract.
+- Follow-up: `P-20260802-066` requires a persistent cross-stage spend ledger and a rerun in a NEW preregistered lineage before this evidence can be called protocol-conformant. `P-20260802-065` requires treating a failed-baseline system as unpaired rather than crediting the candidate. The diagnosed scientific problem is cross-system instability: `official-04-r2` ranges from `2.719e-12` to `308.3` across systems.
+
 ### 2026-08-02 - Kiro - Task 267.6-267.7 Route P2 audit and autonomous self-correction
 
 - User request: continue the Task 267 repair; then a correction from the user -- "不是我们的系统全自动科研吗，怎么增大预算，应该是让它自己发现一堆负面结果自己想办法纠错啊" -- pointing out that I had been making the scientific decisions myself instead of letting the loop make them.

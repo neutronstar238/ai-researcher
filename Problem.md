@@ -40,6 +40,38 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-066 - Task 266.3 development search overran the frozen budget
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Post-hoc budget audit of the Task `266.3` search after the full stage completed.
+- Symptom: The search exceeded three frozen limits from the Task `266.1` plan. Candidate count reached 15 against a maximum of 12, official candidate cells reached 420 against a maximum of 380, and official cells total reached 504 against a maximum of 464.
+- Impact: The measurement itself is intact and the gate still failed honestly, so no false positive was produced. But an overrun search is not a protocol-conformant search, so this development evidence cannot be presented as satisfying the frozen `266.1` contract, and it independently blocks a receipt regardless of the effect size.
+- Evidence: Generation 1 produced 8 candidates and generation 2 produced 7 revisions, totalling 15. Cells accumulated across three executions against the official panel: pilot v2 at 84, revised pilot at 84, and full stage at 252, totalling 420 candidate cells, plus 84 baseline cells.
+- Root cause: I executed the pilot twice, once before and once after the baseline-routing fix, and then a revised pilot, without deducting those cells from the frozen candidate-cell budget. The engine enforces the per-stage cap in `build_official_cell_specs` but nothing accumulated spend ACROSS stages and runs.
+- Workaround: None. The overrun already happened.
+- Next action: Add a persistent spend ledger that accumulates candidate count, candidate cells, and total cells across every execution in a lineage, and refuse a stage that would cross a frozen limit. Then rerun the search in a NEW preregistered lineage with the corrected accounting. Do not retroactively reinterpret this run as conformant.
+- Linked tasks: `266.1`, `266.3`.
+- Resolution: Not resolved. Recorded so the next agent cannot mistake this evidence for a budget-conformant search.
+- Verification: Exact counts tabulated above from the persisted registries and cell result files.
+
+### P-20260802-065 - PDE stratum median was inflated by baseline absence, not candidate skill
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-02
+- Source: Task `266.3` full-stage adjudication honesty check.
+- Symptom: The PDE stratum median log effect was `+10.641766`, which reads as an overwhelming candidate victory and was the only stratum to pass its frozen check.
+- Impact: Critical if reported unexamined. That single number would have supported a claim of PDE superiority that the data does not contain.
+- Evidence: Two of four PDE systems had no working baseline. `heat_laser` and `heat_soil_uniform_2d_p1` both recorded `baseline_median_loss = 1e12`, the frozen failure loss, producing effects of `+22.5707` and `+27.6553` that measure baseline absence rather than candidate skill. The two PDE systems with a real baseline pair went the other way: `navier_stokes_cylinder` at `-1.2872` and `reaction_diffusion_cylinder` at `-5.6029`. Restricted to real pairs the PDE median is `-3.445028`.
+- Root cause: A failure loss is correct for penalising a failed CANDIDATE cell, but when the BASELINE fails, the resulting ratio is not an effect at all. The estimand did not distinguish these two cases.
+- Workaround: Adjudication now reports both the full-panel figure and the figure restricted to systems with a real baseline pair.
+- Next action: Treat a system whose baseline failed as unpaired and exclude it from the effect, rather than crediting the candidate. Record such systems separately as baseline-coverage gaps.
+- Linked tasks: `266.1`, `266.3`, `267.6`.
+- Resolution: Reported honestly. Restricted to the 12 systems with a real baseline pair, the median log effect is `-1.029540` with bootstrap CI95 `[-2.613132, +1.319749]` and the candidate wins 4 of 12. The frozen gate failed either way, so the inflated stratum did not change the verdict, but it would have changed the narrative.
+- Verification: Per-system baseline losses and effects tabulated in the adjudication output.
+
 ### P-20260802-064 - Host-computed shuffle order was invalid for every PDE cell
 
 - Status: Resolved

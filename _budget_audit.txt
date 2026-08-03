@@ -1,0 +1,23 @@
+=== frozen budget
+  initial_candidate_count = 8
+  maximum_total_candidate_count = 12
+  maximum_generations = 2
+  full_finalist_count = 3
+  maximum_official_candidate_cells = 380
+  maximum_official_cells_total = 464
+  maximum_model_interactions = 80
+
+=== actually used
+  generation 1 candidates : 8
+  generation 2 candidates : 7
+  total candidates        : 15
+  generations used        : 2
+  official candidate cells: 420
+  official baseline cells : 84
+  official cells total    : 504
+
+=== verdict
+  candidate count within budget : False (15 vs 12)
+  candidate cells within budget : False (420 vs 380)
+  total cells within budget     : False (504 vs 464)
+  a THIRD generation is         : FORBIDDEN, maximum_generations is 2
