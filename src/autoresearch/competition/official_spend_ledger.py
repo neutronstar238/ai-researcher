@@ -109,6 +109,18 @@ class OfficialSpendLedger(StrictFrozenModel):
             - self.spent_model_interactions,
         }
 
+    @property
+    def spent_generations(self) -> int:
+        """Distinct generations already spent, derived from recorded stage names."""
+
+        return len(
+            {
+                entry.stage
+                for entry in self.entries
+                if entry.candidate_count > 0
+            }
+        )
+
     def check(
         self,
         *,
@@ -116,9 +128,22 @@ class OfficialSpendLedger(StrictFrozenModel):
         candidate_cells: int = 0,
         baseline_cells: int = 0,
         model_interactions: int = 0,
+        new_generation: bool = False,
     ) -> None:
-        """Refuse a request that would cross a frozen limit. Call BEFORE executing."""
+        """Refuse a request that would cross a frozen limit. Call BEFORE executing.
 
+        `new_generation=True` declares that this request opens another generation.
+        The generation limit was previously STORED but never enforced, which is the
+        same class of hole that produced the cell overrun in `P-20260802-066`.
+        """
+
+        if new_generation and self.spent_generations >= self.maximum_generations:
+            raise OfficialSpendLimitExceeded(
+                f"maximum_generations would reach {self.spent_generations + 1} against "
+                f"a frozen limit of {self.maximum_generations}; a further generation "
+                "requires a new preregistered lineage, not another revision here",
+                limit_name="maximum_generations",
+            )
         checks = (
             (
                 "maximum_total_candidate_count",
@@ -157,6 +182,7 @@ class OfficialSpendLedger(StrictFrozenModel):
         candidate_cells: int = 0,
         baseline_cells: int = 0,
         model_interactions: int = 0,
+        new_generation: bool = False,
         now: datetime | None = None,
     ) -> OfficialSpendLedger:
         """Check, then append. Returns the updated ledger; never mutates in place."""
@@ -166,6 +192,7 @@ class OfficialSpendLedger(StrictFrozenModel):
             candidate_cells=candidate_cells,
             baseline_cells=baseline_cells,
             model_interactions=model_interactions,
+            new_generation=new_generation,
         )
         payload: dict[str, Any] = {
             "stage": stage,

@@ -137,6 +137,46 @@ def test_remaining_reports_headroom_on_every_limit() -> None:
     assert remaining["model_interactions"] == 80
 
 
+def test_a_third_generation_is_refused() -> None:
+    """The generation limit was stored but never enforced.
+
+    The conformant lineage spent generation 1 (8 candidates) and generation 2 (3
+    revisions). A third revision is forbidden by the frozen contract even though a
+    candidate slot remains, which is exactly the distinction the earlier overrun
+    missed.
+    """
+
+    ledger = _ledger()
+    ledger = ledger.record(
+        stage="generate-gen1", candidate_count=8, new_generation=True
+    )
+    ledger = ledger.record(
+        stage="revise-gen2", candidate_count=3, new_generation=True
+    )
+
+    assert ledger.spent_generations == 2
+    assert ledger.remaining()["candidate_count"] == 1, "a slot is still free"
+
+    with pytest.raises(OfficialSpendLimitExceeded) as caught:
+        ledger.record(stage="revise-gen3", candidate_count=1, new_generation=True)
+
+    assert caught.value.limit_name == "maximum_generations"
+    assert "new preregistered lineage" in str(caught.value)
+
+
+def test_a_non_generation_stage_is_not_blocked_by_the_generation_limit() -> None:
+    """Executing cells is not a new generation and must stay allowed."""
+
+    ledger = _ledger()
+    ledger = ledger.record(stage="generate-gen1", candidate_count=8, new_generation=True)
+    ledger = ledger.record(stage="revise-gen2", candidate_count=3, new_generation=True)
+
+    # A further cell-execution stage is fine; only a new GENERATION is refused.
+    ledger = ledger.record(stage="full", candidate_cells=252)
+
+    assert ledger.spent_candidate_cells == 252
+
+
 def test_model_interaction_budget_is_enforced() -> None:
     ledger = _ledger().record(stage="generate", model_interactions=78)
 

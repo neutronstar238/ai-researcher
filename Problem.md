@@ -40,6 +40,22 @@ update a factual problem entry below.
 
 ## Problems
 
+### P-20260802-069 - The generation limit was stored but never enforced
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-02
+- Source: Deciding whether a third revision was permissible after the conformant lineage completed.
+- Symptom: `OfficialSpendLedger` carried `maximum_generations` as a validated field but no code path ever checked it. The ledger would have accepted a third generation while reporting a healthy remaining candidate slot.
+- Impact: This is the same class of hole that produced the cell overrun in `P-20260802-066`: a frozen limit that is recorded but not enforced. The conformant lineage has one free candidate slot and 69 free model interactions, so a third revision looked affordable on every visible counter while actually violating the frozen contract.
+- Evidence: The real ledger for `task2663-conformant-v1` records stages `generate-gen1`, `pilot`, `revise-gen2`, `baseline`, `full`. Generation 1 produced 8 candidates and generation 2 produced 3 revisions, so `spent_generations` is 2 against a frozen maximum of 2, while `remaining()` still reports `candidate_count: 1`.
+- Root cause: The limit was copied into the ledger's schema when the ledger was built for cell and candidate counts, and no check was written for it.
+- Workaround: None needed.
+- Next action: When adding a frozen limit to a ledger, add its check in the same commit. A stored limit with no check is worse than no limit, because it reads as enforced.
+- Linked tasks: `266.1`, `266.3`.
+- Resolution: Added `spent_generations` plus a `new_generation` flag on `check` and `record`. A stage that opens another generation is refused once the frozen count is reached, with a message directing the caller to a new preregistered lineage. Cell-execution stages are unaffected, so only a genuine new generation is blocked.
+- Verification: Against the real conformant ledger, a third generation is now refused with `maximum_generations would reach 3 against a frozen limit of 2`. Two focused tests cover it: one asserting the refusal while a candidate slot remains free, and one asserting that a further cell-execution stage is still permitted.
+
 ### P-20260802-067 - A fixed 64-term cap rejected valid multi-field PDE equations
 
 - Status: Resolved
@@ -67,9 +83,9 @@ update a factual problem entry below.
 - Evidence: The improved contract message reports the exact count. The same candidate succeeds on `heat_soil_uniform_2d_p1` with 4 terms and on 78 of 84 official cells overall, so the defect is system-specific rather than a broken implementation.
 - Root cause: Not confirmed. The plausible mechanism is that the candidate's thresholding eliminates every coefficient on this system's scaling, so the selection collapses to the empty set instead of falling back to a minimal support.
 - Workaround: None applied. Fixing the candidate's science myself is out of scope; the system must repair it.
-- Next action: Feed this exact observation into the score-blind self-revision channel, which already reports the candidate's own term counts, so a further generation can add an empty-selection fallback. Do NOT special-case this system in the runner.
-- Linked tasks: `266.3`, `267.7`.
-- Resolution: Not resolved. Correctly attributed and left with the system.
+- Next action: Feed this exact observation into the score-blind self-revision channel, which already reports the candidate's own term counts, so a further generation can add an empty-selection fallback. Do NOT special-case this system in the runner. This CANNOT happen in the `task2663-conformant-v1` lineage: both frozen generations are spent, and the ledger now refuses a third (`P-20260802-069`). It requires a new preregistered lineage.
+- Linked tasks: `266.3`, `267.7`, `269.1` (new lineage, not yet created).
+- Resolution: Not resolved. Correctly attributed and left with the system, with the repair route recorded rather than taken.
 - Verification: `runs/manual-live/task2663-term-cap-recheck-v2` records both outcomes: the zero-term failure and the newly succeeding `heat_soil_uniform_2d_p1` cell.
 
 ### P-20260802-066 - Task 266.3 development search overran the frozen budget

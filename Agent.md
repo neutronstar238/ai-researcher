@@ -64,6 +64,32 @@ This file defines the project development standard for coding agents and records
 
 ## Entries
 
+### 2026-08-02 - Kiro - Task 266.3 budget-conformant lineage: ODE stratum passes, receipt still refused
+
+- User request: continue, reach the stated requirements, and decide the remaining scope myself.
+- Files changed:
+  - `src/autoresearch/competition/official_plan_generation.py` (new)
+  - `src/autoresearch/competition/official_spend_ledger.py`
+  - `src/autoresearch/competition/official_development_search.py`
+  - `src/autoresearch/research/plans.py`
+  - `deploy/experiments/mdbench/scientific_contract_official_runner.py`
+  - `tests/unit/competition/test_official_plan_generation.py` (new)
+  - `tests/unit/competition/test_official_plan_gate_enforced.py` (new)
+  - `tests/unit/competition/test_official_spend_ledger.py`
+  - `runs/manual-live/task2663-conformant-v1/` (new lineage)
+  - `Problem.md` (added `P-20260802-067` through `P-20260802-069`)
+- Summary: Closed the two requirements that were genuinely unmet and then ran a budget-conformant replacement lineage end to end. First, a grep proved nothing in the competition path ever GENERATED a research plan, so the confirmation gate could never be satisfied; `official_plan_generation.py` now derives every plan field from frozen evidence and passes its own audit at score `1.0`. Second, `execute_official_stage` now enforces both the plan gate and the spend ledger before any container starts. The replacement lineage `task2663-conformant-v1` then executed the full gated chain: plan, human confirmation, 8 model-authored candidates, a 56-cell pilot, 3 self-revisions, an 84-cell baseline, and a 252-cell full stage. It stayed inside every frozen limit and the ODE stratum median turned POSITIVE for the first time.
+- Verification:
+  - Ledger: candidates `11/12`, candidate cells `308/380`, total cells `392/464`, model interactions `11/80`, `budget_conformant PASS`. The earlier overrun was `15/12`, `420/380`, `504/464`.
+  - Selected `official-03-r2` succeeded `78/84` official cells.
+  - ODE stratum median `+0.589509` PASS; candidate beats the pinned baseline on 6 of 12 paired systems, including `binocular-rivalry-model` at `0.79456` against `38.463` and `dipole-fixed-point` at `0.17477` against `6.5153`.
+  - Overall median `-0.524076`, bootstrap CI95 `[-3.235713, +1.804017]`, PDE stratum `-15.402305`. `search_freeze_receipt: False`.
+  - The unpaired-baseline fix worked live: `heat_laser` at `+24.8926` and `heat_soil_uniform_2d_p1` at `+27.6521` were EXCLUDED rather than credited.
+  - Full unit suite `1418` collected with `4` failed, all four the pre-existing NumPy-dependent runner tests that need the pinned container. ruff clean.
+- Problems added: `P-20260802-067` (Resolved: a fixed 64-term cap rejected valid multi-field PDE equations and produced a `-29.5155` effect that was my limit, not a candidate failure), `P-20260802-068` (Open: with the cap corrected the candidate returns zero terms on one PDE system, a genuine scientific defect left with the system), `P-20260802-069` (Resolved: `maximum_generations` was stored but never enforced).
+- Not verified: No receipt was issued and confirmation stays sealed. `P-20260802-068` is unfixed by design.
+- Follow-up: A third generation is now correctly refused in this lineage, so repairing the zero-term selection requires a NEW preregistered lineage. That is recorded as the next step rather than taken, because taking it inside this lineage would repeat exactly the violation recorded in `P-20260802-066`.
+
 ### 2026-08-02 - Kiro - Task 266.3 official development search: honest negative, budget overrun
 
 - User request: continue; then a fair challenge -- "为什么你都说可能是负结果你不去改正?" -- followed by "你做决定".
