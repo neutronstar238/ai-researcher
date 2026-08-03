@@ -81,6 +81,18 @@ CONCRETE_METRIC_TERMS = (
     "evidence coverage",
     "reproduction success rate",
     "reviewer pass rate",
+    # Equation-discovery and dynamical-system metrics. The original vocabulary was
+    # classification and tabular-regression oriented, so a scientifically correct
+    # plan for the MDBench route was rejected for naming the metric the benchmark
+    # actually uses.
+    "nmse",
+    "normalized mse",
+    "normalised mse",
+    "derivative nmse",
+    "trajectory nmse",
+    "term support",
+    "coefficient error",
+    "model complexity",
 )
 
 
