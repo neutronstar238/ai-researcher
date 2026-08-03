@@ -426,7 +426,7 @@ update a factual problem entry below.
 
 ### P-20260801-042 - Capability-passing candidates did not fit concrete equations and collapsed to the zero null
 
-- Status: Open
+- Status: Resolved
 - Severity: Critical
 - Discovered: 2026-08-01 05:49:11 +08:00
 - Source: Task `265.3` first real development cell and complete autonomous development search.
@@ -437,8 +437,8 @@ update a factual problem entry below.
 - Workaround: The frozen qualification policy stopped automatically, issued no receipt, and preserved confirmation read/result counts at zero. All negative cells and model-authored interventions remain in the ledger.
 - Next action: Execute Task `266.2` against the immutable Task `266.1` plan plus Task `266.1.1` identifiability overlay: implement the train-only fit → concrete hash-frozen equation artifact → query prediction Harness; enforce known-law ODE/PDE recovery, train-shuffle/null and equation/prediction consistency sentinels, fit-once/query-many caching, and the domain-valid baseline boundary without reading a new official score. Task `266.3` may run only after those gates pass.
 - Linked tasks: `265.2`, `265.3`, `265.4`, `266.1`, `266.1.1`, `266.2`, `266.3`.
-- Resolution: Partially resolved. Task `265.3` correctly detected and contained the failure; Task `266.1` has now frozen the replacement scientific contract, six analytic sentinels, and ODE/PDE baseline policy in a new result-blind lineage. The underlying candidate implementation remains unresolved until Task `266.2` passes the Harness and Task `266.3` produces a non-null development result.
-- Verification: Task `265.3` ended with `decision=autonomous_development_negative_stop`, `search_freeze_receipt=false`, and `publication_ready=false`. Task `266.1` plan hash is `764f851f58302e5507ad6f5c3da2f0d6457f91f5eb90e4515c74e3a9e16095a3`; it records zero new official results/confirmation reads and authorizes only Harness implementation.
+- Resolution: Resolved. The zero-null collapse is gone. Task `266.2` replaced the stateless single-query interface with the fit-once/freeze/predict contract and passed all six analytic sentinels with term-support F1 `1.00` and coefficient relative errors between `2.31e-16` and `2.60e-15`. Task `266.3` then executed that contract against the REAL official panel, where the selected candidate produced concrete numeric equations on `84/84` cells with derivative NMSE spanning `2.719e-12` to `308.3`, nowhere near the `0.9999999999988402` zero-null. Training-context sensitivity is no longer zero: every executed cell reports `equation_changed_on_shuffled_training = True`, and each prediction is independently re-evaluated from the candidate's own reported equations with `maximum_equation_prediction_delta = 0.0`.
+- Verification: `runs/manual-live/task2662-scientific-contract-harness-v17` passed the synthetic contract gate `6/6`. `runs/manual-live/task2663-official-development-full-v1` executed 252 candidate and 84 baseline official cells; the selected `official-04-r2` succeeded `84/84` where the pinned baseline succeeded `72/84`. Genuine wins over a working baseline include `binocular-rivalry-model` at `0.34881` against `38.463` and `aizawa-attractor` at `0.015162` against `0.092354`. The remaining scientific problem is different and separately recorded: cross-system instability, not zero-null collapse.
 
 ### P-20260801-041 - Autonomous capability preflight initially confounded scientific code with generic tensor handling and arbitrary fixture limits
 
