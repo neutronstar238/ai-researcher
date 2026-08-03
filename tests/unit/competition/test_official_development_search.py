@@ -25,6 +25,7 @@ from autoresearch.competition.official_development_search import (
     OfficialDevelopmentSearchError,
     _bootstrap_interval,
     _median,
+    aggregate_paired_effects,
     compute_system_effects,
     select_official_candidate,
 )
@@ -206,6 +207,118 @@ def test_one_failed_cell_drags_the_system_median() -> None:
 
     assert fragile[0].paired_log_effect < solid[0].paired_log_effect
     assert fragile[0].candidate_success_count == 1
+
+
+def test_failed_baseline_marks_the_system_unpaired() -> None:
+    """P-20260802-065: the candidate must not be credited for a baseline failure."""
+
+    effects = compute_system_effects(
+        candidate_id="c1",
+        candidate_results=[_cell(candidate_id="c1", system="heat_laser", nmse=157.64)],
+        baseline_results=[
+            _cell(
+                candidate_id="b",
+                system="heat_laser",
+                nmse=None,
+                status="failed",
+                method_kind="baseline",
+            )
+        ],
+    )
+
+    assert len(effects) == 1
+    assert effects[0].baseline_available is False
+    assert effects[0].is_paired is False
+    # The raw ratio still looks like a huge win, which is exactly the trap.
+    assert effects[0].paired_log_effect > 20.0
+
+
+def test_aggregation_excludes_unpaired_systems() -> None:
+    """Replays the first full stage's PDE stratum.
+
+    heat_laser and heat_soil_uniform_2d_p1 had no baseline and produced +22.5707 and
+    +27.6553. The two real pairs were -1.2872 and -5.6029. Including the unpaired
+    systems gave a PDE median of +10.641766; excluding them gives -3.445028.
+    """
+
+    candidate = [
+        _cell(candidate_id="c1", system="heat_laser", nmse=157.64, data_type="pde"),
+        _cell(candidate_id="c1", system="heat_soil", nmse=0.97599, data_type="pde"),
+        _cell(candidate_id="c1", system="navier_stokes", nmse=0.6079, data_type="pde"),
+        _cell(candidate_id="c1", system="reaction_diffusion", nmse=41.199, data_type="pde"),
+    ]
+    baseline = [
+        _cell(
+            candidate_id="b", system="heat_laser", nmse=None, status="failed",
+            method_kind="baseline", data_type="pde",
+        ),
+        _cell(
+            candidate_id="b", system="heat_soil", nmse=None, status="failed",
+            method_kind="baseline", data_type="pde",
+        ),
+        _cell(
+            candidate_id="b", system="navier_stokes", nmse=0.16781,
+            method_kind="baseline", data_type="pde",
+        ),
+        _cell(
+            candidate_id="b", system="reaction_diffusion", nmse=0.15191,
+            method_kind="baseline", data_type="pde",
+        ),
+    ]
+
+    effects = compute_system_effects(
+        candidate_id="c1", candidate_results=candidate, baseline_results=baseline
+    )
+    summary = aggregate_paired_effects(effects)
+
+    assert summary["paired_system_count"] == 2
+    assert summary["baseline_coverage_gap_count"] == 2
+    assert set(summary["unpaired_system_names"]) == {"heat_laser", "heat_soil"}
+    # Both real pairs favour the baseline, so the honest median is negative.
+    assert summary["pde_stratum_median"] < 0.0
+    assert summary["candidate_win_count"] == 0
+
+
+def test_aggregation_reports_none_when_nothing_is_paired() -> None:
+    """A stratum with no working baseline yields no effect, not a victory."""
+
+    effects = compute_system_effects(
+        candidate_id="c1",
+        candidate_results=[_cell(candidate_id="c1", system="s1", nmse=1.0)],
+        baseline_results=[
+            _cell(
+                candidate_id="b", system="s1", nmse=None, status="failed",
+                method_kind="baseline",
+            )
+        ],
+    )
+    summary = aggregate_paired_effects(effects)
+
+    assert summary["paired_system_count"] == 0
+    assert summary["overall_median_log_effect"] is None
+    assert summary["bootstrap_lower"] is None
+
+
+def test_aggregation_keeps_a_genuine_win() -> None:
+    """The fix must not suppress a real victory over a working baseline."""
+
+    effects = compute_system_effects(
+        candidate_id="c1",
+        candidate_results=[
+            _cell(candidate_id="c1", system="binocular", nmse=0.34881),
+        ],
+        baseline_results=[
+            _cell(
+                candidate_id="b", system="binocular", nmse=38.463,
+                method_kind="baseline",
+            )
+        ],
+    )
+    summary = aggregate_paired_effects(effects)
+
+    assert summary["paired_system_count"] == 1
+    assert summary["candidate_win_count"] == 1
+    assert summary["overall_median_log_effect"] > 4.0
 
 
 def test_system_without_a_baseline_pair_is_skipped() -> None:

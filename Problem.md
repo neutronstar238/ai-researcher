@@ -50,11 +50,11 @@ update a factual problem entry below.
 - Impact: The measurement itself is intact and the gate still failed honestly, so no false positive was produced. But an overrun search is not a protocol-conformant search, so this development evidence cannot be presented as satisfying the frozen `266.1` contract, and it independently blocks a receipt regardless of the effect size.
 - Evidence: Generation 1 produced 8 candidates and generation 2 produced 7 revisions, totalling 15. Cells accumulated across three executions against the official panel: pilot v2 at 84, revised pilot at 84, and full stage at 252, totalling 420 candidate cells, plus 84 baseline cells.
 - Root cause: I executed the pilot twice, once before and once after the baseline-routing fix, and then a revised pilot, without deducting those cells from the frozen candidate-cell budget. The engine enforces the per-stage cap in `build_official_cell_specs` but nothing accumulated spend ACROSS stages and runs.
-- Workaround: None. The overrun already happened.
-- Next action: Add a persistent spend ledger that accumulates candidate count, candidate cells, and total cells across every execution in a lineage, and refuse a stage that would cross a frozen limit. Then rerun the search in a NEW preregistered lineage with the corrected accounting. Do not retroactively reinterpret this run as conformant.
+- Workaround: None. The overrun already happened and that run stays non-conformant.
+- Next action: Rerun the search in a NEW preregistered lineage using the ledger. Do not retroactively reinterpret the overrun run as conformant.
 - Linked tasks: `266.1`, `266.3`.
-- Resolution: Not resolved. Recorded so the next agent cannot mistake this evidence for a budget-conformant search.
-- Verification: Exact counts tabulated above from the persisted registries and cell result files.
+- Resolution: Mitigated for future runs. Added `official_spend_ledger.py`, an append-only persisted ledger that accumulates candidate count, candidate cells, baseline cells, and model interactions ACROSS stages and process restarts, and refuses a stage before any cell executes. `audit_prior_lineage` recounts actual spend from finished run directories so a replacement lineage starts from truthful numbers. The overrun run itself remains non-conformant and is not reinterpreted.
+- Verification: 11 focused tests pass, including replays of the exact historical arithmetic: 84 + 84 + 252 candidate cells is refused at `maximum_official_candidate_cells`, and 8 + 7 candidates is refused at `maximum_total_candidate_count`. A refused stage records no spend. Against the real run directories the audit recounts 420 candidate cells and 96 baseline cells, and the ledger refuses that request with `maximum_official_candidate_cells would reach 420 against a frozen limit of 380`.
 
 ### P-20260802-065 - PDE stratum median was inflated by baseline absence, not candidate skill
 
@@ -66,11 +66,11 @@ update a factual problem entry below.
 - Impact: Critical if reported unexamined. That single number would have supported a claim of PDE superiority that the data does not contain.
 - Evidence: Two of four PDE systems had no working baseline. `heat_laser` and `heat_soil_uniform_2d_p1` both recorded `baseline_median_loss = 1e12`, the frozen failure loss, producing effects of `+22.5707` and `+27.6553` that measure baseline absence rather than candidate skill. The two PDE systems with a real baseline pair went the other way: `navier_stokes_cylinder` at `-1.2872` and `reaction_diffusion_cylinder` at `-5.6029`. Restricted to real pairs the PDE median is `-3.445028`.
 - Root cause: A failure loss is correct for penalising a failed CANDIDATE cell, but when the BASELINE fails, the resulting ratio is not an effect at all. The estimand did not distinguish these two cases.
-- Workaround: Adjudication now reports both the full-panel figure and the figure restricted to systems with a real baseline pair.
-- Next action: Treat a system whose baseline failed as unpaired and exclude it from the effect, rather than crediting the candidate. Record such systems separately as baseline-coverage gaps.
+- Workaround: None needed.
+- Next action: Keep `aggregate_paired_effects` as the only aggregation path. If a future estimand needs unpaired systems, report them as a coverage gap, never as an effect.
 - Linked tasks: `266.1`, `266.3`, `267.6`.
-- Resolution: Reported honestly. Restricted to the 12 systems with a real baseline pair, the median log effect is `-1.029540` with bootstrap CI95 `[-2.613132, +1.319749]` and the candidate wins 4 of 12. The frozen gate failed either way, so the inflated stratum did not change the verdict, but it would have changed the narrative.
-- Verification: Per-system baseline losses and effects tabulated in the adjudication output.
+- Resolution: `SystemEffect` now carries `baseline_available` and an `is_paired` property, and `aggregate_paired_effects` aggregates over PAIRED systems only while reporting unpaired ones separately as baseline-coverage gaps. A system whose baseline never produced a real loss no longer credits the candidate.
+- Verification: Recomputed against the real run. The PDE stratum median moves from the inflated `+10.641766` to an honest `-3.445028`, the two unpaired systems are named explicitly as `heat_laser` and `heat_soil_uniform_2d_p1`, and the overall figure becomes `-1.029540` with CI95 `[-2.613132, +1.319749]` over 12 paired systems with 4 candidate wins. Four focused tests lock this, including one asserting that a genuine win over a working baseline is still reported (`binocular-rivalry-model` at `0.34881` against `38.463`).
 
 ### P-20260802-064 - Host-computed shuffle order was invalid for every PDE cell
 

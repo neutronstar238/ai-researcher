@@ -241,6 +241,17 @@ class SystemEffect(StrictFrozenModel):
     candidate_cell_count: int = Field(ge=1)
     baseline_cell_count: int = Field(ge=1)
     candidate_success_count: int = Field(ge=0)
+    # P-20260802-065: a failure loss correctly penalises a failed CANDIDATE, but when
+    # the BASELINE fails there is no comparison at all, so the ratio is not an effect.
+    # The first full stage reported a PDE stratum median of +10.641766 that came
+    # entirely from two systems whose baseline was absent.
+    baseline_available: bool = True
+
+    @property
+    def is_paired(self) -> bool:
+        """True only when both arms produced a real loss on this system."""
+
+        return self.baseline_available and self.baseline_median_loss < _LOSS_CAP
 
 
 class OfficialDevelopmentSearchPackage(StrictFrozenModel):
@@ -816,6 +827,11 @@ def compute_system_effects(
             continue
         candidate_loss = _median([item.loss for item in candidate_cells])
         baseline_loss = _median([item.loss for item in baseline_cells])
+        # A system whose baseline never produced a real loss is UNPAIRED. Recording
+        # it as a candidate victory is what inflated the first PDE stratum median.
+        baseline_available = any(
+            item.status == "succeeded" for item in baseline_cells
+        ) and baseline_loss < _LOSS_CAP
         effects.append(
             SystemEffect(
                 system_name=system,
@@ -831,9 +847,52 @@ def compute_system_effects(
                 candidate_success_count=sum(
                     item.status == "succeeded" for item in candidate_cells
                 ),
+                baseline_available=baseline_available,
             )
         )
     return tuple(effects)
+
+
+def aggregate_paired_effects(
+    effects: Sequence[SystemEffect],
+) -> dict[str, Any]:
+    """Aggregate using PAIRED systems only, and report coverage gaps separately.
+
+    `P-20260802-065`: including an unpaired system credits the candidate for the
+    baseline's failure. The first full stage's PDE stratum median of `+10.641766`
+    came entirely from `heat_laser` and `heat_soil_uniform_2d_p1`, whose baseline
+    took the failure loss; the two PDE systems with a real pair were `-1.2872` and
+    `-5.6029`.
+    """
+
+    paired = [item for item in effects if item.is_paired]
+    unpaired = [item for item in effects if not item.is_paired]
+    if not paired:
+        return {
+            "paired_system_count": 0,
+            "unpaired_system_names": tuple(item.system_name for item in unpaired),
+            "overall_median_log_effect": None,
+            "bootstrap_lower": None,
+            "bootstrap_upper": None,
+            "ode_stratum_median": None,
+            "pde_stratum_median": None,
+            "candidate_win_count": 0,
+        }
+    values = [item.paired_log_effect for item in paired]
+    ode = [item.paired_log_effect for item in paired if item.data_type == "ode"]
+    pde = [item.paired_log_effect for item in paired if item.data_type == "pde"]
+    lower, upper = _bootstrap_interval(values)
+    return {
+        "paired_system_count": len(paired),
+        "unpaired_system_names": tuple(item.system_name for item in unpaired),
+        "baseline_coverage_gap_count": len(unpaired),
+        "overall_median_log_effect": _median(values),
+        "bootstrap_lower": lower,
+        "bootstrap_upper": upper,
+        "ode_stratum_median": _median(ode) if ode else None,
+        "pde_stratum_median": _median(pde) if pde else None,
+        "candidate_win_count": sum(1 for value in values if value > 0.0),
+    }
 
 
 def build_candidate_self_observation(
