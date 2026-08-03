@@ -836,6 +836,183 @@ def compute_system_effects(
     return tuple(effects)
 
 
+def build_candidate_self_observation(
+    *,
+    candidate_id: str,
+    results: Sequence[OfficialCellResult],
+) -> dict[str, Any]:
+    """Objective, score-blind feedback about ONE candidate's own behaviour.
+
+    Deliberately excludes the baseline's losses and every other candidate's
+    results, so a revision cannot be tuned toward the comparison it is measured by.
+    What it does expose is the candidate's own generalization gap and term count,
+    which is exactly the signal that let Task `266.2` fix its overfitting: pilot v2
+    showed `official-01` selecting 57 terms with a validation-to-test gap of
+    `+83.14`, and `official-04` fitting validation to `8.32e-27` then testing at
+    `2.888e-26`.
+    """
+
+    cells = [item for item in results if item.candidate_id == candidate_id]
+    if not cells:
+        return {"executed_cell_count": 0}
+    succeeded = [item for item in cells if item.status == "succeeded"]
+    observations: list[dict[str, Any]] = []
+    for item in succeeded:
+        gap = None
+        if item.validation_nmse is not None and item.derivative_nmse is not None:
+            gap = float(item.derivative_nmse) - float(item.validation_nmse)
+        observations.append(
+            {
+                "data_type": item.data_type,
+                "condition": item.condition,
+                "your_selected_term_count": item.selected_term_count,
+                "your_validation_nmse": item.validation_nmse,
+                "your_held_out_nmse": item.derivative_nmse,
+                "your_generalization_gap": gap,
+                "your_fit_depended_on_training_target": (
+                    item.equation_changed_on_shuffled_training
+                ),
+            }
+        )
+    failures: dict[str, int] = {}
+    for item in cells:
+        if item.status == "succeeded":
+            continue
+        key = (item.failure_reason or item.status).split(":")[0][:80]
+        failures[key] = failures.get(key, 0) + 1
+    return {
+        "executed_cell_count": len(cells),
+        "succeeded_cell_count": len(succeeded),
+        "your_cells": observations,
+        "your_failure_counts": failures,
+        "note": (
+            "These are YOUR OWN measurements only. No baseline loss and no other "
+            "candidate's result is included. A large positive generalization gap "
+            "means you fitted the validation window instead of learning the law."
+        ),
+    }
+
+
+def revise_official_candidates(
+    *,
+    panel: dict[str, Any],
+    budget: dict[str, Any],
+    candidates: Sequence[OfficialCandidateRecord],
+    results: Sequence[OfficialCellResult],
+    output_dir: Path | str,
+    config_path: Path | str = Path("config.yaml"),
+    env_path: Path | str = Path(".env"),
+    provider_timeout_seconds: int = 300,
+    completion: JsonCompletion = run_llm_json_completion,
+    clock: Callable[[], datetime] | None = None,
+) -> tuple[OfficialCandidateRecord, ...]:
+    """Let each candidate re-author itself from its OWN objective failures.
+
+    This closes the gap that made the first pilot uninformative as science: the
+    engine generated eight candidates once and judged them immediately, so no
+    candidate ever saw its own behaviour. Task `266.2` only reached a passing gate
+    after its candidates could see their own diagnostics.
+
+    Score-blind by construction: a candidate receives only its own metrics, never
+    the baseline's losses and never another candidate's source or results.
+    """
+
+    now = clock or (lambda: datetime.now(timezone.utc))
+    output_root = Path(output_dir).resolve()
+    brief = _generation_brief(panel, budget)
+    revised: list[OfficialCandidateRecord] = []
+    for record in candidates:
+        if not record.static_review_approved:
+            continue
+        observation = build_candidate_self_observation(
+            candidate_id=record.candidate_id, results=results
+        )
+        if not observation.get("executed_cell_count"):
+            continue
+        parent_source = (output_root / record.source_relative_path).read_text(
+            encoding="utf-8"
+        )
+        revised_id = f"{record.candidate_id}-r2"
+        interaction_id = f"official-revise-{record.candidate_id}"
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are the autonomous scientist improving YOUR OWN "
+                    "equation-discovery method after seeing objective measurements of "
+                    "its behaviour. Return exactly one JSON object matching the "
+                    "supplied schema, with the complete revised program as "
+                    "source_lines, one array element per physical line and no newline "
+                    "escapes. Keep the same two top-level functions and obey the same "
+                    "static_source_contract. You are NOT told any baseline score or "
+                    "any other candidate's result, so do not try to guess them; "
+                    "improve your method on its own merits."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        **brief,
+                        "your_previous_source": parent_source,
+                        "your_previous_measurements": observation,
+                        "instruction": (
+                            "Diagnose why your method behaved this way and return a "
+                            "complete improved replacement. A large positive "
+                            "generalization gap means you fitted the validation "
+                            "window rather than learning a law that transfers; "
+                            "consider selecting model complexity on held-out "
+                            "evidence rather than fitting once at maximum capacity."
+                        ),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            },
+        ]
+        result, _ = _call_and_record(
+            completion=completion,
+            messages=messages,
+            config_path=config_path,
+            env_path=env_path,
+            timeout_seconds=provider_timeout_seconds,
+            max_tokens=12_000,
+            response_schema=_SOURCE_RESPONSE_SCHEMA,
+            response_schema_name="scientific_contract_source",
+            interaction_id=interaction_id,
+            stage="scientific_contract_repair",
+            candidate_id=revised_id,
+            output_root=output_root,
+            now=now,
+        )
+        response = ScientificContractSourceResponse.model_validate(result.parsed_json)
+        source_text = response.source_text
+        source_path = output_root / "candidates" / revised_id / "candidate.py"
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        with source_path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(source_text)
+        review = review_scientific_contract_source(source_text)
+        revised.append(
+            OfficialCandidateRecord(
+                candidate_id=revised_id,
+                generation=2,
+                interaction_id=interaction_id,
+                source_relative_path=source_path.relative_to(output_root).as_posix(),
+                source_sha256=review.source_sha256,
+                static_review_approved=review.approved,
+                static_review_findings=tuple(
+                    f"{item.code}: {item.message[:160]}" for item in review.findings
+                ),
+                implementation_summary=response.implementation_summary,
+            )
+        )
+    write_json_model(
+        output_root / "candidates" / "revised-registry.json",
+        {"candidates": [item.model_dump(mode="json") for item in revised]},
+    )
+    return tuple(revised)
+
+
 def select_official_candidate(
     *,
     candidates: Sequence[OfficialCandidateRecord],
