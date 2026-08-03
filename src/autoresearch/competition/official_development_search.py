@@ -743,13 +743,43 @@ def execute_official_stage(
     baseline_method: dict[str, Any] | None = None,
     timeout_seconds: int = 300,
     maximum_parallel_cells: int = 4,
+    research_plan: Any | None = None,
+    plan_decision: Any | None = None,
+    ledger: Any | None = None,
 ) -> tuple[OfficialCellResult, ...]:
     """Execute one frozen stage, retaining every failure.
 
     Pass `baseline_method=None` to route each cell to its domain-valid baseline.
+
+    Two gates run BEFORE any container starts, so neither can be bypassed by a
+    partially executed stage:
+
+    * The Task `267.4` research-plan gate. When `research_plan` is supplied,
+      `require_approved_plan` must authorize it, and the approved plan hash is
+      bound into the persisted stage record. This is the confirmation step the
+      project requires between a generated plan and any experiment.
+    * The Task `266.3` spend ledger (`P-20260802-066`). When `ledger` is supplied,
+      a stage that would cross a frozen limit is refused before spending anything.
     """
 
     output_root = Path(output_dir).resolve()
+
+    bound_plan_hash: str | None = None
+    if research_plan is not None:
+        from autoresearch.research.plan_confirmation import require_approved_plan
+
+        # Raises unless a human recorded an approval against this exact plan.
+        bound_plan_hash = require_approved_plan(
+            plan=research_plan, decision=plan_decision
+        )
+
+    if ledger is not None:
+        candidate_cells = sum(1 for item in specs if item.method_kind == "candidate")
+        baseline_cells = sum(1 for item in specs if item.method_kind == "baseline")
+        ledger.check(
+            candidate_cells=candidate_cells,
+            baseline_cells=baseline_cells,
+        )
     runner_path = output_root / "runner" / _RUNNER_SOURCE.name
     if file_hash(runner_path) != identity.runner_sha256:
         raise OfficialDevelopmentSearchError("packaged runner bytes changed")
@@ -775,9 +805,15 @@ def execute_official_stage(
 
     with ThreadPoolExecutor(max_workers=maximum_parallel_cells) as pool:
         results = tuple(pool.map(run, specs))
+    stage_record: dict[str, Any] = {
+        "results": [item.model_dump(mode="json") for item in results]
+    }
+    if bound_plan_hash is not None:
+        # Binds this execution to the exact plan text a human approved.
+        stage_record["approved_research_plan_hash"] = bound_plan_hash
     write_json_model(
         output_root / "cells" / f"{specs[0].stage}-results.json",
-        {"results": [item.model_dump(mode="json") for item in results]},
+        stage_record,
     )
     return results
 
