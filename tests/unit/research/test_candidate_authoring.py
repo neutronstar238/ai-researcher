@@ -6,7 +6,7 @@ The live run is recorded separately in `Agent.md`.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -25,7 +25,7 @@ def _documents() -> list[DocumentRecord]:
             title="Sparse coding for handwritten digit recognition",
             source_uri="https://arxiv.org/abs/1234.5678",
             abstract="We study nearest-centroid classifiers on the UCI Pendigits benchmark.",
-            retrieved_at=datetime(2026, 8, 3, 12, 0, tzinfo=UTC),
+            retrieved_at=datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc),
         ),
         DocumentRecord(
             id="doc_b",
@@ -33,7 +33,7 @@ def _documents() -> list[DocumentRecord]:
             source_uri="https://arxiv.org/abs/2345.6789",
             doi="10.1000/example",
             abstract="Per-class variance scaling improves macro F1 on tabular benchmarks.",
-            retrieved_at=datetime(2026, 8, 3, 12, 5, tzinfo=UTC),
+            retrieved_at=datetime(2026, 8, 3, 12, 5, tzinfo=timezone.utc),
         ),
     ]
 
