@@ -390,7 +390,7 @@ def test_a_panel_too_small_for_the_frozen_pilot_is_refused() -> None:
 def test_pilot_breadth_disagreeing_with_the_frozen_identity_is_refused() -> None:
     """The retired script ran 4 pilot systems while its identity declared 6."""
 
-    with pytest.raises(OfficialLineageError, match="contradicts the frozen identity"):
+    with pytest.raises(OfficialLineageError, match="contradicts the preregistered"):
         _stage_shape(
             stage="pilot",
             panel=_panel(),

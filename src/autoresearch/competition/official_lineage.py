@@ -72,6 +72,10 @@ from autoresearch.competition.official_spend_ledger import (
     load_or_create_ledger,
     persist_ledger,
 )
+from autoresearch.competition.preregistered_stage_breadth import (
+    PreregisteredStageBreadth,
+    load_stage_breadth,
+)
 
 LineageStage = Literal[
     "plan",
@@ -599,22 +603,41 @@ def _stage_shape(
     panel: dict[str, Any],
     budget: dict[str, Any],
     identity: OfficialDevelopmentIdentity,
+    breadth: PreregisteredStageBreadth | None = None,
 ) -> tuple[list[dict[str, Any]], list[int]]:
-    """Systems and seeds for one execution stage, all read from the frozen plan.
+    """Systems and seeds for one execution stage, all read from preregistered facts.
 
     `panel` must already be narrowed by any preregistered policy, so an excluded
-    system cannot reach a cell spec. `select_pilot_systems` then enforces the frozen
-    pilot breadth against the panel this lineage actually runs, which is how a
-    narrowed panel that cannot supply that breadth is refused instead of silently
-    reshaped.
+    system cannot reach a cell spec. Without a preregistered `breadth` the frozen
+    parent breadth is enforced, so a narrowed panel that cannot supply it is REFUSED
+    rather than silently reshaped. With one, this lineage's own preregistered breadth
+    applies and the frozen parent plan stays byte-identical.
     """
 
     if stage == "pilot":
-        systems = select_pilot_systems(panel=panel, budget=budget)
-        if len(systems) != identity.pilot_system_count:
+        expected_count = identity.pilot_system_count
+        effective_budget = budget
+        if breadth is not None:
+            # `P-20260804-077`: the frozen breadth is unreachable on the narrowed
+            # panel, and the system's own loop chose a new preregistration over
+            # rewriting the frozen budget. The artifact binds the parent's numbers as
+            # evidence of what it supersedes; the frozen plan itself is untouched.
+            if breadth.parent_plan_hash != identity.plan_hash:
+                raise OfficialLineageError(
+                    "the preregistered stage breadth binds a different parent plan "
+                    "than this lineage's frozen identity"
+                )
+            effective_budget = {
+                **budget,
+                "pilot_ode_system_count": breadth.pilot_ode_count,
+                "pilot_pde_system_count": breadth.pilot_pde_count,
+            }
+            expected_count = breadth.pilot_system_count
+        systems = select_pilot_systems(panel=panel, budget=effective_budget)
+        if len(systems) != expected_count:
             raise OfficialLineageError(
-                f"pilot breadth {len(systems)} contradicts the frozen identity's "
-                f"pilot_system_count {identity.pilot_system_count}"
+                f"pilot breadth {len(systems)} contradicts the preregistered "
+                f"pilot_system_count {expected_count}"
             )
         seeds = list(panel["seeds"])[: int(budget["pilot_seed_count"])]
         return systems, seeds
@@ -643,7 +666,11 @@ def run_execution_stage(
             panel=panel, excluded_system_names=policy_excluded
         )
     systems, seeds = _stage_shape(
-        stage=stage, panel=panel, budget=budget, identity=identity
+        stage=stage,
+        panel=panel,
+        budget=budget,
+        identity=identity,
+        breadth=load_stage_breadth(output_dir=config.work_dir),
     )
 
     specs: tuple[OfficialCellSpec, ...] = build_official_cell_specs(
