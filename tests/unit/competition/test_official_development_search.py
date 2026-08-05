@@ -24,6 +24,7 @@ from autoresearch.competition.official_development_search import (
     OfficialCellResult,
     OfficialDevelopmentSearchError,
     _bootstrap_interval,
+    _generation_brief,
     _median,
     aggregate_paired_effects,
     compute_system_effects,
@@ -448,3 +449,51 @@ def test_bootstrap_brackets_the_median_and_is_deterministic() -> None:
 def test_bootstrap_requires_at_least_one_system() -> None:
     with pytest.raises(OfficialDevelopmentSearchError, match="at least one system"):
         _bootstrap_interval([])
+
+
+# --------------------------------------------------------------------------
+# Task 269.3: the non-empty-support contract requirement
+# --------------------------------------------------------------------------
+
+
+def _brief() -> dict[str, object]:
+    panel = {
+        "systems": [
+            {"system_name": "ode-a", "data_type": "ode"},
+            {"system_name": "reaction_diffusion_cylinder", "data_type": "pde"},
+        ],
+        "conditions": ["clean", "snr_20"],
+        "seeds": [101],
+    }
+    budget = {
+        "maximum_seconds_per_cell": 300,
+        "maximum_memory_mb_per_cell": 4096,
+        "maximum_cpu_cores_per_cell": 2,
+    }
+    return _generation_brief(panel, budget)
+
+
+def test_the_non_empty_support_requirement_reaches_the_generation_brief() -> None:
+    """P-20260802-068: the prior lineage's candidate returned zero terms on one system.
+
+    The requirement must actually reach the brief a candidate is authored from,
+    otherwise the repair is only documented and never delivered.
+    """
+
+    brief = _brief()
+    requirement = brief["non_empty_support_requirement"]
+    assert isinstance(requirement, str)
+    assert "at least one concrete term" in requirement
+    assert "minimal non-empty support" in requirement
+
+
+def test_the_requirement_states_a_contract_not_a_method() -> None:
+    """The candidate still chooses its own library, estimator, and thresholds.
+
+    A brief that named a specific estimator or threshold would be an agent
+    authoring the candidate's science instead of stating the contract.
+    """
+
+    requirement = str(_brief()["non_empty_support_requirement"]).lower()
+    for method_word in ("stlsq", "lasso", "ridge", "pysindy", "threshold of"):
+        assert method_word not in requirement

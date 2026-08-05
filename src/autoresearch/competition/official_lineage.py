@@ -343,6 +343,28 @@ def _freeze(
     return frozen, identity, panel, ledger
 
 
+def freeze_lineage(
+    config: OfficialLineageConfig,
+) -> tuple[OfficialDevelopmentIdentity, OfficialSpendLedger]:
+    """Freeze this lineage's identity and persist its EMPTY spend ledger.
+
+    Separated from the stage sequence so a lineage can be frozen and preregistered
+    without generating a candidate or executing a cell. `freeze_official_identity`
+    reads metadata only, so no numeric payload is opened here, and the ledger is
+    written with zero spend so a new lineage provably starts clean.
+    """
+
+    _frozen, identity, _panel, ledger = _freeze(config)
+    if ledger.entries:
+        raise OfficialLineageError(
+            f"lineage {config.lineage_id} already carries "
+            f"{len(ledger.entries)} spend entries, so it is not a new lineage; a "
+            "fresh lineage needs a fresh directory"
+        )
+    persist_ledger(ledger=ledger, output_dir=config.work_dir)
+    return identity, ledger
+
+
 def _load_frozen_read_only(
     config: OfficialLineageConfig,
 ) -> tuple[dict[str, Any], OfficialDevelopmentIdentity, OfficialSpendLedger]:
@@ -399,12 +421,32 @@ def _load_plan_and_decision(config: OfficialLineageConfig) -> tuple[Any, Any]:
 
 
 def run_plan_stage(config: OfficialLineageConfig) -> LineageStageReport:
-    """Let the system author its plan from frozen evidence, then audit it."""
+    """Let the system author its plan from frozen evidence, then audit it.
 
+    When this lineage has a preregistered baseline policy, its carried defects are
+    bound into the plan's problem statement, so the plan states which diagnosed
+    defects the lineage exists to repair. The statements originate in the system's
+    own evidence; this stage only positions them.
+    """
+
+    from autoresearch.competition.official_baseline_policy import (
+        BaselinePolicyError,
+        load_baseline_policy,
+    )
     from autoresearch.competition.official_plan_generation import (
         build_official_research_plan,
     )
     from autoresearch.research.plans import audit_research_plan
+
+    carried: list[str] = []
+    extra_refs: list[str] = []
+    try:
+        policy = load_baseline_policy(output_dir=config.work_dir)
+    except BaselinePolicyError:
+        policy = None
+    if policy is not None:
+        carried = [item.statement for item in policy.carried_defects]
+        extra_refs = [policy.output_path, policy.authored_decision_package_path]
 
     plan = build_official_research_plan(
         plan_path=config.frozen_plan_path,
@@ -412,6 +454,8 @@ def run_plan_stage(config: OfficialLineageConfig) -> LineageStageReport:
         data_root=config.data_root,
         project_id=config.lineage_id,
         prior_run_dirs=list(config.prior_run_dirs),
+        carried_defect_statements=carried,
+        extra_evidence_refs=extra_refs,
     )
     audit = audit_research_plan(plan)
     config.plan_dir.mkdir(parents=True, exist_ok=True)
@@ -426,6 +470,7 @@ def run_plan_stage(config: OfficialLineageConfig) -> LineageStageReport:
             "=== STAGE plan: generated from frozen evidence",
             f"  audit verdict : {audit.verdict.value}",
             f"  audit score   : {audit.score}",
+            f"  carried defects: {len(carried)}",
             f"  status        : {plan.status.value}",
             f"  plan id       : {plan.id}",
             "  execution BLOCKED until a human decision is recorded",

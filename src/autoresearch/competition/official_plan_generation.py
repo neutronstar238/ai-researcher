@@ -43,8 +43,17 @@ def build_official_research_plan(
     data_root: Path | str,
     project_id: str = "official-mdbench-noise-robust-discovery",
     prior_run_dirs: list[Path | str] | None = None,
+    carried_defect_statements: list[str] | None = None,
+    extra_evidence_refs: list[str] | None = None,
 ) -> ResearchPlan:
-    """Derive an execution-ready research plan from the system's own frozen evidence."""
+    """Derive an execution-ready research plan from the system's own frozen evidence.
+
+    `carried_defect_statements` lets a repair lineage state the diagnosed defects it
+    exists to fix. Each statement must already originate in the system's own evidence
+    -- either authored by the model in a self-correction package or derived
+    arithmetically from retained cells -- because this function only positions text
+    it is given and never composes a scientific claim itself.
+    """
 
     frozen = json.loads(Path(plan_path).read_text(encoding="utf-8"))
     autonomous = json.loads(Path(autonomous_plan_path).read_text(encoding="utf-8"))
@@ -70,6 +79,17 @@ def build_official_research_plan(
         package = Path(directory)
         if package.is_dir():
             evidence_refs.append(package.as_posix())
+    evidence_refs.extend(extra_evidence_refs or [])
+
+    # A repair lineage must state what it is repairing. The statements are carried
+    # in already-authored; this only appends them so the plan hash covers them.
+    carried = [item.strip() for item in (carried_defect_statements or []) if item.strip()]
+    carried_block = (
+        " This lineage exists to repair diagnosed defects carried from retained "
+        "evidence: " + " ".join(carried)
+        if carried
+        else ""
+    )
 
     minimum_effect = float(estimand["minimum_overall_log_effect"])
     plan = ResearchPlan.model_validate(
@@ -85,7 +105,7 @@ def build_official_research_plan(
                 f"Across {len(ode_systems)} ODE and {len(pde_systems)} PDE systems the "
                 "prior search showed a large positive gap between validation error and "
                 "held-out derivative error, so held-out accuracy did not follow from "
-                "training accuracy."
+                "training accuracy." + carried_block
             ),
             "rationale": (
                 "Selecting model complexity on held-out evidence rather than fitting "

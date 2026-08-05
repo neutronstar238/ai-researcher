@@ -22,6 +22,7 @@ out of the scratch driver without changing arithmetic.
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,7 @@ from autoresearch.competition.official_lineage import (
     OfficialLineageError,
     _stage_shape,
     evaluate_frozen_gate,
+    freeze_lineage,
     frozen_gate_receipt,
     rank_pilot_finalists,
     run_adjudicate_stage,
@@ -523,3 +525,69 @@ def test_adjudication_reproduces_the_retained_conformant_lineage(tmp_path: Path)
 
     # The retained lineage must not have been touched.
     assert not (_RETAINED / "official-development-search-package.json").exists()
+
+
+# --------------------------------------------------------------------------
+# Tasks 268.3 + 269.2: a new lineage must start with a provably clean ledger
+# --------------------------------------------------------------------------
+
+
+def _pinned_image_available() -> bool:
+    """Report whether the pinned scientific image can be inspected.
+
+    `freeze_lineage` fingerprints the pinned runtime, so it needs a running Docker
+    daemon. The scientific dependencies live only in that image, so this test is
+    skipped rather than failed when the daemon is absent.
+    """
+
+    try:
+        completed = subprocess.run(
+            ["docker", "image", "inspect", "autoresearch-mdbench:task260"],
+            capture_output=True,
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
+
+@pytest.mark.skipif(
+    not _pinned_image_available(),
+    reason="pinned autoresearch-mdbench:task260 image is not inspectable here",
+)
+def test_freezing_a_lineage_that_already_spent_is_refused(tmp_path: Path) -> None:
+    """A fresh lineage needs a fresh directory, or its spend is not clean.
+
+    Freezing over an existing ledger would let a new lineage inherit the prior
+    lineage's spend, which is how `P-20260802-066` overran the frozen budget.
+    """
+
+    from autoresearch.competition.official_spend_ledger import (
+        OfficialSpendLedger,
+        persist_ledger,
+    )
+
+    frozen_plan_hash = str(
+        json.loads(_FROZEN_PLAN.read_text(encoding="utf-8"))["plan_hash"]
+    )
+    dirty = OfficialSpendLedger(
+        lineage_id="task-dirty-v1",
+        plan_hash=frozen_plan_hash,
+        maximum_total_candidate_count=12,
+        maximum_official_candidate_cells=380,
+        maximum_official_cells_total=464,
+        maximum_model_interactions=80,
+        maximum_generations=2,
+    ).record(stage="generate-gen1", candidate_count=8, model_interactions=8)
+    persist_ledger(ledger=dirty, output_dir=tmp_path)
+
+    config = OfficialLineageConfig(
+        lineage_id="task-dirty-v1",
+        work_dir=tmp_path,
+        frozen_plan_path=_FROZEN_PLAN,
+        autonomous_plan_path=_AUTONOMOUS_PLAN,
+        data_root=_DATA_ROOT,
+    )
+    with pytest.raises(OfficialLineageError, match="not a new lineage"):
+        freeze_lineage(config)

@@ -409,6 +409,17 @@ def _generation_brief(panel: dict[str, Any], budget: dict[str, Any]) -> dict[str
             "author a fit-once/freeze/predict equation-discovery candidate for the "
             "official MDBench development panel"
         ),
+        # P-20260802-068: the prior lineage's selected candidate returned zero terms
+        # on one system, so its sparse selection collapsed to the empty set on that
+        # system's scaling. This states the REQUIREMENT; the candidate still chooses
+        # its own library, estimator, thresholds, and fallback strategy.
+        "non_empty_support_requirement": (
+            "Every returned equation must contain at least one concrete term. If your "
+            "sparse selection retains nothing on a given system, fall back to a "
+            "minimal non-empty support rather than returning an empty term list, "
+            "because an empty equation is rejected by the contract and scores as a "
+            "failed cell."
+        ),
         "objective": (
             "minimise held-out derivative NMSE under clean and SNR20 noise; you are "
             "compared against a tuned symbolic-regression baseline"

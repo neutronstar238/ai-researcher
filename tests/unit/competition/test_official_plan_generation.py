@@ -196,3 +196,72 @@ def test_a_panel_without_both_domains_is_refused(tmp_path: Path) -> None:
             autonomous_plan_path=broken,
             data_root=DATA_ROOT,
         )
+
+
+# --------------------------------------------------------------------------
+# Tasks 268.3 + 269.2: a repair lineage must state what it repairs
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not FROZEN_PLAN.is_file(), reason="frozen plan artifacts are not present"
+)
+def test_carried_defects_are_bound_into_the_plan_and_its_hash() -> None:
+    """A repair lineage's plan must name the defects it exists to fix.
+
+    The statements are carried in already-authored, so this only proves they reach
+    the hashed plan text and that the audit still passes with them present.
+    """
+
+    statements = [
+        "The frozen protocol requires every domain baseline cell to succeed while "
+        "two systems fail every cell, so the gate is unreachable as written.",
+        "The selected candidate returns zero terms on one PDE system, so its sparse "
+        "selection collapses to the empty set on that system's scaling.",
+    ]
+    plain = build_official_research_plan(
+        plan_path=FROZEN_PLAN,
+        autonomous_plan_path=AUTONOMOUS_PLAN,
+        data_root=DATA_ROOT,
+        project_id="repair-lineage-test",
+    )
+    carried = build_official_research_plan(
+        plan_path=FROZEN_PLAN,
+        autonomous_plan_path=AUTONOMOUS_PLAN,
+        data_root=DATA_ROOT,
+        project_id="repair-lineage-test",
+        carried_defect_statements=statements,
+        extra_evidence_refs=["runs/x/preregistered-baseline-policy.json"],
+    )
+
+    for statement in statements:
+        assert statement in carried.problem_statement
+        assert statement not in plain.problem_statement
+    assert "runs/x/preregistered-baseline-policy.json" in carried.evidence_refs
+
+    # Carrying a defect must not break the plan's own audit.
+    assert audit_research_plan(carried).passed is True
+    assert carried.status is ResearchPlanStatus.READY_FOR_APPROVAL
+
+    # The defects are inside the hashed content, so an approval binds them.
+    assert compute_plan_hash(carried) != compute_plan_hash(plain)
+
+
+@pytest.mark.skipif(
+    not FROZEN_PLAN.is_file(), reason="frozen plan artifacts are not present"
+)
+def test_blank_carried_statements_are_ignored() -> None:
+    plain = build_official_research_plan(
+        plan_path=FROZEN_PLAN,
+        autonomous_plan_path=AUTONOMOUS_PLAN,
+        data_root=DATA_ROOT,
+        project_id="repair-lineage-test",
+    )
+    blank = build_official_research_plan(
+        plan_path=FROZEN_PLAN,
+        autonomous_plan_path=AUTONOMOUS_PLAN,
+        data_root=DATA_ROOT,
+        project_id="repair-lineage-test",
+        carried_defect_statements=["", "   "],
+    )
+    assert blank.problem_statement == plain.problem_statement
