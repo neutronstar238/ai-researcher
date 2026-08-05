@@ -5980,3 +5980,44 @@ update a factual problem entry below.
 - Root cause: the delegation is genuine and covers scope, but the `267.4` gate does not distinguish a human decision from a delegated agent decision in its schema. `decided_by` is a free-text field, so the distinction currently lives in prose rather than in a validated field.
 - Workaround: the provenance is stated explicitly in `decided_by` and in the notes, and recorded here, so the limitation travels with the artifact instead of being silently lost.
 - Next action: two options, and the choice is the user's. Either obtain a genuine human sign-off on the plan text before a receipt is claimed, and record it as a second decision; or add a validated `decision_authority` field to `ResearchPlanDecisionRecord` distinguishing `human` from `operator_delegated_agent`, so the distinction is machine-checkable and a publication claim can be gated on the former. Until one of those happens, no artifact should be read as asserting human scientific review of this lineage.
+
+### P-20260804-076 - The preregistered exclusion was decorative: the executed panel ignored it
+
+- Status: Resolved
+- Severity: Critical
+- Discovered: 2026-08-04
+- Source: Task `269.4` pre-execution check, before any frozen budget was spent.
+- Symptom: `run_plan_stage` was policy-aware and bound the policy's carried defects into the plan, but `_stage_shape` returned `list(panel["systems"])` unconditionally. The preregistered exclusion of `heat_laser` and `heat_soil_uniform_2d_p1` therefore had no effect on which cells were built.
+- Impact: Critical, and it would have silently wasted the entire frozen budget. The frozen `266.1` gate checks `all_baseline_cells_succeeded`. Executing the two excluded systems means their 12 baseline cells fail exactly as they did in the parent lineage, so that check stays false, no receipt can be issued, and the new lineage reproduces the parent's blocker while reporting a 12-system policy. The policy artifact would have been an accurate description of a panel change that never happened.
+- Evidence: `_stage_shape` had no policy parameter and no call to `load_baseline_policy`, while `run_plan_stage` imported and used it. `narrow_panel_by_policy` plus `_policy_excluded_systems` now bind the declared change to the cells actually built, and `test_baseline_and_full_stages_run_only_the_narrowed_panel` asserts both gate-feeding stages see 12 systems rather than 14.
+- Root cause: the policy was introduced as a preregistration artifact and wired into plan authoring, but the execution path that consumes the panel was never updated to read it. A declared panel change with no enforcement point.
+- Workaround: none needed; fixed before any cell ran.
+- Resolution: `narrow_panel_by_policy` removes excluded systems from the panel before `_stage_shape` sees it, refuses a policy naming a system absent from the panel, and refuses a policy that would empty the panel. A lineage without a policy is unchanged, so pre-policy lineages stay byte-reproducible. Six regressions cover the narrowing, the two refusals, seed and condition survival, and both gate-feeding stages.
+
+### P-20260804-077 - Repairing the baseline contradiction exposed a second: the frozen pilot breadth is also unsatisfiable
+
+- Status: Open, routed into the system's own self-correction loop
+- Severity: High
+- Discovered: 2026-08-04
+- Source: Task `269.4`, as a direct consequence of fixing `P-20260804-076`.
+- Symptom: The official panel carries exactly 4 PDE systems. The preregistered policy excludes 2, leaving 2. The frozen Task `266.1` budget requires `pilot_pde_system_count=3`, and `freeze_official_identity` derives `pilot_system_count = 3 + 3 = 6`. On the narrowed panel the PDE stratum can supply at most 2 and the total at most 5, so both frozen numbers are unreachable and `select_pilot_systems` refuses.
+- Impact: High. This is the same class as `P-20260802-070` and it strengthens that finding: honestly repairing one frozen contradiction proved the frozen `266.1` protocol is unsatisfiable on a SECOND, independent axis. It is not a parameter to be quietly reshaped. Silently running a 5-system pilot would edit a frozen budget parameter, and silently drawing pilot systems from the un-narrowed panel would rank finalists partly on systems the estimand never measures.
+- Evidence: `pilot_breadth_contradiction.py` states the contradiction arithmetically from the frozen plan and the policy, and its satisfiability flags cannot disagree with its own counts. Three independent live `qwen3.7-max` runs with bounded reasoning enabled (`1587`, `1349`, `1144` real reasoning tokens; packages `f1278b155471dc474d6a659b3bce753c11c495a2fc228312bc1c87f3bcd0a44d`, `a5054e01525d6869c069036201c367037a0f9d4d597e09a6c2f25840a35331d2`, `d8cbd977c707f5e53d6ddfbf1d374e8ea8a2dcd54ce8c8f74f58168e1b95ec30`) all reached the SAME resolution: `declare_frozen_pilot_breadth_unsatisfiable_and_require_new_preregistration`, with `guard_accepted=true`, `edits_frozen_budget_parameter=false`, `contaminates_finalist_selection=false`, and zero refusals every time. The resolution kind and all safety flags are invariant across all three runs; only the free-text justification wording varies.
+- Evidence (the system's own reasoning, not supplied to it): the model independently derived why each of the other three routes is disqualified, including that drawing from the un-narrowed panel "would include excluded systems that cannot produce a loss (contaminating finalist selection with systems the estimand excludes)". The prompt offered all four routes unranked with no hint of a preferred answer, and `test_the_prompt_offers_the_closed_set_without_steering` asserts that.
+- Root cause: the frozen budget's pilot breadth was fixed when the panel had 4 usable PDE systems. Excluding 2 of them for a legitimate baseline-coverage reason makes that breadth arithmetically impossible. The two frozen facts are jointly unsatisfiable and neither can be rewritten in place.
+- Workaround: none applied. `_stage_shape` fails closed on the narrowed panel rather than choosing a reshape, so the contradiction cannot be crossed by accident.
+- Next action: a new preregistration is required to change the pilot breadth, exactly as the system concluded. That is a scientific protocol decision and must not be taken by an agent. Note that this compounds `P-20260804-075`: the existing plan approval is an agent-signed SCOPE authorization, and changing a frozen budget parameter is beyond that scope by its own explicit terms. A human decision is the honest blocker here.
+- Linked tasks: `268.3` + `269.2` (merged lineage), `269.4` (blocked), `P-20260802-070`, `P-20260804-075`, `P-20260804-076`.
+
+### P-20260804-078 - Live provider transport errors on the self-correction cycle
+
+- Status: Open, mitigated by retry
+- Severity: Low
+- Discovered: 2026-08-04
+- Source: Task `269.4` live runs of the pilot-breadth cycle.
+- Symptom: Two distinct provider failures on `qwen3.7-max`. First, `HTTP 400 InternalError.Algo.InvalidParameter: 'messages' must contain the word 'json' in some form, to use 'response_format' of type 'json_object'`. Second, on a later call, `HTTP 500 InternalError.Algo: An error occurred in model serving ... [Inference engine abort. Finish reason: [STOP_FROM_ENGINE]]`.
+- Impact: Low. The 400 was a real defect in my new module and is fixed. The 500 is transient and succeeded on retry.
+- Evidence: the 400 is the exact interaction Task `267.3.1` documented: enabling reasoning downgrades transport-level `json_schema` to `json_object` on DashScope-shaped providers, and that mode requires the literal lowercase word `json` in the messages. `pilot_breadth_contradiction.py` called `run_llm_json_completion` directly and therefore bypassed the engine's `_json_object_reasoning_messages`, which already handles this.
+- Root cause: a new module reached the provider without reusing the engine's established json-object message shaping.
+- Resolution (400): the prompt now states the schema and the literal word `json`, with strict conformance enforced locally by `PilotBreadthProposal`. `test_the_prompt_carries_the_literal_word_json` is a regression for the exact live failure, so the defect cannot return silently.
+- Next action (500): none required; it recovered on retry. Worth noting that this cycle calls the provider directly rather than through `_call_and_record`, so it does NOT inherit that helper's transport-retry chain and checkpointing. If this cycle becomes load-bearing, route it through the shared authoring transport instead of duplicating retry logic.
