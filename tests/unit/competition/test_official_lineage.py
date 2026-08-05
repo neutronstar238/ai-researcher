@@ -44,6 +44,7 @@ from autoresearch.competition.official_lineage import (
     evaluate_frozen_gate,
     freeze_lineage,
     frozen_gate_receipt,
+    narrow_panel_by_policy,
     rank_pilot_finalists,
     run_adjudicate_stage,
     select_pilot_systems,
@@ -591,3 +592,97 @@ def test_freezing_a_lineage_that_already_spent_is_refused(tmp_path: Path) -> Non
     )
     with pytest.raises(OfficialLineageError, match="not a new lineage"):
         freeze_lineage(config)
+
+
+# --------------------------------------------------------------------------
+# A preregistered exclusion must bind to the executed panel
+# --------------------------------------------------------------------------
+
+
+def test_a_policy_exclusion_removes_the_system_from_the_panel() -> None:
+    """Without this the exclusion is decorative and the frozen gate stays unreachable.
+
+    The gate checks `all_baseline_cells_succeeded`, so a system whose pinned baseline
+    cannot produce a loss keeps that check false however clearly the policy declared
+    it excluded. The declared panel change has to take effect somewhere, and this is
+    where.
+    """
+
+    narrowed = narrow_panel_by_policy(
+        panel=_panel(ode=10, pde=4),
+        excluded_system_names=["pde-1", "pde-3"],
+    )
+    names = [item["system_name"] for item in narrowed["systems"]]
+    assert "pde-1" not in names
+    assert "pde-3" not in names
+    assert len(names) == 12
+    # Seeds and conditions are frozen and must survive the narrowing untouched.
+    assert narrowed["seeds"] == [101, 211, 307]
+    assert narrowed["conditions"] == ["clean", "snr_20"]
+
+
+def test_narrowing_leaves_a_panel_without_exclusions_unchanged() -> None:
+    panel = _panel()
+    assert narrow_panel_by_policy(panel=panel, excluded_system_names=[])["systems"] == (
+        panel["systems"]
+    )
+
+
+def test_excluding_a_system_absent_from_the_panel_is_refused() -> None:
+    """A policy that names a system this lineage never had does not describe it."""
+
+    with pytest.raises(OfficialLineageError, match="not in this panel"):
+        narrow_panel_by_policy(
+            panel=_panel(), excluded_system_names=["a-system-that-does-not-exist"]
+        )
+
+
+def test_a_policy_cannot_exclude_the_entire_panel() -> None:
+    with pytest.raises(OfficialLineageError, match="excludes every system"):
+        narrow_panel_by_policy(
+            panel=_panel(ode=1, pde=0), excluded_system_names=["ode-0"]
+        )
+
+
+def test_baseline_and_full_stages_run_only_the_narrowed_panel() -> None:
+    """The two stages that feed the gate and the effect must see 12, not 14."""
+
+    narrowed = narrow_panel_by_policy(
+        panel=_panel(), excluded_system_names=["pde-1", "pde-3"]
+    )
+    for stage in ("baseline", "full"):
+        systems, seeds = _stage_shape(
+            stage=stage,  # type: ignore[arg-type]
+            panel=narrowed,
+            budget=_budget(),
+            identity=_identity(),
+        )
+        assert len(systems) == 12
+        assert seeds == [101, 211, 307]
+
+
+def test_a_narrowed_panel_that_cannot_supply_the_frozen_pilot_breadth_is_refused() -> (
+    None
+):
+    """The second frozen contradiction, surfaced rather than silently reshaped.
+
+    The official panel carries exactly 4 PDE systems. The preregistered policy
+    excludes 2 of them, leaving 2, while the frozen budget requires
+    `pilot_pde_system_count=3` and the frozen identity declares
+    `pilot_system_count=6`. Both are unsatisfiable on the narrowed panel, so
+    honestly repairing the baseline-coverage contradiction exposes a SECOND
+    independent one. This must fail closed: quietly running a 5-system pilot, or
+    quietly drawing pilot systems from the un-narrowed panel, would rank finalists
+    partly on systems the effect never measures.
+    """
+
+    narrowed = narrow_panel_by_policy(
+        panel=_panel(ode=10, pde=4), excluded_system_names=["pde-1", "pde-3"]
+    )
+    with pytest.raises(OfficialLineageError, match="frozen pilot breadth"):
+        _stage_shape(
+            stage="pilot",
+            panel=narrowed,
+            budget=_budget(),
+            identity=_identity(),
+        )

@@ -544,6 +544,55 @@ def run_generate_stage(config: OfficialLineageConfig) -> LineageStageReport:
     )
 
 
+def _policy_excluded_systems(config: OfficialLineageConfig) -> tuple[str, ...]:
+    """Return the systems this lineage's preregistered policy excludes, if any.
+
+    A lineage without a policy is unchanged, so the pre-policy lineages stay
+    byte-reproducible.
+    """
+
+    from autoresearch.competition.official_baseline_policy import (
+        BaselinePolicyError,
+        load_baseline_policy,
+    )
+
+    try:
+        policy = load_baseline_policy(output_dir=config.work_dir)
+    except BaselinePolicyError:
+        return ()
+    return tuple(policy.excluded_system_names)
+
+
+def narrow_panel_by_policy(
+    *,
+    panel: dict[str, Any],
+    excluded_system_names: Sequence[str],
+) -> dict[str, Any]:
+    """Remove the preregistered policy's excluded systems from a panel.
+
+    Without this the exclusion would be decorative: the frozen gate checks
+    `all_baseline_cells_succeeded`, so executing a system whose baseline cannot
+    produce a loss keeps that check false no matter what the policy declared. The
+    policy states the panel change and its power cost, and this is where that
+    declared change actually takes effect.
+    """
+
+    excluded = set(excluded_system_names)
+    unknown = excluded - {str(item["system_name"]) for item in panel["systems"]}
+    if unknown:
+        raise OfficialLineageError(
+            f"the preregistered policy excludes {sorted(unknown)}, which are not in "
+            "this panel, so the policy does not describe this lineage"
+        )
+    narrowed = dict(panel)
+    narrowed["systems"] = [
+        item for item in panel["systems"] if str(item["system_name"]) not in excluded
+    ]
+    if not narrowed["systems"]:
+        raise OfficialLineageError("the policy excludes every system in the panel")
+    return narrowed
+
+
 def _stage_shape(
     *,
     stage: Literal["pilot", "baseline", "full"],
@@ -551,7 +600,14 @@ def _stage_shape(
     budget: dict[str, Any],
     identity: OfficialDevelopmentIdentity,
 ) -> tuple[list[dict[str, Any]], list[int]]:
-    """Systems and seeds for one execution stage, all read from the frozen plan."""
+    """Systems and seeds for one execution stage, all read from the frozen plan.
+
+    `panel` must already be narrowed by any preregistered policy, so an excluded
+    system cannot reach a cell spec. `select_pilot_systems` then enforces the frozen
+    pilot breadth against the panel this lineage actually runs, which is how a
+    narrowed panel that cannot supply that breadth is refused instead of silently
+    reshaped.
+    """
 
     if stage == "pilot":
         systems = select_pilot_systems(panel=panel, budget=budget)
@@ -578,6 +634,14 @@ def run_execution_stage(
     registry = _REVISED_REGISTRY if stage == "full" else _CANDIDATE_REGISTRY
     records = _load_registry(config.candidates_dir / registry)
     actors = [item for item in records if item.static_review_approved]
+    # A preregistered exclusion has to bind here, or it is decorative: the frozen
+    # gate requires every baseline cell to succeed, so a system whose baseline
+    # cannot produce a loss must not reach a cell spec at all.
+    policy_excluded = _policy_excluded_systems(config)
+    if policy_excluded:
+        panel = narrow_panel_by_policy(
+            panel=panel, excluded_system_names=policy_excluded
+        )
     systems, seeds = _stage_shape(
         stage=stage, panel=panel, budget=budget, identity=identity
     )
