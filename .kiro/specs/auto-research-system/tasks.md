@@ -3736,12 +3736,14 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260802-070` frozen-gate unreachability and the `268.1` fault-ownership classification; `P-20260803-071` reasoning disabled on autonomous authoring calls; `P-20260802-050` and `P-20260802-051` bounded-reasoning transport; Task `267.3.1` provider-neutral reasoning dispatcher; `267.6` honest-negative reporting; `266.1` frozen plan and estimand._
     - _Verify: the deterministic layer reproduces the retained evidence exactly (`84` cells, `72` succeeded, `12` failed, both mechanisms classified), the model authors a resolution for every failing system, the guard verdict is recorded either way, `execution_authorized` and `publication_ready` stay false with `human_scientific_decision_count` at `0`, no retained artifact is mutated and no candidate cell is executed, the retained interaction proves bounded reasoning was actually sent, the decision is re-derived independently at least twice with reasoning enabled and its stability reported honestly, mocked tests plus an opt-in live smoke, focused ruff and mypy, and one focused commit._
     - _Outcome: completed as an audited, model-authored repair PROPOSAL with a stable decision, and no execution. The system independently reached the SAME resolution in all five live runs: `declare_frozen_protocol_unsatisfiable_and_require_new_lineage` for BOTH `heat_laser` and `heat_soil_uniform_2d_p1`, with `changes_frozen_numeric_grid=false`, `weakens_baseline=false`, `requires_new_preregistration_lineage=true`, and `guard_accepted=true` every time. Run `task2682-frozen-protocol-self-correction-v1` (package `e0510aaa77b93c8c8a31eaa34bf2a132be2b45e393fa5446b482aeb012e5f398`) authored that decision with reasoning DISABLED (`P-20260803-071`). After `268.5` fixed the shared transport, four independent runs re-derived it with bounded reasoning ENABLED on `qwen3.7-max`: `-reasoning-v2` (package `4a4fe8496521c2a1ac90dba6f18845bffda9672d6d1eba4c93b9af7a8a63498a`, `3671` reasoning tokens), `-reasoning-v3` (package `ff4a68e0e93068b341fc89d8afe37ce0890fdcd00ddc8768792a693b62b04952`, `3339` reasoning tokens), `-reasoning-v4` (package `baeb21d1dbbc5c80dbeeed97780f5ab327ff8254e0fec83134c8fc0375799bfa`, `2604` reasoning tokens), and `-reasoning-v5` (package `a34d8937f8663e9542d9287d5240a9ba263f7ce228598c98118e610b2ca5ed53`, `2814` reasoning tokens). Every reasoning run used a byte-identical evidence payload (`prompt_tokens=1844`) and carried no hint of the v1 conclusion in its prompt. STABILITY VERDICT: the decision is robust, not an artifact of degraded reasoning; the resolution kind, both guard verdicts, and all three safety flags are invariant across the reasoning-disabled run and all four reasoning-enabled runs, and only the free-text justification wording varies. It refused the fabricated-effect route on its own analysis and refused exclusion as baseline-weakening. Reasoning text is retained as non-evidence provenance only (`reasoning_is_evidence=false`). The repair itself is NOT executed and the image is NOT re-pinned: both wait on human plan approval and the new lineage._
-  - [ ] 268.3 Carry the authored decision into a new preregistration lineage under human approval
-    - Blocked until a human records a plan-approval decision on the `268.2` proposal. The system's own audited conclusion is that the frozen `266.1` protocol is unsatisfiable, so there is no repaired runner to re-run the existing panel under: the corrected baseline policy belongs to a NEW lineage, not to a re-pin of the frozen one. Do not resurrect the repaired-runner premise; `268.1` proved the `heat_laser` limit is physical (3 `z` samples against a required 4) and that neither failure is ours to repair.
+  - [x] 268.3 Carry the authored decision into a new preregistration lineage under recorded approval
+    - MERGED WITH `269.2`, and the merge is a deliberate decision rather than a convenience. `268.3` repairs the baseline-coverage contradiction (`P-20260802-070`) and `269.2` repairs the zero-term selection defect (`P-20260802-068`), and each was written to open its own lineage. Running them separately would spend the frozen `266.1` budget TWICE and produce two evidence chains that each repair only half the problem, so both would still fail `all_domain_baseline_cells_must_succeed` for lack of the other's fix. One lineage must carry both repairs, so both subtasks are satisfied by the single lineage `task2693-unified-lineage-v1`.
+    - The system's own audited conclusion is that the frozen `266.1` protocol is unsatisfiable, so there is no repaired runner to re-run the existing panel under: the corrected baseline policy belongs to a NEW lineage, not to a re-pin of the frozen one. Do not resurrect the repaired-runner premise; `268.1` proved the `heat_laser` limit is physical (3 `z` samples against a required 4) and that neither failure is ours to repair.
     - Record the approval decision, then preregister the new lineage's baseline policy BEFORE reading any numeric payload. The new policy must state explicitly how each previously failing system is handled, and it may not force a cell to complete against an all-zero baseline model, because that manufactures a fake positive effect (`P-20260802-063`, `P-20260802-065`). Excluding a system must be declared as a panel change with its power cost stated, never as a silent repair.
     - Treat the frozen `266.1` lineage as immutable evidence. Its package, cells, estimand, thresholds, and sealed confirmation panel stay byte-identical, and the new lineage carries its own identity rather than editing the parent, following the `266.1.1` immutable-parent erratum pattern.
-    - _References: the `268.2` authored proposal and guard audit; `P-20260802-070`; `P-20260802-063` and `P-20260802-065` fabricated-effect and unpaired-baseline rules; `266.1.1` immutable-parent erratum; `269` fresh-lineage block._
-    - _Verify: a recorded human plan-approval decision precedes execution, the new lineage's baseline policy is preregistered before any numeric read and names the handling of both previously failing systems, no all-zero baseline is ever scored against, the frozen `266.1` package and cells plus the sealed confirmation panel remain hash-identical, zero candidate budget is spent by this task, focused ruff and mypy, and one focused commit._
+    - _References: the `268.2` authored proposal and guard audit; `P-20260802-070`; `P-20260802-063` and `P-20260802-065` fabricated-effect and unpaired-baseline rules; `266.1.1` immutable-parent erratum; `267.4` blocking plan-confirmation gate; `269.1` reviewed lineage driver; `269` fresh-lineage block._
+    - _Verify: a recorded plan-approval decision precedes execution with its provenance stated honestly, the new lineage's baseline policy is preregistered before any numeric read and names the handling of both previously failing systems, no all-zero baseline is ever scored against, the frozen `266.1` package and cells plus the sealed confirmation panel remain hash-identical, zero candidate budget is spent by this task, focused ruff and mypy, and focused commits._
+    - _Outcome: completed as a frozen, preregistered lineage with no execution. `task2693-unified-lineage-v1` carries BOTH repairs. Preregistered policy `f597669528c271a0942a6596cb9d01be96f00f2b40e332cd3d1ec03c38f70882` excludes `heat_laser` and `heat_soil_uniform_2d_p1`, thinning the paired panel from `14` to `12` and the PDE stratum from `4` to `2`, with that power cost stated rather than repaired. Both carried defects are bound with their provenance distinguished: `P-20260802-070` is the model's OWN verbatim contradiction statement (`system_authored`) and `P-20260802-068` is `deterministic_derivation` from retained cells, so no agent prose entered the science. The system authored the plan itself and it passed `audit_research_plan` at verdict `passed`, score `1.0`, hash `98dfee2f7b116e0e366966858c588e482a30dee2c47488cfc5855857c473465f`. The fabricated-effect route is UNREPRESENTABLE, not merely discouraged: `produces_all_zero_model` plus paired handling fails model validation. `assert_policy_precedes_numeric_payload` checks the preregistration claim against filesystem mtimes rather than trusting the artifact's self-declaration, and passed. The gate was proved real in all three states: REFUSED with no decision record, AUTHORIZED once recorded and bound to the plan hash, and BLOCKED again after a post-approval plan edit. The approval is an OPERATOR-DELEGATED SCOPE authorization, recorded as `operator-delegated-agent` with the delegation provenance stated in its notes: no human read these numbers and no human endorsed any scientific claim. It authorizes only opening this lineage, re-pinning under `266.1.1`, and spending the frozen budget once; it does NOT pre-approve any conclusion, effect direction, receipt, unsealing, publication, or submission. `is_evidence=false`, `evidence_refs` empty, `consumes_scientific_budget=false`. The image is NOT re-pinned by this task and zero candidate cells were executed._
   - [ ] 268.4 Restate the conformant lineage's adjudication honestly under the new baseline policy
     - Blocked on `268.3`. Recompute the frozen estimand for the already-executed `official-03-r2` full cells under the new lineage's approved baseline policy, so the honest effect of resolving the coverage contradiction is visible before any new candidate budget is spent. The prior candidate cells stay immutable and no new candidate cell is executed.
     - Report the restatement as a comparison ACROSS lineages rather than as a correction of the frozen one, and state which systems are paired under the new policy and which remain unpaired. If the new policy leaves `heat_laser` unpaired because its `z` axis cannot satisfy the frozen derivative order, say so plainly and carry the reduced power as a stated limitation instead of presenting 14 paired systems.
@@ -3755,6 +3757,35 @@ A task can be checked only when all applicable items are true:
     - _References: `P-20260803-071` reasoning disabled on autonomous authoring calls; `P-20260802-050` silent no-op defect class; `P-20260802-051` unbounded-reasoning empty-content defect; Task `267.3.1` provider-neutral reasoning dispatcher; Task `268.2` as the first consumer; `269.1` lineage driver which shares this helper._
     - _Verify: reasoning is threaded once and reaches the provider on a real call with non-empty `reasoning_content` and non-zero `reasoning_tokens`, the budget is bounded whenever reasoning is on, the persisted `thinking_mode` reflects what was sent, an enabled call cannot claim transport-level `json_schema`, the json-object reasoning messages contain the literal word `json`, `reasoning_is_evidence` is false, no secret value is logged, every retained interaction and parent package still validates with its recorded hash and a reasoning-free interaction round-trips byte-identically, plus the `269.1` suite, the Route P2 and frozen-protocol suites, a broad competition run, focused ruff and mypy, and one focused commit._
     - _Outcome: completed. Reasoning is now enabled by default at one place with a bounded `4000`-token budget, and it provably reaches the provider: the live frozen-protocol runs recorded `2604`-`3671` real `reasoning_tokens` with `reasoning_transport=dashscope_enable_thinking` and `thinking_budget=4000`. Retained evidence survived: all `357` retained interaction records that validate under the pre-change model still validate and still match their recorded `interaction_hash`, all `355` reasoning-free records round-trip BYTE-IDENTICALLY, and a before/after differential showed ZERO newly broken records and ZERO newly failing parent packages (the `154` pre-existing failures are confined to the superseded `task2652-autonomous-branch-engine` v2-v13 lineages and are unchanged by this task). The named v1 self-correction package still hashes to `e0510aaa77b93c8c8a31eaa34bf2a132be2b45e393fa5446b482aeb012e5f398`. A measured side effect: because a reasoning call skips the doomed transport-level `json_schema` request that this provider rejects, each interaction now costs one FEWER provider request (`40` -> `21` attempts in the branch-engine fixture) and records no `json-schema-fallback` artifact._
+
+- [ ] 269. Run a fresh preregistered lineage targeting the diagnosed zero-term selection
+  - Context: the budget-conformant lineage `task2663-conformant-v1` produced a real ODE-stratum pass (`+0.589509`) with the candidate beating the pinned baseline on 6 of 12 paired systems, but no receipt. Adjudication isolated the remaining candidate-side blocker to `P-20260802-068`: the selected `official-03-r2` returns ZERO terms on `reaction_diffusion_cylinder`, so its sparse selection collapses to the empty set on that system's scaling. It succeeds on `78/84` official cells overall and on `heat_soil_uniform_2d_p1` with 4 terms, so the defect is system-specific rather than a broken implementation. Both frozen generations are spent in that lineage and the ledger now refuses a third (`P-20260802-069`), so the repair requires a new lineage rather than another revision.
+  - Decision on the power conflict, stated before execution: this lineage runs the unchanged 14-system official panel under the unchanged frozen gate, and its success criterion is split in two. The primary criterion is defect repair, namely zero zero-term failures and a non-negative ODE stratum. Whether the overall receipt is issued is reported as a secondary outcome that may still be refused. The `212`-paired-unit figure from the Task `267.7` self-correction cycle is NOT treated as a requirement on this panel: `P-20260802-060` already established that it came from a synthetic-sentinel substrate where both arms reached machine precision and the log-ratio estimand loses meaning, and its own recorded next action is to move the comparison to the official panel where SNR20 noise keeps losses at `O(0.1..1)`. Panel enlargement is therefore rejected as a response, the added power comes from Task `268` restoring 14 paired systems and a four-system PDE stratum, and Route P2's honest-negative reporting path from `267.6` is preregistered here so a null with a tight interval remains publishable. No frozen threshold, estimand, panel, or the sealed confirmation commitment is touched.
+  - _References: `P-20260802-060` synthetic-sentinel substrate defect; `P-20260802-065` unpaired-baseline exclusion; `P-20260802-066` cross-stage spend ledger; `P-20260802-067` shape-derived term cap; `P-20260802-068` zero-term selection; `P-20260802-069` generation enforcement; frozen Task `266.1` plan and estimand; Task `267.6` dual-route definition; Task `268` baseline coverage repair._
+  - [x] 269.1 Promote the lineage driver into a reviewed, hash-bound module
+    - Replace the untracked repo-root scratch script `_lineage268.py` with a proper module and CLI entry point beside the other competition code. A formal preregistered lineage driven by an untracked, unreviewed, unhashed script that carries stage state across eight separate invocations is a provenance hole: it is absent from the commit history, it can change silently between stages, and it is excluded from ruff, mypy, and tests. Delete the scratch script once the module reproduces its stages.
+    - Move the frozen gate evaluation out of the driver and into the module, and make the run write an `OfficialDevelopmentSearchPackage`. That model already validates that a receipt cannot coexist with a failed check, but nothing currently constructs it, so the conformant lineage produced no signed package and its only adjudication record is the stale tracked scratch file `_verdict.txt`, which still holds superseded pre-fix numbers. Read the timeout and candidate counts from the frozen plan instead of hard-coding them.
+    - _Verify: the module reproduces every stage of the retired script, gate evaluation is unit-tested including a receipt-with-failed-check refusal, a package is written and hash-verified, the scratch script and the stale scratch verdict file are removed, focused ruff and mypy, and one focused commit._
+    - _Outcome: completed in `44acacf`. `official_lineage.py` owns all eight stages behind a frozen `OfficialLineageConfig` and returns a `LineageStageReport` so callers never parse stdout. Numerical equivalence with the retired script was PROVEN, not assumed: re-adjudicating the retained conformant lineage read-only reproduced `official-03-r2`, overall median `-0.5240758637614126`, CI95 `[-3.2357131306670204, +1.804017497824948]`, ODE `+0.5895091246734206`, PDE `-15.402305316589244`, `search_freeze_receipt False`, and 78/84 selected cells. Two defects were found beyond the task text: the retired script hard-coded a `[:2]` pilot subset so it executed 4 pilot systems while the identity it wrote declared `pilot_system_count: 6` (`P-20260803-072`), and `all()` over an empty arm is vacuously true so a `must_succeed` check could be satisfied by an arm that ran no cells. Both are now refused. `P-20260803-073` records that the finalist-ranking truthiness filter drops an exact `0.0` validation loss, left as-is deliberately to preserve the equivalence proof._
+  - [x] 269.2 Freeze the new lineage and let the system author its own plan
+    - MERGED INTO `268.3`. See that entry for the merge rationale and the recorded outcome: two separate lineages would each spend a full frozen budget and each still fail the frozen coverage check for lack of the other's repair, so one lineage carries both. This subtask's own requirements are satisfied by `task2693-unified-lineage-v1`.
+    - Create a separate lineage directory with its own spend ledger bound to the frozen `266.1` budget, so spend starts clean and cannot be confused with the prior lineage.
+    - Generate the research plan from frozen evidence, require it to pass `audit_research_plan`, and record a decision against its exact hash before any cell executes. Carry the diagnosed zero-term observation into the plan's problem statement so the lineage states what it is trying to fix. The recorded approval is a scope decision and is never counted as evidence.
+    - _Verify: ledger bound to a new lineage id, plan audit passes, execution refused without an approval, the approved plan hash bound into every stage record, and the baseline erratum from Task `268` bound as the baseline environment._
+    - _Outcome: satisfied by the merged lineage. The system authored the plan and it passed its audit at score `1.0` (hash `98dfee2f7b116e0e366966858c588e482a30dee2c47488cfc5855857c473465f`), carrying BOTH `P-20260802-070` and `P-20260802-068` with their provenance distinguished. `freeze_lineage` writes an EMPTY ledger and refuses a directory that already carries spend entries, so a new lineage provably starts clean rather than inheriting the prior lineage's spend, which is how `P-20260802-066` overran the budget. The plan gate was proved in all three states (refused / authorized / blocked after edit). Freezing the lineage IDENTITY still requires the pinned image and is therefore deferred to `269.4`, since `freeze_official_identity` fingerprints the pinned runtime; the Docker daemon is unavailable in this environment and that test is skip-guarded rather than silently failing._
+  - [ ] 269.3 Generate candidates that must handle empty sparse selection
+    - Give candidates the same score-blind interface contract, and additionally require that a sparse selection which retains nothing falls back to a minimal non-empty support rather than returning zero terms. State it as a contract requirement, not as a method: the candidate still chooses its own library, estimator, thresholds, and fallback. This commits the `non_empty_support_requirement` addition already staged in `_generation_brief`, which is currently uncommitted and must land with a test rather than drift.
+    - Retain every failure and keep generation and revision inside the frozen generation limit.
+    - _Verify: a test asserting the non-empty-support requirement reaches the brief, candidate count and generation count both inside the ledger, static review retained for every rejection, and one focused commit._
+    - _Partially landed: the `non_empty_support_requirement` contract addition to `_generation_brief` is committed WITH its test in `c07f1df`, so it can no longer drift uncommitted and untested. Candidate GENERATION is deliberately not done: it spends frozen candidate budget and belongs with the gated execution chain in `269.4`. The checkbox stays open until candidates are actually generated under the ledger._
+  - [ ] 269.4 Execute the gated pilot, self-revision, baseline, and full stages
+    - Run the same bounded chain as the conformant lineage, with the plan gate and ledger enforced before every stage, and the repaired domain-valid baseline routing.
+    - Feed each candidate only its own diagnostics, including its term counts and generalization gap, so any improvement originates in the loop and not from a human hint.
+    - _Verify: every stage refused without an approval, ledger non-negative throughout, unpaired systems excluded from the effect, zero zero-term failures across every executed cell, and a complete cell ledger with failures retained._
+  - [ ] 269.5 Adjudicate against the unchanged frozen gate and report the preregistered route
+    - Apply the same frozen estimand and thresholds. Report ODE and PDE strata separately, keep the PDE stratum directional, and issue a search-freeze receipt only if every check passes including budget conformance and baseline-cell success.
+    - Report the primary defect-repair criterion and the secondary receipt outcome separately. If the receipt is refused, record it as a Route P2 honest negative with its effect and interval rather than as a loop failure, and record the next diagnosed blocker. Do not weaken any threshold, do not substitute one route's result for the other after observation, and do not touch the sealed confirmation panel.
+    - _Verify: receipt only on a full pass, zero-term count reported against the prior lineage's 6, both strata reported, the route recorded before observation and unchanged after, confirmation still sealed, `publication_ready` false, and `Problem.md` plus `Agent.md` updated._
 
 ## Checkpoints
 
@@ -4603,10 +4634,74 @@ A task can be checked only when all applicable items are true:
     },
     {
       "id": 200,
-      "tasks": ["265.4"]
+      "tasks": ["267.1", "267.2"]
     },
     {
       "id": 201,
+      "tasks": ["267.3"]
+    },
+    {
+      "id": 202,
+      "tasks": ["267.3.1"]
+    },
+    {
+      "id": 203,
+      "tasks": ["267.4"]
+    },
+    {
+      "id": 204,
+      "tasks": ["267.5"]
+    },
+    {
+      "id": 205,
+      "tasks": ["267.6"]
+    },
+    {
+      "id": 206,
+      "tasks": ["267.7"]
+    },
+    {
+      "id": 207,
+      "tasks": ["268.1"]
+    },
+    {
+      "id": 208,
+      "tasks": ["268.5", "268.2"]
+    },
+    {
+      "id": 209,
+      "tasks": ["268.3"]
+    },
+    {
+      "id": 210,
+      "tasks": ["268.4"]
+    },
+    {
+      "id": 211,
+      "tasks": ["269.1"]
+    },
+    {
+      "id": 212,
+      "tasks": ["269.2"]
+    },
+    {
+      "id": 213,
+      "tasks": ["269.3"]
+    },
+    {
+      "id": 214,
+      "tasks": ["269.4"]
+    },
+    {
+      "id": 215,
+      "tasks": ["269.5"]
+    },
+    {
+      "id": 216,
+      "tasks": ["265.4"]
+    },
+    {
+      "id": 217,
       "tasks": ["265.5"]
     }
   ]
