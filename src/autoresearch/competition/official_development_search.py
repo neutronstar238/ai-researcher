@@ -810,10 +810,17 @@ def execute_official_stage(
     research_plan: Any | None = None,
     plan_decision: Any | None = None,
     ledger: Any | None = None,
+    prior_results: Sequence[OfficialCellResult] = (),
 ) -> tuple[OfficialCellResult, ...]:
     """Execute one frozen stage, retaining every failure.
 
     Pass `baseline_method=None` to route each cell to its domain-valid baseline.
+
+    `prior_results` carries cells of THIS stage that already executed in an earlier
+    wave, so a stage can be run in waves without the second wave overwriting the
+    first's record. `P-20260804-080` needs this: the full stage now runs a smoke wave
+    first, and a qualifying candidate's smoke cells are legitimate full cells that
+    must stay in the effect rather than being discarded and re-run.
 
     Two gates run BEFORE any container starts, so neither can be bypassed by a
     partially executed stage:
@@ -868,7 +875,10 @@ def execute_official_stage(
         )
 
     with ThreadPoolExecutor(max_workers=maximum_parallel_cells) as pool:
-        results = tuple(pool.map(run, specs))
+        executed = tuple(pool.map(run, specs))
+    # Earlier waves of the same stage come first, so the persisted order follows
+    # execution order and no earlier cell is lost.
+    results = (*prior_results, *executed)
     stage_record: dict[str, Any] = {
         "results": [item.model_dump(mode="json") for item in results]
     }

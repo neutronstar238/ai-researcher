@@ -548,6 +548,29 @@ def run_generate_stage(config: OfficialLineageConfig) -> LineageStageReport:
     )
 
 
+def _split_smoke_wave(
+    specs: Sequence[OfficialCellSpec],
+) -> tuple[tuple[OfficialCellSpec, ...], tuple[OfficialCellSpec, ...]]:
+    """Split a frozen stage into a per-candidate smoke wave and the remainder.
+
+    The smoke wave takes every cell of the FIRST system each candidate is scheduled
+    on, so one wave proves the candidate can execute at all. Splitting a frozen spec
+    list preserves freeze-before-execute: every cell was frozen and hashed before any
+    of them ran, and no cell is added, dropped, or rewritten here.
+    """
+
+    first_system: dict[str, str] = {}
+    for spec in specs:
+        first_system.setdefault(spec.candidate_id, spec.system_name)
+    smoke = tuple(
+        item for item in specs if first_system[item.candidate_id] == item.system_name
+    )
+    rest = tuple(
+        item for item in specs if first_system[item.candidate_id] != item.system_name
+    )
+    return smoke, rest
+
+
 def assert_finalists_can_execute(
     *,
     results: Sequence[OfficialCellResult],
@@ -724,18 +747,80 @@ def run_execution_stage(
         f"  ledger before {ledger.remaining()}",
     ]
 
-    results = execute_official_stage(
-        identity=identity,
-        specs=specs,
-        candidates=actors,
-        output_dir=config.work_dir,
-        baseline_method=None,
-        timeout_seconds=int(budget["maximum_seconds_per_cell"]),
-        maximum_parallel_cells=int(budget["maximum_parallel_cells"]),
-        research_plan=plan,
-        plan_decision=decision,
-        ledger=ledger,
-    )
+    if stage == "full":
+        # `P-20260804-080`: the pilot executes the PRE-revision candidates, so a
+        # revised candidate would otherwise reach every full cell having never run.
+        # `official-05-r2` did exactly that and failed all 72 with one unconditional
+        # TypeError, and its failure loss swamped the estimand. The full stage
+        # therefore runs in two waves: a smoke wave of one system per candidate,
+        # then the remainder for candidates that proved they can execute. A
+        # qualifying candidate's smoke cells are real full cells and stay in the
+        # effect, so this costs a healthy candidate nothing.
+        smoke_specs, rest_specs = _split_smoke_wave(specs)
+        lines.append(
+            f"  smoke wave {len(smoke_specs)} cells "
+            f"({len({item.candidate_id for item in smoke_specs})} candidates)"
+        )
+        smoke_results = execute_official_stage(
+            identity=identity,
+            specs=smoke_specs,
+            candidates=actors,
+            output_dir=config.work_dir,
+            baseline_method=None,
+            timeout_seconds=int(budget["maximum_seconds_per_cell"]),
+            maximum_parallel_cells=int(budget["maximum_parallel_cells"]),
+            research_plan=plan,
+            plan_decision=decision,
+            ledger=ledger,
+        )
+        verdicts = assert_finalists_can_execute(
+            results=smoke_results,
+            finalist_ids=sorted({item.candidate_id for item in smoke_specs}),
+        )
+        for candidate_id, ok in sorted(verdicts.items()):
+            lines.append(
+                f"    smoke {candidate_id}: "
+                + ("PASS" if ok else "REFUSED, cannot execute")
+            )
+        qualified = {name for name, ok in verdicts.items() if ok}
+        refused = sorted(name for name, ok in verdicts.items() if not ok)
+        rest_specs = tuple(
+            item for item in rest_specs if item.candidate_id in qualified
+        )
+        candidate_cells = len(smoke_specs) + len(rest_specs)
+        baseline_cells = 0
+        results = execute_official_stage(
+            identity=identity,
+            specs=rest_specs,
+            candidates=actors,
+            output_dir=config.work_dir,
+            baseline_method=None,
+            timeout_seconds=int(budget["maximum_seconds_per_cell"]),
+            maximum_parallel_cells=int(budget["maximum_parallel_cells"]),
+            research_plan=plan,
+            plan_decision=decision,
+            ledger=ledger,
+            prior_results=smoke_results,
+        )
+        if refused:
+            lines.append(
+                f"  promotion refused for {', '.join(refused)}; "
+                f"{len(specs) - candidate_cells} cells not spent on code that "
+                "cannot run"
+            )
+    else:
+        results = execute_official_stage(
+            identity=identity,
+            specs=specs,
+            candidates=actors,
+            output_dir=config.work_dir,
+            baseline_method=None,
+            timeout_seconds=int(budget["maximum_seconds_per_cell"]),
+            maximum_parallel_cells=int(budget["maximum_parallel_cells"]),
+            research_plan=plan,
+            plan_decision=decision,
+            ledger=ledger,
+        )
     ledger = ledger.record(
         stage=stage, candidate_cells=candidate_cells, baseline_cells=baseline_cells
     )

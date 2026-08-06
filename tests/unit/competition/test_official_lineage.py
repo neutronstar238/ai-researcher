@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,7 @@ from autoresearch.competition.official_lineage import (
     LINEAGE_STAGES,
     OfficialLineageConfig,
     OfficialLineageError,
+    _split_smoke_wave,
     _stage_shape,
     assert_finalists_can_execute,
     evaluate_frozen_gate,
@@ -751,3 +753,72 @@ def test_promoting_when_no_finalist_can_run_is_refused() -> None:
             ],
             finalist_ids=["official-02-r2", "official-05-r2"],
         )
+
+
+def _full_spec(candidate_id: str, system: str, condition: str, seed: int) -> Any:
+    from autoresearch.competition.official_development_search import OfficialCellSpec
+
+    payload: dict[str, Any] = {
+        "attempt_id": f"full-{candidate_id}-{system}-{condition}-{seed}",
+        "method_kind": "candidate",
+        "candidate_id": candidate_id,
+        "stage": "full",
+        "system_name": system,
+        "data_type": "ode",
+        "condition": condition,
+        "seed": seed,
+        "data_relative_path": f"data/{system}-{condition}.npz",
+        "data_sha256": "f" * 64,
+        "candidate_source_sha256": "e" * 64,
+    }
+    payload["spec_hash"] = canonical_model_hash(payload)
+    return OfficialCellSpec.model_validate(payload)
+
+
+def _full_specs(
+    candidate_ids: Sequence[str], systems: Sequence[str]
+) -> tuple[Any, ...]:
+    return tuple(
+        _full_spec(candidate_id, system, condition, seed)
+        for candidate_id in candidate_ids
+        for system in systems
+        for condition in ("clean", "snr_20")
+        for seed in (101, 211, 307)
+    )
+
+
+def test_the_smoke_wave_takes_one_system_per_candidate() -> None:
+    specs = _full_specs(["c1", "c2"], ["s1", "s2", "s3"])
+    smoke, rest = _split_smoke_wave(specs)
+
+    # 2 candidates x 1 system x 2 conditions x 3 seeds = 12 smoke cells.
+    assert len(smoke) == 12
+    assert len(rest) == len(specs) - 12
+    # Every candidate is represented, so no candidate skips the gate.
+    assert {item.candidate_id for item in smoke} == {"c1", "c2"}
+    # Exactly one system per candidate in the smoke wave.
+    for candidate_id in ("c1", "c2"):
+        systems = {
+            item.system_name for item in smoke if item.candidate_id == candidate_id
+        }
+        assert len(systems) == 1
+
+
+def test_splitting_preserves_every_frozen_cell() -> None:
+    """Freeze-before-execute must hold: no cell is added, dropped, or rewritten."""
+
+    specs = _full_specs(["c1", "c2"], ["s1", "s2"])
+    smoke, rest = _split_smoke_wave(specs)
+    assert len(smoke) + len(rest) == len(specs)
+    assert {item.spec_hash for item in (*smoke, *rest)} == {
+        item.spec_hash for item in specs
+    }
+
+
+def test_a_single_system_stage_is_entirely_smoke() -> None:
+    """A degenerate stage must not produce an empty second wave that then fails."""
+
+    specs = _full_specs(["c1"], ["s1"])
+    smoke, rest = _split_smoke_wave(specs)
+    assert len(smoke) == len(specs)
+    assert rest == ()
