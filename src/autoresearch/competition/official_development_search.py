@@ -39,13 +39,13 @@ import json
 import math
 import random
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, model_validator
 
 from autoresearch.competition.autonomous_engine import (
     JsonCompletion,
@@ -84,6 +84,10 @@ _LOSS_CAP = 1e12
 _FAILURE_LOSS = 1e12
 _BOOTSTRAP_RESAMPLES = 2_000
 _BOOTSTRAP_SEED = 2663
+
+# Bounded local-conformance repair attempts per candidate. Bounded so a model that
+# cannot satisfy the contract fails loudly instead of looping on the frozen budget.
+_GENERATION_CONFORMANCE_ATTEMPTS = 3
 
 # Domain-valid baseline methods, matching the frozen Task 266.1 registry and the
 # exact parameter keys the pinned runner reads. The registry routes Operon to ODE
@@ -442,6 +446,13 @@ def _generation_brief(panel: dict[str, Any], budget: dict[str, Any]) -> dict[str
     }
 
 
+def _format_field_error(error: Mapping[str, Any]) -> str:
+    """Render one pydantic error as `field: message`, so the model can act on it."""
+
+    location = ".".join(str(part) for part in error.get("loc", ())) or "(root)"
+    return f"{location}: {error.get('msg', 'invalid')}"
+
+
 def generate_official_candidates(
     *,
     identity: OfficialDevelopmentIdentity,
@@ -492,22 +503,64 @@ def generate_official_candidates(
                 ),
             },
         ]
-        result, _ = _call_and_record(
-            completion=completion,
-            messages=messages,
-            config_path=config_path,
-            env_path=env_path,
-            timeout_seconds=provider_timeout_seconds,
-            max_tokens=12_000,
-            response_schema=_SOURCE_RESPONSE_SCHEMA,
-            response_schema_name="scientific_contract_source",
-            interaction_id=interaction_id,
-            stage="scientific_contract_implementation",
-            candidate_id=candidate_id,
-            output_root=output_root,
-            now=now,
-        )
-        response = ScientificContractSourceResponse.model_validate(result.parsed_json)
+        # Bounded local-conformance repair. Task `268.5` enables bounded reasoning on
+        # every autonomous call, which downgrades transport-level `json_schema` to
+        # `json_object` on DashScope-shaped providers, so the PROVIDER no longer
+        # enforces the schema and strict conformance is local. On a 12k-token source
+        # payload the model can drop a small required metadata field. Re-ask once per
+        # attempt with the exact validation errors, exactly as the autonomous
+        # portfolio and candidate paths already do. The deterministic schema stays the
+        # final authority: a repair prompt may help the model comply, it can never
+        # weaken the contract. Recorded as `P-20260804-079`.
+        response: ScientificContractSourceResponse | None = None
+        attempt_messages = list(messages)
+        errors: list[str] = []
+        for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
+            result, _ = _call_and_record(
+                completion=completion,
+                messages=attempt_messages,
+                config_path=config_path,
+                env_path=env_path,
+                timeout_seconds=provider_timeout_seconds,
+                max_tokens=12_000,
+                response_schema=_SOURCE_RESPONSE_SCHEMA,
+                response_schema_name="scientific_contract_source",
+                interaction_id=(
+                    interaction_id if attempt == 1 else f"{interaction_id}-repair{attempt}"
+                ),
+                stage="scientific_contract_implementation",
+                candidate_id=candidate_id,
+                output_root=output_root,
+                now=now,
+            )
+            try:
+                response = ScientificContractSourceResponse.model_validate(
+                    result.parsed_json
+                )
+                break
+            except ValidationError as exc:
+                errors = [_format_field_error(item) for item in exc.errors()]
+                if attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
+                    break
+                attempt_messages = [
+                    *messages,
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous json object failed strict local validation "
+                            "with these errors: "
+                            + "; ".join(errors)
+                            + ". Return the corrected json object with every required "
+                            "field present. Change only what the errors name; keep "
+                            "your method and your source_lines otherwise identical."
+                        ),
+                    },
+                ]
+        if response is None:
+            raise OfficialDevelopmentSearchError(
+                f"{candidate_id} could not produce a schema-conformant response in "
+                f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: {'; '.join(errors)}"
+            )
         source_text = response.source_text
         source_path = output_root / "candidates" / candidate_id / "candidate.py"
         source_path.parent.mkdir(parents=True, exist_ok=True)

@@ -14,20 +14,27 @@ The estimand is taken verbatim from the frozen Task 266.1 plan:
 
 from __future__ import annotations
 
+import json
 import math
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 import pytest
 
+from autoresearch.competition.manifest import canonical_model_hash
 from autoresearch.competition.official_development_search import (
     _FAILURE_LOSS,
     OfficialCandidateRecord,
     OfficialCellResult,
+    OfficialDevelopmentIdentity,
     OfficialDevelopmentSearchError,
     _bootstrap_interval,
     _generation_brief,
     _median,
     aggregate_paired_effects,
     compute_system_effects,
+    generate_official_candidates,
     select_official_candidate,
 )
 
@@ -497,3 +504,178 @@ def test_the_requirement_states_a_contract_not_a_method() -> None:
     requirement = str(_brief()["non_empty_support_requirement"]).lower()
     for method_word in ("stlsq", "lasso", "ridge", "pysindy", "threshold of"):
         assert method_word not in requirement
+
+
+# --------------------------------------------------------------------------
+# Bounded local-conformance repair (P-20260804-079)
+# --------------------------------------------------------------------------
+
+
+def _gen_identity(count: int = 1) -> OfficialDevelopmentIdentity:
+    payload: dict[str, Any] = {
+        "schema_version": "official-development-identity-v1",
+        "plan_hash": "a" * 64,
+        "development_panel_hash": "b" * 64,
+        "sealed_confirmation_panel_hash": "c" * 64,
+        "runner_sha256": "d" * 64,
+        "runtime_environment_hash": "e" * 64,
+        "image_id": "sha256:" + "1" * 64,
+        "data_root": "/data",
+        "initial_candidate_count": count,
+        "pilot_system_count": 5,
+        "full_system_count": 12,
+        "conditions": ["clean", "snr_20"],
+        "seeds": [101, 211, 307],
+        "maximum_official_cells_total": 464,
+        "numeric_payload_opened_during_freeze": False,
+        "confirmation_identity_read_count": 0,
+        "created_at": "2026-08-04T00:00:00Z",
+    }
+    payload["identity_hash"] = canonical_model_hash(payload)
+    return OfficialDevelopmentIdentity.model_validate(payload)
+
+
+def _gen_panel() -> dict[str, Any]:
+    return {
+        "systems": [
+            {"system_name": "ode-a", "data_type": "ode"},
+            {"system_name": "pde-a", "data_type": "pde"},
+        ],
+        "conditions": ["clean", "snr_20"],
+        "seeds": [101, 211, 307],
+    }
+
+
+def _gen_budget() -> dict[str, Any]:
+    return {
+        "initial_candidate_count": 1,
+        "pilot_ode_system_count": 1,
+        "pilot_pde_system_count": 1,
+        "pilot_seed_count": 1,
+        "full_finalist_count": 1,
+        "maximum_terms_per_equation": 64,
+        "maximum_seconds_per_cell": 300,
+        "maximum_memory_mb_per_cell": 4096,
+        "maximum_cpu_cores_per_cell": 2,
+    }
+
+
+def _source_payload() -> dict[str, Any]:
+    return {
+        "response_type": "scientific_contract_source",
+        "observation": "The panel carries noisy measured trajectories.",
+        "problem": "Sparse regression overfits the validation window under noise.",
+        "hypothesis": "Selecting complexity on held-out evidence narrows the gap.",
+        "intervention": "Sweep thresholds and select on a held-out split.",
+        "expected_effect": "Lower held-out derivative NMSE than a single max-capacity fit.",
+        "implementation_summary": "Ridge-thresholded polynomial library with a fallback.",
+        "source_lines": [
+            "import numpy as np",
+            "",
+            "",
+            "def fit_equations(payload):",
+            "    return {'equations': ['u0_t = 0.0'], 'scaling': {}}",
+            "",
+            "",
+            "def predict_derivative(payload):",
+            "    return {'derivative': [0.0]}",
+        ],
+    }
+
+
+def _stub_result(payload: dict[str, Any]) -> Any:
+    from autoresearch.llm.client import LLMJsonCompletionResult
+
+    return LLMJsonCompletionResult(
+        provider="qwen-dashscope",
+        base_url="https://dashscope.example/compatible-mode/v1",
+        model_name="qwen3.7-max",
+        endpoint="https://dashscope.example/v1/chat/completions",
+        response_text=json.dumps(payload),
+        parsed_json=payload,
+        usage={"prompt_tokens": 100, "completion_tokens": 200},
+        temperature=0.2,
+        reasoning_text="considering the library and the fallback",
+        reasoning_transport="dashscope_enable_thinking",
+    )
+
+
+def test_a_dropped_required_field_is_repaired_once(tmp_path: Path) -> None:
+    """Regression for a real live failure that stopped the generate stage.
+
+    Task `268.5` enables bounded reasoning on every autonomous call, which downgrades
+    transport-level `json_schema` to `json_object` on DashScope-shaped providers. The
+    PROVIDER therefore no longer enforces the schema, and on a 12k-token source
+    payload the model dropped the required `response_type` field. Before this repair
+    path the whole generate stage aborted on that single omission.
+    """
+
+    calls: list[list[dict[str, str]]] = []
+
+    def _completion(**kwargs: Any) -> Any:
+        calls.append([dict(item) for item in kwargs["messages"]])
+        payload = _source_payload()
+        if len(calls) == 1:
+            payload.pop("response_type")
+        return _stub_result(payload)
+
+    records = generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path,
+        completion=_completion,
+        clock=lambda: datetime(2026, 8, 4, tzinfo=timezone.utc),
+    )
+
+    assert len(records) == 1
+    # One repair attempt, re-asked with the error rather than aborting the stage.
+    assert len(calls) == 2
+    repair_text = calls[1][-1]["content"]
+    assert "failed strict local validation" in repair_text
+    assert "response_type" in repair_text
+    # The repair prompt must not invite a rewrite of the method being measured.
+    assert "identical" in repair_text
+
+
+def test_a_persistently_nonconformant_model_fails_loudly(tmp_path: Path) -> None:
+    """The repair loop is BOUNDED, so it cannot spin on the frozen budget."""
+
+    calls: list[int] = []
+
+    def _completion(**_kwargs: Any) -> Any:
+        calls.append(1)
+        payload = _source_payload()
+        payload.pop("response_type")
+        return _stub_result(payload)
+
+    with pytest.raises(OfficialDevelopmentSearchError, match="schema-conformant"):
+        generate_official_candidates(
+            identity=_gen_identity(),
+            panel=_gen_panel(),
+            budget=_gen_budget(),
+            output_dir=tmp_path,
+            completion=_completion,
+            clock=lambda: datetime(2026, 8, 4, tzinfo=timezone.utc),
+        )
+    assert len(calls) == 3
+
+
+def test_a_conformant_first_reply_costs_no_repair_call(tmp_path: Path) -> None:
+    """The repair path must not add a provider request to the healthy case."""
+
+    calls: list[int] = []
+
+    def _completion(**_kwargs: Any) -> Any:
+        calls.append(1)
+        return _stub_result(_source_payload())
+
+    generate_official_candidates(
+        identity=_gen_identity(),
+        panel=_gen_panel(),
+        budget=_gen_budget(),
+        output_dir=tmp_path,
+        completion=_completion,
+        clock=lambda: datetime(2026, 8, 4, tzinfo=timezone.utc),
+    )
+    assert len(calls) == 1
