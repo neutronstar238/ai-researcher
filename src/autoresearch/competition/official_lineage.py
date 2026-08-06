@@ -548,6 +548,40 @@ def run_generate_stage(config: OfficialLineageConfig) -> LineageStageReport:
     )
 
 
+def assert_finalists_can_execute(
+    *,
+    results: Sequence[OfficialCellResult],
+    finalist_ids: Sequence[str],
+) -> dict[str, bool]:
+    """Refuse to promote a finalist that has never executed a single cell.
+
+    `P-20260804-080`: the pilot executes the PRE-revision candidates, and the loop
+    then promoted the POST-revision candidates straight into the full stage, so a
+    revised candidate reached 72 official cells without ever having run. In this
+    lineage `official-05-r2` failed all 72 with one uniform
+    ``TypeError: can't multiply sequence by non-int of type 'numpy.float64'``, an
+    unconditional crash that static review cannot catch because static review checks
+    structure rather than types. Its failure loss then swamped the estimand.
+
+    A finalist qualifies on evidence, not on having been ranked: at least one cell in
+    `results` must have SUCCEEDED for it. Returns the per-finalist verdict so a caller
+    can report the refusal instead of hiding it.
+    """
+
+    succeeded: dict[str, bool] = {}
+    for candidate_id in finalist_ids:
+        succeeded[candidate_id] = any(
+            item.candidate_id == candidate_id and item.status == "succeeded"
+            for item in results
+        )
+    if not any(succeeded.values()):
+        raise OfficialLineageError(
+            "no finalist produced a single successful smoke cell, so promoting any of "
+            f"them would spend the full stage on code that cannot run: {succeeded}"
+        )
+    return succeeded
+
+
 def _policy_excluded_systems(config: OfficialLineageConfig) -> tuple[str, ...]:
     """Return the systems this lineage's preregistered policy excludes, if any.
 

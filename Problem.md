@@ -6021,3 +6021,30 @@ update a factual problem entry below.
 - Root cause: a new module reached the provider without reusing the engine's established json-object message shaping.
 - Resolution (400): the prompt now states the schema and the literal word `json`, with strict conformance enforced locally by `PilotBreadthProposal`. `test_the_prompt_carries_the_literal_word_json` is a regression for the exact live failure, so the defect cannot return silently.
 - Next action (500): none required; it recovered on retry. Worth noting that this cycle calls the provider directly rather than through `_call_and_record`, so it does NOT inherit that helper's transport-retry chain and checkpointing. If this cycle becomes load-bearing, route it through the shared authoring transport instead of duplicating retry logic.
+
+### P-20260804-079 - Reasoning downgrade removed provider schema enforcement, aborting the generate stage
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-04
+- Source: Task `269.4` first live generate stage.
+- Symptom: `pydantic_core.ValidationError: 1 validation error for ScientificContractSourceResponse / response_type / Field required`. The whole generate stage aborted on the first candidate.
+- Impact: High while open. The generate stage could not complete, so the lineage could not proceed at all.
+- Evidence: Task `268.5` enables bounded reasoning on every autonomous call. Task `267.3.1` established that enabling reasoning downgrades transport-level `json_schema` to `json_object` on DashScope-shaped providers, so the PROVIDER no longer enforces the schema and conformance becomes local. `_json_object_reasoning_messages` does inject the schema into the prompt, so this was not a wiring defect: on a 12k-token source payload the model simply dropped one small required metadata field.
+- Root cause: strict conformance moved from provider enforcement to local validation, but `generate_official_candidates` validated once and raised, with no repair path. The autonomous portfolio and candidate paths already retry with the validation errors fed back; this path did not.
+- Resolution: bounded local-conformance repair, capped at `_GENERATION_CONFORMANCE_ATTEMPTS = 3`. On a validation failure the model is re-asked with the exact field errors and told to change only what the errors name. The deterministic schema stays the final authority: a repair prompt may help the model comply, it can never weaken the contract. A persistently non-conformant model fails loudly rather than looping on the frozen budget. Three regressions cover the repair, the bounded failure, and that a conformant first reply costs no extra provider request.
+- Verification: live re-run generated all 8 candidates with 11 interactions recorded, so the repair path fired and recovered. Static review then approved 6 and rejected 2 (`official-01` for a lambda, `official-04` for calling `dir`), retaining both reasons.
+
+### P-20260804-080 - A revised candidate reaches the full stage without ever having executed
+
+- Status: Open
+- Severity: High
+- Discovered: 2026-08-04
+- Source: Task `269.4` full stage on `task2693-unified-lineage-v1`.
+- Symptom: `official-05-r2` failed ALL 72 of its full cells with a single uniform `TypeError: can't multiply sequence by non-int of type 'numpy.float64'`. Its pre-revision version `official-05` had succeeded on 6 of 10 pilot cells.
+- Impact: High, and it is a budget defect rather than a scientific one. A deterministically crashing candidate consumed 72 official cells, half the full stage, and contributed nothing but failure loss. `official-02-r2` additionally burned 6 cells on timeouts and 13 on a repeated-support contract violation. The measured effect is therefore dominated by code defects rather than by method quality: `candidate_win_count` is 0 and the overall median log effect is `-27.779439711880524`, against the parent lineage's `-0.5240758637614126`.
+- Evidence: the loop executes the pilot on the PRE-revision candidates, then promotes the POST-revision candidates straight into the full stage. Nothing executes a revised candidate even once in between. `official-05-r2` passed static review because static review checks structure (no lambda, no `dir`, no dynamic execution) and cannot detect a type error. The failure is uniform across all 72 cells and all 12 systems, which is the signature of an unconditional crash rather than a data-dependent one.
+- Root cause: a missing executable smoke check between `revise` and `full`. The retained parent lineage had the same gap and was simply lucky: its `official-03-r2` happened to run.
+- Workaround: none applied in this lineage. Both frozen generations are spent (`generations spent 2/2`) and the ledger refuses a third, exactly as `P-20260802-069` describes, so the candidates cannot be repaired here.
+- Next action: gate the full stage on evidence that each finalist can execute at least one cell. One smoke cell per finalist costs 2-3 cells against the 72 wasted here. A finalist that crashes on its smoke cell must be refused promotion and reported, not silently carried into the full stage where its failure loss swamps the estimand.
+- Linked tasks: `269.3` (candidate generation), `269.4` (execution), `P-20260802-069` (generation limit), `P-20260804-077`.

@@ -41,6 +41,7 @@ from autoresearch.competition.official_lineage import (
     OfficialLineageConfig,
     OfficialLineageError,
     _stage_shape,
+    assert_finalists_can_execute,
     evaluate_frozen_gate,
     freeze_lineage,
     frozen_gate_receipt,
@@ -685,4 +686,68 @@ def test_a_narrowed_panel_that_cannot_supply_the_frozen_pilot_breadth_is_refused
             panel=narrowed,
             budget=_budget(),
             identity=_identity(),
+        )
+
+
+# --------------------------------------------------------------------------
+# A finalist must prove it can execute before it spends the full stage
+# --------------------------------------------------------------------------
+
+
+def _smoke_cell(candidate_id: str, *, status: str) -> OfficialCellResult:
+    return _cell(
+        candidate_id=candidate_id,
+        system="ode-0",
+        status=status,
+        nmse=0.6 if status == "succeeded" else None,
+        validation=0.5 if status == "succeeded" else None,
+        stage="pilot",
+    )
+
+
+def test_a_finalist_that_executed_is_promoted() -> None:
+    verdicts = assert_finalists_can_execute(
+        results=[_smoke_cell("official-02-r2", status="succeeded")],
+        finalist_ids=["official-02-r2"],
+    )
+    assert verdicts == {"official-02-r2": True}
+
+
+def test_a_finalist_that_never_executed_is_flagged() -> None:
+    """`P-20260804-080`: `official-05-r2` crashed all 72 of its full cells uniformly.
+
+    Static review passed it because it checks structure, not types. Only execution
+    evidence can catch an unconditional runtime crash.
+    """
+
+    verdicts = assert_finalists_can_execute(
+        results=[
+            _smoke_cell("official-02-r2", status="succeeded"),
+            _smoke_cell("official-05-r2", status="failed"),
+        ],
+        finalist_ids=["official-02-r2", "official-05-r2"],
+    )
+    assert verdicts["official-02-r2"] is True
+    # The refusal is REPORTED rather than hidden, so a reader sees the promotion gap.
+    assert verdicts["official-05-r2"] is False
+
+
+def test_a_finalist_with_no_cells_at_all_is_flagged() -> None:
+    verdicts = assert_finalists_can_execute(
+        results=[_smoke_cell("official-02-r2", status="succeeded")],
+        finalist_ids=["official-02-r2", "official-09-r2"],
+    )
+    assert verdicts["official-09-r2"] is False
+
+
+def test_promoting_when_no_finalist_can_run_is_refused() -> None:
+    """The whole full stage must not be spent on code that cannot execute."""
+
+    with pytest.raises(OfficialLineageError, match="cannot run"):
+        assert_finalists_can_execute(
+            results=[
+                _smoke_cell("official-02-r2", status="failed"),
+                _smoke_cell("official-05-r2", status="failed"),
+            ],
+            finalist_ids=["official-02-r2", "official-05-r2"],
         )
