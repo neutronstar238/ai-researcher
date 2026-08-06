@@ -13807,3 +13807,36 @@ This file defines the project development standard for coding agents and records
   - The receipt is still not issued, and the honest reason is now different from before: the coverage contradiction is FIXED, and what blocks the receipt is candidate code quality plus the missing promotion gate. A fresh lineage with `assert_finalists_can_execute` wired into the promotion path is the next step, and it needs a new preregistration because this lineage's generations are spent.
   - Wire `assert_finalists_can_execute` into `run_execution_stage`'s full-stage promotion so the gate is physical rather than available. I added the gate and its tests but deliberately did not change the executed path mid-lineage, since that would have altered the run already in flight.
   - Consider giving the revise stage a one-cell smoke execution before it writes the revised registry, so a crashing revision is caught at authoring time rather than at promotion time.
+
+## 2026-08-04 10:42:19 +08:00 - Kiro - Lineage v2 with a physical promotion gate: 132/144 cells, effect from -27.78 to -0.28
+
+- Request: Open the new lineage and keep going.
+- Files changed:
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/official_development_search.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `.kiro/specs/auto-research-system/tasks.md`, `Agent.md`, `Problem.md`
+- Summary:
+  - Made the `P-20260804-080` promotion gate PHYSICAL rather than merely available. The full stage now runs in two waves: a smoke wave of one system per candidate, then the remainder only for candidates that produced a successful cell. `execute_official_stage` gained `prior_results` so a qualifying candidate's smoke cells stay in the effect, meaning a healthy candidate pays nothing for the gate and no cell is re-run.
+  - Preregistered and ran `task2694-promotion-gated-lineage-v1` end to end. Both preregistered artifacts are derived from the system's OWN authored resolutions: the baseline policy from its `268.2` decision, the stage breadth from its `P-20260804-077` decision.
+- Verification:
+  - Signed package `eaaab3746ae3cdaa3165d330585ab0aefcad64f0ef14cc5c22e0020232df2d9e`. Policy `04643108e9a5be3b88f0298203d26579b194abf071d9a4506a8eaf5e97162277`, breadth `f8c2e1485e70b3721b99a779aa0ee8b40ad1b031d4f919e84e167227ab85b8c9`, plan hash `400e71b08dde181e8c8639398f35029cd569a0893dc948b0b8083cfc7649b1bd` at audit `passed score=1.0`.
+  - The promotion gate worked on real cells: `smoke wave 12 cells (2 candidates)`, both PASS, then the remainder ran. Full stage `132/144` succeeded against v1's `11/144`.
+  - STRUCTURAL REPAIRS ARE NOW REPRODUCIBLE ACROSS TWO INDEPENDENT LINEAGES, which is stronger than v1's single observation: `all_baseline_cells_succeeded` PASS at `72/72` again, `baseline_coverage_gap_count` `0`, `paired_system_count` `12`, and zero zero-term failures in every stage.
+  - Effect improved by two orders of magnitude: `overall_median_log_effect` `-0.2829045972260612` against v1's `-27.779439711880524` and the grandparent's `-0.5240758637614126`. `candidate_win_count` `5` against v1's `0`. ODE stratum `-0.0553167112006033`, effectively a tie with the pinned baseline, with 5 of 10 ODE systems won and `120/120` ODE cells successful for BOTH finalists.
+  - `search_freeze_receipt` is still **False**, and the blocker is now precise. Frozen gate: `all_baseline_cells_succeeded` PASS, `budget_conformant` PASS; `all_candidate_cells_succeeded`, `overall_median_at_least_minimum`, `bootstrap_lower_above_zero`, `ode_stratum_non_negative`, `pde_stratum_non_negative` FAIL.
+  - Diagnosed the remaining blocker as `P-20260804-081`. Both finalists scored identically at `66/72` with `60/60` on ODE and `6/12` on PDE, but failed DIFFERENT cells: `official-08-r2`, the selected candidate, failed all 6 `clean`-condition PDE cells on an off-by-one grid axis (`index 30 out of bounds for axis 1 with size 30`, same at 15) while succeeding on every `snr_20` PDE cell; `official-03-r2` failed all 6 `reaction_diffusion_cylinder` cells on `ContractError: equation factor names an unknown state field` while succeeding on every `navier_stokes_cylinder` cell. Failures are byte-identical across seeds, which is a code defect signature rather than a stochastic one.
+  - Confirmed `all_candidate_cells_succeeded` is evaluated over `selected_cells`, so running two finalists does not multiply the failure risk. The 6 failures of the selected candidate alone keep that check FAIL.
+  - Ledger conformant throughout: `spent candidates 11, spent candidate cells 184, spent total cells 256` inside the frozen `380`/`464`. The gate saved cells rather than costing them.
+  - Suites: `test_official_lineage.py` 36 passed, `test_official_development_search.py` 25 passed. Focused `ruff` clean on all touched files.
+  - Static review rejected 4 of 8 candidates for real contract violations (missing `predict_derivative`, three lambdas, `dir`, `locals`), all reasons retained.
+- Problems:
+  - `P-20260804-081` opened: complementary PDE defects in two independently authored candidates. This is the remaining receipt blocker.
+  - `P-20260804-080` mitigation is now physical, verified on real cells rather than only in tests.
+- Deviations:
+  - Did NOT combine the two finalists. Their failures are complementary, so taking `navier_stokes_cylinder` from one and the `snr_20` cells from the other would fabricate a result neither candidate produced.
+  - Did NOT repair either candidate's code by hand. The `IndexError` and the `ContractError` are the models' own defects; fixing them myself would make the measured effect mine rather than the system's.
+  - Did NOT weaken any frozen threshold, estimand, gate, or budget parameter. Did NOT re-pin the image, read the sealed confirmation panel, or claim `publication_ready`.
+- Follow-up:
+  - `269.5` is the next step and needs a further preregistered lineage, because this one spent both generations. Repairing the 6 PDE failures of the selected candidate is the single largest lever: it simultaneously affects `all_candidate_cells_succeeded`, the PDE stratum, `overall_median_log_effect`, and `bootstrap_lower`.
+  - The ODE stratum being at `-0.055` means the method is now at parity with a tuned symbolic-regression baseline on 10 noisy ODE systems. That is worth stating plainly in any write-up, positive or negative, because it is the first time this line of work reached parity on a stratum with every cell succeeding.
