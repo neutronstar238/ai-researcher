@@ -553,21 +553,35 @@ def _split_smoke_wave(
 ) -> tuple[tuple[OfficialCellSpec, ...], tuple[OfficialCellSpec, ...]]:
     """Split a frozen stage into a per-candidate smoke wave and the remainder.
 
-    The smoke wave takes every cell of the FIRST system each candidate is scheduled
-    on, so one wave proves the candidate can execute at all. Splitting a frozen spec
-    list preserves freeze-before-execute: every cell was frozen and hashed before any
-    of them ran, and no cell is added, dropped, or rewritten here.
+    The smoke wave takes one system per DATA TYPE for each candidate, not merely the
+    first system. `P-20260804-082`: taking only the first system covered an ODE system
+    for all three candidates in `task2695-pde-repair-lineage-v1`, so a candidate whose
+    PDE handling exceeds the wall-time budget passed its smoke wave and then failed
+    every one of its 12 PDE cells. A gate that cannot see a stratum cannot protect it.
+
+    Splitting a frozen spec list preserves freeze-before-execute: every cell was
+    frozen and hashed before any of them ran, and no cell is added, dropped, or
+    rewritten here.
     """
 
-    first_system: dict[str, str] = {}
+    # One representative system per (candidate, data_type) pair.
+    representative: dict[tuple[str, str], str] = {}
     for spec in specs:
-        first_system.setdefault(spec.candidate_id, spec.system_name)
+        representative.setdefault(
+            (spec.candidate_id, spec.data_type), spec.system_name
+        )
+    chosen = set(representative.values())
     smoke = tuple(
-        item for item in specs if first_system[item.candidate_id] == item.system_name
+        item
+        for item in specs
+        if representative.get((item.candidate_id, item.data_type)) == item.system_name
     )
     rest = tuple(
-        item for item in specs if first_system[item.candidate_id] != item.system_name
+        item
+        for item in specs
+        if representative.get((item.candidate_id, item.data_type)) != item.system_name
     )
+    assert len(smoke) + len(rest) == len(specs), chosen
     return smoke, rest
 
 
@@ -778,10 +792,32 @@ def run_execution_stage(
             finalist_ids=sorted({item.candidate_id for item in smoke_specs}),
         )
         for candidate_id, ok in sorted(verdicts.items()):
+            # Per-stratum detail, so a defect confined to one stratum is visible
+            # BEFORE the remaining cells run. Promotion stays all-or-nothing on
+            # purpose: refusing only the failing stratum would let a candidate dodge
+            # the systems it loses on, which is the cherry-picking this estimand
+            # forbids. A stratum it cannot run therefore still costs it failure loss.
+            strata = []
+            for data_type in sorted({item.data_type for item in smoke_specs}):
+                stratum_cells = [
+                    item
+                    for item in smoke_results
+                    if item.candidate_id == candidate_id
+                    and item.data_type == data_type
+                ]
+                good = sum(1 for item in stratum_cells if item.status == "succeeded")
+                strata.append(f"{data_type} {good}/{len(stratum_cells)}")
             lines.append(
                 f"    smoke {candidate_id}: "
                 + ("PASS" if ok else "REFUSED, cannot execute")
+                + f" [{', '.join(strata)}]"
             )
+            if ok and any(item.endswith(" 0/2") or " 0/" in item for item in strata):
+                lines.append(
+                    f"      WARNING {candidate_id} cannot run a whole stratum; its "
+                    "cells there will take the frozen failure loss, and promotion is "
+                    "deliberately not narrowed to avoid cherry-picking"
+                )
         qualified = {name for name, ok in verdicts.items() if ok}
         refused = sorted(name for name, ok in verdicts.items() if not ok)
         rest_specs = tuple(

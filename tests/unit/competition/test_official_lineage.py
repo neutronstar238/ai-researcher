@@ -755,7 +755,14 @@ def test_promoting_when_no_finalist_can_run_is_refused() -> None:
         )
 
 
-def _full_spec(candidate_id: str, system: str, condition: str, seed: int) -> Any:
+def _full_spec(
+    candidate_id: str,
+    system: str,
+    condition: str,
+    seed: int,
+    *,
+    data_type: str = "ode",
+) -> Any:
     from autoresearch.competition.official_development_search import OfficialCellSpec
 
     payload: dict[str, Any] = {
@@ -764,7 +771,7 @@ def _full_spec(candidate_id: str, system: str, condition: str, seed: int) -> Any
         "candidate_id": candidate_id,
         "stage": "full",
         "system_name": system,
-        "data_type": "ode",
+        "data_type": data_type,
         "condition": condition,
         "seed": seed,
         "data_relative_path": f"data/{system}-{condition}.npz",
@@ -791,17 +798,39 @@ def test_the_smoke_wave_takes_one_system_per_candidate() -> None:
     specs = _full_specs(["c1", "c2"], ["s1", "s2", "s3"])
     smoke, rest = _split_smoke_wave(specs)
 
-    # 2 candidates x 1 system x 2 conditions x 3 seeds = 12 smoke cells.
+    # All three systems here are ODE, so one system per candidate.
     assert len(smoke) == 12
     assert len(rest) == len(specs) - 12
     # Every candidate is represented, so no candidate skips the gate.
     assert {item.candidate_id for item in smoke} == {"c1", "c2"}
-    # Exactly one system per candidate in the smoke wave.
     for candidate_id in ("c1", "c2"):
         systems = {
             item.system_name for item in smoke if item.candidate_id == candidate_id
         }
         assert len(systems) == 1
+
+
+def test_the_smoke_wave_covers_every_stratum() -> None:
+    """`P-20260804-082`: a gate that cannot see a stratum cannot protect it.
+
+    Taking only the first system covered an ODE system for all three candidates in
+    `task2695-pde-repair-lineage-v1`, so a candidate whose PDE handling exceeds the
+    wall-time budget passed its smoke wave and then failed all 12 of its PDE cells.
+    """
+
+    ode = _full_specs(["c1"], ["ode-a", "ode-b"])
+    pde = tuple(
+        _full_spec("c1", "pde-a", condition, seed, data_type="pde")
+        for condition in ("clean", "snr_20")
+        for seed in (101, 211, 307)
+    )
+    smoke, rest = _split_smoke_wave((*ode, *pde))
+
+    covered = {item.data_type for item in smoke}
+    assert covered == {"ode", "pde"}, "the smoke wave must reach both strata"
+    # One ODE system plus one PDE system, at 2 conditions x 3 seeds each.
+    assert len(smoke) == 12
+    assert len(smoke) + len(rest) == len(ode) + len(pde)
 
 
 def test_splitting_preserves_every_frozen_cell() -> None:
