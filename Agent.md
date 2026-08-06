@@ -13768,3 +13768,42 @@ This file defines the project development standard for coding agents and records
   - `269.4` execution is blocked on a human protocol decision to re-preregister the pilot breadth. The system has already authored the conclusion and it is stable across three runs; what is missing is authority, not analysis.
   - If that decision is granted, the cleanest route is a new preregistration that sets the pilot breadth from the narrowed panel rather than editing the frozen `266.1` budget in place, following the `266.1.1` immutable-parent pattern.
   - Consider routing `pilot_breadth_contradiction.py` through `_call_and_record` so it inherits bounded-reasoning provenance, retry checkpointing, and interaction hashing instead of duplicating the transport.
+
+## 2026-08-04 08:05:31 +08:00 - Kiro - Task 269.4 executed end to end: structural repairs proven, scientific result a defect-dominated negative
+
+- Request: Full delegated authority, satisfy the competition requirement as fast as possible at the best quality.
+- Files changed:
+  - `src/autoresearch/competition/preregistered_stage_breadth.py` (new)
+  - `tests/unit/competition/test_preregistered_stage_breadth.py` (new)
+  - `src/autoresearch/competition/official_lineage.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `src/autoresearch/competition/official_development_search.py`
+  - `tests/unit/competition/test_official_development_search.py`
+  - `.kiro/specs/auto-research-system/tasks.md`, `Agent.md`, `Problem.md`
+- Decisions I made under the delegated authority:
+  - Resolved `P-20260804-077` by EXECUTING the system's own authored decision rather than substituting my own. Its loop chose `require_new_preregistration` three times, so `preregistered_stage_breadth.py` is that new preregistration: the child lineage declares its own breadth while the frozen `266.1` budget stays byte-identical and is bound as evidence. That is deliberately NOT the `reduce_pilot_pde_breadth_to_available` route, which rewrites a frozen parameter in place and which the guard refuses.
+  - Judged the pilot narrowing safe to authorize because the pilot cannot bias the estimand: `rank_pilot_finalists` ranks by validation NMSE only and no pilot cell enters the effect or the gate. The artifact asserts that with a permanent `pilot_enters_estimand: Literal[False]`, so the claim is checked rather than argued.
+- Summary:
+  - Ran the whole gated chain live: generate, pilot, revise, baseline, full, adjudicate. Signed package `807a9d9b4ae384147d210f2dfff8b62e2a3bba841cd0b7af21e0128b500d019c`.
+  - Fixed `P-20260804-079` mid-run. Task `268.5`'s bounded reasoning downgrades transport-level `json_schema` to `json_object`, so the PROVIDER no longer enforces the schema, and the model dropped a required field on a 12k-token payload, aborting the generate stage. Added a bounded three-attempt local-conformance repair that re-asks with the exact field errors. The deterministic schema stays the final authority.
+  - Found `P-20260804-080` from the results, which is the finding that matters most here: a REVISED candidate reaches the full stage without ever having executed. The pilot runs the pre-revision candidates. `official-05-r2` therefore consumed all 72 of its official cells with one uniform unconditional `TypeError`, and its failure loss swamped the estimand. `assert_finalists_can_execute` now qualifies a finalist on execution evidence rather than on having been ranked.
+- Verification:
+  - STRUCTURAL REPAIRS, both proven by the run rather than asserted: `all_baseline_cells_succeeded` is **PASS** at `72/72`, against the parent lineage's `72/84` where 12 failures made that frozen check permanently unsatisfiable. `baseline_coverage_gap_count` `0`, `paired_system_count` `12`. `zero-term failures` `0` across every executed cell in every stage, which is the `P-20260802-068` defect Task `269` exists to fix. The preregistered exclusion genuinely bound: the pilot shaped to `5 systems x 2 conditions x 1 seeds` and baseline/full to `12 systems`, never 14.
+  - SCIENTIFIC RESULT, reported as the negative it is: `candidate_win_count` `0`, overall median log effect `-27.779439711880524`, bootstrap `[-29.46571482355266, -24.869098342323543]`, ODE `-26.57408181464895`, PDE `-29.46571482355266`, `search_freeze_receipt` **False**. Frozen gate: `all_baseline_cells_succeeded` PASS, `budget_conformant` PASS, and `all_candidate_cells_succeeded`, `overall_median_at_least_minimum`, `bootstrap_lower_above_zero`, `ode_stratum_non_negative`, `pde_stratum_non_negative` all FAIL.
+  - This effect is NOT a fair measurement of the method and must not be reported as one. `official-05-r2` failed 72/72 on an unconditional `TypeError: can't multiply sequence by non-int of type 'numpy.float64'`; `official-02-r2` lost 42 cells to shape-concatenation errors, 13 to a repeated-support contract violation, and 6 to timeouts. The parent lineage reached `-0.5240758637614126` overall with `+0.589509` on the ODE stratum, so this lineage is far worse for reasons that are code defects rather than method quality.
+  - Generation stage: 8 candidates authored, 11 interactions recorded (so the repair path fired and recovered), static review approved 6 and rejected 2 (`official-01` lambda, `official-04` calling `dir`), both reasons retained. Revise stage: 3 finalists chosen from pilot diagnostics, 2 of 3 passed review, `generations spent 2/2`.
+  - Ledger stayed non-negative throughout and ended `spent candidates 11, spent candidate cells 204, spent total cells 276`, inside the frozen `380`/`464` caps. `budget_conformant` PASS.
+  - Suites: `test_official_lineage.py` 33 passed, `test_preregistered_stage_breadth.py` 17 passed, `test_official_development_search.py` 25 passed, `test_pilot_breadth_contradiction.py` 23 passed. Focused `ruff` and `mypy` clean on every touched file.
+  - Container confirmed as the reason the 4 harness tests fail locally: inside `autoresearch-mdbench:task260` the scientific stack is present (`numpy 1.26.4`, `sympy 1.13.3`, `pysindy 1.7.5`), while the host Poetry environment deliberately does not carry it.
+- Problems:
+  - `P-20260804-079` opened and RESOLVED with the bounded conformance repair and three regressions.
+  - `P-20260804-080` opened: a revised candidate reaches the full stage without executing. Mitigated by `assert_finalists_can_execute`, but this lineage cannot be repaired because both frozen generations are spent (`P-20260802-069`).
+  - `P-20260804-077` moved to resolved-blocker: the new preregistration executes the system's own authored decision.
+- Deviations:
+  - Did NOT weaken any frozen threshold, estimand, or gate. The frozen `266.1` budget file was read and bound, never written, and the test `test_the_frozen_plan_file_is_not_written` asserts that byte-identically.
+  - Did NOT re-pin the container image. Did NOT read or unseal the confirmation panel. Did NOT claim `publication_ready`.
+  - Did NOT repair the candidates' science myself. `official-05-r2`'s `TypeError` is the model's own code defect, and fixing it by hand would make the measured effect mine rather than the system's.
+- Follow-up:
+  - The receipt is still not issued, and the honest reason is now different from before: the coverage contradiction is FIXED, and what blocks the receipt is candidate code quality plus the missing promotion gate. A fresh lineage with `assert_finalists_can_execute` wired into the promotion path is the next step, and it needs a new preregistration because this lineage's generations are spent.
+  - Wire `assert_finalists_can_execute` into `run_execution_stage`'s full-stage promotion so the gate is physical rather than available. I added the gate and its tests but deliberately did not change the executed path mid-lineage, since that would have altered the run already in flight.
+  - Consider giving the revise stage a one-cell smoke execution before it writes the revised registry, so a crashing revision is caught at authoring time rather than at promotion time.
