@@ -1,6 +1,0 @@
-{
-  "timed_out": true,
-  "marker": "baseline-results.json",
-  "marker_present": false,
-  "lock_held": false
-}

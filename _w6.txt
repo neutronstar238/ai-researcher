@@ -1,5 +1,0 @@
-{
-  "marker": "system-authored-outcome.json",
-  "marker_present": true,
-  "lock_held": false
-}

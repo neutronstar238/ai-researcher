@@ -1,6 +1,0 @@
-============================= test session starts =============================
-collected 7 items
-
-tests\unit\competition\test_counter_reading_concepts.py .......          [100%]
-
-============================== 7 passed in 1.60s ==============================

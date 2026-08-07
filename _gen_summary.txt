@@ -1,9 +1,0 @@
-total=8 approved=8
-official-01 OK
-official-02 OK
-official-03 OK
-official-04 OK
-official-05 OK
-official-06 OK
-official-07 OK
-official-08 OK

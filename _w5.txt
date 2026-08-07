@@ -1,5 +1,0 @@
-{
-  "marker": "official-development-search-package.json",
-  "marker_present": true,
-  "lock_held": false
-}
