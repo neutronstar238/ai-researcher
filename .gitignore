@@ -32,3 +32,14 @@ outputs/
 # Local-only Windows desktop client. The user explicitly requested that the
 # complete client source tree and build outputs never be uploaded to Git.
 /winapp/
+
+# Scratch lineage drivers and their logs. These carry a lineage id and a stage
+# sequence, not reviewed logic, so they must not masquerade as engine code. The
+# reviewed driver is src/autoresearch/competition/official_lineage.py.
+_v*.py
+_wait.py
+_chain.py
+_*.txt
+chain-log.txt
+check.txt
+v[0-9]*.txt
