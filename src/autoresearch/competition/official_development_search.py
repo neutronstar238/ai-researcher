@@ -1139,22 +1139,67 @@ def revise_official_candidates(
                 ),
             },
         ]
-        result, _ = _call_and_record(
-            completion=completion,
-            messages=messages,
-            config_path=config_path,
-            env_path=env_path,
-            timeout_seconds=provider_timeout_seconds,
-            max_tokens=12_000,
-            response_schema=_SOURCE_RESPONSE_SCHEMA,
-            response_schema_name="scientific_contract_source",
-            interaction_id=interaction_id,
-            stage="scientific_contract_repair",
-            candidate_id=revised_id,
-            output_root=output_root,
-            now=now,
-        )
-        response = ScientificContractSourceResponse.model_validate(result.parsed_json)
+        # Bounded local-conformance repair, identical to the generate path.
+        # `P-20260807-091`: revision validated the response EXACTLY ONCE while
+        # generation retried with the validation errors. Same provider, same 12k-token
+        # source payload, so the same `P-20260804-079` dropped-metadata-field failure
+        # applies to both. A single omitted `response_type` therefore aborted the whole
+        # revise stage and stranded a lineage mid-run with its generation budget spent.
+        # The deterministic schema stays the final authority: a repair prompt can help
+        # the model comply, it can never weaken the contract.
+        response_obj: ScientificContractSourceResponse | None = None
+        attempt_messages = list(messages)
+        revise_errors: list[str] = []
+        for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
+            result, _ = _call_and_record(
+                completion=completion,
+                messages=attempt_messages,
+                config_path=config_path,
+                env_path=env_path,
+                timeout_seconds=provider_timeout_seconds,
+                max_tokens=12_000,
+                response_schema=_SOURCE_RESPONSE_SCHEMA,
+                response_schema_name="scientific_contract_source",
+                interaction_id=(
+                    interaction_id
+                    if attempt == 1
+                    else f"{interaction_id}-repair{attempt}"
+                ),
+                stage="scientific_contract_repair",
+                candidate_id=revised_id,
+                output_root=output_root,
+                now=now,
+            )
+            try:
+                response_obj = ScientificContractSourceResponse.model_validate(
+                    result.parsed_json
+                )
+                break
+            except ValidationError as exc:
+                revise_errors = [_format_field_error(item) for item in exc.errors()]
+                if attempt == _GENERATION_CONFORMANCE_ATTEMPTS:
+                    break
+                attempt_messages = [
+                    *messages,
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous json object failed strict local validation "
+                            "with these errors: "
+                            + "; ".join(revise_errors)
+                            + ". Return the corrected json object with every required "
+                            "field present. Change only what the errors name; keep "
+                            "your method and your source_lines otherwise identical."
+                        ),
+                    },
+                ]
+        if response_obj is None:
+            raise OfficialDevelopmentSearchError(
+                f"{revised_id} could not produce a schema-conformant revision in "
+                f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: "
+                f"{'; '.join(revise_errors)}"
+            )
+        response = response_obj
         source_text = response.source_text
         source_path = output_root / "candidates" / revised_id / "candidate.py"
         source_path.parent.mkdir(parents=True, exist_ok=True)
