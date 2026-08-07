@@ -39,6 +39,8 @@ outputs/
 _v*.py
 _wait.py
 _chain.py
+_render_plans.py
+_verify_hashes.py
 _*.txt
 chain-log.txt
 check.txt
