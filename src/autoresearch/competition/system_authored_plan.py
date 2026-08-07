@@ -42,6 +42,9 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.research_plan_markdown import (
+    render_plan_artifact_markdown,
+)
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.system_authored_outcome import (
     audit_numeric_traceability,
@@ -564,6 +567,17 @@ def author_research_plan(
         payload["output_path"] = output_path.as_posix()
         artifact = SystemAuthoredPlanArtifact.model_validate(payload)
         write_json_model(output_path, artifact)
+        # 同时落盘一份给人读的 Markdown。JSON 仍是唯一权威（plan_hash 绑定它的规范字节），
+        # Markdown 由 JSON 单向派生，且头部写明两个哈希，任何引文都能回溯。
+        # 渲染失败不能让一份已经通过全部 grader 的计划丢失，所以这里不向外抛。
+        try:
+            markdown_path = output_path.with_suffix(".md")
+            markdown_path.write_text(
+                render_plan_artifact_markdown(artifact.model_dump(mode="json")),
+                encoding="utf-8",
+            )
+        except (OSError, ValueError):
+            pass
         return artifact
 
     detail = list(last_report.findings) if last_report else findings

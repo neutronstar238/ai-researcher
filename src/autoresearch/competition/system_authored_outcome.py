@@ -587,4 +587,16 @@ def author_outcome_interpretation(
     payload["output_path"] = output_path.as_posix()
     outcome = SystemAuthoredOutcome.model_validate(payload)
     write_json_model(output_path, outcome)
+    # 同时落盘给人读的 Markdown。JSON 仍是唯一权威（outcome_hash 绑定它的规范字节）。
+    # 渲染失败不能让一份已经落盘的解读丢失，所以不向外抛。
+    try:
+        from autoresearch.competition.research_plan_markdown import (
+            render_outcome_markdown,
+        )
+
+        output_path.with_suffix(".md").write_text(
+            render_outcome_markdown(outcome.model_dump(mode="json")), encoding="utf-8"
+        )
+    except (OSError, ValueError):
+        pass
     return outcome
