@@ -13871,3 +13871,36 @@ This file defines the project development standard for coding agents and records
   - The honest deliverable is the Task `267.6` Route P2 preregistered negative. The bootstrap interval `[-1.46, +0.048]` is tight and lies almost entirely below zero, so this is an informative null rather than an underpowered shrug, and it is publishable as such.
   - If further scientific work is wanted, the honest direction is a different METHOD CLASS rather than another revision of the same sparse-regression family. Four lineages of revision have converged, not diverged.
   - The infrastructure is now sound and reusable: preregistration, plan gate, spend ledger, exclusion binding, stratified promotion gate, and a signed package, all exercised on real cells across four lineages.
+
+## 2026-08-04 17:05:44 +08:00 - Kiro - Decouple methodology from domain, add two skills, publish the Route P2 negative
+
+- Request: Continue, noting that the methodology must be coupled to the MODEL rather than to one domain (domain specifics belong in skills), then advance the Route P2 honest-negative path.
+- Files changed:
+  - `src/autoresearch/competition/preregistered_stratum_breadth.py` (new)
+  - `tests/unit/competition/test_preregistered_stratum_breadth.py` (new)
+  - `.kiro/skills/preregistered-lineage-methodology/SKILL.md` (new)
+  - `.kiro/skills/mdbench-equation-discovery/SKILL.md` (new)
+  - `runs/manual-live/task2696-stratified-gate-lineage-v1/route-p2-honest-negative-report.md` (new)
+  - `Agent.md`, `Problem.md`
+- Summary:
+  - The architectural criticism was correct and I could confirm it numerically: `grep -c "ode|pde"` over my two preregistration modules returned **130**. I had baked MDBench's taxonomy into field names (`pilot_ode_count`, `available_pde_count`) and into a resolution constant (`reduce_pilot_pde_breadth_to_available`), so the general rule was expressible only for one panel. Recorded as `P-20260804-085`.
+  - Notably, `official_lineage._split_smoke_wave` was ALREADY correct: it keys on `(candidate_id, data_type)` and never names a data type. That was the pattern the rest should have followed.
+  - `preregistered_stratum_breadth.py` now keys every count by a stratum NAME supplied by the caller, and `derive_available_breadth` takes `stratum_key` and `name_key` as parameters, so it holds no domain knowledge whatsoever.
+  - Deliberately did NOT rename the v1 modules. Retained artifacts for `task2693` through `task2696` carry a `breadth_hash` that covers the v1 field names, so renaming would invalidate real evidence. v1 stays read-only under the `266.1.1` immutable-parent pattern.
+  - Wrote two skills to put knowledge where it belongs: `preregistered-lineage-methodology` (domain-agnostic: stage order and why the order matters, exclusion binding, stratified promotion gates, the four result-verification checks, stopping and honest negatives, provenance rules) and `mdbench-equation-discovery` (domain-specific: panel shape, both excluded systems with their exact mechanisms, container versions, the failure-signature table, and the cross-lineage results with the trade-off correction).
+  - Published the Route P2 report for `task2696`, the preregistered honest negative.
+- Verification:
+  - 18 new tests, deliberately exercising the SAME breadth rule on three unrelated taxonomies (`ode`/`pde`, `tabular`/`image`/`text`, `train`/`holdout`), because an invariant that holds for only one domain is not an invariant. `ruff` and `mypy` clean.
+  - AUDITED THE REPORT AGAINST THE SIGNED PACKAGE BEFORE COMMITTING, since a report full of remembered numbers is not evidence. A throwaway auditor checked all 12 per-system effects to 4 decimals with sign, the headline quantities to full recorded precision, the win count, the `72/72` cell counts on both arms, the `72/72` shuffled-target control, the zero capped cells, and it flagged any 4+ decimal number in the prose that could not be traced to an artifact. Result: `ALL REPORT NUMBERS VERIFIED`.
+  - The auditor independently confirmed the report's strongest claim: bootstrap UPPER bound `0.04814249650803004` is below the frozen minimum `0.05129329438755058`, so even the most favourable end of the interval misses the threshold. That is what makes this an informative null rather than an underpowered one.
+  - Full suite: 713 passed, 4 failed. The 4 are the known container-only harness tests, confirmed by design rather than defect (`numpy 1.26.4`, `sympy 1.13.3`, `pysindy 1.7.5` present inside `autoresearch-mdbench:task260`, absent from the host environment on purpose).
+- Problems:
+  - `P-20260804-085` opened and resolved for new lineages: domain taxonomy leaked into the methodology layer.
+- Deviations:
+  - Did not rewrite retained artifacts or rename v1 fields, for the hash-integrity reason above.
+  - The Route P2 report states plainly what it does NOT support: nothing about LLM equation discovery in general, nothing about the 2 excluded PDE systems or the original 4-system stratum, nothing about the sealed confirmation panel, and no publication readiness.
+  - The report also records that its own approvals are agent-signed under delegated authority and that no human read the numbers, so it cannot be mistaken for a human-endorsed scientific claim.
+- Follow-up:
+  - New lineages should preregister with `preregistered_stratum_breadth` rather than the v1 module.
+  - `pilot_breadth_contradiction.py` still carries the domain-coupled resolution constants. It is not on the critical path for a new lineage, so I left it rather than churn a module whose authored packages are retained evidence; worth generalizing when a non-MDBench panel actually needs it.
+  - If further scientific work is wanted, the honest direction is a different METHOD CLASS. Four lineages of revision within the sparse-regression family converged rather than diverged.
