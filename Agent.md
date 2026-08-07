@@ -13840,3 +13840,34 @@ This file defines the project development standard for coding agents and records
 - Follow-up:
   - `269.5` is the next step and needs a further preregistered lineage, because this one spent both generations. Repairing the 6 PDE failures of the selected candidate is the single largest lever: it simultaneously affects `all_candidate_cells_succeeded`, the PDE stratum, `overall_median_log_effect`, and `bootstrap_lower`.
   - The ODE stratum being at `-0.055` means the method is now at parity with a tuned symbolic-regression baseline on 10 noisy ODE systems. That is worth stating plainly in any write-up, positive or negative, because it is the first time this line of work reached parity on a stratum with every cell succeeding.
+
+## 2026-08-04 15:38:02 +08:00 - Kiro - Lineages v3 and v4: first fully clean measurement, and a preregistered negative
+
+- Request: Continue.
+- Files changed:
+  - `src/autoresearch/competition/official_lineage.py`
+  - `tests/unit/competition/test_official_lineage.py`
+  - `.kiro/specs/auto-research-system/tasks.md`, `Agent.md`, `Problem.md`
+- Summary:
+  - Ran two more preregistered lineages end to end. `task2695-pde-repair-lineage-v1` carried the parent's real failure reasons, derived from its retained cells rather than hand-written, and the loop DID improve on what it was told: two candidates reached `10/10` in the pilot against a previous best of `8/10`.
+  - That lineage exposed `P-20260804-082`, a defect in the promotion gate I had added myself: `_split_smoke_wave` keyed `setdefault` on `candidate_id` alone, so the smoke wave covered only the first system, which is always ODE in the frozen spec order. A candidate that exceeds the PDE wall-time budget passed its smoke wave and then failed all 12 PDE cells. A gate that cannot see a stratum cannot protect it. The wave now takes one representative system per `(candidate, data_type)` pair.
+  - Kept promotion ALL-OR-NOTHING on purpose rather than narrowing it to the passing stratum. Refusing only the failing stratum would let a candidate dodge the systems it loses on, which is the cherry-picking this estimand forbids. The per-stratum result is now reported before the remaining cells run, with an explicit warning when a candidate cannot run a whole stratum.
+  - `task2696-stratified-gate-lineage-v1` then produced the first fully clean measurement in this line of work.
+- Verification:
+  - The stratified gate worked on real cells, which is the point: `official-03-r2 [ode 0/6, pde 6/6]` and `official-05-r2 [ode 6/6, pde 0/6]`, both flagged with warnings BEFORE the remaining cells ran. v3's gate was blind to exactly this. In v3 the gate had already saved 66 cells by refusing `official-08-r2` after 6 cells instead of 72.
+  - `official-07-r2` achieved **`72/72`**, so `all_candidate_cells_succeeded` **PASS** with `all_baseline_cells_succeeded` **PASS** for the first time: `144/144` candidate cells, `72/72` baseline cells, zero infrastructure failures, zero zero-term failures. Baseline `72/72` has now reproduced across FOUR consecutive independent lineages. Package `fb49f72644e07192d8bbf1b7c43414f93d588c85ac466f35575b9ab096c338e5`.
+  - THE MEASUREMENT WAS VERIFIED CLEAN BEFORE BEING REPORTED, which mattered because a negative is easy to dismiss as an artifact: zero cells at or near the frozen failure loss so no `1e12` penalty enters the effect; 19 distinct loss values from `0.0` to `257.018062997` with selected term counts `1..253`, so it is a real fit and not a constant predictor; and the shuffled-training control changed the frozen artifact hash in `72/72` cells, proving the fit reads its training target.
+  - SCIENTIFIC RESULT, a preregistered negative: `candidate_win_count` `3` of `12`, `overall_median_log_effect` `-0.8448548894388439`, bootstrap `[-1.4630988707200518, +0.04814249650803004]`, ODE stratum `-0.6556574227708623`, PDE stratum `-1.594291281789289`, `search_freeze_receipt` **False**. Three of four frozen effect checks now fail because the candidate does not beat the pinned baseline, not because cells crash.
+  - CORRECTION to my own earlier reading, recorded rather than quietly dropped: I assumed the better ODE medians in v2 (`-0.0553`) and v3 (`-0.0452`) were failure-loss artifacts. They were not. Both fully executed all 10 ODE systems with zero failure-loss cells and each won 5 of 10. The real difference is a capability trade-off: those came from candidates that could not run PDE at all, while v4's candidate runs both strata and is a weaker ODE fitter. It turns `driven-pendulum-quadratic-damping` from `-7.79`/`-4.46` into `+0.93` and improves `population-growth-naive` from `-5.29` to `-1.03`, while losing `binocular-rivalry-model` from `+2.36`/`+4.27` to `-1.22`.
+  - Suites: `test_official_lineage.py` 37 passed. Focused `ruff` and `mypy` clean. mypy caught a real variable shadow I introduced, binding `good` to an `int` in the new stratum summary while the code below used it as a list.
+- Problems:
+  - `P-20260804-082` opened and RESOLVED: my own gate defect, the smoke wave covering only one stratum.
+  - `P-20260804-083` opened: each repaired defect reveals a different one, AND `ode_stratum_non_negative` fails even with every ODE cell succeeding.
+  - `P-20260804-084` opened as a SCIENTIFIC CONCLUSION rather than a defect: the first clean measurement puts the method at or below baseline parity.
+- Deviations:
+  - STOPPED iterating lineages, and this is a decision rather than an outcome. Three independent candidates, each fully executing the same 10 ODE systems, produced ODE medians of `-0.0553`, `-0.0452`, `-0.6557` and win counts of 5, 5, 3. That is a stable null. Drawing further lineages until a favourable number appeared would be selecting the outcome, which is what the frozen preregistration exists to prevent and what `P-20260802-060` already records as an error made once in this project.
+  - Did NOT weaken any frozen threshold, estimand, gate, or budget parameter to reach a receipt. Did NOT combine candidates' results. Did NOT repair candidate code by hand. Did NOT unseal the confirmation panel or claim `publication_ready`.
+- Follow-up:
+  - The honest deliverable is the Task `267.6` Route P2 preregistered negative. The bootstrap interval `[-1.46, +0.048]` is tight and lies almost entirely below zero, so this is an informative null rather than an underpowered shrug, and it is publishable as such.
+  - If further scientific work is wanted, the honest direction is a different METHOD CLASS rather than another revision of the same sparse-regression family. Four lineages of revision have converged, not diverged.
+  - The infrastructure is now sound and reusable: preregistration, plan gate, spend ledger, exclusion binding, stratified promotion gate, and a signed package, all exercised on real cells across four lineages.
