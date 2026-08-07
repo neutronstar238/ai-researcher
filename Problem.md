@@ -6134,3 +6134,36 @@ update a factual problem entry below.
 - Remaining defect, mine: the `strongest_counter_reading` field is meant to hold the strongest argument AGAINST the model's own conclusion, and the model instead restated the negative conclusion. Checked programmatically rather than by impression: the text contains regression language and none of the hedging or power-limitation language a genuine counter-reading would carry. My prompt was too vague, and the guard cannot catch it because the guard validates numbers and gate consistency, not semantic direction. A field that can be satisfied by restatement is not yet a real adversarial check.
 - Next action: constrain the counter-reading field so it must cite a specific quantity that WEAKENS the conclusion, such as an interval bound that crosses a threshold or a stratum with few members, and refuse a counter-reading whose numeric citations are identical to those in the supporting section. Separately, if the plan prose is to be system-authored too, that is a larger change than the interpretation and should be its own task rather than a quiet edit.
 - Linked tasks: `267.7` system-generated manuscript, `P-20260804-084` the negative result being interpreted, `P-20260804-075` agent-signed approvals.
+
+### P-20260804-087 - My graders penalised correct work before they taught the standard
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-04, from the FIRST live run of system-authored plan generation
+- Source: `author_research_plan` refused all 4 attempts on lineage `task2697`.
+- Symptom: three findings ended the run, and two of them were defects in MY graders rather than faults in the system's plan:
+  1. `these numbers appear in the plan but not in the frozen evidence: ['18', '7.']`. The token `7.` is not a number a model could ever match against evidence: my `_NUMBER_PATTERN` allowed a trailing decimal point, so a sentence ending in "... stage 7." produced `7.`. And `18` was legitimate budget arithmetic (systems times seeds), which a plan is supposed to perform.
+  2. `the plan asserts an achieved result: 'outperforms'`. But "is expected to outperform" is exactly how a correct, forward-looking expectation is phrased. My regex could not tell an expectation from a claim.
+  3. `plan must include a command-oriented code-agent brief`. This refusal was FAIR, but my prompt never told the system that the grader looks for the literal words `python`, `command`, `script`, or `pytest`. I was penalising before teaching.
+- Impact: High, and specifically on the teaching role. A grader that refuses sound work teaches the system to avoid correct behaviour, which is worse than no grader. The run also cost 4 model calls to discover a regex bug.
+- Root cause: I wrote the graders against imagined failures rather than against how the system actually writes. All three defects only became visible on a live run.
+- Resolution:
+  * `_NUMBER_PATTERN` now requires a digit AFTER any decimal point, so sentence-ending digits are no longer extracted as numbers.
+  * `plan_reachable_numbers` extends evidence numbers with pairwise products and sums of the small integers already present, plus ordinals 1-20, so budget arithmetic is reachable. Deliberately NOT applied to result interpretation, where every number is a measured value and must match exactly.
+  * The achieved-result regex now matches only PAST-TENSE assertions (`results showed`, `we observed`, `outperformed the`), so a forward expectation passes and a claimed outcome still fails.
+  * The authoring prompt now names the literal words the code-brief grader looks for.
+- Verification: 39 tests pass, including four new fairness tests that pin each relaxation and one that proves the relaxation did not open the door (`test_a_past_tense_result_claim_is_still_refused`). Live re-run: the system authored an accepted plan on attempt 1 with quality score `0.98` and `4000` reasoning tokens.
+- The lesson, which belongs in the methodology skill: a guard must be validated against real system output before it is trusted, because a guard that refuses correct work is indistinguishable from a broken system to anyone reading the logs.
+
+### P-20260804-088 - The system authored a plan that diagnoses its own dominant failure
+
+- Status: Informational, recorded as evidence that the authoring path works
+- Severity: Not a defect
+- Discovered: 2026-08-04
+- Source: Lineage `task2697-system-authored-plan-v1`, artifact `005609375e9cc2b5a822224acc2af39a3673c5a98d383357c55b581910d48a8b`, plan hash `7a9d56ac63e2fdc85489deb93099efb6f8095d5cc2c465cdb483cd08d44eb050`.
+- What happened: given only frozen constraints and its own retained evidence, with no hypothesis, mechanism, title, or framing supplied, the system authored a complete research plan accepted on the first attempt at quality score `0.98`, `qwen3.7-max`, `4000` reasoning tokens.
+- Why this is worth recording: it did not paraphrase the evidence, it DIAGNOSED it. It identified `ContractError: equation factor contains an unknown field` as the dominant failure mode and built its mechanism claim around it ("field-agnostic term generation"), proposing to pre-filter the symbolic search space to fields present in each system.
+- The cited count was verified against retained cells rather than trusted: `43` is the exact number of cells failing with that reason in `task2696`, and the reason string matches verbatim. So the number was derived, not invented, and the relaxed traceability guard did not let a hallucination through.
+- It also stated a falsifiable prediction with a numeric refutation criterion ("if contract error count remains >5 or the median remains below `0.05129329438755058`, this refutes the hypothesis"), and named the alternative explanation it would pivot to.
+- One weakness worth noting rather than hiding: it cited `pilot_pde_system_count=3` from the frozen budget, while the preregistered exclusion narrows the reachable PDE stratum to 2. That is my omission, not its error: I passed the frozen budget without the exclusion, so it reasoned correctly from what it was given. The lineage context should carry the effective narrowed panel alongside the frozen budget.
+- Linked tasks: `267.7` system-generated outcome, `P-20260804-086`, `P-20260804-087`.

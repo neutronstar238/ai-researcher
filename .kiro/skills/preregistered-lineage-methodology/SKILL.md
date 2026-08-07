@@ -107,6 +107,62 @@ Separate two things in every report, because they diverge:
 A lineage can succeed completely on the first and return a negative on the second.
 Reporting them as one number hides both.
 
+## Who authors what, and why the boundary matters
+
+If the system produces the numbers but a human writes the framing, the deliverable is a
+hybrid presented as one artifact. Check this explicitly rather than assuming: grep the
+plan and report generators for a model call. A generator with no model call is a
+template, and its prose is whoever wrote the template.
+
+Have the system author every prose field. Keep deterministic only what is not science:
+
+* **Identifiers** are not science.
+* **Evidence references must be derived from artifacts that exist on disk.** If the
+  model supplies them it can cite a package that was never written, and a plan citing
+  non-existent evidence is worse than one citing none.
+* **Frozen constraints are passed in as context, never re-authored.**
+
+Then grade what comes back, and make each refusal actionable.
+
+## Build graders that teach, and validate the graders themselves
+
+A grader that only says "no" teaches nothing. Return the exact finding that caused the
+refusal, and tell the model to change only what the findings name. Bound the attempts so
+a non-conforming model fails loudly instead of spinning, and never quietly downgrade a
+refused artifact into an accepted one.
+
+Guards worth having on authored prose:
+
+* **Numeric traceability.** Every number in the prose must exist in the supplied
+  evidence, registered at full precision and at several decimal roundings. This is what
+  makes "system-authored" mean something rather than "fluent narrative around invented
+  numbers".
+* **Falsifiability.** The expectation must state what observation would REFUTE it and
+  acknowledge that a null result is valid. A plan describing only success is an
+  announcement.
+* **No result before observation.** Match only PAST-TENSE assertions. "is expected to
+  outperform" is a correct expectation; "the results showed" is a claimed outcome.
+* **An adversarial field must be adversarial.** If you ask for the strongest argument
+  against the conclusion, require it to cite a quantity that WEAKENS the reading, and
+  refuse it if it cites only the same quantities as the supporting section. Otherwise
+  the field is satisfied by fluent restatement, which is what happened on the first
+  live run.
+
+**Validate a guard against real system output before trusting it.** Every guard defect
+found here was invisible until a live run: a number pattern that allowed a trailing
+decimal point extracted "7." from a sentence ending, and an achieved-result regex
+flagged "outperforms" inside a legitimate expectation. A guard that refuses correct work
+teaches the system to avoid correct behaviour, and to anyone reading the logs it is
+indistinguishable from a broken system.
+
+**Teach the standard before enforcing it.** If a grader looks for specific literal
+tokens, say so in the prompt. Penalising a requirement the system was never told is
+noise, not signal.
+
+**Relax narrowly.** A plan legitimately performs budget arithmetic, so products and sums
+of evidence integers should be reachable there. That same relaxation must NOT apply to
+result interpretation, where every number is a measured value and must match exactly.
+
 ## Provenance rules that keep an audit honest
 
 * Reasoning traces are process provenance, never evidence. Flag them so they can never

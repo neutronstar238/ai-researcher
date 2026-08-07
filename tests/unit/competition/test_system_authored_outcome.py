@@ -308,3 +308,84 @@ def test_a_package_without_a_gate_is_refused(tmp_path: Path) -> None:
             output_dir=tmp_path,
             completion=_Stub(_interpretation()),
         )
+
+
+# --------------------------------------------------------------------------
+# The counter-reading must actually argue against the conclusion
+# (P-20260804-086, found in the first LIVE run of this cycle)
+# --------------------------------------------------------------------------
+
+
+def test_a_counter_reading_that_restates_the_conclusion_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The exact defect the first live run exhibited.
+
+    The model wrote a fluent paragraph in the counter-reading field that argued FOR
+    its negative conclusion. A field satisfiable by restatement is not an adversarial
+    check, so the guard now requires a quantity that weakens the reading.
+    """
+
+    stub = _Stub(
+        _interpretation(
+            what_the_evidence_supports=(
+                "The overall median of -0.8448548894388439 shows the method "
+                "underperforms the baseline across the measured panel decisively."
+            ),
+            strongest_counter_reading=(
+                "The method is a clear regression: with an overall median of "
+                "-0.8448548894388439 it systematically underperforms the baseline and "
+                "shows fundamental flaws in the approach."
+            ),
+        )
+    )
+    outcome = _run(tmp_path, stub)
+    assert outcome.accepted is False
+    assert any("restates the conclusion" in r for r in outcome.refusal_reasons) or any(
+        "does not argue against" in r for r in outcome.refusal_reasons
+    )
+
+
+def test_a_counter_reading_citing_no_quantity_is_refused(tmp_path: Path) -> None:
+    stub = _Stub(
+        _interpretation(
+            strongest_counter_reading=(
+                "One could argue the panel is not representative of harder problems "
+                "and that the conclusion may not generalise beyond it."
+            )
+        )
+    )
+    outcome = _run(tmp_path, stub)
+    assert outcome.accepted is False
+    assert any("cites no quantity" in r for r in outcome.refusal_reasons)
+
+
+def test_a_genuine_counter_reading_is_accepted(tmp_path: Path) -> None:
+    """The guard must not make a real counter-argument unreportable."""
+
+    stub = _Stub(
+        _interpretation(
+            what_the_evidence_supports=(
+                "The overall median of -0.8448548894388439 lies below the frozen "
+                "minimum, so the method does not beat the pinned baseline here."
+            ),
+            strongest_counter_reading=(
+                "The bootstrap interval upper bound of 0.04814249650803004 includes "
+                "zero, and the PDE stratum rests on too few systems, so a reader "
+                "could argue this panel is not decisive."
+            ),
+        )
+    )
+    outcome = _run(tmp_path, stub)
+    assert outcome.accepted is True
+    assert outcome.refusal_reasons == ()
+
+
+def test_the_prompt_defines_what_a_counter_reading_must_be(tmp_path: Path) -> None:
+    """Teach the standard before enforcing it, or the guard is just a penalty."""
+
+    stub = _Stub(_interpretation())
+    _run(tmp_path, stub)
+    sent = json.dumps(stub.calls[0]["messages"])
+    assert "WEAKENS" in sent
+    assert "Restating your conclusion" in sent

@@ -50,12 +50,41 @@ _OUTCOME_NAME = "system-authored-outcome.json"
 
 # Numbers with this many significant digits or more must be traceable. Small integers
 # like "3 of 12" are structural and are checked separately against the package.
-_NUMBER_PATTERN = re.compile(r"-?\d+\.?\d*(?:[eE][-+]?\d+)?")
+# A digit must FOLLOW a decimal point. `P-20260804-087`: an earlier pattern allowed a
+# trailing point, so sentence-ending text like "... step 7." produced the token "7."
+# which can never appear in evidence, and the guard penalised correct prose.
+_NUMBER_PATTERN = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?")
 
 VERDICT_KINDS: tuple[str, ...] = (
     "claim_supported",
     "claim_not_supported",
     "inconclusive_underpowered",
+)
+
+# A genuine counter-reading names a specific weakness. Restating the conclusion in
+# different words is not a counter-reading, however fluently it is written.
+_COUNTER_READING_MARKERS: tuple[str, ...] = (
+    "crosses zero",
+    "includes zero",
+    "close to zero",
+    "spans zero",
+    "too few",
+    "few systems",
+    "few members",
+    "small sample",
+    "underpowered",
+    "not decisive",
+    "could argue",
+    "one could",
+    "a reader could",
+    "confound",
+    "selection effect",
+    "alternative explanation",
+    "cannot rule out",
+    "may not generalis",
+    "may not generaliz",
+    "wide interval",
+    "overlaps",
 )
 
 
@@ -306,6 +335,15 @@ def _messages(
             "argues AGAINST your own conclusion. Report whether the frozen gate "
             "passed."
         ),
+        "what_strongest_counter_reading_means": (
+            "It is the best case someone could make that your conclusion is WRONG or "
+            "overstated. It must cite a specific quantity that WEAKENS your reading, "
+            "and that quantity must not be merely the same numbers you used to "
+            "support the conclusion. Examples of the shape required: an interval bound "
+            "that crosses the threshold, a stratum resting on few members, a confound "
+            "you cannot rule out, or a reason the result may not generalise. "
+            "Restating your conclusion in different words will be REFUSED."
+        ),
         "hard_constraints": [
             "Every number you write must already appear in the evidence above. A "
             "number that is not there will be detected and your interpretation "
@@ -395,6 +433,39 @@ def author_outcome_interpretation(
             "the interpretation states numbers absent from its own evidence: "
             f"{list(traceability.untraceable_numbers)}"
         )
+    # `P-20260804-086`: the counter-reading field is meant to hold the strongest
+    # argument AGAINST the model's own conclusion, and the first live run satisfied it
+    # with a restatement of the conclusion instead. A field satisfiable by restatement
+    # is not an adversarial check, so it now has to cite a specific quantity that
+    # WEAKENS the reading, and cannot simply repeat the supporting section's numbers.
+    counter = interpretation.strongest_counter_reading
+    counter_numbers = {
+        token for token in _NUMBER_PATTERN.findall(counter) if token not in {"-", "+", ""}
+    }
+    support_numbers = {
+        token
+        for token in _NUMBER_PATTERN.findall(interpretation.what_the_evidence_supports)
+        if token not in {"-", "+", ""}
+    }
+    if not counter_numbers:
+        reasons.append(
+            "the counter-reading cites no quantity, so it cannot be checked; it must "
+            "name a specific number that weakens the conclusion"
+        )
+    elif counter_numbers <= support_numbers:
+        reasons.append(
+            "the counter-reading cites only the same quantities as the supporting "
+            "section, so it restates the conclusion rather than arguing against it"
+        )
+    if not any(
+        marker in counter.lower() for marker in _COUNTER_READING_MARKERS
+    ):
+        reasons.append(
+            "the counter-reading does not argue against the conclusion; it must "
+            "identify a specific weakness such as an interval bound that crosses a "
+            "threshold, a stratum with few members, or a confound"
+        )
+
     consistent = interpretation.claims_frozen_gate_passed == gate_passed
     if not consistent:
         reasons.append(
