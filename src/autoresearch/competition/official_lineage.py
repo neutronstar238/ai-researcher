@@ -41,7 +41,10 @@ whose breadth disagrees with the frozen identity.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+import os
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -76,6 +79,125 @@ from autoresearch.competition.preregistered_stage_breadth import (
     PreregisteredStageBreadth,
     load_stage_breadth,
 )
+
+# ---------------------------------------------------------------------------
+# Lineage-level exclusive process lock
+# ---------------------------------------------------------------------------
+
+_LOCK_NAME = ".lineage-stage-lock"
+# No legitimate stage holds the lineage lock this long without progress, so an older
+# lock file means the holder crashed or was force-killed. Reclaiming it stops a machine
+# crash from bricking a lineage directory and forcing a needless re-preregistration.
+_LOCK_STALE_SECONDS = 300.0
+
+
+@contextmanager
+def exclusive_lineage_lock(
+    work_dir: Path, *, stage: str
+) -> Generator[None, None, None]:
+    """Exclusive advisory lock scoped to one lineage directory.
+
+    `P-20260807-090`: concurrent stage invocations on the same lineage corrupt the
+    spend ledger and the candidate registry. The ledger is loaded fresh, checked, and
+    persisted by each process, so last-writer-wins silently underreports spend. The
+    candidate registry is overwritten by whichever generate process finishes last,
+    creating a mismatch between the stored source_sha256 (from one process's memory)
+    and the candidate.py bytes on disk (from another process's write).
+
+    This lock uses O_EXCL atomic creation, which is supported on every OS the lineage
+    runs on. A concurrent stage invocation sees the lock file already present. If the
+    PID recorded in the file is still alive, the invocation is refused. If the PID is
+    gone (crash / forceful kill), the lock is stale and is reclaimed so the lineage
+    does not remain permanently bricked.
+
+    The lock is advisory, not mandatory: a process that ignores this module can still
+    corrupt the directory. Correctness depends on every stage entrypoint going through
+    run_lineage_stage.
+    """
+
+    import json as _json
+
+    lock_path = work_dir / _LOCK_NAME
+    lock_content = _json.dumps(
+        {
+            "pid": os.getpid(),
+            "stage": stage,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).encode()
+
+    def _try_create() -> bool:
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, lock_content)
+            os.close(fd)
+            return True
+        except FileExistsError:
+            return False
+
+    def _is_stale() -> bool:
+        """Return True if the existing lock file is old enough to be abandoned.
+
+        Staleness is determined purely by the lock file's age. No legitimate stage
+        holds the lineage lock for five minutes without completing or crashing; if
+        the file is older than _LOCK_STALE_SECONDS the holder has gone away.
+
+        PID-based liveness probing was removed because it is not portable and can
+        produce false positives: the OS recycles PIDs, so a PID recorded by a dead
+        process may belong to a completely different live process, and on Windows
+        tasklist returns the opposite of what is expected for very small or very
+        large PIDs.
+        """
+        try:
+            stat = lock_path.stat()
+            age = datetime.now(timezone.utc).timestamp() - stat.st_mtime
+            return age > _LOCK_STALE_SECONDS
+        except OSError:
+            return True  # file disappeared → stale
+
+    # First try: atomic create.
+    if not _try_create():
+        # Lock exists. Check whether the holder is still alive.
+        if _is_stale():
+            # Stale: remove it and claim ownership.
+            try:
+                lock_path.unlink()
+            except OSError:
+                pass
+            if not _try_create():
+                # Another process raced us to claim the stale lock.
+                raise OfficialLineageError(
+                    f"another process is already running a stage "
+                    f"(generate/pilot/revise/...) for lineage {work_dir.name}; "
+                    "concurrent stage execution corrupts the spend ledger and the "
+                    "candidate registry (`P-20260807-090`). Wait for the running "
+                    "stage to complete before starting the next one."
+                )
+        else:
+            try:
+                raw = lock_path.read_text(encoding="utf-8")
+                holder_info = _json.loads(raw)
+                holder_stage = holder_info.get("stage", "unknown")
+            except (OSError, ValueError):
+                holder_stage = "unknown"
+            raise OfficialLineageError(
+                f"another process is already running stage '{holder_stage}' for "
+                f"lineage {work_dir.name}; concurrent stage execution corrupts the "
+                "spend ledger and the candidate registry (`P-20260807-090`). Wait "
+                "for the running stage to complete before starting the next one."
+            )
+    try:
+        yield
+    finally:
+        try:
+            lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+# Keep the private name for internal callers that predate the rename.
+_lineage_lock = exclusive_lineage_lock
+
 
 LineageStage = Literal[
     "plan",
@@ -1052,21 +1174,28 @@ def run_lineage_stage(
     notes: str = "",
     package_output_dir: Path | str | None = None,
 ) -> LineageStageReport:
-    """Drive exactly one stage of one preregistered lineage."""
+    """Drive exactly one stage of one preregistered lineage.
 
-    if stage == "plan":
-        return run_plan_stage(config)
-    if stage == "approve":
-        if not notes.strip():
-            raise OfficialLineageError(
-                "an approval must carry the reviewer's own notes; the driver will not "
-                "invent the reasoning a human is accountable for"
-            )
-        return run_approve_stage(config, decided_by=decided_by, notes=notes)
-    if stage == "generate":
-        return run_generate_stage(config)
-    if stage == "revise":
-        return run_revise_stage(config)
-    if stage == "adjudicate":
-        return run_adjudicate_stage(config, package_output_dir=package_output_dir)
-    return run_execution_stage(config, stage=stage)
+    Acquires an exclusive advisory lock on the lineage directory before doing any
+    work. A concurrent invocation on the same directory is refused immediately with
+    an OfficialLineageError rather than silently racing and corrupting the ledger and
+    registry (P-20260807-090).
+    """
+
+    with _lineage_lock(config.work_dir):
+        if stage == "plan":
+            return run_plan_stage(config)
+        if stage == "approve":
+            if not notes.strip():
+                raise OfficialLineageError(
+                    "an approval must carry the reviewer's own notes; the driver will "
+                    "not invent the reasoning a human is accountable for"
+                )
+            return run_approve_stage(config, decided_by=decided_by, notes=notes)
+        if stage == "generate":
+            return run_generate_stage(config)
+        if stage == "revise":
+            return run_revise_stage(config)
+        if stage == "adjudicate":
+            return run_adjudicate_stage(config, package_output_dir=package_output_dir)
+        return run_execution_stage(config, stage=stage)
