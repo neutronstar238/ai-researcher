@@ -126,6 +126,7 @@ def _run(tmp_path: Path, stub: _Stub, **kw: Any) -> Any:
         evidence_paths=[evidence],
         output_dir=tmp_path,
         completion=stub,
+        container_entry_points=kw.pop("container_entry_points", ("/harness/runner.py",)),
         **kw,
     )
 
@@ -441,3 +442,170 @@ def test_the_prompt_names_the_literal_words_the_grader_looks_for(tmp_path: Path)
     sent = json.dumps(stub.calls[0]["messages"])
     assert "pytest" in sent
     assert "COMMAND-ORIENTED" in sent
+
+
+# --------------------------------------------------------------------------
+# A brief must be RUNNABLE, not merely command-shaped (P-20260804-089)
+# --------------------------------------------------------------------------
+
+
+def test_a_brief_naming_a_nonexistent_script_is_refused(tmp_path: Path) -> None:
+    """The defect found in the second live authoring run.
+
+    The system wrote `pytest test_candidate.py --stratum-templates=stratified`, which
+    contains the word `pytest` and so satisfied the quality rubric, but neither the
+    script nor the flags exist anywhere. Command-shaped is not the same as runnable.
+    """
+
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python -m pytest test_candidate.py --stratum-templates=strict "
+                "to execute the full evaluation."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+    )
+    assert report.named_scripts_exist is False
+    assert "test_candidate.py" in report.missing_script_paths
+    assert any("cannot be executed as written" in f for f in report.findings)
+
+
+def test_a_brief_naming_an_existing_script_is_accepted(tmp_path: Path) -> None:
+    (tmp_path / "runner_entry.py").write_text("", encoding="utf-8")
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python runner_entry.py --spec ... per frozen cell, then validate."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+    )
+    assert report.named_scripts_exist is True
+
+
+def test_a_declared_container_path_passes_the_host_check(tmp_path: Path) -> None:
+    """A brief legitimately references the pinned container, IF it was declared.
+
+    This test originally asserted that any absolute path skips checking. That was the
+    escape hatch: the system then invented `/app/...` paths to satisfy the guard. The
+    exemption is now an allowlist rather than a blanket pass.
+    """
+
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python /harness/runner.py --spec ... --data ... per frozen cell "
+                "with network disabled."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+        container_entry_points=("/harness/runner.py",),
+    )
+    assert report.named_scripts_exist is True
+    assert report.missing_script_paths == ()
+
+
+def test_the_script_verdict_cannot_contradict_its_list(tmp_path: Path) -> None:
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief="Run python absent_thing.py --spec ... per frozen cell."
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+    )
+    payload = json.loads(report.model_dump_json())
+    payload["named_scripts_exist"] = True
+    with pytest.raises(SystemAuthoredPlanError, match="contradicts its own missing"):
+        type(report).model_validate(payload)
+
+
+def test_the_prompt_warns_against_inventing_a_script(tmp_path: Path) -> None:
+    stub = _Stub(_authored())
+    _run(tmp_path, stub)
+    sent = json.dumps(stub.calls[0]["messages"])
+    assert "must NOT invent a script name" in sent
+    assert "RUNNABLE" in sent
+
+
+def test_an_invented_container_path_is_refused(tmp_path: Path) -> None:
+    """The escape hatch my first fix opened.
+
+    Exempting absolute paths so a brief could reference the pinned container let the
+    system satisfy the guard by inventing CONTAINER paths instead. An absolute path is
+    now only accepted if the caller declared it as a real entry point.
+    """
+
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python /app/run_grammar_conditioned_search.py --pilot-systems all "
+                "to execute the pipeline."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+        container_entry_points=("/harness/runner.py",),
+    )
+    assert report.named_scripts_exist is False
+    assert "/app/run_grammar_conditioned_search.py" in report.missing_script_paths
+
+
+def test_a_declared_container_entry_point_is_accepted(tmp_path: Path) -> None:
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python /harness/runner.py --spec ... --data ... per frozen cell "
+                "with network disabled."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+        container_entry_points=("/harness/runner.py",),
+    )
+    assert report.named_scripts_exist is True
+    assert report.missing_script_paths == ()
+
+
+def test_no_declared_entry_point_means_no_absolute_path_is_accepted(
+    tmp_path: Path,
+) -> None:
+    """Silence must not be permission."""
+
+    report = guard_authored_plan(
+        plan=_plan(code_agent_brief="Run python /harness/runner.py --spec ... per cell."),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+    )
+    assert report.named_scripts_exist is False
+
+
+def test_the_prompt_lists_the_only_real_entry_points(tmp_path: Path) -> None:
+    """Teach what exists, or the system can only guess."""
+
+    evidence = tmp_path / "prior.json"
+    evidence.write_text("{}", encoding="utf-8")
+    stub = _Stub(_authored())
+    author_research_plan(
+        lineage_id="l",
+        project_id="p",
+        candidate_id="c",
+        frozen_context=_FROZEN,
+        evidence_paths=[evidence],
+        output_dir=tmp_path,
+        completion=stub,
+        container_entry_points=("/harness/runner.py",),
+    )
+    sent = json.dumps(stub.calls[0]["messages"])
+    assert "/harness/runner.py" in sent
+    assert "ONLY entry points that exist" in sent

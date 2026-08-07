@@ -63,28 +63,99 @@ VERDICT_KINDS: tuple[str, ...] = (
 
 # A genuine counter-reading names a specific weakness. Restating the conclusion in
 # different words is not a counter-reading, however fluently it is written.
-_COUNTER_READING_MARKERS: tuple[str, ...] = (
-    "crosses zero",
-    "includes zero",
-    "close to zero",
-    "spans zero",
-    "too few",
-    "few systems",
-    "few members",
-    "small sample",
-    "underpowered",
-    "not decisive",
-    "could argue",
-    "one could",
-    "a reader could",
-    "confound",
-    "selection effect",
-    "alternative explanation",
-    "cannot rule out",
-    "may not generalis",
-    "may not generaliz",
-    "wide interval",
-    "overlaps",
+#
+# `P-20260807-092`: these were originally matched as literal substrings, which failed
+# twice over.
+#
+# 1. LEXICALLY. The list holds "few systems" and "few members", but a correct
+#    counter-reading that wrote "rests on only 2 systems" was REFUSED. Identical
+#    meaning, absent vocabulary. A guard that grades word choice rather than substance
+#    penalises correct reasoning, which is the `P-20260804-087` defect class.
+#
+# 2. DIRECTIONALLY. Every phrase below argues that a POSITIVE claim is overstated
+#    ("crosses zero", "may not generalise", "wide interval"). When the verdict is
+#    already `claim_not_supported`, the adversarial direction INVERTS: the strongest
+#    case against that conclusion is that the result is HARSHER than warranted, for
+#    example that one capped failure dominates a stratum. The original list could not
+#    express that at all, so a negative verdict could not satisfy its own guard except
+#    by accident.
+#
+# These are now CONCEPT GROUPS. A counter-reading satisfies the guard by hitting any
+# group, and each group holds several surface forms of the same idea. This still
+# refuses a bare restatement, because a restatement hits no group, while accepting the
+# many legitimate ways to name a specific weakness.
+_COUNTER_READING_CONCEPTS: tuple[tuple[str, ...], ...] = (
+    # An interval or estimate that fails to exclude the null.
+    (
+        "crosses zero",
+        "includes zero",
+        "close to zero",
+        "spans zero",
+        "straddles zero",
+        "contains zero",
+        "overlaps",
+        "wide interval",
+        "wide confidence",
+        "substantial uncertainty",
+        "far below zero",
+    ),
+    # A stratum or sample too thin to carry the weight placed on it.
+    (
+        "too few",
+        "few systems",
+        "few members",
+        "small sample",
+        "underpowered",
+        "only 2",
+        "only two",
+        "only 3",
+        "only three",
+        "single system",
+        "one system",
+        "a single failure",
+        "single failure",
+        "rests on only",
+        "not representative",
+        "sensitive to a single",
+        "driven almost entirely",
+        "driven entirely",
+        "dominated by",
+        "dominates",
+    ),
+    # A competing explanation that the evidence cannot eliminate.
+    (
+        "confound",
+        "selection effect",
+        "alternative explanation",
+        "cannot rule out",
+        "could argue",
+        "one could",
+        "a reader could",
+        "not decisive",
+        "may not generalis",
+        "may not generaliz",
+        "did not transfer",
+        "questioning the reliability",
+        "artefact",
+        "artifact",
+    ),
+    # For a NEGATIVE verdict: the case that the result is harsher than warranted,
+    # or that the measurement rather than the method produced the number.
+    (
+        "capped",
+        "failure loss",
+        "infrastructure",
+        "wall-time",
+        "wall time",
+        "timeout",
+        "timed out",
+        "would be less negative",
+        "excluding",
+        "if that system",
+        "harsher",
+        "overstates the failure",
+        "not a scientific failure",
+    ),
 )
 
 
@@ -457,13 +528,19 @@ def author_outcome_interpretation(
             "the counter-reading cites only the same quantities as the supporting "
             "section, so it restates the conclusion rather than arguing against it"
         )
-    if not any(
-        marker in counter.lower() for marker in _COUNTER_READING_MARKERS
-    ):
+    counter_lower = counter.lower()
+    matched_concepts = [
+        index
+        for index, group in enumerate(_COUNTER_READING_CONCEPTS)
+        if any(phrase in counter_lower for phrase in group)
+    ]
+    if not matched_concepts:
         reasons.append(
             "the counter-reading does not argue against the conclusion; it must "
-            "identify a specific weakness such as an interval bound that crosses a "
-            "threshold, a stratum with few members, or a confound"
+            "identify a specific weakness such as an interval that fails to exclude "
+            "zero, a stratum too thin to carry the conclusion, a confound that cannot "
+            "be ruled out, or (for a negative verdict) a reason the measured result is "
+            "harsher than the method warrants"
         )
 
     consistent = interpretation.claims_frozen_gate_passed == gate_passed

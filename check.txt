@@ -1,0 +1,8 @@
+title: Mechanism-Guided Equation Recovery via Derivative-Conditioned Symbolic Regression
+brief_has_harness: True
+named_scripts_exist: True
+missing_scripts: []
+guard_accepted: True
+
+=== brief ===
+Run the following command to execute the mechanism evaluation pipeline: python /harness/runner.py --candidate derivative_conditioned_sr --systems aizawa-attractor binocular-rivalry-model cell-cycle-model dipole-fixed-point driven-pendulum-quadratic-damping logistic-equation-harvesting population-growth-naive rotational-dynamics van-der-pol-oscillator-simplified velocity-falling-object navier_stokes_cylinder reaction_diffusion_cylinder --budget 252 --max-seconds 300 --seed 42. Then run the ablation: python /harness/runner.py --candidate grammar_restricted_only --systems aizawa-attractor binocular-rivalry-model cell-cycle-model dipole-fixed-point driven-pendulum-quadratic-damping logistic-equation-harvesting population-growth-naive rotational-dynamics van-der-pol-oscillator-simplified velocity-falling-object navier_stokes_cylinder reaction_diffusion_cylinder --budget 84 --max-seconds 300 --seed 42. Aggregate results with: python /harness/runner.py --aggregate --input results/ --metric paired_log_effect.

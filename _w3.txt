@@ -1,0 +1,12 @@
+{
+  "marker": "baseline-results.json",
+  "marker_present": true,
+  "lock_held": true,
+  "total_cells": 72,
+  "status_counts": {
+    "succeeded": 72
+  },
+  "per_candidate": {
+    "operon_or_pdefind": "72/72"
+  }
+}

@@ -55,6 +55,25 @@ _MAX_AUTHORING_ATTEMPTS = 4
 
 # A plan must admit that its own expectation may fail. Without this a "plan" is an
 # announcement of a result, and the preregistration protects nothing.
+# A brief that names a script which does not exist is not executable, however
+# command-shaped it looks. `P-20260804-089`: an authored brief invoked
+# `pytest test_candidate.py` with flags that exist nowhere in the repository, and the
+# quality rubric passed it because it contained the word `pytest`.
+#
+# Only HOST-relative script paths are checked. A brief legitimately references paths
+# inside the pinned container (`/harness/runner.py`), which do not exist on the host,
+# so absolute and container paths are out of scope for this guard.
+_HOST_SCRIPT_PATTERN = re.compile(
+    r"(?<![\w./\\-])(?!/)([A-Za-z0-9_][A-Za-z0-9_./\\-]*\.py)\b"
+)
+
+# Absolute paths were originally exempt so a brief could reference the pinned
+# container. `P-20260804-089` continued: the system then satisfied the guard by
+# inventing CONTAINER paths instead (`/app/run_grammar_conditioned_search.py`), so the
+# exemption became an escape hatch. An absolute path is now only accepted if the caller
+# declared it as a real entry point.
+_ABSOLUTE_SCRIPT_PATTERN = re.compile(r"(/[A-Za-z0-9_][A-Za-z0-9_./-]*\.py)\b")
+
 _FALSIFIABILITY_MARKERS: tuple[str, ...] = (
     "negative",
     "null",
@@ -88,6 +107,8 @@ class AuthoredPlanGuardReport(StrictFrozenModel):
     untraceable_numbers: tuple[str, ...]
     states_falsifiable_expectation: bool
     claims_no_unobserved_result: bool
+    named_scripts_exist: bool
+    missing_script_paths: tuple[str, ...]
     accepted: bool
     findings: tuple[str, ...]
     report_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -105,6 +126,10 @@ class AuthoredPlanGuardReport(StrictFrozenModel):
         if self.numbers_traceable != (not self.untraceable_numbers):
             raise SystemAuthoredPlanError(
                 "the traceability verdict contradicts its own untraceable list"
+            )
+        if self.named_scripts_exist != (not self.missing_script_paths):
+            raise SystemAuthoredPlanError(
+                "the script verdict contradicts its own missing list"
             )
         expected = canonical_model_hash(
             self.model_dump(mode="json", exclude={"report_hash"})
@@ -201,6 +226,8 @@ def guard_authored_plan(
     plan: ResearchPlan,
     evidence_numbers: set[str],
     cited_evidence: Sequence[Path | str],
+    repo_root: Path = Path("."),
+    container_entry_points: Sequence[str] = (),
 ) -> AuthoredPlanGuardReport:
     """Grade an authored plan deterministically. Every finding is actionable.
 
@@ -271,6 +298,33 @@ def guard_authored_plan(
             f"{achieved.group(0)!r}; state expectations, not outcomes"
         )
 
+    # A brief naming a script that does not exist cannot be run, so the plan is not
+    # executable however command-shaped its prose is.
+    brief_text = plan.code_agent_brief + " " + " ".join(plan.experiments)
+    named_scripts = sorted(set(_HOST_SCRIPT_PATTERN.findall(brief_text)))
+    absent_scripts = [
+        name
+        for name in named_scripts
+        if not (repo_root / name).exists() and not Path(name).exists()
+    ]
+    # An absolute path must be one the caller declared as real, or it is invented.
+    allowed_absolute = set(container_entry_points or ())
+    absent_scripts.extend(
+        sorted(
+            name
+            for name in set(_ABSOLUTE_SCRIPT_PATTERN.findall(brief_text))
+            if name not in allowed_absolute
+        )
+    )
+    briefs_runnable = not absent_scripts
+    if absent_scripts:
+        findings.append(
+            "the plan names these host scripts, none of which exist, so the brief "
+            f"cannot be executed as written: {absent_scripts}. Reference an entry "
+            "point that exists, or describe the command in terms of the pinned "
+            "container path."
+        )
+
     payload: dict[str, Any] = {
         "schema_version": "authored-plan-guard-report-v1",
         "quality_gate_passed": audit.passed,
@@ -283,6 +337,8 @@ def guard_authored_plan(
         "untraceable_numbers": traceability.untraceable_numbers,
         "states_falsifiable_expectation": falsifiable,
         "claims_no_unobserved_result": claims_no_result,
+        "named_scripts_exist": briefs_runnable,
+        "missing_script_paths": tuple(absent_scripts),
         "accepted": not findings,
         "findings": tuple(dict.fromkeys(findings)),
     }
@@ -334,6 +390,7 @@ def _authoring_messages(
     *,
     frozen_context: Mapping[str, Any],
     prior_findings: Sequence[str],
+    container_entry_points: Sequence[str] = (),
 ) -> list[dict[str, str]]:
     """Give the system its constraints and its own evidence. Supply no science."""
 
@@ -352,10 +409,14 @@ def _authoring_messages(
         "and must acknowledge that a negative or null result is a valid outcome.\n"
         "3. Do not assert any achieved result. No measurement exists yet.\n"
         "4. Name at least one baseline or control, and concrete evaluation metrics.\n"
-        "5. code_agent_brief must be COMMAND-ORIENTED: it has to contain an actual "
-        "runnable command line, and the grader looks for one of the literal words "
-        "'python', 'command', 'script', or 'pytest'. Describing what should happen is "
-        "not enough; write the command.\n"
+        "5. code_agent_brief must be COMMAND-ORIENTED and RUNNABLE: it has to contain "
+        "an actual command line, and the grader looks for one of the literal words "
+        "'python', 'command', 'script', or 'pytest'. It must NOT invent a script name. "
+        "EVERY `.py` path you write is checked, host-relative and absolute alike. The "
+        "ONLY entry points that exist are listed below; inventing a plausible-looking "
+        "path is refused whether it starts with a slash or not: "
+        + (json.dumps(list(container_entry_points)) if container_entry_points else "[]")
+        + "\n"
         "6. Use no placeholder text and no reference to any contest or organizer.\n\n"
         "Think first, then answer. Your reasoning is process provenance only and is "
         "never scientific evidence.\n"
@@ -390,6 +451,7 @@ def author_research_plan(
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     max_attempts: int = _MAX_AUTHORING_ATTEMPTS,
+    container_entry_points: Sequence[str] = (),
 ) -> SystemAuthoredPlanArtifact:
     """Have the system author its own plan, and let the graders teach it.
 
@@ -415,7 +477,9 @@ def author_research_plan(
     for attempt in range(1, max_attempts + 1):
         result = completion(
             messages=_authoring_messages(
-                frozen_context=frozen_context, prior_findings=findings
+                frozen_context=frozen_context,
+                prior_findings=findings,
+                container_entry_points=container_entry_points,
             ),
             config_path=config_path,
             env_path=env_path,
@@ -457,7 +521,10 @@ def author_research_plan(
             }
         )
         report = guard_authored_plan(
-            plan=plan, evidence_numbers=evidence_numbers, cited_evidence=present
+            plan=plan,
+            evidence_numbers=evidence_numbers,
+            cited_evidence=present,
+            container_entry_points=container_entry_points,
         )
         last_report = report
         if not report.accepted:

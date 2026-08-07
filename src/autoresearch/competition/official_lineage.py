@@ -1182,7 +1182,7 @@ def run_lineage_stage(
     registry (P-20260807-090).
     """
 
-    with _lineage_lock(config.work_dir):
+    with exclusive_lineage_lock(config.work_dir, stage=stage):
         if stage == "plan":
             return run_plan_stage(config)
         if stage == "approve":

@@ -1,0 +1,47 @@
+============================= test session starts =============================
+collected 3 items
+
+tests\unit\competition\test_revise_conformance_repair.py FFF             [100%]
+
+================================== FAILURES ===================================
+____________ test_revision_repairs_a_missing_field_and_still_lands ____________
+tests\unit\competition\test_revise_conformance_repair.py:139: in test_revision_repairs_a_missing_field_and_still_lands
+    revised = revise_official_candidates(
+src\autoresearch\competition\official_development_search.py:1154: in revise_official_candidates
+    result, _ = _call_and_record(
+src\autoresearch\competition\autonomous_engine.py:3586: in _call_and_record
+    return _finalize_interaction(
+src\autoresearch\competition\autonomous_engine.py:3772: in _finalize_interaction
+    interaction = AutonomousModelInteraction.create(
+src\autoresearch\competition\autonomous_engine.py:678: in create
+    "provider": completion.provider,
+E   AttributeError: '_Result' object has no attribute 'provider'
+________________ test_repair_prompt_names_the_offending_field _________________
+tests\unit\competition\test_revise_conformance_repair.py:167: in test_repair_prompt_names_the_offending_field
+    revise_official_candidates(
+src\autoresearch\competition\official_development_search.py:1154: in revise_official_candidates
+    result, _ = _call_and_record(
+src\autoresearch\competition\autonomous_engine.py:3586: in _call_and_record
+    return _finalize_interaction(
+src\autoresearch\competition\autonomous_engine.py:3772: in _finalize_interaction
+    interaction = AutonomousModelInteraction.create(
+src\autoresearch\competition\autonomous_engine.py:678: in create
+    "provider": completion.provider,
+E   AttributeError: '_Result' object has no attribute 'provider'
+________________ test_a_model_that_never_conforms_fails_loudly ________________
+tests\unit\competition\test_revise_conformance_repair.py:191: in test_a_model_that_never_conforms_fails_loudly
+    revise_official_candidates(
+src\autoresearch\competition\official_development_search.py:1154: in revise_official_candidates
+    result, _ = _call_and_record(
+src\autoresearch\competition\autonomous_engine.py:3586: in _call_and_record
+    return _finalize_interaction(
+src\autoresearch\competition\autonomous_engine.py:3772: in _finalize_interaction
+    interaction = AutonomousModelInteraction.create(
+src\autoresearch\competition\autonomous_engine.py:678: in create
+    "provider": completion.provider,
+E   AttributeError: '_Result' object has no attribute 'provider'
+=========================== short test summary info ===========================
+FAILED tests/unit/competition/test_revise_conformance_repair.py::test_revision_repairs_a_missing_field_and_still_lands
+FAILED tests/unit/competition/test_revise_conformance_repair.py::test_repair_prompt_names_the_offending_field
+FAILED tests/unit/competition/test_revise_conformance_repair.py::test_a_model_that_never_conforms_fails_loudly
+============================== 3 failed in 1.72s ==============================

@@ -1,0 +1,16 @@
+{
+  "policy_hash": "145293a348bfd6cab95b050a682862f6a1252d5394fadf193b0a27ebd30c7355",
+  "breadth_hash": "824ba929db6b07dcd760ac49cfd7ce6f49a6fa86393ba4923791f63329ffd69b",
+  "effective_available_per_stratum": {
+    "ode": 10,
+    "pde": 2
+  },
+  "authored_plan_artifact": "0f9a6921f26a729ddebb16d9e936df4ae1f675b3d4b4d55f6628c908188ffcb7",
+  "authored_plan_hash": "c03d390de36cb6dd295ccc16a6519246e2e83bca83d3c14b40cbcbcf81aa56d5",
+  "authoring_attempts": 1,
+  "reasoning_tokens": 4000,
+  "quality_score": 0.98,
+  "hand_written_prose_fields": 0,
+  "gate_binds": "dbf5be29e819501e",
+  "authored_title": "Stratified Symbolic Regression with Adaptive Term Support for ODE/PDE Discovery"
+}

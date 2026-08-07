@@ -1,0 +1,22 @@
+{
+  "marker": "full-results.json",
+  "marker_present": true,
+  "lock_held": true,
+  "total_cells": 36,
+  "status_counts": {
+    "succeeded": 6,
+    "timed_out": 18,
+    "failed": 12
+  },
+  "per_candidate": {
+    "official-01-r2": "0/12",
+    "official-05-r2": "6/12",
+    "official-06-r2": "0/12"
+  },
+  "failure_reasons": {
+    "in-container official development cell timeout": 12,
+    "ContractError: equation factor names an unknown state field": 6,
+    "ContractError: equation repeats an identical term support": 6,
+    "container wall-time budget exceeded": 6
+  }
+}
