@@ -6217,3 +6217,19 @@ update a factual problem entry below.
 - Linked tasks: `269.4`, `267.7`. Same defect class as `P-20260804-087`; sibling of `P-20260804-086`, which added this check originally.
 - Resolution: `src/autoresearch/competition/system_authored_outcome.py`. The guard still refuses a bare restatement, which is what `P-20260804-086` was written to catch: a restatement hits no concept group. The independent numeric-traceability and gate-consistency guards are untouched and remain strict.
 - Verification: `poetry run pytest tests/unit/competition/test_counter_reading_concepts.py -q` → 7 passed, including a regression test carrying the EXACT live refused text, tests that a thin stratum is recognised across five phrasings, tests that a negative verdict can argue the result is too harsh, and four bare restatements that must still be refused. No regressions: `test_system_authored_outcome.py`, `test_system_authored_plan.py`, `test_official_lineage.py`, `test_official_lineage_lock.py`, `test_revise_conformance_repair.py` → 94 passed.
+
+### P-20260807-093 - poetry 虚拟环境缺 numpy，4 个 harness 子进程测试失败
+
+- Status: Open
+- Severity: Low
+- Discovered: 2026-08-07
+- Source: 为研究计划 LaTeX 化做全量回归时发现（`tests/unit/competition` + `tests/unit/schemas` + `tests/unit/research`，859 passed / 4 failed）。
+- Symptom: `tests/unit/competition/test_scientific_contract_harness.py` 的 4 个测试失败，报 `subprocess.CalledProcessError ... returned non-zero exit status 1`，子进程 stderr 为 `ModuleNotFoundError: No module named 'numpy'`。失败用例：`test_exact_runner_recovers_all_corrected_known_laws`、`test_runner_serializes_unbounded_scientific_metrics_as_failures`、`test_runner_rejects_tampered_fixture_and_static_review_blocks_leakage`、`test_runner_returns_candidate_owned_error_location_without_fixture_values`。
+- Impact: 低，且与当前工作无关。这些测试通过子进程调用 `deploy/experiments/mdbench/scientific_contract_harness_runner.py`，该脚本 `import numpy`。真实的 lineage 执行在**容器内**进行（容器镜像自带 numpy/pysindy），所以正式 cell 不受影响——v6 lineage 的 238 个 cell 全部正常执行即为证据。受影响的只是宿主机上这 4 个子进程测试。
+- Evidence: 直接探测宿主解释器：`subprocess.run([sys.executable, '-c', 'import numpy'])` 返回 `rc=1`，stderr 为 `ModuleNotFoundError: No module named 'numpy'`。虚拟环境路径 `C:\Users\Z\AppData\Local\pypoetry\Cache\virtualenvs\ai-researcher-910LUavs-py3.10`。本次改动未触及 `scientific_contract_harness`，也未引入 numpy 依赖，故非本次引入。
+- Root cause: 未确认。可能是 `poetry install` 未安装可选/分组依赖，或该依赖只声明在容器镜像而未声明在宿主 `pyproject.toml`。
+- Workaround: 无需处理即可继续当前工作。这 4 个测试与研究计划渲染、文献调研、lineage 执行均无交集。
+- Next action: 确认 numpy 应属于宿主开发依赖还是仅容器依赖。若属前者，加入 `pyproject.toml` 并 `poetry install`；若属后者，这 4 个测试应标记为需要容器环境并在宿主上跳过，而不是以失败形式长期存在——一个长期红的测试会让真实回归失去信号。
+- Linked tasks: `269.4`。
+- Resolution: 未解决，如实记录。不因"与我的改动无关"而略过：一个长期失败的测试会稀释回归信号，下一个 agent 会误以为红色是正常状态。
+- Verification: 本次改动相关的套件全绿：`test_research_plan_latex.py` 30 passed、`test_plan_literature_survey.py` 9 passed、`test_research_plan_markdown.py` 13 passed、`test_system_authored_plan.py` 29 passed、`tests/unit/schemas` 30 passed。LaTeX 模板经 `xelatex` 真实编译通过（returncode=0，PDF 79523 bytes）。
