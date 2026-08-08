@@ -45,7 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, ValidationError, model_serializer, model_validator
 
 from autoresearch.competition.autonomous_engine import (
     JsonCompletion,
@@ -53,6 +53,15 @@ from autoresearch.competition.autonomous_engine import (
 )
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
 from autoresearch.competition.models import StrictFrozenModel
+from autoresearch.competition.plan_execution_contract import (
+    CandidatePlanAlignmentAudit,
+    PlanExecutionContract,
+    audit_candidate_plan_alignment,
+    compile_plan_execution_contract,
+    load_plan_execution_contract,
+    require_candidate_plan_alignment,
+    write_plan_execution_contract,
+)
 from autoresearch.competition.scientific_contract_harness import (
     _SOURCE_RESPONSE_SCHEMA,
     ScientificContractRuntimeEnvironment,
@@ -198,6 +207,58 @@ class OfficialCandidateRecord(StrictFrozenModel):
     static_review_findings: tuple[str, ...] = ()
     implementation_summary: str
     authored_by_model: Literal[True] = True
+    # Optional only for retained pre-270.2 registries. Every newly generated formal
+    # lineage writes all three fields, and the execution entry point refuses their
+    # absence before a container can start.
+    approved_plan_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    plan_contract_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    plan_alignment: CandidatePlanAlignmentAudit | None = None
+
+    @model_validator(mode="after")
+    def _validate_plan_alignment(self) -> OfficialCandidateRecord:
+        bound = (
+            self.approved_plan_hash,
+            self.plan_contract_hash,
+            self.plan_alignment,
+        )
+        if any(item is not None for item in bound) and any(item is None for item in bound):
+            raise OfficialDevelopmentSearchError(
+                "candidate plan binding must include plan hash, contract hash, and audit"
+            )
+        if self.plan_alignment is not None:
+            if self.plan_alignment.approved_plan_hash != self.approved_plan_hash:
+                raise OfficialDevelopmentSearchError(
+                    "candidate plan-alignment audit binds a different approved plan"
+                )
+            if self.plan_alignment.plan_contract_hash != self.plan_contract_hash:
+                raise OfficialDevelopmentSearchError(
+                    "candidate plan-alignment audit binds a different execution contract"
+                )
+            if self.plan_alignment.source_sha256 != self.source_sha256:
+                raise OfficialDevelopmentSearchError(
+                    "candidate plan-alignment audit binds different source bytes"
+                )
+            if self.static_review_approved and not self.plan_alignment.passed:
+                raise OfficialDevelopmentSearchError(
+                    "a plan-misaligned candidate cannot pass static review"
+                )
+        return self
+
+    @model_serializer(mode="wrap")
+    def _serialize_with_legacy_compatibility(self, handler: Any) -> dict[str, Any]:
+        """Do not inject null plan fields into immutable pre-270.2 records.
+
+        Retained package hashes cover candidate serialization. Emitting three new
+        ``null`` keys while loading an old candidate would invalidate real evidence.
+        New records carry non-null bindings and therefore serialize all three keys.
+        """
+
+        payload = dict(handler(self))
+        if self.plan_alignment is None:
+            payload.pop("approved_plan_hash", None)
+            payload.pop("plan_contract_hash", None)
+            payload.pop("plan_alignment", None)
+        return payload
 
 
 class OfficialDevelopmentIdentity(StrictFrozenModel):
@@ -396,7 +457,12 @@ def freeze_official_identity(
     return identity, panel
 
 
-def _generation_brief(panel: dict[str, Any], budget: dict[str, Any]) -> dict[str, Any]:
+def _generation_brief(
+    panel: dict[str, Any],
+    budget: dict[str, Any],
+    *,
+    plan_execution_contract: PlanExecutionContract | None = None,
+) -> dict[str, Any]:
     """Panel SHAPE metadata plus the interface contract. No arrays, no scores."""
 
     shapes = []
@@ -408,7 +474,7 @@ def _generation_brief(panel: dict[str, Any], budget: dict[str, Any]) -> dict[str
                 "system_name": system["system_name"],
             }
         )
-    return {
+    brief = {
         "task": (
             "author a fit-once/freeze/predict equation-discovery candidate for the "
             "official MDBench development panel"
@@ -444,6 +510,19 @@ def _generation_brief(panel: dict[str, Any], budget: dict[str, Any]) -> dict[str
             "maximum_cpu_cores_per_cell": budget["maximum_cpu_cores_per_cell"],
         },
     }
+    if plan_execution_contract is not None:
+        # This is the scientific content that was actually approved, not merely its
+        # hash. It is retained in the interaction prompt and therefore auditable.
+        brief["approved_research_plan_execution_contract"] = (
+            plan_execution_contract.model_dump(mode="json")
+        )
+        brief["plan_alignment_requirement"] = (
+            "Implement the approved plan, not an alternative method. Every item in "
+            "required_method_tokens must occur in a callable actually reached from "
+            "fit_equations or predict_derivative. Comments, prose, docstrings, "
+            "variable names, and unused helper functions do not count."
+        )
+    return brief
 
 
 def _format_field_error(error: Mapping[str, Any]) -> str:
@@ -464,12 +543,22 @@ def generate_official_candidates(
     provider_timeout_seconds: int = 300,
     completion: JsonCompletion = run_llm_json_completion,
     clock: Callable[[], datetime] | None = None,
+    research_plan: Any | None = None,
 ) -> tuple[OfficialCandidateRecord, ...]:
     """Ask the model for N INDEPENDENT candidates. Score-blind by construction."""
 
     now = clock or (lambda: datetime.now(timezone.utc))
     output_root = Path(output_dir).resolve()
-    brief = _generation_brief(panel, budget)
+    plan_contract = (
+        compile_plan_execution_contract(research_plan)
+        if research_plan is not None
+        else None
+    )
+    if plan_contract is not None:
+        write_plan_execution_contract(contract=plan_contract, output_dir=output_root)
+    brief = _generation_brief(
+        panel, budget, plan_execution_contract=plan_contract
+    )
     records: list[OfficialCandidateRecord] = []
     for index in range(1, identity.initial_candidate_count + 1):
         candidate_id = f"official-{index:02d}"
@@ -567,6 +656,23 @@ def generate_official_candidates(
         with source_path.open("w", encoding="utf-8", newline="") as handle:
             handle.write(source_text)
         review = review_scientific_contract_source(source_text)
+        alignment = (
+            audit_candidate_plan_alignment(
+                candidate_id=candidate_id,
+                source_text=source_text,
+                contract=plan_contract,
+            )
+            if plan_contract is not None
+            else None
+        )
+        findings = [
+            f"{item.code}: {item.message[:160]}" for item in review.findings
+        ]
+        if alignment is not None and not alignment.passed:
+            findings.append(
+                "PLAN_METHOD_NOT_IMPLEMENTED: reachable source is missing approved "
+                f"method tokens {list(alignment.missing_method_tokens)}"
+            )
         records.append(
             OfficialCandidateRecord(
                 candidate_id=candidate_id,
@@ -574,11 +680,18 @@ def generate_official_candidates(
                 interaction_id=interaction_id,
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
-                static_review_approved=review.approved,
-                static_review_findings=tuple(
-                    f"{item.code}: {item.message[:160]}" for item in review.findings
+                static_review_approved=(
+                    review.approved and (alignment is None or alignment.passed)
                 ),
+                static_review_findings=tuple(findings),
                 implementation_summary=response.implementation_summary,
+                approved_plan_hash=(
+                    plan_contract.approved_plan_hash if plan_contract is not None else None
+                ),
+                plan_contract_hash=(
+                    plan_contract.contract_hash if plan_contract is not None else None
+                ),
+                plan_alignment=alignment,
             )
         )
     write_json_model(
@@ -782,7 +895,7 @@ def _result_from_payload(
         data_type=spec.data_type,
         condition=spec.condition,
         seed=spec.seed,
-        status=status,  # type: ignore[arg-type]
+        status=status,
         derivative_nmse=payload.get("derivative_nmse"),
         validation_nmse=payload.get("validation_nmse"),
         selected_term_count=payload.get("selected_term_count"),
@@ -836,6 +949,7 @@ def execute_official_stage(
     output_root = Path(output_dir).resolve()
 
     bound_plan_hash: str | None = None
+    bound_contract_hash: str | None = None
     if research_plan is not None:
         from autoresearch.research.plan_confirmation import require_approved_plan
 
@@ -843,6 +957,16 @@ def execute_official_stage(
         bound_plan_hash = require_approved_plan(
             plan=research_plan, decision=plan_decision
         )
+        expected_contract = compile_plan_execution_contract(research_plan)
+        retained_contract = load_plan_execution_contract(output_root)
+        if retained_contract != expected_contract:
+            raise OfficialDevelopmentSearchError(
+                "retained plan execution contract differs from the approved plan"
+            )
+        require_candidate_plan_alignment(
+            candidates=candidates, contract=retained_contract
+        )
+        bound_contract_hash = retained_contract.contract_hash
 
     if ledger is not None:
         candidate_cells = sum(1 for item in specs if item.method_kind == "candidate")
@@ -885,6 +1009,7 @@ def execute_official_stage(
     if bound_plan_hash is not None:
         # Binds this execution to the exact plan text a human approved.
         stage_record["approved_research_plan_hash"] = bound_plan_hash
+        stage_record["plan_execution_contract_hash"] = bound_contract_hash
     write_json_model(
         output_root / "cells" / f"{specs[0].stage}-results.json",
         stage_record,
@@ -1074,6 +1199,7 @@ def revise_official_candidates(
     provider_timeout_seconds: int = 300,
     completion: JsonCompletion = run_llm_json_completion,
     clock: Callable[[], datetime] | None = None,
+    research_plan: Any | None = None,
 ) -> tuple[OfficialCandidateRecord, ...]:
     """Let each candidate re-author itself from its OWN objective failures.
 
@@ -1088,7 +1214,17 @@ def revise_official_candidates(
 
     now = clock or (lambda: datetime.now(timezone.utc))
     output_root = Path(output_dir).resolve()
-    brief = _generation_brief(panel, budget)
+    plan_contract = (
+        compile_plan_execution_contract(research_plan)
+        if research_plan is not None
+        else None
+    )
+    if plan_contract is not None:
+        write_plan_execution_contract(contract=plan_contract, output_dir=output_root)
+        require_candidate_plan_alignment(candidates=candidates, contract=plan_contract)
+    brief = _generation_brief(
+        panel, budget, plan_execution_contract=plan_contract
+    )
     revised: list[OfficialCandidateRecord] = []
     for record in candidates:
         if not record.static_review_approved:
@@ -1206,6 +1342,23 @@ def revise_official_candidates(
         with source_path.open("w", encoding="utf-8", newline="") as handle:
             handle.write(source_text)
         review = review_scientific_contract_source(source_text)
+        alignment = (
+            audit_candidate_plan_alignment(
+                candidate_id=revised_id,
+                source_text=source_text,
+                contract=plan_contract,
+            )
+            if plan_contract is not None
+            else None
+        )
+        findings = [
+            f"{item.code}: {item.message[:160]}" for item in review.findings
+        ]
+        if alignment is not None and not alignment.passed:
+            findings.append(
+                "PLAN_METHOD_NOT_IMPLEMENTED: reachable source is missing approved "
+                f"method tokens {list(alignment.missing_method_tokens)}"
+            )
         revised.append(
             OfficialCandidateRecord(
                 candidate_id=revised_id,
@@ -1213,11 +1366,18 @@ def revise_official_candidates(
                 interaction_id=interaction_id,
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
-                static_review_approved=review.approved,
-                static_review_findings=tuple(
-                    f"{item.code}: {item.message[:160]}" for item in review.findings
+                static_review_approved=(
+                    review.approved and (alignment is None or alignment.passed)
                 ),
+                static_review_findings=tuple(findings),
                 implementation_summary=response.implementation_summary,
+                approved_plan_hash=(
+                    plan_contract.approved_plan_hash if plan_contract is not None else None
+                ),
+                plan_contract_hash=(
+                    plan_contract.contract_hash if plan_contract is not None else None
+                ),
+                plan_alignment=alignment,
             )
         )
     write_json_model(

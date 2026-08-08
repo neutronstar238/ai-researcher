@@ -43,7 +43,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -160,10 +160,8 @@ def exclusive_lineage_lock(
         # Lock exists. Check whether the holder is still alive.
         if _is_stale():
             # Stale: remove it and claim ownership.
-            try:
+            with suppress(OSError):
                 lock_path.unlink()
-            except OSError:
-                pass
             if not _try_create():
                 # Another process raced us to claim the stale lock.
                 raise OfficialLineageError(
@@ -189,10 +187,8 @@ def exclusive_lineage_lock(
     try:
         yield
     finally:
-        try:
+        with suppress(OSError):
             lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 # Keep the private name for internal callers that predate the rename.
@@ -638,6 +634,17 @@ def run_approve_stage(
 def run_generate_stage(config: OfficialLineageConfig) -> LineageStageReport:
     """Ask for the frozen number of independent candidates. Score-blind."""
 
+    from autoresearch.competition.plan_execution_contract import (
+        compile_plan_execution_contract,
+    )
+    from autoresearch.research.plan_confirmation import require_approved_plan
+
+    # Candidate authoring is part of executing the scientific plan: it spends the
+    # frozen generation budget and determines which method is measured. Gate it before
+    # `_freeze` creates or changes any lineage artifact and before the provider is called.
+    plan, decision = _load_plan_and_decision(config)
+    require_approved_plan(plan=plan, decision=decision)
+    compile_plan_execution_contract(plan)
     frozen, identity, panel, ledger = _freeze(config)
     budget = frozen["search_budget"]
     count = int(budget["initial_candidate_count"])
@@ -647,6 +654,7 @@ def run_generate_stage(config: OfficialLineageConfig) -> LineageStageReport:
         panel=panel,
         budget=budget,
         output_dir=config.work_dir,
+        research_plan=plan,
     )
     ledger = ledger.record(
         stage="generate-gen1",
@@ -927,8 +935,12 @@ def run_execution_stage(
                     if item.candidate_id == candidate_id
                     and item.data_type == data_type
                 ]
-                good = sum(1 for item in stratum_cells if item.status == "succeeded")
-                strata.append(f"{data_type} {good}/{len(stratum_cells)}")
+                succeeded_in_stratum = sum(
+                    1 for item in stratum_cells if item.status == "succeeded"
+                )
+                strata.append(
+                    f"{data_type} {succeeded_in_stratum}/{len(stratum_cells)}"
+                )
             lines.append(
                 f"    smoke {candidate_id}: "
                 + ("PASS" if ok else "REFUSED, cannot execute")
@@ -1012,6 +1024,14 @@ def run_execution_stage(
 def run_revise_stage(config: OfficialLineageConfig) -> LineageStageReport:
     """Let the best pilot candidates re-author themselves from their OWN failures."""
 
+    from autoresearch.competition.plan_execution_contract import (
+        compile_plan_execution_contract,
+    )
+    from autoresearch.research.plan_confirmation import require_approved_plan
+
+    plan, decision = _load_plan_and_decision(config)
+    require_approved_plan(plan=plan, decision=decision)
+    compile_plan_execution_contract(plan)
     frozen, _identity, panel, ledger = _freeze(config)
     budget = frozen["search_budget"]
     parents = _load_registry(config.candidates_dir / _CANDIDATE_REGISTRY)
@@ -1037,6 +1057,7 @@ def run_revise_stage(config: OfficialLineageConfig) -> LineageStageReport:
         candidates=chosen,
         results=pilot,
         output_dir=config.work_dir,
+        research_plan=plan,
     )
     ledger = ledger.record(
         stage="revise-gen2",

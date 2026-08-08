@@ -41,7 +41,10 @@ def _plan(**overrides: Any) -> ResearchPlan:
             "预期总体中位对数效应超过 0.05129329438755058。"
             "若仍低于该阈值，则本假设被反驳；零结果同样是有效结果。"
         ),
-        "code_agent_brief": "执行命令 python /harness/runner.py --spec x",
+        "code_agent_brief": (
+            "执行命令 python /harness/runner.py --spec x。"
+            "required_method_tokens=[fieldlist, constrained]"
+        ),
         "risks_and_alternatives": ["白名单可能过严，可退化为软惩罚。", "PDE 仅 2 个系统。"],
         "references": ["retained prior lineage package"],
         "evidence_refs": ["runs/x/y.json"],

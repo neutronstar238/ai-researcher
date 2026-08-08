@@ -62,6 +62,7 @@ def _plan(**overrides: Any) -> ResearchPlan:
         ),
         "code_agent_brief": (
             "运行命令 python /harness/runner.py --config constrained_sr 执行评估。"
+            "required_method_tokens=[constrained, sparse]"
         ),
         "risks_and_alternatives": [
             "风险：受限词表可能过严，排除必要的复合项。备选：改为软惩罚。",

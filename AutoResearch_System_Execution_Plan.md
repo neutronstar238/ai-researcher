@@ -2347,3 +2347,16 @@ Task `266.2` 只实现合成能力门，不运行任何新官方 development cel
 
 Task `266.2` 结束时 new official result、confirmation read/result、receipt 和 manuscript 仍必须为零。任何能力门失败只允许在冻结的
 synthetic 反馈和最多六次 score-blind revision 内修复，不能查看或调参到官方分数。
+
+## 29. 提交前 fail-closed 收尾（Task 270）
+
+执行顺序固定为：
+
+1. `270.1` 在 outcome 接受前复算显式数值关系与区间是否跨零，拒绝“数字可溯源但算术相反”的叙述；
+2. `270.2` 将批准计划编译为 `plan-execution-contract.json`，在任何模型生成预算支出前检查计划批准与契约可编译性；generation 与 revision 的 retained interaction 必须携带计划全文和契约；
+3. 每个 candidate registry 条目写入批准计划哈希、契约哈希和 source-hash-bound AST 对齐审计。静态安全审查通过但计划对齐失败的候选仍为拒收；
+4. pilot、baseline、full 在启动容器前重新加载契约并检查所有被提升候选；stage record 同时记录 `approved_research_plan_hash` 与 `plan_execution_contract_hash`；
+5. `270.3` 保留 preregistered plan 不变，另行生成包含真实 Results/Conclusions 的最终报告；
+6. `270.4` 汇总作者来源、计划对齐、运行来源、结果语义、模型配置、复现和发表边界，任一证明缺失即输出 non-ready。
+
+验收以反例为中心：未批准计划不得调用候选生成模型；只绑定哈希但没有对齐审计的旧候选不得执行；把计划方法写进注释、变量或死 helper 不得通过；修改 source、plan 或 contract 任一字节后旧审计不得复用；计划中承诺积分贝叶斯与 constrained LARS、源码实际执行 spectral derivative 与 STRidge 的样例必须被确定性拒绝。

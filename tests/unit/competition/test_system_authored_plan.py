@@ -87,7 +87,8 @@ def _authored(**overrides: Any) -> dict[str, Any]:
         ),
         "code_agent_brief": (
             "Run python /harness/runner.py --spec ... --data ... per frozen cell with "
-            "network disabled, then validate with pytest before any official cell."
+            "network disabled, then validate with pytest before any official cell. "
+            "required_method_tokens=[heldout, sparsity]"
         ),
         "risks_and_alternatives": [
             "A candidate may overfit the validation window; the transfer gap is fed back.",
@@ -456,6 +457,25 @@ def test_the_prompt_names_the_literal_words_the_grader_looks_for(tmp_path: Path)
     sent = json.dumps(stub.calls[0]["messages"])
     assert "pytest" in sent
     assert "COMMAND-ORIENTED" in sent
+    assert "required_method_tokens" in sent
+    assert "unused helpers cannot pass" in sent
+
+
+def test_a_command_without_method_tokens_is_not_an_executable_plan(tmp_path: Path) -> None:
+    report = guard_authored_plan(
+        plan=_plan(
+            code_agent_brief=(
+                "Run python /harness/runner.py --spec ... per frozen cell."
+            )
+        ),
+        evidence_numbers=set(),
+        cited_evidence=[],
+        repo_root=tmp_path,
+        container_entry_points=("/harness/runner.py",),
+    )
+
+    assert report.accepted is False
+    assert any("2-8 distinctive method identifiers" in item for item in report.findings)
 
 
 # --------------------------------------------------------------------------

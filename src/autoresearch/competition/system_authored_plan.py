@@ -42,10 +42,14 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.models import StrictFrozenModel
+from autoresearch.competition.plan_execution_contract import (
+    PlanExecutionContractError,
+    extract_required_method_tokens,
+)
 from autoresearch.competition.research_plan_markdown import (
     render_plan_artifact_markdown,
 )
-from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.system_authored_outcome import (
     audit_numeric_traceability,
     collect_evidence_numbers,
@@ -442,6 +446,13 @@ def guard_authored_plan(
             "container path."
         )
 
+    # A runnable command alone does not prove which scientific method will be coded.
+    # Require model-authored, source-checkable method tokens before accepting the plan.
+    try:
+        extract_required_method_tokens(plan.code_agent_brief)
+    except PlanExecutionContractError as exc:
+        findings.append(str(exc))
+
     payload: dict[str, Any] = {
         "schema_version": "authored-plan-guard-report-v1",
         "quality_gate_passed": audit.passed,
@@ -578,6 +589,13 @@ def _authoring_messages(
         "path is refused whether it starts with a slash or not: "
         + (json.dumps(list(container_entry_points)) if container_entry_points else "[]")
         + "\n"
+        "5a. End code_agent_brief with 2-8 distinctive ASCII method identifiers in "
+        "the literal form required_method_tokens=[token_a, token_b]. Choose tokens "
+        "that identify YOUR proposed scientific mechanism, not generic interface "
+        "words such as model, method, fit, runner, or candidate. Candidate source is "
+        "later checked by AST: every token must occur in a callable actually reached "
+        "from fit_equations or predict_derivative; comments, prose, variable names, "
+        "and unused helpers cannot pass.\n"
         "6. Use no placeholder text and no reference to any contest or organizer.\n"
         "7. WRITE EVERY PROSE FIELD IN CHINESE (简体中文). This document is read by "
         "Chinese reviewers. Keep these in their original form because they are literal "

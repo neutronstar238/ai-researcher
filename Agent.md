@@ -13993,3 +13993,43 @@ This file defines the project development standard for coding agents and records
 - Follow-up:
   - Task `270.2`: make approved-plan methods, experiments, baselines, metrics, and code-agent brief an executable, fail-closed candidate-generation contract rather than a hash-only attachment.
   - Task `270.3`: preserve preregistration, then generate a separate final report with signed observed results and the new semantic audit.
+
+---
+
+## 2026-08-08 22:31:16 +08:00 - Codex - Task 270.2 approved-plan execution contract
+
+- User request: 以最快速度、最高质量完成提交前开发，并严格证明科研计划不是装饰性文档，而是实际驱动系统自主生成和执行研究。
+- Files changed:
+  - `src/autoresearch/competition/plan_execution_contract.py` (new)
+  - `src/autoresearch/competition/official_development_search.py`
+  - `src/autoresearch/competition/official_lineage.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `tests/unit/competition/test_plan_execution_contract.py` (new)
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `tests/unit/competition/test_plan_language_and_citations.py`
+  - `tests/unit/competition/test_bilingual_plan_graders.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - 新增 `plan-execution-contract-v1`：把获批计划的 problem、rationale、technical details、datasets、methods、experiments、baselines、metrics、expected results 与 code-agent brief 原样绑定到 canonical hash，不再只传一个无法约束行为的 plan hash。
+  - 计划必须由系统在 code-agent brief 中写出 2-8 个稳定方法标记；老计划若已用配置名明确承诺方法，可确定性提取。新计划 grader 会把没有方法标记的“泛化运行命令”拒收并把具体修复要求返回给模型。
+  - generation/revision prompt 现在携带完整获批计划契约。每个 candidate registry 条目保存 approved plan hash、contract hash、source hash 与 `candidate-plan-alignment-audit-v1`。
+  - 对齐不是关键词扫描散文：只有从 `fit_equations` / `predict_derivative` 实际到达的 callable 名称才算实现证据；注释、docstring、implementation summary、变量名和死 helper 全部无效。对齐失败的候选即使静态安全审查通过也不能 promoted。
+  - 正式 generate 与 revise 现在先检查 plan approval 和 contract compilability，再 `_freeze`、调用 provider 或花 generation budget。pilot/baseline/full 在容器启动前重载持久化 contract 并验证所有 promoted candidate；stage record 同时绑定 approved plan hash 与 plan execution contract hash。
+  - 对 `task2700-latex-plan-lineage-v1` 做只读审计：计划自产生 `integral/bayesian/constrained/lars` 四个要求；8 个初代 + 3 个修订候选全部 4 项缺失，`0/11` 对齐。selected `official-07-r2` 是 spectral derivatives + STRidge。因此旧测量不是这份计划的实验结果，未改写任何历史 artifact。
+  - Research/Execution Plan 新增 §29，Task ledger 完成 `270.2`，并明确 AST 门的能力边界：它排除 plan-A/code-B，但不冒充数值算法的数学等价证明；科学能力与效果仍由 Harness 和实验门验证。
+- Verification:
+  - `poetry run python -m pytest -q --no-cov`（8 个对齐/生成/计划/lineage 相关文件）→ `135 passed`.
+  - Broad competition regression excluding only the four already documented `P-20260807-093` host-numpy subprocess cases → `649 passed, 4 deselected`.
+  - `poetry run ruff check` on all changed Python/test files → clean.
+  - `poetry run mypy` on all four changed source modules → clean.
+  - Read-only real artifact audit → contract `cac5778544d7108ec6a097faedcb0909b0bd8d24c423cb64b10e25ad770a4a96`, required tokens `integral/bayesian/constrained/lars`, aligned candidates `0/11`.
+  - Historical compatibility audit → retained Task 2696 package still validates at `fb49f72644e07192d8bbf1b7c43414f93d588c85ac466f35575b9ab096c338e5`; Task 2700 package still validates at `805b6dbfc404fa636c6772d830c19359cfcc78cc8befba3a881120e8ebd576e7`. Legacy candidate serialization omits the new fields instead of injecting hash-breaking nulls.
+- Problems added or updated:
+  - Added `P-20260808-100` (critical): approved research plan and executed method were disconnected; resolved fail-closed for new lineages, retained `task2700` measurement explicitly disqualified for that plan.
+  - `P-20260807-093` remains unchanged: only four host subprocess tests need numpy; the other 649 competition tests passed.
+- Follow-up:
+  - Task `270.3`: produce a separate post-observation final report rather than filling the immutable preregistration in place. Because `task2700` fails plan alignment, its numbers must be reported as a disqualified mismatch or a new aligned lineage must be executed; they cannot be presented as evidence for the integral-Bayesian plan.
