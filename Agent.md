@@ -13962,3 +13962,34 @@ This file defines the project development standard for coding agents and records
 ### Follow-up
 
 - lineage `task2700-latex-plan-lineage-v1` 已完成 prereg，待执行 generate → pilot → revise → baseline → full → adjudicate → interpret。
+
+---
+
+## 2026-08-08 22:12:40 +08:00 - Codex - Task 270.1 outcome numeric-semantics gate
+
+- User request: 以最快速度、最高质量完成榜题提交前开发；当前独立子任务是用最严标准关闭已发现的结果语义完整性缺口。
+- Files changed:
+  - `src/autoresearch/competition/system_authored_outcome.py`
+  - `src/autoresearch/competition/research_plan_markdown.py`
+  - `tests/unit/competition/test_system_authored_outcome.py`
+  - `tests/unit/competition/test_research_plan_markdown.py`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- Summary:
+  - 新增 hash-bound `NumericRelationAudit`，以 `Decimal` 确定性复算系统结果散文中的相邻显式数值关系，而不是把“数字有出处”等同于“结论正确”。
+  - 同时覆盖英语、中文的 `>` / `>=` / `<` / `<=` / `=` 语义，以及闭区间、开区间对“包含零 / 排除零 / 跨零”的陈述。
+  - 新撰写 outcome 若存在任何算术矛盾，必然追加拒收理由且不能 `accepted=true`；prompt 同步声明该硬约束，但最终权威仍是确定性审计器。
+  - Markdown 派生视图新增“数值关系复算”门禁行，并单独列出所有算术矛盾。
+  - 对历史 `task2700` artifact 只读实测，准确识别 `0.04680717460171525 < 0.0 is false`；未改写历史证据。该历史 outcome 在重新生成前不得用于提交。
+  - 在任务账本新增 submission-critical Task `270`，后续依次处理计划到代码的实质绑定、观测结果进入最终报告、以及 fail-closed 提交证据包。
+- Verification:
+  - `poetry run python -m pytest -q --no-cov tests/unit/competition/test_system_authored_outcome.py tests/unit/competition/test_counter_reading_concepts.py tests/unit/competition/test_research_plan_markdown.py` → `56 passed`.
+  - `poetry run ruff check src/autoresearch/competition/system_authored_outcome.py tests/unit/competition/test_system_authored_outcome.py tests/unit/competition/test_counter_reading_concepts.py` → clean.
+  - `poetry run mypy src/autoresearch/competition/system_authored_outcome.py` → clean.
+  - Read-only retained-artifact audit → `checked_relation_count=4`, `passed=false`, one exact contradiction: `0.04680717460171525 < 0.0 is false`.
+- Problems added or updated:
+  - Added `P-20260808-099` (critical): traceable numbers could still be assembled into an arithmetically false scientific claim; resolved for all newly authored outcomes, historical `task2700` outcome explicitly disqualified pending regeneration.
+- Follow-up:
+  - Task `270.2`: make approved-plan methods, experiments, baselines, metrics, and code-agent brief an executable, fail-closed candidate-generation contract rather than a hash-only attachment.
+  - Task `270.3`: preserve preregistration, then generate a separate final report with signed observed results and the new semantic audit.

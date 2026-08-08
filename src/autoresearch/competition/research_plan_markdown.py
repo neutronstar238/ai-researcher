@@ -74,7 +74,7 @@ def _render_value(value: Any) -> str:
     if isinstance(value, str):
         text = value.strip()
         return text if text else "_（空）_"
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         if not value:
             return "_（空）_"
         lines = []
@@ -114,7 +114,7 @@ def _render_quality_gate(gate: Any) -> list[str]:
         lines.append(f"- 细项评分：{parts}")
     for label, key in (("问题", "issues"), ("告警", "warnings")):
         items = gate.get(key)
-        if isinstance(items, (list, tuple)) and items:
+        if isinstance(items, list | tuple) and items:
             lines.append(f"- {label}：")
             lines.extend(f"  - {item}" for item in items)
     lines.append("")
@@ -145,7 +145,7 @@ def render_research_plan_markdown(
         "若两者不一致，以 JSON 为准。"
     )
     if plan_hash:
-        out.append(f">")
+        out.append(">")
         out.append(f"> - `plan_hash`：`{plan_hash}`")
     if artifact_hash:
         out.append(f"> - `artifact_hash`：`{artifact_hash}`")
@@ -289,13 +289,19 @@ def render_outcome_markdown(outcome_payload: dict[str, Any]) -> str:
         checked = trace.get("checked_number_count")
         traceable = trace.get("traceable_number_count")
         out.append(f"| 数字可溯源 | {traceable}/{checked} |")
+    relation_audit = outcome_payload.get("relation_audit")
+    if isinstance(relation_audit, dict):
+        relation_checked = relation_audit.get("checked_relation_count")
+        relation_passed = relation_audit.get("passed")
+        relation_verdict = "通过" if relation_passed else "**存在算术矛盾**"
+        out.append(f"| 数值关系复算 | {relation_verdict}（复算 {relation_checked} 项） |")
     out.append(
         f"| 人工撰写的散文字段数 | {outcome_payload.get('hand_written_prose_count', 0)} |"
     )
     out.append("")
 
     refusals = outcome_payload.get("refusal_reasons")
-    if isinstance(refusals, (list, tuple)) and refusals:
+    if isinstance(refusals, list | tuple) and refusals:
         out.append("### grader 拒收理由")
         out.append("")
         out.extend(f"- {item}" for item in refusals)
@@ -303,12 +309,22 @@ def render_outcome_markdown(outcome_payload: dict[str, Any]) -> str:
 
     if isinstance(trace, dict):
         untraceable = trace.get("untraceable_numbers")
-        if isinstance(untraceable, (list, tuple)) and untraceable:
+        if isinstance(untraceable, list | tuple) and untraceable:
             out.append("### 无法溯源的数字")
             out.append("")
             out.append("_以下数字未能在证据中找到出处，可能是模型自行编造的。_")
             out.append("")
             out.extend(f"- `{item}`" for item in untraceable)
+            out.append("")
+
+    if isinstance(relation_audit, dict):
+        contradictions = relation_audit.get("contradictions")
+        if isinstance(contradictions, list | tuple) and contradictions:
+            out.append("### 算术矛盾")
+            out.append("")
+            out.append("_以下数值关系由确定性审计器复算为假。_")
+            out.append("")
+            out.extend(f"- `{item}`" for item in contradictions)
             out.append("")
 
     for name, heading in _OUTCOME_SECTIONS:

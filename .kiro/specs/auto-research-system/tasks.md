@@ -3805,6 +3805,23 @@ A task can be checked only when all applicable items are true:
     - Report the primary defect-repair criterion and the secondary receipt outcome separately. If the receipt is refused, record it as a Route P2 honest negative with its effect and interval rather than as a loop failure, and record the next diagnosed blocker. Do not weaken any threshold, do not substitute one route's result for the other after observation, and do not touch the sealed confirmation panel.
     - _Verify: receipt only on a full pass, zero-term count reported against the prior lineage's 6, both strata reported, the route recorded before observation and unchanged after, confirmation still sealed, `publication_ready` false, and `Problem.md` plus `Agent.md` updated._
 
+- [ ] 270. Close the submission-critical autonomy and evidence-integrity gaps
+  - Context: a strict repository-to-brief audit found that the pipeline can author a plan and an outcome, but the approved plan's scientific content is not yet an executable contract for candidate generation, the final plan PDF does not yet contain observed results, and a traceable but arithmetically false sentence was accepted in the retained `task2700` outcome. Submission claims must follow executable evidence, not prompt wording or artifact names.
+  - [x] 270.1 Reject arithmetically false system-authored outcome claims
+    - Recompute every explicit adjacent numeric comparison in English or Chinese and every bracketed interval claim about zero. Numeric provenance remains necessary but is no longer sufficient: a number can come from evidence and still be used in a false relation.
+    - Persist a hash-bound `relation_audit` in every newly authored outcome, refuse acceptance on any contradiction, and render the audit plus its exact contradictions in the human-readable Markdown. Retained evidence is immutable; the historical `task2700` artifact is audited read-only and is not rewritten.
+    - _Verify: the exact retained sentence `0.04680717460171525 is below the required minimum of 0.0` is deterministically rejected; correct positive, negative, equality, bilingual, and interval-zero relations pass; false variants fail; focused pytest, ruff, and mypy pass; `Problem.md` and `Agent.md` record the defect and evidence._
+    - _Outcome: completed. The retained `task2700-latex-plan-lineage-v1` outcome produced one deterministic contradiction (`0.04680717460171525 < 0.0 is false`) despite all numbers being traceable. New outcome authoring now refuses that artifact class before `accepted=true`, stores a canonical audit hash, and exposes the verdict in Markdown. Fifty-six focused tests pass; focused ruff and mypy are clean._
+  - [ ] 270.2 Bind approved research-plan scientific content into generation and execution
+    - Promote plan methods, experiments, baselines, metrics, and code-agent brief into a machine-verifiable execution contract. Candidate generation and revision must consume that contract, and execution must fail closed when implementation evidence does not align with the approved plan hash and required plan elements.
+    - _Verify: a deliberately unrelated candidate cannot pass the plan-alignment gate; the approved-plan contract is visible in retained interactions and stage records; hash-only binding is no longer sufficient._
+  - [ ] 270.3 Materialize observed results into a final research report
+    - Preserve the preregistered plan as immutable prior evidence, then produce a separate hash-bound final report whose Results and Conclusions are derived from the signed package and accepted system-authored outcome. Never overwrite preregistration after observation.
+    - _Verify: final JSON, Markdown, TeX, and PDF contain the same observed verdict and key metrics; every numeric claim is traceable; the preregistered plan hash remains unchanged._
+  - [ ] 270.4 Assemble a fail-closed submission evidence bundle
+    - Add a single deterministic audit command that reports plan authorship, plan-to-code alignment, executed-cell provenance, result semantics, configuration/model identity, reproducibility status, human-approval boundaries, and publication-readiness truthfully. Any missing or contradictory proof must make the bundle non-ready.
+    - _Verify: the bundle cannot report submission-ready while `publication_ready=false`, a required audit is absent, the configured and recorded model identities disagree, or broad quality gates remain red._
+
 ## Checkpoints
 
 - [x] Checkpoint A: Phase 0 baseline
@@ -4721,6 +4738,22 @@ A task can be checked only when all applicable items are true:
     {
       "id": 217,
       "tasks": ["265.5"]
+    },
+    {
+      "id": 218,
+      "tasks": ["270.1"]
+    },
+    {
+      "id": 219,
+      "tasks": ["270.2"]
+    },
+    {
+      "id": 220,
+      "tasks": ["270.3"]
+    },
+    {
+      "id": 221,
+      "tasks": ["270.4"]
     }
   ]
 }

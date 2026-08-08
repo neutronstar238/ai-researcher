@@ -37,6 +37,7 @@ import json
 import re
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Literal
 
@@ -54,6 +55,63 @@ _OUTCOME_NAME = "system-authored-outcome.json"
 # trailing point, so sentence-ending text like "... step 7." produced the token "7."
 # which can never appear in evidence, and the guard penalised correct prose.
 _NUMBER_PATTERN = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?")
+
+# Explicit quantitative relations are checked separately from provenance. A number can
+# be copied perfectly from evidence and still be interpreted backwards (for example,
+# saying ``0.0468 is below 0.0``). Longer negated phrases intentionally precede their
+# positive substrings so ``not below`` is classified as >= rather than <.
+_NUMERIC_RELATION_MARKERS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "ge",
+        re.compile(
+            r"(?:\b(?:at\s+least|no\s+less\s+than|not\s+below|not\s+lower\s+than)\b|"
+            r">=|≥|不低于|不少于|至少)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "le",
+        re.compile(
+            r"(?:\b(?:at\s+most|no\s+more\s+than|not\s+above|not\s+higher\s+than|"
+            r"does\s+not\s+exceed|did\s+not\s+exceed)\b|<=|≤|不高于|不大于|不超过|至多)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "lt",
+        re.compile(
+            r"(?:\b(?:below|less\s+than|lower\s+than|under|falls?\s+short\s+of|"
+            r"does\s+not\s+reach|did\s+not\s+reach)\b|(?<![<>=])<(?![=])|"
+            r"低于|小于|未达到|不足)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "gt",
+        re.compile(
+            r"(?:\b(?:above|greater\s+than|higher\s+than|over|exceeds?|exceeded)\b|"
+            r"(?<![<>=])>(?![=])|高于|大于|超过)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "eq",
+        re.compile(
+            r"(?:\b(?:equals?|equal\s+to|the\s+same\s+as)\b|==|(?<![<>!=])=(?!=)|等于)",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+_INTERVAL_ZERO_PATTERN = re.compile(
+    rf"(?P<open>[\[(])\s*(?P<lower>{_NUMBER_PATTERN.pattern})\s*,\s*"
+    rf"(?P<upper>{_NUMBER_PATTERN.pattern})\s*(?P<close>[\])])"
+    r"(?P<context>[^\n;；。！？!?]{0,160}?)"
+    r"(?P<relation>does\s+not\s+include|does\s+not\s+contain|excludes?|"
+    r"includes?|contains?|crosses|spans|straddles|不包含|排除|包含|跨过|跨越)"
+    r"\s*(?:0|zero|零)",
+    re.IGNORECASE,
+)
 
 VERDICT_KINDS: tuple[str, ...] = (
     "claim_supported",
@@ -210,6 +268,31 @@ class NumericTraceabilityAudit(StrictFrozenModel):
         return self
 
 
+class NumericRelationAudit(StrictFrozenModel):
+    """Recompute every explicit numeric comparison made by the authored prose."""
+
+    schema_version: Literal["numeric-relation-audit-v1"] = (
+        "numeric-relation-audit-v1"
+    )
+    checked_relation_count: int = Field(ge=0)
+    contradictions: tuple[str, ...]
+    passed: bool
+    audit_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def _validate(self) -> NumericRelationAudit:
+        if self.passed != (not self.contradictions):
+            raise SystemAuthoredOutcomeError(
+                "numeric relation verdict contradicts its contradiction list"
+            )
+        expected = canonical_model_hash(
+            self.model_dump(mode="json", exclude={"audit_hash"})
+        )
+        if self.audit_hash != expected:
+            raise SystemAuthoredOutcomeError("numeric relation audit hash mismatch")
+        return self
+
+
 class AuthoredInterpretation(StrictFrozenModel):
     """The model's OWN reading of its own result."""
 
@@ -238,6 +321,9 @@ class SystemAuthoredOutcome(StrictFrozenModel):
     package_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     interpretation: AuthoredInterpretation
     traceability: NumericTraceabilityAudit
+    # Optional only so retained v1 artifacts remain loadable. Every newly authored
+    # outcome writes this audit and acceptance depends on it.
+    relation_audit: NumericRelationAudit | None = None
     frozen_gate_passed: bool
     verdict_consistent_with_gate: bool
     accepted: bool
@@ -254,8 +340,10 @@ class SystemAuthoredOutcome(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate(self) -> SystemAuthoredOutcome:
+        relations_passed = self.relation_audit is None or self.relation_audit.passed
         if self.accepted != (
             self.traceability.passed
+            and relations_passed
             and self.verdict_consistent_with_gate
             and not self.refusal_reasons
         ):
@@ -373,6 +461,127 @@ def audit_numeric_traceability(
     return NumericTraceabilityAudit.model_validate(payload)
 
 
+def audit_numeric_relations(*, prose: str) -> NumericRelationAudit:
+    """Reject explicit inequalities or interval claims that are arithmetically false.
+
+    This intentionally checks only relations the prose states explicitly. It does not
+    try to infer scientific meaning from nearby nouns; the deterministic gate remains
+    responsible for the scientific decision. English and Chinese comparison markers
+    are supported because both languages are valid output formats for the project.
+    """
+
+    numbers = list(_NUMBER_PATTERN.finditer(prose))
+    checked = 0
+    contradictions: list[str] = []
+
+    for left_match, right_match in zip(numbers, numbers[1:], strict=False):
+        between = prose[left_match.end() : right_match.start()]
+        if len(between) > 240:
+            continue
+        relation = _numeric_relation_in(between)
+        if relation is None:
+            continue
+        left = _decimal(left_match.group())
+        right = _decimal(right_match.group())
+        if left is None or right is None:
+            continue
+        checked += 1
+        if _numeric_relation_holds(left, relation, right):
+            continue
+        excerpt = _compact_excerpt(
+            prose[max(0, left_match.start() - 80) : min(len(prose), right_match.end() + 80)]
+        )
+        contradictions.append(
+            f"{left_match.group()} {_relation_label(relation)} {right_match.group()} "
+            f"is false in: {excerpt}"
+        )
+
+    for match in _INTERVAL_ZERO_PATTERN.finditer(prose):
+        lower = _decimal(match.group("lower"))
+        upper = _decimal(match.group("upper"))
+        if lower is None or upper is None:
+            continue
+        checked += 1
+        relation_text = match.group("relation").lower()
+        contains_zero = _interval_contains_zero(
+            lower=lower,
+            upper=upper,
+            left_closed=match.group("open") == "[",
+            right_closed=match.group("close") == "]",
+        )
+        if any(
+            marker in relation_text
+            for marker in ("does not", "exclude", "不包含", "排除")
+        ):
+            stated_relation_holds = not contains_zero
+        elif any(marker in relation_text for marker in ("cross", "straddle", "跨")):
+            stated_relation_holds = lower < 0 < upper
+        else:
+            stated_relation_holds = contains_zero
+        if stated_relation_holds:
+            continue
+        contradictions.append(
+            "interval-zero relation is false in: " + _compact_excerpt(match.group())
+        )
+
+    payload: dict[str, Any] = {
+        "schema_version": "numeric-relation-audit-v1",
+        "checked_relation_count": checked,
+        "contradictions": tuple(dict.fromkeys(contradictions)),
+        "passed": not contradictions,
+    }
+    payload["audit_hash"] = canonical_model_hash(payload)
+    return NumericRelationAudit.model_validate(payload)
+
+
+def _numeric_relation_in(text: str) -> str | None:
+    for relation, pattern in _NUMERIC_RELATION_MARKERS:
+        if pattern.search(text):
+            return relation
+    return None
+
+
+def _decimal(token: str) -> Decimal | None:
+    try:
+        return Decimal(token)
+    except InvalidOperation:
+        return None
+
+
+def _numeric_relation_holds(left: Decimal, relation: str, right: Decimal) -> bool:
+    if relation == "lt":
+        return left < right
+    if relation == "le":
+        return left <= right
+    if relation == "gt":
+        return left > right
+    if relation == "ge":
+        return left >= right
+    return left == right
+
+
+def _relation_label(relation: str) -> str:
+    return {"lt": "<", "le": "<=", "gt": ">", "ge": ">=", "eq": "=="}[relation]
+
+
+def _interval_contains_zero(
+    *,
+    lower: Decimal,
+    upper: Decimal,
+    left_closed: bool,
+    right_closed: bool,
+) -> bool:
+    if lower > upper:
+        return False
+    lower_ok = lower < 0 or (left_closed and lower == 0)
+    upper_ok = upper > 0 or (right_closed and upper == 0)
+    return lower_ok and upper_ok
+
+
+def _compact_excerpt(text: str) -> str:
+    return " ".join(text.split())[:320]
+
+
 def _messages(
     *, package: Mapping[str, Any], estimand: Mapping[str, Any]
 ) -> list[dict[str, str]]:
@@ -438,6 +647,9 @@ def _messages(
             "refused.",
             "The frozen gate is deterministic and outranks your narrative. Do not "
             "claim it passed if it did not.",
+            "Every explicit numeric comparison is recomputed. Never say one value is "
+            "below, above, at least, or at most another value unless the arithmetic "
+            "relation is true.",
             "A null or negative result is a valid outcome. Do not argue around it.",
         ],
     }
@@ -514,12 +726,18 @@ def author_outcome_interpretation(
         prose=prose,
         allowed_numbers=collect_evidence_numbers(package, estimand),
     )
+    relation_audit = audit_numeric_relations(prose=prose)
 
     reasons: list[str] = []
     if not traceability.passed:
         reasons.append(
             "the interpretation states numbers absent from its own evidence: "
             f"{list(traceability.untraceable_numbers)}"
+        )
+    if not relation_audit.passed:
+        reasons.append(
+            "the interpretation states arithmetically false numeric relations: "
+            f"{list(relation_audit.contradictions)}"
         )
     # `P-20260804-086`: the counter-reading field is meant to hold the strongest
     # argument AGAINST the model's own conclusion, and the first live run satisfied it
@@ -604,9 +822,15 @@ def author_outcome_interpretation(
         "package_hash": str(package["package_hash"]),
         "interpretation": interpretation.model_dump(mode="json"),
         "traceability": traceability.model_dump(mode="json"),
+        "relation_audit": relation_audit.model_dump(mode="json"),
         "frozen_gate_passed": gate_passed,
         "verdict_consistent_with_gate": consistent,
-        "accepted": traceability.passed and consistent and not reasons,
+        "accepted": (
+            traceability.passed
+            and relation_audit.passed
+            and consistent
+            and not reasons
+        ),
         "refusal_reasons": tuple(reasons),
         "model_name": result.model_name,
         "reasoning_tokens": reasoning_tokens,

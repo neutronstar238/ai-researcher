@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from autoresearch.competition.system_authored_outcome import (
     AuthoredInterpretation,
     SystemAuthoredOutcomeError,
+    audit_numeric_relations,
     audit_numeric_traceability,
     author_outcome_interpretation,
     collect_evidence_numbers,
@@ -195,6 +196,101 @@ def test_the_audit_verdict_cannot_contradict_its_list() -> None:
         type(
             audit_numeric_traceability(prose="-0.9999", allowed_numbers=allowed)
         ).model_validate(payload)
+
+
+# --------------------------------------------------------------------------
+# The guard: traceable numbers must also be related arithmetically correctly
+# --------------------------------------------------------------------------
+
+
+def test_the_exact_live_backwards_comparison_is_refused() -> None:
+    audit = audit_numeric_relations(
+        prose=(
+            "The ODE stratum median of 0.04680717460171525 is below the required "
+            "minimum of 0.0."
+        )
+    )
+
+    assert audit.passed is False
+    assert audit.checked_relation_count == 1
+    assert "0.04680717460171525 < 0.0 is false" in audit.contradictions[0]
+
+
+def test_a_traceable_but_false_relation_rejects_the_whole_outcome(
+    tmp_path: Path,
+) -> None:
+    stub = _Stub(
+        _interpretation(
+            what_the_evidence_supports=(
+                "The overall median of -0.8448548894388439 is above the frozen "
+                "minimum of 0.05129329438755058, despite the failed gate."
+            )
+        )
+    )
+
+    outcome = _run(tmp_path, stub)
+
+    assert outcome.traceability.passed is True
+    assert outcome.relation_audit is not None
+    assert outcome.relation_audit.passed is False
+    assert outcome.accepted is False
+    assert any("arithmetically false" in item for item in outcome.refusal_reasons)
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "The median of 0.04680717460171525 is above the minimum of 0.0.",
+        "The effect -0.8448548894388439 is below 0.05129329438755058.",
+        "指标 0.04680717460171525 高于最低要求 0.0。",
+        "指标 -0.8448548894388439 低于阈值 0.05129329438755058。",
+        "The score 0.0 is at least 0.0.",
+    ],
+)
+def test_true_english_and_chinese_relations_are_accepted(prose: str) -> None:
+    audit = audit_numeric_relations(prose=prose)
+
+    assert audit.passed is True
+    assert audit.checked_relation_count == 1
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "指标 0.04680717460171525 低于最低要求 0.0。",
+        "指标 -0.8448548894388439 高于阈值 0.05129329438755058。",
+        "The score -0.1 is not below 0.0.",
+        "The score 0.2 does not exceed 0.0.",
+    ],
+)
+def test_false_english_and_chinese_relations_are_refused(prose: str) -> None:
+    audit = audit_numeric_relations(prose=prose)
+
+    assert audit.passed is False
+    assert audit.checked_relation_count == 1
+
+
+def test_interval_zero_claims_are_recomputed() -> None:
+    includes = audit_numeric_relations(
+        prose="The interval [-3.333819826823265, 1.3794168498575903] includes zero."
+    )
+    excludes = audit_numeric_relations(
+        prose="The interval [0.1, 1.3794168498575903] includes zero."
+    )
+
+    assert includes.passed is True
+    assert includes.checked_relation_count == 1
+    assert excludes.passed is False
+    assert excludes.checked_relation_count == 1
+
+
+def test_relation_audit_hash_and_verdict_are_self_consistent() -> None:
+    audit = audit_numeric_relations(prose="The score 1.0 is above 0.0.")
+    payload = json.loads(audit.model_dump_json())
+    payload["passed"] = False
+
+    with pytest.raises(SystemAuthoredOutcomeError, match="contradicts"):
+        type(audit).model_validate(payload)
 
 
 # --------------------------------------------------------------------------

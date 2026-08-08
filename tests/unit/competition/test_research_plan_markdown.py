@@ -188,6 +188,12 @@ def _outcome(*, accepted: bool = True) -> dict[str, Any]:
             "untraceable_numbers": [],
             "passed": True,
         },
+        "relation_audit": {
+            "checked_relation_count": 3,
+            "contradictions": [],
+            "passed": True,
+            "audit_hash": "7" * 64,
+        },
         "interpretation": {
             "verdict": "claim_not_supported",
             "what_the_evidence_supports": "候选方法未优于 baseline，总体中位对数效应 -0.6859100612592094。",
@@ -206,6 +212,7 @@ def test_结果解读渲染包含判定与门禁一致性() -> None:
     assert "未通过" in text  # frozen_gate_passed=False
     assert "一致" in text
     assert "30/30" in text
+    assert "数值关系复算 | 通过（复算 3 项）" in text
 
 
 def test_结果解读渲染保留模型原文与数字() -> None:
@@ -235,6 +242,16 @@ def test_无法溯源的数字被显著标出() -> None:
     assert "无法溯源的数字" in text
     assert "-0.99" in text
     assert "29/30" in text
+
+
+def test_算术矛盾被显著标出() -> None:
+    payload = _outcome(accepted=False)
+    payload["relation_audit"]["passed"] = False
+    payload["relation_audit"]["contradictions"] = ["0.0468 < 0.0 is false"]
+    text = render_outcome_markdown(payload)
+    assert "存在算术矛盾" in text
+    assert "算术矛盾" in text
+    assert "0.0468 < 0.0 is false" in text
 
 
 def test_结果解读缺少_interpretation_时明确报错() -> None:

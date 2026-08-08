@@ -6281,3 +6281,18 @@ update a factual problem entry below.
 - Linked tasks: `269.4`。
 - Resolution: `src/autoresearch/competition/research_plan_latex.py`。
 - Verification: 4 项新增测试通过，含"防断行不改写数值本身"与"短数字不必包裹以免噪声"。`xelatex` 真实编译通过（returncode=0，PDF 80403 bytes），确认 `seqsplit` 宏包在 TeXLive 2026 中可用——宏包缺失会让整份文档编译失败。
+
+### P-20260808-099 - 数字全部可溯源，但结果叙述仍能写出相反的算术结论
+
+- Status: Resolved for new outcome authoring; the retained `task2700` outcome is disqualified until regenerated
+- Severity: Critical for submission integrity
+- Discovered: 2026-08-08, during a strict repository-to-competition-brief audit
+- Source: `runs/manual-live/task2700-latex-plan-lineage-v1/system-authored-outcome.json`.
+- Symptom: the accepted system-authored interpretation states that the ODE median `0.04680717460171525` "is below the required minimum of `0.0`". Both numbers exist in signed evidence, so the existing provenance-only audit reported them traceable and allowed `accepted=true`; nevertheless, `0.04680717460171525 < 0.0` is arithmetically false. The same package's deterministic gate correctly records `ode_stratum_non_negative=true`, so the prose contradicts both arithmetic and its own gate.
+- Impact: Critical. A result can be entirely self-authored, hash-bound, and numerically traceable while asserting the opposite of what the evidence says. Such an artifact is not scientifically reviewable and must not enter a competition submission, manuscript, or publication-readiness claim.
+- Evidence: a read-only run of the new audit against the retained prose checked four explicit relations and returned `passed=false` with the exact contradiction `0.04680717460171525 < 0.0 is false`. The retained file was not modified because it is historical evidence.
+- Root cause: `audit_numeric_traceability` proved only that each numeric token could be found in the evidence set. It did not parse or recompute the relation in which the numbers were used. Provenance and semantics were incorrectly treated as the same property.
+- Resolution: `system_authored_outcome.py` now performs a second, deterministic `numeric-relation-audit-v1`. It recognizes explicit adjacent `>`, `>=`, `<`, `<=`, and equality claims in English and Chinese, uses `Decimal` for recomputation, and independently checks whether bracketed intervals include, exclude, or cross zero. Any false relation adds a refusal reason and prevents `accepted=true`. The audit count, contradictions, verdict, and canonical audit hash are embedded in every newly authored outcome. `research_plan_markdown.py` renders the verdict and exact contradictions so reviewers cannot miss them.
+- Compatibility boundary: old outcome JSON remains readable and immutable, but its lack of `relation_audit` is not evidence that it passed the new standard. Task `270.3` must regenerate/finalize the result before submission; the historical `task2700` outcome is explicitly not submission-ready.
+- Verification: `56 passed` across `test_system_authored_outcome.py`, `test_counter_reading_concepts.py`, and `test_research_plan_markdown.py`; focused `ruff` clean; focused `mypy` clean. Regression cases cover the exact live false sentence, correct and false positive/negative/equality relations in English and Chinese, interval-zero claims, acceptance refusal, and audit-hash self-consistency.
+- Linked tasks: `270.1`, `270.3`, `267.7`; related to `P-20260804-086` but closes a distinct semantics gap rather than a provenance gap.
