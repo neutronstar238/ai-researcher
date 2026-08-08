@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -770,6 +771,21 @@ def _post_chat_completion(
         raise LLMClientError(f"LLM API request failed: {exc.reason}") from exc
     except TimeoutError as exc:
         raise LLMClientError("LLM API request timed out") from exc
+    except (http.client.HTTPException, ConnectionError, OSError) as exc:
+        # `P-20260808-094`: a provider that closes the socket mid-request raises
+        # `http.client.RemoteDisconnected`, which is NEITHER an `HTTPError` nor a
+        # `URLError`, so it escaped this wrapper untouched. The retry machinery in
+        # `_invoke_with_structured_output_retries` catches `LLMClientError` only, and
+        # `_transient_provider_error_kind` already recognises "remote end closed", so
+        # the retry was reachable in principle and never reached in practice: one
+        # transient disconnect aborted a whole generate stage.
+        #
+        # Wrapping here rather than adding a second retry path keeps ONE transport
+        # boundary. The message embeds the exception class so the existing transient
+        # classifier can key on it without inspecting types.
+        raise LLMClientError(
+            f"LLM API request failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
     try:
         decoded = json.loads(raw)
@@ -845,6 +861,12 @@ def _post_ollama_native_json_completion(
         raise LLMClientError(f"Ollama native API request failed: {exc.reason}") from exc
     except TimeoutError as exc:
         raise LLMClientError("Ollama native API request timed out") from exc
+    except (http.client.HTTPException, ConnectionError, OSError) as exc:
+        # 与上面的 OpenAI 兼容路径同一缺口（`P-20260808-094`）：只修一处会让本地
+        # provider 仍然被一次瞬时断连打断。
+        raise LLMClientError(
+            f"Ollama native API request failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
     try:
         decoded = json.loads(raw)

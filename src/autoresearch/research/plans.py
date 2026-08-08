@@ -93,6 +93,24 @@ CONCRETE_METRIC_TERMS = (
     "term support",
     "coefficient error",
     "model complexity",
+    # `P-20260808-097`: 词表原本全为英文，所以一份用中文命名指标的合格计划会被判
+    # "未指定评估指标"。与 `P-20260808-095` 同一缺陷类：grader 检词汇而非实质。
+    "中位对数效应",
+    "对数效应",
+    "配对效应",
+    "归一化均方误差",
+    "导数误差",
+    "准确率",
+    "精确率",
+    "召回率",
+    "错误率",
+    "复现成功率",
+    "证据覆盖率",
+    "项支持",
+    "系数误差",
+    "模型复杂度",
+    "置信区间",
+    "自助",
 )
 
 
@@ -284,10 +302,26 @@ def audit_research_plan(
     if not plan.datasets.get("target"):
         issues.append("plan must identify a target validation dataset or hold-out route")
 
+    # `P-20260808-097`: 此前只扫 methods / brief / experiments，漏掉了榜题要求新增的
+    # `baselines` 与 `metrics` 专用字段。系统把基线正确写进 `baselines`，门禁却看不见，
+    # 于是判定"未指定基线"并拒收——检查漏看权威字段，比检查过严更糟。
     execution_text = _normalize(
-        "\n".join([plan.methods, plan.code_agent_brief, *plan.experiments])
+        "\n".join(
+            [
+                plan.methods,
+                plan.code_agent_brief,
+                *plan.experiments,
+                # 括号是必需的：`*expr or ()` 里解包优先级高于 `or`，属语法错误。
+                *(getattr(plan, "baselines", ()) or ()),
+                *(getattr(plan, "metrics", ()) or ()),
+            ]
+        )
     )
-    if "baseline" not in execution_text and "对照" not in execution_text:
+    # 中文里"基线"是最自然的说法，原先只认 "baseline" 与 "对照"，恰好漏了它。
+    # 这与 `P-20260808-095` 同一缺陷类：grader 检词汇而非实质。
+    if not any(
+        token in execution_text for token in ("baseline", "对照", "基线", "基准")
+    ):
         issues.append("plan must specify at least one baseline or control")
     if not any(token in execution_text for token in CONCRETE_METRIC_TERMS):
         issues.append("plan must specify concrete evaluation metrics")

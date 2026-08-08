@@ -276,3 +276,47 @@ def test_文档是完整可编译骨架() -> None:
     # 环境必须配对，否则编译失败。
     for env in ("tabularx", "enumerate", "itemize"):
         assert tex.count(rf"\begin{{{env}}}") == tex.count(rf"\end{{{env}}}"), env
+
+
+# ---------------------------------------------------------------------------
+# 长数字防断行（`P-20260808-096`）
+# ---------------------------------------------------------------------------
+
+
+def test_长数字被包进_mbox_以禁止断行() -> None:
+    """`1000000000000.0` 曾被 LaTeX 在数字中间断行，页面出现残缺的
+    `000000000000.0)`，读者会误读成另一个数值。"""
+
+    plan = _plan(
+        technical_details="失败 cell 的损失被封顶为 1000000000000.0，属基础设施上限。"
+    )
+    tex = render_research_plan_latex(plan=plan, references=_refs())
+    assert r"\mbox{1000000000000.0}" in tex
+
+
+def test_防断行不改写数值本身() -> None:
+    """排版可以调整，数值不能。改写会破坏引文与证据的比对。"""
+
+    plan = _plan(problem_statement="总体中位对数效应为 -0.8448548894388439。")
+    tex = render_research_plan_latex(plan=plan, references=_refs())
+    assert "-0.8448548894388439" in tex
+    # 包裹后原数值仍完整可见，没有被科学计数法或四舍五入替代。
+    assert "8448548894388439" in tex
+    assert "-8.4e-01" not in tex
+
+
+def test_短数字不必包裹以免噪声() -> None:
+    """把每个数字都包起来会让源文件难读，且无必要。"""
+
+    plan = _plan(methods="共 12 个系统，其中 2 个属 PDE。")
+    tex = render_research_plan_latex(plan=plan, references=_refs())
+    assert r"\mbox{12}" not in tex
+    assert "12 个系统" in tex
+
+
+def test_模板声明长标识符断行支持() -> None:
+    """overall_median_log_effect 这类名字若不能在下划线处换行会溢出版心。"""
+
+    tex = render_research_plan_latex(plan=_plan(), references=_refs())
+    assert "seqsplit" in tex
+    assert r"\do\_" in tex or r"\do_" in tex

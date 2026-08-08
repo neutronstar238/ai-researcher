@@ -87,7 +87,7 @@ def test_引文全部来自检索结果() -> None:
         {"selections": [{"index": 0, "relevance": "本计划的稀疏回归基础"}]},
     )
     refs = survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"openalex": lambda q, limit=8: papers},
         completion=completion,
         clock=datetime(2026, 8, 7, tzinfo=timezone.utc),
@@ -115,7 +115,7 @@ def test_模型无法凭越界索引新增一条不存在的文献() -> None:
         },
     )
     refs = survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"openalex": lambda q, limit=8: papers},
         completion=completion,
     )
@@ -135,7 +135,7 @@ def test_重复索引只计一次() -> None:
         },
     )
     refs = survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"arxiv": lambda q, limit=8: papers},
         completion=completion,
     )
@@ -148,7 +148,7 @@ def test_检索无结果时拒绝退化成模型自行撰写() -> None:
     completion = _Scripted({"queries": ["q"]}, {"selections": []})
     with pytest.raises(PlanLiteratureSurveyError, match="没有返回结果"):
         survey_literature_for_plan(
-            plan=_PLAN,
+            focus=_PLAN,
             searchers={"arxiv": lambda q, limit=8: []},
             completion=completion,
         )
@@ -159,7 +159,7 @@ def test_模型一条都没选中时明确失败() -> None:
     completion = _Scripted({"queries": ["q"]}, {"selections": [{"index": 42, "relevance": "无效"}]})
     with pytest.raises(PlanLiteratureSurveyError, match="不会用编造的条目填补"):
         survey_literature_for_plan(
-            plan=_PLAN,
+            focus=_PLAN,
             searchers={"arxiv": lambda q, limit=8: papers},
             completion=completion,
         )
@@ -178,7 +178,7 @@ def test_单个检索源报错不终止整次调研() -> None:
         {"selections": [{"index": 0, "relevance": "仍能完成"}]},
     )
     refs = survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"arxiv": broken, "openalex": lambda q, limit=8: papers},
         completion=completion,
     )
@@ -194,7 +194,7 @@ def test_检索词由系统撰写且看到了自己的计划() -> None:
         {"selections": [{"index": 0, "relevance": "r"}]},
     )
     survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"openalex": lambda q, limit=8: papers},
         completion=completion,
     )
@@ -210,7 +210,7 @@ def test_选择阶段提示词明确禁止新增条目() -> None:
         {"selections": [{"index": 0, "relevance": "r"}]},
     )
     survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"openalex": lambda q, limit=8: papers},
         completion=completion,
     )
@@ -235,7 +235,7 @@ def test_调研结果能通过_latex_的可核验检查() -> None:
         },
     )
     refs = survey_literature_for_plan(
-        plan=_PLAN,
+        focus=_PLAN,
         searchers={"openalex": lambda q, limit=8: papers},
         completion=completion,
     )

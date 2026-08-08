@@ -6233,3 +6233,51 @@ update a factual problem entry below.
 - Linked tasks: `269.4`。
 - Resolution: 未解决，如实记录。不因"与我的改动无关"而略过：一个长期失败的测试会稀释回归信号，下一个 agent 会误以为红色是正常状态。
 - Verification: 本次改动相关的套件全绿：`test_research_plan_latex.py` 30 passed、`test_plan_literature_survey.py` 9 passed、`test_research_plan_markdown.py` 13 passed、`test_system_authored_plan.py` 29 passed、`tests/unit/schemas` 30 passed。LaTeX 模板经 `xelatex` 真实编译通过（returncode=0，PDF 79523 bytes）。
+
+### P-20260808-094 - RemoteDisconnected 未被包装，使既有传输重试形同虚设
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-08
+- Source: lineage `task2700-latex-plan-lineage-v1` 的 `generate` 阶段在 18 秒后中止。
+- Symptom: `http.client.RemoteDisconnected: Remote end closed connection without response` 直接冒泡到 `_chain.py`，整个 `generate` 阶段作废。
+- Impact: 一次瞬时断连就让一个完整阶段报废。当次未污染预算（记账发生在支出确认之后），但若断连出现在 `full` 阶段中途，代价是数百个已执行 cell 的重跑。
+- Evidence: 堆栈末行为 `http.client.RemoteDisconnected`，而非 `LLMClientError`。`_invoke_with_structured_output_retries` 只 `except LLMClientError`，且 `_transient_provider_error_kind` 已明确识别 `"remote end closed"` 并归类为 `connection`。即重试设施完备、也在调用路径上（`_call_and_record` 两个分支都经过它），但因异常类型不匹配而从未触发。
+- Root cause: `_post_chat_completion` 只捕获 `urllib.error.HTTPError`、`urllib.error.URLError`、`TimeoutError`。`RemoteDisconnected` 继承自 `http.client.HTTPException` 与 `ConnectionResetError`，三者都不是，故穿透包装层。缺口在异常包装，不在重试逻辑——这一点定位错了就会去加第二条重试路径，反而制造两个传输边界。
+- Workaround: 无需。重跑即可，因为失败发生在记账之前。
+- Next action: 已解决。在 `_post_chat_completion` 与 `_post_ollama_native_json_completion` 各补一个 `except (http.client.HTTPException, ConnectionError, OSError)`，包装为 `LLMClientError` 并把异常类名嵌入消息，使既有的 `_transient_provider_error_kind` 无需检查类型即可归类。刻意不新增重试路径：保持单一传输边界。
+- Linked tasks: `269.4`。与 `P-20260807-091` 同族（同为"一次瞬时故障毁掉整阶段"），但根因不同：那次缺重试循环，这次缺异常包装。
+- Resolution: `src/autoresearch/llm/client.py`。两处 POST 辅助函数一并修补——只修 OpenAI 兼容路径会让本地 Ollama provider 保留同一缺陷。
+- Verification: `import` 冒烟通过。既有 `test_autonomous_recovery.py` 中的传输重试断言（`provider_transport_retry_relative_paths`、`provider_request_attempt_count == 2`）未受影响。
+
+### P-20260808-095 - grader 标记只有英文，逼迫系统放弃中文写作
+
+- Status: Resolved
+- Severity: High
+- Discovered: 2026-08-08
+- Source: 用户指出交付的 PDF 中文标题配英文正文。
+- Symptom: 《科学假设与研究计划》章节标题为中文，正文全为英文，语言混杂。
+- Impact: 两层，第二层更严重。表层是可读性：中文读者面对英文正文。深层是**诚实性检查在中文下失效**：`achieved` 正则只认英文，所以中文里的"实验结果表明本方法优于基线"这类越界宣称检测不到。一个只在一种语言下生效的检查，等于在另一种语言下不存在。
+- Evidence: `_FALSIFIABILITY_MARKERS` 全为英文字面量（`"would refute"`、`"negative"`、`"null"`）；`achieved` 正则同样只匹配英文过去式。撰写提示词亦全英文。三者叠加的后果是：系统若用中文撰写，可反驳性检查必然判定"未声明反驳条件"并拒收，因此系统**只能用英文写作才能通过自己的 grader**——语言混杂是 grader 逼出来的，不是模型的选择。
+- Root cause: 我的设计错误。把模板与交付语言改成中文时，只改了排版层，未同步改撰写提示词与 grader 标记。这与 `P-20260807-092` 同一缺陷类：grader 检的是词汇而非实质。
+- Workaround: 无。仅翻译提示词会让系统永远无法通过 grader，必须同步双语化。
+- Next action: 已解决。三处同步改动：`_FALSIFIABILITY_MARKERS` 增加中文标记（反驳、推翻、零结果、负结果、不成立、低于等）；`achieved` 正则增加中文分支（`(?:实验|结果|测量|数据)(?:表明|显示|证实|证明)` 等），且刻意只匹配"已然"语气，使"预期优于基线"这类合法预期表述不被误拦（`P-20260804-087` 的教训）；撰写提示词置顶 LANGUAGE 段要求简体中文，并明确要求标识符、系统名、门禁名、路径保持原文不译，以便读者能 grep 到对应位置。同时增加 WRITING QUALITY 段，要求成文而非 `Risk:` / `Alternative:` 标签拼接。
+- Linked tasks: `269.4`、`267.7`。同族：`P-20260807-092`、`P-20260804-087`。
+- Resolution: `src/autoresearch/competition/system_authored_plan.py`。
+- Verification: 新增 `tests/unit/competition/test_bilingual_plan_graders.py` 6 项全过，覆盖：中文可反驳表述被接受、英文表述仍被接受（不牺牲原能力）、只描述成功的中文计划仍被拒（不退化为橡皮图章）、中文越界宣称被拦住、中文合法预期不被误拦、标记表同时含中英条目。
+
+### P-20260808-096 - 长数字在 LaTeX 中被断行，页面出现残缺数值
+
+- Status: Resolved
+- Severity: Medium
+- Discovered: 2026-08-08
+- Source: 用户在交付 PDF 中圈出 `000000000000.0)`。
+- Symptom: `1000000000000.0`（冻结的 `finite_loss_cap`）被 LaTeX 在数字中间断行，下一行以 `000000000000.0)` 开头。
+- Impact: 读者会把残缺片段误读成另一个数值。这类缺陷比排版难看更严重：研究计划里的每个数字都要能与证据逐位比对，断行后的片段无法比对。
+- Evidence: 用户提供的 PDF 截图，`风险与备选方案` 一节。
+- Root cause: 渲染器未阻止长数字串内部断行。TeX 默认允许在数字中间断行以填满行宽。
+- Workaround: 无需。
+- Next action: 已解决。`_tex_escape` 在转义之后用 `\mbox{}` 包裹 6 位以上的数字串（`_LONG_NUMBER_PATTERN`），禁止其内部断行。刻意在转义之后包裹：此时内容已是安全 LaTeX，包裹不改动任何字符。同时引入 `seqsplit` 与 `\UrlBreaks` 让长标识符（`overall_median_log_effect`）能在下划线处换行，避免溢出版心。**数值本身绝不改写**——把 `1000000000000.0` 显示为 `1e12` 虽更易读，但会破坏引文与证据的比对，属越权。
+- Linked tasks: `269.4`。
+- Resolution: `src/autoresearch/competition/research_plan_latex.py`。
+- Verification: 4 项新增测试通过，含"防断行不改写数值本身"与"短数字不必包裹以免噪声"。`xelatex` 真实编译通过（returncode=0，PDF 80403 bytes），确认 `seqsplit` 宏包在 TeXLive 2026 中可用——宏包缺失会让整份文档编译失败。

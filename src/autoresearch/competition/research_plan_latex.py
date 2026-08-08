@@ -53,10 +53,17 @@ class ResearchPlanLatexError(RuntimeError):
     """当计划无法在不代笔的前提下渲染时抛出。"""
 
 
-def _tex_escape(text: Any) -> str:
-    """转义 LaTeX 特殊字符。
+# 长数字与长标识符必须整体呈现。`P-20260808-096`：`1000000000000.0` 被 LaTeX 在数字
+# 中间断行，页面上出现残缺的 `000000000000.0)`，读者会把它误读成另一个数值。
+# 断行是排版问题，属模板范围；数值本身绝不改写（改写会破坏引文与证据的比对）。
+_LONG_NUMBER_PATTERN = re.compile(r"-?\d[\d.]{5,}(?:[eE][-+]?\d+)?")
 
-    只做转义，不改写内容。反斜杠必须先处理，否则后续替换插入的反斜杠会被二次转义。
+
+def _tex_escape(text: Any) -> str:
+    """转义 LaTeX 特殊字符，并阻止长数字被断行。
+
+    只做转义与防断行，不改写内容。反斜杠必须先处理，否则后续替换插入的反斜杠会被
+    二次转义。
     """
 
     if text is None:
@@ -75,6 +82,9 @@ def _tex_escape(text: Any) -> str:
         ("^", r"\textasciicircum{}"),
     ):
         out = out.replace(char, repl)
+    # 转义之后再包 \mbox：\mbox 内部的内容已是安全的 LaTeX，且此处不改动任何字符，
+    # 只是禁止在其中断行。
+    out = _LONG_NUMBER_PATTERN.sub(lambda m: r"\mbox{" + m.group(0) + "}", out)
     return out
 
 
@@ -224,6 +234,11 @@ _PREAMBLE = r"""\documentclass[12pt,a4paper]{ctexart}
   subsection/format = {\heiti\zihao{4}\raggedright},
   subsection/aftername = \quad,
 }
+
+% 长标识符（overall_median_log_effect 这类）必须能在下划线处换行，否则会溢出版心。
+% seqsplit 只影响断行位置，不改动字符本身。
+\usepackage{seqsplit}
+\renewcommand{\UrlBreaks}{\do\/\do-\do_}
 
 \linespread{1.5}
 \setlength{\parindent}{2em}

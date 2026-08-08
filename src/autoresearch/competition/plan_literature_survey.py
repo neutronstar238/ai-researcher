@@ -77,25 +77,38 @@ _SELECT_SCHEMA: dict[str, Any] = {
 
 def _author_queries(
     *,
-    plan: Mapping[str, Any],
+    focus: Mapping[str, Any],
     completion: Callable[..., LLMJsonCompletionResult],
     config_path: Path | str,
     env_path: Path | str,
 ) -> list[str]:
-    """让系统读自己的计划，决定该检索什么。检索词是科学判断，属于系统。"""
+    """让系统读自己的研究焦点，决定该检索什么。检索词是科学判断，属于系统。
+
+    `focus` 可以是一份已写好的计划，也可以只是冻结证据。后者是**正确的调用时机**：
+    `P-20260808-095` 记录过，先写计划再检索会让计划无法引用它还没见过的文献，
+    参考文献于是退化成装饰。文献调研应当先行，计划据此撰写。
+    """
 
     context = {
-        "your_plan": {
-            key: plan.get(key)
-            for key in ("title", "problem_statement", "rationale", "methods")
-            if plan.get(key)
+        "your_research_focus": {
+            key: focus.get(key)
+            for key in (
+                "title",
+                "problem_statement",
+                "rationale",
+                "methods",
+                "observed_failures",
+                "domain",
+            )
+            if focus.get(key)
         },
         "instruction": (
-            "You are about to survey the real literature for YOUR OWN plan above. "
-            "Write the search queries you want run against ArXiv and OpenAlex. Target "
-            "the mechanism and the method family you are actually proposing, not the "
-            "benchmark's name. Use English keywords, since these indexes are "
-            "English-language."
+            "You are about to survey the real literature BEFORE you write your research "
+            "plan, so that the plan can cite and build on prior work. Write the search "
+            "queries you want run against ArXiv and OpenAlex. Target the mechanism and "
+            "the method family implied by the focus above, not any internal benchmark "
+            "or lineage identifier: those names appear in no published paper. Use "
+            "English keywords, since these indexes are English-language."
         ),
     }
     result = completion(
@@ -130,7 +143,7 @@ def _author_queries(
 
 def _select_papers(
     *,
-    plan: Mapping[str, Any],
+    focus: Mapping[str, Any],
     papers: Sequence[AcademicPaper],
     completion: Callable[..., LLMJsonCompletionResult],
     config_path: Path | str,
@@ -150,19 +163,26 @@ def _select_papers(
         for index, paper in enumerate(papers)
     ]
     context = {
-        "your_plan": {
-            key: plan.get(key)
-            for key in ("title", "problem_statement", "rationale", "methods")
-            if plan.get(key)
+        "your_research_focus": {
+            key: focus.get(key)
+            for key in (
+                "title",
+                "problem_statement",
+                "rationale",
+                "methods",
+                "observed_failures",
+                "domain",
+            )
+            if focus.get(key)
         },
         "retrieved_papers": catalog,
         "instruction": (
             "These are REAL papers retrieved from ArXiv and OpenAlex. Select the ones "
-            "your plan genuinely builds on or is positioned against, and state for "
-            "each what it contributes to your plan. Refer to papers ONLY by their "
-            "index from the list above. You cannot add a paper that is not listed: an "
-            "index outside the list will be discarded. Selecting fewer, more relevant "
-            "papers is better than padding the list."
+            "your work genuinely builds on or is positioned against, and state for "
+            "each what it contributes. Refer to papers ONLY by their index from the "
+            "list above. You cannot add a paper that is not listed: an index outside "
+            "the list will be discarded. Selecting fewer, more relevant papers is "
+            "better than padding the list."
         ),
     }
     result = completion(
@@ -210,14 +230,17 @@ def _select_papers(
 
 def survey_literature_for_plan(
     *,
-    plan: Mapping[str, Any],
+    focus: Mapping[str, Any],
     searchers: Mapping[str, Callable[..., list[AcademicPaper]]],
     completion: Callable[..., LLMJsonCompletionResult] = run_llm_json_completion,
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     clock: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """为计划做一次真实文献调研，返回可核验的引文列表。
+    """做一次真实文献调研，返回可核验的引文列表。
+
+    应当在撰写计划**之前**调用，把结果作为撰写上下文传入，这样计划才能真正引用先前
+    工作。`focus` 因此接受冻结证据而不强求一份完整计划。
 
     `searchers` 形如 `{"arxiv": client.search, "openalex": client.search}`。注入而非
     内部构造，使测试可以在不联网的前提下验证"引文只能来自检索结果"这条性质。
@@ -225,7 +248,7 @@ def survey_literature_for_plan(
 
     now = clock or datetime.now(timezone.utc)
     queries = _author_queries(
-        plan=plan, completion=completion, config_path=config_path, env_path=env_path
+        focus=focus, completion=completion, config_path=config_path, env_path=env_path
     )
 
     collected: list[AcademicPaper] = []
@@ -247,7 +270,7 @@ def survey_literature_for_plan(
 
     unique = deduplicate_papers(collected)
     selected = _select_papers(
-        plan=plan,
+        focus=focus,
         papers=unique,
         completion=completion,
         config_path=config_path,

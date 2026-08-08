@@ -77,7 +77,14 @@ _HOST_SCRIPT_PATTERN = re.compile(
 # declared it as a real entry point.
 _ABSOLUTE_SCRIPT_PATTERN = re.compile(r"(/[A-Za-z0-9_][A-Za-z0-9_./-]*\.py)\b")
 
+# `P-20260808-095`: 这些标记原本只有英文，而计划的交付语言是中文。系统若用中文撰写，
+# 可反驳性检查会永远判定"未声明反驳条件"并拒收，于是系统被迫用英文写作才能通过自己的
+# grader——语言混杂正是这么来的，不是模型的选择。
+#
+# 这与 `P-20260807-092` 同一缺陷类：grader 检的是词汇而非实质。标记因此改为中英双语，
+# 让同一份判断在两种语言下都成立。
 _FALSIFIABILITY_MARKERS: tuple[str, ...] = (
+    # 英文
     "negative",
     "null",
     "may fail",
@@ -86,7 +93,66 @@ _FALSIFIABILITY_MARKERS: tuple[str, ...] = (
     "if the effect",
     "not yet observed",
     "fails to",
+    # 中文：反驳、零结果、未达成
+    "反驳",
+    "推翻",
+    "否定",
+    "零结果",
+    "负结果",
+    "负值",
+    "无改进",
+    "未能",
+    "不成立",
+    "若未",
+    "如果未",
+    "低于",
+    "尚未观测",
+    "有效结果",
 )
+
+# 行内引用形如 [1]、[2]，编号对应传入 surveyed_literature 的 index。
+_CITATION_PATTERN = re.compile(r"\[(\d{1,2})\]")
+
+# 必须携带行内引用的字段。一份对先前工作零定位的文档不是研究计划。
+_FIELDS_REQUIRING_CITATION: tuple[str, ...] = (
+    "problem_statement",
+    "rationale",
+    "methods",
+)
+
+# 交付语言为中文时，散文字段的中文字符占比下限。
+# 只统计「中文字符 + 拉丁字母」，忽略数字、标点与标识符：一份中文技术文档本就该含大量
+# `term_support_f1` 这类英文标识符，把它们算进分母会把正确的文档误判为英文。
+_MIN_CHINESE_RATIO = 0.55
+
+# 需要检查语言的散文字段。`title` 不在其中：英文标题在本领域是惯例。
+_FIELDS_REQUIRING_CHINESE: tuple[str, ...] = (
+    "abstract",
+    "problem_statement",
+    "rationale",
+    "technical_details",
+    "methods",
+    "expected_results",
+)
+
+
+def _chinese_character_ratio(text: str) -> float:
+    """中文字符占「中文字符 + 英文词」的比例。
+
+    英文按**词**计，不按字母计。这一点是必要的：一句只有 14 个汉字的中文句子若含
+    `term_support_f1_minimum` 与 `reaction_diffusion_cylinder` 两个标识符，按字母计
+    就有 47 个拉丁字母，占比被压到 21%，于是一句地道的中文技术句子被判成英文。
+
+    那会重演 `P-20260807-092` 的缺陷类：grader 惩罚正确的产出。技术标识符本来就该
+    保留英文原样（否则读者无法 grep），所以它们只应各自计作一个词元。
+    """
+
+    chinese = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
+    words = re.findall(r"[A-Za-z][A-Za-z0-9_./-]*", text)
+    total = chinese + len(words)
+    if total == 0:
+        return 1.0
+    return chinese / total
 
 
 class SystemAuthoredPlanError(RuntimeError):
@@ -231,6 +297,8 @@ def guard_authored_plan(
     cited_evidence: Sequence[Path | str],
     repo_root: Path = Path("."),
     container_entry_points: Sequence[str] = (),
+    literature_count: int = 0,
+    require_chinese: bool = False,
 ) -> AuthoredPlanGuardReport:
     """Grade an authored plan deterministically. Every finding is actionable.
 
@@ -249,6 +317,45 @@ def guard_authored_plan(
             "these cited evidence paths do not exist on disk, so they cannot be "
             f"cited: {missing}"
         )
+
+    # `P-20260808-095`：交付语言是中文，但从未有任何检查强制它，于是产出中英混杂。
+    if require_chinese:
+        too_english: list[str] = []
+        for field in _FIELDS_REQUIRING_CHINESE:
+            value = str(getattr(plan, field, "") or "")
+            if value and _chinese_character_ratio(value) < _MIN_CHINESE_RATIO:
+                too_english.append(field)
+        if too_english:
+            findings.append(
+                "以下字段必须用简体中文撰写，当前中文字符占比过低："
+                f"{too_english}。技术标识符（字段名、门禁名、系统名、路径、命令）"
+                "保持英文原样，其余散文必须中文。"
+            )
+
+    # `P-20260808-095`：参考文献曾是装饰——列了 7 条，正文一次都没引用。
+    # 根因是我把顺序做反了（先写计划再检索），现在文献先行，于是可以强制引用。
+    if literature_count:
+        uncited: list[str] = []
+        out_of_range: set[str] = set()
+        for field in _FIELDS_REQUIRING_CITATION:
+            value = str(getattr(plan, field, "") or "")
+            hits = _CITATION_PATTERN.findall(value)
+            if not hits:
+                uncited.append(field)
+            for hit in hits:
+                if not (1 <= int(hit) <= literature_count):
+                    out_of_range.add(hit)
+        if uncited:
+            findings.append(
+                f"以下字段缺少对已调研文献的行内引用：{uncited}。"
+                f"请用 [1]..[{literature_count}] 形式引用 surveyed_literature 中的条目；"
+                "一份对先前工作零定位的文档不是研究计划。"
+            )
+        if out_of_range:
+            findings.append(
+                f"这些引用编号超出已调研文献范围：{sorted(out_of_range)}。"
+                f"可用编号只有 1..{literature_count}，超范围的编号等同于虚构引用。"
+            )
 
     prose = "\n".join(
         [
@@ -288,10 +395,17 @@ def guard_authored_plan(
     # Only PAST-TENSE assertions of an achieved result. `P-20260804-087`: an earlier
     # pattern flagged "outperforms", which is how a legitimate expectation is phrased
     # ("is expected to outperform"), so correct plans were refused.
+    # `P-20260808-095`: 中文分支同样必要。原正则只认英文，所以一份中文计划写下
+    # "实验结果表明本方法优于基线" 也能过关——检查会漏掉它本该拦住的越界宣称。
+    # 中文无词边界，故不用 `\b`。刻意只匹配"已然"语气：
+    # "预期优于基线" 是合法的预期表述，不能拦。
     achieved = re.search(
         r"\b(?:we (?:achieved|obtained|observed|showed|demonstrated)|"
         r"(?:the )?results? (?:showed|demonstrated|confirmed)|"
-        r"(?:has|have|had) outperformed|outperformed the)\b",
+        r"(?:has|have|had) outperformed|outperformed the)\b"
+        r"|(?:实验|结果|测量|数据)(?:表明|显示|证实|证明)"
+        r"|(?:我们|本方法|该方法)(?:已|已经)(?:达到|取得|获得|实现|观测到|验证)"
+        r"|(?:已|已经)(?:优于|超过|超越)(?:基线|baseline)",
         prose.lower(),
     )
     claims_no_result = achieved is None
@@ -403,8 +517,14 @@ def _authoring_messages(
     frozen_context: Mapping[str, Any],
     prior_findings: Sequence[str],
     container_entry_points: Sequence[str] = (),
+    literature: Sequence[Mapping[str, Any]] = (),
 ) -> list[dict[str, str]]:
-    """Give the system its constraints and its own evidence. Supply no science."""
+    """Give the system its constraints, its evidence, and the surveyed literature.
+
+    Supply no science. `literature` is passed so the plan can CITE prior work:
+    `P-20260808-095` recorded that surveying after authoring left the reference list
+    decorative, because the plan had never seen the papers it was supposed to build on.
+    """
 
     instruction = (
         "You are the autonomous research system. Author your OWN research plan for the "
@@ -413,12 +533,35 @@ def _authoring_messages(
         "Nothing scientific is supplied to you. The context below carries only frozen "
         "constraints you may not change, and evidence retained from your own prior "
         "lineages. Do not restate the constraints as if they were your reasoning.\n\n"
+        # `P-20260808-095`: 交付文档是中文的《科学假设与研究计划》，此前提示词全英文，
+        # 导致中文标题配英文正文。语言要求放在最前，因为它约束下面每一条的写法。
+        "LANGUAGE: write every prose field in CHINESE (简体中文). This plan is delivered "
+        "as a Chinese document and is read by Chinese reviewers. Keep these in their "
+        "original form and do NOT translate them, because they are literal identifiers "
+        "that a reader must be able to search for in the code and artifacts: field "
+        "names (overall_median_log_effect), system names "
+        "(reaction_diffusion_cylinder), metric names (NMSE), gate names "
+        "(pde_stratum_non_negative), file paths, and commands. Write natural technical "
+        "Chinese around them; do not transliterate them into Chinese characters.\n\n"
+        # 质量要求。此前产出是 "Risk: ... Alternative: ..." 这类标签拼接，读起来像填表
+        # 而非科学写作，所以在这里明确要求成文。
+        "WRITING QUALITY: write connected technical prose, not label-prefixed "
+        "fragments. Do NOT open items with bare labels like 'Risk:' / 'Alternative:' / "
+        "'Phase 1:'; state the risk and its mitigation as complete sentences that "
+        "explain the causal reason. Each field must read as if written by a researcher "
+        "who understands the mechanism, not as a form filled in. Avoid restating a "
+        "number without saying what it implies. Do not pad with the frozen constraints "
+        "you were given.\n\n"
         "Hard requirements, each enforced by a deterministic grader that will return "
         "its exact findings to you if you fail:\n"
         "1. Every number you write must already appear in the supplied evidence. An "
         "invented number is refused.\n"
         "2. expected_results must state what outcome would REFUTE your expectation, "
-        "and must acknowledge that a negative or null result is a valid outcome.\n"
+        "and must acknowledge that a negative or null result is a valid outcome. "
+        "Writing in Chinese, use explicit wording such as 「若…则假设被反驳」、"
+        "「零结果同样是有效结果」、「低于该阈值即推翻本假设」, because the grader looks "
+        "for that commitment and a plan that only describes success is an "
+        "announcement, not a plan.\n"
         "3. Do not assert any achieved result. No measurement exists yet.\n"
         "4. Name at least one baseline or control, and concrete evaluation metrics. "
         "Put these in the dedicated `baselines` and `metrics` arrays, not only inside "
@@ -435,7 +578,27 @@ def _authoring_messages(
         "path is refused whether it starts with a slash or not: "
         + (json.dumps(list(container_entry_points)) if container_entry_points else "[]")
         + "\n"
-        "6. Use no placeholder text and no reference to any contest or organizer.\n\n"
+        "6. Use no placeholder text and no reference to any contest or organizer.\n"
+        "7. WRITE EVERY PROSE FIELD IN CHINESE (简体中文). This document is read by "
+        "Chinese reviewers. Keep these in their original form because they are literal "
+        "identifiers a reader must be able to match against code and data, and "
+        "translating them makes them unfindable: field and gate names, metric names, "
+        "system names, file paths, and commands. `title` may stay English if that is "
+        "the conventional form for a paper title in this field, but `abstract` and "
+        "every other prose field must be Chinese.\n"
+        "8. WRITE FOR AN EXTERNAL SCIENTIFIC READER, not for an internal issue "
+        "tracker. Do NOT build sentences around internal bookkeeping identifiers such "
+        "as lineage ids, ledger counters, or budget field names. A reader outside this "
+        "system has never seen them and cannot verify them. State the SCIENTIFIC "
+        "problem, mechanism, and evidence. When a number matters, say what it measures "
+        "and why it matters, not merely which internal gate it belongs to.\n"
+        "9. CITE THE SUPPLIED LITERATURE INLINE using bracket numerals that match the "
+        "`index` of each paper in `surveyed_literature` below, for example 「稀疏回归"
+        "方法[1]」. At minimum, `problem_statement`, `rationale`, and `methods` must "
+        "each carry at least one citation, because a plan that positions itself "
+        "against no prior work is not a research plan. Cite ONLY the supplied indices: "
+        "there is no other literature available to you, and an index that is not in "
+        "the list will be treated as fabricated.\n\n"
         "Think first, then answer. Your reasoning is process provenance only and is "
         "never scientific evidence.\n"
         "Return exactly one json object satisfying this schema, with no prose outside "
@@ -448,11 +611,27 @@ def _authoring_messages(
             "findings. Repair each one. Change only what the findings name; keep the "
             "rest of your plan: " + json.dumps(list(prior_findings), ensure_ascii=False)
         )
+    user_payload: dict[str, Any] = dict(frozen_context)
+    if literature:
+        # 文献以 index 呈现，与提示词里要求的行内引用编号一致，也与最终 LaTeX 参考
+        # 文献表的顺序一致，这样正文的 [n] 能被读者对上号。
+        user_payload["surveyed_literature"] = [
+            {
+                "index": position,
+                "title": item.get("title"),
+                "authors": list(item.get("authors") or [])[:6],
+                "venue": item.get("venue"),
+                "publication_date": item.get("publication_date"),
+                "doi": item.get("doi"),
+                "relevance_noted_by_you": item.get("relevance_to_plan"),
+            }
+            for position, item in enumerate(literature, 1)
+        ]
     return [
         {"role": "system", "content": instruction},
         {
             "role": "user",
-            "content": json.dumps(frozen_context, ensure_ascii=False, sort_keys=True),
+            "content": json.dumps(user_payload, ensure_ascii=False, sort_keys=True),
         },
     ]
 
@@ -470,6 +649,8 @@ def author_research_plan(
     env_path: Path | str = Path(".env"),
     max_attempts: int = _MAX_AUTHORING_ATTEMPTS,
     container_entry_points: Sequence[str] = (),
+    literature: Sequence[Mapping[str, Any]] = (),
+    require_chinese: bool = False,
 ) -> SystemAuthoredPlanArtifact:
     """Have the system author its own plan, and let the graders teach it.
 
@@ -498,6 +679,7 @@ def author_research_plan(
                 frozen_context=frozen_context,
                 prior_findings=findings,
                 container_entry_points=container_entry_points,
+                literature=literature,
             ),
             config_path=config_path,
             env_path=env_path,
@@ -538,6 +720,9 @@ def author_research_plan(
                 "references": list(authored["references"]),
                 # Derived, never authored: a model cannot cite what does not exist.
                 "evidence_refs": present,
+                # 检索所得的真实文献随计划一起留存，顺序与正文 [n] 编号一致，
+                # 这样 LaTeX 参考文献表能与行内引用对上号。
+                "literature_references": list(literature),
                 "status": ResearchPlanStatus.DRAFT,
             }
         )
@@ -546,6 +731,8 @@ def author_research_plan(
             evidence_numbers=evidence_numbers,
             cited_evidence=present,
             container_entry_points=container_entry_points,
+            literature_count=len(literature),
+            require_chinese=require_chinese,
         )
         last_report = report
         if not report.accepted:
