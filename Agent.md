@@ -13904,3 +13904,61 @@ This file defines the project development standard for coding agents and records
   - New lineages should preregister with `preregistered_stratum_breadth` rather than the v1 module.
   - `pilot_breadth_contradiction.py` still carries the domain-coupled resolution constants. It is not on the critical path for a new lineage, so I left it rather than churn a module whose authored packages are retained evidence; worth generalizing when a non-MDBench panel actually needs it.
   - If further scientific work is wanted, the honest direction is a different METHOD CLASS. Four lineages of revision within the sparse-regression family converged rather than diverged.
+
+---
+
+## Entry: 2026-08-08 (UTC+8) — Claude Code, 榜题收尾 P-20260808-094..097
+
+**User request / task:** 完成榜题要求、修复报告中英混杂与排版缺陷、补齐双语门禁。
+
+### Files changed
+
+**Bug fixes:**
+
+- `src/autoresearch/llm/client.py` — `P-20260808-094`：`_post_chat_completion` 与 `_post_ollama_native_json_completion` 新增 `except (http.client.HTTPException, ConnectionError, OSError)` 分支，将 `RemoteDisconnected` 等未包装的 stdlib 异常转为 `LLMClientError`，使既有传输重试设施得以触发。
+- `src/autoresearch/research/plans.py` — `P-20260808-095`/`P-20260808-097`：`CONCRETE_METRIC_TERMS` 增加中文指标词（中位对数效应、归一化均方误差等）；`audit_research_plan` 的执行文本扫描改为同时扫 `baselines` / `metrics` 专用字段；基线关键词增加「基线」「基准」。语法缺陷修复：`*expr or ()` 改为 `*(expr or ())`。
+- `src/autoresearch/competition/system_authored_plan.py` — `P-20260808-095`：`_FALSIFIABILITY_MARKERS` 增加中文反驳标记；`achieved` 正则增加中文分支；撰写提示词置顶 LANGUAGE（简体中文）与 WRITING QUALITY（成文而非标签拼接）段落；`_authoring_messages` 签名增加 `literature` 与 `require_chinese` 参数；`guard_authored_plan` 增加语言与行内引用检查。
+- `src/autoresearch/competition/research_plan_latex.py` — `P-20260808-096`：`_tex_escape` 用 `\mbox{}` 包裹 6 位以上数字串以阻止断行；增加 `seqsplit` 与 `\UrlBreaks` 允许长标识符在下划线处换行。
+- `src/autoresearch/competition/plan_literature_survey.py` — 参数 `plan` 改为 `focus`，明确文献调研应先于计划撰写调用；选题提示词更新。
+- `_v7.py`（scratch）— 顺序修正：先文献调研再计划撰写；中文要求与行内引用要求透传给 `author_research_plan`。
+
+**Tests (885 passed, 4 unrelated pre-existing failures):**
+
+- `tests/unit/competition/test_bilingual_plan_graders.py` — 新建 10 项：双语可反驳性、双语越界宣称、`baselines` 专用字段可见性、中文指标词、中文基线词。
+- `tests/unit/competition/test_plan_language_and_citations.py` — 新建 12 项：`_chinese_character_ratio` 按词计、语言 grader、行内引用 grader。
+- `tests/unit/competition/test_research_plan_latex.py` — 追加 4 项：长数字 `\mbox{}`、防断行不改写数值、短数字不包裹、`seqsplit` 声明。
+- `tests/unit/competition/test_plan_literature_survey.py` — 9 处调用改为 `focus=_PLAN`（签名对齐）。
+
+### Summary
+
+本轮修复了四个由我的设计错误引入的缺陷：
+
+1. **P-20260808-094**（传输异常未包装）：一次断连让整个 `generate` 阶段报废。修复：在两处 POST 辅助函数加异常包装，让既有重试设施生效。
+2. **P-20260808-095**（grader 标记只有英文）：迫使系统用英文写作才能通过自己的 grader，导致中文标题配英文正文。修复：`_FALSIFIABILITY_MARKERS`、`achieved` 正则、`CONCRETE_METRIC_TERMS`、撰写提示词全部双语化；文献调研顺序修正（先行）。
+3. **P-20260808-096**（长数字断行）：`1000000000000.0` 被断成页面残缺片段。修复：`\mbox{}` 包裹长数字，`seqsplit` 处理长标识符。
+4. **P-20260808-097**（门禁不扫专用字段）：`baselines` / `metrics` 字段被忽视，系统填对了却仍被拒收。修复：执行文本改为包含这两个专用字段。
+
+**最终产出（task2700-latex-plan-lineage-v1）：**
+- 计划标题：基于积分贝叶斯与稀疏回归混合框架的偏微分方程鲁棒发现
+- `hand_written_prose_fields: 0`，`quality_score: 0.98`，`authoring_attempts: 2`
+- 8 条真实文献（ArXiv + OpenAlex），正文含行内引用 [1]..[8]
+- PDF 编译通过（xelatex，126582 bytes）
+- 散文全中文，技术标识符保持英文原样
+
+### Verification
+
+- `poetry run python -m pytest tests/unit/competition tests/unit/llm tests/unit/schemas` → 885 passed, 4 failed (P-20260808-093 宿主缺 numpy，预先记录，与本次无关)
+- `xelatex` 两遍编译 research-plan.tex → returncode=0，PDF 126582 bytes
+- 文献可核验检查：8/8 条有 DOI 或 https URL，`retrieved_from` 均已声明
+- SHA 完整性验证（generate 后）：8/8 匹配，零错配
+
+### Problems added / updated
+
+- `P-20260808-094` Resolved
+- `P-20260808-095` Resolved
+- `P-20260808-096` Resolved
+- `P-20260808-097` Resolved（隐含在 P-20260808-095 记录内）
+
+### Follow-up
+
+- lineage `task2700-latex-plan-lineage-v1` 已完成 prereg，待执行 generate → pilot → revise → baseline → full → adjudicate → interpret。
