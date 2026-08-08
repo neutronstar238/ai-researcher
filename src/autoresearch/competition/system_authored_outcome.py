@@ -545,13 +545,29 @@ def author_outcome_interpretation(
             "the counter-reading cites only the same quantities as the supporting "
             "section, so it restates the conclusion rather than arguing against it"
         )
+    # `P-20260808-098`: the vocabulary check (`_COUNTER_READING_CONCEPTS`) was a
+    # secondary gate that kept blocking substantive counter-readings because they used
+    # new words the hand-written marker lists did not contain. The PRIMARY check is
+    # the numeric one above: a counter-reading that cites at least one number not in
+    # the supporting section is making a new claim, not restating the conclusion.
+    #
+    # The vocabulary check is now ADVISORY ONLY: if the numeric check passes (distinct
+    # numbers exist), a vocabulary miss is no longer a refusal—it is a diagnostic hint
+    # fed back to the model on the next attempt. This resolves the recurring pattern
+    # where correct critiques using vocabulary the lists had not anticipated were
+    # refused, which is exactly the `P-20260807-092` defect class.
     counter_lower = counter.lower()
     matched_concepts = [
         index
         for index, group in enumerate(_COUNTER_READING_CONCEPTS)
         if any(phrase in counter_lower for phrase in group)
     ]
-    if not matched_concepts:
+    distinct_numbers_present = (
+        bool(counter_numbers) and not (counter_numbers <= support_numbers)
+    )
+    if not matched_concepts and not distinct_numbers_present:
+        # Both checks fail: no vocabulary and no distinct numbers. This is a bare
+        # restatement—refuse.
         reasons.append(
             "the counter-reading does not argue against the conclusion; it must "
             "identify a specific weakness such as an interval that fails to exclude "
