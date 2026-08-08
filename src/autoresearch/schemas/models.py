@@ -184,6 +184,17 @@ class ResearchPlan(BaseRecord):
     risks_and_alternatives: list[str] = Field(min_length=1)
     references: list[str] = Field(min_length=1)
     evidence_refs: list[str] = Field(min_length=1)
+    # 以下字段由榜题《生成结果规范》要求，但对已留存的计划产物是新增项。
+    # 刻意设为可选带默认值：设为必填会让上百份既有 artifact 验证失败，
+    # 那是 `P-20260803-071` 记录过的"留存证据必须存活"问题。
+    # 新计划的完整性由 LaTeX 渲染前的 `assert_all_prose_is_authored` 强制。
+    abstract: str = ""
+    baselines: list[str] = Field(default_factory=list)
+    metrics: list[str] = Field(default_factory=list)
+    results: str = ""
+    # 真实检索所得的文献。与 `references`（lineage 内部引用）分开存放：
+    # 榜题要求的"真实文献列表"必须可核验到 DOI/URL 与检索来源。
+    literature_references: list[dict[str, Any]] = Field(default_factory=list)
     quality_gate: dict[str, Any] = Field(default_factory=dict)
     approval_status: str = "pending"
     status: ResearchPlanStatus = ResearchPlanStatus.DRAFT

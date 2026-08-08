@@ -351,11 +351,17 @@ def guard_authored_plan(
 
 _AUTHORED_FIELDS: tuple[str, ...] = (
     "title",
+    # 榜题《生成结果规范》要求摘要含背景、方法、预期结果三部分。
+    "abstract",
     "problem_statement",
     "rationale",
     "technical_details",
     "methods",
     "experiments",
+    # 榜题点名要求实验设计包含 Baselines 与 Metrics，所以拆成独立字段，
+    # 而不是指望它们埋在 experiments 的散文里。
+    "baselines",
+    "metrics",
     "expected_results",
     "code_agent_brief",
     "risks_and_alternatives",
@@ -370,11 +376,14 @@ _PLAN_SCHEMA: dict[str, Any] = {
     "required": list(_AUTHORED_FIELDS),
     "properties": {
         "title": {"type": "string"},
+        "abstract": {"type": "string"},
         "problem_statement": {"type": "string"},
         "rationale": {"type": "string"},
         "technical_details": {"type": "string"},
         "methods": {"type": "string"},
         "experiments": {"type": "array", "items": {"type": "string"}, "minItems": 3},
+        "baselines": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "metrics": {"type": "array", "items": {"type": "string"}, "minItems": 1},
         "expected_results": {"type": "string"},
         "code_agent_brief": {"type": "string"},
         "risks_and_alternatives": {
@@ -411,7 +420,13 @@ def _authoring_messages(
         "2. expected_results must state what outcome would REFUTE your expectation, "
         "and must acknowledge that a negative or null result is a valid outcome.\n"
         "3. Do not assert any achieved result. No measurement exists yet.\n"
-        "4. Name at least one baseline or control, and concrete evaluation metrics.\n"
+        "4. Name at least one baseline or control, and concrete evaluation metrics. "
+        "Put these in the dedicated `baselines` and `metrics` arrays, not only inside "
+        "the experiments prose, because they are graded as separate fields.\n"
+        "4a. `abstract` must be a self-contained abstract covering THREE parts in "
+        "order: the background/problem, the method you propose, and the expected "
+        "result. It is read on its own, so do not open with 'as stated above' or refer "
+        "to sections the reader has not seen.\n"
         "5. code_agent_brief must be COMMAND-ORIENTED and RUNNABLE: it has to contain "
         "an actual command line, and the grader looks for one of the literal words "
         "'python', 'command', 'script', or 'pytest'. It must NOT invent a script name. "
@@ -505,6 +520,7 @@ def author_research_plan(
                 "project_id": project_id,
                 "candidate_id": candidate_id,
                 "title": authored["title"],
+                "abstract": authored["abstract"],
                 "problem_statement": authored["problem_statement"],
                 "rationale": authored["rationale"],
                 "technical_details": authored["technical_details"],
@@ -514,6 +530,8 @@ def author_research_plan(
                 },
                 "methods": authored["methods"],
                 "experiments": list(authored["experiments"]),
+                "baselines": list(authored["baselines"]),
+                "metrics": list(authored["metrics"]),
                 "expected_results": authored["expected_results"],
                 "code_agent_brief": authored["code_agent_brief"],
                 "risks_and_alternatives": list(authored["risks_and_alternatives"]),
@@ -577,6 +595,27 @@ def author_research_plan(
                 encoding="utf-8",
             )
         except (OSError, ValueError):
+            pass
+        # 再落一份《科学假设与研究计划》LaTeX。参考文献用非严格模式：文献调研是独立
+        # 步骤，尚未接入时缺口会被显著写进文档，而不是静默放过或由渲染器编造条目。
+        try:
+            from autoresearch.competition.research_plan_latex import (
+                render_research_plan_latex,
+            )
+
+            output_path.with_suffix(".tex").write_text(
+                render_research_plan_latex(
+                    plan=plan_payload,
+                    references=plan_payload.get("literature_references") or (),
+                    plan_hash=payload["plan_hash"],
+                    artifact_hash=payload["artifact_hash"],
+                    lineage_id=lineage_id,
+                    model_name=result.model_name,
+                    strict_references=False,
+                ),
+                encoding="utf-8",
+            )
+        except (OSError, ValueError, RuntimeError):
             pass
         return artifact
 

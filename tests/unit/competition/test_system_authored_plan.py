@@ -41,6 +41,13 @@ _FROZEN: dict[str, Any] = {
 def _authored(**overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "title": "Noise-robust sparse recovery under held-out complexity selection",
+        "abstract": (
+            "Background: the prior lineage reached an overall median of "
+            "-0.8448548894388439 across 12 systems. Method: choose model complexity on "
+            "held-out evidence rather than fitting once at maximum capacity. Expected "
+            "result: the transfer gap narrows and the paired effect exceeds "
+            "0.05129329438755058; a null result would refute the mechanism."
+        ),
         "problem_statement": (
             "Across 12 systems the prior lineage reached an overall median of "
             "-0.8448548894388439, winning 3, so held-out accuracy did not follow from "
@@ -65,6 +72,13 @@ def _authored(**overrides: Any) -> dict[str, Any]:
             "Run a bounded pilot and return each candidate its own diagnostics.",
             "Execute the baseline on every system, retaining every failure.",
             "Run the full stage and compute a paired effect with a fixed-seed bootstrap.",
+        ],
+        "baselines": [
+            "the pinned tuned symbolic-regression baseline on the same frozen cells",
+        ],
+        "metrics": [
+            "derivative NMSE as the per-cell loss",
+            "paired log effect aggregated by median within and then across systems",
         ],
         "expected_results": (
             "It is expected, and not yet observed, that the paired effect exceeds "
