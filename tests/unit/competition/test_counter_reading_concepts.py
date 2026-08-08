@@ -23,6 +23,16 @@ from autoresearch.competition.system_authored_outcome import (
     collect_evidence_numbers,
 )
 
+
+def _counter_reading_argues_against(text: str) -> bool:
+    """一行封装：任何概念组命中则认为反面解读言之有物。"""
+
+    lower = text.lower()
+    return any(
+        any(phrase in lower for phrase in group)
+        for group in _COUNTER_READING_CONCEPTS
+    )
+
 # The exact text the live system authored and the old guard refused.
 _LIVE_REFUSED_COUNTER_READING = (
     "The PDE stratum median of -15.41311654930732 is driven almost entirely by a "
@@ -128,3 +138,52 @@ def test_traceability_accepts_a_rounded_evidence_number() -> None:
         prose="the overall median was -0.685910", allowed_numbers=allowed
     )
     assert audit.passed
+
+
+def test_负面判定的反面解读用机制语言而非区间语言也应被接受() -> None:
+    """`P-20260808-098`：真实拒收案例。
+
+    v7 的 counter-reading 实质完全正确——它引用了单点失败的 `-29.51550192036587`、
+    指出方法可能"fundamentally unsuited for PDE"、并说该失败"cannot be dismissed as
+    outliers"。但当时的词组全部是为**正面判定**写的（"crosses zero"、"wide interval"），
+    负面判定的反面论点方向相反（"结果是否比方法本身应得的更糟"），于是用机制语言表达的
+    正确批评命中零组而被拒。
+
+    这是 `P-20260807-092` 同一缺陷的残余：那次修了判定方向，没补机制语言的词汇。
+    """
+
+    # 真实产物原文，未经改写。
+    counter_reading = (
+        "The candidate method shows highly inconsistent performance across systems: "
+        "while it achieved large positive effects on binocular-rivalry-model "
+        "(4.138832046592102), it suffered severe failures on "
+        "reaction_diffusion_cylinder (-29.51550192036587 with 0/6 cells succeeding). "
+        "The PDE stratum median of -15.395196278099709 indicates the method may be "
+        "fundamentally unsuited for PDE problems, and the complete failure suggests "
+        "potential numerical instability or incompatibility with certain problem "
+        "structures that cannot be dismissed as outliers."
+    )
+
+    assert _counter_reading_argues_against(counter_reading) is True
+
+
+def test_区间语言依然被接受_未因新增机制词汇而回归() -> None:
+    """新增负面判定词汇不能削弱原有的区间类判断。"""
+
+    interval_style = (
+        "The bootstrap interval crosses zero, so the positive median cannot be "
+        "distinguished from noise, and only 2 PDE systems carry that stratum."
+    )
+
+    assert _counter_reading_argues_against(interval_style) is True
+
+
+def test_仍然拒绝只复述结论的反面解读() -> None:
+    """扩充词汇不得让"换词复述结论"混过去——那是这道门禁存在的理由。"""
+
+    restatement = (
+        "The candidate did not beat the baseline. The median was negative. "
+        "Therefore the claim is not supported by the measurements taken."
+    )
+
+    assert _counter_reading_argues_against(restatement) is False

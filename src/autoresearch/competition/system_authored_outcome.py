@@ -121,6 +121,18 @@ _COUNTER_READING_CONCEPTS: tuple[tuple[str, ...], ...] = (
         "driven entirely",
         "dominated by",
         "dominates",
+        # Patterns for a negative verdict: highly inconsistent, single-system dominance
+        "highly inconsistent",
+        "inconsistent performance",
+        "inconsistent across",
+        "large variance",
+        "severe failures",
+        "fails on",
+        "fails to",
+        "complete failure",
+        "0/6",
+        "0 out of",
+        "cannot be dismissed",
     ),
     # A competing explanation that the evidence cannot eliminate.
     (
@@ -138,6 +150,11 @@ _COUNTER_READING_CONCEPTS: tuple[tuple[str, ...], ...] = (
         "questioning the reliability",
         "artefact",
         "artifact",
+        "fundamentally unsuited",
+        "structurally incompatible",
+        "incompatibility with",
+        "numerical instability",
+        "potential numerical",
     ),
     # For a NEGATIVE verdict: the case that the result is harsher than warranted,
     # or that the measurement rather than the method produced the number.
