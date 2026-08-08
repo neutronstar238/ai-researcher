@@ -175,6 +175,15 @@ def test_numbers_present_in_the_evidence_are_accepted(tmp_path: Path) -> None:
     assert outcome.traceability.passed is True
     assert outcome.accepted is True
     assert outcome.traceability.untraceable_numbers == ()
+    assert outcome.authorship_receipt_hash is not None
+    receipt_path = tmp_path / str(outcome.authorship_receipt_relative_path)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["receipt_hash"] == outcome.authorship_receipt_hash
+    assert (
+        receipt["parsed_payload"]["what_the_evidence_supports"]
+        == outcome.interpretation.what_the_evidence_supports
+    )
+    assert receipt["api_key_value_logged"] is False
 
 
 def test_production_default_refuses_non_chinese_result_prose(tmp_path: Path) -> None:

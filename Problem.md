@@ -6339,3 +6339,18 @@ update a factual problem entry below.
 - Resolution: invoked the resolved `pdftoppm.exe` and `pdfinfo.exe` directly with literal paths. No repository runtime or scientific artifact was changed.
 - Verification: `pdfinfo.exe` reported A4, 5 pages, 99,954 bytes; `pdftoppm.exe` rendered all five pages, which were visually inspected without clipping or overflow.
 - Linked tasks: `270.3`; environment-only diagnostic, not a product defect.
+
+### P-20260808-103 - 自主科研来源只有布尔声明，且缺少单一提交级总审计
+
+- 状态：已解决新制品来源证明与缺证即阻断总审计；仍需新的合规真实谱系。
+- 严重性：提交完整性的关键缺陷。
+- 发现时间：2026-08-08，Task `270.4` 严格仓库审计。
+- 来源：`SystemAuthoredPlanArtifact`、`SystemAuthoredOutcome`、`OfficialCandidateRecord`、官方原始单元文件、最终报告输入及历史谱系 `runs/manual-live/task2700-latex-plan-lineage-v1`。
+- 现象：过去只需写入 `authored_by_model=true` 和模型名，不必保存精确 provider 交易；即使后续 repair 响应才给出被接受的源码，候选记录仍指向预定的初始调用；超时或执行器未写结果时使用全零占位哈希且遗漏容器 `spec_hash`。各处虽有局部审计，却没有一条命令要求作者来源、计划/代码、单元、语义、身份、复现、质量、创新和发表证明同时齐备后才能称为 ready。
+- 影响：关键。一个外观完整的包可以在不证明哪次响应提供科研文本/代码的情况下声称自主作者身份，丢失失败单元来源，混用配置与记录模型，遗漏审计，或把确定性重算冒充独立复现。这会直接破坏“项目自行完成科研，而非按提示生成文本”的核心主张。
+- 根因：来源证明分散为各制品自己的布尔值和哈希。真正被接受的模型交互没有成为每类科研制品的一等绑定，也没有一个规范化合取式定义提交就绪。
+- 解决：为每次新计划/结果解释撰写保存不含凭据值的 `model-authorship-receipt-v1`，逐字段证明制品来自模型解析载荷；新候选保存被接受交互的哈希；超时/缺失结果保存绑定规格的规范哈希。新增 `submission-evidence-bundle-v1` 与 `competition mdbench submission-audit`，执行 19 项中文标记的必需检查，覆盖官方身份、预算账本、预注册策略/宽度、精确实验矩阵、原始单元链、统计量/门禁重算、模型身份、创新/独立复跑/最终报告/质量回执、人工边界、发表标志和凭据泄漏。schema 只从所有检查的合取计算 `submission_ready`，并独立禁止在发表状态为假时就绪。
+- 证据：对 `task2700` 的最终只读审计会写出完整的阻断 JSON/Markdown，而不是崩溃或修补历史。它只接受内部有效的签名包语义与确定性重算，同时分别拒绝缺失的计划/结果作者回执、计划合同、候选交互哈希、数值关系/创新/复跑/最终报告/质量证据、不完整模型身份和 `publication_ready=false`。
+- 验证：108 个聚焦测试通过；competition 全量回归在仅显式排除已记录的 4 个 `P-20260807-093` 宿主 NumPy 子进程用例后为 `670 passed, 4 deselected`；聚焦 Ruff、Mypy 和 Python 编译通过。回归证明缺证、模型不一致、质量门红灯、聚合指标缺失与 `publication_ready=false` 均会阻断，同时证明 repair 调用绑定和失败单元规格哈希正确。
+- 剩余边界：本任务刻意不生成科学散文，也不伪造创新或独立复跑证据。历史 `task2700` 仍不可提交。任何提交就绪主张之前，必须运行新的系统自产中文、计划对齐真实谱系。
+- 关联任务：`270.4`、`270.3`、`270.2`、`270.1`；在不改写历史证据的前提下扩展 `P-20260808-099` 至 `P-20260808-101`。

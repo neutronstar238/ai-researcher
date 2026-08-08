@@ -25,7 +25,13 @@ from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
+from autoresearch.competition.autonomous_engine import AutonomousModelInteraction
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.model_authorship import (
+    load_bound_authorship_receipt,
+    outcome_authored_fields,
+    plan_authored_fields,
+)
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.official_development_search import (
     OfficialCandidateRecord,
@@ -44,6 +50,9 @@ from autoresearch.competition.research_plan_latex import (
     _tex_escape,
     assert_all_prose_is_authored,
     guard_references,
+)
+from autoresearch.competition.scientific_contract_harness import (
+    ScientificContractSourceResponse,
 )
 from autoresearch.competition.system_authored_outcome import (
     AuthoredInterpretation,
@@ -467,6 +476,16 @@ def audit_final_report_inputs(
             checks["selected_candidate_source_matches"] = bool(
                 source_path.is_file() and file_hash(source_path) == selected.source_sha256
             )
+            if checks["selected_candidate_source_matches"]:
+                try:
+                    _verify_candidate_model_source(
+                        root=root,
+                        candidate=selected,
+                        source_path=source_path,
+                    )
+                except (OSError, RuntimeError, ValueError) as exc:
+                    checks["selected_candidate_source_matches"] = False
+                    fail("selected_candidate_source_matches", str(exc))
             if not checks["selected_candidate_source_matches"]:
                 fail(
                     "selected_candidate_source_matches",
@@ -501,16 +520,31 @@ def audit_final_report_inputs(
                 "non-Chinese system-authored fields: "
                 + str(list(non_chinese_outcome)),
             )
+        if artifact is None:
+            raise FinalResearchReportError("system-authored plan artifact is unavailable")
+        load_bound_authorship_receipt(
+            lineage_dir=root,
+            relative_path=artifact.authorship_receipt_relative_path,
+            expected_hash=artifact.authorship_receipt_hash,
+            artifact_kind="research_plan",
+            expected_model_name=artifact.model_name,
+            expected_fields=plan_authored_fields(artifact.plan),
+        )
+        load_bound_authorship_receipt(
+            lineage_dir=root,
+            relative_path=outcome.authorship_receipt_relative_path,
+            expected_hash=outcome.authorship_receipt_hash,
+            artifact_kind="outcome_interpretation",
+            expected_model_name=outcome.model_name,
+            expected_fields=outcome_authored_fields(
+                outcome.interpretation.model_dump(mode="json")
+            ),
+        )
         checks["model_authorship_attested"] = bool(
-            artifact is not None
-            and artifact.authored_by_model
+            artifact.authored_by_model
             and artifact.hand_written_prose_field_count == 0
-            and artifact.model_name
-            and artifact.reasoning_tokens > 0
             and outcome.authored_by_model
             and outcome.hand_written_prose_count == 0
-            and outcome.model_name
-            and outcome.reasoning_tokens > 0
         )
         if not checks["model_authorship_attested"]:
             fail(
@@ -1029,6 +1063,45 @@ def _candidate_source_path(
             "selected candidate source resolves outside the lineage directory"
         )
     return path
+
+
+def _verify_candidate_model_source(
+    *, root: Path, candidate: OfficialCandidateRecord, source_path: Path
+) -> AutonomousModelInteraction:
+    """Prove that selected source bytes are the accepted provider response."""
+
+    if candidate.interaction_hash is None:
+        raise FinalResearchReportError(
+            "selected candidate has no bound model-interaction hash"
+        )
+    interaction_path = (
+        root / "interactions" / f"{candidate.interaction_id}.json"
+    ).resolve()
+    if not interaction_path.is_relative_to(root):
+        raise FinalResearchReportError(
+            "selected candidate interaction resolves outside the lineage"
+        )
+    interaction = AutonomousModelInteraction.model_validate_json(
+        interaction_path.read_text(encoding="utf-8")
+    )
+    if interaction.interaction_id != candidate.interaction_id:
+        raise FinalResearchReportError("candidate interaction id mismatch")
+    if interaction.interaction_hash != candidate.interaction_hash:
+        raise FinalResearchReportError("candidate interaction hash mismatch")
+    if interaction.candidate_id != candidate.candidate_id:
+        raise FinalResearchReportError("candidate interaction binds another candidate")
+    parsed = ScientificContractSourceResponse.model_validate(
+        interaction.parsed_payload
+    )
+    if parsed.source_text.encode("utf-8") != source_path.read_bytes():
+        raise FinalResearchReportError(
+            "selected candidate source is not the exact accepted model response"
+        )
+    if parsed.implementation_summary != candidate.implementation_summary:
+        raise FinalResearchReportError(
+            "candidate summary differs from the accepted model response"
+        )
+    return interaction
 
 
 def _compile_and_read_pdf(

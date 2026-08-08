@@ -82,6 +82,10 @@ from autoresearch.competition.sentinel_identifiability import (
     freeze_sentinel_identifiability_erratum,
 )
 from autoresearch.competition.service import ResearchCycleService, load_capability_grant
+from autoresearch.competition.submission_evidence_bundle import (
+    SubmissionEvidenceError,
+    audit_submission_evidence_bundle,
+)
 
 competition_app = typer.Typer(
     help="Run the resumable, competition-first unattended research loop.",
@@ -777,6 +781,61 @@ def competition_mdbench_final_report(
     if compile_pdf:
         typer.echo(f"[OK] pdf: {destination / 'final-research-report.pdf'}")
     typer.echo("[BLOCKED] publication_ready: false")
+
+
+@competition_mdbench_app.command("submission-audit")
+def competition_mdbench_submission_audit(
+    lineage_dir: Annotated[
+        Path,
+        typer.Option("--lineage-dir", help="待审计的完整科研谱系目录。"),
+    ],
+    config_path: Annotated[
+        Path,
+        typer.Option("--config", help="当前系统模型配置文件。"),
+    ] = Path("config.yaml"),
+    output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output-dir",
+            help="审计输出目录；默认写入 <lineage>/submission-evidence。",
+        ),
+    ] = None,
+    repository_root: Annotated[
+        Path,
+        typer.Option("--repository-root", help="用于质量门和 Git 身份的仓库根目录。"),
+    ] = Path("."),
+    run_quality_gates: Annotated[
+        bool,
+        typer.Option(
+            "--run-quality-gates/--reuse-quality-gates",
+            help="运行严格 pytest、ruff、mypy；复用模式要求已有当前提交回执。",
+        ),
+    ] = True,
+) -> None:
+    """生成单一、缺证即阻断的中文提交证据总审计。"""
+
+    try:
+        bundle = audit_submission_evidence_bundle(
+            lineage_dir=lineage_dir,
+            config_path=config_path,
+            output_dir=output_dir,
+            repository_root=repository_root,
+            run_quality_gates=run_quality_gates,
+        )
+    except (SubmissionEvidenceError, OSError, RuntimeError, ValueError) as exc:
+        typer.echo(f"[BLOCKED] submission_evidence_audit: {exc}")
+        raise typer.Exit(code=2) from exc
+    destination = Path(bundle.output_path).parent
+    typer.echo(f"[OK] submission_evidence_bundle: {bundle.output_path}")
+    typer.echo(f"[OK] submission_evidence_markdown: {destination / 'submission-evidence-bundle.md'}")
+    typer.echo(f"[OK] bundle_hash: {bundle.bundle_hash}")
+    typer.echo(f"[INFO] publication_ready: {str(bundle.publication_ready).lower()}")
+    typer.echo(f"[INFO] submission_ready: {str(bundle.submission_ready).lower()}")
+    if not bundle.submission_ready:
+        for check in bundle.checks:
+            if not check.passed:
+                typer.echo(f"[BLOCKED] {check.name}: {'; '.join(check.findings)}")
+        raise typer.Exit(code=2)
 
 
 @competition_mdbench_app.command("route-p2-paradigm-audit")

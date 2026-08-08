@@ -14080,3 +14080,50 @@ This file defines the project development standard for coding agents and records
   - Task `270.4`: implement the single fail-closed submission evidence-bundle audit and keep it non-ready while any model/config/reproducibility/publication proof is absent.
   - Then execute a fresh Chinese, plan-aligned real lineage. Do not reuse `task2700` measurements as evidence for its plan and do not hand-edit system scientific prose to satisfy the new language gates.
   - The optional repository-understanding graph scan remains paused by the skill's mandatory confirmation rule; continue only after the user replies `确认扫描`.
+
+---
+
+## 2026-08-08 23:40:33 +08:00 - Codex - Task 270.4 缺证即阻断的提交证据总审计
+
+- 用户请求：以最快速度、最高质量完成提交前开发；研究计划及科研产出必须全部中文并由系统自行生成，不能由 agent 直接补写科研内容；以最严标准证明系统确实按计划自主完成研究。
+- 变更文件：
+  - `src/autoresearch/competition/model_authorship.py`（新增）
+  - `src/autoresearch/competition/submission_evidence_bundle.py`（新增）
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/final_research_report.py`
+  - `src/autoresearch/competition/official_development_search.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `src/autoresearch/competition/system_authored_outcome.py`
+  - `tests/unit/competition/test_submission_evidence_bundle.py`（新增）
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_final_research_report.py`
+  - `tests/unit/competition/test_official_development_search.py`
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `tests/unit/competition/test_system_authored_outcome.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+- 变更摘要：
+  - 新增 `model-authorship-receipt-v1`。每次新计划/结果解释模型调用都先保留精确 prompt、provider、base URL、model、endpoint、原始响应、解析载荷、usage、推理传输和规范化信息，且不记录密钥值。计划/结果制品绑定被接受回执，消费端逐字段证明科研文本等于模型响应；历史制品通过条件序列化保持原哈希形状，但缺少回执不能通过新提交审计。
+  - 修复候选来源错误：当第一次调用不合 schema、repair 调用才提供最终源码时，候选登记表现在绑定真正被接受的 repair interaction ID/hash，而不是失败的初始调用。最终报告和总审计均验证入选源文件与该解析响应逐字一致。
+  - 修复失败单元来源：容器超时和执行器未产出结果时，不再写全零占位哈希；现在保存容器 `spec_hash` 并对真实失败载荷计算规范结果哈希。
+  - 新增 `submission-evidence-bundle-v1` 与 `competition mdbench submission-audit`。它执行 19 项必需检查，覆盖计划作者来源/中文门、人工计划边界、计划到代码、候选来源、官方身份/预算/预注册面板策略、完整实验矩阵、逐单元 raw spec/result、签名包语义、数字与算术、模型身份、创新、复现、确定性重算、独立重执行、最终报告、广泛质量门、必需审计、发表状态与凭据泄漏。任一缺证都会写入中文阻断报告；不会因异常而省略报告。
+  - schema 从所有检查的严格合取推导 `submission_ready`，并独立禁止 `publication_ready=false` 时声称 ready。质量门默认运行全 `tests` pytest、全 `src/tests` Ruff 和全 `src/autoresearch` Mypy；pytest skip/deselect、tracked worktree 不洁净或回执 commit 不匹配均为红灯。
+  - 本任务没有调用模型、没有写真实科研计划/假设/结果/创新主张，也没有改写历史证据。新增中文科研句子仅存在于确定性单元测试夹具；产品运行时的真实科学散文仍只能来自模型回执。
+- 验证：
+  - `poetry run pytest ...`（计划、结果、最终报告、候选执行、总审计、CLI 六个相关文件，`--no-cov`）→ `108 passed`。
+  - `poetry run pytest tests/unit/competition --no-cov -q`，仅显式排除已记录的四个 `P-20260807-093` 宿主 NumPy 子进程用例 → `670 passed, 4 deselected`。
+  - 聚焦 `poetry run ruff check` 覆盖全部本任务 Python/测试文件 → clean。
+  - 聚焦 `poetry run mypy` 覆盖六个变更源模块 → `Success: no issues found in 6 source files`。
+  - `python -m py_compile src/autoresearch/competition/model_authorship.py src/autoresearch/competition/submission_evidence_bundle.py` → 通过。
+  - 真实历史谱系只读审计输出 `runs/manual-live/task2704-submission-audit-task2700-v3/`，bundle hash `49af6323f2cd87922985fd9f71d992879451184e80c864d4ff8deb13c7eed331`。19 项中 5 项通过、14 项阻断；签名包内 338 个单元被如实计数，但由于缺少计划执行合同，原始单元来源不能升级为已验证计数。`publication_ready=false`、`submission_ready=false`，历史文件未修改。
+  - CLI `CliRunner` 对阻断谱系返回预期 exit code `2`；Windows 上 `poetry run` 会把任意非零子进程码折叠为外层 `1`，用 `poetry run python -c "raise SystemExit(2)"` 独立复现，不是审计放行。
+- 问题新增或更新：
+  - 新增 `P-20260808-103`（关键）：自主作者来源只有布尔声明、accepted repair 调用未绑定、失败单元哈希不可用且没有单一提交总审计；已为新制品和 fail-closed 审计解决。
+  - `P-20260807-093` 保持不变；四个容器科学栈测试仍是本次全 competition 回归唯一显式排除项，因此真正的提交质量门会继续把带 deselection 的运行判红。
+- 后续：
+  - 立即执行新的系统自产中文、计划对齐真实谱系；不得把 `task2700` 的 338 个单元当作其积分贝叶斯计划的实验结果，也不得手改科研散文以满足中文门。
+  - 新谱系只有在精确作者回执、计划合同、候选/单元来源、结果语义、创新审计、独立重执行、最终报告和无排除质量门全部齐备后，才可进入人工计划提交复核。
+  - `.understand-anything/` 仍是上轮 skill 预检产生的未跟踪文件，未纳入本任务；完整仓库图扫描继续等待用户按该 skill 的强制规则回复 `确认扫描`。

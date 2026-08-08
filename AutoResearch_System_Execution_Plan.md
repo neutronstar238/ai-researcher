@@ -2364,3 +2364,9 @@ synthetic 反馈和最多六次 score-blind revision 内修复，不能查看或
 `270.3` 已实现为 `competition mdbench final-report --lineage-dir <dir>`。命令先执行 19 项输入审计，任何缺失或矛盾均在写报告前失败；通过后生成 `final-research-report.json/.md/.tex/.pdf` 和 `final-research-report-build.json`。构建凭证记录四种视图哈希、XeLaTeX 版本与命令、PDF 文本抽取一致性和最终一致性判定。报告始终保留 `publication_ready=false`，因此它是可审计的研究产物，不是自动投稿许可。
 
 中文交付门禁同时位于三个位置：计划作者循环默认逐字段拒收非中文散文；结果解释循环默认逐字段拒收非中文散文；最终报告输入审计重新独立检查二者。标题和所有科学叙述均必须中文，只有可搜索的技术标识符与原始文献元数据例外。这样即使绕过某一作者循环手工构造 JSON，也无法进入最终报告。旧 `task2700-latex-plan-lineage-v1` 只读审计仍为 non-ready：缺少新计划执行契约、入选候选不对齐计划，且旧结果没有数值关系审计；不得用它生成提交报告。
+
+`270.4` 已实现为 `competition mdbench submission-audit --lineage-dir <dir> --config config.yaml`。CLI 默认执行全 `tests` 的 pytest、全 `src/tests` 的 Ruff 和全 `src/autoresearch` 的 Mypy；任何退出非零、pytest skip/deselect、非洁净 tracked worktree 或与当前 commit 不一致的回执均为红灯。`--reuse-quality-gates` 只允许读取同一输出目录中已存在且绑定当前 commit 的回执，不会把“未运行”解释成通过。
+
+审计顺序固定为：验证计划原始模型调用回执与中文门禁；验证人工计划批准仅是范围边界；重新编译计划执行合同并验证入选源码及其已接受模型调用；核对官方身份、预算账本、预注册面板变更和完整实验矩阵；逐个复算 raw spec/result 与汇总；验证系统结果解释的作者回执、数字来源和算术关系；比较配置与计划/代码/结果三类调用的 provider、base URL、model；验证创新性审计、独立重执行、最终四格式报告和质量门；最后才计算发表/提交状态。任一阶段失败仍会写出带具体中文阻断原因的 evidence bundle。
+
+旧格式制品保持可读取以保护历史哈希，但不获得新标准豁免：缺少作者回执哈希或候选 interaction hash 的历史记录只能作为历史过程证据，不能通过提交审计。新生成/修订候选现在绑定真正被接受的 repair 调用；容器超时和未写结果也写入包含 `spec_hash` 的规范结果哈希。Task `270.4` 的验收不是让旧结果变绿，而是证明总审计在 `publication_ready=false`、必需审计缺失、模型身份不一致或质量门红灯时均不可能输出 ready。

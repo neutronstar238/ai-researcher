@@ -45,6 +45,7 @@ from pydantic import Field, model_serializer, model_validator
 
 from autoresearch.competition.language_guard import non_chinese_prose_fields
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.model_authorship import record_model_authorship_receipt
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.llm.client import LLMJsonCompletionResult, run_llm_json_completion
 
@@ -331,6 +332,12 @@ class SystemAuthoredOutcome(StrictFrozenModel):
     refusal_reasons: tuple[str, ...]
     model_name: str = Field(min_length=1)
     reasoning_tokens: int = Field(ge=0)
+    # Optional only for immutable outcomes retained before Task 270.4. Newly
+    # authored outcomes bind the exact provider response used for interpretation.
+    authorship_receipt_relative_path: str | None = None
+    authorship_receipt_hash: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
     authored_by_model: Literal[True] = True
     hand_written_prose_count: Literal[0] = 0
     is_evidence: Literal[False] = False
@@ -341,6 +348,12 @@ class SystemAuthoredOutcome(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate(self) -> SystemAuthoredOutcome:
+        if (self.authorship_receipt_relative_path is None) != (
+            self.authorship_receipt_hash is None
+        ):
+            raise SystemAuthoredOutcomeError(
+                "outcome authorship receipt path/hash presence mismatch"
+            )
         relations_passed = self.relation_audit is None or self.relation_audit.passed
         if self.accepted != (
             self.traceability.passed
@@ -377,11 +390,14 @@ class SystemAuthoredOutcome(StrictFrozenModel):
 
     @model_serializer(mode="wrap")
     def _serialize_with_legacy_compatibility(self, handler: Any) -> dict[str, Any]:
-        """Preserve hashes of outcomes retained before relation auditing existed."""
+        """Preserve hashes of outcomes retained before later audits existed."""
 
         payload = dict(handler(self))
         if self.relation_audit is None:
             payload.pop("relation_audit", None)
+        if self.authorship_receipt_hash is None:
+            payload.pop("authorship_receipt_relative_path", None)
+            payload.pop("authorship_receipt_hash", None)
         return payload
 
 
@@ -738,8 +754,9 @@ def author_outcome_interpretation(
         )
     gate_passed = all(bool(value) for value in gate.values())
 
+    messages = _messages(package=package, estimand=estimand)
     result = completion(
-        messages=_messages(package=package, estimand=estimand),
+        messages=messages,
         config_path=config_path,
         env_path=env_path,
         timeout_seconds=240,
@@ -749,6 +766,17 @@ def author_outcome_interpretation(
         thinking_budget=4_000,
         response_schema=None,
         response_schema_name="authored_interpretation",
+    )
+    now = clock or datetime.now(timezone.utc)
+    output_root = Path(output_dir).resolve()
+    authorship_receipt = record_model_authorship_receipt(
+        artifact_kind="outcome_interpretation",
+        interaction_id="system-authored-outcome",
+        attempt=1,
+        messages=messages,
+        completion=result,
+        output_dir=output_root,
+        clock=now,
     )
     interpretation = AuthoredInterpretation.model_validate(
         {"schema_version": "authored-interpretation-v1", **result.parsed_json}
@@ -861,8 +889,7 @@ def author_outcome_interpretation(
     if isinstance(details, dict):
         reasoning_tokens = int(details.get("reasoning_tokens") or 0)
 
-    now = clock or datetime.now(timezone.utc)
-    output_path = Path(output_dir).resolve() / _OUTCOME_NAME
+    output_path = output_root / _OUTCOME_NAME
     payload: dict[str, Any] = {
         "schema_version": "system-authored-outcome-v1",
         "lineage_id": lineage_id,
@@ -881,6 +908,10 @@ def author_outcome_interpretation(
         "refusal_reasons": tuple(reasons),
         "model_name": result.model_name,
         "reasoning_tokens": reasoning_tokens,
+        "authorship_receipt_relative_path": Path(
+            authorship_receipt.output_path
+        ).resolve().relative_to(output_root).as_posix(),
+        "authorship_receipt_hash": authorship_receipt.receipt_hash,
         "authored_by_model": True,
         "hand_written_prose_count": 0,
         "is_evidence": False,

@@ -48,6 +48,7 @@ from typing import Any, Literal
 from pydantic import Field, ValidationError, model_serializer, model_validator
 
 from autoresearch.competition.autonomous_engine import (
+    AutonomousModelInteraction,
     JsonCompletion,
     _call_and_record,
 )
@@ -201,6 +202,10 @@ class OfficialCandidateRecord(StrictFrozenModel):
     candidate_id: str
     generation: Literal[1, 2]
     interaction_id: str
+    # Optional only for immutable pre-270.4 registries. New candidates bind the
+    # exact accepted interaction (including a repair interaction when that is the
+    # response whose source was persisted).
+    interaction_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     source_relative_path: str
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     static_review_approved: bool
@@ -254,6 +259,8 @@ class OfficialCandidateRecord(StrictFrozenModel):
         """
 
         payload = dict(handler(self))
+        if self.interaction_hash is None:
+            payload.pop("interaction_hash", None)
         if self.plan_alignment is None:
             payload.pop("approved_plan_hash", None)
             payload.pop("plan_contract_hash", None)
@@ -602,10 +609,11 @@ def generate_official_candidates(
         # final authority: a repair prompt may help the model comply, it can never
         # weaken the contract. Recorded as `P-20260804-079`.
         response: ScientificContractSourceResponse | None = None
+        accepted_interaction: AutonomousModelInteraction | None = None
         attempt_messages = list(messages)
         errors: list[str] = []
         for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
-            result, _ = _call_and_record(
+            result, interaction = _call_and_record(
                 completion=completion,
                 messages=attempt_messages,
                 config_path=config_path,
@@ -626,6 +634,7 @@ def generate_official_candidates(
                 response = ScientificContractSourceResponse.model_validate(
                     result.parsed_json
                 )
+                accepted_interaction = interaction
                 break
             except ValidationError as exc:
                 errors = [_format_field_error(item) for item in exc.errors()]
@@ -645,7 +654,7 @@ def generate_official_candidates(
                         ),
                     },
                 ]
-        if response is None:
+        if response is None or accepted_interaction is None:
             raise OfficialDevelopmentSearchError(
                 f"{candidate_id} could not produce a schema-conformant response in "
                 f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: {'; '.join(errors)}"
@@ -677,7 +686,8 @@ def generate_official_candidates(
             OfficialCandidateRecord(
                 candidate_id=candidate_id,
                 generation=1,
-                interaction_id=interaction_id,
+                interaction_id=accepted_interaction.interaction_id,
+                interaction_hash=accepted_interaction.interaction_hash,
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
                 static_review_approved=(
@@ -861,8 +871,9 @@ def _execute_one_cell(
         payload = {
             "status": "timed_out",
             "failure_reason": "container wall-time budget exceeded",
-            "result_hash": "0" * 64,
+            "spec_hash": runner_spec["spec_hash"],
         }
+        payload["result_hash"] = _canonical(payload)
         result_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
         return _result_from_payload(spec, payload)
 
@@ -870,8 +881,9 @@ def _execute_one_cell(
         payload = {
             "status": "failed",
             "failure_reason": "runner produced no result payload",
-            "result_hash": "0" * 64,
+            "spec_hash": runner_spec["spec_hash"],
         }
+        payload["result_hash"] = _canonical(payload)
         result_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
     payload = json.loads(result_path.read_text(encoding="utf-8"))
     return _result_from_payload(spec, payload)
@@ -1284,10 +1296,11 @@ def revise_official_candidates(
         # The deterministic schema stays the final authority: a repair prompt can help
         # the model comply, it can never weaken the contract.
         response_obj: ScientificContractSourceResponse | None = None
+        accepted_interaction: AutonomousModelInteraction | None = None
         attempt_messages = list(messages)
         revise_errors: list[str] = []
         for attempt in range(1, _GENERATION_CONFORMANCE_ATTEMPTS + 1):
-            result, _ = _call_and_record(
+            result, interaction = _call_and_record(
                 completion=completion,
                 messages=attempt_messages,
                 config_path=config_path,
@@ -1310,6 +1323,7 @@ def revise_official_candidates(
                 response_obj = ScientificContractSourceResponse.model_validate(
                     result.parsed_json
                 )
+                accepted_interaction = interaction
                 break
             except ValidationError as exc:
                 revise_errors = [_format_field_error(item) for item in exc.errors()]
@@ -1329,7 +1343,7 @@ def revise_official_candidates(
                         ),
                     },
                 ]
-        if response_obj is None:
+        if response_obj is None or accepted_interaction is None:
             raise OfficialDevelopmentSearchError(
                 f"{revised_id} could not produce a schema-conformant revision in "
                 f"{_GENERATION_CONFORMANCE_ATTEMPTS} attempts: "
@@ -1363,7 +1377,8 @@ def revise_official_candidates(
             OfficialCandidateRecord(
                 candidate_id=revised_id,
                 generation=2,
-                interaction_id=interaction_id,
+                interaction_id=accepted_interaction.interaction_id,
+                interaction_hash=accepted_interaction.interaction_hash,
                 source_relative_path=source_path.relative_to(output_root).as_posix(),
                 source_sha256=review.source_sha256,
                 static_review_approved=(

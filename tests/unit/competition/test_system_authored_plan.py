@@ -189,6 +189,12 @@ def test_the_model_authors_every_prose_field(tmp_path: Path) -> None:
     assert artifact.plan["problem_statement"] == _authored()["problem_statement"]
     assert artifact.reasoning_tokens == 2_100
     assert artifact.guard_report.accepted is True
+    assert artifact.authorship_receipt_hash is not None
+    receipt_path = tmp_path / str(artifact.authorship_receipt_relative_path)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["receipt_hash"] == artifact.authorship_receipt_hash
+    assert receipt["parsed_payload"]["title"] == artifact.plan["title"]
+    assert receipt["api_key_value_logged"] is False
 
 
 def test_the_prompt_supplies_constraints_but_no_science(tmp_path: Path) -> None:

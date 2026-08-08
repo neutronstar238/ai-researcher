@@ -39,10 +39,13 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
 from autoresearch.competition.language_guard import non_chinese_prose_fields
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.model_authorship import (
+    record_model_authorship_receipt,
+)
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.plan_execution_contract import (
     PlanExecutionContractError,
@@ -226,6 +229,13 @@ class SystemAuthoredPlanArtifact(StrictFrozenModel):
     authoring_attempts: int = Field(ge=1)
     model_name: str = Field(min_length=1)
     reasoning_tokens: int = Field(ge=0)
+    # Optional only so immutable pre-270.4 plan artifacts remain loadable. Every
+    # newly authored plan binds the exact provider transaction that supplied all
+    # scientific prose fields.
+    authorship_receipt_relative_path: str | None = None
+    authorship_receipt_hash: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
     authored_by_model: Literal[True] = True
     hand_written_prose_field_count: Literal[0] = 0
     execution_authorized: Literal[False] = False
@@ -235,6 +245,12 @@ class SystemAuthoredPlanArtifact(StrictFrozenModel):
 
     @model_validator(mode="after")
     def _validate(self) -> SystemAuthoredPlanArtifact:
+        if (self.authorship_receipt_relative_path is None) != (
+            self.authorship_receipt_hash is None
+        ):
+            raise SystemAuthoredPlanError(
+                "plan authorship receipt path/hash presence mismatch"
+            )
         if not self.guard_report.accepted:
             raise SystemAuthoredPlanError(
                 "a plan artifact cannot be constructed from a refused plan; the "
@@ -249,6 +265,16 @@ class SystemAuthoredPlanArtifact(StrictFrozenModel):
         if self.artifact_hash != expected:
             raise SystemAuthoredPlanError("system authored plan artifact hash mismatch")
         return self
+
+    @model_serializer(mode="wrap")
+    def _serialize_with_legacy_compatibility(self, handler: Any) -> dict[str, Any]:
+        """Do not inject null receipt keys into immutable pre-270.4 artifacts."""
+
+        payload = dict(handler(self))
+        if self.authorship_receipt_hash is None:
+            payload.pop("authorship_receipt_relative_path", None)
+            payload.pop("authorship_receipt_hash", None)
+        return payload
 
 
 def plan_reachable_numbers(evidence_numbers: set[str]) -> set[str]:
@@ -690,14 +716,16 @@ def author_research_plan(
 
     findings: list[str] = []
     last_report: AuthoredPlanGuardReport | None = None
+    output_root = Path(output_dir).resolve()
     for attempt in range(1, max_attempts + 1):
+        messages = _authoring_messages(
+            frozen_context=frozen_context,
+            prior_findings=findings,
+            container_entry_points=container_entry_points,
+            literature=literature,
+        )
         result = completion(
-            messages=_authoring_messages(
-                frozen_context=frozen_context,
-                prior_findings=findings,
-                container_entry_points=container_entry_points,
-                literature=literature,
-            ),
+            messages=messages,
             config_path=config_path,
             env_path=env_path,
             timeout_seconds=300,
@@ -707,6 +735,14 @@ def author_research_plan(
             thinking_budget=4_000,
             response_schema=None,
             response_schema_name="authored_research_plan",
+        )
+        authorship_receipt = record_model_authorship_receipt(
+            artifact_kind="research_plan",
+            interaction_id=f"system-authored-plan-attempt-{attempt:02d}",
+            attempt=attempt,
+            messages=messages,
+            completion=result,
+            output_dir=output_root,
         )
         authored = result.parsed_json
         absent = [field for field in _AUTHORED_FIELDS if field not in authored]
@@ -770,7 +806,7 @@ def author_research_plan(
             int(details.get("reasoning_tokens") or 0) if isinstance(details, dict) else 0
         )
         plan_payload = graded.model_dump(mode="json")
-        output_path = Path(output_dir).resolve() / _PLAN_NAME
+        output_path = output_root / _PLAN_NAME
         payload: dict[str, Any] = {
             "schema_version": "system-authored-research-plan-v1",
             "lineage_id": lineage_id,
@@ -780,6 +816,10 @@ def author_research_plan(
             "authoring_attempts": attempt,
             "model_name": result.model_name,
             "reasoning_tokens": reasoning_tokens,
+            "authorship_receipt_relative_path": Path(
+                authorship_receipt.output_path
+            ).resolve().relative_to(output_root).as_posix(),
+            "authorship_receipt_hash": authorship_receipt.receipt_hash,
             "authored_by_model": True,
             "hand_written_prose_field_count": 0,
             "execution_authorized": False,

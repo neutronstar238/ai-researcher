@@ -32,6 +32,7 @@ def test_competition_cli_is_registered() -> None:
     assert "scientific-contract-harness" in mdbench_result.stdout
     assert "sentinel-identifiability-erratum" in mdbench_result.stdout
     assert "final-report" in mdbench_result.stdout
+    assert "submission-audit" in mdbench_result.stdout
     assert "execute" in mdbench_result.stdout
     assert "evaluate" in mdbench_result.stdout
 
@@ -82,3 +83,32 @@ def test_final_report_cli_fails_closed_before_writing(tmp_path: Path) -> None:
     assert result.exit_code == 2
     assert "[BLOCKED] final_research_report" in result.stdout
     assert not (lineage / "final-report").exists()
+
+
+def test_submission_audit_cli_writes_truthful_blocked_bundle(tmp_path: Path) -> None:
+    lineage = tmp_path / "incomplete-lineage"
+    lineage.mkdir()
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "competition",
+            "mdbench",
+            "submission-audit",
+            "--lineage-dir",
+            str(lineage),
+            "--config",
+            str(Path("config.yaml").resolve()),
+            "--repository-root",
+            str(Path(".").resolve()),
+            "--reuse-quality-gates",
+        ],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "[INFO] submission_ready: false" in result.stdout
+    bundle = lineage / "submission-evidence" / "submission-evidence-bundle.json"
+    assert bundle.is_file()
+    payload = json.loads(bundle.read_text(encoding="utf-8"))
+    assert payload["submission_ready"] is False
+    assert payload["publication_ready"] is False

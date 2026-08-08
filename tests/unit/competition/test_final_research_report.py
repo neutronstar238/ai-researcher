@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from autoresearch.competition.autonomous_engine import AutonomousModelInteraction
 from autoresearch.competition.final_research_report import (
     FinalReportBuildReceipt,
     FinalResearchReport,
@@ -17,6 +19,11 @@ from autoresearch.competition.final_research_report import (
     materialize_final_research_report,
 )
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
+from autoresearch.competition.model_authorship import (
+    outcome_authored_fields,
+    plan_authored_fields,
+    record_model_authorship_receipt,
+)
 from autoresearch.competition.official_development_search import (
     OfficialCandidateRecord,
     OfficialCellResult,
@@ -42,10 +49,26 @@ from autoresearch.competition.system_authored_plan import (
     AuthoredPlanGuardReport,
     SystemAuthoredPlanArtifact,
 )
+from autoresearch.llm.client import LLMJsonCompletionResult
 from autoresearch.research.plan_confirmation import record_plan_decision
 from autoresearch.schemas import ResearchPlan, ResearchPlanStatus, file_hash
 
 _NOW = datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc)
+
+
+def _completion(parsed: dict[str, Any]) -> LLMJsonCompletionResult:
+    return LLMJsonCompletionResult(
+        provider="qwen-dashscope",
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model_name="qwen3.7-max",
+        endpoint=(
+            "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        ),
+        response_text=json.dumps(parsed, ensure_ascii=False, sort_keys=True),
+        parsed_json=parsed,
+        usage={"completion_tokens_details": {"reasoning_tokens": 2_000}},
+        temperature=0.2,
+    )
 
 
 def _research_plan(root: Path) -> ResearchPlan:
@@ -141,6 +164,18 @@ def _write_plan_artifacts(root: Path, plan: ResearchPlan) -> None:
     guard_payload["report_hash"] = canonical_model_hash(guard_payload)
     guard = AuthoredPlanGuardReport.model_validate(guard_payload)
     plan_payload = plan.model_dump(mode="json")
+    receipt = record_model_authorship_receipt(
+        artifact_kind="research_plan",
+        interaction_id="system-authored-plan-attempt-01",
+        attempt=1,
+        messages=[
+            {"role": "system", "content": "请自主撰写中文研究计划。"},
+            {"role": "user", "content": "冻结证据上下文"},
+        ],
+        completion=_completion(plan_authored_fields(plan_payload)),
+        output_dir=root,
+        clock=_NOW,
+    )
     artifact_payload: dict[str, Any] = {
         "schema_version": "system-authored-research-plan-v1",
         "lineage_id": root.name,
@@ -150,6 +185,10 @@ def _write_plan_artifacts(root: Path, plan: ResearchPlan) -> None:
         "authoring_attempts": 1,
         "model_name": "qwen3.7-max",
         "reasoning_tokens": 2_000,
+        "authorship_receipt_relative_path": Path(receipt.output_path)
+        .relative_to(root)
+        .as_posix(),
+        "authorship_receipt_hash": receipt.receipt_hash,
         "authored_by_model": True,
         "hand_written_prose_field_count": 0,
         "execution_authorized": False,
@@ -237,6 +276,38 @@ def predict_derivative(model, x):
 """
     with source_path.open("w", encoding="utf-8", newline="") as handle:
         handle.write(source)
+    interaction_payload = {
+        "response_type": "scientific_contract_source",
+        "observation": "观察到噪声条件下导数估计不稳定。",
+        "problem": "问题是稀疏支持会被噪声扰动。",
+        "hypothesis": "积分贝叶斯筛选可提高支持稳定性。",
+        "intervention": "实现积分窗口与贝叶斯支持选择。",
+        "expected_effect": "预期降低冻结留出集上的导数误差。",
+        "implementation_summary": "Integral Bayesian support-selection implementation",
+        "source_lines": source.split("\n"),
+    }
+    interaction = AutonomousModelInteraction.create(
+        interaction_id="generation-01",
+        stage="scientific_contract_implementation",
+        candidate_id="official-01",
+        messages=[
+            {"role": "system", "content": "自主实现批准计划。"},
+            {"role": "user", "content": "执行合同"},
+        ],
+        completion=_completion(interaction_payload),
+        structured_transport_mode="json_schema",
+        provider_format_fallback_relative_path=None,
+        provider_format_fallback_sha256=None,
+        provider_retry_relative_paths=(),
+        provider_retry_sha256s=(),
+        provider_transport_retry_relative_paths=(),
+        provider_transport_retry_sha256s=(),
+        max_tokens=12_000,
+        thinking_mode="disabled",
+        thinking_budget=None,
+        created_at=_NOW,
+    )
+    write_json_model(root / "interactions" / "generation-01.json", interaction)
     alignment = audit_candidate_plan_alignment(
         candidate_id="official-01", source_text=source, contract=contract
     )
@@ -244,6 +315,7 @@ def predict_derivative(model, x):
         candidate_id="official-01",
         generation=1,
         interaction_id="generation-01",
+        interaction_hash=interaction.interaction_hash,
         source_relative_path="candidates/official-01/candidate.py",
         source_sha256=file_hash(source_path),
         static_review_approved=True,
@@ -370,11 +442,24 @@ def _write_outcome(root: Path, package: Any, *, relation_audit: bool = True) -> 
         allowed_numbers=collect_evidence_numbers(package.model_dump(mode="json")),
     )
     relation = audit_numeric_relations(prose=prose) if relation_audit else None
+    interpretation_payload = interpretation.model_dump(mode="json")
+    receipt = record_model_authorship_receipt(
+        artifact_kind="outcome_interpretation",
+        interaction_id="system-authored-outcome",
+        attempt=1,
+        messages=[
+            {"role": "system", "content": "请仅依据证据自主解释结果。"},
+            {"role": "user", "content": "签名结果包"},
+        ],
+        completion=_completion(outcome_authored_fields(interpretation_payload)),
+        output_dir=root,
+        clock=_NOW,
+    )
     payload: dict[str, Any] = {
         "schema_version": "system-authored-outcome-v1",
         "lineage_id": root.name,
         "package_hash": package.package_hash,
-        "interpretation": interpretation.model_dump(mode="json"),
+        "interpretation": interpretation_payload,
         "traceability": trace.model_dump(mode="json"),
         "frozen_gate_passed": True,
         "verdict_consistent_with_gate": True,
@@ -382,6 +467,10 @@ def _write_outcome(root: Path, package: Any, *, relation_audit: bool = True) -> 
         "refusal_reasons": (),
         "model_name": "qwen3.7-max",
         "reasoning_tokens": 2_000,
+        "authorship_receipt_relative_path": Path(receipt.output_path)
+        .relative_to(root)
+        .as_posix(),
+        "authorship_receipt_hash": receipt.receipt_hash,
         "authored_by_model": True,
         "hand_written_prose_count": 0,
         "is_evidence": False,

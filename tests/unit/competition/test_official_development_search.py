@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,9 +28,11 @@ from autoresearch.competition.official_development_search import (
     _FAILURE_LOSS,
     OfficialCandidateRecord,
     OfficialCellResult,
+    OfficialCellSpec,
     OfficialDevelopmentIdentity,
     OfficialDevelopmentSearchError,
     _bootstrap_interval,
+    _execute_one_cell,
     _generation_brief,
     _median,
     aggregate_paired_effects,
@@ -93,6 +96,60 @@ def test_failed_cell_takes_the_failure_loss_not_a_drop() -> None:
     assert _cell(candidate_id="c1", system="s1", nmse=None, status="timed_out").loss == (
         _FAILURE_LOSS
     )
+
+
+@pytest.mark.parametrize("mode", ["timeout", "missing-result"])
+def test_container_failure_retains_hash_bound_raw_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    payload: dict[str, Any] = {
+        "attempt_id": f"baseline-cell-{mode}",
+        "method_kind": "baseline",
+        "candidate_id": "operon_or_pdefind",
+        "stage": "baseline",
+        "system_name": "ode-system",
+        "data_type": "ode",
+        "condition": "clean",
+        "seed": 101,
+        "data_relative_path": "ode-system/clean.npz",
+        "data_sha256": "a" * 64,
+        "candidate_source_sha256": None,
+    }
+    payload["spec_hash"] = canonical_model_hash(payload)
+    spec = OfficialCellSpec.model_validate(payload)
+    identity = OfficialDevelopmentIdentity.model_construct(
+        data_root=tmp_path.as_posix(),
+        image_id="sha256:" + "b" * 64,
+    )
+
+    def fake_run(*_args: Any, **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        if mode == "timeout":
+            raise subprocess.TimeoutExpired(cmd="docker", timeout=1)
+        return subprocess.CompletedProcess(args=["docker"], returncode=1)
+
+    monkeypatch.setattr(
+        "autoresearch.competition.official_development_search.subprocess.run",
+        fake_run,
+    )
+    result = _execute_one_cell(
+        spec=spec,
+        identity=identity,
+        output_root=tmp_path,
+        candidate_paths={},
+        runner_path=tmp_path / "runner.py",
+        baseline_runner_sha256="c" * 64,
+        baseline_method={"method": "pinned"},
+        timeout_seconds=60,
+    )
+
+    raw_path = tmp_path / "cells" / "baseline" / spec.attempt_id / "result.json"
+    raw = json.loads(raw_path.read_text(encoding="utf-8"))
+    raw_body = dict(raw)
+    raw_hash = raw_body.pop("result_hash")
+    assert raw["spec_hash"] != spec.spec_hash
+    assert raw_hash == canonical_model_hash(raw_body)
+    assert result.result_hash == raw_hash
+    assert result.status == ("timed_out" if mode == "timeout" else "failed")
 
 
 def test_nonfinite_nmse_takes_the_failure_loss() -> None:
@@ -636,6 +693,19 @@ def test_a_dropped_required_field_is_repaired_once(tmp_path: Path) -> None:
     assert "response_type" in repair_text
     # The repair prompt must not invite a rewrite of the method being measured.
     assert "identical" in repair_text
+    # Provenance must bind the ACCEPTED repair call, not the failed first call.
+    record = records[0]
+    assert record.interaction_id == "official-generate-01-repair2"
+    assert record.interaction_hash is not None
+    from autoresearch.competition.autonomous_engine import AutonomousModelInteraction
+
+    interaction = AutonomousModelInteraction.model_validate_json(
+        (tmp_path / "interactions" / f"{record.interaction_id}.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert interaction.interaction_hash == record.interaction_hash
+    assert interaction.parsed_payload["response_type"] == "scientific_contract_source"
 
 
 def test_a_persistently_nonconformant_model_fails_loudly(tmp_path: Path) -> None:
