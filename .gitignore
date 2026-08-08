@@ -41,6 +41,11 @@ _wait.py
 _chain.py
 _render_plans.py
 _verify_hashes.py
+_check_tex.py
+_compile_v7.py
+_lit_smoke.py
+_runtests.py
+_sample_plan.tex
 _*.txt
 chain-log.txt
 check.txt
