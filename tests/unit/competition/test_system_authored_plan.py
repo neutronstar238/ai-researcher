@@ -142,6 +142,10 @@ def _run(tmp_path: Path, stub: _Stub, **kw: Any) -> Any:
         output_dir=tmp_path,
         completion=stub,
         container_entry_points=kw.pop("container_entry_points", ("/harness/runner.py",)),
+        # Most legacy unit fixtures below are English so they can isolate unrelated
+        # guards.  Production authoring defaults to the stricter Chinese requirement,
+        # which has its own explicit refusal test.
+        require_chinese=kw.pop("require_chinese", False),
         **kw,
     )
 
@@ -202,6 +206,24 @@ def test_the_prompt_supplies_constraints_but_no_science(tmp_path: Path) -> None:
     # No hypothesis, mechanism, or title is supplied for it to copy.
     assert "held-out complexity selection" not in sent
     assert "selection rule" not in sent.lower()
+
+
+def test_production_default_refuses_an_english_authored_plan(tmp_path: Path) -> None:
+    evidence = tmp_path / "prior-package.json"
+    evidence.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(SystemAuthoredPlanError, match="简体中文"):
+        author_research_plan(
+            lineage_id="lineage-chinese-required",
+            project_id="project-under-test",
+            candidate_id="candidate-under-test",
+            frozen_context=_FROZEN,
+            evidence_paths=[evidence],
+            output_dir=tmp_path,
+            completion=_Stub(_authored()),
+            container_entry_points=("/harness/runner.py",),
+            max_attempts=1,
+        )
 
 
 def test_evidence_refs_are_derived_not_authored(tmp_path: Path) -> None:
@@ -639,6 +661,7 @@ def test_the_prompt_lists_the_only_real_entry_points(tmp_path: Path) -> None:
         output_dir=tmp_path,
         completion=stub,
         container_entry_points=("/harness/runner.py",),
+        require_chinese=False,
     )
     sent = json.dumps(stub.calls[0]["messages"])
     assert "/harness/runner.py" in sent

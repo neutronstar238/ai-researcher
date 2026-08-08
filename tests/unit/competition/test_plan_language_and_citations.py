@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from autoresearch.competition.language_guard import chinese_prose_ratio
 from autoresearch.competition.system_authored_plan import (
     _FALSIFIABILITY_MARKERS,
-    _chinese_character_ratio,
     guard_authored_plan,
 )
 from autoresearch.schemas import ResearchPlan
@@ -27,7 +27,7 @@ def _plan(**overrides: Any) -> ResearchPlan:
     payload: dict[str, Any] = {
         "project_id": "task-x",
         "candidate_id": "cand-x",
-        "title": "Constrained Symbolic Regression for Governing Equation Discovery",
+        "title": "用于控制方程发现的受约束符号回归",
         "abstract": (
             "稀疏回归方法在含噪测量数据上难以稳定恢复控制方程[1]。本文提出以物理可观测量"
             "约束搜索空间的符号回归方法，并在生成阶段强制项支撑唯一性。预期总体中位对数"
@@ -92,18 +92,18 @@ def test_中文占比忽略英文标识符() -> None:
     """一份中文技术文档本就含大量英文标识符，不该因此被判成英文。"""
 
     text = "本方法要求 term_support_f1_minimum 等于 1.0，并在 reaction_diffusion_cylinder 上验证。"
-    assert _chinese_character_ratio(text) >= 0.55
+    assert chinese_prose_ratio(text) >= 0.55
 
 
 def test_纯英文散文被判定为不达标() -> None:
     text = "The previous lineage produced an overall median log effect of -0.68."
-    assert _chinese_character_ratio(text) < 0.55
+    assert chinese_prose_ratio(text) < 0.55
 
 
 def test_无字母无汉字时不误判() -> None:
     """纯数字或纯标点不该被当成英文。"""
 
-    assert _chinese_character_ratio("1.0 / 2.0 == 0.5") == 1.0
+    assert chinese_prose_ratio("1.0 / 2.0 == 0.5") == 1.0
 
 
 # ---------------------------------------------------------------------------

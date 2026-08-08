@@ -2360,3 +2360,7 @@ synthetic 反馈和最多六次 score-blind revision 内修复，不能查看或
 6. `270.4` 汇总作者来源、计划对齐、运行来源、结果语义、模型配置、复现和发表边界，任一证明缺失即输出 non-ready。
 
 验收以反例为中心：未批准计划不得调用候选生成模型；只绑定哈希但没有对齐审计的旧候选不得执行；把计划方法写进注释、变量或死 helper 不得通过；修改 source、plan 或 contract 任一字节后旧审计不得复用；计划中承诺积分贝叶斯与 constrained LARS、源码实际执行 spectral derivative 与 STRidge 的样例必须被确定性拒绝。
+
+`270.3` 已实现为 `competition mdbench final-report --lineage-dir <dir>`。命令先执行 19 项输入审计，任何缺失或矛盾均在写报告前失败；通过后生成 `final-research-report.json/.md/.tex/.pdf` 和 `final-research-report-build.json`。构建凭证记录四种视图哈希、XeLaTeX 版本与命令、PDF 文本抽取一致性和最终一致性判定。报告始终保留 `publication_ready=false`，因此它是可审计的研究产物，不是自动投稿许可。
+
+中文交付门禁同时位于三个位置：计划作者循环默认逐字段拒收非中文散文；结果解释循环默认逐字段拒收非中文散文；最终报告输入审计重新独立检查二者。标题和所有科学叙述均必须中文，只有可搜索的技术标识符与原始文献元数据例外。这样即使绕过某一作者循环手工构造 JSON，也无法进入最终报告。旧 `task2700-latex-plan-lineage-v1` 只读审计仍为 non-ready：缺少新计划执行契约、入选候选不对齐计划，且旧结果没有数值关系审计；不得用它生成提交报告。

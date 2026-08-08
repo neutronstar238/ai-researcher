@@ -21,6 +21,10 @@ from autoresearch.competition.autonomous_recovery import (
     AutonomousRecoveryError,
     freeze_autonomous_mdbench_research_plan,
 )
+from autoresearch.competition.final_research_report import (
+    FinalResearchReportError,
+    materialize_final_research_report,
+)
 from autoresearch.competition.gate_a import (
     GateAAdjudicationError,
     adjudicate_mdbench_gate_a,
@@ -728,6 +732,51 @@ def competition_mdbench_lineage_stage(
             "[OK] search_freeze_receipt: "
             f"{str(bool(report.search_freeze_receipt_issued)).lower()}"
         )
+
+
+@competition_mdbench_app.command("final-report")
+def competition_mdbench_final_report(
+    lineage_dir: Annotated[
+        Path,
+        typer.Option(
+            "--lineage-dir",
+            help="Completed lineage containing plan, contract, package, and outcome.",
+        ),
+    ],
+    output_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output-dir",
+            help="Separate derived-report directory; defaults to <lineage>/final-report.",
+        ),
+    ] = None,
+    compile_pdf: Annotated[
+        bool,
+        typer.Option(
+            "--compile-pdf/--no-compile-pdf",
+            help="Compile with XeLaTeX and verify extracted PDF text.",
+        ),
+    ] = True,
+) -> None:
+    """Materialize observed results only after every evidence binding passes."""
+
+    try:
+        report = materialize_final_research_report(
+            lineage_dir=lineage_dir,
+            output_dir=output_dir,
+            compile_pdf=compile_pdf,
+        )
+    except (FinalResearchReportError, OSError, ValidationError) as exc:
+        typer.echo(f"[BLOCKED] final_research_report: {exc}")
+        raise typer.Exit(code=2) from exc
+    destination = Path(report.output_path).parent
+    typer.echo(f"[OK] final_research_report: {report.output_path}")
+    typer.echo(f"[OK] report_hash: {report.report_hash}")
+    typer.echo(f"[OK] markdown: {destination / 'final-research-report.md'}")
+    typer.echo(f"[OK] latex: {destination / 'final-research-report.tex'}")
+    if compile_pdf:
+        typer.echo(f"[OK] pdf: {destination / 'final-research-report.pdf'}")
+    typer.echo("[BLOCKED] publication_ready: false")
 
 
 @competition_mdbench_app.command("route-p2-paradigm-audit")

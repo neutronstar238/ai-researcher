@@ -201,9 +201,9 @@ def test_章节结构对齐榜题要求() -> None:
         r"\section{参考论文}",
     ):
         assert heading in tex, heading
-    # Baselines 与 Metrics 必须是独立小节，榜题点名要求。
-    assert r"\subsection{基线对比（Baselines）}" in tex
-    assert r"\subsection{评估指标（Metrics）}" in tex
+    # 对照基线与评估指标必须是独立中文小节，榜题点名要求。
+    assert r"\subsection{对照基线}" in tex
+    assert r"\subsection{评估指标}" in tex
 
 
 def test_数值不被改写() -> None:

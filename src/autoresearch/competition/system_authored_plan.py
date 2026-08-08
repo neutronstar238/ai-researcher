@@ -41,6 +41,7 @@ from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
+from autoresearch.competition.language_guard import non_chinese_prose_fields
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.competition.plan_execution_contract import (
@@ -124,39 +125,39 @@ _FIELDS_REQUIRING_CITATION: tuple[str, ...] = (
     "methods",
 )
 
-# 交付语言为中文时，散文字段的中文字符占比下限。
-# 只统计「中文字符 + 拉丁字母」，忽略数字、标点与标识符：一份中文技术文档本就该含大量
-# `term_support_f1` 这类英文标识符，把它们算进分母会把正确的文档误判为英文。
-_MIN_CHINESE_RATIO = 0.55
+def authored_plan_non_chinese_fields(plan: ResearchPlan) -> tuple[str, ...]:
+    """Return every model-authored plan field that is not predominantly Chinese.
 
-# 需要检查语言的散文字段。`title` 不在其中：英文标题在本领域是惯例。
-_FIELDS_REQUIRING_CHINESE: tuple[str, ...] = (
-    "abstract",
-    "problem_statement",
-    "rationale",
-    "technical_details",
-    "methods",
-    "expected_results",
-)
-
-
-def _chinese_character_ratio(text: str) -> float:
-    """中文字符占「中文字符 + 英文词」的比例。
-
-    英文按**词**计，不按字母计。这一点是必要的：一句只有 14 个汉字的中文句子若含
-    `term_support_f1_minimum` 与 `reaction_diffusion_cylinder` 两个标识符，按字母计
-    就有 47 个拉丁字母，占比被压到 21%，于是一句地道的中文技术句子被判成英文。
-
-    那会重演 `P-20260807-092` 的缺陷类：grader 惩罚正确的产出。技术标识符本来就该
-    保留英文原样（否则读者无法 grep），所以它们只应各自计作一个词元。
+    Machine identifiers, commands, and standard method names may remain Latin, but
+    the surrounding title and scientific prose must be Chinese.  Bibliographic titles,
+    DOI/URL values, and derived evidence paths are intentionally excluded.
     """
 
-    chinese = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
-    words = re.findall(r"[A-Za-z][A-Za-z0-9_./-]*", text)
-    total = chinese + len(words)
-    if total == 0:
-        return 1.0
-    return chinese / total
+    prose_failures = non_chinese_prose_fields(
+        {
+            "title": plan.title,
+            "abstract": plan.abstract,
+            "problem_statement": plan.problem_statement,
+            "rationale": plan.rationale,
+            "technical_details": plan.technical_details,
+            "datasets.source": plan.datasets.get("source", ""),
+            "datasets.target": plan.datasets.get("target", ""),
+            "methods": plan.methods,
+            "experiments": plan.experiments,
+            "baselines": plan.baselines,
+            "metrics": plan.metrics,
+            "expected_results": plan.expected_results,
+            "risks_and_alternatives": plan.risks_and_alternatives,
+        }
+    )
+    # The runnable brief necessarily carries a Python command, paths, flags, and the
+    # literal method-token contract.  It still needs Chinese explanatory prose, but a
+    # lower ratio prevents those required machine tokens from being mistaken for an
+    # English narrative.
+    brief_failures = non_chinese_prose_fields(
+        {"code_agent_brief": plan.code_agent_brief}, minimum_ratio=0.35
+    )
+    return prose_failures + brief_failures
 
 
 class SystemAuthoredPlanError(RuntimeError):
@@ -239,6 +240,9 @@ class SystemAuthoredPlanArtifact(StrictFrozenModel):
                 "a plan artifact cannot be constructed from a refused plan; the "
                 "refusal must be raised rather than persisted as an accepted plan"
             )
+        expected_plan_hash = canonical_model_hash(self.plan)
+        if self.plan_hash != expected_plan_hash:
+            raise SystemAuthoredPlanError("system authored plan payload hash mismatch")
         expected = canonical_model_hash(
             self.model_dump(mode="json", exclude={"artifact_hash", "output_path"})
         )
@@ -324,15 +328,11 @@ def guard_authored_plan(
 
     # `P-20260808-095`：交付语言是中文，但从未有任何检查强制它，于是产出中英混杂。
     if require_chinese:
-        too_english: list[str] = []
-        for field in _FIELDS_REQUIRING_CHINESE:
-            value = str(getattr(plan, field, "") or "")
-            if value and _chinese_character_ratio(value) < _MIN_CHINESE_RATIO:
-                too_english.append(field)
+        too_english = authored_plan_non_chinese_fields(plan)
         if too_english:
             findings.append(
-                "以下字段必须用简体中文撰写，当前中文字符占比过低："
-                f"{too_english}。技术标识符（字段名、门禁名、系统名、路径、命令）"
+                "以下系统撰写字段必须用简体中文，当前中文占比过低："
+                f"{list(too_english)}。技术标识符（字段名、门禁名、系统名、路径、命令）"
                 "保持英文原样，其余散文必须中文。"
             )
 
@@ -597,13 +597,12 @@ def _authoring_messages(
         "from fit_equations or predict_derivative; comments, prose, variable names, "
         "and unused helpers cannot pass.\n"
         "6. Use no placeholder text and no reference to any contest or organizer.\n"
-        "7. WRITE EVERY PROSE FIELD IN CHINESE (简体中文). This document is read by "
+        "7. WRITE THE TITLE AND EVERY PROSE FIELD IN CHINESE (简体中文). This document is read by "
         "Chinese reviewers. Keep these in their original form because they are literal "
         "identifiers a reader must be able to match against code and data, and "
         "translating them makes them unfindable: field and gate names, metric names, "
-        "system names, file paths, and commands. `title` may stay English if that is "
-        "the conventional form for a paper title in this field, but `abstract` and "
-        "every other prose field must be Chinese.\n"
+        "system names, file paths, commands, and original bibliography titles. All "
+        "authored prose surrounding those literal identifiers must be Chinese.\n"
         "8. WRITE FOR AN EXTERNAL SCIENTIFIC READER, not for an internal issue "
         "tracker. Do NOT build sentences around internal bookkeeping identifiers such "
         "as lineage ids, ledger counters, or budget field names. A reader outside this "
@@ -668,7 +667,7 @@ def author_research_plan(
     max_attempts: int = _MAX_AUTHORING_ATTEMPTS,
     container_entry_points: Sequence[str] = (),
     literature: Sequence[Mapping[str, Any]] = (),
-    require_chinese: bool = False,
+    require_chinese: bool = True,
 ) -> SystemAuthoredPlanArtifact:
     """Have the system author its own plan, and let the graders teach it.
 

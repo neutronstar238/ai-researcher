@@ -41,8 +41,9 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 
+from autoresearch.competition.language_guard import non_chinese_prose_fields
 from autoresearch.competition.manifest import canonical_model_hash, write_json_model
 from autoresearch.competition.models import StrictFrozenModel
 from autoresearch.llm.client import LLMJsonCompletionResult, run_llm_json_completion
@@ -361,13 +362,44 @@ class SystemAuthoredOutcome(StrictFrozenModel):
                 "an interpretation claiming the gate passed cannot be accepted while "
                 "the deterministic gate failed"
             )
-        expected = canonical_model_hash(
-            self.model_dump(mode="json", exclude={"outcome_hash", "output_path"})
+        hash_payload = self.model_dump(
+            mode="json", exclude={"outcome_hash", "output_path"}
         )
+        if self.relation_audit is None:
+            # Retained pre-270.1 artifacts did not serialize this field. Injecting a
+            # new null key would invalidate authentic historical bytes merely because
+            # the loader evolved.
+            hash_payload.pop("relation_audit", None)
+        expected = canonical_model_hash(hash_payload)
         if self.outcome_hash != expected:
             raise SystemAuthoredOutcomeError("system authored outcome hash mismatch")
         return self
 
+    @model_serializer(mode="wrap")
+    def _serialize_with_legacy_compatibility(self, handler: Any) -> dict[str, Any]:
+        """Preserve hashes of outcomes retained before relation auditing existed."""
+
+        payload = dict(handler(self))
+        if self.relation_audit is None:
+            payload.pop("relation_audit", None)
+        return payload
+
+
+def authored_interpretation_non_chinese_fields(
+    interpretation: AuthoredInterpretation,
+) -> tuple[str, ...]:
+    """Return model-authored result fields that are not predominantly Chinese."""
+
+    return non_chinese_prose_fields(
+        {
+            "what_the_evidence_supports": interpretation.what_the_evidence_supports,
+            "what_the_evidence_does_not_support": (
+                interpretation.what_the_evidence_does_not_support
+            ),
+            "strongest_counter_reading": interpretation.strongest_counter_reading,
+            "limitations": interpretation.limitations,
+        }
+    )
 
 def collect_evidence_numbers(*sources: Mapping[str, Any]) -> set[str]:
     """Every number appearing anywhere in the evidence, in several renderings.
@@ -630,7 +662,9 @@ def _messages(
             "these numbers. Write your own interpretation. State what this evidence "
             "supports, what it does not support, and the strongest reading that "
             "argues AGAINST your own conclusion. Report whether the frozen gate "
-            "passed."
+            "passed. Write every narrative field and every limitation in Simplified "
+            "Chinese. Keep only literal identifiers, metric names, system names, and "
+            "numbers in their original form."
         ),
         "what_strongest_counter_reading_means": (
             "It is the best case someone could make that your conclusion is WRONG or "
@@ -651,6 +685,9 @@ def _messages(
             "below, above, at least, or at most another value unless the arithmetic "
             "relation is true.",
             "A null or negative result is a valid outcome. Do not argue around it.",
+            "All authored scientific prose must be Simplified Chinese. English-only "
+            "or mixed-language narrative is refused; searchable literal identifiers "
+            "may remain unchanged.",
         ],
     }
     return [
@@ -660,7 +697,9 @@ def _messages(
                 "You are the autonomous research system interpreting your own "
                 "measured result. Be accurate rather than favourable: an "
                 "interpretation that overstates its own evidence is worse than a "
-                "negative one, because it cannot be trusted again.\n\n"
+                "negative one, because it cannot be trusted again. Write the entire "
+                "scientific interpretation in Simplified Chinese; preserve only "
+                "literal technical identifiers and numbers.\n\n"
                 "Think first, then answer. Your reasoning is process provenance only "
                 "and is never scientific evidence.\n"
                 "Return exactly one json object satisfying this schema, with no prose "
@@ -685,6 +724,7 @@ def author_outcome_interpretation(
     config_path: Path | str = Path("config.yaml"),
     env_path: Path | str = Path(".env"),
     clock: datetime | None = None,
+    require_chinese: bool = True,
 ) -> SystemAuthoredOutcome:
     """Ask the system to interpret its own result, then audit what it wrote."""
 
@@ -739,6 +779,13 @@ def author_outcome_interpretation(
             "the interpretation states arithmetically false numeric relations: "
             f"{list(relation_audit.contradictions)}"
         )
+    if require_chinese:
+        non_chinese = authored_interpretation_non_chinese_fields(interpretation)
+        if non_chinese:
+            reasons.append(
+                "以下系统结果字段必须用简体中文，当前中文占比过低："
+                f"{list(non_chinese)}。技术标识符和数值可保持原样，其余科学散文必须中文。"
+            )
     # `P-20260804-086`: the counter-reading field is meant to hold the strongest
     # argument AGAINST the model's own conclusion, and the first live run satisfied it
     # with a restatement of the conclusion instead. A field satisfiable by restatement

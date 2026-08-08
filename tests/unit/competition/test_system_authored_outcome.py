@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from autoresearch.competition.manifest import canonical_model_hash
 from autoresearch.competition.system_authored_outcome import (
     AuthoredInterpretation,
     SystemAuthoredOutcomeError,
@@ -121,7 +122,13 @@ class _Stub:
         )
 
 
-def _run(tmp_path: Path, stub: _Stub, *, gate: dict[str, bool] | None = None) -> Any:
+def _run(
+    tmp_path: Path,
+    stub: _Stub,
+    *,
+    gate: dict[str, bool] | None = None,
+    require_chinese: bool = False,
+) -> Any:
     pkg_path, plan_path = _write_inputs(tmp_path, gate=gate)
     return author_outcome_interpretation(
         lineage_id="lineage-under-test",
@@ -130,6 +137,9 @@ def _run(tmp_path: Path, stub: _Stub, *, gate: dict[str, bool] | None = None) ->
         output_dir=tmp_path,
         completion=stub,
         clock=datetime(2026, 8, 4, tzinfo=timezone.utc),
+        # Legacy fixtures isolate numeric and verdict guards. Production defaults to
+        # Chinese; dedicated tests below exercise that mandatory path.
+        require_chinese=require_chinese,
     )
 
 
@@ -165,6 +175,21 @@ def test_numbers_present_in_the_evidence_are_accepted(tmp_path: Path) -> None:
     assert outcome.traceability.passed is True
     assert outcome.accepted is True
     assert outcome.traceability.untraceable_numbers == ()
+
+
+def test_production_default_refuses_non_chinese_result_prose(tmp_path: Path) -> None:
+    pkg_path, plan_path = _write_inputs(tmp_path)
+    outcome = author_outcome_interpretation(
+        lineage_id="lineage-chinese-required",
+        package_path=pkg_path,
+        frozen_plan_path=plan_path,
+        output_dir=tmp_path,
+        completion=_Stub(_interpretation()),
+        clock=datetime(2026, 8, 4, tzinfo=timezone.utc),
+    )
+
+    assert outcome.accepted is False
+    assert any("简体中文" in reason for reason in outcome.refusal_reasons)
 
 
 def test_a_rounded_evidence_number_is_accepted() -> None:
@@ -374,6 +399,7 @@ def test_the_prompt_hands_the_model_its_own_numbers(tmp_path: Path) -> None:
     assert "valid outcome" in sent
     # And it must be asked for the reading that argues against itself.
     assert "strongest_counter_reading" in sent
+    assert "Simplified Chinese" in sent
 
 
 def test_the_cycle_uses_bounded_reasoning(tmp_path: Path) -> None:
@@ -390,6 +416,21 @@ def test_the_outcome_persists_and_round_trips(tmp_path: Path) -> None:
     assert json.loads(written.read_text(encoding="utf-8"))["outcome_hash"] == (
         outcome.outcome_hash
     )
+
+
+def test_legacy_serialization_does_not_inject_a_hash_breaking_null(
+    tmp_path: Path,
+) -> None:
+    current = _run(tmp_path, _Stub(_interpretation()))
+    payload = current.model_dump(mode="json", exclude={"outcome_hash", "output_path"})
+    payload.pop("relation_audit")
+    payload["outcome_hash"] = canonical_model_hash(payload)
+    payload["output_path"] = (tmp_path / "legacy-outcome.json").as_posix()
+
+    legacy = type(current).model_validate(payload)
+
+    assert legacy.relation_audit is None
+    assert "relation_audit" not in legacy.model_dump(mode="json")
 
 
 def test_a_package_without_a_gate_is_refused(tmp_path: Path) -> None:

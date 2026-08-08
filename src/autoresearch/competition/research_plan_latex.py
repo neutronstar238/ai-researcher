@@ -102,7 +102,7 @@ def assert_all_prose_is_authored(plan: Mapping[str, Any]) -> None:
             missing.append(field)
     for field in _REQUIRED_AUTHORED_LISTS:
         value = plan.get(field)
-        if not isinstance(value, (list, tuple)) or not value:
+        if not isinstance(value, list | tuple) or not value:
             missing.append(field)
     source = (plan.get("datasets") or {}).get("source") if isinstance(
         plan.get("datasets"), Mapping
@@ -163,7 +163,7 @@ def _render_reference(ref: Mapping[str, Any]) -> str:
     """按 GB/T 7714 风格渲染一条参考文献，保留可点击的 DOI/URL。"""
 
     authors = ref.get("authors")
-    if isinstance(authors, (list, tuple)) and authors:
+    if isinstance(authors, list | tuple) and authors:
         names = [str(a).strip() for a in authors if str(a).strip()]
         if len(names) > 3:
             author_text = _tex_escape("，".join(names[:3])) + r", 等"
@@ -347,11 +347,11 @@ def render_research_plan_latex(
     body.append(
         r"""\begin{tabularx}{\linewidth}{@{}lX@{}}
 \toprule
-\textbf{Source} & """
+\textbf{来源数据} & """
         + _tex_escape(datasets.get("source"))
         + r""" \\
 \midrule
-\textbf{Target} & """
+\textbf{目标数据} & """
         + _tex_escape(datasets.get("target"))
         + r""" \\
 \bottomrule
@@ -365,9 +365,9 @@ def render_research_plan_latex(
     body.append(r"\section{实验设计}" + "\n")
     body.append(r"\subsection{实验流程}" + "\n")
     body.append(_itemize(plan.get("experiments") or (), ordered=True) + "\n")
-    body.append(r"\subsection{基线对比（Baselines）}" + "\n")
+    body.append(r"\subsection{对照基线}" + "\n")
     body.append(_itemize(plan.get("baselines") or ()) + "\n")
-    body.append(r"\subsection{评估指标（Metrics）}" + "\n")
+    body.append(r"\subsection{评估指标}" + "\n")
     body.append(_itemize(plan.get("metrics") or ()) + "\n")
 
     body.append(r"\section{实验结果}" + "\n")

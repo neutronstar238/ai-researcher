@@ -14033,3 +14033,50 @@ This file defines the project development standard for coding agents and records
   - `P-20260807-093` remains unchanged: only four host subprocess tests need numpy; the other 649 competition tests passed.
 - Follow-up:
   - Task `270.3`: produce a separate post-observation final report rather than filling the immutable preregistration in place. Because `task2700` fails plan alignment, its numbers must be reported as a disqualified mismatch or a new aligned lineage must be executed; they cannot be presented as evidence for the integral-Bayesian plan.
+
+---
+
+## 2026-08-08 23:05:31 +08:00 - Codex - Task 270.3 immutable Chinese final research report
+
+- User request: 以最快速度、最高质量完成榜题提交前开发；研究计划及研究产出必须全部为中文、必须由系统自行生成，不能由 agent 直接补写科研内容。
+- Files changed:
+  - `src/autoresearch/competition/final_research_report.py` (new)
+  - `src/autoresearch/competition/language_guard.py` (new)
+  - `src/autoresearch/competition/cli.py`
+  - `src/autoresearch/competition/system_authored_plan.py`
+  - `src/autoresearch/competition/system_authored_outcome.py`
+  - `src/autoresearch/competition/research_plan_latex.py`
+  - `tests/unit/competition/test_final_research_report.py` (new)
+  - `tests/unit/competition/test_competition_cli.py`
+  - `tests/unit/competition/test_system_authored_plan.py`
+  - `tests/unit/competition/test_system_authored_outcome.py`
+  - `tests/unit/competition/test_plan_language_and_citations.py`
+  - `tests/unit/competition/test_research_plan_latex.py`
+  - `AutoResearch_System_Research_Plan.md`
+  - `AutoResearch_System_Execution_Plan.md`
+  - `.kiro/specs/auto-research-system/tasks.md`
+  - `Problem.md`
+  - `Agent.md`
+  - `.understand-anything/.understandignore`, `.understand-anything/config.json` (repository-understanding skill preflight only; deliberately left untracked and excluded from the Task 270.3 commit pending the user's required full-scan confirmation)
+- Summary:
+  - Added a 19-check, fail-closed final-report input audit. It accepts only one exact chain: model-authored plan → byte-identical human-approved preregistration → plan-execution contract → source-hash-matched aligned selected implementation → complete signed candidate/baseline package → accepted model-authored outcome with numeric provenance and relation audits.
+  - Added `competition mdbench final-report`. It writes a separate canonical JSON report, Chinese Markdown, Chinese XeLaTeX, compiled PDF, and a hash-bound build receipt. It verifies the exact verdict and key metrics across all four views and hashes both preregistration files before/after rendering; observed results never enter or overwrite the plan.
+  - The report renderer contains only fixed structural labels. Every scientific sentence is copied verbatim from the system-authored plan or system-authored outcome; it records `hand_written_scientific_prose_field_count=0`, `human_approval_is_scientific_evidence=false`, and `publication_ready=false`. No real research plan, result, or conclusion was hand-authored in this task; Chinese prose added under tests is synthetic fixture data only.
+  - Converted Chinese delivery from an optional prompt preference into three independent gates. Plan authoring now defaults to per-field Chinese enforcement (including title, datasets, experiments, baselines, metrics, code brief, and risks); outcome authoring defaults to Chinese interpretation/limitations; final-report input auditing rechecks both artifacts. Original bibliography metadata and literal searchable identifiers remain unmodified.
+  - Strengthened `SystemAuthoredPlanArtifact` so its `plan_hash` must recompute from its actual plan. Preserved pre-270.1 outcome hashes by omitting the historically absent `relation_audit` field on both validation and serialization; added a regression test against null injection.
+  - Fixed final PDF provenance layout: schema-validated hexadecimal hashes use `seqsplit` without the prose escaper's long-number `mbox`, so every 64-character hash wraps inside the page rather than being clipped. Visible fixed labels and verdict/gate labels were translated to Chinese.
+  - Read-only audit of retained `task2700-latex-plan-lineage-v1` returned `accepted=false` on five independent checks: seven plan fields are not Chinese, the execution contract is missing, no selected candidate can be plan-aligned, every outcome narrative field is not Chinese, and the numeric-relation audit is absent. Historical bytes were not changed and no final report was produced from them.
+- Verification:
+  - `poetry run pytest -q --no-cov tests/unit/competition` with only the four documented `P-20260807-093` host-NumPy cases deselected → `660 passed, 4 deselected`.
+  - Focused final-report/plan/outcome/CLI suite → `75 passed`; subsequent outcome/final-report regression after the legacy serializer review → `40 passed`; the CLI's incomplete-lineage refusal independently passed and created no report directory, and direct final-report model construction cannot bypass the Chinese prose gate.
+  - Real XeLaTeX compiled the synthetic evidence-bound report twice; `pdftotext` verified the same verdict and key metrics as JSON/Markdown/TeX. Native Poppler reported A4, 5 pages, 99,954 bytes; all five rasterized pages were visually inspected, with no hash clipping, overflow, or missing content.
+  - Focused Ruff over all changed Python and test files → clean. Mypy over all six changed source modules → clean. `compileall` over `src/autoresearch/competition` → clean. `git diff --check` → clean apart from informational CRLF normalization warnings.
+  - One initial targeted pytest node name was mistyped and collected zero tests; the exact corrected node passed. The first Poppler wrapper invocation could not resolve its delegated executable; direct invocation of the resolved bundled native executables passed and is recorded as `P-20260808-102`.
+- Problems added or updated:
+  - Added `P-20260808-101` (critical): no immutable, cross-format final-report boundary and language was not a consumption-time invariant. Resolved for report materialization; a new conforming real lineage remains required.
+  - Added `P-20260808-102` (low, resolved): bundled Poppler override wrappers failed during visual inspection; exact native executable paths succeeded.
+  - `P-20260807-093` remains open and unchanged; its four host-only NumPy subprocess cases were the only explicit deselections.
+- Follow-up:
+  - Task `270.4`: implement the single fail-closed submission evidence-bundle audit and keep it non-ready while any model/config/reproducibility/publication proof is absent.
+  - Then execute a fresh Chinese, plan-aligned real lineage. Do not reuse `task2700` measurements as evidence for its plan and do not hand-edit system scientific prose to satisfy the new language gates.
+  - The optional repository-understanding graph scan remains paused by the skill's mandatory confirmation rule; continue only after the user replies `确认扫描`.
